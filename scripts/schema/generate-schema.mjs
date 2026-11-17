@@ -1,39 +1,90 @@
 // scripts/schema/generate-schema.mjs
 //
-// Write side of CORE schema generation. Serializes buildProjectSchema() to
-// schema/<version>/vernacular.schema.json and the table of known keys to
-// core/model/known-keys.json, or (with --check) verifies both committed files
-// match the regenerated output and exits non-zero on drift.
+// Write side of CORE schema generation. Serializes buildProjectSchema() to the path for the
+// current version and revision (see schemaPath) and the table of known keys to
+// core/model/known-keys.json, or (with --check) verifies both committed files match the
+// regenerated output. The schema check uses driftVerdict: a changed schema must come with a
+// higher version or revision (ADR-0178). Drift exits non-zero.
 
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { buildProjectSchema, SCHEMA_VERSION } from './build-schema.mjs'
+import {
+  buildProjectSchema,
+  driftVerdict,
+  schemaPath,
+  SCHEMA_REVISION,
+  SCHEMA_VERSION,
+} from './build-schema.mjs'
 import { buildKnownKeys } from './build-known-keys.mjs'
 
 const JSON_INDENT = 2
 const EXIT_DRIFT = 1
+const NO_NUMBER = 0
+const REVISION_DIRECTORY = /^revision-(\d+)$/
 
 function serialize(value) {
   return JSON.stringify(value, null, JSON_INDENT) + '\n'
 }
 
+function readIfExists(path) {
+  return existsSync(path) ? readFileSync(path, 'utf8') : null
+}
+
+/** Every committed schema as a version and revision pair; revision 0 is the unnumbered path. */
+function committedSchemas() {
+  return readdirSync('schema')
+    .filter((name) => /^\d+$/.test(name))
+    .flatMap((name) => {
+      const version = Number(name)
+      const revisions = readdirSync(`schema/${name}`)
+        .map((entry) => REVISION_DIRECTORY.exec(entry))
+        .filter((match) => match !== null)
+        .map((match) => Number(match[1]))
+      return [NO_NUMBER, ...revisions]
+        .filter((revision) => existsSync(schemaPath(version, revision)))
+        .map((revision) => ({ version, revision }))
+    })
+}
+
+function latestCommittedSchema() {
+  const latest = committedSchemas().sort((a, b) => a.version - b.version || a.revision - b.revision)
+  return latest.at(-1) ?? { version: NO_NUMBER, revision: NO_NUMBER }
+}
+
+function checkSchema(content) {
+  const latest = latestCommittedSchema()
+  const verdict = driftVerdict(readIfExists(schemaPath(latest.version, latest.revision)), content, {
+    version: SCHEMA_VERSION,
+    revision: SCHEMA_REVISION,
+    committedVersion: latest.version,
+    committedRevision: latest.revision,
+  })
+  if (!verdict.ok) console.error(`Schema drift: ${verdict.message}`)
+  return verdict.ok
+}
+
+function checkKnownKeys({ path, content }) {
+  const current = (readIfExists(path) ?? '') === content
+  if (!current) console.error(`Schema drift: ${path} is out of date. Run \`pnpm schema:generate\`.`)
+  return current
+}
+
 const schema = buildProjectSchema()
-const outputs = [
-  { path: `schema/${SCHEMA_VERSION}/vernacular.schema.json`, content: serialize(schema) },
-  { path: 'core/model/known-keys.json', content: serialize(buildKnownKeys(schema)) },
-]
+const schemaOutput = {
+  path: schemaPath(SCHEMA_VERSION, SCHEMA_REVISION),
+  content: serialize(schema),
+}
+const knownKeysOutput = {
+  path: 'core/model/known-keys.json',
+  content: serialize(buildKnownKeys(schema)),
+}
 
 if (process.argv.includes('--check')) {
-  const stale = outputs.filter(
-    ({ path, content }) => (existsSync(path) ? readFileSync(path, 'utf8') : '') !== content,
-  )
-  for (const { path } of stale) {
-    console.error(`Schema drift: ${path} is out of date. Run \`pnpm schema:generate\`.`)
-  }
-  if (stale.length > 0) process.exit(EXIT_DRIFT)
-  for (const { path } of outputs) console.log(`${path} is up to date.`)
+  const upToDate = [checkSchema(schemaOutput.content), checkKnownKeys(knownKeysOutput)]
+  if (upToDate.includes(false)) process.exit(EXIT_DRIFT)
+  console.log(`${schemaOutput.path} and ${knownKeysOutput.path} are up to date.`)
 } else {
-  for (const { path, content } of outputs) {
+  for (const { path, content } of [schemaOutput, knownKeysOutput]) {
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, content)
     console.log(`Wrote ${path}`)

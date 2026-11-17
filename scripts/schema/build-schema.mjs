@@ -19,8 +19,52 @@ if (versionMatch === null) {
 /** The live format version, read from core/model/factories.ts. */
 export const SCHEMA_VERSION = Number(versionMatch[1])
 
+const REVISION_BASE = 0
+const SCHEMA_HOST = 'https://drmrd.github.io/vernacular'
+
+const revisionMatch = factoriesSource.match(/CURRENT_SCHEMA_REVISION\s*=\s*(\d+)/)
+if (revisionMatch === null) {
+  throw new Error('Could not read CURRENT_SCHEMA_REVISION from core/model/factories.ts')
+}
+
+/** The live additive revision within the format version, read from core/model/factories.ts. */
+export const SCHEMA_REVISION = Number(revisionMatch[1])
+
+/**
+ * Repository-relative path of the schema for a version and revision. Revision 0 keeps the
+ * path used before revisions existed; a later revision gets its own directory (ADR-0178).
+ */
+export function schemaPath(version, revision) {
+  const directory =
+    revision > REVISION_BASE ? `schema/${version}/revision-${revision}` : `schema/${version}`
+  return `${directory}/vernacular.schema.json`
+}
+
 /** Stable, versioned identifier for the published CORE schema. */
-export const SCHEMA_ID = `https://drmrd.github.io/vernacular/schema/${SCHEMA_VERSION}/vernacular.schema.json`
+export const SCHEMA_ID = `${SCHEMA_HOST}/${schemaPath(SCHEMA_VERSION, SCHEMA_REVISION)}`
+
+/**
+ * Decide whether a regenerated schema may differ from the latest committed one. A published
+ * schema is fixed, so a change needs a higher version, or a higher revision of the same version.
+ *
+ * @param {string | null} committed serialized committed schema, or null when none exists yet
+ * @param {string} regenerated serialized schema regenerated from the types
+ * @param {{ version: number, revision: number, committedVersion: number, committedRevision: number }} numbers
+ * @returns {{ ok: true } | { ok: false, message: string }}
+ */
+export function driftVerdict(committed, regenerated, numbers) {
+  const raised =
+    numbers.version > numbers.committedVersion ||
+    (numbers.version === numbers.committedVersion && numbers.revision > numbers.committedRevision)
+  if (committed === null || committed === regenerated || raised) return { ok: true }
+  return {
+    ok: false,
+    message:
+      `The schema changed but neither number rose: still version ${numbers.version}, ` +
+      `revision ${numbers.revision}. Raise the schema revision (additive change) or the ` +
+      'schema version (breaking change) in core/model/factories.ts, then run `pnpm schema:generate`.',
+  }
+}
 
 /**
  * Build the CORE JSON Schema for the Vernacular Floor Plan Format from the
