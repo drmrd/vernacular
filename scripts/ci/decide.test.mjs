@@ -119,6 +119,11 @@ describe('the paths that shape a heavy run', () => {
     expect(outputs).toEqual({ e2e, visual, lighthouse: 'false' })
   })
 
+  it('keeps the story visuals off for an end-to-end test outside the stories folder', async () => {
+    const outputs = await decideFor({ changed: ['e2e/tests/x.spec.ts'] })
+    expect(outputs).toEqual({ e2e: 'true', visual: 'false', lighthouse: 'false' })
+  })
+
   it('skips the end-to-end suite on a draft even for a change to the Playwright config', async () => {
     const outputs = await decideFor({ changed: ['playwright.config.ts'], draft: true })
     expect(outputs.e2e).toBe('false')
