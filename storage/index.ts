@@ -21,6 +21,7 @@ export {
   IndexedDbProjectStore,
   createDefaultProjectStore,
 } from './indexeddb/indexeddb-project-store'
+export { IndexedDbDirectory } from './indexeddb/indexeddb-directory'
 export { IndexedDbUserLibraryIndex } from './indexeddb/indexeddb-user-library-index'
 export {
   probeStorageCapabilities,
