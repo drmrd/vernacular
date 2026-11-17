@@ -1,5 +1,10 @@
 import { openingTypeHasFill } from '../registries/opening-kind'
-import { openingMotion, type HingeMotion, type OpeningMotion } from './opening-motion'
+import {
+  openingMotion,
+  type HingeMotion,
+  type OpeningMotion,
+  type SlideMotion,
+} from './opening-motion'
 import { planToWorld } from './plan-to-world'
 import type { OpeningSceneNode } from './scene-graph'
 import type { Vector3 } from './vector3'
@@ -80,12 +85,23 @@ function openedFrame(shut: OpeningFrame, motion: OpeningMotion, openness: number
     case 'hinge':
       return swungFrame(shut, motion, openness)
     case 'slide':
-      // A hung window's frame does not move, only a sash inside it.
-      if (motion.partId !== 'primary') return shut
-      return { ...shut, center: add(shut.center, scale(motion.travel, openness)) }
+      return slidesInsideFrame(motion)
+        ? shut
+        : { ...shut, center: add(shut.center, scale(motion.travel, openness)) }
     default:
       return shut
   }
+}
+
+/**
+ * Whether the slide moves a sash inside a frame that stays put, as a hung window's sash
+ * does. Such an opening keeps its shut rectangle at every openness, so looking anywhere in
+ * the frame of an open hung window reaches it, and looking at the wall above the head does
+ * not. A slide along the wall instead carries the leaf out of the opening, so the reach
+ * follows it.
+ */
+function slidesInsideFrame(motion: SlideMotion): boolean {
+  return motion.axis === 'vertical'
 }
 
 /** The frame rotated about the hinge axis through its pivot; axes rotate, not translate. */
@@ -131,9 +147,7 @@ function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit)
  * tested as the rectangle its leaf or sash fills (spec section 3.2), and the
  * nearest one the ray crosses within `reachMm` wins. The direction need not be
  * normalized; it is normalized here so the reach is measured in millimeters. A hung
- * window is tested as its own shut rectangle at every openness: its frame does not
- * move, only a sash inside it, so looking anywhere in the frame of an open hung
- * window reaches it, and looking at the wall above the head does not.
+ * window keeps its shut rectangle at every openness (see `slidesInsideFrame`).
  */
 // eslint-disable-next-line max-params -- the eye and the look direction are independent ray inputs, the openings are the world being tested, and the options bundle the per-opening openness and the reach limit; none collapse into another.
 export function openingUnderReach(
