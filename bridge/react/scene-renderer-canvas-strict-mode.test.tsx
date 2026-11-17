@@ -47,7 +47,7 @@ vi.mock('@react-three/fiber', () => ({
 
 const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
 const COULD_NOT_LOAD_MESSAGE =
-  'Could not load the 3D view. Check your network connection, then retry.'
+  'Could not load the 3D view. Check your network connection, then reload the page.'
 const CHILD = <div data-testid="child" />
 
 interface Session {
@@ -178,13 +178,13 @@ describe('SceneRendererCanvas under StrictMode with the other outcomes', () => {
     expect(screen.queryByTestId('child')).toBeNull()
   })
 
-  it('shows the could-not-load alert with a Retry button when the load fails', async () => {
+  it('shows the could-not-load alert with a Reload page button when the load fails', async () => {
     renderStrict()
 
     await settle(() => session.loaded.reject(new Error('the renderer chunk failed to load')))
 
     expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
   })
 
   it('hands the forceWebGL option to the renderer factory', async () => {

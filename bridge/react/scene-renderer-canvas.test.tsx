@@ -184,7 +184,7 @@ describe('SceneRendererCanvas', () => {
 // The wording and role that SceneCanvas already uses when the browser has no 3D backend at all.
 const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
 const COULD_NOT_LOAD_MESSAGE =
-  'Could not load the 3D view. Check your network connection, then retry.'
+  'Could not load the 3D view. Check your network connection, then reload the page.'
 
 describe('SceneRendererCanvas when the renderer cannot start', () => {
   let start: Harness
@@ -212,12 +212,12 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     expect(failureKindIn(container)).toBe('start')
   })
 
-  it('offers no retry when init() rejects', async () => {
+  it('offers no Reload page button when init() rejects', async () => {
     renderWrapper()
     await settle(() => start.loaded.resolve(start.factory))
     await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
 
-    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Reload page' })).toBeNull()
   })
 
   it('leaves no unhandled rejection when init() rejects', async () => {
@@ -266,13 +266,13 @@ describe('SceneRendererCanvas when the renderer module does not load', () => {
     rejections.stop()
   })
 
-  it('shows the could-not-load alert with a Retry button and no cannot-render status', async () => {
+  it('shows the could-not-load alert with a Reload page button and no cannot-render status', async () => {
     const { container } = renderWrapper()
     await settle(() => start.loaded.reject(LOAD_FAILURE))
 
     expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
     expect(failureKindIn(container)).toBe('load')
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()
   })
@@ -284,29 +284,29 @@ describe('SceneRendererCanvas when the renderer module does not load', () => {
     expect(await rejections.read()).toEqual([])
   })
 
-  it('returns to the placeholder while Retry loads, then mounts the Canvas once it loads', async () => {
-    renderWrapper()
+  it('calls reloadPage exactly once when Reload page is pressed', async () => {
+    const reloadPage = vi.fn()
+    renderWrapper({ reloadPage })
     await settle(() => start.loaded.reject(LOAD_FAILURE))
-    const retry = arrangeStartUp()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reload page' }))
 
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(document.querySelector('canvas')).not.toBeNull()
-    expect(screen.queryByTestId('canvas')).toBeNull()
-    await settle(() => retry.loaded.resolve(retry.factory))
-    expect(screen.getByTestId('canvas')).toBeInTheDocument()
+    expect(reloadPage).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the could-not-load alert again when the retried load also fails', async () => {
-    renderWrapper()
+  it('keeps the alert and asks the renderer loader no second time after Reload page is pressed', async () => {
+    const loadFactory = vi.fn(() => start.loaded.promise)
+    collaborators.loadFactory = loadFactory
+    renderWrapper({ reloadPage: vi.fn() })
     await settle(() => start.loaded.reject(LOAD_FAILURE))
-    const retry = arrangeStartUp()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    await settle(() => retry.loaded.reject(LOAD_FAILURE))
+    fireEvent.click(screen.getByRole('button', { name: 'Reload page' }))
+    await settle(() => {})
 
+    expect(loadFactory).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
+    expect(screen.queryByTestId('canvas')).toBeNull()
     expect(await rejections.read()).toEqual([])
   })
 })
