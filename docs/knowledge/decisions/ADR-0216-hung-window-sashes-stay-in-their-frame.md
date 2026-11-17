@@ -398,9 +398,10 @@ its steps in `e2e/tests/journeys/close-openings-window.ts`. It selects the shut 
 list of 3D entities and takes the box of pixels its outline changes as the box of the frame. It
 then opens the window with the E key and checks three things. The box of pixels the open window
 changes lies inside the outline box, within a margin of 6 px (`OPENING_REGION_MARGIN`); the runs
-measured it 1 to 3 px inside on each side. The region of the open window, read on each frame for
-400 ms and once more after, does not change, so the sashes do not flicker. A second press of the
-open key from the pose that opened the window closes it again.
+measured it 1 to 3 px inside on each side. The region of the open window, read on each of 12
+animation frames and once more after, does not change, so the sashes do not flicker. The check
+counts frames and not time, so a slow machine gets as many readings as a fast one. A second press
+of the open key from the pose that opened the window closes it again.
 
 ## Limits
 
@@ -421,13 +422,13 @@ open key from the pose that opened the window closes it again.
   thickness of that wall. Then at least half of the opening overlaps the wall, which no valid plan
   has. So no second sample along the width of the opening was added.
 - `exteriorWalls` keeps its midpoint sample and its check without holes, so the two rules can
-  disagree about the same wall. Bringing it in line is left to a follow-up issue.
+  disagree about the same wall. Bringing it in line is left to #832.
 - The run-time cost of the sampling and of the extra rebuilds was not timed. Each derived opening
   tests two points against the rooms of its floor, and the warm deriver tests them again whenever the
   room array changes. The gate in `tests/performance/scene-rebuild-counts.test.ts` counts the
   rebuilds.
 - Only the lower sash moves, on the double-hung window as well. A real double-hung window can also
-  lower its upper sash; a follow-up issue covers that in the 3D view. Until then the 3D view does not
+  lower its upper sash; #831 covers that in the 3D view. Until then the 3D view does not
   tell the two hung types apart by their motion.
 - In a wall thinner than 40 mm the sashes stand proud of the wall faces, by up to 19.5 mm on each
   face in a 1 mm wall.
@@ -439,6 +440,10 @@ open key from the pose that opened the window closes it again.
   hides the parts that go above the head. The unit tests of the engine guard that only the lower
   sash moves.
 - No committed image shows the stepped sashes at a size where a reader can see them.
+- The new place of the lower sash changes the draw order of a door leaf against the window bars. In
+  the room of the journey that exposed a defect in `three` 0.184.0, which left a shut door drawn
+  part-open. ADR-0217 records the cause and the library patch. This change needs that patch: on a
+  build without it, the first test of the journey failed in four of four runs on 2026-11-17.
 - The engine moves a sash on the assumption that every part mesh is a direct child of the group at
   position zero. A nested child, or one built at another position, would break it. No test guards
   that layout from another builder.
@@ -448,6 +453,7 @@ open key from the pose that opened the window closes it again.
 - Issue #792.
 - Issue #827: the label and the behavior of "Flip swing" for a hung window.
 - Issue #674: rooms inset by the raw wall thickness.
+- ADR-0217: the library patch that uploads a moved mesh again, which this change needs.
 - [[ADR-0128-opening-animation-motion-model]]: the motion model and the part identifier this record
   uses.
 - [[ADR-0081-three-dimensional-opening-fill]]: the fill parts and the hung-window fill kind.
