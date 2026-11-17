@@ -12,8 +12,10 @@ import {
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { CURRENT_SCHEMA_REVISION } from '../../core'
 import type { FormatFault } from '../../core'
 import { checkCurrentSchema } from '../../core/format/current-schema'
+import { SCHEMA_REVISION, SCHEMA_VERSION, schemaPath } from '../../scripts/schema/build-schema.mjs'
 import { versionFixtureBytes } from '../fixtures/projects/versions'
 
 const CURRENT_VERSION = 17
@@ -29,6 +31,8 @@ const TOLERANT_DECLARATION_FILE = 'core/format/generated/tolerant-schema-validat
 
 const UNKNOWN_FIELD = 'x-unknown'
 const NAMESPACE = 'com.example.solar'
+const REVISION_THAT_IS_NOT_WHOLE = 1.5
+const REVISION_BELOW_ZERO = -2
 
 type Json = Record<string, unknown>
 
@@ -141,6 +145,38 @@ describe('the current schema check of a document', () => {
     const faults = faultsOf(document, mode)
     expect(faults.length).toBeGreaterThan(0)
     expect(faults.map((fault) => fault.path)).toContain('/floors/0/walls/0/thickness')
+  })
+})
+
+describe('the schema revision of a document', () => {
+  function withRevision(revision: number): Json {
+    const document = currentDocument()
+    ;(document.meta as Json).schemaRevision = revision
+    return document
+  }
+
+  it.each([
+    { name: 'not whole', revision: REVISION_THAT_IS_NOT_WHOLE, mode: 'strict' },
+    { name: 'not whole', revision: REVISION_THAT_IS_NOT_WHOLE, mode: 'tolerant' },
+    { name: 'below zero', revision: REVISION_BELOW_ZERO, mode: 'strict' },
+    { name: 'below zero', revision: REVISION_BELOW_ZERO, mode: 'tolerant' },
+  ] as const)('reports a revision that is $name as a fault in $mode mode', ({ revision, mode }) => {
+    const faults = faultsOf(withRevision(revision), mode)
+    expect(faults.map((fault) => fault.path)).toContain('/meta/schemaRevision')
+  })
+
+  it.each([0, CURRENT_SCHEMA_REVISION])('accepts the revision %i in strict mode', (revision) => {
+    expect(faultsOf(withRevision(revision), 'strict')).toEqual([])
+  })
+
+  it('is described in the published schema as an integer of zero or more', () => {
+    const schema = JSON.parse(
+      readFileSync(resolve(schemaPath(SCHEMA_VERSION, SCHEMA_REVISION)), 'utf8'),
+    ) as { definitions: Record<string, { properties?: Record<string, Json> }> }
+    const definition = Object.values(schema.definitions).find(
+      (candidate) => candidate.properties?.schemaRevision !== undefined,
+    )
+    expect(definition?.properties?.schemaRevision).toMatchObject({ type: 'integer', minimum: 0 })
   })
 })
 
