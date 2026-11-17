@@ -7,7 +7,9 @@ type PermissionState = 'granted' | 'prompt' | 'denied'
 /**
  * Folder access for tests of the layers above: no browser API is touched. A stand-in handle
  * stands for one directory object, and two handles count as the same entry when they stand for
- * the same directory object.
+ * the same directory object. A stand-in handle is an empty object with none of the methods of a
+ * real handle, so code under test reaches a folder only through this access. `reopen` models a
+ * user who grants when the browser asks: a 'prompt' state becomes 'granted'.
  */
 export class InMemoryFolderAccess implements FolderAccess {
   readonly supported: boolean

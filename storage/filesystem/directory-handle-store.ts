@@ -1,4 +1,4 @@
-import type { FolderHandles, RememberedFolder } from './folder-access'
+import type { FolderHandles, RememberedFolder } from './folder-access-types'
 
 const DEFAULT_DATABASE_NAME = 'vernacular-handles'
 const STORE_NAME = 'handles'
