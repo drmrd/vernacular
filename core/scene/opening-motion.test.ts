@@ -6,12 +6,15 @@ import {
   type ElementType,
 } from '../registries/element-types'
 
+import { SASH_FRAME_WIDTH_MM } from './opening-fill'
 import { openingMotion } from './opening-motion'
 import type { OpeningSceneNode } from './scene-graph'
 
 const PRECISION = 6
 const KNOWN_KINDS = new Set(['hinge', 'slide', 'none'])
 const QUARTER_TURN = Math.PI / 2
+/** Rise of the lower sash of the default 2000 mm window: 2000 / 2 - 60 / 2. */
+const DEFAULT_HEIGHT_RISE_MM = 970
 
 /** A wall-along-+X opening centered at the origin, hinged at its start jamb. */
 function openingNode(type: string, overrides: Partial<OpeningSceneNode> = {}): OpeningSceneNode {
@@ -98,15 +101,55 @@ describe('openingMotion sliding doors', () => {
 })
 
 describe('openingMotion windows', () => {
-  it('resolves a double-hung window to a vertical slide of both sashes', () => {
+  it('resolves a double-hung window to a rise of its lower sash by the height of that sash', () => {
     const motion = openingMotion('double-hung-window', openingNode('double-hung-window'))
 
-    expect(motion.kind).toBe('slide')
-    if (motion.kind !== 'slide') return
-    expect(motion.axis).toBe('vertical')
-    // Raises straight up (world +Y) by the opening height; no in-plane travel.
-    expect(motion.travel).toEqual({ x: 0, y: 2000, z: 0 })
-    expect(motion.partCount).toBe(2)
+    expect(motion).toEqual({
+      kind: 'slide',
+      axis: 'vertical',
+      // Height 2000 less half the meeting rail: the lower sash tops out at the head.
+      travel: { x: 0, y: DEFAULT_HEIGHT_RISE_MM, z: 0 },
+      partId: 'lower',
+      partCount: 1,
+    })
+  })
+
+  it('resolves a single-hung window to the same rise as a double-hung window of its size', () => {
+    const single = openingMotion('single-hung-window', openingNode('single-hung-window'))
+    const double = openingMotion('double-hung-window', openingNode('double-hung-window'))
+
+    expect(single).toEqual(double)
+  })
+
+  it.each([
+    { height: 900, rise: 420 },
+    { height: 1200, rise: 570 },
+    { height: 2000, rise: DEFAULT_HEIGHT_RISE_MM },
+  ])(
+    'raises the lower sash of a window $height mm high by $rise mm, below half the height',
+    ({ height, rise }) => {
+      const motion = openingMotion(
+        'double-hung-window',
+        openingNode('double-hung-window', { height }),
+      )
+
+      expect(motion.kind).toBe('slide')
+      if (motion.kind !== 'slide') return
+      expect(motion.travel.y).toBe(height / 2 - SASH_FRAME_WIDTH_MM / 2)
+      expect(motion.travel.y).toBe(rise)
+      expect(motion.travel.y).toBeLessThan(height / 2)
+    },
+  )
+
+  it('never gives the rise of a hung window an x or z component', () => {
+    for (const type of ['double-hung-window', 'single-hung-window']) {
+      const motion = openingMotion(type, openingNode(type, { along: { x: 0.6, y: 0.8 } }))
+
+      expect(motion.kind).toBe('slide')
+      if (motion.kind !== 'slide') return
+      expect(motion.travel.x).toBe(0)
+      expect(motion.travel.z).toBe(0)
+    }
   })
 
   it('resolves a sliding window to a slide along the wall', () => {
