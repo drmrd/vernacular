@@ -305,8 +305,9 @@ given above.
 - The closed look of a hung window changes to two stepped sashes. The step is too small to move a
   committed scene capture on macOS. The scene captures ran twice against the committed images with
   no update. At commit `959b613a`, before the lower sash moved to the room side, 55 passed and none
-  failed. At commit `4f64042`, the last commit of the room side work, 55 passed and none failed
-  again, although the east window of the harness shell had moved its sashes to the other tracks.
+  failed. At the last commit of the room side work, whose subject is "refactor: no change after the
+  review of the harness room sides", 55 passed and none failed again, although the east window of
+  the harness shell had moved its sashes to the other tracks.
   Those captures let 5 percent of the pixels differ at a per-pixel threshold of 0.35
   (`SHELL_THRESHOLD` and `SHELL_MAX_DIFF_PIXEL_RATIO` in `e2e/tests/scene-visual-regression.spec.ts`
   and `e2e/tests/scene-solar.spec.ts`, `LIVE_VIEW_THRESHOLD` and `LIVE_VIEW_MAX_DIFF_PIXEL_RATIO` in
