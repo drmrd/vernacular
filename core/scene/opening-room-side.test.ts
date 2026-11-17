@@ -1,45 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { createFloor, createOpening, createWall } from '../model/factories'
-import type { Floor, Point, Wall } from '../model/types'
+import type { Wall } from '../model/types'
 import { effectiveWallThickness } from './construction-profile'
 import { exteriorWalls } from './exterior-walls'
 import { openingRoomSide } from './opening-room-side'
 import {
-  deriveOpeningNodesForFloor,
-  deriveRoomNodesForFloor,
-  deriveWallNode,
-  type OpeningSceneNode,
-  type RoomSceneNode,
-} from './scene-graph'
-
-const FLOOR_ID = 'g'
-const WALL_THICKNESS = 114
-const WINDOW_TYPE = 'double-hung-window'
-const WINDOW_ID = 'window'
-const WINDOW_WIDTH = 900
-const WINDOW_POSITION = 2000
-const ROOM_WIDTH = 4000
-const ROOM_DEPTH = 3000
-const THICK_RAW_WALL_MM = 200
-const THIN_PROFILE = 'platform-framed-drywall'
-
-function pt(x: number, y: number): Point {
-  return { x, y }
-}
-
-function wall(id: string, start: Point, end: Point): Wall {
-  return createWall(start, end, { id, thickness: WALL_THICKNESS })
-}
-
-/** The four walls of the 4000 by 3000 room, counter-clockwise from the origin. */
-function counterClockwiseWalls(): Wall[] {
-  return [
-    wall('south', pt(0, 0), pt(ROOM_WIDTH, 0)),
-    wall('east', pt(ROOM_WIDTH, 0), pt(ROOM_WIDTH, ROOM_DEPTH)),
-    wall('north', pt(ROOM_WIDTH, ROOM_DEPTH), pt(0, ROOM_DEPTH)),
-    wall('west', pt(0, ROOM_DEPTH), pt(0, 0)),
-  ]
-}
+  ROOM_DEPTH,
+  ROOM_WIDTH,
+  THICK_RAW_WALL_MM,
+  THIN_PROFILE,
+  WALL_THICKNESS,
+  WINDOW_POSITION,
+  counterClockwiseWalls,
+  floorWithWindow,
+  pt,
+  roomSideOfWindow,
+  wall,
+  windowNode,
+} from './opening-room-side-test-fixtures'
+import { deriveRoomNodesForFloor, deriveWallNode, type RoomSceneNode } from './scene-graph'
 
 /** The same room drawn the other way: every wall reversed and the order reversed. */
 function clockwiseWalls(): Wall[] {
@@ -49,31 +27,6 @@ function clockwiseWalls(): Wall[] {
     wall('east', pt(ROOM_WIDTH, ROOM_DEPTH), pt(ROOM_WIDTH, 0)),
     wall('south', pt(ROOM_WIDTH, 0), pt(0, 0)),
   ]
-}
-
-function floorWithWindow(walls: Wall[], hostWallId: string, position: number): Floor {
-  const window = createOpening({
-    type: WINDOW_TYPE,
-    hostWallId,
-    position,
-    width: WINDOW_WIDTH,
-    id: WINDOW_ID,
-  })
-  return { ...createFloor('Ground', { id: FLOOR_ID, walls }), openings: [window] }
-}
-
-function windowNode(floor: Floor): OpeningSceneNode {
-  const node = deriveOpeningNodesForFloor(floor).find((candidate) =>
-    candidate.id.endsWith(WINDOW_ID),
-  )
-  if (node === undefined) {
-    throw new Error('expected the fixture floor to derive the window node')
-  }
-  return node
-}
-
-function roomSideOfWindow(floor: Floor) {
-  return openingRoomSide(windowNode(floor), deriveRoomNodesForFloor(floor))
 }
 
 describe('openingRoomSide', () => {
@@ -159,7 +112,7 @@ describe('openingRoomSide', () => {
       floorId: 'other-floor',
     }))
 
-    expect(openingRoomSide(windowNode(floor), roomsOfAnotherFloor)).toBeUndefined()
+    expect(openingRoomSide(windowNode(floor), roomsOfAnotherFloor, WALL_THICKNESS)).toBeUndefined()
   })
 
   it('treats a sample point inside a hole of a room as outside the room', () => {
@@ -168,7 +121,7 @@ describe('openingRoomSide', () => {
     const holeOverRoomSidePoint = [pt(1500, 20), pt(2500, 20), pt(2500, 400), pt(1500, 400)]
     const roomWithHole: RoomSceneNode = { ...room!, holes: [holeOverRoomSidePoint] }
 
-    expect(openingRoomSide(windowNode(floor), [roomWithHole])).toBeUndefined()
+    expect(openingRoomSide(windowNode(floor), [roomWithHole], WALL_THICKNESS)).toBeUndefined()
   })
 
   it('still finds the room side when the construction profile makes the host wall thinner than its raw thickness', () => {
