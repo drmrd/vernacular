@@ -42,8 +42,9 @@ const WALK_RADIUS_MM = 250
 // camera, and wires the keyboard, click-to-capture, and pointer-look listeners. Starting a
 // walk poses no door: the opening motion hook poses each new scene root, and its per-frame
 // tick keeps the active floor's openings on the open set. An opening on a floor that was not
-// active when its scene was rebuilt is not posed until the floor-scope follow-up work (a
-// known gap, recorded in ADR-0198). Movement keys act independently of pointer capture;
+// active when its scene was rebuilt is not posed when the user returns to that floor; a later
+// rebuild while that floor is active poses it, and the floor-scope follow-up work closes the
+// gap (recorded in ADR-0198). Movement keys act independently of pointer capture;
 // the pointer only drives look while captured. Returns a teardown that hands the pose back,
 // removes the listeners, releases capture, and clears held input.
 function startWalk(session: WalkSession): () => void {
@@ -242,12 +243,15 @@ function useWalkSession(
  * the doors the session store holds open and poses each new scene root, and the
  * per-frame tick swings the active floor's openings toward that set in either mode. A
  * walk start poses nothing itself. An opening on a floor that was not active when its
- * scene was rebuilt is not posed until the floor-scope follow-up work (a known gap,
- * recorded in ADR-0198). The unit test of the opening motion hook
+ * scene was rebuilt is not posed when the user returns to that floor; a later rebuild
+ * while that floor is active poses it, and the floor-scope follow-up work closes the gap
+ * (recorded in ADR-0198). The unit test of the opening motion hook
  * (use-opening-motion.test.tsx) covers the follow of the stored set, the pose of a new
  * root before any tick, and the order of the two when both arrive in one render. The
- * frame callback below runs only under a real WebGPU canvas (foundation 6.3), so no
- * automated test reaches it.
+ * frame callback below runs only under a real WebGPU canvas (foundation 6.3). One
+ * end-to-end test holds W in walk mode on the live view, where WebGPU exists, but no
+ * automated test asserts the opening tick in the callback or its order after the walk
+ * step; a scripted live run covers that.
  */
 export function WalkCameraControls(props: WalkCameraControlsProps) {
   // Kept as one props object because the session hook reads the same shape minus the root
