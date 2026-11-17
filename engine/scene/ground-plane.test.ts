@@ -269,3 +269,107 @@ describe('buildScene ground plane depth bias', () => {
     expect(groundMaterial.polygonOffsetUnits).toBeGreaterThan(slabTop.polygonOffsetUnits)
   })
 })
+
+const WATCHED_PROPERTIES = ['children', 'userData'] as const
+
+// Replaces `children` and `userData` on each object with getters that record the
+// read as `<name>.<property>` and return the original value. A search must read
+// one of the two to look at an object or to go below it, so the recorded list is
+// the set of objects the search examined. Install it after the scene is built.
+const watchExamination = (objects: readonly THREE.Object3D[]): (() => string[]) => {
+  const reads: string[] = []
+  for (const object of objects) {
+    for (const property of WATCHED_PROPERTIES) {
+      let value: unknown = object[property]
+      Object.defineProperty(object, property, {
+        configurable: true,
+        get: () => {
+          reads.push(`${object.name}.${property}`)
+          return value
+        },
+        set: (next: unknown) => {
+          value = next
+        },
+      })
+    }
+  }
+  return () => [...reads]
+}
+
+const namedGroup = (name: string): THREE.Group => {
+  const group = new THREE.Group()
+  group.name = name
+  return group
+}
+
+const GROUND_BOX = {
+  min: { x: -GROUND_MARGIN_MM, y: GRADE_ELEVATION_MM, z: -GROUND_MARGIN_MM },
+  max: { x: GROUND_MARGIN_MM, y: GRADE_ELEVATION_MM, z: GROUND_MARGIN_MM },
+}
+
+describe('groundExtent search', () => {
+  it('lets the watch record a read of the children of a watched object', () => {
+    const watched = namedGroup('watched')
+    const untouched = namedGroup('untouched')
+    const examined = watchExamination([watched, untouched])
+
+    expect(watched.children).toHaveLength(0)
+
+    expect(examined()).toEqual(['watched.children'])
+  })
+
+  it('stops at a ground plane near the root without examining the objects added after it', () => {
+    const root = namedGroup('root')
+    addGroundPlane(root)
+    const groups = ['after-1', 'after-2', 'after-3'].map(namedGroup)
+    for (const group of groups) {
+      group.add(footprintBuilding())
+      root.add(group)
+    }
+    const examined = watchExamination(groups)
+
+    const extent = groundExtent(root)
+
+    expect(extent).toEqual(GROUND_BOX)
+    expect(examined()).toEqual([])
+  })
+
+  it('looks at a whole level before it goes below any object on that level', () => {
+    const scene = namedGroup('scene')
+    const frame = namedGroup('frame')
+    const floorA = namedGroup('floor-a')
+    const floorB = namedGroup('floor-b')
+    const nested = namedGroup('nested')
+    const buildingA = footprintBuilding()
+    buildingA.name = 'building-a'
+    const buildingB = footprintBuilding()
+    buildingB.name = 'building-b'
+    floorA.add(buildingA)
+    nested.add(buildingB)
+    floorB.add(nested)
+    frame.add(floorA, floorB)
+    scene.add(frame)
+    addGroundPlane(frame)
+    const examined = watchExamination([buildingA, nested, buildingB])
+
+    const extent = groundExtent(scene)
+
+    expect(extent).toEqual({
+      min: { x: -GROUND_MARGIN_MM, y: GRADE_ELEVATION_MM, z: -GROUND_MARGIN_MM },
+      max: {
+        x: FOOTPRINT_WIDTH_MM + GROUND_MARGIN_MM,
+        y: GRADE_ELEVATION_MM,
+        z: FOOTPRINT_DEPTH_MM + GROUND_MARGIN_MM,
+      },
+    })
+    expect(examined()).toEqual([])
+  })
+
+  it('reports the first of two ground planes at the same depth', () => {
+    const root = namedGroup('root')
+    addGroundPlane(root)
+    addGroundPlane(root, SUPPLIED_GRADE_MM)
+
+    expect(groundExtent(root)).toEqual(GROUND_BOX)
+  })
+})
