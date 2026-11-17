@@ -324,16 +324,24 @@ A caster box that is not finite is not covered. The acceptance condition of the 
 finite one. With such a box the result is not finite either, because the fallback is a copy of
 that box.
 
+Finite input of extreme size still gives six `NaN` values. `shrinkFraction` squares lengths, and
+from lengths near 1e154 mm those squares overflow. A second review found this with casters 1e150
+mm high, a ground of plus and minus 1e155 mm, a cap of 1e154 mm and the sun on the horizon, and a
+rerun of that one case gave the same result. The review's run of 1,620 combinations (each kind of
+ground box that is not finite, with 6 sun directions and 10 caps) found no other case. No guard
+was added, because no plan comes near that size.
+
 The describe block "shadowFitBounds with input that is not finite" in
 `core/environment/shadow-fit.test.ts` guards the rule. It covers five directions and the copy.
 Its nested block "with a cap on the radius that is not a finite number" covers the three caps. A
-second nested block, "with a ground box that has a number that is not finite", has three rows. The
+second nested block, "with a ground box that has a number that is not finite", has four rows. The
 rows for a `NaN` number and for a height of `-Infinity` failed before the fix. The row for an empty
 box, a `min` of `Infinity` and a `max` of `-Infinity`, passed before it and stays as a guard. A run
 of the test commit before the fix showed these three outcomes: 33 tests, 2 failed. The reason for
 the empty box was read from the code and not run: no corner of the casters lies above a ground at
-`Infinity`.
+`Infinity`. The fourth row, a `max.x` of `Infinity`, came later and pins that any of the six numbers
+counts.
 
-`pnpm exec vitest run core/environment/shadow-fit.test.ts --project unit` passed 33 tests. The
+`pnpm exec vitest run core/environment/shadow-fit.test.ts --project unit` passed 34 tests. The
 other two test files of the fit passed as well: `engine/lighting/solar-lighting-provider.test.ts`
 with 16 tests and `tests/performance/shadow-fit-reach.test.ts` with 5.
