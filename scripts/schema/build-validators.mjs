@@ -26,6 +26,8 @@ export function withoutClosedObjects(node) {
 }
 
 function standaloneSource(schema) {
+  // `strict: false` is needed: the default strict mode adds a finite-number check to every number
+  // field, which would change the committed validators.
   const ajv = new Ajv({ allErrors: true, strict: false, code: { source: true, esm: true } })
   return standaloneCode(ajv, ajv.compile(schema))
 }

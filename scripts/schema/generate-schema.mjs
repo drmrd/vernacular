@@ -95,7 +95,8 @@ const derivedOutputs = [
 if (process.argv.includes('--check')) {
   const upToDate = [checkSchema(schemaOutput.content), ...derivedOutputs.map(checkDerivedFile)]
   if (upToDate.includes(false)) process.exit(EXIT_DRIFT)
-  console.log(`${schemaOutput.path} and the files derived from it are up to date.`)
+  const checkedPaths = [schemaOutput, ...derivedOutputs].map(({ path }) => path)
+  console.log(`Up to date: ${checkedPaths.join(', ')}`)
 } else {
   for (const { path, content } of [schemaOutput, ...derivedOutputs]) {
     mkdirSync(dirname(path), { recursive: true })

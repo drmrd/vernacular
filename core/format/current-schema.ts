@@ -20,11 +20,16 @@ function toFault(error: ErrorObject): FormatFault {
 }
 
 /**
- * Check a document against the schema of the current version and revision. The strict check
- * refuses an unknown field outside `extensions`; the tolerant check accepts one (ADR-0178).
+ * How a check treats a field that the schema does not name: `strict` refuses an unknown field
+ * outside `extensions`; `tolerant` accepts an unknown field anywhere (ADR-0178).
+ */
+export type SchemaMode = 'strict' | 'tolerant'
+
+/**
+ * Check a document against the schema of the current version and revision in the given mode.
  * An empty array means that the document passes.
  */
-export function checkCurrentSchema(document: unknown, mode: 'strict' | 'tolerant'): FormatFault[] {
+export function checkCurrentSchema(document: unknown, mode: SchemaMode): FormatFault[] {
   const validate = mode === 'strict' ? validateStrict : validateTolerant
   return validate(document) ? [] : (validate.errors ?? []).map(toFault)
 }
