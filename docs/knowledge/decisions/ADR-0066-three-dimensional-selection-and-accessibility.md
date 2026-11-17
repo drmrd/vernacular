@@ -43,6 +43,7 @@ sourceFiles:
     bridge/react/scene-overlay.tsx,
     bridge/react/webgpu-scene-view.tsx,
     bridge/react/entity-labels.ts,
+    bridge/react/use-catalog-names.ts,
   ]
 status: current
 updated: 2026-08-31
