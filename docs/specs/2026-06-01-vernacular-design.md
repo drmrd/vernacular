@@ -154,6 +154,7 @@ my-house/
     floor-2.png
   README.md               ← auto-generated; era summary, license attributions
   ATTRIBUTIONS.md         ← auto-generated; required attributions
+  .house-backups/         ← migration backups, kept until the project is deleted
   .house-autosave/        ← sidecar snapshots (gitignored by convention)
 ```
 
@@ -183,7 +184,7 @@ Explicitly **not captured**: OS, browser, user identity, machine UUID. A user-to
 - Schema migrations chain in `core/migrations/schema/`.
 - Per-registry migrations (renames, deprecations) in `core/migrations/registries/<registry>/`.
 - Both run on open, layered.
-- Pre-migration backup saved to `.house-autosave/pre-migration-v<n>.json` before applying.
+- Pre-migration backup saved to `.house-backups/pre-migration-v<n>-<hash>.json` after a decode that migrated succeeds, before the document reaches the caller. A failed migration writes nothing (ADR-0182, ADR-0190).
 - Failure is atomic; the original is never partially written.
 
 ---
@@ -377,9 +378,9 @@ User picks a backend per project at creation time; choice is remembered with the
 
 Layered: schema-level (in `core/migrations/schema/`) and per-registry (in `core/migrations/registries/`). Both run on open.
 
-- Pre-migration backup to `.house-autosave/pre-migration-v<n>.json` before applying.
+- Pre-migration backup to `.house-backups/pre-migration-v<n>-<hash>.json` after a decode that migrated succeeds, before the document reaches the caller (ADR-0182, ADR-0190).
 - Sync for fast migrations; async with progress UI for slow ones (> 1000 entities or > 1MB of JSON).
-- Atomic; the original is never partially written. Migration throws → restore from backup, surface error with "report bug" prompt.
+- Atomic; migration runs in memory, so the stored file is never partially written. Migration throws → nothing on disk changed, so nothing is restored; surface error with "report bug" prompt.
 
 ### 5.6 Multi-tab safety
 

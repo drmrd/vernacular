@@ -46,7 +46,8 @@ my-project/
   previews/               generated thumbnails (optional)
   ATTRIBUTIONS.md         generated, required attributions for bundled assets
   README.md               generated summary (optional)
-  .house-autosave/        sidecar autosave and pre-migration backups (not part of the format)
+  .house-backups/         migration backups (not part of the format)
+  .house-autosave/        recovery snapshots (not part of the format)
 ```
 
 Only `vernacular.json` is required. `assets/` is required when the Document references any
@@ -240,8 +241,11 @@ accompanying ADR.
   the revision stays. Removing
   or renaming a field, or changing a field's meaning, requires a new `schemaVersion` and a
   migration step in the chain (`core/migrations/schema/`), layered with per-registry migrations
-  (`core/migrations/registries/`). A pre-migration backup is written before applying, and
-  migration failure is atomic.
+  (`core/migrations/registries/`). Migration runs in memory, so a failed migration leaves the
+  stored file as it was. After a decode that migrated and succeeded, and before the Document
+  reaches the caller, the application copies the stored bytes to `.house-backups/` (ADR-0182,
+  ADR-0190). A backup is never replaced by different bytes, and it lasts until its project is
+  deleted.
 - **Published schemas are immutable.** A schema is fixed once it is released. The schema for
   a revision above 0 is published at `schema/<version>/revision-<revision>/vernacular.schema.json`,
   with the `$id`
