@@ -173,8 +173,9 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
     /**
      * Called once when the user presses Reload page in the could-not-load alert. The default
      * reloads the browser page. The button reloads the page instead of loading the renderer
-     * module again because the browser keeps a failed dynamic import for that address, sends no
-     * second request, and rejects the next import() at once. The page's unload guard arms a
+     * module again, because a retry in place cannot be relied on: Chromium 148 kept a failed
+     * dynamic import for its address, sent no second request, and rejected the next import() at
+     * once. A reloaded page fetches the module again in any case. The page's unload guard arms a
      * beforeunload listener while the project has unsaved changes, so the browser asks the user
      * to confirm before the reload discards them.
      */
@@ -192,12 +193,13 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * unmounts, also while init() is still pending. Opening and closing the view any number of times
  * therefore leaves no renderer and no animation loop alive. A renderer module that does not
  * load ends in a could-not-load state with a Reload page button; the wrapper makes no second
- * load attempt in place, because the browser keeps a failed dynamic import and does not fetch
- * it again, so only a page reload can recover. The page's unload guard asks the user to confirm
- * the reload while the project has unsaved changes. A renderer that cannot be built or started
- * ends in the cannot-render state. Each stays until the page goes away or a new mount. Under
- * StrictMode the library may ask for a renderer twice; the wrapper follows the last one and
- * releases the other.
+ * load attempt in place. Chromium 148 kept a failed dynamic import for its address and rejected
+ * the next import() at once, and a reloaded page fetches the module again in any case. The page's
+ * unload guard asks the user to confirm the reload while the project has unsaved changes. A
+ * renderer that cannot be built or started ends in the cannot-render state. Each stays until the
+ * page goes away or a new mount. The library asks for a second renderer only when two of its
+ * setups start in one task; StrictMode alone does not, because the Canvas waits for a measured
+ * size. If it does, the wrapper follows the last one and releases the other.
  */
 export function SceneRendererCanvas({
   forceWebGL = false,
