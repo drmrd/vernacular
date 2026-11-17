@@ -12,8 +12,32 @@ import { appendFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const DEFAULT_BASE = 'origin/main'
-const E2E_PATHS = ['app/', 'editor/', 'bridge/', 'engine/', 'e2e/']
-const VISUAL_PATHS = ['editor/', 'bridge/react/', '.storybook/']
+// The two lists below choose the heavy suites for a pull request.
+//
+// Out on purpose:
+// - tsconfig*.json: the typecheck and the build in the check job prove them.
+// - scripts/: its unit tests prove it.
+// - lighthouserc.json: Lighthouse never runs on a pull request.
+// - .nvmrc: the check job proves the Node version.
+//
+// Not decided yet:
+// - package.json, pnpm-lock.yaml, core/, storage/, and .github/workflows/
+//   can each change a heavy suite. The decision record states the open
+//   choice for them.
+const E2E_PATHS = [
+  'app/',
+  'editor/',
+  'bridge/',
+  'engine/',
+  'e2e/',
+  'playwright.config.ts', // sets the projects, port, server and retries of the end-to-end run
+]
+const VISUAL_PATHS = [
+  'editor/',
+  'bridge/react/',
+  '.storybook/',
+  'playwright.stories.config.ts', // sets the story server, snapshot path and tolerance of the visual run
+]
 const VISUAL_SUFFIX = '.stories.tsx'
 
 /** @typedef {{ e2e: boolean, visual: boolean, lighthouse: boolean }} Decision */
