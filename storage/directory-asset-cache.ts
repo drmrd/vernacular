@@ -6,8 +6,9 @@ export const ASSET_DIRECTORY_PREFIX = 'assets'
 export class DirectoryAssetCache implements AssetCache {
   constructor(private readonly directory: DirectoryPort) {}
 
+  /** Asks whether a file is there; never reads its bytes. */
   async has(contentHash: string): Promise<boolean> {
-    return (await this.directory.readFile(this.pathFor(contentHash))) !== undefined
+    return (await this.directory.modifiedAt(this.pathFor(contentHash))) !== undefined
   }
 
   async get(contentHash: string): Promise<Uint8Array | undefined> {

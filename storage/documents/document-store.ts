@@ -11,7 +11,6 @@ import type { AssetCache } from '../asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
 import { ProjectNotFoundError } from '../project-store'
 import { PROJECT_FILE } from '../project-files/project-file-name'
-import { copyMissingAssets } from '../project-files/copy-missing-assets'
 import type { ProjectFiles, RemovableProjectFiles } from '../project-files/project-files'
 import { collectReferencedAssets } from '../project-files/referenced-assets'
 import { writeBackup } from './document-backups'
@@ -137,16 +136,17 @@ export class DocumentStore {
 
   /**
    * Writes the project over its previous file so unknown data carries over. A failed check never
-   * blocks the write; it is reported. Rejects only when a write rejects.
+   * blocks the write; it is reported. The assets the folder lacks are copied first, so a failed
+   * copy rejects before any write. Rejects only when a read of an asset or a write rejects.
    */
   async save(id: string, project: Project): Promise<SaveReport> {
     const directory = this.files.projectDirectory(id)
     const previous = await directory.readFile(PROJECT_FILE)
     const encoded = encodeDocument(project, previous, this.options)
+    await this.files.prepareAssets(id, hashesToCopy(project))
     const backedUp = await this.backUpLastValid(directory, previous, encoded.faults)
     warnAboutEncodeProblems(encoded)
     await directory.writeFile(PROJECT_FILE, encoded.bytes)
-    await copyMissingAssets(this.files.assetsFor(id), hashesToCopy(project))
     const { faults, graftDropped } = encoded
     return { faults, backedUp, ...(graftDropped === undefined ? {} : { graftDropped }) }
   }

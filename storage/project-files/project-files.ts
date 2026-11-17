@@ -14,6 +14,12 @@ export interface ProjectFiles {
   projectDirectory(id: string): DirectoryPort
   /** The asset cache that this project reads and writes. */
   assetsFor(id: string): AssetCache
+  /**
+   * Makes the project's own asset store hold the given assets, reading from wherever else this
+   * kind of store can reach. A kind with nothing to copy from does nothing. Rejects with the
+   * error of the first failed read or write; a save calls this before it writes anything.
+   */
+  prepareAssets(id: string, contentHashes: readonly string[]): Promise<void>
 }
 
 /** Project files that can also delete a whole project. */

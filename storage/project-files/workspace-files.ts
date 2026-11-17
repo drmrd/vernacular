@@ -42,6 +42,12 @@ export class WorkspaceFiles implements RemovableProjectFiles {
     return this.sharedAssets
   }
 
+  /** Nothing to copy: the shared pool is the only pool. */
+  async prepareAssets(_id: string, _contentHashes: readonly string[]): Promise<void> {
+    void _id
+    void _contentHashes
+  }
+
   async remove(id: string): Promise<void> {
     assertProjectId(id)
     await this.root.removeTree(id)

@@ -1,6 +1,7 @@
 import type { AssetCache } from '../asset-cache'
 import { DirectoryAssetCache } from '../directory-asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
+import { copyMissingAssets } from './copy-missing-assets'
 import { PROJECT_FILE } from './project-file-name'
 import type { ProjectFiles } from './project-files'
 
@@ -37,6 +38,7 @@ class FolderAssetCache implements AssetCache {
 export class FolderFiles implements ProjectFiles {
   readonly durable: boolean
   private readonly assets: AssetCache
+  private readonly hasSharedPool: boolean
 
   constructor(
     private readonly id: string,
@@ -44,6 +46,7 @@ export class FolderFiles implements ProjectFiles {
     options: { durable: boolean; shared?: AssetCache },
   ) {
     this.durable = options.durable
+    this.hasSharedPool = options.shared !== undefined
     this.assets = new FolderAssetCache(new DirectoryAssetCache(folder), options.shared)
   }
 
@@ -60,6 +63,14 @@ export class FolderFiles implements ProjectFiles {
   assetsFor(id: string): AssetCache {
     this.requireOwnId(id)
     return this.assets
+  }
+
+  /** Copies what the folder lacks from the shared pool; with no shared pool there is no source. */
+  async prepareAssets(id: string, contentHashes: readonly string[]): Promise<void> {
+    this.requireOwnId(id)
+    if (this.hasSharedPool) {
+      await copyMissingAssets(this.assets, contentHashes)
+    }
   }
 
   private requireOwnId(id: string): void {
