@@ -273,8 +273,10 @@ jobs:
     # journey clicks a painted wall face in the live pane and checks that the inspector shows the
     # sampled color for that face. The close-openings journey opens doors and windows in walk
     # mode, closes them from the 3D toolbar, and reads the opening's region of the live canvas on
-    # every frame, so it needs a runner that draws at least about eight frames a second: a swing
-    # lasts a quarter of a second, and the spec fails if it sees no part-open frame. Both
+    # each animation frame the page lets it read. It needs a runner that draws at least about
+    # eight frames a second: a swing lasts a quarter of a second, and the spec fails if it reads
+    # no part-open frame. It shows that no frame it read has an opening in the wrong state, not
+    # that it read every frame the page drew (issue #778 tracks a possible flash). Both
     # self-skip on the linux e2e runner, so this job is where they actually run, and each step
     # sets E2E_REQUIRE_WEBGPU so that a runner with no adapter fails it instead of skipping it.
     # The specs take the scene-webgl project's browser channel and GPU flags themselves, so they
@@ -313,6 +315,11 @@ jobs:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=chromium e2e/tests/journeys/perceived-color-readout.spec.ts --reporter=list
       - name: Close-openings journey (chromium project)
+        # The run takes about a minute on the development Mac. Each of its five tests may take up
+        # to 120 s, and retries: 2 can run a failed test three times, so a failing run could last
+        # 30 minutes or more. Fifteen minutes is about fifteen times the local run, enough for a
+        # slow runner and a retry or two, and it ends a hung run early.
+        timeout-minutes: 15
         env:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=chromium e2e/tests/journeys/close-doors-and-windows.spec.ts --reporter=list
