@@ -1,23 +1,28 @@
 import { expect, type Locator, type Page } from '@playwright/test'
-import { stableFrame } from '../scene-helpers'
+import { logReading, settledSceneCanvas, stableFrame } from '../scene-helpers'
 import type { Region } from '../frame-pixels'
-import { startSampling, stopSampling, type Signature } from '../region-sampler'
+import { signatureOf, startSampling, stopSampling, type Signature } from '../region-sampler'
 import {
   clearSelection,
+  closeControl,
   enterWalk,
+  enterWalkReady,
   frameAfterChange,
   liveCanvas,
   openKeyChangesView,
+  openRoomIn3d,
   openWithKey,
   orbitSouthFrame,
   paintSelection,
   selectFloor,
-  settledCanvasFrame,
+  settledLiveFrame,
   strafe,
   toggleEdges,
   walkToDoor,
 } from './close-openings-support'
-import { openingRegion, viewsAreEqual } from './close-openings-views'
+import { viewsOf, type Views } from './close-openings-views'
+import { gotoEditor } from './support'
+import { guardLiveSceneSupport } from '../live-webgpu'
 
 // Longer flows that put the room into a state a journey then examines: a door open as seen from
 // orbit mode, and the search that walks the camera to an opening.
@@ -28,8 +33,6 @@ import { openingRegion, viewsAreEqual } from './close-openings-views'
 const FIRST_STRIDE_MS = 350
 const STEP_MS = 80
 const MAX_STEPS = 30
-// A key pressed right after a camera switch can arrive before the walk listeners are back.
-const UNDO_ATTEMPTS = 3
 
 // The door seen from the south in orbit mode: the frame before anything opened, the frame
 // with the door open, and the door's region. The door is opened by the walker with the key.
@@ -41,46 +44,61 @@ export async function openDoorSeenFromOrbit(
   const atShut = await walkToDoor(page, canvas)
   await openWithKey(page, canvas, atShut)
   const open = await orbitSouthFrame(page, canvas)
-  return { never, open, region: openingRegion(never, open) }
+  return { never, open, region: await viewsOf(page).openingRegion(never, open) }
 }
 
 // Opens the door again with the key from the walker's saved pose, then returns to the south
 // view in orbit mode. Use it after the control has shut the door.
 export async function reopenSeenFromOrbit(page: Page, canvas: Locator): Promise<Buffer> {
-  await enterWalk(page)
-  await openWithKey(page, canvas, await stableFrame(canvas))
+  const atShut = await enterWalkReady(page, canvas)
+  await openWithKey(page, canvas, atShut)
   return orbitSouthFrame(page, canvas)
 }
 
 // The opening a search must end with open: the south view in orbit mode must differ from the
 // all-shut view inside the wanted region. The key is the sideways key the walker strafes with.
+// When another opening is already open, that one cannot be hit again (see wantedOpening), and a
+// wrong hit means the walker stands at a shut opening that the search did not expect.
 export interface SearchTarget {
   readonly key: string
   readonly never: Buffer
   readonly wanted: Region
+  readonly otherOpen: boolean
 }
 
 // The press of the open key hit some opening. Looks from orbit mode whether it is the wanted
-// one. If not, goes back to the walker and presses the key again at the same pose, which swings
-// that opening back. Returns the orbit frame when the wanted opening is open.
+// one, and returns the orbit frame if so.
+//
+// If not, the wrong opening is open and the walker is not at the wanted one. The open key cannot
+// shut it again from this pose: measured on the live view, a swing door that stands fully open
+// is parallel to the reach ray from the head-on pose that opened it, and a raised window sash is
+// above the ray, so a second press does nothing. The toolbar control does shut it, and the
+// control being disabled again confirms that nothing is left open. That undo is only taken
+// when no other opening was open before the search, because the control shuts all of them.
 async function wantedOpening(
   page: Page,
   canvas: Locator,
   target: SearchTarget,
 ): Promise<Buffer | null> {
   const orbit = await orbitSouthFrame(page, canvas)
-  if (!viewsAreEqual(orbit, target.never, target.wanted)) return orbit
-  await enterWalk(page)
-  for (let attempt = 0; attempt < UNDO_ATTEMPTS; attempt++) {
-    if (await openKeyChangesView(page, canvas)) return null
+  if (!(await viewsOf(page).equal(orbit, target.never, target.wanted))) return orbit
+  if (target.otherOpen) {
+    throw new Error(
+      'the open key opened an opening other than the wanted one, while another opening was open',
+    )
   }
-  throw new Error('the open key did not swing back the opening it opened by mistake')
+  logReading('search', 'the open key opened a wrong opening; shutting it with the control')
+  const atWrong = await enterWalkReady(page, canvas)
+  await closeControl(page).click()
+  await expect(closeControl(page)).toBeDisabled()
+  await frameAfterChange(canvas, atWrong)
+  return null
 }
 
 // Walks sideways in steps from where the walker stands, pressing the open key after each step,
 // until the key opens the wanted opening, and returns the orbit frame that shows it open. The
 // walker's pose is found by this search because a held key moves it by an amount that depends
-// on the frame rate. An opening that the key swings by mistake on the way is swung back.
+// on the frame rate. An opening that the key opens by mistake on the way is shut again.
 export async function strafeUntilOpened(
   page: Page,
   canvas: Locator,
@@ -138,7 +156,8 @@ export async function switchViewsWhileWatching(page: Page, region: Region): Prom
   await page.getByRole('button', { name: 'Plan view', exact: true }).click()
   await expect(liveCanvas(page)).toHaveCount(0)
   await page.getByRole('button', { name: '3D view', exact: true }).click()
-  const frame = await settledCanvasFrame(page, liveCanvas(page))
+  const canvas = await settledSceneCanvas(page)
+  const frame = await settledLiveFrame(page, canvas)
   return { frame, readings: await stopSampling(page) }
 }
 
@@ -154,4 +173,30 @@ export async function startWalkWhileWatching(
   await enterWalk(page)
   const frame = await frameAfterChange(canvas, orbit)
   return { frame, readings: await stopSampling(page) }
+}
+
+// The reading of the door region with the door shut and the surface edges drawn. The first
+// rebuild in the edges journey shows the door with the edges on, so a shut frame in it looks
+// like this and not like the shut reading with the edges off. The door must be shut when this
+// is called, and the edges are left off.
+export async function shutReadingWithEdges(
+  page: Page,
+  canvas: Locator,
+  watch: { shut: Buffer; region: Region },
+): Promise<Signature> {
+  const on = await toggleEdges(page, canvas, watch.shut)
+  const reading = await signatureOf(page, watch.region)
+  await toggleEdges(page, canvas, on)
+  return reading
+}
+
+// Opens the editor, skips or fails where the runner has no WebGPU adapter, builds the room with
+// its door and window, and returns the settled 3D canvas and the frame reader of the page.
+export async function startOnLiveRoom(
+  page: Page,
+  subject: string,
+): Promise<{ canvas: Locator; views: Views }> {
+  await gotoEditor(page)
+  await guardLiveSceneSupport(page, subject)
+  return { canvas: await openRoomIn3d(page), views: viewsOf(page) }
 }

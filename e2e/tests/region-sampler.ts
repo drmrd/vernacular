@@ -1,4 +1,5 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { logReading } from './scene-helpers'
 import type { Region } from './frame-pixels'
 
 // Watches one region of the live 3D canvas on every animation frame, from inside the page. A
@@ -64,11 +65,19 @@ function startInPage({ regions, cells, selector, stride }: SamplerInput): void {
     const { data } = context.getImageData(0, 0, cells, cells)
     return Array.from(data).filter((_, at) => at % stride !== stride - 1)
   }
+  // Each reading starts with the number of the canvas it came from, which changes when a new
+  // canvas mounts, so that the blank readings of a canvas that has not drawn yet can be told
+  // from blank readings in the middle of a canvas that has.
+  let current: HTMLCanvasElement | null = null
+  let canvasNumber = 0
   const tick = (): void => {
     if (!states.some(({ state }) => state.running)) return
     const canvas = document.querySelector<HTMLCanvasElement>(selector)
     if (canvas !== null && canvas.clientWidth > 0) {
-      for (const { state, region } of states) state.samples.push(read(canvas, region))
+      if (canvas !== current) canvasNumber += 1
+      current = canvas
+      for (const { state, region } of states)
+        state.samples.push([canvasNumber, ...read(canvas, region)])
     }
     requestAnimationFrame(tick)
   }
@@ -111,10 +120,29 @@ export async function startSamplingTogether(
   })
 }
 
-// A canvas that has not drawn yet reads as all zeros; those readings say nothing about the
-// door, so they are dropped.
-function drawn(samples: readonly Signature[]): Signature[] {
-  return samples.filter((signature) => signature.some((value) => value !== 0))
+// A canvas that has not drawn yet reads as all zeros, and says nothing about the door, so those
+// readings are dropped. They can only come before the first drawn reading of a canvas, such as
+// the first frames of one that has just mounted. A blank reading after a drawn one on the same
+// canvas would mean the sampler lost frames, which could hide the very frame a journey looks
+// for, so it fails here. The count of blank readings before the first drawn one is printed.
+function drawn(samples: readonly number[][]): Signature[] {
+  const readings: Signature[] = []
+  const seen = new Set<number>()
+  let blankBefore = 0
+  let blankAfter = 0
+  for (const [canvasNumber = 0, ...signature] of samples) {
+    if (signature.some((value) => value !== 0)) {
+      seen.add(canvasNumber)
+      readings.push(signature)
+    } else if (seen.has(canvasNumber)) blankAfter += 1
+    else blankBefore += 1
+  }
+  logReading(
+    'sampler',
+    `${readings.length} drawn readings, ${blankBefore} blank before the first drawn one`,
+  )
+  expect(blankAfter, 'blank readings after the first drawn one of a canvas').toBe(0)
+  return readings
 }
 
 // Stops reading and returns every reading taken since startSampling, in order.
@@ -164,12 +192,34 @@ export function framesBetween(
   first: Signature,
   second: Signature,
 ): Signature[] {
-  return readings.filter(
-    (reading) =>
-      signatureDistance(reading, first) > BETWEEN_MARGIN &&
-      signatureDistance(reading, second) > BETWEEN_MARGIN,
+  const flags = betweenFlags(readings, first, second)
+  return readings.filter((_, at) => flags[at])
+}
+
+// How far the closest reading lies from a state, in channel codes, or Infinity with no readings.
+// A journey that must never show a state prints it, to show how far the readings stay from the
+// margin that counts as showing it.
+export function closestApproach(readings: readonly Signature[], state: Signature): number {
+  return Math.min(Infinity, ...readings.map((reading) => signatureDistance(reading, state)))
+}
+
+// How close the readings that count as between two states come to counting as one of them: the
+// smallest distance to the nearer end state, which must stay above the margin.
+export function betweenClearance(
+  readings: readonly Signature[],
+  first: Signature,
+  second: Signature,
+): number {
+  return Math.min(
+    Infinity,
+    ...framesBetween(readings, first, second).map((reading) =>
+      Math.min(signatureDistance(reading, first), signatureDistance(reading, second)),
+    ),
   )
 }
+
+// The distance below which a reading counts as showing a state.
+export const SHOWING_MARGIN = BETWEEN_MARGIN
 
 // The readings that match a state: the frames that show it. A journey that must never show a
 // state asserts that this list is empty. Matching uses the same margin as framesBetween, so

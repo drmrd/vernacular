@@ -1,17 +1,15 @@
 import { test, expect } from '@playwright/test'
-import { gotoEditor } from './support'
 import { stableFrame } from '../scene-helpers'
-import { wholeFrame } from '../frame-pixels'
-import { framesShowing, signatureOf } from '../region-sampler'
-import { guardLiveSceneSupport, configureGpuChromiumOnMac } from '../live-webgpu'
+import { signatureOf } from '../region-sampler'
+import { configureGpuChromiumOnMac } from '../live-webgpu'
 import {
   closeControl,
   enterOrbit,
   enterWalk,
+  enterWalkReady,
   frameAfterChange,
   holdWalkKey,
   navButton,
-  openRoomIn3d,
   openWithKey,
   orbitSouthFrame,
   resetWithKey,
@@ -20,10 +18,7 @@ import {
 import {
   closeTogether,
   closeWithControl,
-  eastOf,
-  expectDifferentView,
-  expectSameView,
-  openingRegion,
+  expectNeverShowing,
   upperPart,
   within,
 } from './close-openings-views'
@@ -31,6 +26,8 @@ import {
   openDoorSeenFromOrbit,
   paintFloorWhileWatching,
   reopenSeenFromOrbit,
+  shutReadingWithEdges,
+  startOnLiveRoom,
   startWalkWhileWatching,
   strafeUntilOpened,
   switchViewsWhileWatching,
@@ -62,15 +59,21 @@ configureGpuChromiumOnMac()
 // noisier, so they run one after another in a single worker.
 test.describe.configure({ mode: 'default' })
 
+// A whole test takes up to about half a minute on the development Mac, most of it walking to the
+// door and settling frames. The budget leaves a wide margin for a slower runner, and it sits
+// above the walk's own timeout, so that timeout can fail with its own message first.
+const TEST_TIMEOUT_MS = 120_000
+test.beforeEach(() => {
+  test.setTimeout(TEST_TIMEOUT_MS)
+})
+
 const SUBJECT = 'the close-doors-and-windows journey'
 const NOTHING_TO_CLOSE = 'Nothing to close. Open a door or window in walk mode with the E key.'
 
 test('closes a door opened in walk mode from the 3D toolbar, in orbit mode and in walk mode', async ({
   page,
 }) => {
-  await gotoEditor(page)
-  await guardLiveSceneSupport(page, SUBJECT)
-  const canvas = await openRoomIn3d(page)
+  const { canvas, views } = await startOnLiveRoom(page, SUBJECT)
 
   // Scenario 1: before anything is opened the control is there and has nothing to do.
   const never = await orbitSouthFrame(page, canvas)
@@ -80,40 +83,51 @@ test('closes a door opened in walk mode from the 3D toolbar, in orbit mode and i
 
   // Scenario 2: the walker stops at the shut door, and the open key opens it.
   const atShut = await walkToDoor(page, canvas)
-  const whole = wholeFrame(atShut)
+  const whole = await views.whole(atShut)
   await expect(closeControl(page)).toBeDisabled()
   const atOpen = await openWithKey(page, canvas, atShut)
-  expectDifferentView(atShut, atOpen, within(whole, 'the walker view with the door open'))
-  const doorInWalk = openingRegion(atShut, atOpen)
+  await views.expectDifferent(atShut, atOpen, within(whole, 'the walker view with the door open'))
+  const doorInWalk = await views.openingRegion(atShut, atOpen)
 
   // Scenario 3: the door stays open in orbit mode, and one press swings it shut.
   const openSouth = await orbitSouthFrame(page, canvas)
   await expect(closeControl(page)).toBeEnabled()
-  const doorInOrbit = openingRegion(never, openSouth)
-  expectDifferentView(never, openSouth, within(doorInOrbit, 'the open door in orbit mode'))
-  const orbitClose = await closeWithControl(page, canvas, { frame: openSouth, region: doorInOrbit })
+  const doorInOrbit = await views.openingRegion(never, openSouth)
+  await views.expectDifferent(never, openSouth, within(doorInOrbit, 'the open door in orbit mode'))
+  const orbitClose = await closeWithControl(page, canvas, {
+    frame: openSouth,
+    region: doorInOrbit,
+    what: 'the door in orbit mode',
+  })
   expect(orbitClose.between.length, 'frames that show a part-open door').toBeGreaterThan(0)
-  expectSameView(orbitClose.settled, never, within(doorInOrbit, 'the door shut in orbit mode'))
+  await views.expectSame(
+    orbitClose.settled,
+    never,
+    within(doorInOrbit, 'the door shut in orbit mode'),
+  )
   await expect(closeControl(page)).toBeDisabled()
 
   // Scenario 4: back in walk mode the door is shut, the walker resumes where it stood, and it
   // cannot walk through the door. The open key opens the door again.
-  await enterWalk(page)
-  const resumed = await frameAfterChange(canvas, orbitClose.settled)
-  expectSameView(resumed, atShut, within(whole, 'the walker at its saved pose, door shut'))
+  const resumed = await enterWalkReady(page, canvas)
+  await views.expectSame(resumed, atShut, within(whole, 'the walker at its saved pose, door shut'))
   const held = await holdWalkKey(page, canvas)
-  expectSameView(held, resumed, within(whole, 'the walker held against the shut door'))
+  await views.expectSame(held, resumed, within(whole, 'the walker held against the shut door'))
   const reopened = await openWithKey(page, canvas, resumed)
-  expectSameView(reopened, atOpen, within(whole, 'the door opened again with the key'))
+  await views.expectSame(reopened, atOpen, within(whole, 'the door opened again with the key'))
 
   // Scenario 5: in walk mode the control closes the door with the same swing, and the key that
   // resets the openings agrees with it.
-  const walkClose = await closeWithControl(page, canvas, { frame: reopened, region: doorInWalk })
+  const walkClose = await closeWithControl(page, canvas, {
+    frame: reopened,
+    region: doorInWalk,
+    what: 'the door in walk mode',
+  })
   expect(walkClose.between.length, 'frames that show a part-open door').toBeGreaterThan(0)
-  expectSameView(walkClose.settled, atShut, within(whole, 'the door shut in walk mode'))
+  await views.expectSame(walkClose.settled, atShut, within(whole, 'the door shut in walk mode'))
   const openedForReset = await openWithKey(page, canvas, walkClose.settled)
   const afterReset = await resetWithKey(page, canvas, openedForReset)
-  expectSameView(
+  await views.expectSame(
     afterReset,
     walkClose.settled,
     within(whole, 'the reset key and the control agree'),
@@ -121,143 +135,188 @@ test('closes a door opened in walk mode from the 3D toolbar, in orbit mode and i
 
   // Control for scenario 4: with the door open, the same hold carries the walker through.
   await enterOrbit(page)
-  await enterWalk(page)
-  const readyToPass = await openWithKey(page, canvas, await stableFrame(canvas))
+  const standing = await enterWalkReady(page, canvas)
+  const readyToPass = await openWithKey(page, canvas, standing)
   const passed = await holdWalkKey(page, canvas)
-  expectDifferentView(passed, readyToPass, within(whole, 'the walker held at the open door'))
+  await views.expectDifferent(
+    passed,
+    readyToPass,
+    within(whole, 'the walker held at the open door'),
+  )
   await expect(navButton(page, 'Walk')).toBeVisible()
 })
 
 test('keeps an open door open through scene rebuilds and a view switch, and still closes it', async ({
   page,
 }) => {
-  await gotoEditor(page)
-  await guardLiveSceneSupport(page, SUBJECT)
-  const canvas = await openRoomIn3d(page)
+  const { canvas, views } = await startOnLiveRoom(page, SUBJECT)
 
   // The view with the door never opened and the surface edges drawn is the reference for the
   // door after the overlay rebuilds the scene.
   const neverBare = await orbitSouthFrame(page, canvas)
   const neverEdges = await toggleEdgesWhileWatching(page, canvas, {
     before: neverBare,
-    region: wholeFrame(neverBare),
+    region: await views.whole(neverBare),
   })
   const { open, region } = await openDoorSeenFromOrbit(page, canvas)
 
   // Scenario 6: toggling the surface edges on and off rebuilds the scene twice. The door stays
   // open through both, in every frame, and the control still closes it.
   const edges = await toggleEdgesWhileWatching(page, canvas, { before: open, region })
-  expectDifferentView(edges.on, neverEdges.on, within(region, 'the open door, edges on'))
-  expectSameView(edges.frame, open, within(region, 'the open door, edges off again'))
-  const afterEdges = await closeWithControl(page, canvas, { frame: edges.frame, region })
-  expect(edges.readings.length, 'frames read during the rebuilds').toBeGreaterThan(0)
-  expect(framesShowing(edges.readings, afterEdges.shut), 'frames showing the door shut').toEqual([])
-  expectSameView(afterEdges.settled, neverBare, within(region, 'the door shut after the rebuilds'))
+  await views.expectDifferent(edges.on, neverEdges.on, within(region, 'the open door, edges on'))
+  await views.expectSame(edges.frame, open, within(region, 'the open door, edges off again'))
+  const afterEdges = await closeWithControl(page, canvas, {
+    frame: edges.frame,
+    region,
+    what: 'the door after the rebuilds',
+  })
+  // The first rebuild draws the door with the edges on, so a shut flash in it looks like the
+  // shut door with the edges on, which is read now that the door is shut.
+  const shutWithEdges = await shutReadingWithEdges(page, canvas, {
+    shut: afterEdges.settled,
+    region,
+  })
+  expectNeverShowing(edges.readings, afterEdges.shut, 'the door through the rebuilds, edges off')
+  expectNeverShowing(edges.readings, shutWithEdges, 'the door through the rebuilds, edges on')
+  await views.expectSame(
+    afterEdges.settled,
+    neverBare,
+    within(region, 'the door shut after the rebuilds'),
+  )
 
   // Scenario 7: a paint edit rebuilds every opening. The door leaf, above the painted floor,
   // stays open in every frame, and the control still closes it.
   const upper = upperPart(region)
   const openAgain = await reopenSeenFromOrbit(page, canvas)
   const paint = await paintFloorWhileWatching(page, canvas, upper)
-  expectSameView(paint.frame, openAgain, within(upper, 'the door leaf after a paint edit'))
-  const afterPaint = await closeWithControl(page, canvas, { frame: paint.frame, region: upper })
-  expect(framesShowing(paint.readings, afterPaint.shut), 'frames showing the leaf shut').toEqual([])
-  expectSameView(afterPaint.settled, neverBare, within(upper, 'the leaf shut after the paint edit'))
+  await views.expectSame(paint.frame, openAgain, within(upper, 'the door leaf after a paint edit'))
+  const afterPaint = await closeWithControl(page, canvas, {
+    frame: paint.frame,
+    region: upper,
+    what: 'the door leaf after the paint edit',
+  })
+  expectNeverShowing(paint.readings, afterPaint.shut, 'the door leaf through the paint edit')
+  await views.expectSame(
+    afterPaint.settled,
+    neverBare,
+    within(upper, 'the leaf shut after the paint edit'),
+  )
 
   // Scenario 8: going to the plan view and back mounts a new 3D canvas. The door shows open
   // from the first frame of it, and the control still closes it.
   const beforeSwitch = await reopenSeenFromOrbit(page, canvas)
   const remount = await switchViewsWhileWatching(page, region)
-  expectSameView(remount.frame, beforeSwitch, within(region, 'the open door after the switch'))
-  expect(remount.readings.length, 'frames read across the switch').toBeGreaterThan(0)
-  await expect(closeControl(page)).toBeEnabled()
-  const afterSwitch = await closeWithControl(page, canvas, { frame: remount.frame, region })
-  expect(framesShowing(remount.readings, afterSwitch.shut), 'frames showing the door shut').toEqual(
-    [],
+  await views.expectSame(
+    remount.frame,
+    beforeSwitch,
+    within(region, 'the open door after the switch'),
   )
+  await expect(closeControl(page)).toBeEnabled()
+  const afterSwitch = await closeWithControl(page, canvas, {
+    frame: remount.frame,
+    region,
+    what: 'the door after the view switch',
+  })
+  expectNeverShowing(remount.readings, afterSwitch.shut, 'the door across the view switch')
   // The floor was painted in scenario 7, so the shut door is compared with the painted shut view.
-  expectSameView(afterSwitch.settled, afterPaint.settled, within(region, 'the door shut again'))
+  await views.expectSame(
+    afterSwitch.settled,
+    afterPaint.settled,
+    within(region, 'the door shut again'),
+  )
 })
 
 test('closes a window like a door, and a door and a window together on one press', async ({
   page,
 }) => {
-  await gotoEditor(page)
-  await guardLiveSceneSupport(page, SUBJECT)
-  const canvas = await openRoomIn3d(page)
+  const { canvas, views } = await startOnLiveRoom(page, SUBJECT)
 
   // The door is found first, as the box that changes when it opens, and shut again.
   const door = await openDoorSeenFromOrbit(page, canvas)
-  const doorShut = await closeWithControl(page, canvas, { frame: door.open, region: door.region })
-  expectSameView(doorShut.settled, door.never, within(door.region, 'the door shut first'))
+  const doorShut = await closeWithControl(page, canvas, {
+    frame: door.open,
+    region: door.region,
+    what: 'the door before the window opens',
+  })
+  await views.expectSame(doorShut.settled, door.never, within(door.region, 'the door shut first'))
 
   // Scenario 9: the walker strafes east to the window and opens it, and the control closes it
   // with a swing, like a door.
-  await enterWalk(page)
+  await enterWalkReady(page, canvas)
   const windowOpen = await strafeUntilOpened(page, canvas, {
     key: 'KeyA',
     never: door.never,
-    wanted: eastOf(door.region, door.never),
+    wanted: await views.eastOf(door.region, door.never),
+    otherOpen: false,
   })
-  const windowRegion = openingRegion(door.never, windowOpen)
+  const windowRegion = await views.openingRegion(door.never, windowOpen)
   expect(windowRegion.x, 'the window lies east of the door').toBeGreaterThan(
     door.region.x + door.region.w,
   )
-  expectSameView(windowOpen, door.never, within(door.region, 'the door while the window is open'))
+  await views.expectSame(
+    windowOpen,
+    door.never,
+    within(door.region, 'the door while the window is open'),
+  )
   await expect(closeControl(page)).toBeEnabled()
   const windowClose = await closeWithControl(page, canvas, {
     frame: windowOpen,
     region: windowRegion,
+    what: 'the window',
   })
   expect(windowClose.between.length, 'frames that show a part-open window').toBeGreaterThan(0)
-  expectSameView(windowClose.settled, door.never, within(windowRegion, 'the window shut'))
+  await views.expectSame(windowClose.settled, door.never, within(windowRegion, 'the window shut'))
 
   // Scenario 10: with the window open again and the door opened beyond it, one press closes
   // both in the same frames, and the whole view equals the all-shut view.
-  await enterWalk(page)
-  await openWithKey(page, canvas, await stableFrame(canvas))
+  const atWindow = await enterWalkReady(page, canvas)
+  await openWithKey(page, canvas, atWindow)
   const bothOpen = await strafeUntilOpened(page, canvas, {
     key: 'KeyD',
     never: door.never,
     wanted: door.region,
+    otherOpen: true,
   })
-  expectDifferentView(bothOpen, door.never, within(door.region, 'the door, both open'))
-  expectDifferentView(bothOpen, door.never, within(windowRegion, 'the window, both open'))
+  await views.expectDifferent(bothOpen, door.never, within(door.region, 'the door, both open'))
+  await views.expectDifferent(bothOpen, door.never, within(windowRegion, 'the window, both open'))
   const together = await closeTogether(page, canvas, {
     frame: bothOpen,
     first: door.region,
     second: windowRegion,
   })
-  expect(together.frameCounts[0], 'readings of the door and of the window').toBe(
-    together.frameCounts[1],
-  )
+  expect(
+    together.frameCounts[0],
+    'the door and the window are read in the same frames, so their readings pair up by index',
+  ).toBe(together.frameCounts[1])
   expect(together.framesBothBetween, 'frames with both part way at once').toBeGreaterThan(0)
-  const whole = wholeFrame(door.never)
-  expectSameView(together.settled, door.never, within(whole, 'both shut by one press'))
+  const whole = await views.whole(door.never)
+  await views.expectSame(together.settled, door.never, within(whole, 'both shut by one press'))
   await expect(closeControl(page)).toBeDisabled()
 
   // Afterwards the walker is blocked at the door, and at the window, until the key opens them.
-  await enterWalk(page)
-  const atShutDoor = await frameAfterChange(canvas, together.settled)
+  const atShutDoor = await enterWalkReady(page, canvas)
   const heldAtDoor = await holdWalkKey(page, canvas)
-  expectSameView(heldAtDoor, atShutDoor, within(whole, 'the walker held at the shut door'))
+  await views.expectSame(heldAtDoor, atShutDoor, within(whole, 'the walker held at the shut door'))
   await openWithKey(page, canvas, atShutDoor)
   await strafeUntilOpened(page, canvas, {
     key: 'KeyA',
     never: door.never,
-    wanted: eastOf(door.region, door.never),
+    wanted: await views.eastOf(door.region, door.never),
+    otherOpen: true,
   })
-  await enterWalk(page)
-  const atShutWindow = await resetWithKey(page, canvas, await stableFrame(canvas))
+  const atOpenWindow = await enterWalkReady(page, canvas)
+  const atShutWindow = await resetWithKey(page, canvas, atOpenWindow)
   const heldAtWindow = await holdWalkKey(page, canvas)
-  expectSameView(heldAtWindow, atShutWindow, within(whole, 'the walker held at the shut window'))
+  await views.expectSame(
+    heldAtWindow,
+    atShutWindow,
+    within(whole, 'the walker held at the shut window'),
+  )
   await openWithKey(page, canvas, atShutWindow)
 })
 
 test('starts a walk on a fresh page with nothing opened and the door shut', async ({ page }) => {
-  await gotoEditor(page)
-  await guardLiveSceneSupport(page, SUBJECT)
-  const canvas = await openRoomIn3d(page)
+  const { canvas, views } = await startOnLiveRoom(page, SUBJECT)
 
   // Scenario 11, fresh page: the control stays disabled and the orbit view that follows the
   // walk is the view from before it.
@@ -265,18 +324,20 @@ test('starts a walk on a fresh page with nothing opened and the door shut', asyn
   await enterWalk(page)
   await expect(closeControl(page)).toBeDisabled()
   const after = await orbitSouthFrame(page, canvas)
-  expectSameView(after, never, within(wholeFrame(never), 'a walk that opened nothing'))
+  await views.expectSame(
+    after,
+    never,
+    within(await views.whole(never), 'a walk that opened nothing'),
+  )
 })
 
 test('shows each door in the right state from the first frame of a walk', async ({ page }) => {
-  await gotoEditor(page)
-  await guardLiveSceneSupport(page, SUBJECT)
-  const canvas = await openRoomIn3d(page)
+  const { canvas, views } = await startOnLiveRoom(page, SUBJECT)
 
   // The door's region in the walker's view, and what that region reads when open and shut.
   const atShut = await walkToDoor(page, canvas)
   const atOpen = await openWithKey(page, canvas, atShut)
-  const region = openingRegion(atShut, atOpen)
+  const region = await views.openingRegion(atShut, atOpen)
   const openSignature = await signatureOf(page, region)
   const shutView = await resetWithKey(page, canvas, atOpen)
   const shutSignature = await signatureOf(page, region)
@@ -285,9 +346,12 @@ test('shows each door in the right state from the first frame of a walk', async 
   // Scenario 11, after orbit mode with the door open: the first walker frames show it open.
   await enterOrbit(page)
   const resumedOpen = await startWalkWhileWatching(page, canvas, region)
-  expect(resumedOpen.readings.length, 'frames read as the walk started').toBeGreaterThan(0)
-  expect(framesShowing(resumedOpen.readings, shutSignature), 'frames showing it shut').toEqual([])
-  expectSameView(resumedOpen.frame, atOpen, within(region, 'the door leaf, open at walk start'))
+  expectNeverShowing(resumedOpen.readings, shutSignature, 'the door as the walk resumes, open')
+  await views.expectSame(
+    resumedOpen.frame,
+    atOpen,
+    within(region, 'the door leaf, open at walk start'),
+  )
 
   // Scenario 11, after a reset made in orbit mode: the first walker frames show it shut.
   await enterOrbit(page)
@@ -296,7 +360,10 @@ test('shows each door in the right state from the first frame of a walk', async 
   await expect(closeControl(page)).toBeDisabled()
   await frameAfterChange(canvas, orbitOpen)
   const resumedShut = await startWalkWhileWatching(page, canvas, region)
-  expect(resumedShut.readings.length, 'frames read as the walk started').toBeGreaterThan(0)
-  expect(framesShowing(resumedShut.readings, openSignature), 'frames showing it open').toEqual([])
-  expectSameView(resumedShut.frame, shutView, within(region, 'the door leaf, shut at walk start'))
+  expectNeverShowing(resumedShut.readings, openSignature, 'the door as the walk resumes, shut')
+  await views.expectSame(
+    resumedShut.frame,
+    shutView,
+    within(region, 'the door leaf, shut at walk start'),
+  )
 })

@@ -1,8 +1,13 @@
 import { expect, type Locator, type Page } from '@playwright/test'
-import { changedBox, frameDifference, padRegion, wholeFrame, type Region } from '../frame-pixels'
+import { frameReader, padRegion, type FrameReader, type Region } from '../frame-pixels'
+import { logReading } from '../scene-helpers'
 import {
+  SHOWING_MARGIN,
+  betweenClearance,
   betweenFlags,
+  closestApproach,
   framesBetween,
+  framesShowing,
   signatureOf,
   startSampling,
   startSamplingTogether,
@@ -13,7 +18,8 @@ import {
 import { closeControl, frameAfterChange } from './close-openings-support'
 
 // Reading frames of the live view: when two frames are equal, where an opening is, and what a
-// press of the close control looks like frame by frame.
+// press of the close control looks like frame by frame. Every check prints the number it
+// measured next to the limit, so that a run on a new machine shows how close it came.
 
 // Two frames are equal in a region when the mean channel difference stays under this many codes
 // and the share of strongly changed pixels stays under the fraction. In the hand-run proof every
@@ -41,43 +47,95 @@ export function within(region: Region, what: string): ViewCheck {
   return { region, what }
 }
 
-export function viewsAreEqual(a: Buffer, b: Buffer, region: Region): boolean {
-  const difference = frameDifference(a, b, region)
-  return (
-    difference.mean < EQUAL_MEAN_LIMIT && difference.changedFraction < EQUAL_CHANGED_FRACTION_LIMIT
-  )
+export function upperPart(region: Region): Region {
+  return { ...region, h: Math.round(region.h * UPPER_SHARE) }
 }
 
-export function expectSameView(a: Buffer, b: Buffer, check: ViewCheck): void {
-  const difference = frameDifference(a, b, check.region)
-  expect(difference.mean, `${check.what}: mean difference`).toBeLessThan(EQUAL_MEAN_LIMIT)
-  expect(difference.changedFraction, `${check.what}: changed fraction`).toBeLessThan(
+// Comparisons of frames, read through the browser of one page.
+export interface Views {
+  equal(a: Buffer, b: Buffer, region: Region): Promise<boolean>
+  expectSame(a: Buffer, b: Buffer, check: ViewCheck): Promise<void>
+  expectDifferent(a: Buffer, b: Buffer, check: ViewCheck): Promise<void>
+  // The region of an opening, found as the box of pixels that differ between its shut frame and
+  // its open frame, with a margin.
+  openingRegion(shut: Buffer, open: Buffer): Promise<Region>
+  whole(frame: Buffer): Promise<Region>
+  // The part of a frame to the east of a region, which is the right-hand side of the south view.
+  eastOf(region: Region, frame: Buffer): Promise<Region>
+}
+
+// The digits a printed reading carries.
+const READING_DIGITS = 3
+
+async function expectSame(
+  reader: FrameReader,
+  frames: [Buffer, Buffer],
+  check: ViewCheck,
+): Promise<void> {
+  const { mean, changedFraction } = await reader.difference(...frames, check.region)
+  logReading(
+    `same, ${check.what}`,
+    `mean ${mean.toFixed(READING_DIGITS)} (limit ${EQUAL_MEAN_LIMIT}), changed ${changedFraction.toFixed(READING_DIGITS)} (limit ${EQUAL_CHANGED_FRACTION_LIMIT})`,
+  )
+  expect(mean, `${check.what}: mean difference`).toBeLessThan(EQUAL_MEAN_LIMIT)
+  expect(changedFraction, `${check.what}: changed fraction`).toBeLessThan(
     EQUAL_CHANGED_FRACTION_LIMIT,
   )
 }
 
-export function expectDifferentView(a: Buffer, b: Buffer, check: ViewCheck): void {
-  const { mean } = frameDifference(a, b, check.region)
+async function expectDifferent(
+  reader: FrameReader,
+  frames: [Buffer, Buffer],
+  check: ViewCheck,
+): Promise<void> {
+  const { mean } = await reader.difference(...frames, check.region)
+  logReading(
+    `different, ${check.what}`,
+    `mean ${mean.toFixed(READING_DIGITS)} (floor ${DIFFERENT_MEAN_FLOOR})`,
+  )
   expect(mean, `${check.what}: mean difference`).toBeGreaterThan(DIFFERENT_MEAN_FLOOR)
 }
 
-// The region of an opening, found as the box of pixels that differ between its shut frame and
-// its open frame, with a margin.
-export function openingRegion(shut: Buffer, open: Buffer): Region {
-  const box = changedBox(shut, open)
-  if (box === null) throw new Error('the open frame shows no change from the shut frame')
-  return padRegion(box, OPENING_REGION_MARGIN, wholeFrame(shut))
+export function viewsOf(page: Page): Views {
+  const reader = frameReader(page)
+  const whole = reader.whole
+  return {
+    whole,
+    equal: async (a, b, region) => {
+      const difference = await reader.difference(a, b, region)
+      return (
+        difference.mean < EQUAL_MEAN_LIMIT &&
+        difference.changedFraction < EQUAL_CHANGED_FRACTION_LIMIT
+      )
+    },
+    expectSame: (a, b, check) => expectSame(reader, [a, b], check),
+    expectDifferent: (a, b, check) => expectDifferent(reader, [a, b], check),
+    openingRegion: async (shut, open) => {
+      const box = await reader.changedBox(shut, open)
+      if (box === null) throw new Error('the open frame shows no change from the shut frame')
+      return padRegion(box, OPENING_REGION_MARGIN, await whole(shut))
+    },
+    eastOf: async (region, frame) => {
+      const bounds = await whole(frame)
+      const x = region.x + region.w
+      return { x, y: 0, w: bounds.w - x, h: bounds.h }
+    },
+  }
 }
 
-// The part of a frame to the east of a region, which is the right-hand side of the south view.
-export function eastOf(region: Region, frame: Buffer): Region {
-  const bounds = wholeFrame(frame)
-  const x = region.x + region.w
-  return { x, y: 0, w: bounds.w - x, h: bounds.h }
-}
-
-export function upperPart(region: Region): Region {
-  return { ...region, h: Math.round(region.h * UPPER_SHARE) }
+// Asserts that no reading shows a state, and that there were readings to look at, so the check
+// cannot pass for want of frames. Prints how close the nearest reading came.
+export function expectNeverShowing(
+  readings: readonly Signature[],
+  state: Signature,
+  what: string,
+): void {
+  logReading(
+    `never showing, ${what}`,
+    `${readings.length} frames, closest ${closestApproach(readings, state).toFixed(READING_DIGITS)} (showing at ${SHOWING_MARGIN} or less)`,
+  )
+  expect(readings.length, `${what}: frames read`).toBeGreaterThan(0)
+  expect(framesShowing(readings, state), `${what}: frames that show it`).toEqual([])
 }
 
 // What closing an opening with the control showed: the settled frame, the reading of the shut
@@ -88,12 +146,28 @@ export interface ClosingSwing {
   readonly between: Signature[]
 }
 
+// Prints how many frames of a swing the sampler saw and how far the part-open ones stood from
+// the end states. A swing lasts a quarter of a second, so a runner that draws fewer than about
+// eight frames a second may see none.
+function logSwing(
+  what: string,
+  readings: readonly Signature[],
+  ends: [Signature, Signature],
+): void {
+  const between = framesBetween(readings, ...ends).length
+  const clearance = betweenClearance(readings, ...ends).toFixed(READING_DIGITS)
+  logReading(
+    `swing, ${what}`,
+    `${between} frames between of ${readings.length} read, clearance ${clearance} (margin ${SHOWING_MARGIN})`,
+  )
+}
+
 // Presses the toolbar control while a sampler reads the opening's region on every frame, and
 // returns the settled frame after the swing and the readings that lay between open and shut.
 export async function closeWithControl(
   page: Page,
   canvas: Locator,
-  open: { frame: Buffer; region: Region },
+  open: { frame: Buffer; region: Region; what: string },
 ): Promise<ClosingSwing> {
   const openSignature = await signatureOf(page, open.region)
   await startSampling(page, open.region)
@@ -102,6 +176,7 @@ export async function closeWithControl(
   const settled = await frameAfterChange(canvas, open.frame)
   const readings = await stopSampling(page)
   const shut = await signatureOf(page, open.region)
+  logSwing(open.what, readings, [openSignature, shut])
   return { settled, shut, between: framesBetween(readings, openSignature, shut) }
 }
 
@@ -124,6 +199,8 @@ export async function closeTogether(
   ])
   const firstShut = await signatureOf(page, open.first)
   const secondShut = await signatureOf(page, open.second)
+  logSwing('the door, closed with the window', firstReadings, [firstOpen, firstShut])
+  logSwing('the window, closed with the door', secondReadings, [secondOpen, secondShut])
   const firstBetween = betweenFlags(firstReadings, firstOpen, firstShut)
   const secondBetween = betweenFlags(secondReadings, secondOpen, secondShut)
   const framesBothBetween = firstBetween.filter((flag, at) => flag && secondBetween[at]).length

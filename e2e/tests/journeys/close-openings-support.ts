@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
-import { stableFrame } from '../scene-helpers'
+import { settledSceneCanvas, stableFrame } from '../scene-helpers'
+import { LIVE_VIEW_READY, inspectorOf, selectionStatusOf } from '../live-pane'
 
 // Steps shared by the close-doors-and-windows journeys: a room with a door and a window, the
 // 3D toolbar, and walking the camera to an opening.
@@ -21,12 +22,6 @@ const ROOM_CORNERS = [
 ]
 const DOOR_AT = { x: 240, y: 120 }
 const WINDOW_AT = { x: 400, y: 120 }
-
-// The live pane raises this once the stored session has been applied and a frame has drawn
-// since the last render-pipeline build settled.
-const LIVE_VIEW_READY = '[data-live-view-ready="true"]'
-// React Three Fiber mounts the canvas at the HTML default height, then resizes it to the pane.
-const SETTLED_CANVAS_MIN_HEIGHT = 200
 
 // A key tap long enough for the walk controller to see it.
 const TAP_MS = 60
@@ -64,14 +59,9 @@ async function drawRoomWithOpenings(page: Page): Promise<void> {
   await expect(page.getByRole('option', { name: / wide$/ })).toHaveCount(2)
 }
 
-// Waits for a mounted 3D canvas to reach its pane size and draw, then returns its settled frame.
-export async function settledCanvasFrame(page: Page, canvas: Locator): Promise<Buffer> {
-  await expect(canvas).toBeVisible()
-  await expect
-    .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
-      message: 'waiting for the live 3D canvas to settle past its default size',
-    })
-    .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
+// Waits for the pane to raise its ready marker, then returns the canvas's settled frame. The
+// canvas has already reached its pane size, which settledSceneCanvas waits for.
+export async function settledLiveFrame(page: Page, canvas: Locator): Promise<Buffer> {
   await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
   return stableFrame(canvas)
 }
@@ -80,9 +70,8 @@ export async function settledCanvasFrame(page: Page, canvas: Locator): Promise<B
 // tool is left and the selection cleared, so no highlight outline sits on an opening.
 export async function openRoomIn3d(page: Page): Promise<Locator> {
   await drawRoomWithOpenings(page)
-  await page.getByRole('button', { name: '3D view', exact: true }).click()
-  const canvas = liveCanvas(page)
-  await settledCanvasFrame(page, canvas)
+  const canvas = await settledSceneCanvas(page)
+  await settledLiveFrame(page, canvas)
   await page.getByRole('radio', { name: 'Select', exact: true }).click()
   await page.keyboard.press('Escape')
   return canvas
@@ -108,6 +97,16 @@ export async function enterOrbit(page: Page): Promise<void> {
 export async function enterWalk(page: Page): Promise<void> {
   await navButton(page, 'Walk').click()
   await expect(navButton(page, 'Walk')).toHaveAttribute('aria-pressed', 'true')
+}
+
+// Enters walk mode and waits until the walker's view has replaced the orbit frame, which is when
+// the walk keys can be used. The Walk button shows as pressed before that: the walk controller
+// attaches its key listeners in an effect, and the frame is drawn from the walker's camera only
+// after the switch has committed. Returns the walker's settled frame.
+export async function enterWalkReady(page: Page, canvas: Locator): Promise<Buffer> {
+  const orbit = await stableFrame(canvas)
+  await enterWalk(page)
+  return frameAfterChange(canvas, orbit)
 }
 
 // Orbit mode looking at the north wall from the south, settled.
@@ -164,7 +163,7 @@ async function holdWalkUntilStopped(page: Page, canvas: Locator): Promise<Buffer
 export async function walkToDoor(page: Page, canvas: Locator): Promise<Buffer> {
   await navButton(page, 'North').click()
   await stableFrame(canvas)
-  await enterWalk(page)
+  await enterWalkReady(page, canvas)
   await standingWalker(page, canvas)
   return holdWalkUntilStopped(page, canvas)
 }
@@ -199,18 +198,6 @@ export async function toggleEdges(page: Page, canvas: Locator, before: Buffer): 
 }
 
 const PAINT_NAME = 'Sage Green'
-
-function inspectorOf(page: Page): Locator {
-  return page.getByRole('complementary', { name: /inspector/i })
-}
-
-// The 3D pane holds two status-role nodes, so scope to the selection one by its vocabulary.
-function selectionStatusOf(page: Page): Locator {
-  return page
-    .getByRole('region', { name: /3d preview/i })
-    .getByRole('status')
-    .filter({ hasText: /No entity selected|^Selected: / })
-}
 
 // Looks straight down and clicks the middle of the canvas, which strikes the floor of the room,
 // and waits until the floor is the selection. Returns the settled frame with the south view.
@@ -250,17 +237,17 @@ export async function strafe(page: Page, key: string, durationMs: number): Promi
   await page.keyboard.up(key)
 }
 
-// Presses the open key and reports whether the view changed: something within reach swung.
+// Presses the open key and reports whether the view changed within a short time: something
+// within reach swung. A miss is the answer false, not an error.
 export async function openKeyChangesView(page: Page, canvas: Locator): Promise<boolean> {
   const before = await stableFrame(canvas)
   await page.keyboard.press(OPEN_KEY)
-  try {
-    await expect
-      .poll(async () => (await canvas.screenshot()).equals(before), { timeout: KEY_EFFECT_MS })
-      .toBe(false)
-  } catch {
-    return false
+  const deadline = Date.now() + KEY_EFFECT_MS
+  while (Date.now() < deadline) {
+    if (!(await canvas.screenshot()).equals(before)) {
+      await stableFrame(canvas)
+      return true
+    }
   }
-  await stableFrame(canvas)
-  return true
+  return false
 }

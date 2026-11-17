@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { gotoEditor } from './support'
 import { drawnRoomCanvas, stableFrame } from '../scene-helpers'
+import { LIVE_VIEW_READY, inspectorOf, selectionStatusOf } from '../live-pane'
 import { guardLiveSceneSupport, configureGpuChromiumOnMac } from '../live-webgpu'
 
 // The perceived-color readout answers the question a person picking paint actually has: what
@@ -40,25 +41,7 @@ const PAINT_NAME = 'Sage Green'
 const FAR_WALL = 'Wall 1'
 const INNER_FACE = 'B'
 
-// The live pane raises this once the stored session has been applied and a frame has drawn
-// since the last render-pipeline build settled. It follows the render pipeline only, not the
-// meshes the drawn room derives, so the journey also waits for a stable frame before it clicks.
-const LIVE_VIEW_READY = '[data-live-view-ready="true"]'
-
 configureGpuChromiumOnMac()
-
-function inspectorOf(page: Page): Locator {
-  return page.getByRole('complementary', { name: /inspector/i })
-}
-
-// The 3D pane holds two status-role nodes (the color-temperature readout and the selection
-// live region), so scope to the selection one by its vocabulary, as scene-selection.spec.ts does.
-function selectionStatusOf(page: Page): Locator {
-  return page
-    .getByRole('region', { name: /3d preview/i })
-    .getByRole('status')
-    .filter({ hasText: /No entity selected|^Selected: / })
-}
 
 // Click-to-select is on by default, and the perceived-color request rides the very click
 // that commits the selection, so the journey relies on the default rather than setting it.
