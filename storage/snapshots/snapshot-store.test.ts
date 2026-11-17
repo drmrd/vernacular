@@ -1,11 +1,39 @@
 // @vitest-environment node
 // Pure storage logic; node aligns TextEncoder/Uint8Array realms with serialization.
-import { describe, expect, it } from 'vitest'
-import { createEmptyProject, type Project } from '../../core'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  CURRENT_SCHEMA_REVISION,
+  CURRENT_SCHEMA_VERSION,
+  createEmptyProject,
+  type Project,
+} from '../../core'
+import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
+import {
+  bytesOf,
+  fixtureDocument,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+  withUnknownWallField,
+} from '../../tests/fixtures/projects/versions/fixture-documents'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { SnapshotStore } from './snapshot-store'
 
 const AUTOSAVE_DIRECTORY = '.house-autosave'
+const OLDEST_FIXTURE_VERSION = 8
+
+function bytesFailingTheCheck(): Uint8Array {
+  return bytesOf(withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION)))
+}
+
+async function storeHoldingSnapshot(bytes: Uint8Array): Promise<SnapshotStore> {
+  const directory = new InMemoryDirectory()
+  await directory.writeFile(`${AUTOSAVE_DIRECTORY}/snapshot-1.json`, bytes)
+  return new SnapshotStore(directory)
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function projectNamed(name: string): Project {
   const project = createEmptyProject({
@@ -16,6 +44,11 @@ function projectNamed(name: string): Project {
   })
   project.meta.name = name
   return project
+}
+
+/** The document a store hands back: the saved project, stamped with the revision of this build. */
+function withCurrentRevision(project: Project): Project {
+  return { ...project, meta: { ...project.meta, schemaRevision: CURRENT_SCHEMA_REVISION } }
 }
 
 /** A `now` that returns each supplied timestamp in turn across successive calls. */
@@ -67,7 +100,7 @@ describe('SnapshotStore', () => {
     await store.writeSnapshot(projectNamed('A'))
     await store.writeSnapshot(projectNamed('B'))
 
-    expect(await store.restore()).toEqual(projectNamed('B'))
+    expect(await store.restore()).toEqual(withCurrentRevision(projectNamed('B')))
   })
 
   it('restores nothing on a fresh store', async () => {
@@ -98,5 +131,25 @@ describe('SnapshotStore', () => {
     expect(await store.restore()).toBeUndefined()
     expect(await store.isRecoverable()).toBe(false)
     expect(await directory.list(AUTOSAVE_DIRECTORY)).toEqual([])
+  })
+
+  it('restores a version 8 snapshot as a document at the current schema version', async () => {
+    const store = await storeHoldingSnapshot(versionFixtureBytes(OLDEST_FIXTURE_VERSION))
+
+    const restored = await store.restore()
+
+    expect(restored?.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+  })
+
+  it('restores the migrated document of a snapshot that fails the check and warns of the fault', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const store = await storeHoldingSnapshot(bytesFailingTheCheck())
+
+    const restored = await store.restore()
+
+    expect(restored?.floors[0]?.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
+    expect(
+      warn.mock.calls.some((args) => JSON.stringify(args).includes(UNKNOWN_WALL_FIELD_PATH)),
+    ).toBe(true)
   })
 })

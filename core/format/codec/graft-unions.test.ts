@@ -7,8 +7,8 @@ import {
   variantTypeOf,
   type KnownKeyTable,
   type KnownValue,
-} from '../../core'
-import { graftWithTable } from './preserve-unknown'
+} from '../../index'
+import { graftWithTable } from './graft'
 
 const UNKNOWN_KEY = 'keyFromANewerBuild'
 

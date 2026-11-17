@@ -1,7 +1,6 @@
 import type { Project } from '../../core'
-import { migrateProject } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
-import { parseProjectJson, serializeProjectJson } from '../folder/project-json'
+import { encodeForWrite, openDecodedDocument } from '../documents/open-decoded'
 
 const AUTOSAVE_DIR = '.house-autosave'
 const SESSION_START_FILE = 'session-start.json'
@@ -33,7 +32,7 @@ export class SnapshotStore {
   }
 
   async writeSnapshot(project: Project): Promise<void> {
-    const bytes = serializeProjectJson(project)
+    const bytes = encodeForWrite(project)
     await this.ensureSessionStart(bytes)
     await this.directory.writeFile(
       `${AUTOSAVE_DIR}/${SNAPSHOT_PREFIX}${this.now()}${SNAPSHOT_SUFFIX}`,
@@ -62,9 +61,9 @@ export class SnapshotStore {
     if (bytes === undefined) {
       return undefined
     }
-    // A snapshot is a stored project document, so read it the way a project load does:
-    // validate and migrate an older snapshot forward rather than trust its raw shape.
-    return migrateProject(parseProjectJson(bytes))
+    // A snapshot is a stored project document, so read it the way a project load does: through the
+    // codec, which migrates an older snapshot forward rather than trusting its raw shape.
+    return openDecodedDocument(bytes).project
   }
 
   /**

@@ -1,11 +1,36 @@
-import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, createWall } from '../../core'
-import type { Project } from '../../core'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  CURRENT_SCHEMA_REVISION,
+  CURRENT_SCHEMA_VERSION,
+  createEmptyProject,
+  createFloor,
+  createWall,
+  encodeDocument,
+} from '../../core'
+import type { Project, ProjectShape } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
-import { serializeProjectJson } from './project-json'
+import {
+  bytesOf,
+  fixtureDocument,
+  metaOf,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+  withUnknownWallField,
+} from '../../tests/fixtures/projects/versions/fixture-documents'
+import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { FolderProjectStore, ProjectFileNotFoundError } from './folder-project-store'
 
 const PRE_MIGRATION_BACKUP = '.house-autosave/pre-migration-v1.json'
+
+async function directoryHolding(document: Json): Promise<InMemoryDirectory> {
+  const directory = new InMemoryDirectory()
+  await directory.writeFile('vernacular.json', bytesOf(document))
+  return directory
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function seededDirectory(version: number = CURRENT_SCHEMA_VERSION): {
   directory: InMemoryDirectory
@@ -20,7 +45,7 @@ function seededDirectory(version: number = CURRENT_SCHEMA_VERSION): {
       appVersion: '0.0.0',
     }),
   )
-  const seedBytes = serializeProjectJson(seeded)
+  const { bytes: seedBytes } = encodeDocument(seeded, undefined)
   return { directory, seedBytes }
 }
 
@@ -55,7 +80,11 @@ describe('FolderProjectStore', () => {
 
     await store.saveProject(project)
 
-    expect(await store.loadProject()).toEqual(project)
+    const loaded = await store.loadProject()
+    expect(loaded).toEqual({
+      ...project,
+      meta: { ...project.meta, schemaRevision: CURRENT_SCHEMA_REVISION },
+    })
   })
 
   it('writes the canonical Document to vernacular.json', async () => {
@@ -116,8 +145,10 @@ describe('FolderProjectStore', () => {
     const { directory, seedBytes } = seededDirectory(1)
     await directory.writeFile('vernacular.json', seedBytes)
     const store = new FolderProjectStore(directory, {
-      migrate: bumpSchemaVersionTo(2),
-      targetVersion: 2,
+      migration: {
+        schemaMigrations: [{ from: 1, migrate: (project: ProjectShape) => project }],
+        targetVersion: 2,
+      },
     })
 
     const loaded = await store.loadProject()
@@ -130,13 +161,22 @@ describe('FolderProjectStore', () => {
     const { directory, seedBytes } = seededDirectory(1)
     await directory.writeFile('vernacular.json', seedBytes)
     const store = new FolderProjectStore(directory, {
-      migrate: () => {
-        throw new Error('migration boom')
+      migration: {
+        schemaMigrations: [
+          {
+            from: 1,
+            migrate: () => {
+              throw new Error('migration boom')
+            },
+          },
+        ],
+        targetVersion: 2,
       },
-      targetVersion: 2,
     })
 
-    await expect(store.loadProject()).rejects.toThrow('migration boom')
+    await expect(store.loadProject()).rejects.toMatchObject({
+      failure: { kind: 'migration-failed' },
+    })
 
     expect(await directory.readFile('vernacular.json')).toEqual(seedBytes)
     expect(await directory.readFile(PRE_MIGRATION_BACKUP)).toEqual(seedBytes)
@@ -150,6 +190,29 @@ describe('FolderProjectStore', () => {
     await store.loadProject()
 
     expect(await directory.readFile(PRE_MIGRATION_BACKUP)).toBeUndefined()
+  })
+})
+
+describe('FolderProjectStore reading through the document codec', () => {
+  it('loads the migrated document of a file that fails the check and warns of the fault', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
+    const store = new FolderProjectStore(await directoryHolding(document))
+
+    const loaded = await store.loadProject()
+
+    expect(loaded.floors[0]!.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
+    expect(
+      warn.mock.calls.some((args) => JSON.stringify(args).includes(UNKNOWN_WALL_FIELD_PATH)),
+    ).toBe(true)
+  })
+
+  it('rejects a file saved at a higher schema version as a newer version', async () => {
+    const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+    metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+    const store = new FolderProjectStore(await directoryHolding(document))
+
+    await expect(store.loadProject()).rejects.toMatchObject({ failure: { kind: 'newer-version' } })
   })
 })
 

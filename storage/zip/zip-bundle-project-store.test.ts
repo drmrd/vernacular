@@ -1,7 +1,8 @@
 // @vitest-environment node
 // Pure storage/zip logic; node aligns Uint8Array realms with fflate.
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject } from '../../core'
+import { CURRENT_SCHEMA_REVISION, createEmptyProject } from '../../core'
+import type { Project } from '../../core'
 import { ProjectNotFoundError } from '../project-store'
 import { ZipBundleProjectStore } from './zip-bundle-project-store'
 
@@ -14,6 +15,11 @@ function sampleProject() {
   })
 }
 
+/** The document a store hands back: the saved project, stamped with the revision of this build. */
+function withCurrentRevision(project: Project): Project {
+  return { ...project, meta: { ...project.meta, schemaRevision: CURRENT_SCHEMA_REVISION } }
+}
+
 describe('ZipBundleProjectStore', () => {
   it('round-trips its project through a real exported and reopened bundle', async () => {
     const project = sampleProject()
@@ -24,7 +30,7 @@ describe('ZipBundleProjectStore', () => {
     expect(bytes).toBeInstanceOf(Uint8Array)
 
     const reopened = await ZipBundleProjectStore.fromBundle('house', bytes)
-    expect(await reopened.load('house')).toEqual(project)
+    expect(await reopened.load('house')).toEqual(withCurrentRevision(project))
   })
 
   it('rejects loading a foreign id with ProjectNotFoundError', async () => {

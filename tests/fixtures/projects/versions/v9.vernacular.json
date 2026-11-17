@@ -501,5 +501,11 @@
         "height": 8200
       }
     ]
+  },
+  "extensions": {
+    "com.example.solar": {
+      "panelKilowatts": 6.4,
+      "orientation": "south"
+    }
   }
 }

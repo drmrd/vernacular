@@ -12,16 +12,17 @@ related:
   ]
 sourceFiles:
   [
-    storage/folder/preserve-unknown.ts,
+    core/format/codec/graft.ts,
     storage/folder/folder-project-store.ts,
     scripts/schema/generate-schema.mjs,
     core/commands/handlers/project-commands.ts,
     core/model/known-keys.ts,
     core/model/known-keys.json,
     scripts/schema/build-known-keys.mjs,
+    core/format/codec/read-stored-document.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 # ADR-0184: The save-time graft reads a table of known keys generated from the schema
@@ -33,6 +34,10 @@ Current. The owner approved it on 2026-11-14 with sections 5.1 and 5.4 of
 preservation overlay of ADR-0051 decides what to restore. The duty to preserve unknown data is
 unchanged. The code changed with #678 and #669. The overlay now restores a key only when the table
 does not know it at that place.
+
+> Amended on 2026-11-17 (issue #734). The previous file is brought current on its schema version
+> and on every registry version before the graft. A file at the current schema version can still
+> be behind on a registry, and a key that a registry migration removed came back through the graft.
 
 ## Context
 
@@ -66,7 +71,9 @@ no graft and saved the loss.
   the next value stands as it is. The first form of this rule counted a key of any variant as
   known. A review showed that it dropped a field from a newer build when another variant had a key
   of the same name, and the owner replaced it on 2026-11-15.
-- The previous file is migrated in memory before the graft.
+- The previous file is migrated in memory before the graft. It is brought current on its schema
+  version and on every registry version in `meta.registryVersions`, so a key that a schema or
+  registry migration removed or renamed does not return through the graft (#734).
 - Command handlers copy by spread. A test runs every registered command against a document that
   carries `extensions` and an unknown key on every object, and both must survive.
 
@@ -104,4 +111,4 @@ no graft and saved the loss.
 
 - `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`, sections 5.1 and 5.4.
 - `docs/specs/2026-06-10-vernacular-floor-plan-format.md`, section 6.4.
-- Issues #669, #678, and #672.
+- Issues #669, #678, #672, and #734.

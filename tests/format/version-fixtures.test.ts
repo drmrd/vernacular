@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, createDocumentValidator, migrateProject } from '../../core'
+import { CURRENT_SCHEMA_VERSION, createDocumentValidator } from '../../core'
 import type { DocumentValidationResult } from '../../core'
+import type { DecodeResult } from '../../core/format/codec/codec-types'
+import { decodeDocument } from '../../core/format/codec/decode-document'
 import { VERSION_FIXTURE_VERSIONS, versionFixtureBytes } from '../fixtures/projects/versions'
 import { missingSchemaPaths } from './version-fixture-coverage'
 import type { RootSchema } from './version-fixture-coverage'
@@ -39,13 +41,26 @@ function describeSchemaErrors(version: number, result: DocumentValidationResult)
   return listErrors(`The version ${version} fixture breaks ${schemaPath(version)}:`, result)
 }
 
-function describeMigratedErrors(version: number, result: DocumentValidationResult): string {
-  const heading = `The version ${version} fixture migrates to a document that breaks ${schemaPath(CURRENT_SCHEMA_VERSION)}:`
-  return listErrors(heading, result)
+function decodeFixture(version: number): DecodeResult {
+  return decodeDocument(versionFixtureBytes(version))
 }
 
-function migratedRoomKeys(version: number): string[] {
-  return Object.keys(migrateProject(loadFixture(version)).roomOverrides ?? {}).sort()
+function describeDecodeFailure(version: number, result: DecodeResult): string {
+  const heading = `The version ${version} fixture does not decode:`
+  if (result.ok) return heading
+  const failure = result.failure
+  if (failure.kind !== 'format-rules')
+    return `${heading} ${failure.kind} ${JSON.stringify(failure)}`
+  const lines = failure.faults.map(
+    (fault) => `  ${fault.path || '(document root)'} ${fault.rule} ${fault.message}`,
+  )
+  return [`${heading} ${failure.kind}`, ...lines].join('\n')
+}
+
+function decodedRoomKeys(version: number): string[] {
+  const result = decodeFixture(version)
+  if (!result.ok) throw new Error(describeDecodeFailure(version, result))
+  return Object.keys(result.value.project.roomOverrides ?? {}).sort()
 }
 
 function currentRoomKeys(): string[] {
@@ -80,16 +95,15 @@ describe('the fixtures for every schema version', () => {
       expect(result.valid, describeSchemaErrors(version, result)).toBe(true)
     })
 
-    it('migrates to a document that the current schema accepts', () => {
-      const validate = createDocumentValidator(loadSchema(CURRENT_SCHEMA_VERSION))
-      const result = validate(migrateProject(loadFixture(version)))
-      expect(result.valid, describeMigratedErrors(version, result)).toBe(true)
+    it('decodes to a document that the current schema accepts', () => {
+      const result = decodeFixture(version)
+      expect(result.ok, describeDecodeFailure(version, result)).toBe(true)
     })
 
-    it('migrates to the room override keys of the current fixture', () => {
-      const actual = migratedRoomKeys(version)
+    it('decodes to the room override keys of the current fixture', () => {
+      const actual = decodedRoomKeys(version)
       const expected = currentRoomKeys()
-      const message = `The version ${version} fixture migrates to room override keys [${actual.join(', ')}], and the version ${CURRENT_SCHEMA_VERSION} fixture holds [${expected.join(', ')}]`
+      const message = `The version ${version} fixture decodes to room override keys [${actual.join(', ')}], and the version ${CURRENT_SCHEMA_VERSION} fixture holds [${expected.join(', ')}]`
       expect(actual, message).toEqual(expected)
     })
 

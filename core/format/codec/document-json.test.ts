@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor, createWall } from '../../core'
-import type { Project } from '../../core'
-import { parseProjectJson, serializeProjectJson } from './project-json'
+import { createEmptyProject, createFloor, createWall } from '../../index'
+import type { Project } from '../../index'
+import { parseDocumentJson, serializeDocumentJson } from './document-json'
 
 function representativeProject(): Project {
   const wall = createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'wall-1', thickness: 140 })
@@ -20,11 +20,11 @@ function representativeProject(): Project {
   return project
 }
 
-describe('project.json codec', () => {
+describe('the JSON of a stored document', () => {
   it('round-trips a project with a floor and a wall through serialize then parse', () => {
     const project = representativeProject()
 
-    const restored = parseProjectJson(serializeProjectJson(project))
+    const restored = parseDocumentJson(serializeDocumentJson(project))
 
     expect(restored).toEqual(project)
   })
@@ -32,7 +32,7 @@ describe('project.json codec', () => {
   it('serializes pretty two-space JSON that starts at meta and ends with a trailing newline', () => {
     const project = representativeProject()
 
-    const text = new TextDecoder().decode(serializeProjectJson(project))
+    const text = new TextDecoder().decode(serializeDocumentJson(project))
 
     expect(text.startsWith('{\n  "meta"')).toBe(true)
     expect(text.endsWith('\n')).toBe(true)
@@ -41,6 +41,6 @@ describe('project.json codec', () => {
   it('throws when parsing bytes that are not valid JSON', () => {
     const bytes = new TextEncoder().encode('not json')
 
-    expect(() => parseProjectJson(bytes)).toThrow()
+    expect(() => parseDocumentJson(bytes)).toThrow()
   })
 })

@@ -2,7 +2,6 @@ import { useCallback } from 'react'
 import { commitProject, createEditorSession } from '../bridge'
 import { importProjectFile } from '../storage'
 import { failureMessage } from './failure-message'
-import { validateLoadedProject } from './validate-loaded-project'
 import { defaultStoreBackend, guardSessionSwap, recordRecent } from './project-action-helpers'
 import type { ProjectActionsContext } from './use-project-actions'
 
@@ -46,7 +45,6 @@ export function useOpenFileAction(context: ProjectActionsContext): {
         try {
           const bytes = await readFileBytes(file)
           const project = await importProjectFile(file.name, bytes, projectId)
-          validateLoadedProject(project)
           onSession(createEditorSession(project))
           await commitProject({ store, projectId, project })
           if (backend !== null) {

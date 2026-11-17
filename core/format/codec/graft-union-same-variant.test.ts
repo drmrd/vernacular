@@ -1,8 +1,8 @@
 // The made-up table names its variants Union.tag, which is not camelCase by design.
 /* eslint-disable @typescript-eslint/naming-convention */
 import { describe, expect, it } from 'vitest'
-import { KNOWN_KEYS, KNOWN_ROOT_TYPE, type KnownKeyTable, type KnownValue } from '../../core'
-import { graftWithTable } from './preserve-unknown'
+import { KNOWN_KEYS, KNOWN_ROOT_TYPE, type KnownKeyTable, type KnownValue } from '../../index'
+import { graftWithTable } from './graft'
 
 const UNKNOWN_KEY = 'keyFromANewerBuild'
 

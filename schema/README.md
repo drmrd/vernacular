@@ -28,6 +28,14 @@ The generated schema is validated with a validator in `core/` (Ajv). The Core pr
 CORE schema and treats every `extensions` payload as an open object; an optional Strict profile
 additionally validates registered vendor namespaces.
 
+## Revisions
+
+An additive change that keeps a schema version, such as a new optional field, is published as a
+revision of that version at `schema/<version>/revision-<revision>/vernacular.schema.json`, with a
+matching `$id`. The paths that exist without a revision directory count as revision 0 and never
+change. The drift check fails when the generated schema differs from the committed one and neither
+the version nor the revision has risen. See ADR-0178.
+
 ## `$id`
 
 Each version's schema carries a stable, versioned `$id`. A resolvable hosting URL is optional; a

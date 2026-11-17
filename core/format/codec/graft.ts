@@ -1,5 +1,6 @@
-import { KNOWN_KEYS, KNOWN_ROOT_TYPE, variantTypeOf } from '../../core'
-import type { KnownKeyTable, KnownUnion, KnownValue, Project } from '../../core'
+import { KNOWN_KEYS, KNOWN_ROOT_TYPE, variantTypeOf } from '../../model/known-keys'
+import type { KnownKeyTable, KnownUnion, KnownValue } from '../../model/known-keys'
+import type { Project } from '../../model/types'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

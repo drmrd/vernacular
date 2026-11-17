@@ -49,6 +49,13 @@ export interface ProjectMeta {
   /** The project's default architectural style; floors and rooms can override. */
   style?: StyleTag
   schemaVersion: SchemaVersion
+  /**
+   * Additive revision within `schemaVersion`; a revision adds optional fields
+   * without changing how older documents read. Absent means revision 0. See ADR-0178.
+   * @asType integer
+   * @minimum 0
+   */
+  schemaRevision?: number
   appVersion: string
   /**
    * Per-registry version the project was last saved against, keyed by registry

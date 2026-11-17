@@ -1,8 +1,8 @@
 // The made-up table names its types in PascalCase, as the generated table does.
 /* eslint-disable @typescript-eslint/naming-convention */
 import { describe, expect, it } from 'vitest'
-import type { KnownKeyTable, KnownType, KnownValue } from '../../core'
-import { graftWithTable } from './preserve-unknown'
+import type { KnownKeyTable, KnownType, KnownValue } from '../../index'
+import { graftWithTable } from './graft'
 
 const UNKNOWN_KEY = 'keyFromANewerBuild'
 

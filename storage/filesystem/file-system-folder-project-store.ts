@@ -1,3 +1,4 @@
+import { bestEffortProjectName } from '../../core'
 import type { Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { FileSystemDirectory } from '../fs/file-system-directory'
@@ -6,7 +7,6 @@ import {
   PROJECT_FILE,
   ProjectFileNotFoundError,
 } from '../folder/folder-project-store'
-import { parseProjectJson, readProjectName } from '../folder/project-json'
 import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from '../project-store'
 import type { DirectoryHandleStore } from './directory-handle-store'
 
@@ -84,9 +84,8 @@ export class FileSystemFolderProjectStore implements ProjectStore {
     if (bytes === undefined) {
       return []
     }
-    // Listing reads the stored name without upgrading the schema: parse the raw
-    // document directly rather than migrating it, since no save happens here.
-    const name = readProjectName(parseProjectJson(bytes)) ?? ''
+    // Listing reads the stored name without a migration or a schema check, so a newer file is still listed.
+    const name = bestEffortProjectName(bytes) ?? ''
     return [{ id: this.id, name }]
   }
 

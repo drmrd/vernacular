@@ -41,6 +41,7 @@ export type {
   NewWallOptions,
 } from './model/factories'
 export {
+  CURRENT_SCHEMA_REVISION,
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_FURNITURE_FOOTPRINT_MM,
@@ -512,6 +513,7 @@ export {
   MalformedProjectError,
   MigrationFailedError,
   UnsupportedSchemaVersionError,
+  isMigrationPending,
   migrateProject,
 } from './migrations'
 export { distance, rotatePoint, translatePoint } from './geometry/point'
@@ -772,3 +774,16 @@ export {
 } from './daylight/sky-visibility'
 export type { Reveal, WallRectangle } from './daylight/form-factor'
 export { horizontalPointToWallRectangle, visibleThroughReveal } from './daylight/form-factor'
+export type { FormatFault } from './format/codec/codec-types'
+export type {
+  CodecOptions,
+  DecodedDocument,
+  DecodeFailure,
+  DecodeResult,
+  EncodedDocument,
+  GraftDropped,
+  ReadFailure,
+} from './format/codec/codec-types'
+export { decodeDocument } from './format/codec/decode-document'
+export { encodeDocument } from './format/codec/encode-document'
+export { bestEffortProjectName } from './format/best-effort-read'

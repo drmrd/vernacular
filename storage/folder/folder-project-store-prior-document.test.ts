@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor } from '../../core'
-import type { Project } from '../../core'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  CURRENT_SCHEMA_REVISION,
+  createEmptyProject,
+  createFloor,
+  encodeDocument,
+} from '../../core'
+import type { Project, ProjectShape, SchemaMigration } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { FolderProjectStore } from './folder-project-store'
-import { serializeProjectJson } from './project-json'
 
 const TARGET_VERSION = 2
 
@@ -43,7 +47,9 @@ function nextProject(): Project {
 /** A stored file that carries one key an old migration removes and one key nobody knows. */
 function storedDocument(version: number): StoredDocument {
   const document = JSON.parse(
-    new TextDecoder().decode(serializeProjectJson(withSchemaVersion(nextProject(), version))),
+    new TextDecoder().decode(
+      encodeDocument(withSchemaVersion(nextProject(), version), undefined).bytes,
+    ),
   ) as StoredDocument
   document.floors[0]!['legacyElevation'] = 9
   document.floors[0]!['fromANewerBuild'] = { note: 'planted' }
@@ -54,14 +60,23 @@ function storedBytes(version: number): Uint8Array {
   return encode(JSON.stringify(storedDocument(version)))
 }
 
-/** Removes the legacy key and stamps the target version, keeping every other key. */
-function removeLegacyElevation(raw: unknown): Project {
-  const document = structuredClone(raw) as StoredDocument
-  for (const floor of document.floors) {
-    delete floor['legacyElevation']
-  }
-  document.meta.schemaVersion = TARGET_VERSION
-  return document as unknown as Project
+/** A step from version 1 that removes the legacy key and keeps every other key. */
+const removeLegacyElevation: SchemaMigration = {
+  from: 1,
+  migrate: (raw) => {
+    const document = structuredClone(raw) as unknown as StoredDocument
+    for (const floor of document.floors) {
+      delete floor['legacyElevation']
+    }
+    return document as unknown as ProjectShape
+  },
+}
+
+const throwingStep: SchemaMigration = {
+  from: 1,
+  migrate: () => {
+    throw new Error('migration boom')
+  },
 }
 
 async function directoryHolding(bytes: Uint8Array): Promise<InMemoryDirectory> {
@@ -74,8 +89,7 @@ describe('FolderProjectStore save-time graft reads the migrated previous file', 
   it('keeps a key a migration removed out of the saved file and keeps the unknown key', async () => {
     const directory = await directoryHolding(storedBytes(1))
     const store = new FolderProjectStore(directory, {
-      migrate: removeLegacyElevation,
-      targetVersion: TARGET_VERSION,
+      migration: { schemaMigrations: [removeLegacyElevation], targetVersion: TARGET_VERSION },
     })
     await store.loadProject()
 
@@ -86,15 +100,18 @@ describe('FolderProjectStore save-time graft reads the migrated previous file', 
     expect(saved.floors[0]).toHaveProperty('fromANewerBuild', { note: 'planted' })
   })
 
-  it('does not call migrate at save time when the stored file is already at the target version', async () => {
+  it('does not run a migration step at save time when the stored file is already at the target version', async () => {
     const directory = await directoryHolding(storedBytes(TARGET_VERSION))
     let migrateCalls = 0
-    const store = new FolderProjectStore(directory, {
+    const countingStep: SchemaMigration = {
+      from: 1,
       migrate: (raw) => {
         migrateCalls += 1
-        return raw as Project
+        return raw
       },
-      targetVersion: TARGET_VERSION,
+    }
+    const store = new FolderProjectStore(directory, {
+      migration: { schemaMigrations: [countingStep], targetVersion: TARGET_VERSION },
     })
 
     await store.saveProject(nextProject())
@@ -104,36 +121,61 @@ describe('FolderProjectStore save-time graft reads the migrated previous file', 
 })
 
 describe('FolderProjectStore save without a graft when the previous file cannot be migrated', () => {
-  const cases: { name: string; stored: Uint8Array; migrate: (raw: unknown) => Project }[] = [
+  const cases: { name: string; stored: Uint8Array; steps: readonly SchemaMigration[] }[] = [
     {
       name: 'is at a newer version than the target',
       stored: storedBytes(TARGET_VERSION + 1),
-      migrate: (raw) => raw as Project,
+      steps: [],
     },
-    {
-      name: 'fails to migrate',
-      stored: storedBytes(1),
-      migrate: () => {
-        throw new Error('migration boom')
-      },
-    },
-    { name: 'parses to an array', stored: encode('[]'), migrate: (raw) => raw as Project },
-    { name: 'parses to null', stored: encode('null'), migrate: (raw) => raw as Project },
-    { name: 'parses to a string', stored: encode('"text"'), migrate: (raw) => raw as Project },
+    { name: 'fails to migrate', stored: storedBytes(1), steps: [throwingStep] },
+    { name: 'parses to an array', stored: encode('[]'), steps: [] },
+    { name: 'parses to null', stored: encode('null'), steps: [] },
+    { name: 'parses to a string', stored: encode('"text"'), steps: [] },
   ]
 
   it.each(cases)('saves the next document as it is when the previous file $name', async (entry) => {
     const directory = await directoryHolding(entry.stored)
     const store = new FolderProjectStore(directory, {
-      migrate: entry.migrate,
-      targetVersion: TARGET_VERSION,
+      migration: { schemaMigrations: entry.steps, targetVersion: TARGET_VERSION },
     })
     const next = nextProject()
 
     await expect(store.saveProject(next)).resolves.toBeUndefined()
 
-    expect(decode(await directory.readFile('vernacular.json'))).toEqual(
-      JSON.parse(JSON.stringify(next)),
-    )
+    const written = JSON.parse(JSON.stringify(next)) as StoredDocument
+    written.meta.schemaRevision = CURRENT_SCHEMA_REVISION
+    expect(decode(await directory.readFile('vernacular.json'))).toEqual(written)
+  })
+})
+
+describe('FolderProjectStore save over a stored file that cannot be read', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('warns, naming the kind of failure, because no unknown data can be kept', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const directory = await directoryHolding(encode('{ this is not json'))
+    const store = new FolderProjectStore(directory)
+
+    await store.saveProject(nextProject())
+
+    const warned = warn.mock.calls.map((args) => JSON.stringify(args))
+    expect(warned.some((text) => text.includes('not-json'))).toBe(true)
+  })
+})
+
+describe('FolderProjectStore first save with no stored file', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('does not warn, because there is no unknown data to lose', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const store = new FolderProjectStore(new InMemoryDirectory())
+
+    await store.saveProject(nextProject())
+
+    expect(warn).toHaveBeenCalledTimes(0)
   })
 })

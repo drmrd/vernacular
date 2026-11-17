@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, createEmptyProject, createWall } from '../model/factories'
 import type { Point, Project, Wall } from '../model/types'
 import { deriveRooms, roomKey } from '../topology/rooms'
-import { migrateProject } from './migrate'
+import { isMigrationPending, migrateProject } from './migrate'
 import type { ProjectShape, RegistryMigration, SchemaMigration } from './types'
 import { MalformedProjectError, MigrationFailedError, UnsupportedSchemaVersionError } from './types'
 
@@ -325,5 +325,36 @@ describe('migrateProject dash-era room override keys', () => {
     const pipeKey = soleDerivedRoomKey(parlorWalls())
     expect(migrated.roomOverrides?.[pipeKey]).toEqual(PARLOR_OVERRIDE)
     expect(migrated.roomOverrides?.[DASH_ERA_ROOM_KEY]).toBeUndefined()
+  })
+})
+
+describe('isMigrationPending', () => {
+  it('is true for a document below the target version', () => {
+    expect(isMigrationPending(makeVersionedDocument(1), { targetVersion: 3 })).toBe(true)
+  })
+
+  it('is true at the target version when a registry of the document has a step from its version', () => {
+    const document = makeRegistryDocument(CURRENT_SCHEMA_VERSION, { finishes: 0 })
+    const registryMigrations = [appendTrailRegistryMigration('finishes', 0, 'finishes:0->1')]
+
+    expect(isMigrationPending(document, { registryMigrations })).toBe(true)
+  })
+
+  it('is false at the target version when no registry step starts from the stored registry version', () => {
+    const document = makeRegistryDocument(CURRENT_SCHEMA_VERSION, { finishes: 2 })
+    const registryMigrations = [appendTrailRegistryMigration('finishes', 0, 'finishes:0->1')]
+
+    expect(isMigrationPending(document, { registryMigrations })).toBe(false)
+  })
+
+  it('is false at the target version when the document records no version for the registry', () => {
+    const document = makeRegistryDocument(CURRENT_SCHEMA_VERSION, {})
+    const registryMigrations = [appendTrailRegistryMigration('finishes', 0, 'finishes:0->1')]
+
+    expect(isMigrationPending(document, { registryMigrations })).toBe(false)
+  })
+
+  it('is false for a current-version project under the default steps', () => {
+    expect(isMigrationPending(makeCurrentProject())).toBe(false)
   })
 })

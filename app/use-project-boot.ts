@@ -6,14 +6,12 @@ import {
   type ProjectStorage,
   type ProjectStore,
 } from '../storage'
-import { type Project } from '../core'
 import type { AppProps } from './app'
 import { createInitialProject } from './create-initial-project'
 import { resolveProjectStorage } from './resolve-project-store'
 import { useActiveProjectId } from './use-active-project-id'
 import { useFreshProject } from './use-fresh-project'
 import { useRememberSavedProject } from './use-remember-saved-project'
-import { validateLoadedProject } from './validate-loaded-project'
 
 // Resolve the durable {store, assets} pair to boot against. An injected
 // store-only resolver (tests) pairs its store with an in-memory asset cache; the
@@ -128,18 +126,12 @@ function useSessionLoad(context: SessionLoadContext): void {
     if (store === null || projectId === null || session !== null || error !== null) return
     let cancelled = false
     void loadOrCreateProject(store, projectId, createInitialProject)
-      .then((project) => !cancelled && setSession(createEditorSession(validatedProject(project))))
+      .then((project) => !cancelled && setSession(createEditorSession(project)))
       .catch((cause: unknown) => !cancelled && setError(asError(cause)))
     return () => {
       cancelled = true
     }
   }, [store, projectId, session, error, setSession, setError])
-}
-
-// Non-fatal dev gate: warns if the migrated Document fails CORE shape (VFPF sections 7, 8).
-function validatedProject(project: Project): Project {
-  validateLoadedProject(project)
-  return project
 }
 
 function asError(cause: unknown): Error {

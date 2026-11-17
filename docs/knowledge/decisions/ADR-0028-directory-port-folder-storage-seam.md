@@ -19,7 +19,7 @@ sourceFiles:
     storage/fs/subdirectory-port.ts,
     storage/fs/file-system-directory.ts,
     storage/folder/folder-project-store.ts,
-    storage/folder/project-json.ts,
+    core/format/codec/document-json.ts,
     storage/opfs/opfs-project-store.ts,
     storage/zip/zip-bundle-project-store.ts,
     storage/zip/zip-codec.ts,

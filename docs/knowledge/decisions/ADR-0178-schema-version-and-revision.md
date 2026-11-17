@@ -13,13 +13,19 @@ related:
   ]
 sourceFiles:
   [
-    app/validate-loaded-project.ts,
+    core/format/codec/decode-document.ts,
+    core/format/codec/encode-document.ts,
+    core/format/codec/revision.ts,
+    core/format/codec/graft.ts,
+    core/format/current-schema.ts,
     core/migrations/migrate.ts,
     core/model/factories.ts,
-    storage/folder/preserve-unknown.ts,
+    core/model/types.ts,
+    scripts/schema/build-schema.mjs,
+    scripts/schema/build-validators.mjs,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 # ADR-0178: schemaVersion counts breaking changes and schemaRevision counts additive ones
@@ -39,6 +45,19 @@ in that round.
 > its own, and it has no read-only mode. A document at the reader's version that fails the strict
 > check does not open. The stored bytes are kept, and the user can export them or accept an
 > offered repair. Encode never lowers a revision. The reading rules themselves are unchanged.
+
+> Amended on 2026-11-17. The schema of a revision above 0 is published in a directory of its own
+> under its schema version, with a matching `$id`; the paths that existed before are revision 0
+> and never change. Section 7 of the format specification gives the path. `meta.schemaRevision` is
+> a non-negative integer. Two validators are generated from the schema of the current version and
+> revision: a strict one, and a tolerant one with every `additionalProperties: false` removed. The
+> tolerant one serves the row of the table for a file from a newer build: it still checks the
+> fields this build knows and accepts the ones it does not. One codec in `core/format/codec/`
+> applies the reading rules of the table on every read and every write, for every store and for
+> the `.json` import. A save writes the highest of the document's revision, the previous stored
+> file's revision when that file is at the same version, and the build's, so that unknown fields
+> kept from a file a newer build wrote stay under its revision and the next read checks them
+> tolerantly.
 
 ## Context
 
