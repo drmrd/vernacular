@@ -1,5 +1,5 @@
 import type { DirectoryPort } from '../fs/directory-port'
-import { FILES_STORE, finish, settle, type FileRecord } from './indexeddb-requests'
+import { FILES_STORE, finish, readFileRecord, settle, type FileRecord } from './indexeddb-requests'
 import {
   convertLegacyRecords,
   deleteLegacyRecord,
@@ -104,8 +104,7 @@ export class IndexedDbDirectory implements DirectoryPort {
 
   async readFile(path: string): Promise<Uint8Array | undefined> {
     const database = await this.open()
-    const store = database.transaction(FILES_STORE, 'readonly').objectStore(FILES_STORE)
-    const record = await settle<FileRecord | undefined>(store.get(path))
+    const record = await readFileRecord(database, path)
     return record === undefined ? readLegacyFile(database, path) : new Uint8Array(record.bytes)
   }
 
@@ -135,8 +134,7 @@ export class IndexedDbDirectory implements DirectoryPort {
 
   async modifiedAt(path: string): Promise<string | undefined> {
     const database = await this.open()
-    const store = database.transaction(FILES_STORE, 'readonly').objectStore(FILES_STORE)
-    const record = await settle<FileRecord | undefined>(store.get(path))
+    const record = await readFileRecord(database, path)
     if (record !== undefined) {
       return record.modifiedAt
     }
@@ -147,7 +145,8 @@ export class IndexedDbDirectory implements DirectoryPort {
     const directoryPath = prefix === '' ? '' : `${prefix}/`
     const database = await this.open()
     const store = database.transaction(FILES_STORE, 'readonly').objectStore(FILES_STORE)
-    const paths = (await settle(store.getAllKeys(pathsUnder(directoryPath)))) as string[]
+    const keys = await settle(store.getAllKeys(pathsUnder(directoryPath)))
+    const paths = keys.filter((key): key is string => typeof key === 'string')
     const legacyPaths = await listLegacyPaths(database)
     return childNames(
       [...paths, ...legacyPaths.filter((path) => path.startsWith(directoryPath))],

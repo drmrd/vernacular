@@ -16,6 +16,15 @@ export function settle<T>(request: IDBRequest<T>): Promise<T> {
   })
 }
 
+/** The stored file at the path, or undefined when there is none. */
+export function readFileRecord(
+  database: IDBDatabase,
+  path: string,
+): Promise<FileRecord | undefined> {
+  const store = database.transaction(FILES_STORE, 'readonly').objectStore(FILES_STORE)
+  return settle<FileRecord | undefined>(store.get(path))
+}
+
 /** Resolves when the transaction commits, and rejects when it fails or aborts. */
 export function finish(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
