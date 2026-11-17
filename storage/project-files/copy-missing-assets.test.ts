@@ -38,6 +38,10 @@ class WriteRecordingDirectory implements DirectoryPort {
   modifiedAt(path: string): Promise<string | undefined> {
     return this.inner.modifiedAt(path)
   }
+
+  removeTree(prefix: string): Promise<void> {
+    return this.inner.removeTree(prefix)
+  }
 }
 
 async function sharedPoolWith(hash: string, bytes: Uint8Array): Promise<InMemoryAssetCache> {

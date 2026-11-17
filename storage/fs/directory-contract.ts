@@ -151,6 +151,15 @@ export function assertDirectoryPortContract(label: string, makeEmpty: () => Dire
 
       expect(await directory.modifiedAt('doc.json')).toBeUndefined()
     })
+
+    it('reports no modification time for a path that is a directory', async () => {
+      const directory = makeEmpty()
+      await directory.writeFile('d/x', bytes(1))
+
+      expect(await directory.modifiedAt('d')).toBeUndefined()
+    })
+
+    describeRemovingATree(makeEmpty)
   })
 }
 
@@ -159,4 +168,48 @@ const MILLISECONDS_PER_SECOND = 1000
 /** A file system may keep whole seconds only, so the lower bound is rounded down too. */
 function roundDownToSecond(milliseconds: number): number {
   return Math.floor(milliseconds / MILLISECONDS_PER_SECOND) * MILLISECONDS_PER_SECOND
+}
+
+function describeRemovingATree(makeEmpty: () => DirectoryPort): void {
+  const bytes = (...values: number[]) => Uint8Array.from(values)
+
+  describe('removing a tree', () => {
+    const seeded = async () => {
+      const directory = makeEmpty()
+      await directory.writeFile('a/x', bytes(1))
+      await directory.writeFile('a/deep/y', bytes(2))
+      await directory.writeFile('ab/z', bytes(3))
+      await directory.writeFile('a.txt', bytes(4))
+      return directory
+    }
+
+    it('removes every file under the prefix and nothing that only shares its spelling', async () => {
+      const directory = await seeded()
+
+      await directory.removeTree('a')
+
+      expect(await directory.list('a')).toEqual([])
+      expect(await directory.readFile('a/x')).toBeUndefined()
+      expect(await directory.modifiedAt('a/x')).toBeUndefined()
+      expect(await directory.readFile('ab/z')).toEqual(bytes(3))
+      expect(await directory.readFile('a.txt')).toEqual(bytes(4))
+    })
+
+    it('removes only the named subtree', async () => {
+      const directory = await seeded()
+
+      await directory.removeTree('a/deep')
+
+      expect(await directory.readFile('a/deep/y')).toBeUndefined()
+      expect(await directory.readFile('a/x')).toEqual(bytes(1))
+    })
+
+    it('resolves without error for a prefix that holds no files', async () => {
+      const directory = await seeded()
+
+      await expect(directory.removeTree('missing')).resolves.toBeUndefined()
+
+      expect(await directory.readFile('a/x')).toEqual(bytes(1))
+    })
+  })
 }

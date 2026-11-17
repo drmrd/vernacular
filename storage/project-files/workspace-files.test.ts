@@ -36,6 +36,10 @@ class ReadCountingDirectory implements DirectoryPort {
   modifiedAt(path: string): Promise<string | undefined> {
     return this.inner.modifiedAt(path)
   }
+
+  removeTree(prefix: string): Promise<void> {
+    return this.inner.removeTree(prefix)
+  }
 }
 
 async function seededRoot(): Promise<InMemoryDirectory> {
@@ -51,9 +55,57 @@ async function seededRoot(): Promise<InMemoryDirectory> {
   return root
 }
 
+/** Test support: passes every call through and records the names of the members called. */
+class CallRecordingDirectory implements DirectoryPort {
+  readonly calls: { member: string; path: string }[] = []
+
+  constructor(private readonly inner: DirectoryPort) {}
+
+  readFile(path: string): Promise<Uint8Array | undefined> {
+    this.calls.push({ member: 'readFile', path })
+    return this.inner.readFile(path)
+  }
+
+  writeFile(path: string, bytes: Uint8Array): Promise<void> {
+    this.calls.push({ member: 'writeFile', path })
+    return this.inner.writeFile(path, bytes)
+  }
+
+  removeFile(path: string): Promise<void> {
+    this.calls.push({ member: 'removeFile', path })
+    return this.inner.removeFile(path)
+  }
+
+  list(prefix: string): Promise<string[]> {
+    this.calls.push({ member: 'list', path: prefix })
+    return this.inner.list(prefix)
+  }
+
+  modifiedAt(path: string): Promise<string | undefined> {
+    this.calls.push({ member: 'modifiedAt', path })
+    return this.inner.modifiedAt(path)
+  }
+
+  removeTree(prefix: string): Promise<void> {
+    this.calls.push({ member: 'removeTree', path: prefix })
+    return this.inner.removeTree(prefix)
+  }
+}
+
 async function readAll(root: DirectoryPort, paths: string[]): Promise<(Uint8Array | undefined)[]> {
   return Promise.all(paths.map((path) => root.readFile(path)))
 }
+
+const SEEDED_PATHS = [
+  'a/vernacular.json',
+  'a/.house-backups/old.json',
+  'a/.house-autosave/latest.json',
+  'b/vernacular.json',
+  'b/.house-backups/old.json',
+  ASSET_PATH,
+  'c/.house-backups/x.json',
+  'notes.txt',
+]
 
 describe('WorkspaceFiles', () => {
   it('lists the ids of the directories that hold a document, sorted', async () => {
@@ -136,12 +188,44 @@ describe('WorkspaceFiles', () => {
       expect(await readAll(root, KEPT_PATHS)).toEqual(before)
     })
 
+    it('removes the project as one tree and removes no single file', async () => {
+      const root = new CallRecordingDirectory(await seededRoot())
+      const files = new WorkspaceFiles(root, { durable: true })
+
+      await files.remove('a')
+
+      const removals = root.calls.filter(
+        ({ member }) => member === 'removeTree' || member === 'removeFile',
+      )
+      expect(removals).toEqual([{ member: 'removeTree', path: 'a' }])
+    })
+
     it('resolves without error for an id that does not exist', async () => {
       const root = await seededRoot()
       const files = new WorkspaceFiles(root, { durable: true })
 
       await expect(files.remove('missing')).resolves.toBeUndefined()
       expect(await files.ids()).toEqual(['a', 'b'])
+    })
+  })
+
+  describe.each(['assets', '', 'a/b', '.', '..'])('for the reserved or malformed id %j', (id) => {
+    it('refuses to remove it, names the id in the error, and leaves the root untouched', async () => {
+      const root = await seededRoot()
+      const listing = await root.list('')
+      const before = await readAll(root, SEEDED_PATHS)
+      const files = new WorkspaceFiles(root, { durable: true })
+
+      await expect(files.remove(id)).rejects.toThrow(id)
+
+      expect((await root.list('')).sort()).toEqual(listing.sort())
+      expect(await readAll(root, SEEDED_PATHS)).toEqual(before)
+    })
+
+    it('refuses to give a project directory for it', async () => {
+      const files = new WorkspaceFiles(await seededRoot(), { durable: true })
+
+      expect(() => files.projectDirectory(id)).toThrow()
     })
   })
 })
