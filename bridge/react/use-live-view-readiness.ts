@@ -13,7 +13,10 @@ export interface LiveViewReadinessNotes {
   noteSessionApplied: () => void
   /** A render-pipeline build has started, so frames drawn from here on are mid-build. */
   notePipelineBuildStarted: () => void
-  /** The build in flight has settled, however it settled: installed, discarded, or failed. */
+  /**
+   * The build in flight has settled, however it settled: installed, discarded, failed, or
+   * stopped by the takeover turning off or unmounting.
+   */
   notePipelineSettled: () => void
   /** A frame has finished drawing and compositing. */
   noteFrameDrawn: () => void
@@ -39,15 +42,6 @@ export function useLiveViewReadiness(): LiveViewReadinessNotes {
         buildInFlightRef.current = true
         store.updateSceneSession({ frameDrawnSincePipelineSettled: false })
       },
-      // Known gap: a build that is cancelled by deactivation (the effect teardown in
-      // useAmbientOcclusion) already fired notePipelineBuildStarted while it was still
-      // running, but its cancellation swallows onSettled rather than calling it, because
-      // a cancelled build must not report settlement to a caller (the render harness)
-      // waiting on the pipeline it never installed. So buildInFlightRef stays true and
-      // the drawn-frame fact stays false here until the next build settles or the view
-      // remounts, both of which reset it. Self-healing, and invisible to a viewer driving
-      // the live view continuously; the correct fix is settling on deactivation inside
-      // the render takeover itself, tracked as a follow-up rather than done in this cycle.
       notePipelineSettled: () => {
         buildInFlightRef.current = false
       },
