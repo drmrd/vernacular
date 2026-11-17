@@ -17,13 +17,13 @@ describe('resetInteractiveObjects', () => {
   })
 
   it('replaces the stored open set and never mutates the original in place', () => {
-    const seed = new Set([FRONT_DOOR_ID])
-    const store = createSceneSessionStore({ openDoorIds: seed })
+    const store = createSceneSessionStore({ openDoorIds: new Set([FRONT_DOOR_ID]) })
+    const before = store.getSceneSession().openDoorIds
 
     resetInteractiveObjects(store)
 
-    expect([...seed]).toEqual([FRONT_DOOR_ID])
-    expect(store.getSceneSession().openDoorIds).not.toBe(seed)
+    expect([...before]).toEqual([FRONT_DOOR_ID])
+    expect(store.getSceneSession().openDoorIds).not.toBe(before)
   })
 
   it('notifies no subscriber when nothing is open, because nothing changes', () => {
