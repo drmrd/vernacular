@@ -60,8 +60,9 @@ export const GLASS_THICKNESS_MM = 6
 /**
  * How far each hung-window sash's track sits from the wall centerline (mm) in a wall of 100 mm
  * or more: half the bar thickness, so the two 50 mm sashes sit side by side across the wall and
- * never share a plane. A thinner wall thins the sashes and moves the tracks in, see
- * `HUNG_SASH_MIN_DEPTH_MM`.
+ * never share a plane. Kept as a named expectation for tests; the code computes the offset from
+ * the sash depth (see `hungSashDepth`). A thinner wall thins the sashes and moves the tracks in,
+ * see `HUNG_SASH_MIN_DEPTH_MM`.
  */
 export const HUNG_SASH_TRACK_OFFSET_MM = SASH_FRAME_THICKNESS_MM / 2
 /**
@@ -244,9 +245,9 @@ function hungSashDepth(hostThickness: number): number {
  * double-hung window passes no `fixedSash`, so both sashes stay operable. The two
  * sashes sit on separate tracks across the wall, the lower one on the room side of the
  * wall (as in a real hung window), which is the opening's `roomSide` when the node has
- * one and its `facing` side otherwise; the meeting rail belongs to the lower sash. In a wall thinner than 100 mm
- * the sashes are thinner than 50 mm so that they stay inside the wall faces (see
- * `hungSashDepth`), and each track sits half a sash depth from the centerline.
+ * one and its `facing` side otherwise; the meeting rail belongs to the lower sash. In a wall
+ * thinner than 100 mm the sashes are thinner than 50 mm so that they stay inside the wall faces
+ * (see `hungSashDepth`), and each track sits half a sash depth from the centerline.
  */
 function hungWindowSashParts(node: OpeningSceneNode, fixedSash?: HungSash): OpeningFillPart[] {
   const halfWidth = node.width / 2
