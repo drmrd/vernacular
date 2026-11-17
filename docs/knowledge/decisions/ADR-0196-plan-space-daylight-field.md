@@ -20,6 +20,7 @@ sourceFiles:
     core/daylight/room-geometry.ts,
     core/daylight/room-average.ts,
     core/daylight/doorway-light.ts,
+    core/daylight/cells-under-walls.ts,
     tests/daylight/shell-field.test.ts,
     docs/specs/2026-11-15-daylight-and-shadow.md,
   ]
@@ -35,6 +36,14 @@ Proposed. This record covers the core math, which is written and tested. The dis
 color check's bypass of the field, the engine texture, and the bounce channels are not decided
 yet, and they are listed below. The record stays proposed until the window-lit rooms land and the
 owner ratifies it. It amends no other record while it is proposed.
+
+This record changes three sentences of spec section 6.8. The grid now has a margin of two cells on
+every side, so a 12 by 9 m floor is 124 by 94 cells and not 120 by 90. A cell next to a room now
+holds that room's visibility, so not every cell outside the rooms holds 1. Both changes fix the
+strip of open sky along the inside of each wall that issue #753 reported. The third sentence said
+that the offset along the surface normal keeps a thin partition from bleeding light between rooms.
+That is not true of floors and ceilings, or of every wall face: with 100 mm cells, a filtered
+lookup near a wall thinner than 200 mm blends its two sides, as the known limits below state.
 
 ## Context
 
@@ -57,8 +66,15 @@ is the same on both rendering backends and has no dependency on React or three.j
 count, and a `Float32Array` with four values for each cell: bounce red, bounce green, bounce
 blue, and sky visibility. The data is row-major, and row 0 starts at the origin's y. The cell size
 is 100 mm (`DAYLIGHT_FIELD_CELL_SIZE_MM`). The origin is the lower corner of the bounding box of
-the floor's room outlines, snapped down to a multiple of the cell size. Sky visibility is channel
-3 (`SKY_VISIBILITY_CHANNEL`). The bounce channels hold 0 for now.
+the floor's room outlines, snapped down to a multiple of the cell size and then moved two cells
+further down on each axis (`DAYLIGHT_FIELD_MARGIN_CELLS`). The grid ends two cells past the first
+cell edge at or beyond the far side of the box. So rooms of 12 by 9 m whose lower corner lies on a
+multiple of the cell size take 124 columns and 94 rows. With the corner off the grid on both axes
+they take 125 by 95. A 4000 by 3000 mm room at the plan origin has its grid origin at (-200, -200)
+with 44 columns and 34 rows. The inner margin cell can hold a room's value under a wall that lies
+on the box. The outer one always holds open sky, so a lookup that clamps to the edge of the grid
+reads 1 outside it. Sky visibility is channel 3 (`SKY_VISIBILITY_CHANNEL`). The bounce channels
+hold 0 for now.
 
 ### The inputs
 
@@ -66,7 +82,16 @@ A `DaylightRoom` has an outline, a ceiling height, a floor color, a list of aper
 optional `openToSky` flag. A `DaylightAperture` has a span of two points on the room outline, a
 sill and a head (both above the floor), a reveal depth, and `opensTo`, which is `'sky'` for a
 window or `{ room: index }` for an interior doorway. A room with `openToSky` holds visibility 1 in
-every cell. A cell whose center lies in no room also holds 1.
+every cell.
+
+A cell whose center lies in no room holds 1, unless one of its eight neighbors is a room cell.
+Then it holds the sky visibility of one such neighbor, so a room's values reach one cell under its
+walls and a filtered lookup at the foot of a wall reads the room. The room is the one whose outline
+lies nearest the cell's center, and on an equal distance the one that comes first in the input.
+Within that room the source is the nearest neighbor, an edge neighbor before a diagonal one. On a
+tie the order is left, right, below, above, then lower left, lower right, upper left, upper right.
+Only a cell whose center lies in a room is a source, never another copied cell, and only the sky
+visibility is copied (`core/daylight/cells-under-walls.ts`).
 
 An aperture may carry a `netTransmittance` from 0 to 1: the share of visible light that the
 opening passes over its whole area, which includes the frame and the sash. A window that names
@@ -194,17 +219,36 @@ measured numbers are reported, not asserted.
 - A doorway's entering flux keeps the factor of one half that a window gets for facing half of the
   open sky (`core/daylight/room-average.ts`). A doorway faces a whole hemisphere of the neighbor
   room, so for a neighbor of even luminance the hall's room-average term is half of what that
-  hemisphere passes, and the hall reads dark by that much.
-- A cell whose center lies outside every room holds 1. When a room's walls do not fall on the 100
-  mm grid, some cells along each wall have their center outside the room, so a strip along the
-  inside of each wall reads as open sky. In the harness shell, `sampleSkyVisibility` at the plan
-  point (80, 1500) returns 1, against about 0.028 at the center of the room. The lookup in the
-  engine has to handle this. Issue #753 tracks it.
+  hemisphere passes, and the hall reads dark by that much. Issue #807 tracks it.
+- With 100 mm cells, a filtered lookup on the floor or the ceiling blends across any wall thinner
+  than two cells (200 mm). How much depends on where the grid falls. At the foot of a wall of
+  thickness t between two rooms, the other room's share of the reading is at most 1 - t / 200, and
+  it fades out over at most 100 - t / 2 mm: 43 percent over 43 mm for the default 114 mm wall, 75
+  percent over 75 mm for a 50 mm wall, and none from 200 mm. The bound holds because a cell under
+  a wall copies the room whose outline is nearer. Outside an exterior wall of thickness t, the
+  ground at the foot of the wall can read up to 2 - t / 100 of the room's value (all of it for a
+  wall under 100 mm), over at most 200 - t mm. A wall face looks the field up one cell along its
+  normal, as in the lighting hook spike, but that does not keep every face clear. Where a 114 mm
+  partition meets another wall, the other wall's face reads up to 43 percent of the room across
+  the partition, within 43 mm of the inside corner. The outer face of an exterior wall thinner than
+  100 mm reads up to 1 - t / 100 of the room's value. The window-lit rooms work (issue #789)
+  chooses between a 50 mm cell and a room index for each cell, from real pictures.
+- A corner sharper than a right angle, or a neck of a room narrower than one cell, can leave cells
+  inside the room that hold open sky, because no room cell lies next to them. In a sweep of grid
+  positions and turns, a filtered lookup read at least half open sky up to 71 mm from the tip of a
+  45 degree corner and 136 mm from a 30 degree one, and the middle of a 1 m neck 80 mm wide held 1
+  at one grid position in five. The window-lit rooms work (#789) decides the lookup.
+- A sliver room narrower than one cell can own no cell center, and then a lookup inside it reads
+  its neighbor's value. A 60 mm room open to the sky between two dark rooms owned no center at four
+  grid positions in ten, and there it read 0. The window-lit rooms work (#789) decides the lookup.
+- The copy step carries the sky visibility only, so a cell under a wall gets none of its room's
+  bounce color. The window-lit rooms work (#789) decides the lookup before the bounce channels
+  fill.
 - The code does not cap a hall's flux at the source room's, and a hall can receive more. In the
   sweep of ordinary rooms in `core/daylight/doorway-luminance.test.ts`, the hall receives at most
   0.724 of the source's flux, for a source room of 500 by 6000 mm with a white floor. That test
   holds the ratio at 0.73 or below. A source of 100 by 40000 mm with a 6000 mm ceiling and a white
-  floor gives the hall 1.055 times the source's flux.
+  floor gives the hall 1.055 times the source's flux. Issue #807 tracks it.
 - The direct term ignores a concave room's own walls. In an L-shaped room, a cell around the inner
   corner gets light that it cannot see.
 - Furniture and partial walls do not block light, and the field does not vary with height.
@@ -253,7 +297,8 @@ current, the amendments go into the records named here.
   `daylight-field.test.ts`, `sky-visibility.test.ts`, `room-average.test.ts`,
   `room-validation.test.ts`, `hard-inputs.test.ts`, `angled-wall.test.ts`,
   `bad-outline-and-sky.test.ts`, `sky-direction.test.ts`, `span-at-tolerance.test.ts`,
-  `doorway-luminance.test.ts`, and `net-transmittance.test.ts`) and by
+  `doorway-luminance.test.ts`, `net-transmittance.test.ts`, `values-under-walls.test.ts`, and
+  `field-margin.test.ts`) and by
   `tests/daylight/shell-field.test.ts`. The first group states closed forms and hand checks. The
   last builds the harness shell and reports its mean, minimum, and maximum, and with
   `PLOT_DAYLIGHT_FIELD=1` it writes a heat map of the room to the system's temporary folder.

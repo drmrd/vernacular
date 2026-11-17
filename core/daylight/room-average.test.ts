@@ -19,6 +19,7 @@ const TOLERANCE = 1e-6
 const TABULATED_TOLERANCE = 1e-5
 const ROOM_WIDTH = 4000
 const ROOM_DEPTH = 3000
+const TEST_ROOM_REGION = { x0: 0, x1: ROOM_WIDTH, depth: ROOM_DEPTH }
 const CEILING_HEIGHT = 2600
 const SILL = 900
 const HEAD = 2100
@@ -76,16 +77,31 @@ function visibilityAt(field: DaylightField, column: number, row: number): number
   return field.data[daylightFieldCellIndex(field, column, row) + SKY_VISIBILITY_CHANNEL] ?? NaN
 }
 
+interface Region {
+  x0: number
+  x1: number
+  depth: number
+}
+
 function allVisibilities(field: DaylightField): number[] {
   return Array.from({ length: field.columns * field.rows }, (_, cell) =>
     visibilityAt(field, cell % field.columns, Math.floor(cell / field.columns)),
   )
 }
 
-interface Region {
-  x0: number
-  x1: number
-  depth: number
+/** Visibilities of the cells whose center lies inside the region; the margin cells are left out. */
+function visibilitiesInside(field: DaylightField, { x0, x1, depth }: Region): number[] {
+  const values: number[] = []
+  for (let row = 0; row < field.rows; row++) {
+    for (let column = 0; column < field.columns; column++) {
+      const x = field.origin.x + (column + 0.5) * field.cellSize
+      const y = field.origin.y + (row + 0.5) * field.cellSize
+      if (x > x0 && x < x1 && y > 0 && y < depth) {
+        values.push(visibilityAt(field, column, row))
+      }
+    }
+  }
+  return values
 }
 
 function meanOverRegion(field: DaylightField, { x0, x1, depth }: Region): number {
@@ -134,9 +150,10 @@ describe('the room-average term', () => {
   it('receives no more direct light on its cells than the flux that enters the room', () => {
     const solver = createDaylightFieldSolver([testRoom()])
     const bounce = solver.interreflection(0, UNIFORM_SKY)
-    const direct = allVisibilities(solver.field(UNIFORM_SKY)).map(
+    const direct = visibilitiesInside(solver.field(UNIFORM_SKY), TEST_ROOM_REGION).map(
       (visibility) => visibility - bounce,
     )
+    expect(direct.length).toBeGreaterThan(0)
     const received = direct.reduce((sum, value) => sum + value, 0) * CELL_SIZE * CELL_SIZE
     expect(solver.enteringFlux(0, UNIFORM_SKY)).toBeGreaterThan(0)
     expect(received).toBeLessThanOrEqual(solver.enteringFlux(0, UNIFORM_SKY))
@@ -146,14 +163,17 @@ describe('the room-average term', () => {
     const lowWindow = eastWindow(200, DAYLIGHT_WORK_PLANE_HEIGHT_MM - 50)
     const solver = createDaylightFieldSolver([testRoom([lowWindow])])
     const bounce = solver.interreflection(0, UNIFORM_SKY)
-    const gaps = allVisibilities(solver.field(UNIFORM_SKY)).map((value) => Math.abs(value - bounce))
+    const inside = visibilitiesInside(solver.field(UNIFORM_SKY), TEST_ROOM_REGION)
+    expect(inside.length).toBeGreaterThan(0)
+    const gaps = inside.map((value) => Math.abs(value - bounce))
     expect(bounce).toBeGreaterThan(0)
     expect(Math.max(...gaps)).toBeLessThan(TOLERANCE)
   })
 
   it('holds 0 in every cell of a room with no aperture', () => {
     const solver = createDaylightFieldSolver([testRoom([])])
-    const values = allVisibilities(solver.field(UNIFORM_SKY))
+    const values = visibilitiesInside(solver.field(UNIFORM_SKY), TEST_ROOM_REGION)
+    expect(values.length).toBeGreaterThan(0)
     expect(values.every((value) => value === 0)).toBe(true)
     expect(solver.enteringFlux(0, UNIFORM_SKY)).toBe(0)
     expect(solver.interreflection(0, UNIFORM_SKY)).toBe(0)
@@ -220,7 +240,9 @@ describe('light borrowed through a doorway', () => {
       },
     ]
     const solver = createDaylightFieldSolver(rooms)
-    const values = allVisibilities(solver.field(UNIFORM_SKY))
+    const bothRooms = { x0: 0, x1: 2 * ROOM_DEPTH, depth: ROOM_DEPTH }
+    const values = visibilitiesInside(solver.field(UNIFORM_SKY), bothRooms)
+    expect(values.length).toBeGreaterThan(0)
     expect(values.every((value) => value === 0)).toBe(true)
     expect(solver.enteringFlux(0, UNIFORM_SKY)).toBe(0)
     expect(solver.enteringFlux(1, UNIFORM_SKY)).toBe(0)

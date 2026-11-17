@@ -12,8 +12,8 @@ import type { DaylightRoom } from './daylight-field'
 
 const CELL_SIZE = 100
 const CHANNELS_PER_CELL = 4
-const COLUMNS = 120
-const ROWS = 90
+const COLUMNS = 124
+const ROWS = 94
 const FLOOR_COLOR: LinearRgb = { r: 0.5, g: 0.5, b: 0.5 }
 const CEILING_HEIGHT = 2700
 const MARKED_VISIBILITY = 0.25
@@ -34,14 +34,14 @@ const TWELVE_BY_NINE: readonly DaylightRoom[] = [
 ]
 
 describe('createDaylightField', () => {
-  it('covers rooms of 12 m by 9 m with 120 columns and 90 rows of 100 mm cells', () => {
+  it('covers rooms of 12 m by 9 m with 124 columns and 94 rows of 100 mm cells, two of them a margin on each side', () => {
     const field = createDaylightField(TWELVE_BY_NINE)
     expect([field.columns, field.rows, field.cellSize]).toEqual([COLUMNS, ROWS, CELL_SIZE])
   })
 
-  it('places the origin at the lowest corner of the rooms, snapped down to a multiple of 100', () => {
+  it('places the origin at the lowest corner of the rooms, snapped down to a multiple of 100, less a margin of two cells', () => {
     const offGrid = [rectangleRoom({ x: -1250, y: 340 }, { x: 10750, y: 9340 })]
-    expect(createDaylightField(offGrid).origin).toEqual({ x: -1300, y: 300 })
+    expect(createDaylightField(offGrid).origin).toEqual({ x: -1500, y: 100 })
   })
 
   it('holds four values for each cell', () => {
@@ -71,7 +71,7 @@ describe('daylightFieldCellIndex', () => {
       daylightFieldCellIndex(field, 1, 0),
       daylightFieldCellIndex(field, 3, 2),
       daylightFieldCellIndex(field, COLUMNS - 1, ROWS - 1),
-    ]).toEqual([0, 4, 972, 43196])
+    ]).toEqual([0, 4, 1004, 46620])
   })
 })
 
