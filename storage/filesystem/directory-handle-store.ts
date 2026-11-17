@@ -9,6 +9,11 @@ interface StoredHandle {
   handle: FileSystemDirectoryHandle
 }
 
+/**
+ * Opens the database at its one version. No `blocked` handler is needed today: the version has
+ * never risen, and an open at the version that the database already has is never blocked. A rise
+ * of the version must add a handler that rejects.
+ */
 function openDatabase(databaseName: string): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(databaseName, DB_VERSION)
@@ -20,14 +25,6 @@ function openDatabase(databaseName: string): Promise<IDBDatabase> {
   })
 }
 
-/**
- * Persists user-granted FileSystemDirectoryHandles in IndexedDB so a folder
- * project can be reopened across sessions. Directory handles are structured
- * cloneable, so they round-trip through IndexedDB unchanged; reopening them
- * still requires re-granting permission. Validated manually rather than by
- * unit tests, since jsdom implements neither IndexedDB nor the File System
- * Access API.
- */
 /**
  * Opens the database, runs one request in one transaction, and closes the connection again, also
  * when the work fails. Resolves with the request's result once the transaction has completed.
@@ -52,6 +49,14 @@ async function withStore<T>(
   }
 }
 
+/**
+ * Persists user-granted FileSystemDirectoryHandles in IndexedDB so a folder project can be
+ * reopened across sessions. Directory handles are structured cloneable, so they round-trip
+ * through IndexedDB unchanged; reopening them still requires re-granting permission. Each
+ * operation opens the database, works in one transaction, and closes the connection again. The
+ * tests run it in a real browser, since jsdom implements neither IndexedDB nor the File System
+ * Access API.
+ */
 export class DirectoryHandleStore implements FolderHandles {
   constructor(private readonly databaseName: string = DEFAULT_DATABASE_NAME) {}
 
