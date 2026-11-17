@@ -11,6 +11,7 @@ import { dirname } from 'node:path'
 import {
   buildProjectSchema,
   driftVerdict,
+  INITIAL_REVISION,
   schemaPath,
   SCHEMA_REVISION,
   SCHEMA_VERSION,
@@ -19,7 +20,7 @@ import { buildKnownKeys } from './build-known-keys.mjs'
 
 const JSON_INDENT = 2
 const EXIT_DRIFT = 1
-const NO_NUMBER = 0
+const NO_COMMITTED_SCHEMA = { version: 0, revision: INITIAL_REVISION }
 const REVISION_DIRECTORY = /^revision-(\d+)$/
 
 function serialize(value) {
@@ -40,7 +41,7 @@ function committedSchemas() {
         .map((entry) => REVISION_DIRECTORY.exec(entry))
         .filter((match) => match !== null)
         .map((match) => Number(match[1]))
-      return [NO_NUMBER, ...revisions]
+      return [INITIAL_REVISION, ...revisions]
         .filter((revision) => existsSync(schemaPath(version, revision)))
         .map((revision) => ({ version, revision }))
     })
@@ -48,7 +49,7 @@ function committedSchemas() {
 
 function latestCommittedSchema() {
   const latest = committedSchemas().sort((a, b) => a.version - b.version || a.revision - b.revision)
-  return latest.at(-1) ?? { version: NO_NUMBER, revision: NO_NUMBER }
+  return latest.at(-1) ?? NO_COMMITTED_SCHEMA
 }
 
 function checkSchema(content) {

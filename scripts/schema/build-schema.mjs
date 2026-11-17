@@ -10,25 +10,25 @@ import { createGenerator } from 'ts-json-schema-generator'
 
 // Track the live format version from the single source of truth so the schema
 // follows the model as other work bumps it; never hardcode the version here.
-const factoriesSource = readFileSync('core/model/factories.ts', 'utf8')
-const versionMatch = factoriesSource.match(/CURRENT_SCHEMA_VERSION\s*=\s*(\d+)/)
-if (versionMatch === null) {
-  throw new Error('Could not read CURRENT_SCHEMA_VERSION from core/model/factories.ts')
+const FACTORIES_PATH = 'core/model/factories.ts'
+const factoriesSource = readFileSync(FACTORIES_PATH, 'utf8')
+
+function readFactoriesConstant(name) {
+  const match = factoriesSource.match(new RegExp(`${name}\\s*=\\s*(\\d+)`))
+  if (match === null) throw new Error(`Could not read ${name} from ${FACTORIES_PATH}`)
+  return Number(match[1])
 }
 
 /** The live format version, read from core/model/factories.ts. */
-export const SCHEMA_VERSION = Number(versionMatch[1])
+export const SCHEMA_VERSION = readFactoriesConstant('CURRENT_SCHEMA_VERSION')
 
-const REVISION_BASE = 0
+/** The revision that keeps the schema path used before revisions existed. */
+export const INITIAL_REVISION = 0
+
 const SCHEMA_HOST = 'https://drmrd.github.io/vernacular'
 
-const revisionMatch = factoriesSource.match(/CURRENT_SCHEMA_REVISION\s*=\s*(\d+)/)
-if (revisionMatch === null) {
-  throw new Error('Could not read CURRENT_SCHEMA_REVISION from core/model/factories.ts')
-}
-
 /** The live additive revision within the format version, read from core/model/factories.ts. */
-export const SCHEMA_REVISION = Number(revisionMatch[1])
+export const SCHEMA_REVISION = readFactoriesConstant('CURRENT_SCHEMA_REVISION')
 
 /**
  * Repository-relative path of the schema for a version and revision. Revision 0 keeps the
@@ -36,12 +36,20 @@ export const SCHEMA_REVISION = Number(revisionMatch[1])
  */
 export function schemaPath(version, revision) {
   const directory =
-    revision > REVISION_BASE ? `schema/${version}/revision-${revision}` : `schema/${version}`
+    revision > INITIAL_REVISION ? `schema/${version}/revision-${revision}` : `schema/${version}`
   return `${directory}/vernacular.schema.json`
 }
 
 /** Stable, versioned identifier for the published CORE schema. */
 export const SCHEMA_ID = `${SCHEMA_HOST}/${schemaPath(SCHEMA_VERSION, SCHEMA_REVISION)}`
+
+/** True when the live version, or the live revision of the same version, is above the committed one. */
+function numbersRose(numbers) {
+  const versionRose = numbers.version > numbers.committedVersion
+  const revisionRose =
+    numbers.version === numbers.committedVersion && numbers.revision > numbers.committedRevision
+  return versionRose || revisionRose
+}
 
 /**
  * Decide whether a regenerated schema may differ from the latest committed one. A published
@@ -53,10 +61,7 @@ export const SCHEMA_ID = `${SCHEMA_HOST}/${schemaPath(SCHEMA_VERSION, SCHEMA_REV
  * @returns {{ ok: true } | { ok: false, message: string }}
  */
 export function driftVerdict(committed, regenerated, numbers) {
-  const raised =
-    numbers.version > numbers.committedVersion ||
-    (numbers.version === numbers.committedVersion && numbers.revision > numbers.committedRevision)
-  if (committed === null || committed === regenerated || raised) return { ok: true }
+  if (committed === null || committed === regenerated || numbersRose(numbers)) return { ok: true }
   return {
     ok: false,
     message:

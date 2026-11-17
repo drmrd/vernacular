@@ -8,6 +8,9 @@ export const SCHEMA_VERSION: number
 /** The live additive revision within the format version, read from core/model/factories.ts. */
 export const SCHEMA_REVISION: number
 
+/** The revision that keeps the schema path used before revisions existed. */
+export const INITIAL_REVISION: number
+
 /** Repository-relative path of the schema for a version and revision. */
 export function schemaPath(version: number, revision: number): string
 
