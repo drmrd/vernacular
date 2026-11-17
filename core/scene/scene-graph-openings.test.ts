@@ -3,9 +3,19 @@ import { createEmptyProject, createFloor, createOpening, createWall } from '../m
 import type { Floor } from '../model/types'
 import { effectiveWallThickness } from './construction-profile'
 import {
+  ROOM_DEPTH,
+  ROOM_WIDTH,
+  WINDOW_POSITION,
+  counterClockwiseWalls,
+  floorWithWindow,
+  pt,
+  wall,
+} from './opening-room-side-test-fixtures'
+import {
   OPENING_NODE_PREFIX,
   deriveOpeningNode,
   deriveOpeningNodesForFloor,
+  deriveRoomNodesForFloor,
   deriveSceneGraph,
 } from './scene-graph'
 
@@ -64,7 +74,7 @@ describe('deriveOpeningNodesForFloor', () => {
       throw new Error('expected one opening on the fixture floor')
     }
 
-    const nodes = deriveOpeningNodesForFloor(floor)
+    const nodes = deriveOpeningNodesForFloor(floor, [])
 
     expect(nodes).toHaveLength(1)
     expect(nodes[0]).toEqual({
@@ -87,7 +97,7 @@ describe('deriveOpeningNodesForFloor', () => {
   it('carries the host wall id so the opening can be resolved to a graph edge', () => {
     const floor = floorWithHostedOpening()
 
-    const nodes = deriveOpeningNodesForFloor(floor)
+    const nodes = deriveOpeningNodesForFloor(floor, [])
 
     expect(nodes[0]?.hostWallId).toBe('w1')
   })
@@ -103,10 +113,43 @@ describe('deriveOpeningNodesForFloor', () => {
     })
     const floor: Floor = { ...base, openings: [...base.openings, orphan] }
 
-    const nodes = deriveOpeningNodesForFloor(floor)
+    const nodes = deriveOpeningNodesForFloor(floor, [])
 
     expect(nodes).toHaveLength(1)
     expect(nodes.map((node) => node.id)).toEqual([`${OPENING_NODE_PREFIX}o1`])
+  })
+})
+
+describe('the room side of a derived opening node', () => {
+  it('is absent when no room is given for the opening to lie beside', () => {
+    const floor = floorWithHostedOpening()
+
+    const node = deriveOpeningNodesForFloor(floor, [])[0]
+
+    expect(node).toBeDefined()
+    expect('roomSide' in node!).toBe(false)
+  })
+
+  it('is the positive side for a window on a wall of a room drawn counter-clockwise', () => {
+    const floor = floorWithWindow(counterClockwiseWalls(), 'south', WINDOW_POSITION)
+
+    const nodes = deriveOpeningNodesForFloor(floor, deriveRoomNodesForFloor(floor))
+
+    expect(nodes.map((node) => node.roomSide)).toEqual(['positive'])
+  })
+
+  it('is the negative side for a window on a wall of the same room drawn clockwise', () => {
+    const clockwiseWalls = [
+      wall('west', pt(0, 0), pt(0, ROOM_DEPTH)),
+      wall('north', pt(0, ROOM_DEPTH), pt(ROOM_WIDTH, ROOM_DEPTH)),
+      wall('east', pt(ROOM_WIDTH, ROOM_DEPTH), pt(ROOM_WIDTH, 0)),
+      wall('south', pt(ROOM_WIDTH, 0), pt(0, 0)),
+    ]
+    const floor = floorWithWindow(clockwiseWalls, 'south', WINDOW_POSITION)
+
+    const nodes = deriveOpeningNodesForFloor(floor, deriveRoomNodesForFloor(floor))
+
+    expect(nodes.map((node) => node.roomSide)).toEqual(['negative'])
   })
 })
 

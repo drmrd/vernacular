@@ -59,6 +59,21 @@ function twoStoreyProject(): Project {
   return project
 }
 
+// Equality alone cannot show that a path sets the room side: both could omit it.
+describe('the room side of the door on the wall of a closed room', () => {
+  it('is on the positive side in the pure projection', () => {
+    const graph = deriveSceneGraph(twoStoreyProject())
+
+    expect(graph.openings.map((opening) => opening.roomSide)).toEqual(['positive'])
+  })
+
+  it('is on the positive side in the cold deriver', () => {
+    const graph = createSceneGraphDeriver()(twoStoreyProject())
+
+    expect(graph.openings.map((opening) => opening.roomSide)).toEqual(['positive'])
+  })
+})
+
 // Each parity test compares a fresh deriver with the pure projection: a cold cache only.
 describe('createSceneGraphDeriver parity with deriveSceneGraph', () => {
   it('derives the same scene graph as the pure projection when a site grade is set', () => {

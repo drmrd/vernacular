@@ -52,7 +52,7 @@ export function floorWithWindow(walls: Wall[], hostWallId: string, position: num
 }
 
 export function windowNode(floor: Floor): OpeningSceneNode {
-  const node = deriveOpeningNodesForFloor(floor).find((candidate) =>
+  const node = deriveOpeningNodesForFloor(floor, []).find((candidate) =>
     candidate.id.endsWith(WINDOW_ID),
   )
   if (node === undefined) {
