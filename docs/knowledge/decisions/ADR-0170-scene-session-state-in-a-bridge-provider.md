@@ -274,11 +274,11 @@ Run with the readiness hook and provider tests, the three files pass 8 of 8 test
 Two runs with a temporary change showed that the cases can fail. The file was restored after each
 run.
 
-- At commit `31bc0faf`, when the file had its first four cases, the guard that keeps a stopped
-  build quiet was removed, so a stopped build reported late. All four cases failed. The
+- When the file had its first four cases, the guard that keeps a stopped build quiet was removed,
+  so a stopped build reported late. All four cases failed. The
   lighting-off case and the unmount case failed on the count of settle notes (2 where 1 is
   expected), and the other two on the readiness fact.
-- At commit `11ca158b`, the hook's build effect was changed from a passive effect to a layout
+- With all six cases, the hook's build effect was changed from a passive effect to a layout
   effect. In an ordinary update that puts the start note of a replacement before the settle note.
   The settle-callback case failed, because the view read ready during the new build, and the
   other five passed. That case is the one that pins the order. The strict mode case passed under
