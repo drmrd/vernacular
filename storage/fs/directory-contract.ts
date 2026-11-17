@@ -161,6 +161,7 @@ export function assertDirectoryPortContract(label: string, makeEmpty: () => Dire
 
     describeRemovingATree(makeEmpty)
     describeRemovingAtAFile(makeEmpty)
+    describeRemovingFileAtAPrefix(makeEmpty)
   })
 }
 
@@ -211,6 +212,22 @@ function describeRemovingATree(makeEmpty: () => DirectoryPort): void {
       await expect(directory.removeTree('missing')).resolves.toBeUndefined()
 
       expect(await directory.readFile('a/x')).toEqual(bytes(1))
+    })
+  })
+}
+
+/** `removeFile` removes a file only: a path that is the prefix of other files leaves them alone. */
+function describeRemovingFileAtAPrefix(makeEmpty: () => DirectoryPort): void {
+  const bytes = (...values: number[]) => Uint8Array.from(values)
+
+  describe('removing a file at a path that is the prefix of other files', () => {
+    it('resolves and keeps the files under the prefix', async () => {
+      const directory = makeEmpty()
+      await directory.writeFile('a/b', bytes(5, 6))
+
+      await expect(directory.removeFile('a')).resolves.toBeUndefined()
+
+      expect(await directory.readFile('a/b')).toEqual(bytes(5, 6))
     })
   })
 }

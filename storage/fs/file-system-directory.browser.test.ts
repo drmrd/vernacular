@@ -26,6 +26,7 @@ assertDirectoryPortContract(
 describe('FileSystemDirectory on the origin private file system', () => {
   describeTreeRemoval()
   describeFileRemoval()
+  describeRemovalAtADirectory()
   describeModificationTime()
 })
 
@@ -51,6 +52,48 @@ function describeFileRemoval(): void {
 
     const kept = await testDirectory.getDirectoryHandle('d')
     expect(kept.kind).toBe('directory')
+  })
+}
+
+function describeRemovalAtADirectory(): void {
+  it('resolves and leaves an empty directory where it is when removeFile names it', async () => {
+    const directory = new FileSystemDirectory(testDirectory)
+    await testDirectory.getDirectoryHandle('empty', { create: true })
+
+    await expect(directory.removeFile('empty')).resolves.toBeUndefined()
+
+    const kept = await testDirectory.getDirectoryHandle('empty')
+    expect(kept.kind).toBe('directory')
+  })
+
+  it('resolves and keeps the files when removeFile names a directory that holds a file', async () => {
+    const directory = new FileSystemDirectory(testDirectory)
+    await directory.writeFile('a/b', Uint8Array.of(5, 6))
+
+    await expect(directory.removeFile('a')).resolves.toBeUndefined()
+
+    expect(await directory.readFile('a/b')).toEqual(Uint8Array.of(5, 6))
+  })
+
+  it('resolves and leaves an empty directory inside a directory where it is', async () => {
+    const directory = new FileSystemDirectory(testDirectory)
+    const outer = await testDirectory.getDirectoryHandle('deep', { create: true })
+    await outer.getDirectoryHandle('empty', { create: true })
+
+    await expect(directory.removeFile('deep/empty')).resolves.toBeUndefined()
+
+    const kept = await outer.getDirectoryHandle('empty')
+    expect(kept.kind).toBe('directory')
+  })
+
+  it('removes a file and resolves for a path that does not exist', async () => {
+    const directory = new FileSystemDirectory(testDirectory)
+    await directory.writeFile('f.txt', Uint8Array.of(1))
+
+    await directory.removeFile('f.txt')
+
+    expect(await directory.readFile('f.txt')).toBeUndefined()
+    await expect(directory.removeFile('none.txt')).resolves.toBeUndefined()
   })
 }
 
