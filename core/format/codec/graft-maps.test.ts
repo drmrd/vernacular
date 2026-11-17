@@ -3,8 +3,8 @@
 // intentionally-namespaced literal keys.
 /* eslint-disable @typescript-eslint/naming-convention */
 import { describe, expect, it } from 'vitest'
-import { KNOWN_KEYS, KNOWN_ROOT_TYPE, type KnownKeyTable, type KnownValue } from '../../core'
-import { graftWithTable } from './preserve-unknown'
+import { KNOWN_KEYS, KNOWN_ROOT_TYPE, type KnownKeyTable, type KnownValue } from '../../index'
+import { graftWithTable } from './graft'
 
 function objectAt(type: string): KnownValue {
   return { kind: 'object', type }
