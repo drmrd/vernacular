@@ -437,8 +437,14 @@ export {
   SASH_FRAME_WIDTH_MM,
   SASH_FRAME_THICKNESS_MM,
   GLASS_THICKNESS_MM,
+  HUNG_SASH_TRACK_OFFSET_MM,
 } from './scene/opening-fill'
-export type { OpeningFillPart, OpeningFillRole, OpeningFillExtent } from './scene/opening-fill'
+export type {
+  OpeningFillPart,
+  OpeningFillRole,
+  OpeningFillExtent,
+  HungSash,
+} from './scene/opening-fill'
 export type { OpeningFillKind } from './registries/element-types'
 export type { PointerLookDelta, WalkInput, WalkState } from './scene/walk-camera'
 export {

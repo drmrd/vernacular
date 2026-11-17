@@ -2,6 +2,9 @@ import { builtinElementTypes, type ElementType } from '../registries/element-typ
 import { getEntry, type Registry } from '../registries/registry'
 import type { OpeningSceneNode } from './scene-graph'
 
+/** One of the two sashes of a hung window. */
+export type HungSash = 'lower' | 'upper'
+
 /** Which surface role paints a fill part, distinct from the wall-shell roles. */
 export type OpeningFillRole = 'leaf' | 'glass'
 
@@ -16,7 +19,8 @@ export interface OpeningFillExtent {
  * opening local frame (spec section 3.2): origin at the finished-floor line below
  * the opening center, `+x` along the wall, `+y` up, the wall normal across. The
  * box spans `along` in x and `up` in y, with `thickness` across the wall centered
- * on the wall centerline. The engine extrudes each part into a thin box.
+ * on the wall centerline unless `acrossOffset` says otherwise. The engine extrudes
+ * each part into a thin box.
  */
 export interface OpeningFillPart {
   readonly role: OpeningFillRole
@@ -28,6 +32,18 @@ export interface OpeningFillPart {
    * sash. Omitted (not `false`) when the part is operable or operability does not apply.
    */
   readonly fixed?: boolean
+  /**
+   * The sash of a hung window this part belongs to. Every part of a hung-window fill carries
+   * it; the meeting rail belongs to the lower sash. Omitted for every other fill.
+   */
+  readonly sash?: HungSash
+  /**
+   * Where the box's center sits across the wall (mm), from the centerline along the opening's
+   * normal; omitted (not 0) means centered. A hung window's lower sash takes
+   * +HUNG_SASH_TRACK_OFFSET_MM times the facing sign (+1 'positive', -1 'negative'), the upper
+   * sash the opposite. `facing` stands in for the room side, which the fill cannot see yet.
+   */
+  readonly acrossOffset?: number
 }
 
 /** Uniform reveal gap insetting a door leaf from its void edges (mm). */
@@ -40,6 +56,11 @@ export const SASH_FRAME_WIDTH_MM = 60
 export const SASH_FRAME_THICKNESS_MM = 50
 /** Thickness of a window's glass pane across the wall (mm). */
 export const GLASS_THICKNESS_MM = 6
+/**
+ * How far each hung-window sash's track sits from the wall centerline (mm): half the bar
+ * thickness, so the two 50 mm sashes sit side by side across the wall and never share a plane.
+ */
+export const HUNG_SASH_TRACK_OFFSET_MM = SASH_FRAME_THICKNESS_MM / 2
 
 /**
  * Resolves an opening's three-dimensional body from its element type (spec section
@@ -171,17 +192,25 @@ function wholeSashParts(node: OpeningSceneNode): OpeningFillPart[] {
   return sashAssembly(node.width / 2, { min: node.sillHeight, max: node.sillHeight + node.height })
 }
 
+/** Puts a list of parts on one sash's track: names the sash and sets its offset across the wall. */
+function onTrack(
+  parts: readonly OpeningFillPart[],
+  sash: HungSash,
+  acrossOffset: number,
+): OpeningFillPart[] {
+  return parts.map((part) => ({ ...part, sash, acrossOffset }))
+}
+
 /**
  * A hung window as two stacked sashes: a lower and an upper sash meeting at a
  * full-width meeting rail that straddles the opening's vertical midpoint. Each sash
  * fills its own band, so the window reads as two panes rather than one. `fixedSash`
  * names the sash that is fixed shut (a single-hung window's upper sash); a
- * double-hung window passes no `fixedSash`, so both sashes stay operable.
+ * double-hung window passes no `fixedSash`, so both sashes stay operable. The two
+ * sashes sit on separate tracks across the wall, the lower one toward the opening's
+ * facing side; the meeting rail belongs to the lower sash.
  */
-function hungWindowSashParts(
-  node: OpeningSceneNode,
-  fixedSash?: 'upper' | 'lower',
-): OpeningFillPart[] {
+function hungWindowSashParts(node: OpeningSceneNode, fixedSash?: HungSash): OpeningFillPart[] {
   const halfWidth = node.width / 2
   const sill = node.sillHeight
   const top = sill + node.height
@@ -193,9 +222,12 @@ function hungWindowSashParts(
     { min: -halfWidth, max: halfWidth },
     { min: railBottom, max: railTop },
   )
-  return [
+  const lowerTrack =
+    node.orientation.facing === 'negative' ? -HUNG_SASH_TRACK_OFFSET_MM : HUNG_SASH_TRACK_OFFSET_MM
+  const lowerSash = [
     ...sashAssembly(halfWidth, { min: sill, max: railBottom }, fixedSash === 'lower'),
     meetingRail,
-    ...sashAssembly(halfWidth, { min: railTop, max: top }, fixedSash === 'upper'),
   ]
+  const upperSash = sashAssembly(halfWidth, { min: railTop, max: top }, fixedSash === 'upper')
+  return [...onTrack(lowerSash, 'lower', lowerTrack), ...onTrack(upperSash, 'upper', -lowerTrack)]
 }
