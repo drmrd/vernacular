@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ASSET_DIRECTORY_PREFIX } from '../directory-asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
+import { InvalidProjectIdError } from './project-id-guard'
 import { WorkspaceFiles } from './workspace-files'
 
 const HASH = 'abc123'
@@ -107,6 +108,23 @@ const SEEDED_PATHS = [
   'notes.txt',
 ]
 
+/** The error that a call raised, whether it threw at once or rejected. */
+async function errorOf(call: () => unknown): Promise<unknown> {
+  try {
+    await call()
+  } catch (error) {
+    return error
+  }
+  return undefined
+}
+
+function expectInvalidProjectId(error: unknown, id: string): void {
+  expect(error).toBeInstanceOf(InvalidProjectIdError)
+  const message = (error as Error).message
+  expect(message).toContain(JSON.stringify(id))
+  expect(message.toLowerCase()).toContain('project id')
+}
+
 describe('WorkspaceFiles', () => {
   it('lists the ids of the directories that hold a document, sorted', async () => {
     const files = new WorkspaceFiles(await seededRoot(), { durable: true })
@@ -210,13 +228,13 @@ describe('WorkspaceFiles', () => {
   })
 
   describe.each(['assets', '', 'a/b', '.', '..'])('for the reserved or malformed id %j', (id) => {
-    it('refuses to remove it, names the id in the error, and leaves the root untouched', async () => {
+    it('refuses to remove it with an invalid project id error, and leaves the root untouched', async () => {
       const root = await seededRoot()
       const listing = await root.list('')
       const before = await readAll(root, SEEDED_PATHS)
       const files = new WorkspaceFiles(root, { durable: true })
 
-      await expect(files.remove(id)).rejects.toThrow(id)
+      expectInvalidProjectId(await errorOf(() => files.remove(id)), id)
 
       expect((await root.list('')).sort()).toEqual(listing.sort())
       expect(await readAll(root, SEEDED_PATHS)).toEqual(before)
@@ -225,7 +243,14 @@ describe('WorkspaceFiles', () => {
     it('refuses to give a project directory for it', async () => {
       const files = new WorkspaceFiles(await seededRoot(), { durable: true })
 
-      expect(() => files.projectDirectory(id)).toThrow()
+      let thrown: unknown
+      try {
+        files.projectDirectory(id)
+      } catch (error) {
+        thrown = error
+      }
+
+      expectInvalidProjectId(thrown, id)
     })
   })
 })
