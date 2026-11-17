@@ -278,6 +278,16 @@ describe('followStoredOpenings', () => {
     expect(followed.openIds).not.toBe(stored)
   })
 
+  it('swaps to the stored door when the interaction and the store hold equal counts of different doors', () => {
+    const otherDoorId = 'opening:back-door'
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+
+    const followed = followStoredOpenings(open, new Set([otherDoorId]))
+
+    expect(isOpeningOpen(followed, otherDoorId)).toBe(true)
+    expect(isOpeningOpen(followed, DOOR_ID)).toBe(false)
+  })
+
   it('lets a door that was swung fully open swing back to its built pose once the store closes it', () => {
     const door = frontDoor()
     const root = sceneWith(door)
