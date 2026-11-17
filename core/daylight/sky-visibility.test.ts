@@ -28,6 +28,8 @@ const HEAD = 2100
 const REVEAL_DEPTH = 120
 const CELL_CENTER = { x: 3050, y: 1550 }
 const EAST_SKY_FACTOR = 2
+// The literal number, not the exported constant, so that a change of the default shows as a failure.
+const DEFAULT_NET_TRANSMITTANCE = 0.8
 const LUMINANCE_WEIGHTS = { r: 0.2126, g: 0.7152, b: 0.0722 }
 const UNPAINTED_SURFACE_SRGB_BYTES = { r: 0xd8, g: 0xd4, b: 0xcc }
 const BYTE_MAX = 255
@@ -98,7 +100,7 @@ function luminanceOfBytes(bytes: { r: number; g: number; b: number }): number {
 }
 
 describe('the daylight field solver', () => {
-  it('holds the form factor of the cell center plus the interreflection in a window-lit cell', () => {
+  it('holds the form factor of the cell center times the default net transmittance of the opening, plus the interreflection, in a window-lit cell', () => {
     const solver = createDaylightFieldSolver([eastWindowRoom()])
     const footToWallMm = ROOM_WIDTH - CELL_CENTER.x
     const aboveWorkPlane = (height: number): number => height - DAYLIGHT_WORK_PLANE_HEIGHT_MM
@@ -111,7 +113,8 @@ describe('the daylight field solver', () => {
       },
       footToWallMm,
     )
-    const expected = factor + solver.interreflection(0, UNIFORM_SKY)
+    // A window that names no net transmittance passes 0.8 of the light its form factor sees.
+    const expected = DEFAULT_NET_TRANSMITTANCE * factor + solver.interreflection(0, UNIFORM_SKY)
     const sampled = sampleSkyVisibility(solver.field(UNIFORM_SKY), CELL_CENTER)
     expect(Math.abs(sampled - expected)).toBeLessThan(TOLERANCE)
   })

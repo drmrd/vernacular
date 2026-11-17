@@ -25,9 +25,12 @@ const HEAD = 2100
 const CELL_SIZE = 100
 const GRAY: LinearRgb = { r: 0.5, g: 0.5, b: 0.5 }
 const WHITE: LinearRgb = { r: 1, g: 1, b: 1 }
-const EXPECTED_FLUX = 600000
+// Half of the opening area times the default net transmittance: 0.5 * 0.8 * 1000 * 1200.
+const EXPECTED_FLUX = 480000
 const EXPECTED_SURFACE_AREA = 60400000
-const EXPECTED_INTERREFLECTION = 0.016785
+// Flux times reflectance over the absorbing area, before the first reflection:
+// 480000 * 0.6282119 / 22456000, where 22456000 = 60400000 * (1 - 0.6282119).
+const EXPECTED_INTERREFLECTION = 0.013428
 const EXPECTED_REFLECTANCE = 0.62821
 
 const EAST_SPAN: readonly [Point, Point] = [
@@ -91,12 +94,12 @@ function meanOverRegion(field: DaylightField, { x0, x1, depth }: Region): number
 }
 
 describe('the room-average term', () => {
-  it('lets 600000 square millimetres of sky light into the test room', () => {
+  it('lets 480000 square millimetres of sky light into the test room through a window of net transmittance 0.8', () => {
     const solver = createDaylightFieldSolver([testRoom()])
     expect(solver.enteringFlux(0, UNIFORM_SKY)).toBeCloseTo(EXPECTED_FLUX, 3)
   })
 
-  it('gives 0.016785 for the inter-reflection of the test room', () => {
+  it('gives 0.013428 for the inter-reflection of the test room', () => {
     const solver = createDaylightFieldSolver([testRoom()])
     const gap = Math.abs(solver.interreflection(0, UNIFORM_SKY) - EXPECTED_INTERREFLECTION)
     expect(gap).toBeLessThan(TABULATED_TOLERANCE)
