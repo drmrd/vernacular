@@ -222,3 +222,15 @@ export async function deleteStoredFile(name: string, path: string): Promise<void
 export function deleteDatabaseNamed(name: string): Promise<void> {
   return deleteDatabase(name)
 }
+
+/** Deletes only the record of the `projects` store with `id`, through a raw connection. */
+export async function deleteFirstLayoutRecord(name: string, id: string): Promise<void> {
+  const database = await openDatabase(name, undefined)
+  try {
+    const transaction = database.transaction(FIRST_LAYOUT_STORE, 'readwrite')
+    transaction.objectStore(FIRST_LAYOUT_STORE).delete(id)
+    await settled(transaction)
+  } finally {
+    database.close()
+  }
+}

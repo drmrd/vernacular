@@ -5,6 +5,7 @@ import { IndexedDbDirectory } from './indexeddb-directory'
 import {
   CURRENT_PROJECT_PATH,
   currentProject,
+  deleteFirstLayoutRecord,
   deleteStoredFile,
   directoryReadingBackWith,
   directoryWithoutConversion,
@@ -136,5 +137,21 @@ describe('a conversion that meets trouble while it reads back', () => {
     expect(await storedFilePathsOf(name)).toEqual([])
     expect(await firstLayoutIdsOf(name)).toEqual([])
     expect(await workspaceOver(directory).ids()).toEqual([])
+  })
+
+  it('keeps the converted file when its record is already gone at a mismatch', async () => {
+    const project = currentProject()
+    const name = await seededDatabase({ id: 'current', project })
+    const readBack = async (): Promise<Uint8Array> => {
+      await deleteFirstLayoutRecord(name, 'current')
+      return WRONG_BYTES
+    }
+    const directory = directoryReadingBackWith(name, readBack)
+
+    const read = await storeOver(directory).read('current')
+
+    expect(await storedFileBytesOf(name, CURRENT_PROJECT_PATH)).toEqual(jsonBytesOf(project))
+    expect(await firstLayoutIdsOf(name)).toEqual([])
+    expect(read.ok).toBe(true)
   })
 })
