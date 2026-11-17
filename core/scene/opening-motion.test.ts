@@ -152,6 +152,31 @@ describe('openingMotion windows', () => {
     }
   })
 
+  it.each([
+    // Half of 40 is 20, less half the 60 mm frame (30): -10 before the floor at zero.
+    { height: 40, rise: 0 },
+    // Half of 60 is 30, less 30: exactly no room to open.
+    { height: SASH_FRAME_WIDTH_MM, rise: 0 },
+    // Half of 62 is 31, less 30: the first height with room to rise.
+    { height: SASH_FRAME_WIDTH_MM + 2, rise: 1 },
+  ])(
+    'never lowers the sash of a window $height mm high, near or below its frame width',
+    ({ height, rise }) => {
+      const motion = openingMotion(
+        'double-hung-window',
+        openingNode('double-hung-window', { height }),
+      )
+
+      expect(motion.kind).toBe('slide')
+      if (motion.kind !== 'slide') return
+      expect(motion.travel.y >= 0).toBe(true)
+      expect(Object.is(motion.travel.y, -0)).toBe(false)
+      expect(motion.travel).toEqual({ x: 0, y: rise, z: 0 })
+      expect(motion.partId).toBe('lower')
+      expect(motion.partCount).toBe(1)
+    },
+  )
+
   it('resolves a sliding window to a slide along the wall', () => {
     const motion = openingMotion('sliding-window', openingNode('sliding-window'))
 
