@@ -256,4 +256,30 @@ describe('shadowFitBounds with input that is not finite', () => {
     const fit = fitFor({ ...FORTY_FIVE_DEGREES, x: Number.NaN })
     expect(fit).not.toBe(CASTERS)
   })
+
+  describe('with a cap on the radius that is not a finite number', () => {
+    function fitWithCap(maxRadius: number): Bounds3 {
+      return shadowFitBounds({
+        casters: CASTERS,
+        ground: GROUND,
+        sunDirection: FORTY_FIVE_DEGREES,
+        maxRadius,
+      })
+    }
+
+    it('gives a copy of the casters, with every value finite, when the cap is NaN', () => {
+      const fit = fitWithCap(Number.NaN)
+      expect(fit).toEqual(CASTERS)
+      expect(fit).not.toBe(CASTERS)
+      expect(numbersOf(fit).every(Number.isFinite)).toBe(true)
+    })
+
+    it('means no cap when the cap is Infinity', () => {
+      expect(fitWithCap(Number.POSITIVE_INFINITY)).toEqual(fitWithCap(NO_CAP))
+    })
+
+    it('gives the casters when the cap is -Infinity', () => {
+      expect(fitWithCap(Number.NEGATIVE_INFINITY)).toEqual(CASTERS)
+    })
+  })
 })
