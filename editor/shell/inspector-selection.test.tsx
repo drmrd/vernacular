@@ -11,9 +11,21 @@ import {
   OPENING_NODE_PREFIX,
   STAIR_NODE_PREFIX,
 } from '../../core'
+import type { LibraryItem } from '../../storage'
+import { handleFurnitureKey } from '../plan/authoring-tool-handlers'
 import { renderInspector } from './inspector-test-support'
 
 afterEach(cleanup)
+
+const chair: LibraryItem = {
+  reference: { scope: 'user', contentHash: 'chair-hash' },
+  name: 'Chair',
+  kind: 'furniture',
+  categories: [],
+  eras: [],
+  footprint: { width: 600, depth: 600 },
+  height: 750,
+}
 
 describe('Inspector with an opening selected', () => {
   const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })
@@ -121,6 +133,27 @@ describe('Inspector with a stair selected', () => {
     })
     const title = screen.getByRole('heading', { level: 3 })
     expect(title).toHaveTextContent(/stair/i)
+  })
+})
+
+describe('Inspector after a furniture piece is placed', () => {
+  it('shows the furniture editor for the piece the place-furniture tool just dropped', () => {
+    const { selection, session } = renderInspector()
+    act(() => {
+      handleFurnitureKey({
+        session,
+        selection,
+        activeFloorId: 'g',
+        candidate: { x: 0, y: 0 },
+        setCandidate: () => undefined,
+        setAnnouncement: () => undefined,
+        event: new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }),
+        armed: chair,
+        rotation: 0,
+      })
+    })
+
+    expect(screen.getByRole('heading', { name: 'Furniture' })).toBeInTheDocument()
   })
 })
 

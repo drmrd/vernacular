@@ -2,8 +2,6 @@ import {
   createFurnitureInstance,
   createOpening,
   distance,
-  FURNITURE_NODE_PREFIX,
-  OPENING_NODE_PREFIX,
   placeFurniture,
   placeOpening,
   type Point,
@@ -14,7 +12,7 @@ import type { EditorSession, SelectionStore } from '../../bridge'
 import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import { placeOpeningTarget } from './place-opening'
-import { selectPlacedEntity } from './select-placed-entity'
+import { selectPlacedEntity, selectPlacedOpening } from './select-placed-entity'
 import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
 import {
   advanceDimensionTool,
@@ -226,7 +224,7 @@ function dropOpening(ctx: OpeningKeyContext): void {
     position: target.position,
   })
   ctx.session.dispatch(placeOpening(target.floorId, opening))
-  selectPlacedEntity(ctx.selection, OPENING_NODE_PREFIX, opening.id)
+  selectPlacedOpening(ctx.selection, opening.id)
   ctx.setAnnouncement(openingAnnouncement(ctx.placementType))
 }
 
@@ -262,7 +260,7 @@ function dropFurniture(ctx: FurnitureKeyContext): void {
     ...(ctx.armed.name !== '' ? { name: ctx.armed.name } : {}),
   })
   ctx.session.dispatch(placeFurniture(floorId, furniture))
-  selectPlacedEntity(ctx.selection, FURNITURE_NODE_PREFIX, furniture.id)
+  selectPlacedEntity(ctx.selection, furniture.id)
   ctx.setAnnouncement(`Placed ${ctx.armed.name}`)
 }
 
