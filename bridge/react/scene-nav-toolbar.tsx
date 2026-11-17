@@ -2,6 +2,7 @@ import type { CameraPreset, LightingMode } from '../../core'
 
 import { EnvironmentControls } from './environment-controls'
 import { SceneDisplayOptions } from './scene-display-options'
+import { ModeToggle, ScopeToggle } from './scene-nav-segmented-toggles'
 import type { SceneScope } from './view-scene-graph'
 
 import './scene-nav-toolbar.css'
@@ -20,16 +21,6 @@ export type PresetChoice = CameraPreset | 'doorway'
  * fields has to be changed in both places at once.
  */
 type DoorwayChoice = { name: string; selected: boolean }
-
-const NAV_MODE_BUTTONS: ReadonlyArray<{ label: string; mode: NavMode }> = [
-  { label: 'Orbit', mode: 'orbit' },
-  { label: 'Walk', mode: 'walk' },
-]
-
-const VIEW_SCOPE_BUTTONS: ReadonlyArray<{ label: string; scope: SceneScope }> = [
-  { label: 'This floor', scope: 'floor' },
-  { label: 'Whole building', scope: 'building' },
-]
 
 const PRESET_VIEW_BUTTONS: ReadonlyArray<{ label: string; preset: CameraPreset }> = [
   { label: 'Top down', preset: 'top' },
@@ -61,54 +52,6 @@ interface SceneNavToolbarProps {
   onToggleUnderground?: () => void
   edgeOverlay?: boolean
   onToggleEdgeOverlay?: () => void
-}
-
-interface ScopeToggleProps {
-  scope: SceneScope
-  onScopeChange: (scope: SceneScope) => void
-}
-
-/** Whether the view frames a single floor or the whole building, as a segmented toggle. */
-function ScopeToggle({ scope, onScopeChange }: ScopeToggleProps) {
-  return (
-    <div role="group" aria-label="View scope" className="scene-nav-toolbar__modes">
-      {VIEW_SCOPE_BUTTONS.map(({ label, scope: buttonScope }) => (
-        <button
-          key={buttonScope}
-          type="button"
-          className="scene-nav-toolbar__mode"
-          aria-pressed={scope === buttonScope}
-          onClick={() => onScopeChange(buttonScope)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-interface ModeToggleProps {
-  mode: NavMode
-  onModeChange: (mode: NavMode) => void
-}
-
-/** The orbit/walk camera modes as a segmented toggle; the active mode is pressed. */
-function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
-  return (
-    <div role="group" aria-label="Camera mode" className="scene-nav-toolbar__modes">
-      {NAV_MODE_BUTTONS.map(({ label, mode: buttonMode }) => (
-        <button
-          key={buttonMode}
-          type="button"
-          className="scene-nav-toolbar__mode"
-          aria-pressed={mode === buttonMode}
-          onClick={() => onModeChange(buttonMode)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 interface ToolbarToggleProps {
@@ -293,7 +236,7 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         disabled={props.scope === 'floor'}
       />
       <ModeToggle mode={props.mode} onModeChange={props.onModeChange} />
-      {/* Click-to-select is opt-in: a pressed toggle reflects whether selecting is currently on. */}
+      {/* Click-to-select defaults on: a pressed toggle reflects whether selecting is currently on. */}
       <ToolbarToggle
         label="Select"
         pressed={props.selectionEnabled}

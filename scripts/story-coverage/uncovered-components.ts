@@ -128,6 +128,18 @@ export const UNCOVERED_COMPONENTS: {
       'the display-options group (the surface-edge overlay toggle) that sits beside the environment controls extracted from scene-nav-toolbar.tsx; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
   },
   {
+    component: 'ScopeToggle',
+    file: 'bridge/react/scene-nav-segmented-toggles.tsx',
+    reason:
+      'the view-scope segmented toggle (this floor or the whole building) extracted from scene-nav-toolbar.tsx; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
+    component: 'ModeToggle',
+    file: 'bridge/react/scene-nav-segmented-toggles.tsx',
+    reason:
+      'the orbit/walk camera-mode segmented toggle extracted from scene-nav-toolbar.tsx; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
     component: 'SceneHarnessView',
     file: 'bridge/react/scene-harness-view.tsx',
     reason:
