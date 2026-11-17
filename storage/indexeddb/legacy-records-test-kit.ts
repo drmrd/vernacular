@@ -214,3 +214,11 @@ export async function deleteStoredFile(name: string, path: string): Promise<void
     database.close()
   }
 }
+
+/**
+ * Deletes the database of this name now, for a test that has to use a name it cannot choose, such
+ * as the default one of the application.
+ */
+export function deleteDatabaseNamed(name: string): Promise<void> {
+  return deleteDatabase(name)
+}
