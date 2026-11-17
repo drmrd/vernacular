@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { CanvasProps, GLProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -169,6 +169,8 @@ describe('SceneRendererCanvas', () => {
 
 // The wording and role that SceneCanvas already uses when the browser has no 3D backend at all.
 const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
+const COULD_NOT_LOAD_MESSAGE =
+  'Could not load the 3D view. Check your network connection, then retry.'
 
 // Vitest fails the whole run on an unhandled rejection but names no test. This listener records
 // the rejections that Node reports while one case runs, so the case that caused one fails itself.
@@ -213,40 +215,20 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     expect(screen.queryByTestId('child')).toBeNull()
   })
 
+  it('offers no retry when init() rejects', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.resolve(start.factory))
+    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
   it('leaves no unhandled rejection when init() rejects', async () => {
     renderWrapper()
     await settle(() => start.loaded.resolve(start.factory))
     await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
 
     expect(await rejections.read()).toEqual([])
-  })
-
-  it('shows the same status when the renderer factory fails to load', async () => {
-    renderWrapper()
-    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
-
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
-    expect(screen.queryByTestId('canvas')).toBeNull()
-  })
-
-  it('leaves no unhandled rejection when the renderer factory fails to load', async () => {
-    renderWrapper()
-    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
-
-    expect(await rejections.read()).toEqual([])
-  })
-
-  it('lets a later mount succeed after a failed load', async () => {
-    const failed = renderWrapper()
-    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
-    failed.unmount()
-
-    const retry = arrangeStartUp()
-    renderWrapper()
-    await settle(() => retry.loaded.resolve(retry.factory))
-
-    expect(screen.queryByRole('status')).toBeNull()
-    expect(screen.getByTestId('canvas')).toBeInTheDocument()
   })
 
   it('shows the cannot-render status and builds nothing to release when the renderer factory throws', async () => {
@@ -266,6 +248,66 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
       expect.objectContaining({ then: expect.any(Function) }),
     )
     expect(collaborators.released).toEqual([])
+    expect(await rejections.read()).toEqual([])
+  })
+})
+
+const LOAD_FAILURE = new Error('the renderer chunk failed to load')
+
+describe('SceneRendererCanvas when the renderer module does not load', () => {
+  let start: Harness
+  let rejections: ReturnType<typeof recordUnhandledRejections>
+
+  beforeEach(() => {
+    collaborators.canvasProps = []
+    start = arrangeStartUp()
+    rejections = recordUnhandledRejections()
+  })
+
+  afterEach(() => {
+    rejections.stop()
+  })
+
+  it('shows the could-not-load alert with a Retry button and no cannot-render status', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByTestId('canvas')).toBeNull()
+  })
+
+  it('leaves no unhandled rejection when the renderer factory fails to load', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+
+    expect(await rejections.read()).toEqual([])
+  })
+
+  it('returns to the placeholder while Retry loads, then mounts the Canvas once it loads', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+    const retry = arrangeStartUp()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(document.querySelector('canvas')).not.toBeNull()
+    expect(screen.queryByTestId('canvas')).toBeNull()
+    await settle(() => retry.loaded.resolve(retry.factory))
+    expect(screen.getByTestId('canvas')).toBeInTheDocument()
+  })
+
+  it('shows the could-not-load alert again when the retried load also fails', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+    const retry = arrangeStartUp()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await settle(() => retry.loaded.reject(LOAD_FAILURE))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
     expect(await rejections.read()).toEqual([])
   })
 })
