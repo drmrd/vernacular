@@ -115,6 +115,22 @@ describe('applyOpeningMotionForNode', () => {
     expect(group?.position.z).toBeCloseTo(0, PRECISION)
   })
 
+  it('rests a whole-group slide at position zero without rotation when shut again', () => {
+    const node = pocketDoor()
+    const root = rootWith(node)
+
+    applyOpeningMotionForNode(root, node, 1)
+    expect(fillOf(root, node).position.length()).toBeGreaterThan(0)
+
+    applyOpeningMotionForNode(root, node, 0)
+
+    const group = fillOf(root, node)
+    expect(group.position.x).toBeCloseTo(0, PRECISION)
+    expect(group.position.y).toBeCloseTo(0, PRECISION)
+    expect(group.position.z).toBeCloseTo(0, PRECISION)
+    expect(group.quaternion.w).toBeCloseTo(1, PRECISION)
+  })
+
   it('swings a door off its built pose and rests it shut at zero', () => {
     const node = singleSwingDoor()
     const root = rootWith(node)
