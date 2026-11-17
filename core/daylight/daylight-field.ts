@@ -13,6 +13,16 @@ export const SKY_VISIBILITY_CHANNEL = 3
 /** Sky visibility of a cell that sees the whole open sky. */
 export const OPEN_SKY_VISIBILITY = 1
 
+/**
+ * Net share of visible light that a window passes over its whole opening area (the span width
+ * times the height from sill to head, so the frame and the sash are included), when its input
+ * names none: one number for the glass, the frame, and any glazing bars. Dirt has no factor.
+ */
+export const DEFAULT_WINDOW_NET_TRANSMITTANCE = 0.8
+
+/** Net share of light that an open doorway passes. */
+export const OPEN_DOORWAY_NET_TRANSMITTANCE = 1
+
 /** An opening in a room's outline that lets light in from the sky or from a neighbor room. */
 export interface DaylightAperture {
   /** The two end points of the opening, in plan millimetres, on the room outline. */
@@ -27,7 +37,10 @@ export interface DaylightAperture {
   opensTo: 'sky' | { room: number }
   /**
    * Net transmittance of the opening, from 0 to 1: the share of visible light that it passes
-   * over its whole area, frame and sash included. Leave it out for 1.
+   * over its whole area, frame and sash included. Leave it out for the default:
+   * DEFAULT_WINDOW_NET_TRANSMITTANCE for an opening to the sky, and
+   * OPEN_DOORWAY_NET_TRANSMITTANCE for a doorway to a neighbor room. An open exterior door is
+   * an opening to the sky with 1.
    */
   netTransmittance?: number
 }

@@ -5,6 +5,8 @@ import type { DaylightAperture, DaylightField, DaylightRoom } from './daylight-f
 import {
   createDaylightField,
   daylightFieldCellIndex,
+  DEFAULT_WINDOW_NET_TRANSMITTANCE,
+  OPEN_DOORWAY_NET_TRANSMITTANCE,
   SKY_VISIBILITY_CHANNEL,
 } from './daylight-field'
 import type { WallRectangle } from './form-factor'
@@ -110,16 +112,20 @@ function apertureGeometry(opening: Opening): ApertureGeometry {
   const [start, end] = aperture.span
   const width = Math.hypot(end.x - start.x, end.y - start.y)
   const openingArea = width * Math.max(0, aperture.head - aperture.sill)
-  const netTransmittance = aperture.netTransmittance ?? 1
   if (aperture.opensTo === 'sky') {
     return {
       kind: 'sky',
       direction: skyDirection(opening.outwardNormal),
       openingArea,
-      netTransmittance,
+      netTransmittance: aperture.netTransmittance ?? DEFAULT_WINDOW_NET_TRANSMITTANCE,
     }
   }
-  return { kind: 'doorway', neighbor: aperture.opensTo.room, openingArea, netTransmittance }
+  return {
+    kind: 'doorway',
+    neighbor: aperture.opensTo.room,
+    openingArea,
+    netTransmittance: aperture.netTransmittance ?? OPEN_DOORWAY_NET_TRANSMITTANCE,
+  }
 }
 
 /** Form factor from a work-plane point to the part of an opening that its reveal leaves visible. */
