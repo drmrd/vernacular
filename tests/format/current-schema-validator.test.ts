@@ -24,6 +24,8 @@ const CHECK_TIMEOUT_MS = 30_000
 
 const STRICT_VALIDATOR_FILE = 'core/format/generated/current-schema-validator.js'
 const TOLERANT_VALIDATOR_FILE = 'core/format/generated/tolerant-schema-validator.js'
+const STRICT_DECLARATION_FILE = 'core/format/generated/current-schema-validator.d.ts'
+const TOLERANT_DECLARATION_FILE = 'core/format/generated/tolerant-schema-validator.d.ts'
 
 const UNKNOWN_FIELD = 'x-unknown'
 const NAMESPACE = 'com.example.solar'
@@ -171,6 +173,16 @@ function runSchemaCheck(file: string, change: (committed: string) => string) {
 describe('the generated validators under drift control', () => {
   it.each([STRICT_VALIDATOR_FILE, TOLERANT_VALIDATOR_FILE])(
     'makes the schema check fail and name %s when that file is stale',
+    { timeout: CHECK_TIMEOUT_MS },
+    (file) => {
+      const result = runSchemaCheck(file, (committed) => committed + '// stale\n')
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(file)
+    },
+  )
+
+  it.each([STRICT_DECLARATION_FILE, TOLERANT_DECLARATION_FILE])(
+    'makes the schema check fail and name %s when that declaration is stale',
     { timeout: CHECK_TIMEOUT_MS },
     (file) => {
       const result = runSchemaCheck(file, (committed) => committed + '// stale\n')
