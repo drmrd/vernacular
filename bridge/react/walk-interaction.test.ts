@@ -10,7 +10,12 @@ import {
 } from '../../core'
 import { buildScene, NeutralMaterialProvider, type SceneRoot } from '../../engine'
 
-import { interactFromWalk, restoreOpenings, tickOpenings } from './walk-interaction'
+import {
+  followStoredOpenings,
+  interactFromWalk,
+  restoreOpenings,
+  tickOpenings,
+} from './walk-interaction'
 
 const DOOR_ID = 'opening:front-door'
 
@@ -244,5 +249,46 @@ describe('restoreOpenings', () => {
 
     expect(fillGroupPose(rebuiltScene, DOOR_ID)).toEqual(fillGroupPose(earlierScene, DOOR_ID))
     expect(openness.get(DOOR_ID)).toBe(FULLY_OPEN)
+  })
+})
+
+describe('followStoredOpenings', () => {
+  it('closes every door when the session store holds none open', () => {
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+
+    const followed = followStoredOpenings(open, new Set())
+
+    expect(isOpeningOpen(followed, DOOR_ID)).toBe(false)
+  })
+
+  it('leaves the interaction as it is when the store holds the same doors open', () => {
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+
+    const followed = followStoredOpenings(open, new Set([DOOR_ID]))
+
+    expect(followed).toBe(open)
+  })
+
+  it('opens a door the store holds open that the interaction lacks, holding a copy of the stored set', () => {
+    const stored: ReadonlySet<string> = new Set([DOOR_ID])
+
+    const followed = followStoredOpenings(emptyOpeningInteraction(), stored)
+
+    expect(isOpeningOpen(followed, DOOR_ID)).toBe(true)
+    expect(followed.openIds).not.toBe(stored)
+  })
+
+  it('lets a door that was swung fully open swing back to its built pose once the store closes it', () => {
+    const door = frontDoor()
+    const root = sceneWith(door)
+    const builtPose = fillGroupPose(root, DOOR_ID)
+    const openness = new Map([[DOOR_ID, FULLY_OPEN]])
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+
+    const followed = followStoredOpenings(open, new Set())
+    tickOpenings({ root, openings: [door], interaction: followed, openness }, FULL_STEP)
+
+    expect(openness.get(DOOR_ID)).toBe(0)
+    expect(fillGroupPose(root, DOOR_ID)).toEqual(builtPose)
   })
 })
