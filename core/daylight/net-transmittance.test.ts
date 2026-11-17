@@ -11,7 +11,10 @@ import {
 } from './sky-visibility'
 
 const TOLERANCE = 1e-6
-const HALF = 0.5
+// The share of the sky dome that a vertical opening sees.
+const VERTICAL_OPENING_SKY_SHARE = 0.5
+// The net transmittance under test, chosen apart from the sky share so the two factors differ.
+const NET_TRANSMITTANCE = 0.25
 const ROOM_WIDTH = 4000
 const ROOM_DEPTH = 3000
 const CEILING_HEIGHT = 2600
@@ -88,13 +91,14 @@ function roomsWithDoorwayToOpenSky(netTransmittance: number): DaylightRoom[] {
 
 describe('the net transmittance of an aperture', () => {
   it('scales the light that a window lets into the room', () => {
-    const solver = createDaylightFieldSolver([roomWithEastWindow(HALF)])
-    const expected = HALF * HALF * WINDOW_WIDTH * (HEAD - SILL)
+    const solver = createDaylightFieldSolver([roomWithEastWindow(NET_TRANSMITTANCE)])
+    // 0.5 * 0.25 * 1000 * 1200 = 150000
+    const expected = VERTICAL_OPENING_SKY_SHARE * NET_TRANSMITTANCE * WINDOW_WIDTH * (HEAD - SILL)
     expect(Math.abs(solver.enteringFlux(0, UNIFORM_SKY) - expected)).toBeLessThan(TOLERANCE)
   })
 
-  it('scales the direct light of a window-lit cell but not the inter-reflection', () => {
-    const solver = createDaylightFieldSolver([roomWithEastWindow(HALF)])
+  it('scales the direct light of a window-lit cell, and the inter-reflection through the entering flux', () => {
+    const solver = createDaylightFieldSolver([roomWithEastWindow(NET_TRANSMITTANCE)])
     const factor = horizontalPointToWallRectangle(
       {
         x0: WINDOW_NEAR_EDGE_MM,
@@ -104,14 +108,16 @@ describe('the net transmittance of an aperture', () => {
       },
       FOOT_TO_WALL_MM,
     )
-    const expected = HALF * factor + solver.interreflection(0, UNIFORM_SKY)
+    const expected = NET_TRANSMITTANCE * factor + solver.interreflection(0, UNIFORM_SKY)
     const sampled = sampleSkyVisibility(solver.field(UNIFORM_SKY), CELL_CENTER)
     expect(Math.abs(sampled - expected)).toBeLessThan(TOLERANCE)
   })
 
   it('scales the light that a doorway to a room open to the sky passes', () => {
-    const solver = createDaylightFieldSolver(roomsWithDoorwayToOpenSky(HALF))
-    const expected = HALF * HALF * DOORWAY_WIDTH * (HEAD - DOORWAY_SILL)
+    const solver = createDaylightFieldSolver(roomsWithDoorwayToOpenSky(NET_TRANSMITTANCE))
+    // 0.5 * 0.25 * 1000 * 2100 = 262500
+    const expected =
+      VERTICAL_OPENING_SKY_SHARE * NET_TRANSMITTANCE * DOORWAY_WIDTH * (HEAD - DOORWAY_SILL)
     expect(Math.abs(solver.enteringFlux(0, UNIFORM_SKY) - expected)).toBeLessThan(TOLERANCE)
   })
 })

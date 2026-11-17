@@ -14,11 +14,17 @@ const ROOM_DEPTH = 3000
 const HALL_WIDTH = 2000
 const CEILING_HEIGHT = 2600
 const WINDOW_SILL = 900
+const WINDOW_HEAD = 2100
 const DOORWAY_HEAD = 2100
-const DOORWAY_WIDTH = 1000
+const DOORWAY_START = 1000
+const DOORWAY_END = 2000
+const DOORWAY_WIDTH = DOORWAY_END - DOORWAY_START
 const WORK_PLANE_HEIGHT = 850
 // The test room: (12e6 * 0.5 + 48.4e6 * 0.66) / 60.4e6, the floor at 0.5 and the rest unpainted.
 const TEST_ROOM_REFLECTANCE = 0.6282119
+// The hall cell that the second test samples: 950 mm from the doorway wall (x = 0) and level with
+// the doorway's middle, so the doorway lies 550 mm to one side and 450 mm to the other.
+const HALL_CELL: Point = { x: -950, y: 1550 }
 const GRAY: LinearRgb = { r: 0.5, g: 0.5, b: 0.5 }
 const WHITE: LinearRgb = { r: 1, g: 1, b: 1 }
 
@@ -44,9 +50,9 @@ const testRoom: DaylightRoom = {
   floorColor: GRAY,
   apertures: [
     {
-      span: verticalSpan(ROOM_WIDTH, 1000, 2000),
+      span: verticalSpan(ROOM_WIDTH, DOORWAY_START, DOORWAY_END),
       sill: WINDOW_SILL,
-      head: DOORWAY_HEAD,
+      head: WINDOW_HEAD,
       revealDepth: 0,
       opensTo: 'sky',
     },
@@ -59,7 +65,7 @@ const hall: DaylightRoom = {
   floorColor: GRAY,
   apertures: [
     {
-      span: verticalSpan(0, 1000, 2000),
+      span: verticalSpan(0, DOORWAY_START, DOORWAY_END),
       sill: 0,
       head: DOORWAY_HEAD,
       revealDepth: 0,
@@ -96,17 +102,27 @@ describe('a doorway weighs the luminance of the room it opens to', () => {
     const solver = createDaylightFieldSolver(rooms)
     const field = solver.field(UNIFORM_SKY)
     const doorwayFromCell = horizontalPointToWallRectangle(
-      { x0: -550, x1: 450, z0: 0, z1: DOORWAY_HEAD - WORK_PLANE_HEIGHT },
-      950,
+      {
+        x0: DOORWAY_START - HALL_CELL.y,
+        x1: DOORWAY_END - HALL_CELL.y,
+        z0: 0,
+        z1: DOORWAY_HEAD - WORK_PLANE_HEIGHT,
+      },
+      -HALL_CELL.x,
     )
     const expected =
       doorwayFromCell * mean * TEST_ROOM_REFLECTANCE + solver.interreflection(1, UNIFORM_SKY)
-    const actual = sampleSkyVisibility(field, { x: -950, y: 1550 })
+    const actual = sampleSkyVisibility(field, HALL_CELL)
     expect(Math.abs(actual - expected)).toBeLessThan(TOLERANCE)
   })
 })
 
-describe('a hall never receives more flux than the room that lights it', () => {
+// The largest hall-to-source flux ratio of the sweep below is 0.7241 (a 500 by 6000 mm source with
+// a white floor), rounded up. The bound holds for these room proportions and is not a general law:
+// a very long and narrow source with a high ceiling can exceed 1.
+const MAX_HALL_TO_SOURCE_FLUX_RATIO = 0.73
+
+describe('a hall receives at most a bounded share of the flux that lights its source room', () => {
   const sweep = [
     { width: 500, depth: 6000 },
     { width: 1000, depth: 6000 },
@@ -154,7 +170,8 @@ describe('a hall never receives more flux than the room that lights it', () => {
     'holds for a source $width by $depth mm with a floor of reflectance $label',
     ({ width, depth, floorColor }) => {
       const solver = createDaylightFieldSolver(sourceAndHall(width, depth, floorColor))
-      expect(solver.enteringFlux(1, UNIFORM_SKY)).toBeLessThan(solver.enteringFlux(0, UNIFORM_SKY))
+      const ratio = solver.enteringFlux(1, UNIFORM_SKY) / solver.enteringFlux(0, UNIFORM_SKY)
+      expect(ratio).toBeLessThanOrEqual(MAX_HALL_TO_SOURCE_FLUX_RATIO)
     },
   )
 })
