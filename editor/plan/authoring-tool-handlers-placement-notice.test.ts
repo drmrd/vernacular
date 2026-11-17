@@ -4,7 +4,7 @@ import { createSelectionStore } from '../../bridge'
 import type { Opening, SceneGraph, WallSceneNode } from '../../core'
 import { createOpening } from '../../core'
 import { handleOpeningKey, type AuthoringRun } from './authoring-tool-handlers'
-import type { PlacementRefusal } from './overlay-announce'
+import { placementRefusalMessage, type PlacementRefusal } from './overlay-announce'
 
 const FLOOR_ID = 'g'
 // The wall runs along y = 0, so a candidate at y = 0 lands on it and one 500 mm
@@ -83,6 +83,14 @@ describe('handleOpeningKey reports its outcome to the placement notice', () => {
     pressOnOpeningTool(run, 'Enter', setPlacementRefusal)
 
     expect(setPlacementRefusal).toHaveBeenCalledWith('no-host-wall')
+  })
+
+  it('announces the sentence the notice shows when Enter drops a candidate clear of every wall', () => {
+    const run = runWithCandidate([], { x: WALL_MIDPOINT_X, y: CLEAR_OF_WALL_Y })
+
+    pressOnOpeningTool(run, 'Enter', vi.fn())
+
+    expect(run.setAnnouncement).toHaveBeenCalledWith(placementRefusalMessage('no-host-wall'))
   })
 
   it('reports an overlap when Enter drops onto a door already in the wall', () => {
