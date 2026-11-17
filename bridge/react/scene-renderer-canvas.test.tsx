@@ -31,6 +31,7 @@ const collaborators = vi.hoisted(() => ({
 
 vi.mock('../../engine', () => ({
   loadSceneRendererFactory: () => collaborators.loadFactory(),
+  releaseSceneRenderer: () => Promise.resolve(),
 }))
 
 // The stand-in Canvas records every render's props, renders its children as the real one does
