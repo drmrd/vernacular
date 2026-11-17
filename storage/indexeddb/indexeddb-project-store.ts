@@ -1,5 +1,5 @@
 import type { Project } from '../../core'
-import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from '../project-store'
+import { ProjectNotFoundError, type IndexedDbStore, type ProjectSummary } from '../project-store'
 
 const DB_NAME = 'vernacular'
 const STORE_NAME = 'projects'
@@ -29,11 +29,11 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 /**
- * Durable ProjectStore backed by IndexedDB. This is the single seam that touches
+ * Durable store backed by IndexedDB. This is the single seam that touches
  * IndexedDB; it is validated by the wall-drawing end-to-end spec rather than unit
  * tests, since jsdom does not implement IndexedDB.
  */
-export class IndexedDbProjectStore implements ProjectStore {
+export class IndexedDbProjectStore implements IndexedDbStore {
   async list(): Promise<ProjectSummary[]> {
     const db = await openDatabase()
     const records = await promisify(
@@ -41,7 +41,7 @@ export class IndexedDbProjectStore implements ProjectStore {
         StoredProject[]
       >,
     )
-    return records.map((record) => ({ id: record.id, name: record.project.meta.name }))
+    return records.map((record) => ({ id: record.id, lastChangedAt: undefined }))
   }
 
   async load(id: string): Promise<Project> {
@@ -70,6 +70,6 @@ export class IndexedDbProjectStore implements ProjectStore {
 }
 
 /** The default durable store for the running app. */
-export function createDefaultProjectStore(): ProjectStore {
+export function createDefaultProjectStore(): IndexedDbStore {
   return new IndexedDbProjectStore()
 }

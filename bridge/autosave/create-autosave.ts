@@ -50,7 +50,7 @@ export function createAutosave(config: AutosaveConfig): Autosave {
   // Resolve the persistence strategy once: with snapshots configured we write
   // ahead, otherwise we save canonically. persist() then closes over a single
   // write function with no per-call branching.
-  const write: (project: Project) => Promise<void> = snapshots
+  const write: (project: Project) => Promise<unknown> = snapshots
     ? async (project) => {
         // Write ahead to a snapshot first so a crash mid-save still recovers the
         // edit, then save canonically, then prune. prune() runs only after the

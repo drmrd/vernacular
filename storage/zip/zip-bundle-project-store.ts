@@ -1,10 +1,9 @@
-import { bestEffortProjectName } from '../../core'
+import { DocumentStore } from '../documents/document-store'
+import { ProjectNotFoundError } from '../project-store'
 import type { Project } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import type { DirectoryPort } from '../fs/directory-port'
-import { FolderProjectStore } from '../folder/folder-project-store'
-import { PROJECT_FILE } from '../project-files/project-file-name'
-import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from '../project-store'
+import { FolderFiles } from '../project-files/folder-files'
 import { zipFolder, unzipFolder, type FolderEntries } from './zip-codec'
 import type { AssetCache } from '../asset-cache'
 import { DirectoryAssetCache } from '../directory-asset-cache'
@@ -25,18 +24,24 @@ async function collectFilePaths(directory: DirectoryPort, prefix: string): Promi
 }
 
 /**
- * Single-project ProjectStore bound to one id, backed by an in-memory expansion of a
- * .building bundle. Loading and saving delegate to a FolderProjectStore over the same
- * directory; exportBundle repacks the current directory contents into bundle bytes.
+ * Single-project store bound to one id, backed by an in-memory expansion of a .building bundle.
+ * It is the document store over the bundle's directory, which holds one project at its root;
+ * exportBundle repacks the current directory contents into bundle bytes.
  */
-export class ZipBundleProjectStore implements ProjectStore {
-  private readonly folder: FolderProjectStore
-
+export class ZipBundleProjectStore extends DocumentStore {
   constructor(
-    private readonly id: string,
-    private readonly directory: InMemoryDirectory = new InMemoryDirectory(),
+    private readonly bundleId: string,
+    private readonly directory: DirectoryPort = new InMemoryDirectory(),
   ) {
-    this.folder = new FolderProjectStore(this.directory)
+    super(new FolderFiles(bundleId, directory, { durable: false }))
+  }
+
+  /** Rejects a foreign id with the id-keyed error, as the bundle holds one project. */
+  override async load(id: string): Promise<Project> {
+    if (id !== this.bundleId) {
+      throw new ProjectNotFoundError(id)
+    }
+    return super.load(id)
   }
 
   static async fromBundle(id: string, bytes: Uint8Array): Promise<ZipBundleProjectStore> {
@@ -46,39 +51,6 @@ export class ZipBundleProjectStore implements ProjectStore {
       await directory.writeFile(path, content)
     }
     return new ZipBundleProjectStore(id, directory)
-  }
-
-  async list(): Promise<ProjectSummary[]> {
-    if (!(await this.folder.exists())) {
-      return []
-    }
-    const bytes = await this.directory.readFile(PROJECT_FILE)
-    if (bytes === undefined) {
-      return []
-    }
-    // Listing reads the stored name without a migration or a schema check, so a newer file is still listed.
-    const name = bestEffortProjectName(bytes) ?? ''
-    return [{ id: this.id, name }]
-  }
-
-  async load(id: string): Promise<Project> {
-    this.assertBoundId(id)
-    if (!(await this.folder.exists())) {
-      throw new ProjectNotFoundError(id)
-    }
-    return this.folder.loadProject()
-  }
-
-  async save(id: string, project: Project): Promise<void> {
-    this.assertBoundId(id)
-    await this.folder.saveProject(project)
-  }
-
-  async delete(id: string): Promise<void> {
-    this.assertBoundId(id)
-    for (const path of await collectFilePaths(this.directory, '')) {
-      await this.directory.removeFile(path)
-    }
   }
 
   assetCache(): AssetCache {
@@ -94,11 +66,5 @@ export class ZipBundleProjectStore implements ProjectStore {
       }
     }
     return zipFolder(entries)
-  }
-
-  private assertBoundId(id: string): void {
-    if (id !== this.id) {
-      throw new ProjectNotFoundError(id)
-    }
   }
 }
