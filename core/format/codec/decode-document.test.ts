@@ -41,6 +41,18 @@ function valueOf(result: DecodeResult): DecodedDocument {
   return result.value
 }
 
+function decodedWall(value: DecodedDocument): Json {
+  const wall = value.project.floors[0]?.walls[0]
+  if (wall === undefined) throw new Error('The decoded project has no wall')
+  return Object.fromEntries(Object.entries(wall))
+}
+
+function decodedPaintEntry(value: DecodedDocument, key: string): Json {
+  const entry = value.project.paint?.[key]
+  if (entry === undefined) throw new Error(`The decoded project has no paint entry ${key}`)
+  return entry as Json
+}
+
 function metaOf(document: Json): Json {
   return document.meta as Json
 }
@@ -157,7 +169,7 @@ describe('decoding a document saved at a higher revision', () => {
   it('keeps an unknown field on a wall and says that a newer build saved it', () => {
     const document = atNewerRevision(withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION)))
     const value = valueOf(decodeDocument(bytesOf(document)))
-    expect((value.project.floors[0]?.walls[0] as Json)[UNKNOWN_FIELD]).toBe(1)
+    expect(decodedWall(value)[UNKNOWN_FIELD]).toBe(1)
     expect(value.savedByNewerBuild).toBe(true)
   })
 
@@ -166,7 +178,7 @@ describe('decoding a document saved at a higher revision', () => {
     const key = paintKeyOfKind(document, 'solid')
     paintOf(document)[key]![UNKNOWN_FIELD] = true
     const value = valueOf(decodeDocument(bytesOf(document)))
-    expect((value.project.paint[key] as Json)[UNKNOWN_FIELD]).toBe(true)
+    expect(decodedPaintEntry(value, key)[UNKNOWN_FIELD]).toBe(true)
     expect(value.savedByNewerBuild).toBe(true)
   })
 })
