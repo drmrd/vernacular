@@ -60,39 +60,36 @@ type HeldRenderer = {
 
 type RendererRelease = {
   hold: (renderer: HeldRenderer['renderer'], started: Promise<unknown>) => void
+  isCurrent: (renderer: HeldRenderer['renderer']) => boolean
   release: () => void
 }
 
-// Keeps the renderer the wrapper built, and releases it once: on demand, or when the wrapper
-// unmounts, also while its init() is still pending. Releasing clears the ref, so a renderer
-// released after a failed start is not released again on unmount. The hook owns the ref, so
-// callers only hand over a renderer and ask for its release.
+// Keeps the renderer the wrapper built last, which is the current renderer, and releases each
+// renderer once: when a newer one supersedes it, on demand, or when the wrapper unmounts, also
+// while its init() is still pending. Releasing clears the ref, so nothing is current after a
+// release and a renderer released after a failed start is not released again on unmount. The
+// hook owns the ref, so callers only hand over a renderer and ask for its release.
 function useRendererRelease(): RendererRelease {
   const held = useRef<HeldRenderer | null>(null)
-  const hold = useCallback((renderer: HeldRenderer['renderer'], started: Promise<unknown>) => {
-    held.current = { renderer, started }
-  }, [])
   const release = useCallback(() => {
     const current = held.current
     if (current === null) return
     held.current = null
     void releaseSceneRenderer(current.renderer, current.started)
   }, [])
+  const hold = useCallback(
+    (renderer: HeldRenderer['renderer'], started: Promise<unknown>) => {
+      release()
+      held.current = { renderer, started }
+    },
+    [release],
+  )
+  const isCurrent = useCallback(
+    (renderer: HeldRenderer['renderer']) => held.current?.renderer === renderer,
+    [],
+  )
   useEffect(() => release, [release])
-  return { hold, release }
-}
-
-// Tells whether the wrapper is still mounted, so a late init() result does not set state after
-// unmount.
-function useMountedRef() {
-  const mounted = useRef(true)
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
-  return mounted
+  return { hold, isCurrent, release }
 }
 
 // React Three Fiber's Canvas re-runs its setup on every render, and each run reads the
@@ -100,15 +97,15 @@ function useMountedRef() {
 // window in which a second render starts a second setup that builds a second renderer and a
 // second default camera, neither of which is ever sized. So the factory loads before the
 // Canvas mounts and constructs the renderer synchronously, and the backend's asynchronous
-// init() starts here, outside React Three Fiber's setup. The library still awaits the
-// factory's result for one microtask, so only a render of the Canvas inside that same task
-// could land in the window; no such path exists today.
+// init() starts here, outside React Three Fiber's setup. The library may still ask for a
+// renderer more than once, for example under StrictMode. The window is closed this way: the
+// renderer asked for last is the current one, a newer renderer releases the older one at once,
+// and only the current renderer's init() can set the status.
 function useSceneRendererStart(forceWebGL: boolean) {
   const [status, setStatus] = useState<SceneRendererStatus>('loading')
   const [loadAttempt, setLoadAttempt] = useState(0)
   const rendererFactory = useSceneRendererFactory(setStatus, loadAttempt)
-  const { hold, release } = useRendererRelease()
-  const mounted = useMountedRef()
+  const { hold, isCurrent, release } = useRendererRelease()
   const createRenderer = useMemo<GLProps | null>(() => {
     if (rendererFactory === null) return null
     return (defaultProps) => {
@@ -120,7 +117,7 @@ function useSceneRendererStart(forceWebGL: boolean) {
         renderer = rendererFactory({ canvas, forceWebGL })
       } catch (error) {
         logStartFailure('build', error)
-        if (mounted.current) setStatus('failed')
+        setStatus('failed')
         // GLProps types a gl function as all-Renderer or all-Promise, and this one returns both.
         return NEVER_SETTLES as unknown as HeldRenderer['renderer']
       }
@@ -128,17 +125,18 @@ function useSceneRendererStart(forceWebGL: boolean) {
       hold(renderer, started)
       started.then(
         () => {
-          if (mounted.current) setStatus('ready')
+          if (isCurrent(renderer)) setStatus('ready')
         },
         (error: unknown) => {
           logStartFailure('start', error)
+          if (!isCurrent(renderer)) return
           release()
-          if (mounted.current) setStatus('failed')
+          setStatus('failed')
         },
       )
       return renderer
     }
-  }, [rendererFactory, forceWebGL, hold, mounted, release])
+  }, [rendererFactory, forceWebGL, hold, isCurrent, release])
   const retryLoad = useCallback(() => {
     setStatus('loading')
     setLoadAttempt((attempt) => attempt + 1)
@@ -160,7 +158,8 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * pending. Opening and closing the view any number of times therefore leaves no renderer and no
  * animation loop alive. A renderer module that does not load ends in a could-not-load state with a
  * Retry. A renderer that cannot be built or started ends in the cannot-render state. Each stays
- * until a retry or a new mount.
+ * until a retry or a new mount. Under StrictMode the library may ask for a renderer twice; the
+ * wrapper follows the last one and releases the other.
  */
 export function SceneRendererCanvas({
   forceWebGL = false,
