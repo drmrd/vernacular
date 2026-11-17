@@ -5,6 +5,7 @@ import {
   type Point,
   type RoomSceneNode,
   type SceneGraph,
+  withRoomSide,
 } from '../../core'
 import { buildAdjacentRoomsFixture } from './adjacent-rooms-fixture'
 
@@ -63,12 +64,20 @@ const SHELL_ROOM: RoomSceneNode = {
   ceilingHeight: SHELL_HEIGHT,
 }
 
+// The room side of a hand-built opening, from the same rule the derived scene graph uses.
+// The literal shell walls are 120 mm with no construction profile, so their raw and effective
+// thickness are both SHELL_THICKNESS.
+function withShellRoomSide(node: OpeningSceneNode): OpeningSceneNode {
+  return withRoomSide(node, [SHELL_ROOM], SHELL_THICKNESS)
+}
+
 // A single-swing door centered in the south wall, so the harness baseline shows a
 // real void cut through a wall (head and jambs lined with reveals, open to the
 // floor). `hostWallId` is the south wall's model id (the `wall:` prefix stripped).
 const DOOR_WIDTH = 900
 const DOOR_HEIGHT = 2032
-const SHELL_DOOR: OpeningSceneNode = {
+// The room lies on the +y side of the south wall, so the door's room side is 'positive'.
+const SHELL_DOOR: OpeningSceneNode = withShellRoomSide({
   id: 'opening:south-door',
   kind: 'opening',
   floorId: 'demo',
@@ -82,7 +91,7 @@ const SHELL_DOOR: OpeningSceneNode = {
   sillHeight: 0,
   hostThickness: SHELL_THICKNESS,
   orientation: { hinge: 'start', facing: 'positive' },
-}
+})
 
 // A double-hung window centered in the east wall, so the harness baseline shows a
 // sash frame and a semi-transparent glass pane (the room reading through it). The
@@ -90,7 +99,7 @@ const SHELL_DOOR: OpeningSceneNode = {
 const WINDOW_WIDTH = 1000
 const WINDOW_HEIGHT = 1200
 const WINDOW_SILL = 900
-const SHELL_WINDOW: OpeningSceneNode = {
+const EAST_WINDOW_WITHOUT_ROOM_SIDE: OpeningSceneNode = {
   id: 'opening:east-window',
   kind: 'opening',
   floorId: 'demo',
@@ -105,6 +114,8 @@ const SHELL_WINDOW: OpeningSceneNode = {
   hostThickness: SHELL_THICKNESS,
   orientation: { hinge: 'start', facing: 'positive' },
 }
+// The room lies on the -x side of the east wall, so the window's room side is 'negative'.
+const SHELL_WINDOW: OpeningSceneNode = withShellRoomSide(EAST_WINDOW_WITHOUT_ROOM_SIDE)
 
 const SHELL_FIXTURE: SceneGraph = {
   nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
@@ -125,14 +136,15 @@ const SHELL_FIXTURE: SceneGraph = {
 // The shell with one more double-hung window centered at plan x 800 in the south wall,
 // clear of the door (plan x 1550 to 2450), so a south-facing opening can admit daylight.
 const SOUTH_WINDOW_CENTER_X = 800
-const SHELL_SOUTH_WINDOW: OpeningSceneNode = {
-  ...SHELL_WINDOW,
+// The room lies on the +y side of the south wall, so this window's room side is 'positive'.
+const SHELL_SOUTH_WINDOW: OpeningSceneNode = withShellRoomSide({
+  ...EAST_WINDOW_WITHOUT_ROOM_SIDE,
   id: 'opening:south-window',
   hostWallId: 'south',
   center: { x: SOUTH_WINDOW_CENTER_X, y: 0 },
   along: { x: 1, y: 0 },
   normal: { x: 0, y: 1 },
-}
+})
 const SHELL_SOUTH_WINDOW_FIXTURE: SceneGraph = {
   ...SHELL_FIXTURE,
   openings: [...SHELL_FIXTURE.openings, SHELL_SOUTH_WINDOW],
