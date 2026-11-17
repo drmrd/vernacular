@@ -164,3 +164,18 @@ describe('FolderProjectStore save over a stored file that cannot be read', () =>
     expect(warned.some((text) => text.includes('not-json'))).toBe(true)
   })
 })
+
+describe('FolderProjectStore first save with no stored file', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('does not warn, because there is no unknown data to lose', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const store = new FolderProjectStore(new InMemoryDirectory())
+
+    await store.saveProject(nextProject())
+
+    expect(warn).toHaveBeenCalledTimes(0)
+  })
+})

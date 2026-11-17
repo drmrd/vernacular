@@ -73,3 +73,24 @@ describe('encoding over previous bytes of this revision that break the format ru
     expect(encoded.faults.map((fault) => fault.path)).toContain(UNKNOWN_WALL_FIELD_PATH)
   })
 })
+
+const OLDER_VERSION = 16
+const REVISION_OF_AN_OLDER_FILE = 5
+
+describe('encoding over previous bytes of an older schema version', () => {
+  it.each([
+    { name: 'the revision of this build', revision: CURRENT_SCHEMA_REVISION },
+    { name: 'no revision', revision: undefined },
+  ])(
+    'writes the revision of this build, not the one the older file named, when the project has $name',
+    ({ revision }) => {
+      const previous = fixtureDocument(OLDER_VERSION)
+      metaOf(previous).schemaRevision = REVISION_OF_AN_OLDER_FILE
+
+      const encoded = encodeDocument(projectAtRevision(revision), bytesOf(previous))
+
+      expect(metaOf(writtenJson(encoded.bytes)).schemaRevision).toBe(CURRENT_SCHEMA_REVISION)
+      expect(encoded.faults).toEqual([])
+    },
+  )
+})
