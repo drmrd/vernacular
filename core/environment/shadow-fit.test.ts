@@ -282,4 +282,34 @@ describe('shadowFitBounds with input that is not finite', () => {
       expect(fitWithCap(Number.NEGATIVE_INFINITY)).toEqual(CASTERS)
     })
   })
+
+  describe('with a ground box that has a number that is not finite', () => {
+    const EMPTY_GROUND: Bounds3 = {
+      min: { x: Infinity, y: Infinity, z: Infinity },
+      max: { x: -Infinity, y: -Infinity, z: -Infinity },
+    }
+
+    it.each([
+      ['min.x is NaN', { ...GROUND, min: { ...GROUND.min, x: Number.NaN } }, FORTY_FIVE_DEGREES],
+      ['it is an empty box', EMPTY_GROUND, FORTY_FIVE_DEGREES],
+      [
+        'min.y and max.y are -Infinity',
+        {
+          min: { ...GROUND.min, y: Number.NEGATIVE_INFINITY },
+          max: { ...GROUND.max, y: Number.NEGATIVE_INFINITY },
+        },
+        OVERHEAD,
+      ],
+    ])('gives a copy of the casters, with every value finite, when %s', (_name, ground, sun) => {
+      const fit = shadowFitBounds({
+        casters: CASTERS,
+        ground,
+        sunDirection: sun,
+        maxRadius: NO_CAP,
+      })
+      expect(fit).toEqual(CASTERS)
+      expect(fit).not.toBe(CASTERS)
+      expect(numbersOf(fit).every(Number.isFinite)).toBe(true)
+    })
+  })
 })
