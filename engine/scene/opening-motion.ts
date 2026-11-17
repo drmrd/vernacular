@@ -7,14 +7,17 @@ import {
   type OpeningSceneNode,
   type SlideMotion,
 } from '../../core'
+import { openingFillSashOf } from './opening-fill-builder'
 
 /**
- * Transforms an opening fill group (its leaf, sash, and glass, from
- * {@link buildOpeningFill}) to play the resolved {@link OpeningMotion} at the
- * given openness, where 0 is shut and 1 is fully open. The group's box vertices
- * are baked in world space, so each motion composes its transform with a matching
- * offset that keeps the moving part anchored. At openness 0 every motion is the
- * identity, so a shut opening renders exactly as it was built.
+ * Transforms an opening fill group (from buildOpeningFill) to play the resolved OpeningMotion
+ * at the given openness, where 0 is shut and 1 is fully open.
+ * - A hinge, or a slide whose partId is 'primary', transforms the whole group.
+ * - A slide whose partId names a hung-window sash leaves the group at its built transform and
+ *   translates only the child meshes stamped with that sash (see openingFillSashOf) by
+ *   travel * openness. Every other child mesh is left at zero translation.
+ * At openness 0 every motion is the identity: the group and every child mesh sit at zero
+ * translation and identity rotation, so a shut opening renders exactly as it was built.
  */
 export function applyOpeningMotion(
   group: THREE.Object3D,
@@ -55,14 +58,31 @@ export function applyOpeningMotionForNode(
   }
 }
 
-/** Translates the group along the motion's travel vector, scaled by openness. */
+/**
+ * Translates the moving part along the motion's travel vector, scaled by openness: the whole
+ * group for the 'primary' part, or only the meshes of the named sash for a hung window.
+ */
 function applySlide(group: THREE.Object3D, motion: SlideMotion, openness: number): void {
+  if (motion.partId === 'primary') {
+    group.quaternion.identity()
+    group.position.set(
+      motion.travel.x * openness,
+      motion.travel.y * openness,
+      motion.travel.z * openness,
+    )
+    return
+  }
+  slideSash(group, motion, openness)
+}
+
+/** Rests the group at its built transform and translates only the meshes of the motion's sash. */
+function slideSash(group: THREE.Object3D, motion: SlideMotion, openness: number): void {
   group.quaternion.identity()
-  group.position.set(
-    motion.travel.x * openness,
-    motion.travel.y * openness,
-    motion.travel.z * openness,
-  )
+  group.position.set(0, 0, 0)
+  for (const child of group.children) {
+    const scale = openingFillSashOf(child) === motion.partId ? openness : 0
+    child.position.set(motion.travel.x * scale, motion.travel.y * scale, motion.travel.z * scale)
+  }
 }
 
 /**
