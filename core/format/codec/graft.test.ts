@@ -9,8 +9,8 @@ import {
   createEmptyProject,
   type KnownKeyTable,
   type KnownValue,
-} from '../../core'
-import { graftUnknown, graftWithTable, preserveUnknown } from './preserve-unknown'
+} from '../../index'
+import { graftUnknown, graftWithTable, preserveUnknown } from './graft'
 
 describe('graftUnknown object union', () => {
   it('re-grafts a top-level key the next document dropped, keeping next for shared keys', () => {

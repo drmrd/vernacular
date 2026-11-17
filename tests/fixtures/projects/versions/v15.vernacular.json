@@ -630,5 +630,11 @@
     ],
     "gradeElevation": -300,
     "timezone": "America/New_York"
+  },
+  "extensions": {
+    "com.example.solar": {
+      "panelKilowatts": 6.4,
+      "orientation": "south"
+    }
   }
 }
