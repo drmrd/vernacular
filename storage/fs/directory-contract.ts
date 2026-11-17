@@ -115,5 +115,48 @@ export function assertDirectoryPortContract(label: string, makeEmpty: () => Dire
 
       expect(await directory.list('a/doc.json')).toEqual([])
     })
+
+    it('reports no modification time for a path that has no file', async () => {
+      const directory = makeEmpty()
+
+      expect(await directory.modifiedAt('doc.json')).toBeUndefined()
+    })
+
+    it('reports an ISO time no earlier than the clock before a write', async () => {
+      const directory = makeEmpty()
+      const clockBefore = roundDownToSecond(Date.now())
+
+      await directory.writeFile('a/doc.json', bytes(1))
+
+      const modified = await directory.modifiedAt('a/doc.json')
+      expect(Date.parse(modified ?? '')).toBeGreaterThanOrEqual(clockBefore)
+    })
+
+    it('reports a time no earlier than before when the file is written again', async () => {
+      const directory = makeEmpty()
+      await directory.writeFile('doc.json', bytes(1))
+      const first = await directory.modifiedAt('doc.json')
+
+      await directory.writeFile('doc.json', bytes(2))
+
+      const second = await directory.modifiedAt('doc.json')
+      expect(Date.parse(second ?? '')).toBeGreaterThanOrEqual(Date.parse(first ?? ''))
+    })
+
+    it('reports no modification time again after the file is removed', async () => {
+      const directory = makeEmpty()
+      await directory.writeFile('doc.json', bytes(1))
+
+      await directory.removeFile('doc.json')
+
+      expect(await directory.modifiedAt('doc.json')).toBeUndefined()
+    })
   })
+}
+
+const MILLISECONDS_PER_SECOND = 1000
+
+/** A file system may keep whole seconds only, so the lower bound is rounded down too. */
+function roundDownToSecond(milliseconds: number): number {
+  return Math.floor(milliseconds / MILLISECONDS_PER_SECOND) * MILLISECONDS_PER_SECOND
 }
