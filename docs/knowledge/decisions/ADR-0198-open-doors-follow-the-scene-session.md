@@ -187,8 +187,9 @@ Known gaps:
   rest on its target, each frame does two lookups (its open state and its openness) and a compare.
   The frame cost is not measured.
 - The opening tick in the frame callback of `bridge/react/walk-camera-controls.tsx` runs only
-  under a real WebGPU canvas, so no unit test reaches it. Unit tests cover `followStoredOpenings`, `restoreOpenings`, `resetInteractiveObjects`, the
-  `useInteractiveObjects` hook against a store, the toolbar control, and `useOpeningMotion` itself.
+  under a real WebGPU canvas, so no unit test reaches it. Unit tests cover `followStoredOpenings`,
+  `restoreOpenings`, `resetInteractiveObjects`, the `useInteractiveObjects` hook against a store,
+  the toolbar control, and `useOpeningMotion` itself.
   The hook imports nothing from the canvas library, and `bridge/react/use-opening-motion.test.tsx`
   checks three things: the live openings follow the stored set, a new root is posed at the open
   pose its door carried before any tick, and a new root that arrives in the same render as a new
@@ -228,7 +229,8 @@ the first frame of the walk.
 
 On 2026-11-17 a committed journey took over these checks:
 `e2e/tests/journeys/close-doors-and-windows.spec.ts` (issue #782). It opens a door and a window in
-walk mode with the E key and closes them with the toolbar control in orbit mode and in walk mode.
+walk mode with the E key. The toolbar control closes the door in orbit mode and in walk mode, and
+the window in orbit mode.
 It also covers the rebuilds and the view switch above, the walker blocked at a shut door, and the
 control agreeing with the R key. It compares frames taken in the same run, in the region of the
 opening, and commits no pixel baseline. An in-page sampler reads that region on each animation
