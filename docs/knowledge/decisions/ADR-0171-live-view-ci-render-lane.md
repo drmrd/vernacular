@@ -98,8 +98,7 @@ for this gate must move the rendered scene, not the opening vantage.
   seconds), and macOS minutes bill at ten times linux minutes. The e2e gate keeps
   the job off docs-only pull requests; this lane's own first head demonstrated the skip. A
   pull request that changes only configuration skips the job unless the file is on the e2e
-  list, which now holds `playwright.config.ts` and `vite.config.ts` (see the amendment of
-  2026-11-17).
+  list (see the amendment of 2026-11-17).
 - The live path now has the same drift discipline as the harness tier: an intentional visual
   change refreshes the baseline deliberately, on the development Mac, in the pull request that
   makes the change.
@@ -131,65 +130,80 @@ cheaper job proves the change. Selecting too much is accepted. A push to `main` 
 suite, so a path left off costs a late failure, not a lost one.
 
 The lists as committed. `E2E_PATHS` is `app/`, `editor/`, `bridge/`, `engine/`, `e2e/`,
-`playwright.config.ts`, `vite.config.ts`, `index.html`, `src/`, `public/`. `VISUAL_PATHS` is
-`editor/`, `bridge/react/`, `.storybook/`, `playwright.stories.config.ts`, `e2e/stories/`,
-`vite.config.ts`, `vitest.config.ts`. A `.stories.tsx` file still turns on the visual suite.
+`playwright.config.ts`, `vite.config.ts`, `index.html`, `src/`, `public/`, `pnpm-lock.yaml`.
+`VISUAL_PATHS` is `editor/`, `bridge/react/`, `.storybook/`, `playwright.stories.config.ts`,
+`e2e/stories/`, `vite.config.ts`, `vitest.config.ts`, `public/`, `src/setupTests.ts`,
+`scripts/serve-static.mjs`, `scripts/story-index.mjs`, `pnpm-lock.yaml`. A `.stories.tsx` file
+still turns on the visual suite.
 
-| Entry                          | Suite      | Reason                                                                      |
-| ------------------------------ | ---------- | --------------------------------------------------------------------------- |
-| `playwright.config.ts`         | end-to-end | It sets the projects, the preview port and server, and the retries.         |
-| `vite.config.ts`               | both       | The e2e job builds and previews with it; the story test project extends it. |
-| `index.html`                   | end-to-end | It is the entry document of the bundle that the suite loads.                |
-| `src/`                         | end-to-end | Only this suite runs the bootstrap, service worker, and storage hook.       |
-| `public/`                      | end-to-end | It is served at run time: the manifest and the starter pack in `/packs/`.   |
-| `playwright.stories.config.ts` | visual     | It sets the story server, the snapshot path, and the diff tolerance.        |
-| `e2e/stories/`                 | visual     | Its spec and baselines run only in the story job.                           |
-| `vitest.config.ts`             | visual     | It defines the `storybook` test project, which runs only in that job.       |
+| Entry                          | Suite      | Reason                                                                         |
+| ------------------------------ | ---------- | ------------------------------------------------------------------------------ |
+| `playwright.config.ts`         | end-to-end | It sets the projects, the preview port and server, and the retries.            |
+| `vite.config.ts`               | both       | The e2e job builds and previews with it; the story test project extends it.    |
+| `index.html`                   | end-to-end | It is the entry document of the bundle that the suite loads.                   |
+| `src/`                         | end-to-end | Only this suite runs the bootstrap, service worker, and storage hook.          |
+| `public/`                      | both       | The app serves it (manifest, starter pack); the stories use its mock worker.   |
+| `pnpm-lock.yaml`               | both       | It sets the version of every tool and library that a heavy suite runs.         |
+| `playwright.stories.config.ts` | visual     | It sets the story server, the snapshot path, and the diff tolerance.           |
+| `e2e/stories/`                 | visual     | Its spec and baselines run only in the story job.                              |
+| `vitest.config.ts`             | visual     | It defines the `storybook` test project, which runs only in that job.          |
+| `src/setupTests.ts`            | visual     | The `storybook` project extends `vite.config.ts`, whose `setupFiles` names it. |
+| `scripts/serve-static.mjs`     | visual     | It is the web server command of `playwright.stories.config.ts`.                |
+| `scripts/story-index.mjs`      | visual     | The story visual spec imports it.                                              |
 
-The build in `check` proves only that `vite.config.ts` compiles. `src/setupTests.ts` also turns
-on the end-to-end suite, and `e2e/stories/` still does through `e2e/`. Both are accepted.
+The build in `check` proves only that `vite.config.ts` compiles. The story build copies
+`public/`, and `.storybook/preview.ts` starts the mock service worker that `package.json` places
+there. `src/setupTests.ts` also turns on the end-to-end suite through `src/`, and `e2e/stories/`
+does through `e2e/`. Both are accepted. #720 shows why the lockfile is on the lists: it upgraded
+Vite, Vitest, and Storybook in `package.json` and the lockfile only, and its paths turned on no
+suite. Four merged pull requests since 2026-08-01 changed the lockfile and no listed path, so
+this adds about one run a month of both suites and this job.
 
-Off on purpose: `tsconfig*.json`, because the typecheck and the build in `check` prove them.
-`scripts/`, because its unit tests prove it. `lighthouserc.json`, because Lighthouse never runs
-on a pull request. `.nvmrc`, because `check` reads it and proves the Node version.
+Off on purpose. `tsconfig*.json`: the typecheck and the build in `check` prove them. An option
+that changes the emitted code is an accepted gap. `tsconfig.json` sets `jsx`, `target`, and
+`useDefineForClassFields`; this record does not check which of them reach the bundle. The rest
+of `scripts/`: its unit tests prove it. `package.json`: `check` installs with
+`--frozen-lockfile`, so a version change also changes the lockfile, while a release pull request
+changes `package.json` for the version number alone. A change to a script alone is an accepted
+gap. `lighthouserc.json`: Lighthouse never runs on a pull request. `.nvmrc`: `check` reads it
+and proves the Node version.
 
 This job shares the `e2e` gate. It now also runs for a pull request that changes only
-`playwright.config.ts`, `vite.config.ts`, `index.html`, `src/`, or `public/`, and each such run
-bills at ten times linux minutes. The minute and a half under Consequences predates the third
-spec. Since 2026-08-01 these paths changed in 2, 0, 0, 2, and 0 commits, in that order, out of
-1542 on `main`. These are commit counts from the git history, not pull request counts.
+`playwright.config.ts`, `vite.config.ts`, `index.html`, `src/`, `public/`, or `pnpm-lock.yaml`.
+Each such run costs what Consequences gives for a triggered run, and that figure predates the
+third spec. Since 2026-08-01 these paths changed in 2, 0, 0, 2, 0, and 6 commits, in that
+order, out of 1542 on `main`. These are commit counts from the git history, not pull request
+counts.
 
-Three choices stay open for one follow-up issue, which has no number yet.
+Two choices stay open for one follow-up issue, which has no number yet. Two analyses disagree on
+both.
 
 - `core/` and `storage/`. The scene that the live view renders and the journeys run code from
-  both, yet the lists have left them out since `decide.mjs` landed, and no record says why. In
-  the git history since 2026-08-01, eleven merged pull requests changed these layers and no
-  listed path. Only #794 changed nothing else: a fix to the site grade in the memoized scene
-  graph deriver, which reached `main` with no live-view run from its paths. The history cannot
-  show whether a label turned a suite on by hand. Cost: `core/` changed in 201 commits and
-  `storage/` in 42, so many more pull requests would pay this job.
-- `pnpm-lock.yaml`. A change can move the version of any tool or library a heavy suite runs.
-  #720 upgraded Vite, Vitest, and Storybook in `package.json` and the lockfile only, and its
-  paths turned on no suite. `package.json` is the weaker signal: `check` installs with
-  `--frozen-lockfile`, so a version change also changes the lockfile, while a release pull
-  request changes `package.json` for the version number alone. Cost: four pull requests since
-  2026-08-01 changed the lockfile and no listed path, so about one more run a month of both
-  suites and this job.
+  both layers, yet the lists have left them out since `decide.mjs` landed, and no record says
+  why. The first analysis puts them on the e2e list. The review leaves them off, because this
+  job would then run for many more pull requests. In the git history since 2026-08-01, 27
+  merged pull requests changed these layers. Sixteen also changed a listed path and ran the
+  suites anyway. The other eleven are the added cost: with the layers listed, each would have
+  run the end-to-end suite and this job. Only #794 changed nothing outside the two layers: a
+  fix to the site grade in the memoized scene graph deriver, which reached `main` with no
+  live-view run from its paths. The history cannot show whether a label turned a suite on by
+  hand. The commit counts (201 for `core/`, 42 for `storage/`) overstate the cost.
 - `.github/workflows/ci.yml`. A change can alter every heavy job: the runner image, the
   install, the commands. #697 and #722 changed runner images, and their paths turned on no
-  suite. Cost: 9 commits since 2026-08-01, each paying every heavy job. The alternative is
-  `/ci full` by hand.
-
-The fix commits use `fix:` and not `ci:`, because the commit audit counts `ci:` as exempt, and a
-`test:` commit would then have no implementation commit after it.
+  suite. The first analysis puts the file on both lists. The review leaves it off: a person
+  edits it on purpose and can ask for a full run by hand with `/ci full`. It changed in 9
+  commits since 2026-08-01; three merged pull requests changed it and no listed path.
 
 The tests are in `scripts/ci/decide.test.mjs`, block "the paths that shape a heavy run". Two
 rows prove that each Playwright config turns on its own suite and only that one. Seven rows
 prove the suites for `vite.config.ts`, `vitest.config.ts`, `index.html`, two `src/` files, a
-`public/` file, and the story spec. Guard rows prove that `README.md`, a spec under `docs/`,
-`scripts/ci/decide.mjs`, and `tsconfig.json` turn on nothing, that an end-to-end test outside
-`e2e/stories/` leaves the story visuals off, and that a draft still skips. The run gave 1 file
-and 25 tests passed: the 10 earlier cases and 15 new ones.
+`public/` file, and the story spec; the `public/` row expects both suites. Five more rows cover
+the lockfile and the files that the story job loads: the mock service worker, `src/setupTests.ts`,
+the two story scripts, and `pnpm-lock.yaml`. Guard rows prove that `README.md`, a spec under
+`docs/`, `scripts/ci/decide.mjs`, `tsconfig.json`, `package.json`, and
+`scripts/knowledge-index.mjs` turn on nothing, that an end-to-end test outside `e2e/stories/`
+leaves the story visuals off, and that a draft still skips. The run gave 1 file and 32 tests
+passed: the 10 earlier cases and 22 new ones.
 
 This pull request changes `scripts/ci/` and this record, so its own rule turns on no heavy suite.
 The unit step selects the tests of `scripts/`.
