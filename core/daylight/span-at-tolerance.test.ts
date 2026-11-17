@@ -17,6 +17,7 @@ const GRAY = { r: 0.5, g: 0.5, b: 0.5 }
 const WINDOW_START = 1000
 const WINDOW_END = 2000
 const PROBE_Y = 1550
+const PROBE_X = 1500
 
 /** Elevation of the sky patch that a window looks at, in radians. */
 const ELEVATION = Math.atan(2 / Math.PI)
@@ -25,13 +26,20 @@ const SIN = Math.sin(ELEVATION)
 
 const EAST_OUTWARD: Vector3 = { x: COS, y: SIN, z: 0 }
 const WEST_OUTWARD: Vector3 = { x: -COS, y: SIN, z: 0 }
+const NORTH_OUTWARD: Vector3 = { x: 0, y: SIN, z: -COS }
 
-function roomWithSpanAt(x: number): DaylightRoom {
+const alongY = (x: number): [Point, Point] => [
+  { x, y: WINDOW_START },
+  { x, y: WINDOW_END },
+]
+const alongX = (y: number): [Point, Point] => [
+  { x: WINDOW_START, y },
+  { x: WINDOW_END, y },
+]
+
+function roomWithSpan(span: readonly [Point, Point]): DaylightRoom {
   const window: DaylightAperture = {
-    span: [
-      { x, y: WINDOW_START },
-      { x, y: WINDOW_END },
-    ],
+    span,
     sill: SILL,
     head: HEAD,
     revealDepth: 0,
@@ -58,14 +66,52 @@ function directionsAskedFor(room: DaylightRoom): Vector3[] {
 
 describe('a window span that lies off its wall by exactly the outline tolerance', () => {
   it.each([
-    { wall: 'east', side: 'inside', x: 3999, outward: EAST_OUTWARD, probe: { x: 3050 } },
-    { wall: 'east', side: 'outside', x: 4001, outward: EAST_OUTWARD, probe: { x: 3050 } },
-    { wall: 'west', side: 'inside', x: 1, outward: WEST_OUTWARD, probe: { x: 950 } },
-    { wall: 'west', side: 'outside', x: -1, outward: WEST_OUTWARD, probe: { x: 950 } },
+    {
+      wall: 'east',
+      side: 'inside',
+      span: alongY(3999),
+      outward: EAST_OUTWARD,
+      probe: { x: 3050, y: PROBE_Y },
+    },
+    {
+      wall: 'east',
+      side: 'outside',
+      span: alongY(4001),
+      outward: EAST_OUTWARD,
+      probe: { x: 3050, y: PROBE_Y },
+    },
+    {
+      wall: 'west',
+      side: 'inside',
+      span: alongY(1),
+      outward: WEST_OUTWARD,
+      probe: { x: 950, y: PROBE_Y },
+    },
+    {
+      wall: 'west',
+      side: 'outside',
+      span: alongY(-1),
+      outward: WEST_OUTWARD,
+      probe: { x: 950, y: PROBE_Y },
+    },
+    {
+      wall: 'north',
+      side: 'inside',
+      span: alongX(2999),
+      outward: NORTH_OUTWARD,
+      probe: { x: PROBE_X, y: 2050 },
+    },
+    {
+      wall: 'north',
+      side: 'outside',
+      span: alongX(3001),
+      outward: NORTH_OUTWARD,
+      probe: { x: PROBE_X, y: 2050 },
+    },
   ])(
     'is accepted and faces outward on the $wall wall when it lies 1 mm $side the room',
-    ({ x, outward, probe }) => {
-      const room = roomWithSpanAt(x)
+    ({ span, outward, probe }) => {
+      const room = roomWithSpan(span)
 
       const received = directionsAskedFor(room)
 
@@ -77,7 +123,7 @@ describe('a window span that lies off its wall by exactly the outline tolerance'
       }
       const solver = createDaylightFieldSolver([room])
       const field = solver.field(UNIFORM_SKY)
-      const lit = sampleSkyVisibility(field, { x: probe.x, y: PROBE_Y })
+      const lit = sampleSkyVisibility(field, probe)
       expect(lit).toBeGreaterThan(solver.interreflection(0, UNIFORM_SKY))
     },
   )
