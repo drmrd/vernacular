@@ -48,6 +48,9 @@ vi.mock('../../engine', () => ({
 
 let notes: LiveViewReadinessNotes
 let store = createSceneSessionStore()
+// A stable-identity spy around the real settle note, so the probe never restarts a build
+// and the tests can count exactly when the takeover reports a settled build.
+const settleSpy = vi.fn(() => notes.notePipelineSettled())
 
 function Probe({ realistic }: { realistic: boolean }) {
   notes = useLiveViewReadiness()
@@ -55,7 +58,7 @@ function Probe({ realistic }: { realistic: boolean }) {
     <AmbientOcclusionRenderTakeover
       realistic={realistic}
       onPipelineBuildStarted={notes.notePipelineBuildStarted}
-      onPipelineSettled={notes.notePipelineSettled}
+      onPipelineSettled={settleSpy}
     />
   )
 }
@@ -96,6 +99,7 @@ function mountRealisticWithBuildPending() {
 
 beforeEach(() => {
   store = createSceneSessionStore()
+  settleSpy.mockClear()
   collaborators.builds.length = 0
   collaborators.threeState.camera = {}
 })
@@ -108,9 +112,11 @@ describe('AmbientOcclusionRenderTakeover readiness while a pipeline build is in 
 
     view.rerender(<ProbeInSession realistic={false} />)
     expect(drawFrame()).toBe(true)
+    expect(settleSpy).toHaveBeenCalledTimes(1)
 
     await settleBuild(0)
     expect(drawFrame()).toBe(true)
+    expect(settleSpy).toHaveBeenCalledTimes(1)
     expect(buildAt(0).pipeline.dispose).toHaveBeenCalledTimes(1)
   })
 
@@ -143,12 +149,16 @@ describe('AmbientOcclusionRenderTakeover readiness while a pipeline build is in 
     expect(drawFrame()).toBe(true)
   })
 
-  it('reports nothing and disposes the late pipeline when the takeover unmounts mid-build', async () => {
+  it('reports the settlement once at the unmount and nothing when the stopped build completes late', async () => {
     const view = mountRealisticWithBuildPending()
 
     view.unmount()
-    await settleBuild(0)
+    const callsAtUnmount = settleSpy.mock.calls.length
+    expect(callsAtUnmount).toBe(1)
 
+    await expect(settleBuild(0)).resolves.toBeUndefined()
+
+    expect(settleSpy).toHaveBeenCalledTimes(callsAtUnmount)
     expect(store.getSceneSession().frameDrawnSincePipelineSettled).toBe(false)
     expect(buildAt(0).pipeline.dispose).toHaveBeenCalledTimes(1)
   })
