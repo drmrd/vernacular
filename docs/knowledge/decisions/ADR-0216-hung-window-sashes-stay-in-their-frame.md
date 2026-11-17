@@ -260,9 +260,9 @@ a new field on the opening node and a cache check for a change of rooms. It is w
 decision above describes.
 
 The room side on hung windows only. Doors would then not be rebuilt for a change of rooms, as they
-are now (see Consequences). Rejected: the side is a fact about every opening, not about one kind of
-fill, and trim such as casings will need it for doors too. The extra rebuild happens only when an
-edit moves the side of an opening, and it is bounded by the openings whose side moved.
+are now (see Consequences). Rejected: the room side is a question for every opening, and trim such
+as casings will need the answer for doors too. The extra rebuild happens only when an edit moves the
+side of an opening, and it is bounded by the openings whose side moved.
 
 The outward normal from `exteriorWalls` as the room side. Rejected: it samples the middle of the wall.
 On a wall that bounds a room along only part of its length, a test shows that `exteriorWalls` does not
@@ -423,8 +423,8 @@ open key from the pose that opened the window closes it again.
   disagree about the same wall. Bringing it in line is left to a follow-up issue.
 - The run-time cost of the sampling and of the extra rebuilds was not timed. Each derived opening
   tests two points against the rooms of its floor, and the warm deriver tests them again whenever the
-  room array changes. The rebuilds are counted by the gate in
-  `tests/performance/scene-rebuild-counts.test.ts`, not timed.
+  room array changes. The gate in `tests/performance/scene-rebuild-counts.test.ts` counts the
+  rebuilds.
 - Only the lower sash moves, on the double-hung window as well. A real double-hung window can also
   lower its upper sash; a follow-up issue covers that in the 3D view. Until then the 3D view does not
   tell the two hung types apart by their motion.
