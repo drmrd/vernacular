@@ -220,6 +220,22 @@ function useWalkPoseHandoff(
 // root, which reaches the session through its host.
 type WalkSessionProps = Omit<WalkCameraControlsProps, 'root'>
 
+// Poses the openings on every newly built scene root where the session left them, in orbit
+// mode as well as walk mode, so a rebuilt scene never shows a door shut that the session
+// holds open. The refs are read as the root arrives; they are refreshed on every render, so
+// they are not dependencies.
+function useRestoreOpeningsOnNewRoot(root: SceneRoot, refs: WalkRefs): void {
+  const { openings, interaction, openness } = refs
+  useEffect(() => {
+    restoreOpenings({
+      root,
+      openings: openings.current,
+      interaction: interaction.current,
+      openness: openness.current,
+    })
+  }, [root, openings, interaction, openness])
+}
+
 // Runs a walk session for as long as walk mode is on: it holds the refs a walk advances,
 // starts the session when the mode turns on, and tears it down (reporting the pose back)
 // when it turns off or the canvas goes away. The refs come back so the frame loop steps
@@ -294,6 +310,7 @@ export function WalkCameraControls(props: WalkCameraControlsProps) {
     root,
     floorElevationMm: collisionInputs.floorElevationMm,
   })
+  useRestoreOpeningsOnNewRoot(root, walkRefs)
 
   useFrame((_state, delta) => {
     if (!enabled) return
