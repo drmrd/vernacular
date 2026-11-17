@@ -19,7 +19,7 @@ import {
 import type { SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { useSceneGraph } from './use-scene-graph'
-import { restoreOpenings, tickOpenings } from './walk-interaction'
+import { followStoredOpenings, restoreOpenings, tickOpenings } from './walk-interaction'
 import {
   emptyWalkInput,
   initialWalkState,
@@ -129,8 +129,11 @@ function useWalkOpenings(): OpeningSceneNode[] {
 // The refs the interact key and the per-frame swing read: the live openings (kept
 // current for the keydown closure), the open/closed view-state, and each opening's
 // in-flight openness. They are walk-session view-state, never persisted edits. The
-// open/closed state starts on the doors a previous session left open, copied so this
-// session's toggles never reach back into the caller's set (ADR-0170).
+// open/closed state follows the doors the session store holds open, copied so this
+// session's toggles never reach back into the store's set (ADR-0170). It takes the
+// store's set whenever that set changes, so a reset made in orbit mode reaches the live
+// scene. The walk keys report their own changes to the store, and following a set with
+// the same doors keeps the same state, so that echo changes nothing.
 function useWalkInteraction(savedOpenDoorIds: ReadonlySet<string>): {
   openingsRef: RefObject<OpeningSceneNode[]>
   interactionRef: RefObject<OpeningInteractionState>
@@ -141,6 +144,9 @@ function useWalkInteraction(savedOpenDoorIds: ReadonlySet<string>): {
   openingsRef.current = openings
   const interactionRef = useRef<OpeningInteractionState>({ openIds: new Set(savedOpenDoorIds) })
   const opennessRef = useRef<Map<string, number>>(new Map())
+  useEffect(() => {
+    interactionRef.current = followStoredOpenings(interactionRef.current, savedOpenDoorIds)
+  }, [savedOpenDoorIds])
   return { openingsRef, interactionRef, opennessRef }
 }
 
@@ -166,8 +172,9 @@ function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
 }
 
 // Advances the walk one timestep: steps the walk state against the collision
-// world, drives the live camera to the new eye and look, and swings any opening
-// that is mid open or close. The look deltas are consumed so they do not re-apply.
+// world and drives the live camera to the new eye and look. The look deltas are
+// consumed so they do not re-apply. The openings swing in their own per-frame tick,
+// which runs in both camera modes.
 function stepWalkFrame(ctx: WalkFrameContext, delta: number): void {
   const next = advanceWalk(ctx.state.current, ctx.input.current, delta, frameCollisionWorld(ctx))
   ctx.input.current.yawDelta = 0
@@ -176,15 +183,6 @@ function stepWalkFrame(ctx: WalkFrameContext, delta: number): void {
   ctx.camera.position.set(next.position.x, next.position.y, next.position.z)
   const look = walkLookTarget(next)
   ctx.camera.lookAt(look.x, look.y, look.z)
-  tickOpenings(
-    {
-      root: ctx.root,
-      openings: ctx.openings.current,
-      interaction: ctx.interaction.current,
-      openness: ctx.openness.current,
-    },
-    delta,
-  )
 }
 
 interface WalkCameraControlsProps {
@@ -193,7 +191,10 @@ interface WalkCameraControlsProps {
   root: SceneRoot
   savedWalkPose: WalkState | null
   onWalkPose: (pose: WalkState) => void
-  /** The doors a previous walk left open, read once when this session starts. */
+  /**
+   * The doors the session store holds open. The live openings follow this set whenever it
+   * changes, in both camera modes, so a reset made outside a walk animates the doors shut.
+   */
   savedOpenDoorIds: ReadonlySet<string>
   /** Reports which doors stand open, so the next session opens the same ones. */
   onOpenDoors: (openIds: ReadonlySet<string>) => void
@@ -294,7 +295,9 @@ function useWalkSession(props: WalkSessionProps, host: WalkSessionHost): WalkRef
  * root to the engine swing helper. Entering walk mode resumes the pose the last
  * walk left behind and the doors it left open, or seeds the camera at eye height on
  * the first walk, and takes control of the camera; leaving reports both back, so the
- * walk survives a view switch and a detour through orbit (ADR-0170). This is rendering
+ * walk survives a view switch and a detour through orbit (ADR-0170). The openings stay
+ * live in orbit mode too: they follow the doors the session store holds open, and the
+ * per-frame tick swings them toward that set in either mode. This is rendering
  * glue that only runs under a real WebGPU canvas (foundation 6.3); its behavior is
  * proven by the scene-webgl navigation e2e.
  */
@@ -313,8 +316,17 @@ export function WalkCameraControls(props: WalkCameraControlsProps) {
   useRestoreOpeningsOnNewRoot(root, walkRefs)
 
   useFrame((_state, delta) => {
-    if (!enabled) return
-    stepWalkFrame({ camera, collisionInputs, root, ...walkRefs }, delta)
+    if (enabled) stepWalkFrame({ camera, collisionInputs, root, ...walkRefs }, delta)
+    // Runs in both camera modes; an opening at rest on its target costs one lookup.
+    tickOpenings(
+      {
+        root,
+        openings: walkRefs.openings.current,
+        interaction: walkRefs.interaction.current,
+        openness: walkRefs.openness.current,
+      },
+      delta,
+    )
   })
 
   return null

@@ -64,6 +64,21 @@ export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
 }
 
 /**
+ * The interaction state that matches the doors the session store holds open: the given state
+ * itself when it already holds exactly those doors, else a new state holding a copy of them, so
+ * a reset made outside a walk reaches the live scene.
+ */
+export function followStoredOpenings(
+  interaction: OpeningInteractionState,
+  storedOpenIds: ReadonlySet<string>,
+): OpeningInteractionState {
+  const { openIds } = interaction
+  const sameDoors =
+    openIds.size === storedOpenIds.size && [...storedOpenIds].every((id) => openIds.has(id))
+  return sameDoors ? interaction : { openIds: new Set(storedOpenIds) }
+}
+
+/**
  * Poses every opening on the given root where the session left it, so a newly built or rebuilt
  * root never shows a door out of place: an opening that carries an openness is posed at that
  * openness, an opening held open with none is seated fully open and recorded so, and every other
