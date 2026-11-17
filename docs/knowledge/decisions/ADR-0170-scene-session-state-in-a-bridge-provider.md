@@ -288,7 +288,7 @@ run.
 No live run on a real GPU view was made. Turning lighting off before a real build resolves is a
 race that cannot be reproduced on demand, so the unit tests are the only proof.
 
-Two limits found on the way are older than this change. Both are left for one follow-up issue:
+Two limits found on the way are older than this change. Both are left for #829:
 
 - Nothing resets `sessionRestored` or `frameDrawnSincePipelineSettled` when the 3D view unmounts,
   and the store lives above the view. So after a remount in schematic lighting the attribute can
