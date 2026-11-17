@@ -50,11 +50,20 @@ type HeldRenderer = {
   started: Promise<unknown>
 }
 
+type RendererRelease = {
+  hold: (renderer: HeldRenderer['renderer'], started: Promise<unknown>) => void
+  release: () => void
+}
+
 // Keeps the renderer the wrapper built, and releases it once: on demand, or when the wrapper
 // unmounts, also while its init() is still pending. Releasing clears the ref, so a renderer
-// released after a failed start is not released again on unmount.
-function useRendererRelease() {
+// released after a failed start is not released again on unmount. The hook owns the ref, so
+// callers only hand over a renderer and ask for its release.
+function useRendererRelease(): RendererRelease {
   const held = useRef<HeldRenderer | null>(null)
+  const hold = useCallback((renderer: HeldRenderer['renderer'], started: Promise<unknown>) => {
+    held.current = { renderer, started }
+  }, [])
   const release = useCallback(() => {
     const current = held.current
     if (current === null) return
@@ -62,7 +71,20 @@ function useRendererRelease() {
     void releaseSceneRenderer(current.renderer, current.started)
   }, [])
   useEffect(() => release, [release])
-  return { held, release }
+  return { hold, release }
+}
+
+// Tells whether the wrapper is still mounted, so a late init() result does not set state after
+// unmount.
+function useMountedRef() {
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  return mounted
 }
 
 // React Three Fiber's Canvas re-runs its setup on every render, and each run reads the
@@ -76,14 +98,8 @@ function useRendererRelease() {
 function useSceneRendererStart(forceWebGL: boolean) {
   const [status, setStatus] = useState<SceneRendererStatus>('loading')
   const rendererFactory = useSceneRendererFactory(setStatus)
-  const { held, release } = useRendererRelease()
-  const mounted = useRef(true)
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
+  const { hold, release } = useRendererRelease()
+  const mounted = useMountedRef()
   const createRenderer = useMemo<GLProps | null>(() => {
     if (rendererFactory === null) return null
     return (defaultProps) => {
@@ -92,7 +108,7 @@ function useSceneRendererStart(forceWebGL: boolean) {
       const canvas = defaultProps.canvas as HTMLCanvasElement
       const renderer = rendererFactory({ canvas, forceWebGL })
       const started = renderer.init()
-      held.current = { renderer, started }
+      hold(renderer, started)
       started.then(
         () => {
           if (mounted.current) setStatus('ready')
@@ -105,7 +121,7 @@ function useSceneRendererStart(forceWebGL: boolean) {
       )
       return renderer
     }
-  }, [rendererFactory, forceWebGL, held, release])
+  }, [rendererFactory, forceWebGL, hold, mounted, release])
   return { createRenderer, status }
 }
 
