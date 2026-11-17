@@ -3,9 +3,9 @@ import type { DirectoryPort } from '../fs/directory-port'
 import { DocumentDecodeError } from '../documents/document-decode-error'
 import { encodeForWrite, openDecodedDocument } from '../documents/open-decoded'
 import type { OpenedDocument } from '../documents/open-decoded'
+import { PROJECT_FILE } from '../project-files/project-file-name'
 
-/** Canonical project file name written at the root of each project folder. */
-export const PROJECT_FILE = 'vernacular.json'
+export { PROJECT_FILE }
 const AUTOSAVE_DIR = '.house-autosave'
 
 /** Thrown by FolderProjectStore.loadProject when no project file exists at the expected path. */

@@ -2,11 +2,8 @@ import { bestEffortProjectName } from '../../core'
 import type { Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { FileSystemDirectory } from '../fs/file-system-directory'
-import {
-  FolderProjectStore,
-  PROJECT_FILE,
-  ProjectFileNotFoundError,
-} from '../folder/folder-project-store'
+import { FolderProjectStore, ProjectFileNotFoundError } from '../folder/folder-project-store'
+import { PROJECT_FILE } from '../project-files/project-file-name'
 import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from '../project-store'
 import type { DirectoryHandleStore } from './directory-handle-store'
 

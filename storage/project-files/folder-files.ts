@@ -1,7 +1,7 @@
 import type { AssetCache } from '../asset-cache'
 import { DirectoryAssetCache } from '../directory-asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
-import { PROJECT_FILE } from '../folder/folder-project-store'
+import { PROJECT_FILE } from './project-file-name'
 import type { ProjectFiles } from './project-files'
 
 /** Reads the folder first and falls back to the shared pool; writes only to the folder. */
@@ -31,6 +31,8 @@ class FolderAssetCache implements AssetCache {
 /**
  * One project at the root of a folder: its document is `vernacular.json` there.
  * The folder carries its own assets; an optional shared pool backs reads.
+ * The asset cache's `has` looks only in the folder while its `get` falls back to the shared
+ * pool, on purpose: that lets `copyMissingAssets` see what the folder lacks.
  */
 export class FolderFiles implements ProjectFiles {
   readonly durable: boolean

@@ -2,7 +2,7 @@ import type { AssetCache } from '../asset-cache'
 import { ASSET_DIRECTORY_PREFIX, DirectoryAssetCache } from '../directory-asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
 import { SubdirectoryPort } from '../fs/subdirectory-port'
-import { PROJECT_FILE } from '../folder/folder-project-store'
+import { PROJECT_FILE } from './project-file-name'
 import type { RemovableProjectFiles } from './project-files'
 
 /**
@@ -35,7 +35,10 @@ export class WorkspaceFiles implements RemovableProjectFiles {
   }
 
   /** The shared pool, whichever project asks. */
-  readonly assetsFor: (id: string) => AssetCache = () => this.sharedAssets
+  assetsFor(_id: string): AssetCache {
+    void _id
+    return this.sharedAssets
+  }
 
   async remove(id: string): Promise<void> {
     await this.removeTree(id)
