@@ -133,6 +133,22 @@ describe('SnapshotStore', () => {
     expect(await directory.list(AUTOSAVE_DIRECTORY)).toEqual([])
   })
 
+  it('removes only the files that the snapshot store wrote and leaves any other file in the directory', async () => {
+    const directory = new InMemoryDirectory()
+    const store = new SnapshotStore(directory, { now: clockReturning(1, 2) })
+    await store.writeSnapshot(projectNamed('A'))
+    await store.writeSnapshot(projectNamed('B'))
+    await directory.writeFile(`${AUTOSAVE_DIRECTORY}/pre-migration-v3.json`, Uint8Array.of(1))
+    await directory.writeFile(`${AUTOSAVE_DIRECTORY}/notes.txt`, Uint8Array.of(2))
+
+    await store.prune()
+
+    expect(new Set(await directory.list(AUTOSAVE_DIRECTORY))).toEqual(
+      new Set(['pre-migration-v3.json', 'notes.txt']),
+    )
+    expect(await directory.readFile(`${AUTOSAVE_DIRECTORY}/notes.txt`)).toEqual(Uint8Array.of(2))
+  })
+
   it('restores a version 8 snapshot as a document at the current schema version', async () => {
     const store = await storeHoldingSnapshot(versionFixtureBytes(OLDEST_FIXTURE_VERSION))
 
