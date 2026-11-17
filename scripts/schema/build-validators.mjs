@@ -50,9 +50,16 @@ export function withoutClosedObjects(node) {
 }
 
 function standaloneSource(schema) {
-  // `strict: false` is needed: the default strict mode adds a finite-number check to every number
-  // field, which would change the committed validators.
-  const ajv = new Ajv({ allErrors: true, strict: false, code: { source: true, esm: true } })
+  // On: `allErrors` reports every fault, and `strictNumbers` makes a number field refuse NaN and
+  // Infinity, which JSON would store as null and the project would fail to open later. Off:
+  // `strict` (Ajv's schema-quality checks, which reject metadata keywords the generated schema
+  // keeps beside a `$ref`) and with it the other strict switches, such as `strictTypes`.
+  const ajv = new Ajv({
+    allErrors: true,
+    strict: false,
+    strictNumbers: true,
+    code: { source: true, esm: true },
+  })
   return standaloneCode(ajv, ajv.compile(schema))
 }
 
