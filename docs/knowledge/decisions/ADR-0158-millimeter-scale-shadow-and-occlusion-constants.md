@@ -317,8 +317,8 @@ alone equals it.
 
 Known limit: the fit is finite for a direction that is not finite, but the engine still aims the
 sun with the raw direction. `fitSunShadowToDirection` in `engine/lighting/lighting-rig.ts`
-normalizes it and places the sun along it, so the sun and its shadow are wrong. A follow-up issue
-covers that guard.
+normalizes it and places the sun along it, so the sun and its shadow are wrong. #828 covers that
+guard.
 
 A caster box that is not finite is not covered. The acceptance condition of the issue assumes a
 finite one. With such a box the result is not finite either, because the fallback is a copy of
