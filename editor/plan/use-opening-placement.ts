@@ -1,16 +1,10 @@
 import { useCallback, type PointerEvent } from 'react'
-import {
-  createOpening,
-  openingWouldOverlap,
-  placeOpening,
-  type Point,
-  type SceneGraph,
-} from '../../core'
+import { createOpening, placeOpening, type Point, type SceneGraph } from '../../core'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import { useOpeningTool } from './opening-tool-context'
-import { placeOpeningTarget } from './place-opening'
+import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
 import { selectPlacedOpening } from './select-placed-entity'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
@@ -41,7 +35,7 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
  * flows are untouched. A click that places nothing reports why through the
  * placement context, so the refusal reaches the overlay instead of looking
  * like a click that never registered. The decisions live in the pure modules
- * (`placeOpeningTarget`, `createOpening`, `openingWouldOverlap`); this hook
+ * (`placeOpeningTarget`, `createOpening`, `placementWouldOverlap`); this hook
  * only wires them.
  */
 export function useOpeningPlacement(deps: OpeningPlacementDeps): OpeningPlacement {
@@ -63,9 +57,7 @@ export function useOpeningPlacement(deps: OpeningPlacementDeps): OpeningPlacemen
         hostWallId: target.hostWallId,
         position: target.position,
       })
-      const existingOpenings =
-        session.getProject().floors.find((floor) => floor.id === target.floorId)?.openings ?? []
-      if (openingWouldOverlap(opening, existingOpenings)) {
+      if (placementWouldOverlap(session.getProject(), target.floorId, opening)) {
         setPlacementRefusal('opening-overlap')
         return
       }

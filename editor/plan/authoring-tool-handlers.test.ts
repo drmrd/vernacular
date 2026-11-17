@@ -1,15 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { EditorSession } from '../../bridge'
 import { createSelectionStore } from '../../bridge'
-import type {
-  Command,
-  Opening,
-  PlaceFurnitureParams,
-  PlaceOpeningParams,
-  SceneGraph,
-  WallSceneNode,
-} from '../../core'
-import { OPENING_NODE_PREFIX } from '../../core'
+import type { Command, PlaceFurnitureParams, PlaceOpeningParams } from '../../core'
+import { createOpening, OPENING_NODE_PREFIX } from '../../core'
 import type { LibraryItem } from '../../storage'
 import {
   handleDimensionKey,
@@ -18,34 +11,25 @@ import {
   handleWallKey,
   type AuthoringRun,
 } from './authoring-tool-handlers'
+import {
+  CLEAR_OF_WALL_Y,
+  DOOR_TYPE,
+  FLOOR_ID,
+  graphWithOneWall,
+  sessionWithOpenings,
+  WALL_MIDPOINT_X,
+} from './authoring-tool-handlers-test-fixtures'
 import { advanceDimensionTool, IDLE_DIMENSION_TOOL } from './dimension-tool'
+import { placementRefusalMessage } from './overlay-announce'
 import { advanceWallTool, IDLE_WALL_TOOL } from './wall-tool'
 import { wasKeystrokeClaimed } from './keyboard-guard'
 
-const FLOOR_ID = 'g'
-// The wall runs along y = 0, so a candidate at y = 0 lands on it and one 500 mm
-// away is well clear of the hit tolerance, mirroring use-opening-placement.test.ts.
-const WALL_LENGTH_MM = 2000
-const WALL_THICKNESS_MM = 114
-const WALL_MIDPOINT_X = 1000
-const CLEAR_OF_WALL_Y = 500
-const DOOR_TYPE = 'single-swing-door'
 const NO_ROTATION_DEGREES = 0
 
 function fakeSession(dispatch = vi.fn()): EditorSession {
   return {
     dispatch,
     getProject: () => ({ floors: [{ id: FLOOR_ID }] }),
-  } as unknown as EditorSession
-}
-
-function sessionWithOpenings(
-  openings: readonly Opening[],
-  dispatch: ReturnType<typeof vi.fn>,
-): EditorSession {
-  return {
-    dispatch,
-    getProject: () => ({ floors: [{ id: FLOOR_ID, openings }] }),
   } as unknown as EditorSession
 }
 
@@ -66,30 +50,6 @@ function escapeEvent(): KeyboardEvent {
 
 function enterEvent(): KeyboardEvent {
   return new KeyboardEvent('keydown', { key: 'Enter', cancelable: true })
-}
-
-function horizontalWall(): WallSceneNode {
-  return {
-    id: 'wall:w1',
-    kind: 'wall',
-    floorId: FLOOR_ID,
-    start: { x: 0, y: 0 },
-    end: { x: WALL_LENGTH_MM, y: 0 },
-    thickness: WALL_THICKNESS_MM,
-  }
-}
-
-function graphWithOneWall(): SceneGraph {
-  return {
-    nodes: [],
-    walls: [horizontalWall()],
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
 }
 
 const chair: LibraryItem = {
@@ -195,6 +155,7 @@ describe('handleOpeningKey selects what it drops', () => {
       event: enterEvent(),
       graph: graphWithOneWall(),
       placementType: DOOR_TYPE,
+      setPlacementRefusal: vi.fn(),
     })
 
     expect(dispatch).toHaveBeenCalledTimes(1)
@@ -217,10 +178,38 @@ describe('handleOpeningKey selects what it drops', () => {
       event: enterEvent(),
       graph: graphWithOneWall(),
       placementType: DOOR_TYPE,
+      setPlacementRefusal: vi.fn(),
     })
 
     expect(dispatch).not.toHaveBeenCalled()
     expect(run.selection.getSelectedIds()).toEqual(new Set())
+  })
+
+  it('refuses a drop on top of a door already in the wall and says why', () => {
+    const dispatch = vi.fn()
+    const existingDoor = createOpening({
+      id: 'existing',
+      type: DOOR_TYPE,
+      hostWallId: 'w1',
+      position: WALL_MIDPOINT_X,
+    })
+    const session = sessionWithOpenings([existingDoor], dispatch)
+    const run = {
+      ...authoringRun(session),
+      candidate: { x: WALL_MIDPOINT_X, y: 0 },
+    }
+
+    handleOpeningKey({
+      ...run,
+      event: enterEvent(),
+      graph: graphWithOneWall(),
+      placementType: DOOR_TYPE,
+      setPlacementRefusal: vi.fn(),
+    })
+
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(run.selection.getSelectedIds()).toEqual(new Set())
+    expect(run.setAnnouncement).toHaveBeenCalledWith(placementRefusalMessage('opening-overlap'))
   })
 })
 

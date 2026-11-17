@@ -11,7 +11,8 @@ import type { LibraryItem } from '../../storage'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
-import { placeOpeningTarget } from './place-opening'
+import { placementRefusalMessage, type PlacementRefusal } from './overlay-announce'
+import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
 import { selectPlacedEntity, selectPlacedOpening } from './select-placed-entity'
 import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
 import {
@@ -55,6 +56,7 @@ export interface OpeningKeyContext extends AuthoringRun {
   event: KeyboardEvent
   graph: SceneGraph | undefined
   placementType: string | undefined
+  setPlacementRefusal: (refusal: PlacementRefusal | null) => void
 }
 
 // One keystroke while the place-furniture tool is active: the shared run plus the
@@ -205,9 +207,12 @@ export function handleDimensionKey(ctx: DimensionKeyContext): void {
 
 // Place an opening at the candidate by projecting it onto the nearest wall. On a
 // hit, dispatch the same place-opening command the pointer path dispatches for a
-// freshly created opening of the active placement type; on a miss, announce that
-// no wall sits near the candidate and dispatch nothing. This is a keyboard-only
-// path, so the miss phrasing names the candidate rather than a pointer cursor.
+// freshly created opening of the active placement type; on a miss, dispatch
+// nothing. A hit that would overlap an opening already in the wall is refused with
+// the same reason the pointer path gives. Every outcome also goes to the placement
+// notice (a refusal reason, or null when the opening lands), so a keyboard refusal
+// shows on the canvas as a pointer refusal does. Both refusals announce the same
+// sentence the placement notice shows.
 function dropOpening(ctx: OpeningKeyContext): void {
   if (ctx.graph === undefined || ctx.placementType === undefined) {
     return
@@ -215,7 +220,8 @@ function dropOpening(ctx: OpeningKeyContext): void {
   ctx.event.preventDefault()
   const target = placeOpeningTarget(ctx.graph, ctx.candidate, DEFAULT_HIT_TOLERANCE_MM)
   if (target === null) {
-    ctx.setAnnouncement('No wall near the candidate')
+    ctx.setPlacementRefusal('no-host-wall')
+    ctx.setAnnouncement(placementRefusalMessage('no-host-wall'))
     return
   }
   const opening = createOpening({
@@ -223,6 +229,12 @@ function dropOpening(ctx: OpeningKeyContext): void {
     hostWallId: target.hostWallId,
     position: target.position,
   })
+  if (placementWouldOverlap(ctx.session.getProject(), target.floorId, opening)) {
+    ctx.setPlacementRefusal('opening-overlap')
+    ctx.setAnnouncement(placementRefusalMessage('opening-overlap'))
+    return
+  }
+  ctx.setPlacementRefusal(null)
   ctx.session.dispatch(placeOpening(target.floorId, opening))
   selectPlacedOpening(ctx.selection, opening.id)
   ctx.setAnnouncement(openingAnnouncement(ctx.placementType))
