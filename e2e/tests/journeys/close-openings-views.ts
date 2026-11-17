@@ -31,7 +31,7 @@ const DIFFERENT_MEAN_FLOOR = 3
 
 // An opening's region is the box of pixels that change when it opens, with a margin so the
 // swing's edges are inside it.
-const OPENING_REGION_MARGIN = 6
+export const OPENING_REGION_MARGIN = 6
 
 // The upper part of a door's region holds the leaf but not the floor seen through it.
 const UPPER_SHARE = 0.6
@@ -59,6 +59,8 @@ export interface Views {
   // The region of an opening, found as the box of pixels that differ between its shut frame and
   // its open frame, with a margin.
   openingRegion(shut: Buffer, open: Buffer): Promise<Region>
+  // The same box without the margin, for a check that one box lies inside another.
+  changedBox(a: Buffer, b: Buffer, within?: Region): Promise<Region>
   whole(frame: Buffer): Promise<Region>
   // The part of a frame to the east of a region, which is the right-hand side of the south view.
   eastOf(region: Region, frame: Buffer): Promise<Region>
@@ -99,6 +101,11 @@ async function expectDifferent(
 export function viewsOf(page: Page): Views {
   const reader = frameReader(page)
   const whole = reader.whole
+  const changedBox = async (a: Buffer, b: Buffer, within?: Region): Promise<Region> => {
+    const box = await reader.changedBox(a, b, within)
+    if (box === null) throw new Error('the second frame shows no change from the first frame')
+    return box
+  }
   return {
     whole,
     equal: async (a, b, region) => {
@@ -110,11 +117,9 @@ export function viewsOf(page: Page): Views {
     },
     expectSame: (a, b, check) => expectSame(reader, [a, b], check),
     expectDifferent: (a, b, check) => expectDifferent(reader, [a, b], check),
-    openingRegion: async (shut, open) => {
-      const box = await reader.changedBox(shut, open)
-      if (box === null) throw new Error('the open frame shows no change from the shut frame')
-      return padRegion(box, OPENING_REGION_MARGIN, await whole(shut))
-    },
+    changedBox,
+    openingRegion: async (shut, open) =>
+      padRegion(await changedBox(shut, open), OPENING_REGION_MARGIN, await whole(shut)),
     eastOf: async (region, frame) => {
       const bounds = await whole(frame)
       const x = region.x + region.w
