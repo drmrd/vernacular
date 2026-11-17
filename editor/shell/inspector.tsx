@@ -166,10 +166,10 @@ interface SelectedFurniture {
 }
 
 /**
- * The single selected furniture and its floor, or null. Furniture is not in the
- * scene graph, so it carries a raw (unprefixed) id in the selection; a single id
- * is matched against each floor's furniture. Mutually exclusive with a single
- * selected wall, room, opening, or dimension (those ids are prefixed scene nodes).
+ * The single selected furniture and its floor, or null. The selection holds a
+ * furniture piece under its raw instance id, not its prefixed scene node id; a
+ * single id is matched against each floor's furniture. Mutually exclusive with a
+ * single selected wall, room, opening, or dimension (those ids are prefixed).
  */
 function singleSelectedFurniture(
   selectedIds: ReadonlySet<string>,
