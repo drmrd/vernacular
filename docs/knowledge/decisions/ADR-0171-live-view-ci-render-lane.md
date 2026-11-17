@@ -175,8 +175,7 @@ third spec. Since 2026-08-01 these paths changed in 2, 0, 0, 2, 0, and 6 commits
 order, out of 1542 on `main`. These are commit counts from the git history, not pull request
 counts.
 
-Two choices stay open for one follow-up issue, which has no number yet. Two analyses disagree on
-both.
+Two choices stay open for #830. Two analyses disagree on both.
 
 - `core/` and `storage/`. The scene that the live view renders and the journeys run code from
   both layers, yet the lists have left them out since `decide.mjs` landed, and no record says
