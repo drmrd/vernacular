@@ -15,7 +15,10 @@ export interface ShadowFitInput {
    * that is not finite gives a copy of the casters.
    */
   sunDirection: Vector3
-  /** The cap on the radius of the fitted sphere, in millimetres. */
+  /**
+   * The cap on the radius of the fitted sphere, in millimetres. `NaN` gives a
+   * copy of the casters; `Infinity` means no cap.
+   */
   maxRadius: number
 }
 
@@ -67,8 +70,8 @@ export function boundsRadius(bounds: Bounds3): number {
  * so a low sun with a horizontal component sends the point to the edge of the
  * ground on the side away from the sun, a zero component keeps the corner's
  * coordinate, and a sun below the horizon gets the horizon's fit. With no
- * ground, and with a sun direction that has a component that is not finite,
- * the fit is a copy of the casters.
+ * ground, with a sun direction that has a component that is not finite, and
+ * with a `maxRadius` of `NaN`, the fit is a copy of the casters.
  *
  * When the radius of that box exceeds `maxRadius`, the box shrinks linearly
  * toward the caster box until its radius equals the cap, so the far end of the
@@ -77,7 +80,7 @@ export function boundsRadius(bounds: Bounds3): number {
  */
 export function shadowFitBounds(input: ShadowFitInput): Bounds3 {
   const { casters, ground, sunDirection, maxRadius } = input
-  if (ground === null || !isFiniteVector(sunDirection)) {
+  if (ground === null || !isFiniteVector(sunDirection) || Number.isNaN(maxRadius)) {
     return copyBounds(casters)
   }
   const withShadow = unionOf(casters, shadowPoints(casters, ground, sunDirection))
