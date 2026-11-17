@@ -4,6 +4,14 @@ import type { Point } from '../model/types'
 /** Edge length of one daylight field cell, in plan millimetres. */
 export const DAYLIGHT_FIELD_CELL_SIZE_MM = 100
 
+/**
+ * Cells of open sky that the grid keeps on every side of the rooms' snapped bounding box. It is
+ * two because the inner margin cell can hold a room's value, copied under a wall on the edge of
+ * the bounding box, and the outer one always holds open sky, so a lookup that clamps to the edge
+ * of the grid reads open sky outside it.
+ */
+export const DAYLIGHT_FIELD_MARGIN_CELLS = 2
+
 /** Values stored for each cell: bounce red, green, blue, then sky visibility. */
 export const DAYLIGHT_FIELD_VALUES_PER_CELL = 4
 
@@ -96,9 +104,12 @@ function snapDown(value: number, step: number): number {
 }
 
 /**
- * Creates the grid that covers the rooms of one floor. The origin is the lower corner of the
- * rooms' bounding box, snapped down to a multiple of the cell size. Every cell starts with sky
- * visibility 1 and no bounce; the light math fills it later.
+ * Creates the grid that covers the rooms of one floor, with a margin of DAYLIGHT_FIELD_MARGIN_CELLS
+ * cells on every side. The origin is the lower corner of the rooms' bounding box, snapped down to
+ * a multiple of the cell size, less the margin on each axis. The grid reaches the margin past the
+ * far side of the snapped box, so each count is the cells that cover the box plus twice the
+ * margin. A field of no rooms has no columns and no rows. Every cell starts with sky visibility 1
+ * and no bounce; the light math fills it later.
  */
 export function createDaylightField(rooms: readonly DaylightRoom[]): DaylightField {
   const cellSize = DAYLIGHT_FIELD_CELL_SIZE_MM
@@ -106,9 +117,12 @@ export function createDaylightField(rooms: readonly DaylightRoom[]): DaylightFie
   if (bounds === null) {
     return { origin: { x: 0, y: 0 }, cellSize, columns: 0, rows: 0, data: new Float32Array(0) }
   }
-  const origin = { x: snapDown(bounds.minX, cellSize), y: snapDown(bounds.minY, cellSize) }
-  const columns = Math.ceil((bounds.maxX - origin.x) / cellSize)
-  const rows = Math.ceil((bounds.maxY - origin.y) / cellSize)
+  const margin = DAYLIGHT_FIELD_MARGIN_CELLS
+  const snappedX = snapDown(bounds.minX, cellSize)
+  const snappedY = snapDown(bounds.minY, cellSize)
+  const origin = { x: snappedX - margin * cellSize, y: snappedY - margin * cellSize }
+  const columns = Math.ceil((bounds.maxX - snappedX) / cellSize) + 2 * margin
+  const rows = Math.ceil((bounds.maxY - snappedY) / cellSize) + 2 * margin
   const data = new Float32Array(DAYLIGHT_FIELD_VALUES_PER_CELL * columns * rows)
   for (let cell = 0; cell < columns * rows; cell++) {
     data[cell * DAYLIGHT_FIELD_VALUES_PER_CELL + SKY_VISIBILITY_CHANNEL] = OPEN_SKY_VISIBILITY
