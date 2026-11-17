@@ -43,9 +43,8 @@ export class WorkspaceFiles implements RemovableProjectFiles {
   }
 
   /** Nothing to copy: the shared pool is the only pool. */
-  async prepareAssets(_id: string, _contentHashes: readonly string[]): Promise<void> {
-    void _id
-    void _contentHashes
+  async prepareAssets(): Promise<void> {
+    // Intentionally empty: the interface passes an id and hashes, which a workspace has no use for.
   }
 
   async remove(id: string): Promise<void> {

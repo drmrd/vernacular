@@ -40,7 +40,6 @@ export type { ProjectFiles, RemovableProjectFiles } from './project-files/projec
 export { InvalidProjectIdError } from './project-files/project-id-guard'
 export { WorkspaceFiles } from './project-files/workspace-files'
 export { FolderFiles } from './project-files/folder-files'
-export { copyMissingAssets } from './project-files/copy-missing-assets'
 export { DocumentDecodeError } from './documents/document-decode-error'
 export { DocumentStore, WorkspaceDocumentStore } from './documents/document-store'
 export type { SaveReport, StoreRead, StoreReadFailure } from './documents/document-store'
