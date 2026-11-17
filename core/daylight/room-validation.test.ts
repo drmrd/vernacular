@@ -121,6 +121,13 @@ describe('an aperture whose heights or reveal cannot be used', () => {
   it('throws a RangeError that names the room and the aperture when its head is above the ceiling', () => {
     expectSecondApertureRefused({ head: CEILING_HEIGHT + 100 })
   })
+
+  it.each([NaN, Infinity, -0.1, 1.5])(
+    'throws a RangeError that names the room and the aperture when its net transmittance is %d',
+    (netTransmittance) => {
+      expectSecondApertureRefused({ netTransmittance })
+    },
+  )
 })
 
 describe('an aperture whose span ends off the outline while its midpoint is on it', () => {
@@ -160,6 +167,12 @@ describe('inputs on the edge of what is allowed', () => {
 
   it('solves a window with a reveal depth of 0', () => {
     const rooms = floorWithSecondAperture(aperture(SECOND_SPAN, { revealDepth: 0 }))
+    expect(() => solve(rooms)).not.toThrow()
+    expect(finite(solve(rooms))).toBe(true)
+  })
+
+  it.each([0, 1])('solves a window whose net transmittance is %d', (netTransmittance) => {
+    const rooms = floorWithSecondAperture(aperture(SECOND_SPAN, { netTransmittance }))
     expect(() => solve(rooms)).not.toThrow()
     expect(finite(solve(rooms))).toBe(true)
   })
