@@ -242,9 +242,14 @@ accompanying ADR.
   migration step in the chain (`core/migrations/schema/`), layered with per-registry migrations
   (`core/migrations/registries/`). A pre-migration backup is written before applying, and
   migration failure is atomic.
-- **Published schemas are immutable.** A schema is fixed once it is released. A change to the
-  generated schema with no increment of `schemaRevision` or `schemaVersion` is a drift error
-  (section 8).
+- **Published schemas are immutable.** A schema is fixed once it is released. The schema for
+  a revision above 0 is published at `schema/<version>/revision-<revision>/vernacular.schema.json`,
+  with the `$id`
+  `https://drmrd.github.io/vernacular/schema/<version>/revision-<revision>/vernacular.schema.json`.
+  Each existing `schema/<version>/vernacular.schema.json` and its `$id` is revision 0 of that
+  version and does not change (ADR-0178). If the generated schema differs from the latest
+  committed one and neither `schemaVersion` nor `schemaRevision` has incremented, the drift
+  check fails (section 8).
 - **Reading rules.** A reader at version N and revision R opening a Document at version M and
   revision Q does one of four things.
   - M < N: it migrates the Document up the chain.
@@ -265,8 +270,7 @@ accompanying ADR.
   the document codec work described in `2026-11-14-architecture-refactor-round.md`. Until then
   it writes no revision, every Document is at revision 0, and the application validates in
   development builds only and tolerates unknown fields. That work also decides how a validation
-  error is reported (section 8 still rules out a user-facing hard rejection) and where the
-  schema for each revision is published.
+  error is reported (section 8 still rules out a user-facing hard rejection).
 
 ## 8. Schema generation and validation
 
