@@ -1,72 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BrowserFolderAccess } from './folder-access'
-import type { FolderHandles, RememberedFolder } from './folder-access'
 import { FolderFiles } from '../project-files/folder-files'
-
-const READ_WRITE = { mode: 'readwrite' }
-const FIRST_ID = 'a'
-const SECOND_ID = 'b'
-
-/** Test support: a stand-in for a directory handle that records how it was asked for permission. */
-class StandInHandle {
-  readonly kind = 'directory'
-  readonly name = 'folder'
-  readonly queried: unknown[] = []
-  readonly requested: unknown[] = []
-
-  constructor(
-    private readonly entry: string,
-    private readonly answers: { query?: PermissionState; request?: PermissionState } = {},
-  ) {}
-
-  isSameEntry(other: unknown): Promise<boolean> {
-    return Promise.resolve(other instanceof StandInHandle && other.entry === this.entry)
-  }
-
-  queryPermission(descriptor: unknown): Promise<PermissionState> {
-    this.queried.push(descriptor)
-    return Promise.resolve(this.answers.query ?? 'granted')
-  }
-
-  requestPermission(descriptor: unknown): Promise<PermissionState> {
-    this.requested.push(descriptor)
-    return Promise.resolve(this.answers.request ?? 'granted')
-  }
-
-  asHandle(): FileSystemDirectoryHandle {
-    return this as unknown as FileSystemDirectoryHandle
-  }
-}
-
-/** Test support: remembered handles in a map; `entries` lists them in the order they were put. */
-class MapHandles implements FolderHandles {
-  readonly stored = new Map<string, FileSystemDirectoryHandle>()
-
-  put(id: string, handle: FileSystemDirectoryHandle): Promise<void> {
-    this.stored.set(id, handle)
-    return Promise.resolve()
-  }
-
-  get(id: string): Promise<FileSystemDirectoryHandle | undefined> {
-    return Promise.resolve(this.stored.get(id))
-  }
-
-  remove(id: string): Promise<void> {
-    this.stored.delete(id)
-    return Promise.resolve()
-  }
-
-  entries(): Promise<RememberedFolder[]> {
-    return Promise.resolve([...this.stored].map(([id, handle]) => ({ id, handle })))
-  }
-}
-
-/** Handles that already remember the stand-in under the id, and the access over them. */
-async function accessRemembering(id: string, stand: StandInHandle): Promise<BrowserFolderAccess> {
-  const handles = new MapHandles()
-  await handles.put(id, stand.asHandle())
-  return new BrowserFolderAccess(handles)
-}
+import { BrowserFolderAccess } from './folder-access'
+import {
+  FIRST_ID,
+  MapHandles,
+  READ_WRITE,
+  SECOND_ID,
+  StandInHandle,
+  accessRemembering,
+} from './folder-access-test-kit'
 
 function describePermission(): void {
   it('reports a folder with no remembered handle as missing', async () => {

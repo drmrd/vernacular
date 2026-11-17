@@ -189,7 +189,49 @@ function describeForgetting(): void {
   })
 }
 
+/**
+ * What deleting the database does: 'blocked' as soon as some connection is still open, 'deleted'
+ * when none is. It settles at once either way, so a connection left open fails the test and never
+ * hangs it; a blocked deletion finishes on its own when the page closes its connections.
+ */
+function deletionOutcome(name: string): Promise<'blocked' | 'deleted'> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(name)
+    request.onblocked = () => resolve('blocked')
+    request.onsuccess = () => resolve('deleted')
+    request.onerror = () => reject(request.error)
+  })
+}
+
+function describeOpenConnections(): void {
+  it('holds no connection open after any operation of the handle store', async () => {
+    const name = freshDatabaseName()
+    const store = new DirectoryHandleStore(name)
+
+    await store.put(FOLDER_ID, await folderNamed('house'))
+    await store.get(FOLDER_ID)
+    await store.entries()
+    await store.remove(FOLDER_ID)
+
+    expect(await deletionOutcome(name)).toBe('deleted')
+  })
+
+  it('holds no connection open after any operation of the folder access', async () => {
+    const name = freshDatabaseName()
+    const access = new BrowserFolderAccess(new DirectoryHandleStore(name))
+
+    await access.remember(FOLDER_ID, await folderNamed('house'))
+    await access.findKnown(await folderNamed('house'))
+    await access.permission(FOLDER_ID)
+    await access.reopen(FOLDER_ID)
+    await access.forget(FOLDER_ID)
+
+    expect(await deletionOutcome(name)).toBe('deleted')
+  })
+}
+
 describe('DirectoryHandleStore on real directory handles', describeHandleStore)
 describe('BrowserFolderAccess finding known folders', describeKnownFolders)
 describe('BrowserFolderAccess reopening a real folder', describeReopening)
 describe('BrowserFolderAccess forgetting a real folder', describeForgetting)
+describe('DirectoryHandleStore connections', describeOpenConnections)
