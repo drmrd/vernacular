@@ -10,6 +10,7 @@ related:
     decisions/ADR-0075-three-dimensional-preview-camera-fit,
     decisions/ADR-0111-story-coverage-guardrail-and-backfill-policy,
     decisions/ADR-0135-walk-collision-swept-movement-and-thickness-standoff,
+    decisions/ADR-0198-open-doors-follow-the-scene-session,
   ]
 sourceFiles:
   [
@@ -35,7 +36,7 @@ sourceFiles:
     editor/shell/shell-providers.tsx,
   ]
 status: current
-updated: 2026-08-31
+updated: 2026-11-16
 ---
 
 # ADR-0170: Scene session state moves into a bridge-owned provider
@@ -51,6 +52,12 @@ same store, one hook per cycle of the same branch. It extends
 contract in the same shape and, at the time, kept view color temperature out of it on the
 reasoning that the field "remains view-local." This record moves that field into session state
 after all, for the reason explained below.
+
+> Amended by [[ADR-0198-open-doors-follow-the-scene-session]] on 2026-11-16. The open-door ids no
+> longer only seed the walk controller on mount. The live openings follow every change to the
+> stored set in both camera modes, so a write from outside a walk, such as the toolbar's "Close
+> doors and windows" control, reaches the scene. Each newly built scene root is posed from the
+> stored set, in orbit mode as well as walk mode.
 
 ## Context
 
