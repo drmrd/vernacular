@@ -31,7 +31,7 @@ describe('SceneNavToolbar close doors and windows control', () => {
     expect(button).toHaveClass('scene-nav-toolbar__btn')
   })
 
-  it('disables the control and says how to open a door when the new props are omitted', () => {
+  it('disables the control and says how to open a door when the interactive-object props are omitted', () => {
     render(<SceneNavToolbar {...baseProps()} />)
 
     const button = screen.getByRole('button', { name: CLOSE_LABEL })
