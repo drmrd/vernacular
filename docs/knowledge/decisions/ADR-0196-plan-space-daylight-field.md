@@ -130,7 +130,9 @@ aperture 1: ..." with zero-based indexes. The refused kinds are:
   (`OUTLINE_TOLERANCE_MM`; the tolerance absorbs the rounding error of a window on an angled wall,
   and an end point a few millimetres off the wall is still refused);
 - a span whose two sides are both inside, or both outside, the room (it does not lie on the
-  outline);
+  outline). The side test probes twice the outline tolerance (2 mm) to each side of the span's
+  midpoint, so a span that lies off its wall by up to the tolerance, inside or outside the room, is
+  accepted with the right outside;
 - a doorway that opens to its own room, and a doorway that opens to a room that does not exist.
 
 ## Why this approach and not the others
