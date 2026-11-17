@@ -17,9 +17,15 @@ type SceneRendererStatus = 'loading' | 'starting' | 'ready' | 'failed'
 
 // The repository has no error-reporting channel for the bridge layer yet; a failed start is
 // logged the way the other bridge loaders log theirs, so the cause stays reachable in the console.
-function logStartFailure(stage: 'load' | 'start', error: unknown): void {
+function logStartFailure(stage: 'load' | 'build' | 'start', error: unknown): void {
   console.warn(`Scene renderer failed to ${stage}`, error)
 }
+
+// What the gl function returns when the factory throws. It stays pending on purpose: React Three
+// Fiber builds its own WebGLRenderer for any gl result that is not a renderer, and a throw out of
+// gl would escape the library's setup as an unhandled rejection. The wrapper swaps the Canvas for
+// the cannot-render status, so nothing awaits this promise.
+const NEVER_SETTLES = new Promise<never>(() => {})
 
 function useSceneRendererFactory(
   setStatus: (status: SceneRendererStatus) => void,
@@ -106,7 +112,15 @@ function useSceneRendererStart(forceWebGL: boolean) {
       // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here (the
       // OffscreenCanvas branch of DefaultGLProps applies only to its worker path).
       const canvas = defaultProps.canvas as HTMLCanvasElement
-      const renderer = rendererFactory({ canvas, forceWebGL })
+      let renderer: HeldRenderer['renderer']
+      try {
+        renderer = rendererFactory({ canvas, forceWebGL })
+      } catch (error) {
+        logStartFailure('build', error)
+        if (mounted.current) setStatus('failed')
+        // GLProps types a gl function as all-Renderer or all-Promise, and this one returns both.
+        return NEVER_SETTLES as unknown as HeldRenderer['renderer']
+      }
       const started = renderer.init()
       hold(renderer, started)
       started.then(
@@ -138,7 +152,8 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * canvas, and it stays there until it mounts again. Every renderer the wrapper builds is released
  * exactly once through the engine's releaseSceneRenderer: when its init() rejects, and otherwise
  * when the wrapper unmounts, also while init() is still pending. Opening and closing the view any
- * number of times therefore leaves no renderer and no animation loop alive.
+ * number of times therefore leaves no renderer and no animation loop alive. A factory that throws
+ * ends in the same cannot-render state as a failed init().
  */
 export function SceneRendererCanvas({
   forceWebGL = false,
