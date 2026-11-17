@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { readStoryIds } from './story-index'
+import { readStoryIds } from './story-index.mjs'
 
 // Behavior: extract the testable story ids from a built Storybook
 // `storybook-static/index.json` (v8, "v": 5). The visual-regression Playwright

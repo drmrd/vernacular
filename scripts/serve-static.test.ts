@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createStaticServer } from './serve-static'
+import { createStaticServer } from './serve-static.mjs'
 
 // Slice 1 of the storybook visual-regression plan: a tiny static-file HTTP
 // server (no new dependency; see the 30-day cooldown rule in .claude/rules.md)

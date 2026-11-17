@@ -52,6 +52,10 @@ async function respondWithFile(response, filePath) {
   }
 }
 
+/**
+ * @param {string} rootDir
+ * @returns {import('node:http').Server}
+ */
 export function createStaticServer(rootDir) {
   return createServer((request, response) => {
     const pathname = requestedPathname(request.url ?? '/')
