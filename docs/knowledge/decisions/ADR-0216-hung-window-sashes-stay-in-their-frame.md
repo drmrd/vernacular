@@ -69,11 +69,12 @@ one representative part of a hung window (`docs/specs/2026-06-28-walk-mode-openi
 along the opening's normal. Every part of a hung-window fill carries both. No other fill carries
 either, so doors and undivided sashes keep their parts as they were.
 
-The meeting rail belongs to the lower sash. The lower sash, with its head rail, bottom rail, two
+The meeting rail belongs to the lower sash. The lower sash, with its top rail, bottom rail, two
 stiles, glass, and the meeting rail, sits on the room side of the wall: its offset is `+depth / 2`
-when that side is `'positive'` and `-depth / 2` when it is `'negative'`. The upper sash sits on the
-opposite track, at the opposite offset. The single-hung window follows the same rule with its fixed
-upper sash of a head rail, a bottom rail, and one pane.
+when that side is `'positive'` and `-depth / 2` when it is `'negative'`. The code calls the top rail
+of a sash `headRail`. The upper sash sits on the opposite track, at the opposite offset. The
+single-hung window follows the same rule with its fixed upper sash of a top rail, a bottom rail, and
+one pane.
 
 The fill reads the side as `node.roomSide ?? node.orientation.facing`. The next two sections say
 how the room side is found and carried to the node. `facing` decides only when the node has no room
@@ -155,8 +156,10 @@ A wall of 100 mm or more keeps the full 50 mm sash on tracks 25 mm either side o
 before. A wall between 40 mm and 100 mm gives each sash half its thickness, so both sashes sit flush
 with the wall faces. A wall under 40 mm keeps the 20 mm depth, and the pair stands proud of each face
 by `(40 - hostThickness) / 2`. The 20 mm floor keeps each pane inside its own bars and the two panes
-at least 14 mm apart. The lower sash spans `[0, depth]` across the wall and the upper sash
-`[-depth, 0]`, so the two never overlap in depth at any thickness. The panes sit at `±depth / 2` and
+at least 14 mm apart. Across the wall, the lower sash spans one sash depth from the centerline toward
+the room side, and the upper sash one sash depth toward the other side. On a positive side that is
+`[0, depth]` for the lower sash and `[-depth, 0]` for the upper; on a negative side the two spans
+swap. Either way the two never overlap in depth at any thickness. The panes sit at `±depth / 2` and
 every bar face at 0 or `±depth`, so no glass face shares a plane with another face. The two sashes
 touch only at the centerline, where both faces lie between opaque bars.
 
@@ -256,6 +259,11 @@ Carrying the room side through the scene graph was first rejected as too wide fo
 a new field on the opening node and a cache check for a change of rooms. It is what was built, as the
 decision above describes.
 
+The room side on hung windows only. Doors would then not be rebuilt for a change of rooms, as they
+are now (see Consequences). Rejected: the side is a fact about every opening, not about one kind of
+fill, and trim such as casings will need it for doors too. The extra rebuild happens only when an
+edit moves the side of an opening, and it is bounded by the openings whose side moved.
+
 The outward normal from `exteriorWalls` as the room side. Rejected: it samples the middle of the wall.
 On a wall that bounds a room along only part of its length, a test shows that `exteriorWalls` does not
 list the wall at all, while a window beside the room has a clear room side.
@@ -275,28 +283,36 @@ given above.
   the upper sash is set back behind the lower one by one sash depth. On a wall with no single room
   side, the side that `facing` names takes the place of the room. This holds for every hung window,
   opened or not.
-- On a wall with a room on one side only, the "Flip swing" button of the inspector no longer moves
-  the sashes of a hung window. It still changes the stored `facing`, but the room side wins. The
-  button still decides the side on a wall between two rooms or a wall that bounds no room at the
-  opening. Issue #827 now covers only the label of that button and what it should do for a hung
-  window.
-- A room edit can now replace an opening node, and so rebuild its 3D group, when the edit moves the
-  room side of the opening. An edit that leaves the side alone keeps both.
+- The "Flip swing" button of the inspector never moved the sashes of a hung window before this
+  change: the fill ignored `facing`, and both sashes sat on the centerline. It now decides their side
+  only on a wall with two room sides or none. On a wall with a room on one side only, it changes the
+  stored `facing`, but the room side wins and the sashes stay. Issue #827 now covers only the label
+  of that button and what it should do for a hung window.
+- An edit that opens or closes a room rebuilds the 3D group of each opening whose room side changes,
+  doors included, although the fill of a door does not read the side. The new side gives the opening
+  a new node, and the view rebuilds a group whose node is new. This happens once for such an edit. A
+  drag that keeps the side the same keeps the node, so it does not rebuild the group on every frame.
+  `tests/performance/scene-rebuild-counts.test.ts` counts the 3D groups that each reference edit
+  rebuilds. For the edit that moves a wall end so that a room opens, the opening groups rebuilt went
+  from 1 to 2, and this change updates the recorded baseline in
+  `tests/performance/baseline-scene-rebuild.json`. A run found the cause: the door between the opened
+  room and the room behind it gains a single room side.
 - The walker can close an open hung window by looking anywhere in its frame, and not by looking at
   the wall above it. So the open key now closes a hung window from the pose that opened it. Doors
   are unchanged. Issue #817 asks what that key must do for a fully open opening.
 - A later control for the upper sash of a double-hung window is a slide with `partId: 'upper'` and a
   negative travel. It needs no change to the applier.
 - The closed look of a hung window changes to two stepped sashes. The step is too small to move a
-  committed scene capture on macOS: after the change, the scene captures ran against the committed
-  images with no update, and all 55 passed. Those captures let 5 percent of the pixels differ at a
-  per-pixel threshold of 0.35 (`SHELL_THRESHOLD` and `SHELL_MAX_DIFF_PIXEL_RATIO` in
-  `e2e/tests/scene-visual-regression.spec.ts` and `e2e/tests/scene-solar.spec.ts`,
-  `LIVE_VIEW_THRESHOLD` and `LIVE_VIEW_MAX_DIFF_PIXEL_RATIO` in
-  `e2e/tests/scene-live-view-visual-regression.spec.ts`). The Linux captures (ADR-0152) are checked
-  by the CI job of the pull request. That run came before the lower sash moved to the room side.
-  The move puts the sashes of the east window of the harness shell on the other tracks; this record
-  reports no capture run after it.
+  committed scene capture on macOS. The scene captures ran twice against the committed images with
+  no update. At commit `959b613a`, before the lower sash moved to the room side, 55 passed and none
+  failed. At commit `4f64042`, the last commit of the room side work, 55 passed and none failed
+  again, although the east window of the harness shell had moved its sashes to the other tracks.
+  Those captures let 5 percent of the pixels differ at a per-pixel threshold of 0.35
+  (`SHELL_THRESHOLD` and `SHELL_MAX_DIFF_PIXEL_RATIO` in `e2e/tests/scene-visual-regression.spec.ts`
+  and `e2e/tests/scene-solar.spec.ts`, `LIVE_VIEW_THRESHOLD` and `LIVE_VIEW_MAX_DIFF_PIXEL_RATIO` in
+  `e2e/tests/scene-live-view-visual-regression.spec.ts`). The Linux captures (ADR-0152) run in the
+  scene visual job of the pull request. Their result is not known yet; the east window of the shell
+  fixture changes tracks there too.
 
 ## Evidence
 
@@ -390,8 +406,8 @@ open key from the pose that opened the window closes it again.
 - On a wall between two rooms, or a wall that bounds no room at the opening, `facing` still decides.
   It is a stored choice that defaults to `'positive'`, the wall's left-hand normal from its start to
   its end, and only the "Flip swing" button of the inspector changes it. The label of that button
-  does not say that it moves the sash, and on a wall with one room side it no longer moves the sashes
-  of a hung window. Issue #827 covers both.
+  does not say that it moves the sash, and on a wall with one room side it does not move the sashes
+  of a hung window at all. Issue #827 covers both.
 - The room side is a point test 50 mm past the face. A space narrower than that beside a wall does
   not count as a room side, and neither does a room whose clear polygon begins farther than 50 mm
   from the face.
@@ -399,13 +415,19 @@ open key from the pose that opened the window closes it again.
   show both outcomes. A 300 mm window centered 150 mm from an inside corner of 114 mm walls finds
   its room side. The same window beside a 400 mm neighboring wall finds none, because its sample
   falls inside that wall's thickness, outside the room; `facing` then decides. A window centered
-  150 mm from the reflex corner of an L-shaped room finds its room side.
+  150 mm from the reflex corner of an L-shaped room finds its room side. For a neighboring wall at
+  right angles, the sample misses the room only when the center of the opening lies inside the
+  thickness of that wall. Then at least half of the opening overlaps the wall, which no valid plan
+  has. So no second sample along the width of the opening was added.
 - `exteriorWalls` keeps its midpoint sample and its check without holes, so the two rules can
   disagree about the same wall. Bringing it in line is left to a follow-up issue.
-- The run-time cost of the sampling was not measured. Each derived opening tests two points against
-  the rooms of its floor, and the warm deriver tests them again whenever the room array changes.
+- The run-time cost of the sampling and of the extra rebuilds was not timed. Each derived opening
+  tests two points against the rooms of its floor, and the warm deriver tests them again whenever the
+  room array changes. The rebuilds are counted by the gate in
+  `tests/performance/scene-rebuild-counts.test.ts`, not timed.
 - Only the lower sash moves, on the double-hung window as well. A real double-hung window can also
-  lower its upper sash. The 3D view does not tell the two hung types apart by their motion.
+  lower its upper sash; a follow-up issue covers that in the 3D view. Until then the 3D view does not
+  tell the two hung types apart by their motion.
 - In a wall thinner than 40 mm the sashes stand proud of the wall faces, by up to 19.5 mm on each
   face in a 1 mm wall.
 - Nobody saw coplanar sashes flicker. That they would was inferred from the geometry. The live check
