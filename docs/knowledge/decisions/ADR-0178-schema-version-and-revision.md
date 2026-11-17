@@ -54,7 +54,10 @@ in that round.
 > tolerant one serves the row of the table for a file from a newer build: it still checks the
 > fields this build knows and accepts the ones it does not. One codec in `core/format/codec/`
 > applies the reading rules of the table on every read and every write, for every store and for
-> the `.json` import.
+> the `.json` import. A save writes the highest of the document's revision, the previous stored
+> file's revision when that file is at the same version, and the build's, so that unknown fields
+> kept from a file a newer build wrote stay under its revision and the next read checks them
+> tolerantly.
 
 ## Context
 

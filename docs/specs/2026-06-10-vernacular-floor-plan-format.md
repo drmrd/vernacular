@@ -267,10 +267,14 @@ accompanying ADR.
 
 - **Adoption (non-normative).** Versions 8 through 17 predate the revision and each incremented
   `schemaVersion`, including for additive changes. The application writes `schemaRevision` on
-  every save, as the higher of the Document's revision and its own, and reads a Document without
-  it as revision 0. A Document migrated from an older version carries no revision until its next
-  save. The document codec work described in `2026-11-14-architecture-refactor-round.md` decides
-  how a validation error is reported (section 8 still rules out a user-facing hard rejection).
+  every save, as the highest of the Document's revision, the revision of the previous stored file
+  when that file is at the same `schemaVersion`, and its own. Unknown fields that the save keeps
+  from a file a newer build wrote stay under that file's revision, so the next read checks them
+  tolerantly. The application reads a Document without `schemaRevision`, or with a value that is
+  not a non-negative integer, as revision 0. A Document migrated from an older version carries
+  no revision until its next save. The document codec work described in
+  `2026-11-14-architecture-refactor-round.md` decides how a validation error is reported
+  (section 8 still rules out a user-facing hard rejection).
 
 ## 8. Schema generation and validation
 
