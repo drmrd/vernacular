@@ -1,75 +1,23 @@
-import type { Project } from '../../core'
-import { ProjectNotFoundError, type IndexedDbStore, type ProjectSummary } from '../project-store'
+import { WorkspaceDocumentStore } from '../documents/document-store'
+import { WorkspaceFiles } from '../project-files/workspace-files'
+import { IndexedDbDirectory } from './indexeddb-directory'
 
-const DB_NAME = 'vernacular'
-const STORE_NAME = 'projects'
-const DB_VERSION = 1
-
-interface StoredProject {
-  id: string
-  project: Project
-}
-
-function promisify<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'))
-  })
-}
-
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore(STORE_NAME, { keyPath: 'id' })
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'))
-  })
-}
+/** The name of the IndexedDB database that holds the projects of the running app. */
+export const DEFAULT_PROJECT_DATABASE_NAME = 'vernacular'
 
 /**
- * Durable store backed by IndexedDB. This is the single seam that touches
- * IndexedDB; it is validated by the wall-drawing end-to-end spec rather than unit
- * tests, since jsdom does not implement IndexedDB.
+ * Many projects in one IndexedDB database, each under a path named by its id. It is the document
+ * store over durable workspace files, so the codec, the backups, and the snapshots come from the
+ * wrapper, and the directory owns every access to IndexedDB, including the records of the
+ * earlier layout.
  */
-export class IndexedDbProjectStore implements IndexedDbStore {
-  async list(): Promise<ProjectSummary[]> {
-    const db = await openDatabase()
-    const records = await promisify(
-      db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll() as IDBRequest<
-        StoredProject[]
-      >,
-    )
-    return records.map((record) => ({ id: record.id, lastChangedAt: undefined }))
-  }
-
-  async load(id: string): Promise<Project> {
-    const db = await openDatabase()
-    const record = await promisify(
-      db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(id) as IDBRequest<
-        StoredProject | undefined
-      >,
-    )
-    if (record === undefined) {
-      throw new ProjectNotFoundError(id)
-    }
-    return record.project
-  }
-
-  async save(id: string, project: Project): Promise<void> {
-    const db = await openDatabase()
-    const record: StoredProject = { id, project }
-    await promisify(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(record))
-  }
-
-  async delete(id: string): Promise<void> {
-    const db = await openDatabase()
-    await promisify(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(id))
+export class IndexedDbProjectStore extends WorkspaceDocumentStore {
+  constructor(databaseName: string = DEFAULT_PROJECT_DATABASE_NAME) {
+    super(new WorkspaceFiles(new IndexedDbDirectory(databaseName), { durable: true }))
   }
 }
 
 /** The default durable store for the running app. */
-export function createDefaultProjectStore(): IndexedDbStore {
+export function createDefaultProjectStore(): IndexedDbProjectStore {
   return new IndexedDbProjectStore()
 }
