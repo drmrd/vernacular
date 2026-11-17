@@ -9,6 +9,8 @@ import type { DecodedDocument, DecodeFailure, DecodeResult } from './codec-types
 import { decodeDocument } from './decode-document'
 
 const OLDER_VERSION = 8
+const VERSION_NO_STEP_STARTS_FROM = 0
+const VERSION_THAT_IS_NOT_WHOLE = 16.5
 const NEWER_BUILD_REVISION = CURRENT_SCHEMA_REVISION + 1
 const REVISION_OF_AN_OLDER_FILE = 3
 const UNKNOWN_FIELD = 'x-unknown'
@@ -191,5 +193,40 @@ describe('decoding an older document that names a revision', () => {
     expect(value.migratedFrom).toBe(OLDER_VERSION)
     expect(value.savedByNewerBuild).toBe(false)
     expect(value.project.meta.schemaRevision ?? 0).toBe(0)
+  })
+})
+
+describe('decoding a document whose migration cannot finish', () => {
+  it('names the stored version when the chain breaks part way', () => {
+    const onlyStep: SchemaMigration = { from: OLDER_VERSION, migrate: (project) => project }
+    const result = decodeDocument(bytesOf(fixtureDocument(OLDER_VERSION)), {
+      migration: { schemaMigrations: [onlyStep] },
+    })
+    const failure = failureOf(result)
+    expect(failure.kind).toBe('migration-failed')
+    if (failure.kind === 'migration-failed') {
+      expect(failure.fromVersion).toBe(OLDER_VERSION)
+      expect(failure.message).not.toBe('')
+    }
+  })
+
+  it('reports a version that no step starts from as migration-failed', () => {
+    const document = fixtureDocument(OLDER_VERSION)
+    metaOf(document).schemaVersion = VERSION_NO_STEP_STARTS_FROM
+    const failure = failureOf(decodeDocument(bytesOf(document)))
+    expect(failure.kind).toBe('migration-failed')
+    if (failure.kind === 'migration-failed') {
+      expect(failure.fromVersion).toBe(VERSION_NO_STEP_STARTS_FROM)
+      expect(failure.message).not.toBe('')
+    }
+  })
+
+  it.each([
+    { name: 'a number that is not whole', version: VERSION_THAT_IS_NOT_WHOLE },
+    { name: 'a string', version: String(CURRENT_SCHEMA_VERSION) },
+  ])('reports a schema version that is $name as not-a-project', ({ version }) => {
+    const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+    metaOf(document).schemaVersion = version
+    expect(failureOf(decodeDocument(bytesOf(document)))).toEqual({ kind: 'not-a-project' })
   })
 })
