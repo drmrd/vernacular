@@ -134,6 +134,40 @@ export function findValueImportCycles(sources: ReadonlyMap<string, string>): str
     .sort((first, second) => first.join().localeCompare(second.join()))
 }
 
+function anyModuleSpecifier(statement: ts.Statement): string | undefined {
+  const importsOrReexports =
+    ts.isImportDeclaration(statement) ||
+    (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
+  return importsOrReexports ? (statement.moduleSpecifier as ts.StringLiteral).text : undefined
+}
+
+function reachesLayer(importerPath: string, specifier: string, targetLayer: string): boolean {
+  if (!specifier.startsWith('.')) return false
+  const target = posix.normalize(posix.join(posix.dirname(importerPath), specifier))
+  return target === targetLayer || target.startsWith(`${targetLayer}/`)
+}
+
+/**
+ * Sorted paths of the files in `importerLayers` that import or re-export from a relative path
+ * resolving into `targetLayer`. Type-only and value statements both count.
+ */
+export function filesImportingLayer(
+  sources: ReadonlyMap<string, string>,
+  importerLayers: readonly string[],
+  targetLayer: string,
+): string[] {
+  const importers: string[] = []
+  for (const [path, text] of sources) {
+    if (!importerLayers.includes(path.split('/')[0] ?? '')) continue
+    const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest)
+    const reaches = sourceFile.statements
+      .map(anyModuleSpecifier)
+      .some((specifier) => specifier !== undefined && reachesLayer(path, specifier, targetLayer))
+    if (reaches) importers.push(path)
+  }
+  return importers.sort()
+}
+
 /** Every `.ts` and `.tsx` file under the layer directories. */
 export function readLayerSources(repositoryRoot: string): Map<string, string> {
   const sources = new Map<string, string>()
