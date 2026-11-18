@@ -14,6 +14,10 @@ sourceFiles:
     docs/specs/2026-07-06-arris-visual-design-language.md,
     docs/specs/2026-06-01-vernacular-design.md,
     editor/commands/use-keybindings.ts,
+    editor/design-system/composing-key.ts,
+    editor/design-system/composing-key.test.tsx,
+    editor/commands/command-palette-composing.test.tsx,
+    editor/metadata/site-editor-composing.test.tsx,
   ]
 status: current
 updated: 2026-11-18
@@ -184,3 +188,50 @@ and the dialog stops that one. A bound chord behind a dialog does nothing and do
 browser, so "never borrowed" holds for `Cmd/Ctrl+S` there too. With no dialog open a bound chord
 runs once, as before. A chord typed in a text field still keeps its default, because the field owns
 it.
+
+## Update (2026-11-18): a key of a text composition belongs to the input method
+
+A person who types with an input method, for Japanese, Chinese or Korean text or for full-width
+digits, presses Enter to confirm a candidate and Escape to cancel it while the text is still being
+composed. The browser still sends a `keydown` for that key. Issue #863 found that the command
+palette took a composing Enter as its own: the first filtered command ran and the palette closed. A
+composing Escape closed the palette. Each field of the site editor committed the half-composed
+value on a composing Enter.
+
+The rule sharpens the top of the precedence ladder, where a focused text field owns its keys: a key
+that belongs to a text composition is the input method's key, not the app's. A handler that acts on
+Enter or Escape returns early for such a key. It runs no command, closes nothing and commits
+nothing.
+
+- **One helper tells such a key.** `isComposingKey` in `editor/design-system/composing-key.ts`,
+  exported from the `editor/design-system` index, takes a DOM keyboard event or a React one and
+  reads the native event. It returns true when `isComposing` is set or when `keyCode` is 229.
+  Engines that do not set `isComposing` report key code 229, which means "processed by an input
+  method", for every key pressed during a composition. `keyCode` is deprecated, but those engines
+  give no other signal, so the helper still reads it.
+- **The command palette follows it.** Its key handler, `createKeyDownHandler` in
+  `editor/commands/command-palette.tsx`, returns before its Escape and Enter branches. It does not
+  stop the propagation of such a key. While the palette is open the focus trap already holds every
+  `keydown` back from the editor's listeners (ADR-0106), so the key does not reach the shortcuts
+  behind the dialog either.
+- **The site editor follows it.** `useCommitOnBlur` in `editor/metadata/site-editor.tsx`, the
+  handler that the latitude, longitude, north bearing and timezone fields share, returns early. The
+  pending-edit flag stays set, so the plain Enter or the blur that comes later still commits, once.
+
+The rule does not cover the other handlers that act on Enter yet. Under `editor/plan/` these are
+the room name editor (`room-name-editor.tsx`), the room sub purpose editor
+(`room-sub-purpose-editor.tsx`), the furniture inspector (`furniture-inspector.tsx`), the length
+field (`length-field.tsx`), the angle field (`angle-field.tsx`), and the plan's own key handling in
+`authoring-tool-handlers.ts` and `use-plan-interaction.ts`. The entity proxy in `entity-proxy.tsx`
+acts on Enter as well, but it is a list option and holds no text. Issue #863 stays open for these.
+
+No run with a real input method in a browser was made. The tests fire `keydown` events with
+`isComposing` set, or with key code 229, in jsdom. As run on 2026-11-18, all passing:
+
+- `editor/design-system/composing-key.test.tsx`: 6 tests, on DOM and React keyboard events.
+- `editor/commands/command-palette-composing.test.tsx`: 5 tests. A composing Enter, by either
+  signal, runs no command and does not close the palette; a composing Escape does not close it; the
+  next plain Enter runs the first command once and closes once; a plain Escape closes once.
+- `editor/metadata/site-editor-composing.test.tsx`: 20 tests, five for each of the four fields. A
+  composing Enter, by either signal, commits nothing; the plain Enter or the blur after it commits
+  once; a plain Enter with no composition commits once.

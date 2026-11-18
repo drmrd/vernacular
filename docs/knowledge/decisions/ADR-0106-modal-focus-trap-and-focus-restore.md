@@ -248,7 +248,9 @@ the key that closes a focus trap" moved the decision to the start of the dispatc
 above. A `keydown` that starts while a trap is active is now held back even when the trap unmounts
 while the event is handled, and the hold covers that one event only, so the next key reaches
 `window` again. The dialogs keep their own `stopPropagation()` calls. Today they are a second guard,
-and they matter again when the keyboard router of #691 replaces the rule at the body.
+and they matter again when the keyboard router of #691 replaces the rule at the body. The palette
+makes no such call for a key of a text composition, so only the trap holds that key back (ADR-0155,
+update of 2026-11-18).
 
 The rule has limits. It assumes that the React root renders inside `document.body`, which holds for
 the app's `#root` in `index.html`. No dialog renders through a portal today, and a dialog portaled
