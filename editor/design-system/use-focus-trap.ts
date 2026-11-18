@@ -98,6 +98,33 @@ function holdKeyBack(event: KeyboardEvent, container: HTMLElement): void {
   first.focus()
 }
 
+// The keydown that started while a trap was the active one, and that may still be on its way to
+// the body. The capture listener records it before React's handlers run; the body listener below
+// stops it there even when the trap has unmounted in the meantime. Only the event in flight is
+// held, so nothing else is kept and a later key is never touched.
+let keyDownInFlight: KeyboardEvent | null = null
+
+// One shared listener, so adding it again for another key is a no-op rather than a second copy.
+// It acts for the recorded event only and removes itself on whatever event reaches it first.
+function stopKeyDownInFlight(event: KeyboardEvent): void {
+  const held = event === keyDownInFlight
+  keyDownInFlight = null
+  document.body.removeEventListener('keydown', stopKeyDownInFlight)
+  if (held) {
+    event.stopPropagation()
+  }
+}
+
+// Runs at the start of the dispatch, before the handlers inside the container, so the key that
+// closes the dialog is recorded while the trap is still the active one.
+function recordKeyDownInFlight(event: KeyboardEvent, container: HTMLElement): void {
+  if (!isActiveTrap(container)) {
+    return
+  }
+  keyDownInFlight = event
+  document.body.addEventListener('keydown', stopKeyDownInFlight)
+}
+
 // Skip the restore when the caller has already moved focus to a live element
 // outside the trap (e.g. its own close handler restored the opener); otherwise
 // we would redundantly re-focus, or clobber a deliberate handoff. Unmounting a
@@ -127,7 +154,10 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  *   `document` or `window` does not see it. Handlers inside the container, React ones included,
  *   still receive every key, and keyup passes untouched so that held keys are released. A keydown
  *   that starts outside the container is held back as well, and focus moves to the first
- *   focusable descendant (the container when there is none).
+ *   focusable descendant (the container when there is none). A `keydown` that starts while a trap
+ *   is the active one is held back from the bubble-phase listeners on `document` and `window`
+ *   even when the trap unmounts while that event is being handled. The hold is for that one event
+ *   only.
  * - When several traps are mounted, only the most recently mounted one acts.
  *
  * Keys are held back at `document.body`, which assumes that the React root renders inside the
@@ -149,15 +179,18 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T
     const onKeyDown = (event: KeyboardEvent) => trapTab(event, container)
     const onMouseDown = (event: MouseEvent) => keepFocusOnPressOutside(event, container)
     const onBodyKeyDown = (event: KeyboardEvent) => holdKeyBack(event, container)
+    const onCaptureKeyDown = (event: KeyboardEvent) => recordKeyDownInFlight(event, container)
     const body = document.body
     mountedTraps.push(container)
     container.addEventListener('keydown', onKeyDown)
     body.addEventListener('keydown', onBodyKeyDown)
+    document.addEventListener('keydown', onCaptureKeyDown, true)
     document.addEventListener('mousedown', onMouseDown, true)
     return () => {
       mountedTraps.splice(mountedTraps.lastIndexOf(container), 1)
       container.removeEventListener('keydown', onKeyDown)
       body.removeEventListener('keydown', onBodyKeyDown)
+      document.removeEventListener('keydown', onCaptureKeyDown, true)
       document.removeEventListener('mousedown', onMouseDown, true)
       undoFocusable()
       restoreFocus(opener, container)
