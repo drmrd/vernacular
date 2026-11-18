@@ -23,12 +23,24 @@ function usableNorthBearing(site: Site | undefined): number | undefined {
   return bearing !== undefined && Number.isFinite(bearing) ? bearing : undefined
 }
 
+/** The stored location when both coordinates are finite numbers; otherwise it counts as missing. */
+function usableLatLong(site: Site | undefined): LatLong | undefined {
+  const latLong = site?.latLong
+  return latLong !== undefined &&
+    Number.isFinite(latLong.latitude) &&
+    Number.isFinite(latLong.longitude)
+    ? latLong
+    : undefined
+}
+
 /**
  * Which parts of the stored site are a sample: none, the location, or the
  * location and north. A north bearing that is not a finite number counts as missing.
+ * A stored location with a latitude or longitude that is not a finite number
+ * counts as missing.
  */
 export function daylightSampleOf(site: Site | undefined): DaylightSample {
-  if (site?.latLong !== undefined) return 'none'
+  if (usableLatLong(site) !== undefined) return 'none'
   if (usableNorthBearing(site) !== undefined) return 'location'
   return 'location-and-north'
 }
@@ -38,6 +50,8 @@ export function daylightSampleOf(site: Site | undefined): DaylightSample {
  * one, the sample place stands in, and a stored north bearing is kept; with no
  * bearing either, north is implied so that true south is the front. A north
  * bearing that is not a finite number counts as missing, so it is never kept.
+ * A stored location with a latitude or longitude that is not a finite number
+ * counts as missing.
  */
 export function daylightSiteFor(
   site: Site | undefined,
@@ -45,11 +59,12 @@ export function daylightSiteFor(
   date: string,
 ): DaylightSite {
   const sample = daylightSampleOf(site)
-  if (site?.latLong !== undefined) {
+  const latLong = usableLatLong(site)
+  if (latLong !== undefined) {
     return {
-      latLong: site.latLong,
+      latLong,
       northBearing: usableNorthBearing(site) ?? 0,
-      utcOffsetMinutes: utcOffsetMinutesFor(site.timezone, date, site.latLong.longitude),
+      utcOffsetMinutes: utcOffsetMinutesFor(site?.timezone, date, latLong.longitude),
       sample,
     }
   }

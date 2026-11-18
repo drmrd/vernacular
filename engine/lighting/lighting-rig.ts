@@ -228,14 +228,28 @@ export function fitSunShadowToBounds(scene: THREE.Object3D, bounds: Bounds3 | nu
  * normalized internally so callers need not pre-normalize) outside the scene bounds and
  * sizes its orthographic shadow camera to cover them, so a solar model can steer the
  * light while keeping the shadow fit.
+ *
+ * A direction that does not normalize to a finite, nonzero vector (a component that is not finite,
+ * or a length of zero) aims the sun along `SUN_DIRECTION`, exactly as `fitSunShadowToBounds` does,
+ * so the sun's position is finite whenever the bounds are. It never throws.
  */
 export function fitSunShadowToDirection(
   scene: THREE.Object3D,
   direction: Vector3,
   bounds: Bounds3 | null,
 ): void {
+  fitSunShadowAlongUnitDirection(scene, unitAimOf(direction), bounds)
+}
+
+/** The unit vector for `direction`, or the shared default aim when it has no usable direction. */
+function unitAimOf(direction: Vector3): THREE.Vector3 {
   const unitDirection = new THREE.Vector3(direction.x, direction.y, direction.z).normalize()
-  fitSunShadowAlongUnitDirection(scene, unitDirection, bounds)
+  const isUsable =
+    Number.isFinite(unitDirection.x) &&
+    Number.isFinite(unitDirection.y) &&
+    Number.isFinite(unitDirection.z) &&
+    unitDirection.lengthSq() > 0
+  return isUsable ? unitDirection : SUN_DIRECTION_NORMALIZED
 }
 
 /** TEXEL_DIAGONAL_FRACTION in world millimeters, across a shadow camera fitted at `radius`. */

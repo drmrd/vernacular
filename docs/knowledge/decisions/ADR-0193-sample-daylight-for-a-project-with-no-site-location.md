@@ -24,12 +24,15 @@ related:
     decisions/ADR-0139-plan-to-world-orientation,
     decisions/ADR-0151-ambient-occlusion-render-pipeline,
     decisions/ADR-0147-per-mode-tone-mapping,
+    decisions/ADR-0158-millimeter-scale-shadow-and-occlusion-constants,
   ]
 sourceFiles:
   [
     core/environment/daylight-site.ts,
     core/environment/daylight-site.test.ts,
+    core/environment/daylight-site-location-not-finite.test.ts,
     core/environment/daylight-reference.ts,
+    core/environment/environment-lighting.ts,
     core/environment/opening-instant.ts,
     core/environment/environment-state.ts,
     core/scene/front-direction.ts,
@@ -47,7 +50,7 @@ sourceFiles:
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
 status: current
-updated: 2026-11-16
+updated: 2026-11-17
 ---
 
 # ADR-0193: Sample daylight for a project with no site location
@@ -214,6 +217,9 @@ The old default, 21 June at noon, is gone with its constant. The architecture te
 two things. No file there names `DEFAULT_OBSERVATION_INSTANT`. No file that is not a test names
 `DAYLIGHT_REFERENCE_INSTANT`, except `core/environment/opening-instant.ts`,
 `core/environment/daylight-reference.ts`, and the `core/index.ts` barrel.
+`core/environment/environment-lighting.ts` is not an owner: its fallback sun reads the reference
+through `referenceLightingInput()` (see the amendment of 2026-11-17 in
+[[ADR-0158-millimeter-scale-shadow-and-occlusion-constants]]).
 
 The function takes the site although it does not read it yet. The opening light may become stored
 state later (#737), for example an instant at which a located house's front takes the sun.
@@ -295,3 +301,26 @@ camera too. The tone curve gate in `e2e/tests/scene-tone-curve.spec.ts` renders 
 - [[ADR-0139-plan-to-world-orientation]] (the plan frame the front and the bearing live in).
 - [[ADR-0147-per-mode-tone-mapping]] and [[ADR-0151-ambient-occlusion-render-pipeline]] (the
   operator and the occlusion pass that follow the lighting mode).
+
+## Amendment 2026-11-17: a stored location that is not finite counts as missing
+
+A stored location with a latitude or a longitude that is not a finite number now counts as
+missing, in `daylightSiteFor` and in `daylightSampleOf`, as a bearing that is not finite already
+does. The private `usableLatLong` in `core/environment/daylight-site.ts` states the rule, beside
+`usableNorthBearing`. Such a site reads as the same site without a location: it gets the sample
+place at offset 0, its stored bearing or the implied north, and the matching `sample` value. A
+location at latitude 0 and longitude 0 is finite, so it is a place and not a gap.
+
+The rule is here because the lighting fallback alone would give the wrong answer. Since the
+amendment of 2026-11-17 in [[ADR-0158-millimeter-scale-shadow-and-occlusion-constants]], solar
+angles that are not finite give the reference sun at the reference instant. A site with a `NaN`
+latitude would then get that sun whatever time the person chose, and `daylightSampleOf` would
+report `'none'`, so the panel would show no sample notice. With the rule, the site gets the sample
+place at the person's time, and the panel shows the notice.
+
+`core/environment/daylight-site-location-not-finite.test.ts` guards the rule. It checks three
+locations that are not finite, each with no other field, with a bearing, and with a timezone,
+against the same site without a location, in both functions. Two more tests check the sample place
+and the implied north for a `NaN` latitude, and that latitude 0 and longitude 0 is kept.
+`pnpm exec vitest run core/environment/daylight-site-location-not-finite.test.ts --project unit`
+passed 11 tests on 2026-11-17, and `core/environment/daylight-site.test.ts` passed its 46.
