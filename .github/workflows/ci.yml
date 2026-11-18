@@ -315,6 +315,13 @@ jobs:
     # sets E2E_REQUIRE_WEBGPU so that a runner with no adapter fails it instead of skipping it.
     # The specs take the scene-webgl project's browser channel and GPU flags themselves, so they
     # run under the chromium project with the browsers installed below.
+    # The live-view start-up spec runs here too, in the scene-webgl project. Its last test is the
+    # only real-browser test of the Reload page button after a failed load of the renderer
+    # module, and its other three hold the renderer start-up open. The linux scene-visual job
+    # runs the same four tests through three's WebGL 2 fallback, because that runner has no
+    # adapter. This step runs them on the WebGPU path with a real adapter, and it sets
+    # E2E_REQUIRE_WEBGPU so that a runner that loses its adapter fails the step instead of
+    # falling back.
     if: needs.decide.outputs.e2e == 'true'
     steps:
       - name: Checkout
@@ -357,6 +364,17 @@ jobs:
         env:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=chromium e2e/tests/journeys/close-doors-and-windows.spec.ts --reporter=list
+      - name: Live-view start-up spec (scene-webgl project)
+        # The run takes about eight seconds on the development Mac. The visual-regression step
+        # and the perceived-color journey step take 10 to 21 seconds on this runner. Each test
+        # may take up to 30 s, and retries: 2 can run a failed test three times, so a full hang
+        # could last six minutes or more. Five minutes lets two hung tests finish their retries
+        # (30 s for each of three tries) and write their traces, and it still ends a hung run
+        # early.
+        timeout-minutes: 5
+        env:
+          E2E_REQUIRE_WEBGPU: '1'
+        run: pnpm exec playwright test --project=scene-webgl e2e/tests/scene-live-view-startup.spec.ts --reporter=list
       - name: Upload live-view report on failure
         if: failure()
         uses: actions/upload-artifact@v4
