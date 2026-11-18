@@ -25,8 +25,8 @@ const DEFAULT_OPEN_WAIT_MILLISECONDS = 3000
 const NO_WAIT_AFTER_BLOCK_MILLISECONDS = 0
 /** What a call that finds the open request pending waits, with or without a report of a block. */
 const LATER_WAITS: OpenWaits = {
-  total: PENDING_OPEN_WAIT_MILLISECONDS,
-  afterBlock: PENDING_OPEN_WAIT_MILLISECONDS,
+  totalMilliseconds: PENDING_OPEN_WAIT_MILLISECONDS,
+  afterBlockMilliseconds: PENDING_OPEN_WAIT_MILLISECONDS,
 }
 /** Sorts after every character that can appear in a path, so it ends a prefix range. */
 const HIGHEST_CODE_UNIT = '\uffff'
@@ -202,7 +202,10 @@ export class IndexedDbDirectory implements DirectoryPort {
   }
 
   private firstWaits(): OpenWaits {
-    return { total: this.openWaitMilliseconds, afterBlock: NO_WAIT_AFTER_BLOCK_MILLISECONDS }
+    return {
+      totalMilliseconds: this.openWaitMilliseconds,
+      afterBlockMilliseconds: NO_WAIT_AFTER_BLOCK_MILLISECONDS,
+    }
   }
 
   private startAttempt(): OpenAttempt {

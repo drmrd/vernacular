@@ -22,7 +22,8 @@ export interface ProjectFiles {
   /**
    * Makes the project's own asset store hold the given assets, reading from wherever else this
    * kind of store can reach. A kind with nothing to copy from does nothing. Rejects with the
-   * error of the first failed read or write; a save calls this before it writes anything.
+   * error of the first failed read or write. A save calls this before it writes the document or a
+   * backup; assets that were copied before a failure stay in the folder.
    */
   prepareAssets(id: string, contentHashes: readonly string[]): Promise<void>
 }

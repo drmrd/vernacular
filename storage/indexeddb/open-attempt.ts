@@ -45,26 +45,31 @@ export function startOpen(databaseName: string, version: number): OpenAttempt {
 /** How long a call waits for an open request. */
 export interface OpenWaits {
   /** The longest wait, counted from the call, whether or not the browser reports a block. */
-  total: number
+  totalMilliseconds: number
   /** The longest wait after the browser reports a block, counted from that report. */
-  afterBlock: number
+  afterBlockMilliseconds: number
 }
 
 /**
  * Resolves with the connection when the request finishes. Rejects with
  * {@link OPEN_HELD_UP_MESSAGE} when the request has not finished after
- * `waits.total` milliseconds, or after `waits.afterBlock` milliseconds from the
- * block, whichever comes first. Both timers end when the request finishes. The
+ * `waits.totalMilliseconds`, or after `waits.afterBlockMilliseconds` from the
+ * block, whichever comes first. Both timers end when the request finishes or the
+ * call rejects. The
  * request itself stays pending; a later call can wait for it again.
  */
 export function waitForOpen(attempt: OpenAttempt, waits: OpenWaits): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const rejectHeldUp = () => reject(new Error(OPEN_HELD_UP_MESSAGE))
-    const timers = [setTimeout(rejectHeldUp, waits.total)]
-    void attempt.blocked.then(() => {
-      timers.push(setTimeout(rejectHeldUp, waits.afterBlock))
-    })
+    const timers: ReturnType<typeof setTimeout>[] = []
     const endTimers = () => timers.forEach((timer) => clearTimeout(timer))
+    const rejectHeldUp = () => {
+      endTimers()
+      reject(new Error(OPEN_HELD_UP_MESSAGE))
+    }
+    timers.push(setTimeout(rejectHeldUp, waits.totalMilliseconds))
+    void attempt.blocked.then(() => {
+      timers.push(setTimeout(rejectHeldUp, waits.afterBlockMilliseconds))
+    })
     attempt.result.then(
       (database) => {
         endTimers()
