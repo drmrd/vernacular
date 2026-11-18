@@ -75,6 +75,39 @@ describe('a key pressed on a focused palette row', () => {
   })
 })
 
+async function enterKeysReachingWindow(press: () => Promise<unknown>) {
+  const windowListener = vi.fn()
+  window.addEventListener('keydown', windowListener)
+  try {
+    await press()
+  } finally {
+    window.removeEventListener('keydown', windowListener)
+  }
+  return windowListener.mock.calls.filter(([event]) => (event as KeyboardEvent).key === 'Enter')
+}
+
+describe('an Enter pressed in the palette', () => {
+  it('stays out of the window key listeners when pressed on a row', async () => {
+    const { runRedo } = renderPalette()
+    await focusRowByTab('Redo', 2)
+
+    const reaching = await enterKeysReachingWindow(() => userEvent.keyboard('{Enter}'))
+
+    expect(reaching).toHaveLength(0)
+    expect(runRedo).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays out of the window key listeners when pressed in the search field', async () => {
+    const { runUndo } = renderPalette()
+    await userEvent.click(screen.getByRole('textbox', { name: 'Search commands' }))
+
+    const reaching = await enterKeysReachingWindow(() => userEvent.keyboard('{Enter}'))
+
+    expect(reaching).toHaveLength(0)
+    expect(runUndo).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('the other ways to run a palette command', () => {
   it('runs the first filtered command on Enter in the search field and closes once', async () => {
     const { runUndo, runRedo, onClose } = renderPalette()
