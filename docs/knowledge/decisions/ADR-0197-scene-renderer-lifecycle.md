@@ -123,9 +123,11 @@ settles.
 It cannot return `undefined`. The library builds its own WebGL renderer on the canvas for any `gl`
 result that is not a renderer. It cannot rethrow either, because the error would escape the
 library's setup as an unhandled rejection. The pending promise stops the library's setup, and the
-next render swaps the canvas for the status, so nothing waits on that promise. The library's types
-allow a `gl` function that returns a renderer, or one that returns a promise, but not one that can
-return either. This one can, so its return carries a type cast.
+next render swaps the canvas for the status. The setup of the library still awaits that promise
+(`@react-three/fiber` 9.6.1 awaits the result of the `gl` function), so the stopped setup stays
+reachable; the limits below say what follows from that. The library's types allow a `gl` function
+that returns a renderer, or one that returns a promise, but not one that can return either. This
+one can, so its return carries a type cast.
 
 ### Only the current renderer sets the state
 
