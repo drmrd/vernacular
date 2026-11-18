@@ -1,9 +1,10 @@
 import type { LinearRgb } from '../color/oklab'
 import type { LatLong } from '../model/site'
 import type { Vector3 } from '../scene/vector3'
+import { referenceLightingInput } from './daylight-reference'
 import type { ObservationInstant } from './observation-time'
 import { skyLighting } from './sky-model'
-import { solarPosition } from './solar-position'
+import { type SolarAngles, type SolarPositionInput, solarPosition } from './solar-position'
 import { projectDomeToSphericalHarmonics } from './spherical-harmonics'
 import { sunWorldDirection } from './sun-world-direction'
 
@@ -51,14 +52,15 @@ export interface EnvironmentLightingInput {
  * spherical-harmonic coefficients for the ambient probe, and `cloudCover` passes
  * straight through so the visible sky mesh can read the value it was computed with.
  * Frame and unit conventions follow those piece functions.
+ *
+ * Input that cannot be used falls back, and the function never throws. When the solar angles for
+ * the site and instant are not finite (a coordinate, offset or minute that is not finite or too
+ * large for the formulas, or a date that does not parse), the sun is the daylight reference sun:
+ * the place, the instant, and the UTC offset of `referenceLightingInput()`, still under the input's
+ * north bearing and cloud cover.
  */
 export function computeEnvironmentLighting(input: EnvironmentLightingInput): EnvironmentLighting {
-  const angles = solarPosition({
-    latitude: input.latLong.latitude,
-    longitude: input.latLong.longitude,
-    observedAt: input.observedAt,
-    utcOffsetMinutes: input.utcOffsetMinutes,
-  })
+  const angles = solarAnglesOrReference(input)
   const { sunColor, skyColor, sunLevel } = skyLighting(angles.altitude, input.cloudCover)
   const sunDirection = sunWorldDirection(angles, input.northBearing)
   return {
@@ -68,5 +70,20 @@ export function computeEnvironmentLighting(input: EnvironmentLightingInput): Env
     sunLevel,
     cloudCover: input.cloudCover,
     skyAmbient: projectDomeToSphericalHarmonics({ sunDirection, cloudCover: input.cloudCover }),
+  }
+}
+
+function solarAnglesOrReference(input: EnvironmentLightingInput): SolarAngles {
+  const angles = solarPosition(solarPositionInput(input))
+  if (Number.isFinite(angles.azimuth) && Number.isFinite(angles.altitude)) return angles
+  return solarPosition(solarPositionInput(referenceLightingInput()))
+}
+
+function solarPositionInput(input: EnvironmentLightingInput): SolarPositionInput {
+  return {
+    latitude: input.latLong.latitude,
+    longitude: input.latLong.longitude,
+    observedAt: input.observedAt,
+    utcOffsetMinutes: input.utcOffsetMinutes,
   }
 }
