@@ -18,7 +18,6 @@ sourceFiles:
     core/scene/opening-reach.ts,
     core/scene/opening-room-side.ts,
     core/scene/wall-room-sides.ts,
-    core/scene/wall-half.ts,
     core/scene/scene-graph.ts,
     core/scene/scene-graph-deriver.ts,
     bridge/react/harness-fixtures.ts,
@@ -26,7 +25,7 @@ sourceFiles:
     engine/scene/opening-motion.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # ADR-0216: Hung-window sashes ride two tracks, and the lower sash rises inside its frame

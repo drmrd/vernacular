@@ -19,6 +19,7 @@ tags:
 related:
   [
     decisions/ADR-0086-near-wall-transparency,
+    decisions/ADR-0087-opening-fade-with-host-wall,
     decisions/ADR-0103-junction-fill-fade-coordination,
     decisions/ADR-0140-conditional-junction-fill-fade,
     decisions/ADR-0145-furniture-fades-with-attached-exterior-wall,
@@ -54,7 +55,7 @@ sourceFiles:
     engine/scene/near-wall-transparency-test-support.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # ADR-0218: Exterior walls follow the rooms along the wall, one run at a time
@@ -68,8 +69,9 @@ rooms along it", "fix: follow the exterior runs in the junction fade and the fur
 "fix: fade each exterior run of a wall on its own", and "fix: give each wall mesh one owner run in
 the fade".
 
-This record amends five others. [[ADR-0086-near-wall-transparency]] now fades an exterior run
-instead of a whole wall. [[ADR-0103-junction-fill-fade-coordination]] and
+This record amends six others. [[ADR-0086-near-wall-transparency]] now fades an exterior run
+instead of a whole wall. In [[ADR-0087-opening-fade-with-host-wall]], an opening fades with the run
+that holds its center. [[ADR-0103-junction-fill-fade-coordination]] and
 [[ADR-0140-conditional-junction-fill-fade]] pair a junction with runs, one incident edge at a
 time. [[ADR-0145-furniture-fades-with-attached-exterior-wall]] pairs a piece of furniture with one
 run. In [[ADR-0193-sample-daylight-for-a-project-with-no-site-location]], an exterior door is now
@@ -197,8 +199,14 @@ within the tolerance of its centerline. Each piece takes the sides that `roomSid
 middle, against the wall's left-hand normal. Neighbors with the same sides are joined, so the cut
 at a tee with the same sides on both pieces disappears. The stretches cover the wall from 0 to its
 length, in mm from its start. Cuts closer than the tolerance to each other or to an end count as
-one, and a wall no longer than the tolerance has no stretches. `distanceAlongWall`, in the same
-file, measures the place of a point along a wall for every caller named in this record.
+one, and a wall no longer than the tolerance has no stretches.
+
+`distanceAlongWall`, in the same file, projects a point on the wall's direction from its start.
+Three callers in `core/scene/` use it: `wallStretches` for the ring corners it cuts at,
+`exteriorWalls` for the centers of openings, and `junctionFadeGroups` for the middles of incident
+edges. `markWallSpan` in `engine/scene/wall-span.ts` measures differently, as the straight distance
+of each edge end from the host wall's start. For a point on the wall's centerline the two give the
+same number.
 
 ### `exteriorWalls` lists exterior runs
 
@@ -248,7 +256,7 @@ another counts at a junction only when the incident edge lies on its exterior st
 `withAttachedFurniture` gives each piece to the first run, in `exterior` order, whose stretch of the
 centerline it stands against. The test is the unchanged `furnitureAttachedToWall`, with the wall's
 thickness. A piece against the stretch between two rooms joins no run, and a piece across the end
-of a run joins at most that run.
+of a run joins that run and no other.
 
 ### Each run fades on its own, and each wall mesh has one owner run
 
@@ -281,11 +289,24 @@ These visible changes are part of the decision:
   partition, the stretch beside the room of a wall that runs on past the end of the house, and the
   street wall of a linked shaft. The courtyard wall of a linked shaft, which faded wrongly, stops
   fading.
-- The front of the building can change in an existing project. Where the widest exterior door sits
-  on a wall that the old midpoint test missed, that door now counts and the front turns to it. For a
-  project with no stored location or north bearing, the sample sun turns with the front.
-- A hung window centered 150 mm from an inside corner whose neighbor wall is 400 mm thick now gets
-  its room side, where before `facing` decided. Its lower sash moves to the track on the room side.
+- The front of the building can change in an existing project, in either direction. A door that
+  the old midpoint test missed now counts, and the front can turn to it. A door that the old test
+  counted wrongly no longer counts, and the front can turn away from it. Such a door stands between
+  two rooms on a wall the old test listed whole, or in the courtyard wall of a linked shaft. On the
+  flush ell floor, the old test listed the whole long south wall, so the 900 mm door into the ell
+  (`inner-door`) counted as an exterior door. Now that door lies on no run, as a committed test of
+  `exteriorWalls` shows. With an 800 mm door added in the north wall, the front was plan-down
+  before and is plan-up now. That result, and the same kind of turn on the linked shaft floor, came
+  from a probe run in the branch review, which compared the old function from `main` with the new
+  one. No committed test holds it. For a project with no stored location or north bearing, the
+  sample sun turns with the front.
+- An opening close to an inside corner or a tee now gets its room side where the old sample point
+  past the wall face landed in the thickness of the neighbor wall. A hung window there moves its
+  lower sash to the track on the room side, where before `facing` decided. The committed test
+  covers a window centered 150 mm from an inside corner whose neighbor wall is 400 mm thick. A probe
+  run in the branch review compared the old and the new room side for 6000 random openings in
+  two-room plans: 271 changed from no side to a side, all near a corner or a tee, and none changed
+  the other way. That count is in no committed test.
 - Courtyards stay rooms. Their walls still never fade, and a camera inside a courtyard still counts
   as inside the building. #858 asks to let a courtyard count as open air. That needs a design and a
   schema step.
@@ -339,8 +360,9 @@ was run on its own with `pnpm exec vitest run <path> --project unit`, and each p
   the flush ell floor in two, the courtyard walls with rooms on both sides, and the street wall of
   the linked shaft with a room on one side. Also a clockwise room built by hand and the same wall
   reversed, a hole ring with no inner room, rooms of another floor, a dangling stub, a wall 1 mm off
-  a room boundary against one 2 mm off, two corners closer than the tolerance, and a wall of no
-  length.
+  a room boundary against one 2 mm off, and a wall of no length. In the case of two room corners
+  closer than the tolerance, the second room lies on the other side of the wall, and the wall gives
+  two stretches that meet at one cut, with no stretch shorter than the tolerance.
 - `core/scene/exterior-walls-runs.test.ts`, 18 tests. The runs of each floor with their ends,
   normals, and openings; no run for a courtyard wall or for the link; a wall along a hole, with its
   normal into the hole; rooms of another floor. On four floors, an opening has a room side exactly
@@ -360,7 +382,7 @@ was run on its own with `pnpm exec vitest run <path> --project unit`, and each p
   walls names all three and lets its fill follow the camera.
 - `core/scene/wall-attached-furniture-runs.test.ts`, 3 tests, on the centered ell floor. A piece
   beside the first run joins that run alone, a piece between the main room and the ell joins none,
-  and a piece across the end of the first run joins at most that run.
+  and a piece across the end of the first run joins exactly that run.
 - `engine/scene/wall-span.test.ts`, 2 tests. The two pieces of a wall split at a partition record
   their stretches, and an object that records none gives no span.
 - `engine/scene/near-wall-transparency-runs.test.ts`, 4 tests, on built scenes with the fade
@@ -438,6 +460,8 @@ do not change (read). The captures were not run for this work.
 - #858: let a courtyard count as open air.
 - Issue #674: rooms inset by the raw wall thickness, which no longer bears on the room side.
 - [[ADR-0086-near-wall-transparency]]: the near-wall fade, which now fades runs.
+- [[ADR-0087-opening-fade-with-host-wall]]: the opening fade, now with the run that holds the
+  opening's center.
 - [[ADR-0103-junction-fill-fade-coordination]] and [[ADR-0140-conditional-junction-fill-fade]]: the
   junction fill rules, now read per incident edge.
 - [[ADR-0145-furniture-fades-with-attached-exterior-wall]]: the furniture pairing, now per run.

@@ -8,6 +8,7 @@ related:
     decisions/ADR-0086-near-wall-transparency,
     decisions/ADR-0081-three-dimensional-opening-fill,
     decisions/ADR-0061-three-dimensional-wall-shell,
+    decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
   ]
 sourceFiles:
   [
@@ -18,7 +19,7 @@ sourceFiles:
     bridge/react/framed-scene.ts,
   ]
 status: current
-updated: 2026-06-15
+updated: 2026-11-18
 ---
 
 # ADR-0087: Opening bodies fade with their host wall
@@ -106,3 +107,11 @@ preparation pass returns.
   near-wall decision, because that baseline is per-platform and cannot be regenerated
   across targets in this pass. The live preview carries the effect, and the unit and
   engine tests cover the logic.
+
+## Note 2026-11-18: an opening fades with the run that holds its center
+
+`exteriorWalls` now returns exterior runs, and an opening joins only the run of its host wall that
+holds its center ([[ADR-0218-exterior-walls-follow-the-rooms-along-the-wall]]). An opening on a
+stretch of wall with rooms on both sides joins no run and stays solid, even when the same wall is
+exterior elsewhere, such as the door between a main block and an ell flush with the end of its
+long wall.
