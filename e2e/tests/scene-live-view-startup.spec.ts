@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { guardLiveSceneSupport } from './live-webgpu'
 
 // Issue #733: the live three-dimensional pane shows a drawn wall, also when the scene view
 // renders again while the renderer chunk loads and while the renderer initializes. The two
@@ -28,9 +29,13 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // three's WebGL 2 fallback path call first, until the test lets it through.
 //
 // Like the neighbouring live-view specs, it runs in the scene-webgl project (the scene- name
-// prefix routes it there) and self-skips without navigator.gpu. The holds are written for the
-// WebGPU path, and the adapter hold needs navigator.gpu. A browser without it still mounts a
-// canvas, which three draws through its WebGL 2 fallback; it does not get a fallback message.
+// prefix routes it there). Two runners exercise it on two paths. The linux scene job has
+// navigator.gpu but no adapter, so three draws the pane through its WebGL 2 fallback and the
+// tests run on that path. The macOS live-view job sets E2E_REQUIRE_WEBGPU=1 and runs them on a
+// real WebGPU adapter. With that variable set, each test asks guardLiveSceneSupport for an
+// adapter and a WebGL 2 context and fails without them, so a macOS runner image that loses its
+// adapter fails the job instead of passing it on the fallback. Without the variable a test skips
+// only in a browser with no navigator.gpu at all, because the adapter hold needs it.
 
 const RENDERER_CHUNK = /\/assets\/three\.webgpu-[^/]+\.js$/
 
@@ -197,15 +202,35 @@ async function expectDrawnWallInLivePane(page: Page, canvas: Locator): Promise<v
     .toBe(false)
 }
 
+const REQUIRE_REAL_ADAPTER = process.env.E2E_REQUIRE_WEBGPU === '1'
+
+// Where a real adapter is required, the guard runs here. It calls navigator.gpu.requestAdapter in
+// the page, and the third test holds every such call with an init script while the first two
+// hold the renderer chunk. Each test installs its hold only after this hook has returned: a hook
+// runs before the test body, and the page has no route and no init script yet. The guard
+// therefore sees the real adapter and cannot wait on a hold. The tests load the page again with
+// their holds armed. Elsewhere no probe is needed here, so no extra page load happens.
+test.beforeEach(async ({ page }) => {
+  if (!REQUIRE_REAL_ADAPTER) return
+  await page.goto('/')
+  await guardLiveSceneSupport(page, 'the live-view start-up spec')
+})
+
+// The rule where no adapter is required, called after the test's own load: skip only in a
+// browser with no navigator.gpu, as this spec always did. It reads the property and does not
+// call requestAdapter, so an armed hold does not affect it.
+async function skipWithoutNavigatorGpu(page: Page): Promise<void> {
+  const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
+  test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+}
+
 test.describe('Live three-dimensional pane during renderer start-up', () => {
   test('shows a drawn wall when the scene view renders again during renderer start-up', async ({
     page,
   }) => {
     const startUp = await holdRendererStartUp(page)
     await page.goto('/')
-
-    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
-    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+    await skipWithoutNavigatorGpu(page)
 
     const canvas = await openSplitViewDuringHeldStartUp(page, startUp, () =>
       renderSceneViewTwice(page),
@@ -218,9 +243,7 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
   }) => {
     const startUp = await holdRendererStartUp(page)
     await page.goto('/')
-
-    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
-    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+    await skipWithoutNavigatorGpu(page)
 
     const canvas = await openSplitViewDuringHeldStartUp(page, startUp, async () => {})
     await expectDrawnWallInLivePane(page, canvas)
@@ -231,9 +254,7 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
   }) => {
     await holdAdapterRequests(page)
     await page.goto('/')
-
-    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
-    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+    await skipWithoutNavigatorGpu(page)
 
     const canvas = await openSplitViewDuringHeldStartUp(page, heldAdapterRequests(page), () =>
       renderSceneViewTwice(page),
@@ -255,9 +276,7 @@ test.describe('Live three-dimensional pane after a failed renderer load', () => 
     })
     await page.route(RENDERER_CHUNK, (route) => route.abort('failed'))
     await page.goto('/')
-
-    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
-    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+    await skipWithoutNavigatorGpu(page)
 
     await page.getByRole('button', { name: 'Split view' }).click()
     const pane = page.getByRole('region', { name: /3d preview/i })
