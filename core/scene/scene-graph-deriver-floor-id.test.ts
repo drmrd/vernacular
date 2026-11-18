@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor, createOpening, createWall } from '../model/factories'
+import {
+  createEmptyProject,
+  createFloor,
+  createFurnitureInstance,
+  createOpening,
+  createWall,
+} from '../model/factories'
 import type { Floor, Project } from '../model/types'
 import { deriveSceneGraph } from './scene-graph'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
@@ -10,6 +16,8 @@ const ROOM_WIDTH_MM = 4000
 const ROOM_DEPTH_MM = 3000
 const DOOR_POSITION_MM = 1000
 const DOOR_WIDTH_MM = 800
+const SOFA_POSITION = { x: 1500, y: 900 }
+const SOFA_FOOTPRINT = { width: 2000, depth: 900 }
 
 function projectWith(floor: Floor): Project {
   const project = createEmptyProject({
@@ -52,6 +60,17 @@ function floorWithOneWallAndDoor(id: string): Floor {
     id: 'o1',
   })
   return { ...floor, openings: [door] }
+}
+
+/** A floor with no walls and one sofa. */
+function floorWithSofa(id: string): Floor {
+  const sofa = createFurnitureInstance({
+    id: 'sofa-1',
+    assetRef: { scope: 'project', contentHash: 'sofac0de' },
+    position: SOFA_POSITION,
+    footprint: SOFA_FOOTPRINT,
+  })
+  return { ...createFloor('Ground', { id }), furniture: [sofa] }
 }
 
 describe('room nodes from a warm createSceneGraphDeriver when their walls move under a floor with another id', () => {
@@ -105,5 +124,43 @@ describe('an opening node from a warm createSceneGraphDeriver when the opening m
     expect(first).not.toHaveLength(0)
     expect(second).toHaveLength(first.length)
     second.forEach((opening, index) => expect(opening).toBe(first[index]))
+  })
+})
+
+describe('a furniture node from a warm createSceneGraphDeriver when the piece moves under a floor with another id', () => {
+  const floorA = floorWithSofa(FLOOR_A_ID)
+  const floorB: Floor = { ...floorA, id: FLOOR_B_ID }
+
+  it('carries the id of the new floor', () => {
+    const derive = createSceneGraphDeriver()
+    derive(projectWith(floorA))
+
+    const { furniture } = derive(projectWith(floorB))
+
+    expect(furniture.map((piece) => piece.floorId)).toEqual([FLOOR_B_ID])
+    expect(furniture).toStrictEqual(deriveSceneGraph(projectWith(floorB)).furniture)
+  })
+
+  it('is the same object again on the next derivation under the new floor', () => {
+    const derive = createSceneGraphDeriver()
+    derive(projectWith(floorA))
+    const first = derive(projectWith(floorB)).furniture
+
+    const second = derive(projectWith(floorB)).furniture
+
+    expect(first).not.toHaveLength(0)
+    expect(second).toHaveLength(first.length)
+    second.forEach((piece, index) => expect(piece).toBe(first[index]))
+  })
+
+  it('is the same object when a new floor object keeps the id', () => {
+    const derive = createSceneGraphDeriver()
+    const first = derive(projectWith(floorA)).furniture
+
+    const second = derive(projectWith({ ...floorA, name: 'Parlor floor' })).furniture
+
+    expect(first).not.toHaveLength(0)
+    expect(second).toHaveLength(first.length)
+    second.forEach((piece, index) => expect(piece).toBe(first[index]))
   })
 })

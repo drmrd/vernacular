@@ -23,6 +23,7 @@ const MOVED_SOFA_POSITION = { x: 2500, y: 1100 }
 const WIDER_DOOR_WIDTH_MM = 900
 const TRACING_IMAGE = { scope: 'project', contentHash: 'tracec0de' } as const
 const TRACING_SIZE_PX = 800
+const RENAMED_GROUND_ID = 'g2'
 
 /**
  * A ground floor with a closed wall loop (so one room is derived), a door, a sofa, an underlay
@@ -273,4 +274,23 @@ describe('a warm createSceneGraphDeriver after an edit of one kind', () => {
       expect(derive(edited)).toStrictEqual(deriveSceneGraph(edited))
     },
   )
+})
+
+describe('a warm createSceneGraphDeriver after the ground floor takes another id', () => {
+  it('derives the same scene graph as the pure projection', () => {
+    const project = twoStoreyProject()
+    const derive = createSceneGraphDeriver()
+    derive(project)
+
+    const renamed = withGround(project, (ground) => ({ ...ground, id: RENAMED_GROUND_ID }))
+    const edited = {
+      ...renamed,
+      stairs: project.stairs.map((stair) => ({
+        ...stair,
+        connection: { ...stair.connection, fromFloorId: RENAMED_GROUND_ID },
+      })),
+    }
+
+    expect(derive(edited)).toStrictEqual(deriveSceneGraph(edited))
+  })
 })
