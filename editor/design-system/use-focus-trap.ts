@@ -80,8 +80,8 @@ function isInside(container: HTMLElement, target: EventTarget | null): boolean {
 }
 
 // Runs at the body in the bubble phase, after the handlers inside the container, React's
-// included, so those still receive every key. Stopping it here keeps it from `document` and
-// `window`. A key that starts outside the container pulls focus back in; for Tab the default is
+// included, so those still receive every key. Stopping it here keeps it from the bubble-phase
+// listeners on `document` and `window`. A key that starts outside the container pulls focus back in; for Tab the default is
 // cancelled as well, so that the next press does not walk on from where focus was.
 function holdKeyBack(event: KeyboardEvent, container: HTMLElement): void {
   if (!isActiveTrap(container)) {
@@ -123,14 +123,18 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  * - A mouse press outside the container, its shade included, leaves focus where it is.
  * - On unmount, focus returns to the opener, unless the caller has already moved it to a live
  *   element outside the container.
- * - No keydown reaches a listener on `document` or `window`. Handlers inside the container, React
- *   ones included, still receive every key, and keyup passes untouched so that held keys are
- *   released. A keydown that starts outside the container is held back as well, and focus moves
- *   to the first focusable descendant (the container when there is none).
+ * - A keydown stops at `document.body` in the bubble phase, so a bubble-phase listener on
+ *   `document` or `window` does not see it. Handlers inside the container, React ones included,
+ *   still receive every key, and keyup passes untouched so that held keys are released. A keydown
+ *   that starts outside the container is held back as well, and focus moves to the first
+ *   focusable descendant (the container when there is none).
  * - When several traps are mounted, only the most recently mounted one acts.
  *
  * Keys are held back at `document.body`, which assumes that the React root renders inside the
- * body. A keyboard router with a modal scope is meant to replace that rule.
+ * body. A capture-phase listener, an earlier listener on the body itself, and an event
+ * dispatched straight at `document` or `window` still see every key. The global key listeners of
+ * the editor listen in the bubble phase, so none of them is a capture-phase listener today. A
+ * keyboard router with a modal scope is meant to replace that rule.
  */
 export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T | null> {
   const ref = useRef<T | null>(null)
@@ -145,7 +149,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T
     const onKeyDown = (event: KeyboardEvent) => trapTab(event, container)
     const onMouseDown = (event: MouseEvent) => keepFocusOnPressOutside(event, container)
     const onBodyKeyDown = (event: KeyboardEvent) => holdKeyBack(event, container)
-    const body = container.ownerDocument.body
+    const body = document.body
     mountedTraps.push(container)
     container.addEventListener('keydown', onKeyDown)
     body.addEventListener('keydown', onBodyKeyDown)
