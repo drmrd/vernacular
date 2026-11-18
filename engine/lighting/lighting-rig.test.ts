@@ -369,7 +369,7 @@ describe('fitSunShadowToDirection with a direction that cannot be used', () => {
     }
   })
 
-  it('normalizes a valid direction of any length instead of replacing it', () => {
+  it('normalizes a valid direction of length 5 instead of replacing it', () => {
     const unit = sunAimedAlong({ x: 0, y: 1, z: 0 })
     const long = sunAimedAlong({ x: 0, y: LONG_DIRECTION_LENGTH, z: 0 })
 
