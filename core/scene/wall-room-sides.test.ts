@@ -3,7 +3,13 @@ import { createFloor } from '../model/factories'
 import type { Floor, Point } from '../model/types'
 import { counterClockwiseWalls, pt, wall } from './opening-room-side-test-fixtures'
 import { deriveRoomNodesForFloor, type RoomSceneNode, type WallSceneNode } from './scene-graph'
-import { roomSidesAt, wallStretches, type WallRoomSides, type WallStretch } from './wall-room-sides'
+import {
+  ROOM_RING_TOLERANCE_MM,
+  roomSidesAt,
+  wallStretches,
+  type WallRoomSides,
+  type WallStretch,
+} from './wall-room-sides'
 import {
   centeredEllFloor,
   centeredPartitionFloor,
@@ -126,6 +132,18 @@ describe('wallStretches', () => {
     expectStretches(wallStretches(wallNode('wall:h', pt(3000, 3000), pt(7000, 3000)), [room]), [
       [0, 4000, 'negative'],
     ])
+  })
+
+  it('treats two room corners closer together than the tolerance as one cut and returns no stretch shorter than it', () => {
+    const left = roomNode([pt(0, 0), pt(2000, 0), pt(2000, 3000), pt(0, 3000)])
+    const right = roomNode([pt(2000.5, 0), pt(4000, 0), pt(4000, 3000), pt(2000.5, 3000)])
+
+    const stretches = wallStretches(wallNode('wall:s', pt(0, 0), pt(4000, 0)), [left, right])
+
+    expectStretches(stretches, [[0, 4000, 'positive']])
+    for (const stretch of stretches) {
+      expect(stretch.toMm - stretch.fromMm).toBeGreaterThanOrEqual(ROOM_RING_TOLERANCE_MM)
+    }
   })
 
   it('ignores the rooms of another floor', () => {
