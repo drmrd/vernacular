@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { type Color, colorFromOkLab, perceptualDistance, srgbToOkLab } from '../../core'
-import { sampleCanvasColor } from './scene-helpers'
+import { settledHarnessCanvas, sampleCanvasColor } from './scene-helpers'
 
 // The glossy-finish contrast gate (issue #541, slice A2 of the rendering-realism campaign).
 // The finish-contrast harness state paints the shell floor semi-gloss and all four walls
@@ -55,22 +55,11 @@ const FINISH_CONTRAST_MINIMUM = 0.0051
 
 // Puts the harness in the finish-contrast state and returns its settled canvas.
 async function gotoFinishContrast(page: Page): Promise<Locator> {
-  await page.goto(
-    `/?fixture=scene-harness&scene=${FINISH_CONTRAST_SCENE}&paint=${FINISH_CONTRAST_PAINT}`,
+  return settledHarnessCanvas(
+    page,
+    `&scene=${FINISH_CONTRAST_SCENE}&paint=${FINISH_CONTRAST_PAINT}`,
+    'the finish-contrast gate',
   )
-  const harness = page.getByTestId('scene-harness')
-  const canvas = harness.locator('canvas')
-  await expect(canvas).toBeVisible()
-  const hasWebGl2 = await page.evaluate(() => {
-    const probe = document.createElement('canvas')
-    return probe.getContext('webgl2') !== null
-  })
-  test.skip(
-    !hasWebGl2,
-    'No WebGL 2 context on this runner; the finish-contrast gate self-skips here.',
-  )
-  await expect(harness).toHaveAttribute('data-harness-ready', 'true')
-  return canvas
 }
 
 // Averages the patch centered on the given frame fractions and reads it back as a color.
