@@ -7,8 +7,13 @@ import { isMacPlatform } from './keybinding'
 
 /**
  * Run the matching enabled command on keydown, ignoring keystrokes a focused
- * control owns. The set is also published to the palette, so the palette lists the
- * same commands the keys run rather than assembling a second list of its own.
+ * control owns. The browser default of a matched keystroke is prevented in the
+ * capture phase on the window, so a chord the editor binds never reaches the
+ * browser even when an open dialog holds the keystroke back; the command itself
+ * runs in the bubble phase, where such a dialog can stop it. A keystroke the
+ * focused control owns, or one that no enabled command binds, keeps its default.
+ * The set is also published to the palette, so the palette lists the same
+ * commands the keys run rather than assembling a second list of its own.
  */
 export function useKeybindings(commands: EditorCommand[], context: CommandContext): void {
   const commandsRef = useRef(commands)
@@ -20,22 +25,25 @@ export function useKeybindings(commands: EditorCommand[], context: CommandContex
   useOptionalCommandPalette()?.publishCommands({ commands, context })
 
   useEffect(() => {
-    function handleKeydown(event: KeyboardEvent): void {
+    function findCommand(event: KeyboardEvent): EditorCommand | null {
       if (ownsKeystroke(event.target, event.key)) {
-        return
+        return null
       }
-      const command = resolveCommandForEvent(
-        commandsRef.current,
-        event,
-        isMacPlatform(),
-        contextRef.current,
-      )
-      if (command !== null) {
+      return resolveCommandForEvent(commandsRef.current, event, isMacPlatform(), contextRef.current)
+    }
+    function preventBoundDefault(event: KeyboardEvent): void {
+      if (findCommand(event) !== null) {
         event.preventDefault()
-        command.run(contextRef.current)
       }
     }
-    window.addEventListener('keydown', handleKeydown)
-    return () => window.removeEventListener('keydown', handleKeydown)
+    function runBoundCommand(event: KeyboardEvent): void {
+      findCommand(event)?.run(contextRef.current)
+    }
+    window.addEventListener('keydown', preventBoundDefault, true)
+    window.addEventListener('keydown', runBoundCommand)
+    return () => {
+      window.removeEventListener('keydown', preventBoundDefault, true)
+      window.removeEventListener('keydown', runBoundCommand)
+    }
   }, [])
 }

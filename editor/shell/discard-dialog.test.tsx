@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { CommandContext, EditorCommand } from '../commands/command'
+import { useKeybindings } from '../commands/use-keybindings'
 import { DiscardDialog } from './discard-dialog'
 
 afterEach(cleanup)
@@ -98,6 +100,22 @@ describe('DiscardDialog wording and answers', () => {
   })
 })
 
+// Opens the prompt in front of a control that belongs to the frame behind it, then clicks
+// the shade, which is what leaves focus on the shade or lets it fall to the body.
+async function renderAndClickShade(onCancel: () => void = () => {}) {
+  const user = userEvent.setup()
+  render(
+    <>
+      <button type="button">Behind</button>
+      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />
+    </>,
+  )
+  const dialog = screen.getByRole('alertdialog')
+  const backdrop = dialog.parentElement as HTMLElement
+  await user.click(backdrop)
+  return { user, dialog, backdrop }
+}
+
 describe('DiscardDialog focus, modality, and closing', () => {
   it('opens with focus on Cancel and keeps Tab inside the prompt', async () => {
     // An alertdialog that leaves focus behind it is answerable only with the
@@ -126,16 +144,8 @@ describe('DiscardDialog focus, modality, and closing', () => {
     // Escape handler bound to the inner panel alone, that click left focus on the
     // body: Escape stopped answering and the next Tab reached a control behind the
     // prompt, which is how a live prompt could be answered by proxy.
-    const user = userEvent.setup()
     const onCancel = vi.fn()
-
-    render(
-      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />,
-    )
-
-    const dialog = screen.getByRole('alertdialog')
-    const backdrop = dialog.parentElement as HTMLElement
-    await user.click(backdrop)
+    const { user, dialog, backdrop } = await renderAndClickShade(onCancel)
 
     // The shade has to be part of the prompt's focus surface. A shade that cannot
     // hold focus hands it to the document body instead, and from there neither the
@@ -149,6 +159,13 @@ describe('DiscardDialog focus, modality, and closing', () => {
 
     await user.keyboard('{Escape}')
     expect(onCancel).toHaveBeenCalledOnce()
+  })
+
+  it('sends Shift+Tab after a click on the shade to the destructive answer, not to the frame behind', async () => {
+    const { user, dialog } = await renderAndClickShade()
+    await user.tab({ shift: true })
+
+    expect(within(dialog).getByRole('button', { name: /discard/i })).toHaveFocus()
   })
 
   it('marks itself modal so assistive technology ignores the frame behind it', () => {
@@ -185,5 +202,80 @@ describe('DiscardDialog focus, modality, and closing', () => {
     )
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('DiscardDialog and the editor behind it', () => {
+  function bindingTo(id: string, chord: string, ran: string[]): EditorCommand {
+    return {
+      id,
+      label: id,
+      keybindings: [chord],
+      isEnabled: () => true,
+      run: () => ran.push(id),
+    }
+  }
+
+  function EditorBehind({ ran }: { ran: string[] }) {
+    useKeybindings(
+      [
+        bindingTo('open-palette', 'Mod+K', ran),
+        bindingTo('undo', 'Mod+Z', ran),
+        bindingTo('delete-selection', 'Delete', ran),
+      ],
+      {} as CommandContext,
+    )
+    return <button type="button">Behind</button>
+  }
+
+  function renderPromptOverEditor(ran: string[], onCancel: () => void = () => {}) {
+    render(
+      <>
+        <EditorBehind ran={ran} />
+        <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />
+      </>,
+    )
+  }
+
+  it('runs none of the editor commands for the keys pressed while the prompt is open', async () => {
+    const user = userEvent.setup()
+    const ran: string[] = []
+    renderPromptOverEditor(ran)
+    expect(screen.getByRole('button', { name: /cancel/i })).toHaveFocus()
+
+    await user.keyboard('{Control>}k{/Control}')
+    await user.keyboard('{Control>}z{/Control}')
+    await user.keyboard('{Delete}')
+
+    expect(ran).toEqual([])
+  })
+
+  it('answers Escape as cancel without running the Escape command bound behind it', async () => {
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+    const runEscapeCommand = vi.fn()
+    const escapeCommand: EditorCommand = {
+      id: 'clear-selection',
+      label: 'clear-selection',
+      keybindings: ['Escape'],
+      isEnabled: () => true,
+      run: runEscapeCommand,
+    }
+    function EscapeBehind() {
+      useKeybindings([escapeCommand], {} as CommandContext)
+      return <button type="button">Behind</button>
+    }
+    render(
+      <>
+        <EscapeBehind />
+        <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />
+      </>,
+    )
+    expect(screen.getByRole('button', { name: /cancel/i })).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(runEscapeCommand).not.toHaveBeenCalled()
   })
 })

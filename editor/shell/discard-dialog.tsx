@@ -44,14 +44,11 @@ function DiscardPrompt({
   const promptRef = useFocusTrap<HTMLDivElement>()
   const question = message ?? `Discard unsaved changes to ${projectName}?`
   return (
-    // The trap and the Escape handler sit on the shade rather than the panel, and
-    // the shade carries a tabindex so it can hold focus itself. A shade that cannot
-    // hold focus hands it to the document body when clicked, and a handler bound
-    // inside the prompt then never sees another keystroke: Escape stops answering
-    // and Tab walks off into the frame this prompt exists to block.
+    // The trap and the Escape handler sit on the shade rather than the panel. The
+    // trap makes the shade focusable, so a click on it keeps focus inside the
+    // prompt and the handler still receives Escape.
     <div
       ref={promptRef}
-      tabIndex={-1}
       className="discard-dialog__backdrop"
       // Escape answers the prompt the safe way. The keystroke stops here so it does
       // not also reach the editor behind the prompt, which reads Escape as deselect.
