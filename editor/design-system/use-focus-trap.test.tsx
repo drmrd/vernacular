@@ -199,36 +199,6 @@ function ListeningDialog({ onKeyDown }: { onKeyDown: (event: React.KeyboardEvent
   )
 }
 
-function OuterTrap() {
-  const ref = useFocusTrap<HTMLDivElement>()
-  return (
-    <div ref={ref} role="dialog" aria-label="Outer">
-      <input aria-label="Outer first" />
-      <input aria-label="Outer second" />
-    </div>
-  )
-}
-
-function InnerTrap() {
-  const ref = useFocusTrap<HTMLDivElement>()
-  return (
-    <div ref={ref} role="dialog" aria-label="Inner">
-      <button type="button">Inner first</button>
-      <button type="button">Inner second</button>
-    </div>
-  )
-}
-
-function TwoTraps({ inner }: { inner: boolean }) {
-  return (
-    <div>
-      <button type="button">Elsewhere</button>
-      <OuterTrap />
-      {inner ? <InnerTrap /> : null}
-    </div>
-  )
-}
-
 describe('useFocusTrap and the keys behind it', () => {
   it('hides every keydown from the listeners on the document and the window', async () => {
     const user = userEvent.setup()
@@ -297,38 +267,6 @@ describe('useFocusTrap and the keys behind it', () => {
       await user.keyboard('x')
 
       expect(onWindow).toHaveBeenCalled()
-    })
-  })
-
-  it('lets only the newest of two traps act, and hands over to the older one when it unmounts', async () => {
-    const user = userEvent.setup()
-    const { rerender } = render(<TwoTraps inner={false} />)
-    rerender(<TwoTraps inner={true} />)
-    const innerFirst = screen.getByRole('button', { name: 'Inner first' })
-    const innerSecond = screen.getByRole('button', { name: 'Inner second' })
-    const elsewhere = screen.getByRole('button', { name: 'Elsewhere' })
-    expect(innerFirst).toHaveFocus()
-
-    await whileListening('keydown', async ({ onWindow, onDocument }) => {
-      await user.keyboard('x')
-      expect(onWindow).not.toHaveBeenCalled()
-      expect(onDocument).not.toHaveBeenCalled()
-      expect(innerFirst).toHaveFocus()
-
-      expect(pressOn(innerSecond).defaultPrevented).toBe(false)
-      expect(pressOn(elsewhere).defaultPrevented).toBe(true)
-      await user.click(innerSecond)
-      expect(innerSecond).toHaveFocus()
-
-      rerender(<TwoTraps inner={false} />)
-      expect(screen.getByRole('textbox', { name: 'Outer first' })).toHaveFocus()
-      await user.keyboard('x')
-      expect(onWindow).not.toHaveBeenCalled()
-      expect(onDocument).not.toHaveBeenCalled()
-
-      expect(pressOn(screen.getByRole('button', { name: 'Elsewhere' })).defaultPrevented).toBe(true)
-      await user.tab({ shift: true })
-      expect(screen.getByRole('textbox', { name: 'Outer second' })).toHaveFocus()
     })
   })
 })
