@@ -97,13 +97,17 @@ memory. The specification also says that records that exist today still open.
 - Removing a project file, or a project's directory, deletes its record in the same transaction.
   A removed project does not come back from its record at the next open.
 - The directory keeps at most one pending open request and never starts a second while one is
-  pending. When another tab blocks the upgrade, for example a tab of an older build that holds the
-  database at version 1, the call that started the open rejects at once with a message that asks
-  the user to close that tab. Each later call on the same directory object waits on the same
-  pending open for a short fixed time, 500 milliseconds (`BLOCKED_OPEN_WAIT_MILLISECONDS`), and
-  then rejects with that message. When the other tab closes, the pending open succeeds and the next
-  call works. A connection that arrives while no call waits is closed. An open of a database at a
-  version above 2 rejects too.
+  pending. Another tab can block the upgrade, for example a tab of an older build that holds the
+  database at version 1. The call that started the open rejects with a message that asks the user
+  to close that tab when the open has not arrived after a fixed time, whether or not a `blocked`
+  event came. That time is the `openWaitMilliseconds` option of the directory, by default 3000
+  milliseconds (`DEFAULT_OPEN_WAIT_MILLISECONDS`). When a `blocked` event comes, the call rejects at
+  once. The time limit is needed because the browser reports a block only to the first request that
+  asks for the upgrade. Each later call on the same directory object waits on the same pending open
+  for a short fixed time, 500 milliseconds (`PENDING_OPEN_WAIT_MILLISECONDS`), and then rejects
+  with that message. When the other tab closes, the pending open succeeds and the next call works.
+  A connection that arrives while no call waits is closed. An open of a database at a version above
+  2 rejects too.
 
 ## Consequences
 
@@ -116,9 +120,8 @@ memory. The specification also says that records that exist today still open.
 - From the moment this build asks for the upgrade, the old tab's own database requests wait behind
   it and then fail with a version error. The old tab can no longer save. The stored data stays as
   it was, but edits made in the old tab after that moment are not stored.
-- One case stays open. A second directory object over the same database, made while the upgrade is
-  blocked, starts its own open request, and that request waits until the other tab closes. The
-  application makes one directory object.
+- A reloaded page and a second new tab get no `blocked` event while the old tab is open. They get
+  the same message after the time limit. No call waits without end.
 - A record that cannot convert stays and is served at every open. Its served bytes are JSON text,
   so the codec reads a value that JSON changes in its changed form: a number that is not finite
   reads as `null`. The stored object keeps the original value, but no part of the application
