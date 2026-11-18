@@ -9,7 +9,8 @@ import type * as ThreeWebGPU from 'three/webgpu'
  *   and dispose() would then raise an unhandled rejection inside three.js.
  * It is safe to call while the start is still pending; dispose() never runs before the
  * start settles, since an early dispose() leaves the loop running. The returned promise
- * resolves once the release is done, and does not reject for a failed start.
+ * never rejects: it resolves once the release is done, a failed start is ignored, and an
+ * error thrown by dispose() is logged with console.error.
  */
 export function releaseSceneRenderer(
   renderer: Pick<ThreeWebGPU.WebGPURenderer, 'dispose'>,
@@ -17,7 +18,11 @@ export function releaseSceneRenderer(
 ): Promise<void> {
   return Promise.resolve(started).then(
     () => {
-      renderer.dispose()
+      try {
+        renderer.dispose()
+      } catch (error) {
+        console.error('The renderer threw in dispose().', error)
+      }
     },
     () => undefined,
   )
