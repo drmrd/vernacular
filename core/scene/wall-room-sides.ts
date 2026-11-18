@@ -1,10 +1,10 @@
 import { distance } from '../geometry/point'
 import { pointOnSegment } from '../geometry/segment'
+import { polygonArea } from '../geometry/polygon'
 import { dot, leftNormal, leftPerp, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 import { DEFAULT_JUNCTION_TOLERANCE_MM } from '../topology/wall-graph'
 import type { RoomSceneNode, WallSceneNode } from './scene-graph'
-import { signedArea } from './winding'
 
 /**
  * Which sides of a wall have a room along them at one place. `'positive'` is the side the wall's
@@ -49,6 +49,13 @@ interface RoomRing {
   isHole: boolean
 }
 
+/** A ring with the side its room is on, worked out once for each public call. */
+interface PreparedRing {
+  points: readonly Point[]
+  /** True when the room lies to the left of the ring's edges (its direction of travel). */
+  roomIsLeft: boolean
+}
+
 interface SideFlags {
   positive: boolean
   negative: boolean
@@ -65,10 +72,14 @@ function roomsOnFloor(rooms: readonly RoomSceneNode[], floorId: string): RoomSce
   return rooms.filter((room) => room.floorId === floorId)
 }
 
-/** True when the room lies to the left of the ring's edges (its direction of travel). */
-function roomIsLeftOfRing(ring: RoomRing): boolean {
-  const isCounterClockwise = signedArea([...ring.points]) > 0
-  return isCounterClockwise !== ring.isHole
+function prepareRing(ring: RoomRing): PreparedRing {
+  const isCounterClockwise = polygonArea(ring.points) > 0
+  return { points: ring.points, roomIsLeft: isCounterClockwise !== ring.isHole }
+}
+
+/** The rings of the rooms on one floor, each prepared once. */
+function floorRings(rooms: readonly RoomSceneNode[], floorId: string): PreparedRing[] {
+  return roomsOnFloor(rooms, floorId).flatMap(roomRings).map(prepareRing)
 }
 
 function edgeRunsAlongWall(place: WallPlace, from: Point, to: Point): boolean {
@@ -80,15 +91,14 @@ function edgeRunsAlongWall(place: WallPlace, from: Point, to: Point): boolean {
   )
 }
 
-function ringSideFlags(place: WallPlace, ring: RoomRing): SideFlags {
+function ringSideFlags(place: WallPlace, ring: PreparedRing): SideFlags {
   const flags: SideFlags = { positive: false, negative: false }
-  const roomIsLeft = roomIsLeftOfRing(ring)
+  const roomSign = ring.roomIsLeft ? 1 : -1
   ring.points.forEach((from, index) => {
     const to = ring.points[(index + 1) % ring.points.length] as Point
     if (!edgeRunsAlongWall(place, from, to)) return
     const leftOfEdge = leftPerp(subtract(to, from))
-    const roomSide = roomIsLeft ? leftOfEdge : { x: -leftOfEdge.x, y: -leftOfEdge.y }
-    if (dot(roomSide, place.normal) > 0) flags.positive = true
+    if (roomSign * dot(leftOfEdge, place.normal) > 0) flags.positive = true
     else flags.negative = true
   })
   return flags
@@ -115,22 +125,23 @@ function sidesFromFlags(flags: SideFlags): WallRoomSides {
  * only on which room boundaries run along the wall's centerline (ADR-0218).
  */
 export function roomSidesAt(place: WallPlace, rooms: readonly RoomSceneNode[]): WallRoomSides {
+  return sidesAmong(place, floorRings(rooms, place.floorId))
+}
+
+function sidesAmong(place: WallPlace, rings: readonly PreparedRing[]): WallRoomSides {
   const flags: SideFlags = { positive: false, negative: false }
-  for (const room of roomsOnFloor(rooms, place.floorId)) {
-    for (const ring of roomRings(room)) {
-      const ringFlags = ringSideFlags(place, ring)
-      flags.positive ||= ringFlags.positive
-      flags.negative ||= ringFlags.negative
-    }
+  for (const ring of rings) {
+    const ringFlags = ringSideFlags(place, ring)
+    flags.positive ||= ringFlags.positive
+    flags.negative ||= ringFlags.negative
   }
   return sidesFromFlags(flags)
 }
 
 /** The distances along the wall at which a room ring corner lies on the wall's centerline. */
-function cornerCutsMm(wall: WallSceneNode, rooms: readonly RoomSceneNode[]): number[] {
+function cornerCutsMm(wall: WallSceneNode, rings: readonly PreparedRing[]): number[] {
   const direction = unit(subtract(wall.end, wall.start))
-  return roomsOnFloor(rooms, wall.floorId)
-    .flatMap(roomRings)
+  return rings
     .flatMap((ring) => [...ring.points])
     .filter((corner) => pointOnSegment(corner, wall.start, wall.end, ROOM_RING_TOLERANCE_MM))
     .map((corner) => dot(subtract(corner, wall.start), direction))
@@ -157,20 +168,24 @@ function boundariesMm(cuts: readonly number[], lengthMm: number): number[] {
  * `wall.floorId`. Neighboring pieces with the same sides are joined, so no two neighbors in the
  * result share `sides`. The stretches cover 0 to the wall's length without gaps, in order from the
  * start. Cuts closer than ROOM_RING_TOLERANCE_MM to each other, or to an end of the wall, count as
- * one. A wall no longer than ROOM_RING_TOLERANCE_MM has no stretches.
+ * one. A wall no longer than ROOM_RING_TOLERANCE_MM has no stretches. No stretch is shorter than
+ * ROOM_RING_TOLERANCE_MM, and a piece shorter than twice that tolerance, right past the end of a
+ * room boundary, can read as along that boundary, because its middle is within the tolerance of the
+ * boundary's end.
  */
 export function wallStretches(wall: WallSceneNode, rooms: readonly RoomSceneNode[]): WallStretch[] {
   const lengthMm = distance(wall.start, wall.end)
   if (lengthMm <= ROOM_RING_TOLERANCE_MM) return []
   const direction = unit(subtract(wall.end, wall.start))
   const normal = leftNormal(wall.start, wall.end)
-  const boundaries = boundariesMm(cornerCutsMm(wall, rooms), lengthMm)
+  const rings = floorRings(rooms, wall.floorId)
+  const boundaries = boundariesMm(cornerCutsMm(wall, rings), lengthMm)
   const stretches: WallStretch[] = []
   for (let index = 1; index < boundaries.length; index += 1) {
     const fromMm = boundaries[index - 1] as number
     const toMm = boundaries[index] as number
     const middle = shift(wall.start, direction, (fromMm + toMm) * MIDDLE_FRACTION)
-    const sides = roomSidesAt({ point: middle, normal, floorId: wall.floorId }, rooms)
+    const sides = sidesAmong({ point: middle, normal, floorId: wall.floorId }, rings)
     const previous = stretches[stretches.length - 1]
     if (previous?.sides === sides) previous.toMm = toMm
     else stretches.push({ fromMm, toMm, sides })
