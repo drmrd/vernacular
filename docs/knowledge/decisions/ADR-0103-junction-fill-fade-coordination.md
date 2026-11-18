@@ -9,6 +9,7 @@ related:
     decisions/ADR-0086-near-wall-transparency,
     decisions/ADR-0087-opening-fade-with-host-wall,
     decisions/ADR-0080-generalized-wall-junction-geometry,
+    decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
   ]
 sourceFiles:
   [
@@ -20,7 +21,7 @@ sourceFiles:
     bridge/react/framed-scene.ts,
   ]
 status: current
-updated: 2026-06-18
+updated: 2026-11-17
 ---
 
 # ADR-0103: Junction fill stays opaque when an incident wall fades
@@ -172,3 +173,11 @@ pure and unit tested; the tag and the enrollment are tested on a built scene.
   to opening bodies, and the deferred pixel baseline this decision matches.
 - [[ADR-0080-generalized-wall-junction-geometry]]: the wall-footprint geometry the deferred
   square-cap alternative would touch.
+
+## Note 2026-11-17: membership is per incident edge
+
+`junctionFadeGroups` now pairs a junction with exterior runs, one incident edge at a time, and
+names them in `exteriorRunIndexes` ([[ADR-0218-exterior-walls-follow-the-rooms-along-the-wall]]).
+An incident edge that lies on no exterior run counts as a wall that never fades, so the fill holds.
+A long wall that is exterior along one stretch and divides two rooms along another now holds the
+fills at the ends of the dividing stretch, which keeps those rooms divided as this record intends.

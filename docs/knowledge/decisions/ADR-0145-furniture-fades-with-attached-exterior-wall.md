@@ -9,6 +9,7 @@ related:
     decisions/ADR-0087-opening-fade-with-host-wall,
     decisions/ADR-0089-within-floor-mesh-reuse,
     decisions/ADR-0094-furniture-massing-in-3d,
+    decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
   ]
 sourceFiles:
   [
@@ -19,7 +20,7 @@ sourceFiles:
     bridge/react/framed-scene.ts,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-11-17
 ---
 
 # ADR-0145: Furniture fades with the exterior wall it stands against
@@ -122,3 +123,11 @@ itself rather than leaving each caller to remember it. A piece standing against 
 exterior wall recedes with it in the live view the same way it does in a scene built by
 `buildFramedScene`. [[ADR-0089-within-floor-mesh-reuse]] carries the enrollment site and
 the material privatization that had to change with it.
+
+## Note 2026-11-17: a piece joins one exterior run
+
+`withAttachedFurniture` now walks exterior runs instead of walls, and gives each piece to the first
+run whose stretch of the wall it stands against
+([[ADR-0218-exterior-walls-follow-the-rooms-along-the-wall]]), so a corner piece still has one
+owner. A piece against the stretch of a wall between two rooms, such as the wall between a main
+block and its ell, joins no run and stays solid.
