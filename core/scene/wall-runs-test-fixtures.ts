@@ -68,13 +68,24 @@ export function longNorthWallFloor(): Floor {
   return floorOf(LONG_NORTH_WALL_WALLS, LONG_NORTH_WALL_OPENINGS)
 }
 
-const CENTERED_PARTITION_WALLS: WallSpec[] = [
+const CENTERED_PARTITION_X = 4000
+const OFF_CENTER_PARTITION_X = 3000
+
+const PARTITION_BLOCK_WALLS: WallSpec[] = [
   { id: 'south', start: { x: 0, y: 0 }, end: { x: 8000, y: 0 } },
   { id: 'east', start: { x: 8000, y: 0 }, end: { x: 8000, y: 4000 } },
   { id: 'north', start: { x: 8000, y: 4000 }, end: { x: 0, y: 4000 } },
   { id: 'west', start: { x: 0, y: 4000 }, end: { x: 0, y: 0 } },
-  { id: 'partition', start: { x: 4000, y: 0 }, end: { x: 4000, y: 4000 } },
 ]
+
+function partitionWalls(partitionX: number): WallSpec[] {
+  const partition = {
+    id: 'partition',
+    start: { x: partitionX, y: 0 },
+    end: { x: partitionX, y: 4000 },
+  }
+  return [...PARTITION_BLOCK_WALLS, partition]
+}
 
 const CENTERED_PARTITION_OPENINGS: OpeningSpec[] = [
   { id: 'north-door', type: DOOR, hostWallId: 'north', position: 6000, width: 900 },
@@ -82,7 +93,12 @@ const CENTERED_PARTITION_OPENINGS: OpeningSpec[] = [
 
 /** An 8000 x 4000 block cut into two rooms by a partition at its middle. */
 export function centeredPartitionFloor(): Floor {
-  return floorOf(CENTERED_PARTITION_WALLS, CENTERED_PARTITION_OPENINGS)
+  return floorOf(partitionWalls(CENTERED_PARTITION_X), CENTERED_PARTITION_OPENINGS)
+}
+
+/** The same block with its partition at x = 3000, nearer the west wall than the middle. */
+export function offCenterPartitionFloor(): Floor {
+  return floorOf(partitionWalls(OFF_CENTER_PARTITION_X), CENTERED_PARTITION_OPENINGS)
 }
 
 const BLOCK_WALLS: WallSpec[] = [
