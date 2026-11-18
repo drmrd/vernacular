@@ -75,4 +75,38 @@ describe('releaseSceneRenderer', () => {
       rejections.stop()
     }
   })
+
+  it('resolves and reports the error once when dispose throws after a resolved start', async () => {
+    const failure = new Error('context already lost')
+    const renderer = {
+      dispose: vi.fn(() => {
+        throw failure
+      }),
+    }
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      await expect(releaseSceneRenderer(renderer, Promise.resolve())).resolves.toBeUndefined()
+
+      expect(renderer.dispose).toHaveBeenCalledTimes(1)
+      expect(logged).toHaveBeenCalledTimes(1)
+      expect(logged.mock.calls[0]?.[0]).toEqual(expect.stringContaining('dispose'))
+      expect(logged.mock.calls[0]).toContain(failure)
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
+  it('logs nothing when dispose returns normally', async () => {
+    const renderer = { dispose: vi.fn() }
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      await releaseSceneRenderer(renderer, Promise.resolve())
+
+      expect(logged).not.toHaveBeenCalled()
+    } finally {
+      logged.mockRestore()
+    }
+  })
 })
