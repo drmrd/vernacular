@@ -205,13 +205,20 @@ wrote the nine fields by hand, and a field added to one could be left out of the
 That happened once, with the grade elevation.
 
 A new field now goes into the `SceneGraph` interface in `core/scene/scene-graph.ts` and
-gets one line in `assembleSceneGraph`. If it holds a new kind of node, it also needs a
-member in `SceneNodeDerivations` and a pure function for that member in
-`PURE_NODE_DERIVATIONS`. That constant has the interface as its type, so the code does
-not compile until the member is there. The deriver spreads `PURE_NODE_DERIVATIONS` and
-replaces only the members it caches, so the new member uses the pure function until it
-opts into a cache. The fixture of the parity test needs the new field as well: one of
-its tests fails while any field of the pure graph is empty.
+gets one line in `assembleSceneGraph`. If it holds a new kind of node, it should also get
+a member in `SceneNodeDerivations` and a pure function for that member in
+`PURE_NODE_DERIVATIONS`. The compiler does not force this: the new line could call a
+pure helper directly, and both entry points would still agree, but that kind of node
+would then have no place for a cache. Once the member is in the interface,
+`PURE_NODE_DERIVATIONS` does not compile without it, because the constant has the
+interface as its type. The deriver spreads `PURE_NODE_DERIVATIONS` and replaces only the
+members it caches, so the new member uses the pure function until it opts into a cache.
+
+The parity test `fills every field of the scene graph` catches part of a missing field.
+It fails while any list field of the pure graph is empty, so a new list field needs a
+place in the fixture of that test. For a field that is not a list it checks only that
+the value is a number. An optional field that `assembleSceneGraph` leaves out is caught
+by no test: the compiler accepts the omission, and both entry points then agree.
 
 Writing the pure projection as a call to a fresh deriver was rejected for two reasons.
 `scene-graph.ts` would then import a value from `scene-graph-deriver.ts`, which imports
@@ -231,7 +238,9 @@ The room, opening, and furniture entries now store the floor id next to the node
 cached node only while that id equals the id of the current floor. They compare the id,
 never the floor object, so a new floor object with the same id does not by itself
 rebuild the node.
-The nodes keep their `floorId` field because readers in four layers use it.
+
+Dropping `floorId` from the room, opening, and furniture nodes, so that no cache would
+have to compare it, was rejected because readers in four layers use the field.
 `buildFloorGroup` in `engine/scene/build-scene.ts` and `floorEntities` in
 `bridge/react/floor-build.ts` filter rooms, openings, and furniture by it.
 `roomsSharingFloor` in `editor/shell/inspector.tsx` counts the rooms of a floor with it,
