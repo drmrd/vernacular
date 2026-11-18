@@ -26,7 +26,7 @@ sourceFiles:
     storage/locks/project-lock.ts,
     storage/locks/web-locks-manager.ts,
     storage/snapshots/snapshot-store.ts,
-    bridge/autosave/create-autosave.ts,
+    session/autosave/create-autosave.ts,
     editor/shell/editor-shell.tsx,
     app/app.tsx,
     app/use-project-actions.ts,
@@ -45,7 +45,7 @@ Accepted, landed. Three small additive capabilities sit alongside the existing
 `LockManagerPort` (`storage/locks/`), and `SnapshotStore`
 (`storage/snapshots/`). Each is pure-over-a-fake for unit tests with a thin
 browser adapter exercised by `e2e/tests/durable-storage.spec.ts`. Autosave
-(`bridge/autosave/create-autosave.ts`) writes snapshots on debounce, an explicit
+(`session/autosave/create-autosave.ts`) writes snapshots on debounce, an explicit
 `commitProject` saves canonically and prunes, and the app shell
 (`editor/shell/editor-shell.tsx`, wired in `app/app.tsx`) surfaces the recent
 list and a crash-recovery prompt. The save/open/recent wiring that drives these

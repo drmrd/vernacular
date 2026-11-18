@@ -16,7 +16,7 @@ sourceFiles:
   [
     app/app.tsx,
     app/use-workspace-state.ts,
-    bridge/session/load-or-create-project.ts,
+    session/editor-session/load-or-create-project.ts,
     storage/project-store.ts,
     storage/active-project/active-project-id-store.ts,
     app/use-active-project-id.ts,

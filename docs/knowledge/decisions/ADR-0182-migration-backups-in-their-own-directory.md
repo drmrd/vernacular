@@ -17,7 +17,7 @@ sourceFiles:
     storage/documents/document-store.ts,
     storage/documents/document-backups.ts,
     storage/snapshots/snapshot-store.ts,
-    bridge/autosave/create-autosave.ts,
+    session/autosave/create-autosave.ts,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
   ]
 status: current

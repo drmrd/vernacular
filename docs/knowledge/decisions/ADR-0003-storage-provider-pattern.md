@@ -26,8 +26,8 @@ sourceFiles:
     storage/project-storage.ts,
     storage/storage-capabilities.ts,
     storage/select-project-store.ts,
-    bridge/autosave/create-autosave.ts,
-    bridge/session/load-or-create-project.ts,
+    session/autosave/create-autosave.ts,
+    session/editor-session/load-or-create-project.ts,
     app/resolve-project-store.ts,
     app/app.tsx,
   ]
@@ -153,8 +153,8 @@ alongside them are ADR-0030.
 `ProjectStore.load` throws a typed `ProjectNotFoundError`
 (`storage/project-store.ts`, carrying the `projectId`) when, and only when, no
 project exists under the id. Any other failure (corrupt record, I/O fault) throws
-some other error. This distinction is load-bearing for bootstrap: the bridge's
-`loadOrCreateProject` (`bridge/session/load-or-create-project.ts`) catches
+some other error. This distinction is load-bearing for bootstrap: the session layer's
+`loadOrCreateProject` (`session/editor-session/load-or-create-project.ts`) catches
 `ProjectNotFoundError` and falls back to a freshly created project, but rethrows
 anything else so a recoverable-but-broken project is never silently discarded
 and overwritten by an empty one. The app surfaces a rethrown error as a
@@ -203,8 +203,8 @@ ADR-0022.
 
 ## Autosave path
 
-Persistence is driven by a debounced autosave that lives in the bridge
-(`bridge/autosave/create-autosave.ts`), not in `storage/`, because it depends on
+Persistence is driven by a debounced autosave that lives in the session layer
+(`session/autosave/create-autosave.ts`), not in `storage/`, because it depends on
 the editor session as well as the store. `createAutosave` subscribes to the
 session, and on each change reports `pending`, debounces (default 500 ms), then
 saves `session.getProject()` to the store, reporting `saved` or `error`. Its

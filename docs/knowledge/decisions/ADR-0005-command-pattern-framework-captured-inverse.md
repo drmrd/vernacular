@@ -44,7 +44,7 @@ implementation interpretation chosen where the spec left choices open.
 
 ## Context
 
-Hard invariant 3 (CLAUDE.md, ADR-0001) requires that every mutation of the
+Hard invariant 3 (`.claude/rules.md`, ADR-0001) requires that every mutation of the
 project model flow through `dispatch(command)`. The model needs full undo and
 redo, and continuous gestures (such as dragging a slider) must collapse into a
 single undoable step rather than flooding history with one entry per frame.

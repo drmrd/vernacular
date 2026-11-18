@@ -13,7 +13,7 @@ related:
   ]
 sourceFiles:
   [
-    bridge/autosave/create-autosave.ts,
+    session/autosave/create-autosave.ts,
     app/resolve-snapshot-store.ts,
     app/opfs-probe.ts,
     app/use-resolved-snapshots.ts,

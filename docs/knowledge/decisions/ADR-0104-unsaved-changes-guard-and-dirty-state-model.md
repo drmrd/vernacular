@@ -26,12 +26,12 @@ related:
 sourceFiles:
   [
     docs/specs/2026-06-15-open-import-project.md,
-    bridge/session/create-dirty-tracker.ts,
-    bridge/session/discard-guard.ts,
+    session/editor-session/create-dirty-tracker.ts,
+    session/editor-session/discard-guard.ts,
     app/app.tsx,
     bridge/react/use-dirty-state.ts,
     bridge/react/use-autosave.ts,
-    bridge/autosave/create-autosave.ts,
+    session/autosave/create-autosave.ts,
     app/use-before-unload-guard.ts,
     app/use-discard-confirmation.ts,
     app/use-workspace-state.ts,
@@ -104,7 +104,7 @@ Track dirtiness off the dispatch boundary, keep it independent of the autosave
 snapshot status, and route every destructive swap through one policy point.
 
 **A framework-free dirty tracker.** `createDirtyTracker(session)` in
-`bridge/session/create-dirty-tracker.ts` exposes `isDirty()`,
+`session/editor-session/create-dirty-tracker.ts` exposes `isDirty()`,
 `subscribe(listener)`, `markSaved()`, and `dispose()`. It subscribes to
 `EditorSession.subscribe`, the dispatch boundary (ADR-0019), as the one sound
 source of "something changed": every mutation flows through `dispatch(command)`,
@@ -121,7 +121,7 @@ session reference, so a swap hands it a new session and the hook builds a new
 tracker. The clean baseline resets for free on every swap, and the hook returns
 the live `isDirty` flag together with a stable `markSaved`.
 
-**A pure policy seam.** `bridge/session/discard-guard.ts` holds the
+**A pure policy seam.** `session/editor-session/discard-guard.ts` holds the
 destructive-op policy as plain functions, with no DOM and no React. The
 `needsDiscardConfirmation(isDirty)` predicate decides whether a confirmation is
 owed, and the `guardDestructive({ isDirty, confirm, run })` runner ties the
@@ -156,7 +156,7 @@ race. A save reads `revision()` at the moment it begins, before the asynchronous
 write, and calls `markSavedRevision(thatRevision)` only when the write succeeds.
 If an edit arrives while the write is in flight, the live revision advances past
 the captured one, so marking the captured revision leaves the project dirty and
-the new edit is not silently dropped. Autosave (`bridge/autosave/create-autosave.ts`,
+the new edit is not silently dropped. Autosave (`session/autosave/create-autosave.ts`,
 `bridge/react/use-autosave.ts`) reports the revision it wrote through an `onSaved`
 callback, and the explicit save (`app/use-project-actions.ts`) captures the
 revision the same way; `app/use-workspace-state.ts` wires both to the dirty

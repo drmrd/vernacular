@@ -57,17 +57,18 @@ Hard invariants:
   testable in Node.
 - `engine/` is the only layer that imports Three.js.
 - `session/` imports no React and no Three.js and uses no DOM global.
-  It holds the editor session, dirty tracking, the discard guard,
-  the load helper, and autosave. Lint enforces this.
+  Lint enforces this. The layer holds the editor session, dirty
+  tracking, the discard guard, the load helper, and autosave.
 - `bridge/` is the only place that touches both React state and
   Three.js scene state. All mutations flow through `dispatch(command)`
   at this boundary.
 - `storage/` exposes provider interfaces; multiple implementations
   exist (file system, OPFS, zip bundle, future cloud sync).
-- `bridge/` and `editor/` do not import `storage/`. A file that still
-  does is on the lint exception list with issue #717, which moves the
-  asset and library ports behind `session/`. `session/testing` is the
-  entry for store doubles in tests, and production files do not import it.
+- `bridge/` and `editor/` reach `storage/` only through `session/`. A
+  file that still imports `storage/` is on the lint exception list with
+  issue #717, which moves the asset and library ports behind `session/`.
+  `session/testing` is the entry for store doubles in tests, and lint
+  keeps production files from importing it.
 
 ## Where to find things
 

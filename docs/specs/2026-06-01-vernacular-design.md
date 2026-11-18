@@ -988,6 +988,8 @@ Lint holds the purity rules of each layer. `core/` imports no React or Three.js 
 
 A test under `tests/architecture/` fails a cycle of value imports among the files of the seven layers. A cycle of type-only imports is allowed.
 
+The import table in section 2.1 holds for test files too. A test that must run code from layers its own layer may not import lives under `tests/cross-layer/`, outside the layers.
+
 Pre-commit (incremental) and CI (full).
 
 ### 9.9 Mutation testing
