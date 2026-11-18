@@ -5,7 +5,7 @@ import {
   type EnvironmentLighting,
   type EnvironmentLightingInput,
 } from './environment-lighting'
-import { skyLighting } from './sky-model'
+import { DEFAULT_CLOUD_COVER, skyLighting } from './sky-model'
 import { solarPosition } from './solar-position'
 import { projectDomeToSphericalHarmonics } from './spherical-harmonics'
 import { sunWorldDirection } from './sun-world-direction'
@@ -67,6 +67,10 @@ function withNorthBearing(northBearing: number): EnvironmentLightingInput {
   return { ...BASE_INPUT, northBearing }
 }
 
+function withCloudCover(cloudCover: number): EnvironmentLightingInput {
+  return { ...BASE_INPUT, cloudCover }
+}
+
 const REFERENCE_SUN_UNDER_BASE_WEATHER = computeEnvironmentLighting({
   ...referenceLightingInput(),
   northBearing: BASE_INPUT.northBearing,
@@ -105,6 +109,28 @@ describe('computeEnvironmentLighting with input that cannot be used', () => {
     it('keeps a finite bearing however large', () => {
       const input = withNorthBearing(1e308)
       expect(computeEnvironmentLighting(input)).toStrictEqual(composedFromPieces(input))
+    })
+  })
+
+  describe('a cloud cover that cannot be used', () => {
+    it.each([
+      ['not a number', NaN, DEFAULT_CLOUD_COVER],
+      ['infinite', Infinity, 1],
+      ['negative infinite', -Infinity, 0],
+      ['above one', 1.5, 1],
+      ['below zero', -0.5, 0],
+    ])('uses a clamped or default cloud cover when it is %s', (_title, input, used) => {
+      const lighting = computeEnvironmentLighting(withCloudCover(input))
+      expect(lighting).toStrictEqual(computeEnvironmentLighting(withCloudCover(used)))
+      expect(lighting.cloudCover).toBe(used)
+      expect(numbersOf(lighting).every(Number.isFinite)).toBe(true)
+    })
+
+    it.each([0, 0.25, 1])('keeps a cloud cover of %s as it is', (cloudCover) => {
+      const input = withCloudCover(cloudCover)
+      const lighting = computeEnvironmentLighting(input)
+      expect(lighting.cloudCover).toBe(cloudCover)
+      expect(lighting).toStrictEqual(composedFromPieces(input))
     })
   })
 
