@@ -35,6 +35,12 @@ describe('runDecide', () => {
     expect(d.outputs).toMatchObject({ e2e: 'true', lighthouse: 'false' })
   })
 
+  it('on a PR, runs e2e for a change to the session layer but not lighthouse', async () => {
+    const d = deps({ changed: ['session/index.ts'] })
+    await runDecide(['--base', 'origin/main'], d)
+    expect(d.outputs).toMatchObject({ e2e: 'true', lighthouse: 'false' })
+  })
+
   it('on a PR, runs the visual suite for story and editor changes', async () => {
     const d = deps({ changed: ['editor/shell/toolbar.stories.tsx'] })
     await runDecide(['--base', 'origin/main'], d)
