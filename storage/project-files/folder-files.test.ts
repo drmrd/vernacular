@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { ASSET_DIRECTORY_PREFIX } from '../directory-asset-cache'
-import type { DirectoryPort } from '../fs/directory-port'
+import { ReadCountingDirectory } from '../documents/document-store-test-kit'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
 import { FolderFiles } from './folder-files'
@@ -10,38 +10,6 @@ const ASSET_PATH = `${ASSET_DIRECTORY_PREFIX}/${HASH}`
 const DOCUMENT = Uint8Array.of(1, 2, 3)
 const FOLDER_BYTES = Uint8Array.of(7, 7)
 const SHARED_BYTES = Uint8Array.of(8, 8)
-
-/** Test support: passes every call through and counts the reads. */
-class ReadCountingDirectory implements DirectoryPort {
-  reads = 0
-
-  constructor(private readonly inner: DirectoryPort) {}
-
-  async readFile(path: string): Promise<Uint8Array | undefined> {
-    this.reads += 1
-    return this.inner.readFile(path)
-  }
-
-  writeFile(path: string, bytes: Uint8Array): Promise<void> {
-    return this.inner.writeFile(path, bytes)
-  }
-
-  removeFile(path: string): Promise<void> {
-    return this.inner.removeFile(path)
-  }
-
-  list(prefix: string): Promise<string[]> {
-    return this.inner.list(prefix)
-  }
-
-  modifiedAt(path: string): Promise<string | undefined> {
-    return this.inner.modifiedAt(path)
-  }
-
-  removeTree(prefix: string): Promise<void> {
-    return this.inner.removeTree(prefix)
-  }
-}
 
 async function sharedPoolWith(hash: string, bytes: Uint8Array): Promise<InMemoryAssetCache> {
   const shared = new InMemoryAssetCache()

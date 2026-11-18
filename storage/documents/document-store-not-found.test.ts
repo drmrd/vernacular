@@ -9,10 +9,10 @@ import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { FileSystemFolderProjectStore } from '../filesystem/file-system-folder-project-store'
 import { ProjectNotFoundError } from '../project-store'
-import { WorkspaceFiles } from '../project-files/workspace-files'
 import { ZipBundleProjectStore } from '../zip/zip-bundle-project-store'
 import { WorkspaceDocumentStore } from './document-store'
 import type { DocumentStore } from './document-store'
+import { PassThroughDirectory, storeOver } from './document-store-test-kit'
 
 const OWN_ID = 'house'
 const OTHER_ID = 'cottage'
@@ -26,34 +26,12 @@ function projectNamed(name: string): Project {
 }
 
 /** Test support: passes every call through and records the paths read. */
-class ReadRecordingDirectory implements DirectoryPort {
+class ReadRecordingDirectory extends PassThroughDirectory {
   readonly reads: string[] = []
 
-  constructor(private readonly inner: DirectoryPort) {}
-
-  async readFile(path: string): Promise<Uint8Array | undefined> {
+  override async readFile(path: string): Promise<Uint8Array | undefined> {
     this.reads.push(path)
-    return this.inner.readFile(path)
-  }
-
-  writeFile(path: string, bytes: Uint8Array): Promise<void> {
-    return this.inner.writeFile(path, bytes)
-  }
-
-  removeFile(path: string): Promise<void> {
-    return this.inner.removeFile(path)
-  }
-
-  list(prefix: string): Promise<string[]> {
-    return this.inner.list(prefix)
-  }
-
-  modifiedAt(path: string): Promise<string | undefined> {
-    return this.inner.modifiedAt(path)
-  }
-
-  removeTree(prefix: string): Promise<void> {
-    return this.inner.removeTree(prefix)
+    return super.readFile(path)
   }
 }
 
@@ -145,7 +123,7 @@ describe('reading a project whose time of last change cannot be read', () => {
     const inner = new InMemoryDirectory()
     await inner.writeFile(WORKSPACE_DOCUMENT, versionFixtureBytes(CURRENT_SCHEMA_VERSION))
     const root = new UnreadableTimeDirectory(inner, WORKSPACE_DOCUMENT)
-    return new WorkspaceDocumentStore(new WorkspaceFiles(root, { durable: true }))
+    return storeOver(root)
   }
 
   it('still reads the project, with no time of last change', async () => {

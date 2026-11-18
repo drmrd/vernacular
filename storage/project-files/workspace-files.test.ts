@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ASSET_DIRECTORY_PREFIX } from '../directory-asset-cache'
+import { ReadCountingDirectory } from '../documents/document-store-test-kit'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { InvalidProjectIdError } from './project-id-guard'
@@ -10,38 +11,6 @@ const ASSET_PATH = `${ASSET_DIRECTORY_PREFIX}/${HASH}`
 const DOCUMENT_A = Uint8Array.of(1, 1)
 const DOCUMENT_B = Uint8Array.of(2, 2)
 const ASSET_BYTES = Uint8Array.of(7, 8, 9)
-
-/** Test support: passes every call through and counts the reads. */
-class ReadCountingDirectory implements DirectoryPort {
-  reads = 0
-
-  constructor(private readonly inner: DirectoryPort) {}
-
-  async readFile(path: string): Promise<Uint8Array | undefined> {
-    this.reads += 1
-    return this.inner.readFile(path)
-  }
-
-  writeFile(path: string, bytes: Uint8Array): Promise<void> {
-    return this.inner.writeFile(path, bytes)
-  }
-
-  removeFile(path: string): Promise<void> {
-    return this.inner.removeFile(path)
-  }
-
-  list(prefix: string): Promise<string[]> {
-    return this.inner.list(prefix)
-  }
-
-  modifiedAt(path: string): Promise<string | undefined> {
-    return this.inner.modifiedAt(path)
-  }
-
-  removeTree(prefix: string): Promise<void> {
-    return this.inner.removeTree(prefix)
-  }
-}
 
 async function seededRoot(): Promise<InMemoryDirectory> {
   const root = new InMemoryDirectory()

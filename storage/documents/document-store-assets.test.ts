@@ -3,12 +3,11 @@ import { createEmptyProject, createFloor, createFurnitureInstance } from '../../
 import type { AssetScope, Project } from '../../core'
 import { ASSET_DIRECTORY_PREFIX } from '../directory-asset-cache'
 import type { AssetCache } from '../asset-cache'
-import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
 import { FolderFiles } from '../project-files/folder-files'
-import { WorkspaceFiles } from '../project-files/workspace-files'
-import { DocumentStore, WorkspaceDocumentStore } from './document-store'
+import { DocumentStore } from './document-store'
+import { PassThroughDirectory, storeOver } from './document-store-test-kit'
 
 const HASH_LENGTH = 64
 const FIRST_HASH = 'ab'.repeat(HASH_LENGTH / 2)
@@ -25,11 +24,9 @@ function assetPath(hash: string): string {
 }
 
 /** Test support: passes every call through and records the paths read and the paths written. */
-class RecordingDirectory implements DirectoryPort {
+class RecordingDirectory extends PassThroughDirectory {
   readonly reads: string[] = []
   readonly writes: string[] = []
-
-  constructor(private readonly inner: DirectoryPort) {}
 
   /** Forgets what was recorded so far, so a test sees only the calls of the step it checks. */
   forget(): void {
@@ -37,30 +34,14 @@ class RecordingDirectory implements DirectoryPort {
     this.writes.length = 0
   }
 
-  async readFile(path: string): Promise<Uint8Array | undefined> {
+  override async readFile(path: string): Promise<Uint8Array | undefined> {
     this.reads.push(path)
-    return this.inner.readFile(path)
+    return super.readFile(path)
   }
 
-  async writeFile(path: string, bytes: Uint8Array): Promise<void> {
+  override async writeFile(path: string, bytes: Uint8Array): Promise<void> {
     this.writes.push(path)
-    return this.inner.writeFile(path, bytes)
-  }
-
-  removeFile(path: string): Promise<void> {
-    return this.inner.removeFile(path)
-  }
-
-  list(prefix: string): Promise<string[]> {
-    return this.inner.list(prefix)
-  }
-
-  modifiedAt(path: string): Promise<string | undefined> {
-    return this.inner.modifiedAt(path)
-  }
-
-  removeTree(prefix: string): Promise<void> {
-    return this.inner.removeTree(prefix)
+    return super.writeFile(path, bytes)
   }
 }
 
@@ -116,7 +97,7 @@ describe('saving a project that refers to assets, in a workspace', () => {
     await inner.writeFile(assetPath(FIRST_HASH), FIRST_BYTES)
     await inner.writeFile(assetPath(SECOND_HASH), SECOND_BYTES)
     const root = new RecordingDirectory(inner)
-    const store = new WorkspaceDocumentStore(new WorkspaceFiles(root, { durable: true }))
+    const store = storeOver(root)
     root.forget()
 
     await store.save(WORKSPACE_ID, projectReferring(userAsset(FIRST_HASH), userAsset(SECOND_HASH)))

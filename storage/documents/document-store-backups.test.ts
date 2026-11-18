@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CodecOptions, Project } from '../../core'
+import type { Project } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
   bytesOf,
@@ -7,62 +7,30 @@ import {
   metaOf,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import type { DirectoryPort } from '../fs/directory-port'
-import { InMemoryDirectory } from '../fs/in-memory-directory'
-import { WorkspaceFiles } from '../project-files/workspace-files'
-import { WorkspaceDocumentStore } from './document-store'
 import type { StoreRead } from './document-store'
+import {
+  DOCUMENT_PATH,
+  PassThroughDirectory,
+  backupsOf,
+  rootHolding,
+  storeOver,
+} from './document-store-test-kit'
 
 const OLDEST_VERSION = 8
 const OLDER_VERSION = 15
 const NEXT_VERSION = 16
-const DOCUMENT_PATH = 'a/vernacular.json'
-const BACKUP_DIRECTORY = 'a/.house-backups'
 const AUTOSAVE_DIRECTORY = 'a/.house-autosave'
 
 /** Test support: rejects each write under a backup directory and passes everything else through. */
-class BackupRefusingDirectory implements DirectoryPort {
-  constructor(private readonly inner: DirectoryPort) {}
-
-  readFile(path: string): Promise<Uint8Array | undefined> {
-    return this.inner.readFile(path)
-  }
-
-  writeFile(path: string, bytes: Uint8Array): Promise<void> {
+class BackupRefusingDirectory extends PassThroughDirectory {
+  override writeFile(path: string, bytes: Uint8Array): Promise<void> {
     if (path.includes('.house-backups/')) return Promise.reject(new Error('the disk is full'))
-    return this.inner.writeFile(path, bytes)
+    return super.writeFile(path, bytes)
   }
-
-  removeFile(path: string): Promise<void> {
-    return this.inner.removeFile(path)
-  }
-
-  list(prefix: string): Promise<string[]> {
-    return this.inner.list(prefix)
-  }
-
-  modifiedAt(path: string): Promise<string | undefined> {
-    return this.inner.modifiedAt(path)
-  }
-
-  removeTree(prefix: string): Promise<void> {
-    return this.inner.removeTree(prefix)
-  }
-}
-
-function storeOver(root: DirectoryPort, options?: CodecOptions): WorkspaceDocumentStore {
-  return new WorkspaceDocumentStore(new WorkspaceFiles(root, { durable: true }), options)
-}
-
-async function rootHolding(bytes: Uint8Array): Promise<InMemoryDirectory> {
-  const root = new InMemoryDirectory()
-  await root.writeFile(DOCUMENT_PATH, bytes)
-  return root
 }
 
 async function backupBytesOf(root: DirectoryPort): Promise<Uint8Array[]> {
-  const names = await root.list(BACKUP_DIRECTORY)
-  const files = await Promise.all(names.map((name) => root.readFile(`${BACKUP_DIRECTORY}/${name}`)))
-  return files.map((bytes) => bytes ?? new Uint8Array())
+  return (await backupsOf(root)).map(({ bytes }) => bytes)
 }
 
 function projectOf(read: StoreRead): Project {

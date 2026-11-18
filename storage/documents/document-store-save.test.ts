@@ -13,14 +13,15 @@ import {
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
-import type { DirectoryPort } from '../fs/directory-port'
-import { InMemoryDirectory } from '../fs/in-memory-directory'
-import { WorkspaceFiles } from '../project-files/workspace-files'
-import { WorkspaceDocumentStore } from './document-store'
+import {
+  BACKUP_DIRECTORY,
+  DOCUMENT_PATH,
+  backupsOf,
+  rootHolding,
+  storeOver,
+} from './document-store-test-kit'
 
 const OLDER_VERSION = 8
-const DOCUMENT_PATH = 'a/vernacular.json'
-const BACKUP_DIRECTORY = 'a/.house-backups'
 const FAULT_BACKUP_PREFIX = 'last-valid-'
 const NOT_JSON = new TextEncoder().encode('{ not json')
 
@@ -29,26 +30,6 @@ const throwingStep: SchemaMigration = {
   migrate: () => {
     throw new Error('the step broke')
   },
-}
-
-function storeOver(root: DirectoryPort, options?: CodecOptions): WorkspaceDocumentStore {
-  return new WorkspaceDocumentStore(new WorkspaceFiles(root, { durable: true }), options)
-}
-
-async function rootHolding(bytes: Uint8Array | undefined): Promise<InMemoryDirectory> {
-  const root = new InMemoryDirectory()
-  if (bytes !== undefined) await root.writeFile(DOCUMENT_PATH, bytes)
-  return root
-}
-
-async function backupsOf(root: DirectoryPort): Promise<{ name: string; bytes: Uint8Array }[]> {
-  const names = await root.list(BACKUP_DIRECTORY)
-  return Promise.all(
-    names.map(async (name) => ({
-      name,
-      bytes: (await root.readFile(`${BACKUP_DIRECTORY}/${name}`)) ?? new Uint8Array(),
-    })),
-  )
 }
 
 function currentBytes(): Uint8Array {

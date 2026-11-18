@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import { createEmptyProject, encodeDocument } from '../../core'
 import type { Project } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
+import { PassThroughDirectory } from '../documents/document-store-test-kit'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { FileSystemFolderProjectStore } from './file-system-folder-project-store'
@@ -36,37 +37,23 @@ async function filesUnder(port: DirectoryPort, prefix: string): Promise<string[]
  * Test support: passes every call to the folder, and records each path written and each file that
  * a removal took away, whether by `removeFile` or by `removeTree`.
  */
-class RecordingDirectory implements DirectoryPort {
+class RecordingDirectory extends PassThroughDirectory {
   readonly written = new Set<string>()
   readonly removed: string[] = []
 
-  constructor(private readonly inner: DirectoryPort) {}
-
-  readFile(path: string): Promise<Uint8Array | undefined> {
-    return this.inner.readFile(path)
-  }
-
-  writeFile(path: string, bytes: Uint8Array): Promise<void> {
+  override writeFile(path: string, bytes: Uint8Array): Promise<void> {
     this.written.add(path)
-    return this.inner.writeFile(path, bytes)
+    return super.writeFile(path, bytes)
   }
 
-  async removeFile(path: string): Promise<void> {
+  override async removeFile(path: string): Promise<void> {
     if ((await this.inner.readFile(path)) !== undefined) this.removed.push(path)
-    await this.inner.removeFile(path)
+    await super.removeFile(path)
   }
 
-  async removeTree(prefix: string): Promise<void> {
+  override async removeTree(prefix: string): Promise<void> {
     this.removed.push(...(await filesUnder(this.inner, prefix)))
-    await this.inner.removeTree(prefix)
-  }
-
-  list(prefix: string): Promise<string[]> {
-    return this.inner.list(prefix)
-  }
-
-  modifiedAt(path: string): Promise<string | undefined> {
-    return this.inner.modifiedAt(path)
+    await super.removeTree(prefix)
   }
 }
 

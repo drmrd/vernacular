@@ -9,12 +9,11 @@ import type { Project } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import { projectOf } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { ASSET_DIRECTORY_PREFIX } from '../directory-asset-cache'
-import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
 import { FolderFiles } from '../project-files/folder-files'
-import { WorkspaceFiles } from '../project-files/workspace-files'
-import { DocumentStore, WorkspaceDocumentStore } from './document-store'
+import { DocumentStore } from './document-store'
+import { ReadCountingDirectory, storeOver, treeOf } from './document-store-test-kit'
 
 const HASH = 'ab'.repeat(32)
 const ASSET_PATH = `${ASSET_DIRECTORY_PREFIX}/${HASH}`
@@ -22,38 +21,6 @@ const ASSET_BYTES = Uint8Array.of(7, 8, 9)
 const NOT_JSON = new TextEncoder().encode('{ not json')
 const FIRST_WRITE = Date.UTC(2026, 0, 1)
 const ONE_SECOND = 1000
-
-/** Test support: passes every call through and counts the reads. */
-class ReadCountingDirectory implements DirectoryPort {
-  reads = 0
-
-  constructor(private readonly inner: DirectoryPort) {}
-
-  async readFile(path: string): Promise<Uint8Array | undefined> {
-    this.reads += 1
-    return this.inner.readFile(path)
-  }
-
-  writeFile(path: string, bytes: Uint8Array): Promise<void> {
-    return this.inner.writeFile(path, bytes)
-  }
-
-  removeFile(path: string): Promise<void> {
-    return this.inner.removeFile(path)
-  }
-
-  list(prefix: string): Promise<string[]> {
-    return this.inner.list(prefix)
-  }
-
-  modifiedAt(path: string): Promise<string | undefined> {
-    return this.inner.modifiedAt(path)
-  }
-
-  removeTree(prefix: string): Promise<void> {
-    return this.inner.removeTree(prefix)
-  }
-}
 
 /** A clock that moves one second on each call, so each write has its own time. */
 function steppingClock(): () => Date {
@@ -69,10 +36,6 @@ function currentBytes(): Uint8Array {
   return versionFixtureBytes(CURRENT_SCHEMA_VERSION)
 }
 
-function storeOver(root: DirectoryPort, durable = true): WorkspaceDocumentStore {
-  return new WorkspaceDocumentStore(new WorkspaceFiles(root, { durable }))
-}
-
 /** Two projects, `a` with a backup and a snapshot, and one asset in the shared pool. */
 async function seededRoot(): Promise<InMemoryDirectory> {
   const root = new InMemoryDirectory({ now: steppingClock() })
@@ -83,17 +46,6 @@ async function seededRoot(): Promise<InMemoryDirectory> {
   await root.writeFile('b/.house-backups/old.json', Uint8Array.of(5))
   await root.writeFile(ASSET_PATH, ASSET_BYTES)
   return root
-}
-
-async function treeOf(root: DirectoryPort, prefix = ''): Promise<Record<string, number[]>> {
-  const tree: Record<string, number[]> = {}
-  for (const name of await root.list(prefix)) {
-    const path = prefix === '' ? name : `${prefix}/${name}`
-    const bytes = await root.readFile(path)
-    if (bytes === undefined) Object.assign(tree, await treeOf(root, path))
-    else tree[path] = Array.from(bytes)
-  }
-  return tree
 }
 
 function withoutProject(tree: Record<string, number[]>, id: string): Record<string, number[]> {
@@ -215,7 +167,7 @@ describe('the stored files of a project', () => {
 
 describe('the other members of a store', () => {
   it.each([true, false])('mirrors the durability of its files when durable is %s', (durable) => {
-    expect(storeOver(new InMemoryDirectory(), durable).durable).toBe(durable)
+    expect(storeOver(new InMemoryDirectory(), undefined, durable).durable).toBe(durable)
   })
 
   it('stores a snapshot under the autosave directory of its project', async () => {

@@ -2,31 +2,24 @@ import { afterEach } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from '../../core'
 import { bytesOf, fixtureDocument } from '../../tests/fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
+import { WorkspaceDocumentStore } from '../documents/document-store'
+import { WorkspaceFiles } from '../project-files/workspace-files'
 import { IndexedDbDirectory } from './indexeddb-directory'
-import { convertLegacyRecords } from './legacy-records'
+import { FILES_STORE } from './indexeddb-requests'
+import type { FileRecord } from './indexeddb-requests'
+import { LEGACY_STORE, convertLegacyRecords } from './legacy-records'
 
-/** Shared set-up of the browser tests that cover the records of the first database layout. */
+/** Shared set-up of the browser tests that cover the legacy records of the database. */
 
-const FIRST_LAYOUT_VERSION = 1
-const FIRST_LAYOUT_STORE = 'projects'
-const FILE_STORE = 'files'
+const LEGACY_DATABASE_VERSION = 1
 
 /** The path that a project named `current` has as a file. */
 export const CURRENT_PROJECT_PATH = 'current/vernacular.json'
 
-/** A record of the first layout: the project is a live object, not bytes. */
-export interface FirstLayoutRecord {
+/** A legacy record: the project is a live object, not bytes. */
+export interface LegacyRecord {
   readonly id: string
   readonly project: unknown
-}
-
-/** A record of the file store, as the directory writes it. */
-export interface FileRecord {
-  readonly path: string
-  readonly bytes: ArrayBuffer | Uint8Array
-  readonly modifiedAt: string
-  /** The one-off token of a conversion; an ordinary write never sets it. */
-  readonly convertedBy?: string
 }
 
 const createdDatabases: string[] = []
@@ -76,15 +69,15 @@ function settled(transaction: IDBTransaction): Promise<void> {
 }
 
 /**
- * Creates the database as the first layout left it (version 1, one `projects` store keyed by
+ * Creates the database as earlier versions left it (version 1, one `projects` store keyed by
  * `id`), puts the records in, and closes that connection before anything else opens the database.
  */
-export async function seedFirstLayout(name: string, records: readonly object[]): Promise<void> {
-  const database = await openDatabase(name, FIRST_LAYOUT_VERSION, (upgrading) => {
-    upgrading.createObjectStore(FIRST_LAYOUT_STORE, { keyPath: 'id' })
+export async function seedLegacyRecords(name: string, records: readonly object[]): Promise<void> {
+  const database = await openDatabase(name, LEGACY_DATABASE_VERSION, (upgrading) => {
+    upgrading.createObjectStore(LEGACY_STORE, { keyPath: 'id' })
   })
-  const transaction = database.transaction(FIRST_LAYOUT_STORE, 'readwrite')
-  records.forEach((record) => transaction.objectStore(FIRST_LAYOUT_STORE).put(record))
+  const transaction = database.transaction(LEGACY_STORE, 'readwrite')
+  records.forEach((record) => transaction.objectStore(LEGACY_STORE).put(record))
   await settled(transaction)
   database.close()
 }
@@ -108,13 +101,13 @@ async function recordsOf<T>(name: string, storeName: string): Promise<T[] | unde
 }
 
 /** The records that the `projects` store still holds; undefined when the store is gone. */
-export function firstLayoutRecordsOf(name: string): Promise<FirstLayoutRecord[] | undefined> {
-  return recordsOf<FirstLayoutRecord>(name, FIRST_LAYOUT_STORE)
+export function legacyRecordsOf(name: string): Promise<LegacyRecord[] | undefined> {
+  return recordsOf<LegacyRecord>(name, LEGACY_STORE)
 }
 
 /** The records of the `files` store; undefined when the store does not exist. */
 export function fileRecordsOf(name: string): Promise<FileRecord[] | undefined> {
-  return recordsOf<FileRecord>(name, FILE_STORE)
+  return recordsOf<FileRecord>(name, FILES_STORE)
 }
 
 /** The paths of the `files` store, sorted. */
@@ -142,7 +135,7 @@ export function objectFrom(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder().decode(bytes))
 }
 
-/** A directory that leaves the records of the first layout alone, so a test sees them as they are. */
+/** A directory that leaves the legacy records alone, so a test sees them as they are. */
 export function directoryWithoutConversion(name: string): IndexedDbDirectory {
   return new IndexedDbDirectory(name, { convertLegacy: () => Promise.resolve() })
 }
@@ -151,8 +144,8 @@ export function directoryWithoutConversion(name: string): IndexedDbDirectory {
 export async function putFileRecord(name: string, record: FileRecord): Promise<void> {
   const database = await openDatabase(name, undefined)
   try {
-    const transaction = database.transaction(FILE_STORE, 'readwrite')
-    transaction.objectStore(FILE_STORE).put(record)
+    const transaction = database.transaction(FILES_STORE, 'readwrite')
+    transaction.objectStore(FILES_STORE).put(record)
     await settled(transaction)
   } finally {
     database.close()
@@ -160,8 +153,8 @@ export async function putFileRecord(name: string, record: FileRecord): Promise<v
 }
 
 /** The raw `id` values of the records that the `projects` store still holds, in key order. */
-export async function firstLayoutIdsOf(name: string): Promise<unknown[]> {
-  const records = (await firstLayoutRecordsOf(name)) ?? []
+export async function legacyIdsOf(name: string): Promise<unknown[]> {
+  const records = (await legacyRecordsOf(name)) ?? []
   return records.map((record) => record.id)
 }
 
@@ -170,11 +163,21 @@ export function currentProject(): Json {
   return fixtureDocument(CURRENT_SCHEMA_VERSION)
 }
 
-/** A fresh database in the first layout that holds the records. */
+/** A fresh database that holds the legacy records. */
 export async function seededDatabase(...records: object[]): Promise<string> {
   const name = freshDatabaseName()
-  await seedFirstLayout(name, records)
+  await seedLegacyRecords(name, records)
   return name
+}
+
+/** The files of a workspace that the directory holds. */
+export function workspaceOver(directory: IndexedDbDirectory): WorkspaceFiles {
+  return new WorkspaceFiles(directory, { durable: true })
+}
+
+/** The document store of a workspace that the directory holds. */
+export function storeOver(directory: IndexedDbDirectory): WorkspaceDocumentStore {
+  return new WorkspaceDocumentStore(workspaceOver(directory))
 }
 
 /** A directory whose conversion reads back through `readBack`. */
@@ -207,8 +210,8 @@ export async function replaceStoredBytes(
 export async function deleteStoredFile(name: string, path: string): Promise<void> {
   const database = await openDatabase(name, undefined)
   try {
-    const transaction = database.transaction(FILE_STORE, 'readwrite')
-    transaction.objectStore(FILE_STORE).delete(path)
+    const transaction = database.transaction(FILES_STORE, 'readwrite')
+    transaction.objectStore(FILES_STORE).delete(path)
     await settled(transaction)
   } finally {
     database.close()
@@ -224,11 +227,11 @@ export function deleteDatabaseNamed(name: string): Promise<void> {
 }
 
 /** Deletes only the record of the `projects` store with `id`, through a raw connection. */
-export async function deleteFirstLayoutRecord(name: string, id: string): Promise<void> {
+export async function deleteLegacyRecord(name: string, id: string): Promise<void> {
   const database = await openDatabase(name, undefined)
   try {
-    const transaction = database.transaction(FIRST_LAYOUT_STORE, 'readwrite')
-    transaction.objectStore(FIRST_LAYOUT_STORE).delete(id)
+    const transaction = database.transaction(LEGACY_STORE, 'readwrite')
+    transaction.objectStore(LEGACY_STORE).delete(id)
     await settled(transaction)
   } finally {
     database.close()

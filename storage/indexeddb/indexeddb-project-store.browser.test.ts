@@ -12,7 +12,7 @@ import type { ProjectStore } from '../project-store'
 import { IndexedDbDirectory } from './indexeddb-directory'
 import { IndexedDbProjectStore } from './indexeddb-project-store'
 import {
-  firstLayoutIdsOf,
+  legacyIdsOf,
   freshDatabaseName,
   registerDatabaseCleanup,
   seededDatabase,
@@ -36,7 +36,7 @@ function withCurrentRevision(project: Project): Project {
   return { ...project, meta: { ...project.meta, schemaRevision: CURRENT_SCHEMA_REVISION } }
 }
 
-/** A database of the first layout that holds one record, `current`, at the given schema version. */
+/** A database of legacy records that holds one record, `current`, at the given schema version. */
 function seededCurrent(version = CURRENT_SCHEMA_VERSION): Promise<string> {
   return seededDatabase({ id: 'current', project: fixtureDocument(version) })
 }
@@ -162,7 +162,7 @@ describe('the IndexedDB store over the records of an existing user', () => {
 
     await new IndexedDbProjectStore(name).list()
 
-    expect(await firstLayoutIdsOf(name)).not.toContain('current')
+    expect(await legacyIdsOf(name)).not.toContain('current')
     expect(await storedFilePathsOf(name)).toContain('current/vernacular.json')
   })
 

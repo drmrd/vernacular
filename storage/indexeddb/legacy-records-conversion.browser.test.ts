@@ -1,50 +1,32 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from '../../core'
 import { fixtureDocument } from '../../tests/fixtures/projects/versions/fixture-documents'
-import { WorkspaceDocumentStore } from '../documents/document-store'
-import { WorkspaceFiles } from '../project-files/workspace-files'
 import { IndexedDbDirectory } from './indexeddb-directory'
 import {
   CURRENT_PROJECT_PATH,
+  directoryReadingBackWith,
   directoryWithoutConversion,
-  firstLayoutRecordsOf,
-  freshDatabaseName,
   jsonBytesOf,
+  legacyRecordsOf,
   objectFrom,
   registerDatabaseCleanup,
-  seedFirstLayout,
+  seededDatabase,
   storedFileBytesOf,
+  storeOver,
   storedFilePathsOf,
 } from './legacy-records-test-kit'
-import type { FirstLayoutRecord } from './legacy-records-test-kit'
-import { convertLegacyRecords } from './legacy-records'
+import type { LegacyRecord } from './legacy-records-test-kit'
 
 registerDatabaseCleanup()
 
 const OLDER_VERSION = 8
 const BACKUP_DIRECTORY = 'current/.house-backups'
 const TIME_TO_PASS_MILLISECONDS = 25
+/** Not the bytes that a conversion writes, so a read-back that returns them is a mismatch. */
+const WRONG_BYTES = Uint8Array.of(0, 1, 2)
 
-function recordOf(id: string, version = CURRENT_SCHEMA_VERSION): FirstLayoutRecord {
+function recordOf(id: string, version = CURRENT_SCHEMA_VERSION): LegacyRecord {
   return { id, project: fixtureDocument(version) }
-}
-
-async function seededDatabase(...records: FirstLayoutRecord[]): Promise<string> {
-  const name = freshDatabaseName()
-  await seedFirstLayout(name, records)
-  return name
-}
-
-function storeOver(directory: IndexedDbDirectory): WorkspaceDocumentStore {
-  return new WorkspaceDocumentStore(new WorkspaceFiles(directory, { durable: true }))
-}
-
-/** A directory whose conversion reads back other bytes than it wrote. */
-function directoryThatReadsBackWrongBytes(name: string): IndexedDbDirectory {
-  const readBack = () => Promise.resolve(Uint8Array.of(0, 1, 2))
-  return new IndexedDbDirectory(name, {
-    convertLegacy: (database) => convertLegacyRecords(database, { readBack }),
-  })
 }
 
 describe('converting version 1 records to files at the first open', () => {
@@ -55,7 +37,7 @@ describe('converting version 1 records to files at the first open', () => {
 
     const bytes = await storedFileBytesOf(name, CURRENT_PROJECT_PATH)
     expect(objectFrom(bytes ?? new Uint8Array())).toEqual(recordOf('current').project)
-    expect(await firstLayoutRecordsOf(name)).toEqual([])
+    expect(await legacyRecordsOf(name)).toEqual([])
   })
 
   it('converts every record, each to the project file of its own id', async () => {
@@ -68,17 +50,17 @@ describe('converting version 1 records to files at the first open', () => {
       CURRENT_PROJECT_PATH,
       `${otherId}/vernacular.json`,
     ])
-    expect(await firstLayoutRecordsOf(name)).toEqual([])
+    expect(await legacyRecordsOf(name)).toEqual([])
   })
 
   it('keeps a legacy record whose converted file does not read back equal', async () => {
     const name = await seededDatabase(recordOf('current'))
-    const directory = directoryThatReadsBackWrongBytes(name)
+    const directory = directoryReadingBackWith(name, () => Promise.resolve(WRONG_BYTES))
 
     const read = await storeOver(directory).read('current')
 
     expect(await storedFilePathsOf(name)).toEqual([])
-    expect(await firstLayoutRecordsOf(name)).toEqual([recordOf('current')])
+    expect(await legacyRecordsOf(name)).toEqual([recordOf('current')])
     expect(read.ok).toBe(true)
   })
 
@@ -107,7 +89,7 @@ describe('converting version 1 records to files at the first open', () => {
 
     expect(await storedFileBytesOf(name, CURRENT_PROJECT_PATH)).toEqual(newer)
     expect(await storedFilePathsOf(name)).toEqual(pathsBefore)
-    expect(await firstLayoutRecordsOf(name)).toEqual([recordOf('current')])
+    expect(await legacyRecordsOf(name)).toEqual([recordOf('current')])
   })
 
   it('opens a version 8 document as migrated, with one backup of the stored object bytes', async () => {

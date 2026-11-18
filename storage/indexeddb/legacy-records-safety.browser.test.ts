@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
-import { WorkspaceFiles } from '../project-files/workspace-files'
 import { IndexedDbDirectory } from './indexeddb-directory'
 import { convertLegacyRecords } from './legacy-records'
 import {
@@ -9,23 +8,20 @@ import {
   directoryWithoutConversion,
   fileRecordAt,
   fileRecordsOf,
-  firstLayoutIdsOf,
+  legacyIdsOf,
   jsonBytesOf,
   putFileRecord,
   registerDatabaseCleanup,
   seededDatabase,
   storedFileBytesOf,
   storedFilePathsOf,
+  workspaceOver,
 } from './legacy-records-test-kit'
 
 registerDatabaseCleanup()
 
 const EARLIER_SAVE_TIME = '2020-01-02T03:04:05.000Z'
 const OTHER_TABS_BYTES = Uint8Array.of(4, 5, 6)
-
-function workspaceOver(directory: IndexedDbDirectory): WorkspaceFiles {
-  return new WorkspaceFiles(directory, { durable: true })
-}
 
 /** The project of the current fixture, with its first floor's elevation set to `elevation`. */
 function projectWithElevation(elevation: number): Json {
@@ -55,7 +51,7 @@ describe('a record that cannot be converted', () => {
     await expect(directory.list('')).resolves.toEqual(['current', 'cyclic'])
 
     expect(await storedFilePathsOf(name)).toEqual([CURRENT_PROJECT_PATH])
-    expect(await firstLayoutIdsOf(name)).toEqual(['cyclic'])
+    expect(await legacyIdsOf(name)).toEqual(['cyclic'])
     expect(await workspaceOver(directory).ids()).toEqual(['current', 'cyclic'])
     await expect(directory.readFile('cyclic/vernacular.json')).rejects.toThrow(/json/i)
   })
@@ -69,7 +65,7 @@ describe('a record whose object does not survive JSON unchanged', () => {
     await directory.list('')
 
     expect(await pathsUnder(name, 'bare')).toEqual([])
-    expect(await firstLayoutIdsOf(name)).toEqual(['bare'])
+    expect(await legacyIdsOf(name)).toEqual(['bare'])
     expect(await workspaceOver(directory).ids()).toEqual([])
   })
 
@@ -80,7 +76,7 @@ describe('a record whose object does not survive JSON unchanged', () => {
     await directory.list('')
 
     expect(await storedFilePathsOf(name)).toEqual([])
-    expect(await firstLayoutIdsOf(name)).toEqual(['current'])
+    expect(await legacyIdsOf(name)).toEqual(['current'])
     expect(await workspaceOver(directory).ids()).toEqual(['current'])
     expect(await directory.readFile(CURRENT_PROJECT_PATH)).toBeInstanceOf(Uint8Array)
   })
@@ -92,7 +88,7 @@ describe('a record whose object does not survive JSON unchanged', () => {
     await new IndexedDbDirectory(name).list('')
 
     expect(await storedFileBytesOf(name, CURRENT_PROJECT_PATH)).toEqual(jsonBytesOf(project))
-    expect(await firstLayoutIdsOf(name)).toEqual([])
+    expect(await legacyIdsOf(name)).toEqual([])
   })
 })
 
@@ -114,7 +110,7 @@ describe('a conversion that meets a file it did not write', () => {
     await directory.list('')
 
     expect(await storedFileBytesOf(name, CURRENT_PROJECT_PATH)).toEqual(OTHER_TABS_BYTES)
-    expect(await firstLayoutIdsOf(name)).toEqual(['current'])
+    expect(await legacyIdsOf(name)).toEqual(['current'])
     expect(await fileRecordAt(name, CURRENT_PROJECT_PATH)).not.toHaveProperty('convertedBy')
   })
 
@@ -130,7 +126,7 @@ describe('a conversion that meets a file it did not write', () => {
 
     await new IndexedDbDirectory(name).list('')
 
-    expect(await firstLayoutIdsOf(name)).toEqual([])
+    expect(await legacyIdsOf(name)).toEqual([])
     const files = await fileRecordsOf(name)
     expect(files).toHaveLength(1)
     expect(new Uint8Array(files?.[0]?.bytes ?? new Uint8Array())).toEqual(jsonBytesOf(project))
@@ -151,8 +147,8 @@ describe('a record whose id cannot be a project directory', () => {
       await directory.list('')
 
       expect(await storedFilePathsOf(name)).toEqual([CURRENT_PROJECT_PATH])
-      expect(await firstLayoutIdsOf(name)).toContain(id)
-      expect(await firstLayoutIdsOf(name)).not.toContain('current')
+      expect(await legacyIdsOf(name)).toContain(id)
+      expect(await legacyIdsOf(name)).not.toContain('current')
       expect(await workspaceOver(directory).ids()).toEqual(['current'])
     },
   )

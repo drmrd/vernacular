@@ -1,23 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { WorkspaceDocumentStore } from '../documents/document-store'
-import { WorkspaceFiles } from '../project-files/workspace-files'
 import { IndexedDbDirectory } from './indexeddb-directory'
 import {
   CURRENT_PROJECT_PATH,
   currentProject,
-  deleteFirstLayoutRecord,
+  deleteLegacyRecord,
   deleteStoredFile,
   directoryReadingBackWith,
   directoryWithoutConversion,
   fileRecordAt,
-  firstLayoutIdsOf,
+  legacyIdsOf,
   jsonBytesOf,
   putFileRecord,
   registerDatabaseCleanup,
   replaceStoredBytes,
   seededDatabase,
   storedFileBytesOf,
+  storeOver,
   storedFilePathsOf,
+  workspaceOver,
 } from './legacy-records-test-kit'
 
 registerDatabaseCleanup()
@@ -25,14 +25,6 @@ registerDatabaseCleanup()
 const EARLIER_SAVE_TIME = '2020-01-02T03:04:05.000Z'
 const WRONG_BYTES = Uint8Array.of(9, 9, 9)
 const SAVED_BYTES = Uint8Array.of(1, 2, 3)
-
-function workspaceOver(directory: IndexedDbDirectory): WorkspaceFiles {
-  return new WorkspaceFiles(directory, { durable: true })
-}
-
-function storeOver(directory: IndexedDbDirectory): WorkspaceDocumentStore {
-  return new WorkspaceDocumentStore(workspaceOver(directory))
-}
 
 describe('a converted file that does not read back right', () => {
   it('gives way to its record when the stored bytes are wrong', async () => {
@@ -46,7 +38,7 @@ describe('a converted file that does not read back right', () => {
     const read = await storeOver(directory).read('current')
 
     expect(await storedFilePathsOf(name)).toEqual([])
-    expect(await firstLayoutIdsOf(name)).toEqual(['current'])
+    expect(await legacyIdsOf(name)).toEqual(['current'])
     expect(read.ok).toBe(true)
   })
 
@@ -65,7 +57,7 @@ describe('a converted file that does not read back right', () => {
     await new IndexedDbDirectory(name).list('')
 
     expect(await storedFileBytesOf(name, CURRENT_PROJECT_PATH)).toEqual(jsonBytesOf(project))
-    expect(await firstLayoutIdsOf(name)).toEqual([])
+    expect(await legacyIdsOf(name)).toEqual([])
   })
 })
 
@@ -101,9 +93,9 @@ describe('a conversion that meets trouble while it reads back', () => {
     await expect(directory.list('')).resolves.toEqual(['a-one', 'b-two'])
 
     expect(await storedFilePathsOf(name)).toContain('b-two/vernacular.json')
-    expect(await firstLayoutIdsOf(name)).toEqual(['a-one'])
+    expect(await legacyIdsOf(name)).toEqual(['a-one'])
     await new IndexedDbDirectory(name).list('')
-    expect(await firstLayoutIdsOf(name)).toEqual([])
+    expect(await legacyIdsOf(name)).toEqual([])
     expect(await storedFileBytesOf(name, 'a-one/vernacular.json')).toEqual(jsonBytesOf(first))
   })
 
@@ -118,7 +110,7 @@ describe('a conversion that meets trouble while it reads back', () => {
 
     const read = await storeOver(directory).read('current')
 
-    expect(await firstLayoutIdsOf(name)).toEqual(['current'])
+    expect(await legacyIdsOf(name)).toEqual(['current'])
     expect(read.ok).toBe(true)
   })
 
@@ -135,7 +127,7 @@ describe('a conversion that meets trouble while it reads back', () => {
     await directory.list('')
 
     expect(await storedFilePathsOf(name)).toEqual([])
-    expect(await firstLayoutIdsOf(name)).toEqual([])
+    expect(await legacyIdsOf(name)).toEqual([])
     expect(await workspaceOver(directory).ids()).toEqual([])
   })
 
@@ -143,7 +135,7 @@ describe('a conversion that meets trouble while it reads back', () => {
     const project = currentProject()
     const name = await seededDatabase({ id: 'current', project })
     const readBack = async (): Promise<Uint8Array> => {
-      await deleteFirstLayoutRecord(name, 'current')
+      await deleteLegacyRecord(name, 'current')
       return WRONG_BYTES
     }
     const directory = directoryReadingBackWith(name, readBack)
@@ -151,7 +143,7 @@ describe('a conversion that meets trouble while it reads back', () => {
     const read = await storeOver(directory).read('current')
 
     expect(await storedFileBytesOf(name, CURRENT_PROJECT_PATH)).toEqual(jsonBytesOf(project))
-    expect(await firstLayoutIdsOf(name)).toEqual([])
+    expect(await legacyIdsOf(name)).toEqual([])
     expect(read.ok).toBe(true)
   })
 })
