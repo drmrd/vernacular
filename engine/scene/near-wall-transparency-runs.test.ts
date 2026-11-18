@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { buildWallGraph, junctionFadeGroups, type Floor, type SceneGraph } from '../../core'
+import type { Floor, SceneGraph } from '../../core'
 import {
   centeredEllFloor,
   flushEllFloor,
@@ -16,7 +16,12 @@ import { enrollNearWallTargets } from './near-wall-transparency-enrollment'
 
 const FADED_OPACITY = 0.1
 const SPAN_KEY = 'wallSpanMm'
-const WALL_PIECE_COUNT = 4
+// The off-center partition floor is an 8000 x 4000 block of four exterior walls (south, east,
+// north, west) cut by an interior partition at x = 3000. The partition meets the south and the
+// north wall in a three-wall junction each, and each of those walls has an exterior run on an
+// edge of its junction, so two junction fills are enrolled beside the four wall targets.
+const EXTERIOR_WALL_COUNT = 4
+const JUNCTION_FILL_COUNT = 2
 
 interface Span {
   fromMm: number
@@ -114,14 +119,9 @@ describe('the near-wall targets of a block cut by an off-center partition', () =
   it('number one per exterior wall plus one per junction fill beside an exterior wall', () => {
     const graph = sceneGraphOf(offCenterPartitionFloor())
     const root = buildScene(graph, new NeutralMaterialProvider())
-    const groups = junctionFadeGroups(
-      buildWallGraph(graph.walls),
-      graph.walls,
-      graph.rooms,
-      graph.openings,
-    )
-    const fills = groups.filter((group) => group.exteriorWallIds.length > 0)
 
-    expect(enrollNearWallTargets(root, graph)).toHaveLength(WALL_PIECE_COUNT + fills.length)
+    expect(enrollNearWallTargets(root, graph)).toHaveLength(
+      EXTERIOR_WALL_COUNT + JUNCTION_FILL_COUNT,
+    )
   })
 })
