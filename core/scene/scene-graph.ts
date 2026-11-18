@@ -298,10 +298,6 @@ export function deriveFurnitureNode(floor: Floor, item: FurnitureInstance): Furn
   }
 }
 
-export function deriveFurnitureNodesForFloor(floor: Floor): FurnitureSceneNode[] {
-  return floor.furniture.map((item) => deriveFurnitureNode(floor, item))
-}
-
 export function deriveRoomNodesForFloor(
   floor: Floor,
   overrides?: Readonly<Record<string, RoomOverride>>,
