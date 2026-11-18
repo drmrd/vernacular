@@ -63,6 +63,10 @@ function withObservedAt(date: string, minutesSinceMidnight: number): Environment
   return { ...BASE_INPUT, observedAt: { date, minutesSinceMidnight } }
 }
 
+function withNorthBearing(northBearing: number): EnvironmentLightingInput {
+  return { ...BASE_INPUT, northBearing }
+}
+
 const REFERENCE_SUN_UNDER_BASE_WEATHER = computeEnvironmentLighting({
   ...referenceLightingInput(),
   northBearing: BASE_INPUT.northBearing,
@@ -84,6 +88,23 @@ describe('computeEnvironmentLighting with input that cannot be used', () => {
       const lighting = computeEnvironmentLighting(input)
       expect(lighting).toStrictEqual(REFERENCE_SUN_UNDER_BASE_WEATHER)
       expect(numbersOf(lighting).every(Number.isFinite)).toBe(true)
+    })
+  })
+
+  describe('a north bearing that is not finite', () => {
+    it.each([
+      ['a bearing that is not a number', NaN],
+      ['an infinite bearing', Infinity],
+      ['a negative infinite bearing', -Infinity],
+    ])('counts as a bearing of zero for %s', (_title, northBearing) => {
+      const lighting = computeEnvironmentLighting(withNorthBearing(northBearing))
+      expect(lighting).toStrictEqual(computeEnvironmentLighting(withNorthBearing(0)))
+      expect(numbersOf(lighting).every(Number.isFinite)).toBe(true)
+    })
+
+    it('keeps a finite bearing however large', () => {
+      const input = withNorthBearing(1e308)
+      expect(computeEnvironmentLighting(input)).toStrictEqual(composedFromPieces(input))
     })
   })
 
