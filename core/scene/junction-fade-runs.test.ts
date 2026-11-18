@@ -105,6 +105,50 @@ describe('junctionFadeGroups on a wall with an ell flush against its end', () =>
   })
 })
 
+const REVERSED_WALL_ID = 'long-south'
+
+/** The flush ell floor with the long south wall drawn from its east end to its west end. */
+function flushEllFloorWithReversedLongWall(): Floor {
+  const floor = flushEllFloor()
+  const reversed = floor.walls.find(
+    (wall) => wall.id === REVERSED_WALL_ID,
+  ) as Floor['walls'][number]
+  const wallLength = distance(reversed.start, reversed.end)
+  return {
+    ...floor,
+    walls: floor.walls.map((wall) =>
+      wall.id === REVERSED_WALL_ID ? { ...wall, start: wall.end, end: wall.start } : wall,
+    ),
+    openings: floor.openings.map((opening) =>
+      opening.hostWallId === REVERSED_WALL_ID
+        ? { ...opening, position: wallLength - opening.position }
+        : opening,
+    ),
+  }
+}
+
+describe('junctionFadeGroups on a wall drawn against the direction of its graph edge', () => {
+  const plan = planOf(flushEllFloorWithReversedLongWall())
+
+  it('tracks the run measured from the wall start, and holds opaque, at the inner junction', () => {
+    const runs = exteriorWalls(plan.walls, plan.rooms, plan.openings)
+    const longRun = runs.find((run) => run.wallId === 'wall:long-south')
+    const group = groupAt(plan, point(4000, 0))
+
+    expect(longRun).toMatchObject({ fromMm: 0, toMm: 6000 })
+    expect(longRun?.outwardNormal.x).toBeCloseTo(0, 9)
+    expect(longRun?.outwardNormal.y).toBeCloseTo(-1, 9)
+    expect(group.fillHoldsUnconditionally).toBe(true)
+    expect([...group.exteriorWallIds].sort()).toEqual(['wall:ell-east', 'wall:long-south'])
+    expect(group.exteriorRunIndexes).toEqual(
+      ascending([
+        positionOfRun(plan, 'wall:long-south', 0),
+        positionOfRun(plan, 'wall:ell-east', 0),
+      ]),
+    )
+  })
+})
+
 describe('junctionFadeGroups on a room whose north wall runs on past it', () => {
   it('tracks the run beside the room and the east wall at the junction, and holds opaque', () => {
     const plan = planOf(longNorthWallFloor())
