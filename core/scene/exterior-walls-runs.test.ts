@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Point } from '../model/types'
 import { exteriorWalls, type ExteriorWall } from './exterior-walls'
-import type { RoomSceneNode, WallSceneNode } from './scene-graph'
+import type { OpeningSceneNode, RoomSceneNode, WallSceneNode } from './scene-graph'
 import {
   centeredEllFloor,
   centeredPartitionFloor,
@@ -200,4 +200,61 @@ describe('exteriorWalls agrees with the room side of each opening', () => {
       }
     },
   )
+})
+
+describe('exteriorWalls with an opening centered on the boundary of two runs', () => {
+  const FLOOR_ID = 'g'
+  const WALL_LENGTH = 8000
+  const BOUNDARY = 4000
+  const ROOM_DEPTH = 3000
+  const corner = (x: number, y: number): Point => ({ x, y })
+  type Span = readonly [from: number, to: number]
+  const roomOver = (id: string, [fromX, toX]: Span, [fromY, toY]: Span) => {
+    const ring = [corner(fromX, fromY), corner(toX, fromY), corner(toX, toY), corner(fromX, toY)]
+    const room: RoomSceneNode = {
+      id,
+      kind: 'room',
+      floorId: FLOOR_ID,
+      polygon: ring,
+      clearPolygon: ring,
+      area: 1,
+    }
+    return room
+  }
+  const wall: WallSceneNode = {
+    id: 'wall:split',
+    kind: 'wall',
+    floorId: FLOOR_ID,
+    start: corner(0, 0),
+    end: corner(WALL_LENGTH, 0),
+    thickness: 114,
+  }
+  const rooms = [
+    roomOver('room:above', [0, BOUNDARY], [0, ROOM_DEPTH]),
+    roomOver('room:below', [BOUNDARY, WALL_LENGTH], [-ROOM_DEPTH, 0]),
+  ]
+  const opening: OpeningSceneNode = {
+    id: 'opening:on-the-boundary',
+    kind: 'opening',
+    floorId: FLOOR_ID,
+    type: 'single-swing-door',
+    center: corner(BOUNDARY, 0),
+    along: corner(1, 0),
+    normal: corner(0, 1),
+    width: 900,
+    height: 2032,
+    sillHeight: 0,
+    hostThickness: 114,
+    orientation: { hinge: 'start', facing: 'positive' },
+    hostWallId: 'split',
+  }
+
+  it('gives the opening to the first of the two runs', () => {
+    const runs = exteriorWalls([wall], rooms, [opening])
+
+    expectRuns(runs, [
+      ['wall:split', 0, BOUNDARY, SOUTH, ['opening:on-the-boundary']],
+      ['wall:split', BOUNDARY, WALL_LENGTH, NORTH, []],
+    ])
+  })
 })
