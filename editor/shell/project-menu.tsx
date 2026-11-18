@@ -1,5 +1,12 @@
 import { useState, type FormEvent, type ReactElement } from 'react'
-import { Button, Field, IconButton, useMenuButton, type MenuButton } from '../design-system'
+import {
+  Button,
+  Field,
+  IconButton,
+  isComposingKey,
+  useMenuButton,
+  type MenuButton,
+} from '../design-system'
 import './project-menu.css'
 
 interface RecentProject {
@@ -93,7 +100,8 @@ function ProjectRenameForm({
           autoFocus
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Escape') {
+            // An Escape that cancels an input method candidate is not a cancel of the rename.
+            if (event.key === 'Escape' && !isComposingKey(event)) {
               onCancel()
             }
           }}
