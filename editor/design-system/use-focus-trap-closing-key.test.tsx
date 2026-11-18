@@ -153,6 +153,11 @@ describe('useFocusTrap and the key that closes it', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(onWindow).not.toHaveBeenCalled()
+
+    await user.keyboard('a')
+
+    expect(onWindow).toHaveBeenCalledTimes(1)
+    expect(onWindow.mock.calls[0]?.[0].key).toBe('a')
   })
 
   it('never holds back a keyup, not even the one that closes the dialog', async () => {
