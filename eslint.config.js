@@ -24,11 +24,11 @@ const layerRules = [
   { from: { type: 'engine' }, allow: { to: { type: 'core' } } },
   {
     from: { type: 'bridge' },
-    allow: { to: { type: ['core', 'storage', 'session', 'engine'] } },
+    allow: { to: { type: ['core', 'session', 'engine'] } },
   },
   {
     from: { type: 'editor' },
-    allow: { to: { type: ['core', 'storage', 'session', 'bridge'] } },
+    allow: { to: { type: ['core', 'session', 'bridge'] } },
   },
   {
     from: { type: 'app' },
@@ -56,7 +56,15 @@ const engineTestingEntryInsideEngine = {
   regex: '(^|/)engine/testing(/.*)?$|^\\.{1,2}/(\\.\\./)*testing(/.*)?$',
   message: engineTestingMessage,
 }
+const sessionTestingMessage = 'The session testing entry is for tests and stories only.'
+const sessionTestingEntry = { regex: '(^|/)session/testing(/.*)?$', message: sessionTestingMessage }
+// Inside session/ a relative ./testing or ../testing can be the entry itself, so this pattern adds the relative form to the path form.
+const sessionTestingEntryInsideSession = {
+  regex: '(^|/)session/testing(/.*)?$|^\\.{1,2}/(\\.\\./)*testing(/.*)?$',
+  message: sessionTestingMessage,
+}
 const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
+const storyFileGlobs = ['**/*.stories.tsx']
 
 const nodeGlobalNames = new Set(Object.keys(globals.node))
 const browserOnlyGlobalNames = Object.keys(globals.browser).filter(
@@ -133,6 +141,45 @@ const layerPurityBlocks = [
     rules: { 'no-restricted-imports': ['error', { patterns: [engineTestingEntry] }] },
   },
   {
+    // Tests and stories may use the session doubles; production code may not.
+    files: ['bridge/**'],
+    ignores: [...testFileGlobs, ...storyFileGlobs],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [threePackages, engineTestingEntry, sessionTestingEntry] },
+      ],
+    },
+  },
+  {
+    files: ['editor/**', 'app/**'],
+    ignores: [...testFileGlobs, ...storyFileGlobs],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [threePackages, reactThreePackages, engineTestingEntry, sessionTestingEntry] },
+      ],
+    },
+  },
+  {
+    files: ['src/**'],
+    ignores: [...testFileGlobs, ...storyFileGlobs],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [engineTestingEntry, sessionTestingEntry] }],
+    },
+  },
+  {
+    // Files inside session/testing/ import their siblings, so they are left out.
+    files: ['session/**'],
+    ignores: [...testFileGlobs, 'session/testing/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [reactPackages, threePackages, sessionTestingEntryInsideSession] },
+      ],
+    },
+  },
+  {
     // Files inside engine/testing/ import their siblings, so they are left out.
     // Test support modules (named *-test-support) only serve tests, so they are left out too.
     files: ['engine/**'],
@@ -146,13 +193,20 @@ const layerPurityBlocks = [
   },
 ]
 
-/** @typedef {{ file: string, rule: string, issue: number, max?: number }} LintException */
+/**
+ * A rule exception raises a limit or turns a rule off for one file. An import
+ * exception lets one file in bridge/ or editor/ import storage/ directly.
+ *
+ * @typedef {{ file: string, rule: string, issue: number, max?: number }} RuleException
+ * @typedef {{ file: string, allowImportOf: 'storage', issue: number }} ImportException
+ * @typedef {RuleException | ImportException} LintException
+ */
 
 /**
- * The only place in this config where a limit is raised or a rule is turned
- * off for a file. Inline disable comments with a reason stay allowed (ADR-0185).
- * Each entry names the issue that removes it; a size-rule entry caps the file
- * at its measured value.
+ * The only place in this config where a limit is raised, a rule is turned off,
+ * or a layer import is allowed for a file. Inline disable comments with a
+ * reason stay allowed (ADR-0185). Each entry names the issue that removes it;
+ * a size-rule entry caps the file at its measured value.
  *
  * @type {LintException[]}
  */
@@ -255,6 +309,47 @@ export const lintExceptions = [
     issue: 500,
     max: 235,
   },
+  // Issue #717 moves the asset and library ports behind the session layer.
+  { file: 'bridge/react/asset-cache-context.test.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'bridge/react/asset-cache-context.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'bridge/react/asset-registry-context.test.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'bridge/react/asset-registry-context.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'bridge/react/use-catalog-names.test.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'bridge/react/user-asset-source-context.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'bridge/react/webgpu-scene-view.test.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/commands/editor-commands.test.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-filter.test.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-filter.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-launcher-panel.test.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-launcher-panel.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-launcher.stories.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-launcher.test.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-launcher.tsx', allowImportOf: 'storage', issue: 717 },
+  {
+    file: 'editor/library/library-panel-no-matches.test.tsx',
+    allowImportOf: 'storage',
+    issue: 717,
+  },
+  { file: 'editor/library/library-panel.stories.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-panel.test.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-panel.tsx', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/library-test-support.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/use-furniture-import.test.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/library/use-furniture-import.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/plan/authoring-tool-handlers.test.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/plan/authoring-tool-handlers.ts', allowImportOf: 'storage', issue: 717 },
+  {
+    file: 'editor/plan/furniture-placement-context.test.tsx',
+    allowImportOf: 'storage',
+    issue: 717,
+  },
+  { file: 'editor/plan/furniture-placement-context.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/plan/use-furniture-layer.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/plan/use-furniture-placement.test.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/plan/use-furniture-placement.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/plan/use-plan-authoring.test.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/plan/use-plan-authoring.ts', allowImportOf: 'storage', issue: 717 },
+  { file: 'editor/shell/inspector-selection.test.tsx', allowImportOf: 'storage', issue: 717 },
 ]
 
 const lengthOptions = { skipBlankLines: true, skipComments: true }
@@ -279,10 +374,40 @@ function sizeRuleSetting(rule, max, file) {
   }
 }
 
-/** @param {LintException} exception */
-function exceptionBlock({ file, rule, max }) {
+/** The layer rules, with one extra target layer allowed for the layer of `file`. */
+function layerRulesAllowing(file, extraTarget) {
+  const layer = file.split('/')[0]
+  return layerRules.map((layerRule) =>
+    layerRule.from.type === layer && layerRule.allow
+      ? { ...layerRule, allow: { to: { type: [...layerRule.allow.to.type, extraTarget] } } }
+      : layerRule,
+  )
+}
+
+/** @param {ImportException} exception */
+function importExceptionBlock({ file, allowImportOf }) {
+  return {
+    files: [file],
+    rules: {
+      'boundaries/dependencies': [
+        'error',
+        { default: 'disallow', rules: layerRulesAllowing(file, allowImportOf) },
+      ],
+    },
+  }
+}
+
+/** @param {RuleException} exception */
+function ruleExceptionBlock({ file, rule, max }) {
   const setting = max === undefined ? 'off' : sizeRuleSetting(rule, max, file)
   return { files: [file], rules: { [rule]: setting } }
+}
+
+/** @param {LintException} exception */
+function exceptionBlock(exception) {
+  return 'allowImportOf' in exception
+    ? importExceptionBlock(exception)
+    : ruleExceptionBlock(exception)
 }
 
 /** @param {LintException[]} exceptions */
