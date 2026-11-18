@@ -321,6 +321,8 @@ describe('setSunAndSkyColor', () => {
 describe('fitSunShadowToDirection with a direction that cannot be used', () => {
   /** A valid direction of this length is normalized, so it must aim as the unit direction does. */
   const LONG_DIRECTION_LENGTH = 5
+  /** A finite length whose square overflows, so the direction cannot be normalized. */
+  const OVERFLOWING_DIRECTION_LENGTH = 1e200
 
   const sunAimedAlong = (direction: {
     x: number
@@ -346,6 +348,7 @@ describe('fitSunShadowToDirection with a direction that cannot be used', () => {
     { x: 0, y: 1, z: Infinity },
     { x: -Infinity, y: 0, z: 0 },
     { x: 0, y: 0, z: 0 },
+    { x: OVERFLOWING_DIRECTION_LENGTH, y: 0, z: 0 },
   ])('aims along the default direction for $x, $y, $z', (direction) => {
     const sun = sunAimedAlong(direction)
     const defaultSun = sunAimedByDefault()
