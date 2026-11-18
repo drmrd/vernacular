@@ -64,7 +64,7 @@ const sessionTestingEntryInsideSession = {
   message: sessionTestingMessage,
 }
 const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
-const storyFileGlobs = ['**/*.stories.tsx']
+const storyFileGlobs = ['**/*.stories.{ts,tsx}']
 
 const nodeGlobalNames = new Set(Object.keys(globals.node))
 const browserOnlyGlobalNames = Object.keys(globals.browser).filter(
@@ -119,6 +119,9 @@ const layerPurityBlocks = [
   },
   {
     // Later blocks replace the rule's options, so these repeat the layer patterns.
+    // For a production file of bridge/, editor/, app/, and src/, the later blocks
+    // that ignore test and story files replace the options of the blocks that
+    // ignore only test files, so these take effect for story files only.
     files: ['bridge/**'],
     ignores: testFileGlobs,
     rules: {
@@ -379,7 +382,7 @@ function layerRulesAllowing(file, extraTarget) {
   const layer = file.split('/')[0]
   return layerRules.map((layerRule) =>
     layerRule.from.type === layer && layerRule.allow
-      ? { ...layerRule, allow: { to: { type: [...layerRule.allow.to.type, extraTarget] } } }
+      ? { ...layerRule, allow: { to: { type: [layerRule.allow.to.type, extraTarget].flat() } } }
       : layerRule,
   )
 }
@@ -456,15 +459,7 @@ export function buildConfig(exceptions = lintExceptions) {
       settings: {
         'boundaries/elements': layerElements,
         'import/resolver': { node: { extensions: ['.ts', '.tsx', '.js', '.jsx'] } },
-        'boundaries/include': [
-          'core/**',
-          'storage/**',
-          'session/**',
-          'engine/**',
-          'bridge/**',
-          'editor/**',
-          'app/**',
-        ],
+        'boundaries/include': layerElements.map(({ pattern }) => pattern),
       },
       rules: {
         ...reactHooks.configs.recommended.rules,
@@ -518,7 +513,7 @@ export function buildConfig(exceptions = lintExceptions) {
       // Stories double as component tests: their render scaffolding and `play`
       // interactions carry literal layout values and longer bodies, the same way
       // test files do. Relax the same rules the test override relaxes.
-      files: ['**/*.stories.{ts,tsx}'],
+      files: storyFileGlobs,
       rules: {
         'no-magic-numbers': 'off',
         'max-lines-per-function': ['error', { ...lengthOptions, max: 120 }],
