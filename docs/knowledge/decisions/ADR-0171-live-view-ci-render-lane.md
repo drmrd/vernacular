@@ -16,10 +16,11 @@ sourceFiles:
     e2e/tests/scene-live-view-visual-regression.spec.ts,
     e2e/tests/journeys/perceived-color-readout.spec.ts,
     e2e/tests/journeys/close-doors-and-windows.spec.ts,
+    e2e/tests/scene-live-view-startup.spec.ts,
     scripts/ci/decide.mjs,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # ADR-0171: Live-view WebGPU visual regression runs on a macOS CI lane
@@ -48,6 +49,15 @@ Current. Rendering-realism lane 3 (issue #469), decided in the gates-first spec 
 > baseline, so it adds nothing to the baseline refresh rule below. Its run time on the runner is
 > not measured yet, and the cost figures under Consequences predate it.
 
+> Amended on 2026-11-18 (issue #820). The job runs a fourth spec on the same adapter: the live-view
+> start-up spec (`e2e/tests/scene-live-view-startup.spec.ts`), in its own step after the
+> close-doors-and-windows journey. The step uses the `scene-webgl` project, sets
+> `E2E_REQUIRE_WEBGPU=1`, and has a time limit of five minutes. The Linux `scene-visual` job already
+> ran the spec, on three's WebGL 2 fallback, because that runner has no adapter. This step runs it
+> on the WebGPU path. With the variable set, a runner that loses its adapter fails the step instead
+> of passing on the fallback. The spec commits no baseline. ADR-0197 records the first run on the
+> runner.
+
 ## Context
 
 The live-view visual spec (`e2e/tests/scene-live-view-visual-regression.spec.ts`) pixel-tests
@@ -61,8 +71,9 @@ reached main unseen, and ADR-0151 had already recorded the backend-split risk as
 
 CI runs the live-view spec in a dedicated `live-view-visual` job on the `macos-15` runner,
 aggregated by `ci-complete` like every other heavy job. Since 2026-11-16 the job also runs the
-perceived-color journey on the same adapter, and since 2026-11-17 the close-doors-and-windows
-journey (see the amendments above).
+perceived-color journey on the same adapter, since 2026-11-17 the close-doors-and-windows
+journey, and since 2026-11-18 the live-view start-up spec, so that its tests also run on the
+WebGPU path (see the amendments above).
 
 1. **The runner is `macos-15`.** It was `macos-14` when the lane landed. A probe on the lane
    branch (run 34067553157, on `macos-14`) showed its chromium exposes a Metal-backed WebGPU

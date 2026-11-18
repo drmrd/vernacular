@@ -7,6 +7,7 @@ related:
   [
     decisions/ADR-0004-three-js-r3f-webgpu,
     decisions/ADR-0174-live-pane-webgl-fallback,
+    decisions/ADR-0171-live-view-ci-render-lane,
     decisions/ADR-0124-scene-component-story-gap,
     decisions/ADR-0111-story-coverage-guardrail-and-backfill-policy,
     decisions/ADR-0019-bridge-dispatch-boundary,
@@ -37,6 +38,11 @@ passages of that amendment ("The failed state" and two bullets of "What remains"
 here. The same change corrected four older sentences of ADR-0004. ADR-0174 had made three of them
 stale, and the amendment of 2026-11-15 the fourth, which named the async factory with an awaited
 `init()` as the supported path. It supersedes nothing.
+
+Updated on 2026-11-18 (issue #820). An earlier limit said that no CI job ran the end-to-end case of
+the reload. That was wrong for Linux: the `scene-visual` job ran it on three's WebGL 2 fallback. The
+gap was the WebGPU path on a real adapter, which the macOS live-view job of ADR-0171 now runs. The
+Evidence section says what runs where.
 
 ## Context
 
@@ -275,8 +281,31 @@ covered end to end in `e2e/tests/scene-live-view-startup.spec.ts`, in the case "
 canvas after Reload page once the renderer chunk can be fetched again". It aborts the renderer
 chunk, opens the split view, and expects the alert and no canvas. Then it lets the chunk through
 and presses "Reload page". After the reload the 3D pane shows one sized canvas and no alert, and the
-browser has requested the chunk again. The case runs in one browser, in the `scene-webgl` project,
-and skips itself without WebGPU.
+browser has requested the chunk again. The case runs in one browser, Chromium, in the `scene-webgl`
+project. Two CI jobs run the whole start-up spec, this case included, on two paths:
+
+- The Linux job `scene-visual` runs the whole `scene-webgl` project with no file filter. The changed
+  paths do not gate it; it runs whenever `-linux` scene baselines are committed, as they are now. Its
+  browser has `navigator.gpu` but no adapter, so three's WebGL 2 fallback draws the pane. Its run on
+  `main` of 2026-11-18 (run 44251127929) reported 54 passed and 1 skipped. The four start-up tests
+  skip together or not at all, so they ran and passed there.
+- Since 2026-11-18 the macOS job `live-view-visual` runs the spec on a real WebGPU adapter, with
+  `E2E_REQUIRE_WEBGPU=1` and a time limit of five minutes. The job runs on every push to `main`,
+  every merge-queue run, and each pull request that the e2e gate selects (ADR-0171). On the macOS
+  runner the first run of the step (run 44262680336) passed its four tests in 11.2 seconds.
+
+With `E2E_REQUIRE_WEBGPU=1` a `beforeEach` hook loads the page and calls the shared guard
+`guardLiveSceneSupport` of `e2e/tests/live-webgpu.ts`. The guard fails the test when the browser has
+no real adapter or no WebGL 2 context, so a macOS runner that loses its adapter fails the step
+instead of passing on the fallback. Without the variable the spec decides as before: a test skips
+only when the page has no `navigator.gpu`. The Linux job does not set the variable, so its run is
+unchanged.
+
+On the development Mac, on 2026-11-18, the spec ran in four cases. With an adapter, the four tests
+passed with the variable and without it, in about eight seconds. In a browser with no adapter (the
+plain headless shell, started through a temporary configuration that was not committed), the four
+failed with the guard's message when the variable was set. Without the variable they passed on the
+WebGL 2 fallback, as on Linux.
 
 `bridge/react/scene-renderer-canvas-strict-mode.test.tsx` renders the wrapper under StrictMode with a
 stand-in canvas that calls `gl` in a plain effect, which StrictMode runs twice. The stand-in
@@ -318,14 +347,8 @@ hands each renderer over once. The engine test proves what the release then does
   pending promise for each failed build.
 - That the browser keeps a failed dynamic import was seen in one browser, Chromium 148. Other
   browsers were not run. The reload does not depend on it, since a new page fetches the chunk again.
-- The end-to-end case for the reload runs in one browser only, and only where WebGPU exists. It does
-  not cover unsaved edits, so the leave prompt on reload is not tested here.
-- No CI job runs the reload case with WebGPU. The macOS live-view job, the one with WebGPU flags,
-  runs only the specs it names, and this spec is not among them. The chromium e2e job ignores
-  `scene-*` specs. The Linux scene-visual job runs the whole `scene-webgl` project, this spec
-  included, but launches the browser without WebGPU flags, and the case skips itself where
-  `navigator.gpu` is absent. Whether it is absent on that runner was not checked. The case ran on
-  the development Mac only.
+- The end-to-end case for the reload runs in Chromium only. It does not cover unsaved edits, so the
+  leave prompt on reload is not tested here.
 - Within one page, a later mount of the wrapper after a failed load imports the same address again.
   By the live run, that import fails at once, so reopening the 3D view shows the same alert. This
   is inferred and not tested; the unit test of a later mount uses a stubbed loader.
