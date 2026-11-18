@@ -108,11 +108,11 @@ describe('value-import cycle detection', () => {
 })
 
 describe('the repository import graph', () => {
-  it('has no value-import cycle among the files of the six layers', () => {
+  it('has no value-import cycle among the files of the seven layers', () => {
     const sources = readLayerSources(repositoryRoot)
     const cycles = findValueImportCycles(sources)
 
-    expect([...sources.keys()], 'sources read from the six layers').toContain('core/index.ts')
+    expect([...sources.keys()], 'sources read from the seven layers').toContain('core/index.ts')
     expect(cycles, describeCycles(cycles)).toEqual([])
   })
 
