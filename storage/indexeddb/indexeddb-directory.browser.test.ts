@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { assertDirectoryPortContract } from '../fs/directory-contract'
 import { IndexedDbDirectory } from './indexeddb-directory'
+import { FILES_STORE } from './indexeddb-requests'
 
 const createdDatabases: string[] = []
 
@@ -56,6 +57,7 @@ describe('IndexedDbDirectory in a real browser', () => {
   describeValueSizes()
   describeUnavailableDatabase()
   describeCallsDuringABlockedUpgrade()
+  describeAnOpenThatGetsNoEvent()
 })
 
 function describeDurability(): void {
@@ -117,6 +119,7 @@ function describeValueSizes(): void {
 }
 
 const OLDER_BUILD_VERSION = 1
+const UPGRADED_VERSION = 2
 const NEWER_BUILD_VERSION = 3
 const HANG_TIMEOUT_MILLISECONDS = 3000
 
@@ -204,6 +207,109 @@ function describeCallsDuringABlockedUpgrade(): void {
       blocking.close()
 
       expect(await directory.readFile('x')).toBeUndefined()
+    },
+  )
+}
+
+const SHORT_OPEN_WAIT_MILLISECONDS = 200
+const DELETE_ATTEMPT_COUNT = 10
+const DELETE_ATTEMPT_MILLISECONDS = 100
+
+function pause(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+/** A request for version 2 that stays pending behind an older connection; it closes what it gets. */
+function requestUpgradeThatCloses(name: string): Promise<void> {
+  return new Promise((resolve) => {
+    const request = indexedDB.open(name, UPGRADED_VERSION)
+    request.onupgradeneeded = () =>
+      request.result.createObjectStore(FILES_STORE, { keyPath: 'path' })
+    request.onsuccess = () => {
+      request.result.close()
+      resolve()
+    }
+  })
+}
+
+/** An older connection is open and an earlier request for the upgrade is still pending. */
+async function silentlyBlocked(): Promise<{
+  name: string
+  older: IDBDatabase
+  upgraded: Promise<void>
+  directory: IndexedDbDirectory
+}> {
+  const name = freshDatabaseName()
+  const older = await openRawConnection(name, OLDER_BUILD_VERSION)
+  const upgraded = requestUpgradeThatCloses(name)
+  const directory = new IndexedDbDirectory(name, {
+    openWaitMilliseconds: SHORT_OPEN_WAIT_MILLISECONDS,
+  })
+  return { name, older, upgraded, directory }
+}
+
+/** `'blocked'` when a connection is still open, or when the deletion has not come in time. */
+function deletionOutcome(name: string): Promise<'deleted' | 'blocked'> {
+  const outcome = new Promise<'deleted' | 'blocked'>((resolve) => {
+    const request = indexedDB.deleteDatabase(name)
+    request.onsuccess = () => resolve('deleted')
+    request.onblocked = () => resolve('blocked')
+  })
+  return Promise.race([outcome, pause(DELETE_ATTEMPT_MILLISECONDS).then(() => 'blocked' as const)])
+}
+
+async function deletesWithinAFewAttempts(name: string): Promise<'deleted' | 'blocked'> {
+  for (let attempt = 1; attempt < DELETE_ATTEMPT_COUNT; attempt++) {
+    if ((await deletionOutcome(name)) === 'deleted') return 'deleted'
+    await pause(DELETE_ATTEMPT_MILLISECONDS)
+  }
+  return deletionOutcome(name)
+}
+
+/** The browser sends no event to a request that comes after the first one for the upgrade. */
+function describeAnOpenThatGetsNoEvent(): void {
+  const options = { timeout: HANG_TIMEOUT_MILLISECONDS }
+
+  it('rejects every call with a message about another tab', options, async () => {
+    const { directory } = await silentlyBlocked()
+
+    await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+    await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+  })
+
+  it('works on the same instance once the older connection closes', options, async () => {
+    const { older, upgraded, directory } = await silentlyBlocked()
+    await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+    await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+
+    older.close()
+    await upgraded
+
+    await directory.writeFile('x', Uint8Array.of(7))
+    expect(await directory.readFile('x')).toEqual(Uint8Array.of(7))
+  })
+
+  it('closes the connection that arrives late while no call waits', options, async () => {
+    const { name, older, upgraded, directory } = await silentlyBlocked()
+    await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+
+    older.close()
+    await upgraded
+
+    expect(await deletesWithinAFewAttempts(name)).toBe('deleted')
+  })
+
+  it(
+    'reads and writes normally with a short wait on a database nobody blocks',
+    options,
+    async () => {
+      const directory = new IndexedDbDirectory(freshDatabaseName(), {
+        openWaitMilliseconds: SHORT_OPEN_WAIT_MILLISECONDS,
+      })
+
+      await directory.writeFile('x', Uint8Array.of(7))
+
+      expect(await directory.readFile('x')).toEqual(Uint8Array.of(7))
     },
   )
 }
