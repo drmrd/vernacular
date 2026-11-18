@@ -35,13 +35,16 @@ type RoomOverrides = Readonly<Record<string, RoomOverride>> | undefined
  * Cached room nodes plus the inputs they were built from. The room cache is
  * keyed on `floor.walls`, not the floor, so an edit that yields a new `Floor`
  * but keeps the same walls array (such as an opening edit) reuses the rooms.
- * Two inputs are not captured by the walls key and so are compared explicitly:
+ * Three inputs are not captured by the walls key and so are compared explicitly:
  * the `roomOverrides` reference (a name or custom polygon changes the nodes
- * without changing the walls) and `defaultCeilingHeight` (the ceiling-height
+ * without changing the walls), `defaultCeilingHeight` (the ceiling-height
  * command spreads the floor and keeps the same walls array, so the ceiling
- * fallback must be compared to avoid serving stale heights).
+ * fallback must be compared to avoid serving stale heights), and the floor's
+ * id (each room node copies it, and the same walls array can sit under a floor
+ * with another id).
  */
 interface CachedRoomNodes {
+  floorId: string
   overrides: RoomOverrides
   defaultCeilingHeight: number
   nodes: RoomSceneNode[]
@@ -115,7 +118,8 @@ function openingNodesFor(
 
 /**
  * Derives a floor's room nodes, reusing the cached nodes while the floor's walls
- * array, the `overrides` reference, and `defaultCeilingHeight` are all unchanged.
+ * array, the `overrides` reference, `defaultCeilingHeight`, and the floor's id
+ * are all unchanged.
  * Keying on `floor.walls` lets an edit that yields a new floor with the same
  * walls (an opening edit) reuse the rooms, while an override edit or a ceiling
  * height change still rebuilds them. Module-scope so the deriver closure stays
@@ -130,12 +134,18 @@ function roomNodesFor(
   if (
     cached !== undefined &&
     cached.overrides === overrides &&
-    cached.defaultCeilingHeight === floor.defaultCeilingHeight
+    cached.defaultCeilingHeight === floor.defaultCeilingHeight &&
+    cached.floorId === floor.id
   ) {
     return cached.nodes
   }
   const nodes = deriveRoomNodesForFloor(floor, overrides)
-  roomCache.set(floor.walls, { overrides, defaultCeilingHeight: floor.defaultCeilingHeight, nodes })
+  roomCache.set(floor.walls, {
+    floorId: floor.id,
+    overrides,
+    defaultCeilingHeight: floor.defaultCeilingHeight,
+    nodes,
+  })
   return nodes
 }
 
