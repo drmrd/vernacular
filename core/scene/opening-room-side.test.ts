@@ -105,7 +105,7 @@ describe('openingRoomSide', () => {
     })
   })
 
-  it('ignores rooms of another floor that cover the sample points', () => {
+  it('ignores rooms of another floor', () => {
     const floor = floorWithWindow(counterClockwiseWalls(), 'south', WINDOW_POSITION)
     const roomsOfAnotherFloor: RoomSceneNode[] = deriveRoomNodesForFloor(floor).map((room) => ({
       ...room,
