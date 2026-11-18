@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join, posix } from 'node:path'
 import ts from 'typescript'
 
-const LAYER_DIRECTORIES = ['app', 'bridge', 'core', 'editor', 'engine', 'storage']
+const LAYER_DIRECTORIES = ['app', 'bridge', 'core', 'editor', 'engine', 'session', 'storage']
 const SOURCE_FILE_PATTERN = /\.tsx?$/
 const RESOLUTION_SUFFIXES = ['', '.ts', '.tsx', '/index.ts']
 const MINIMUM_CYCLE_SIZE = 2
@@ -134,7 +134,7 @@ export function findValueImportCycles(sources: ReadonlyMap<string, string>): str
     .sort((first, second) => first.join().localeCompare(second.join()))
 }
 
-/** Every `.ts` and `.tsx` file under the six layer directories. */
+/** Every `.ts` and `.tsx` file under the layer directories. */
 export function readLayerSources(repositoryRoot: string): Map<string, string> {
   const sources = new Map<string, string>()
   for (const layer of LAYER_DIRECTORIES) {

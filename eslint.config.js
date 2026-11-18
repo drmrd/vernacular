@@ -9,6 +9,7 @@ import globals from 'globals'
 const layerElements = [
   { type: 'core', pattern: 'core/**' },
   { type: 'storage', pattern: 'storage/**' },
+  { type: 'session', pattern: 'session/**' },
   { type: 'engine', pattern: 'engine/**' },
   { type: 'bridge', pattern: 'bridge/**' },
   { type: 'editor', pattern: 'editor/**' },
@@ -19,12 +20,19 @@ const layerRules = [
   // core sits at the bottom of the layer stack: it may import nothing above it.
   { from: { type: 'core' }, disallow: { to: { type: '*' } } },
   { from: { type: 'storage' }, allow: { to: { type: 'core' } } },
-  { from: { type: 'engine' }, allow: { to: { type: ['core', 'storage'] } } },
-  { from: { type: 'bridge' }, allow: { to: { type: ['core', 'storage', 'engine'] } } },
-  { from: { type: 'editor' }, allow: { to: { type: ['core', 'storage', 'engine', 'bridge'] } } },
+  { from: { type: 'session' }, allow: { to: { type: ['core', 'storage'] } } },
+  { from: { type: 'engine' }, allow: { to: { type: 'core' } } },
+  {
+    from: { type: 'bridge' },
+    allow: { to: { type: ['core', 'storage', 'session', 'engine'] } },
+  },
+  {
+    from: { type: 'editor' },
+    allow: { to: { type: ['core', 'storage', 'session', 'bridge'] } },
+  },
   {
     from: { type: 'app' },
-    allow: { to: { type: ['core', 'storage', 'engine', 'bridge', 'editor'] } },
+    allow: { to: { type: ['core', 'storage', 'session', 'engine', 'bridge', 'editor'] } },
   },
 ]
 
@@ -310,6 +318,7 @@ export function buildConfig(exceptions = lintExceptions) {
         'boundaries/include': [
           'core/**',
           'storage/**',
+          'session/**',
           'engine/**',
           'bridge/**',
           'editor/**',
