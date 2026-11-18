@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { errors, expect, type Locator, type Page } from '@playwright/test'
 
 // Helpers for the specs that read what the live three-dimensional pane drew. They take the page
 // and keep no state, so a spec can open and close the pane any number of times.
@@ -26,12 +26,28 @@ const SETTLED_CANVAS_MIN_HEIGHT = 200
 // few frames once the scene changes, so the bound is generous margin, not a measured wait.
 const FRAME_CHANGE_TIMEOUT_MS = 10_000
 
+// How long the first drawn frame of one mount may take. On a slow software renderer the first frame
+// follows a shader build, so this is generous margin, not a measured wait. It is not below the
+// default expect timeout (5 s) that these waits used before.
+const LIVE_CANVAS_READY_TIMEOUT_MS = 10_000
+
+// The limit of one screenshot call. Playwright runs the screenshots of a page one at a time, and
+// the poll around a capture gives up waiting without cancelling a call that is stuck, so one
+// stuck call would block every later capture until the test timeout. A normal capture of the
+// canvas takes well under a second; this limit is a few times that.
+const SCREENSHOT_TIMEOUT_MS = 3_000
+
+// The limit of the whole poll around one capture. It leaves room for several tries (each ends at
+// the screenshot limit at the latest) and stays well under the 30 s test timeout, so a pane that
+// never becomes readable fails here with a clear message and not at the test timeout.
+const CAPTURE_TIMEOUT_MS = 12_000
+
 // Applied only for the duration of one screenshot. Visibility is inherited but can be restored
 // on a descendant, so the canvas stays visible while every other element is hidden.
 const CANVAS_ONLY_STYLE =
   'body * { visibility: hidden !important; } canvas { visibility: visible !important; }'
 
-// The error a capture gets when its element was replaced while the screenshot ran.
+// The error a screenshot gets when its element was replaced while it ran.
 const DETACHED_ELEMENT = /Element is not attached to the DOM/
 
 /** The wrapper of the live canvas of the current mount; it holds the canvas the renderer draws on. */
@@ -45,30 +61,46 @@ export function liveSceneCanvas(page: Page): Locator {
  * height. Returns the canvas locator, which is resolved anew on every use.
  */
 export async function waitForLiveCanvasReady(page: Page): Promise<Locator> {
-  await expect(liveSceneCanvas(page)).toHaveAttribute('data-harness-ready', 'true')
+  await expect(liveSceneCanvas(page)).toHaveAttribute('data-harness-ready', 'true', {
+    timeout: LIVE_CANVAS_READY_TIMEOUT_MS,
+  })
   const canvas = liveSceneCanvas(page).locator('canvas')
-  await expect(canvas).toHaveCount(1)
+  await expect(canvas).toHaveCount(1, { timeout: LIVE_CANVAS_READY_TIMEOUT_MS })
   await expect
     .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
       message: 'waiting for the live 3D canvas to settle past its default size',
+      timeout: LIVE_CANVAS_READY_TIMEOUT_MS,
     })
     .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
   return canvas
 }
 
+// A screenshot that fails because its element was replaced, or because it hit its own time limit,
+// is worth another try. Playwright's TimeoutError is recognized by its class and not by its text.
+function isRetryableCaptureError(error: unknown): boolean {
+  if (error instanceof errors.TimeoutError) return true
+  return error instanceof Error && DETACHED_ELEMENT.test(error.message)
+}
+
 async function captureCanvasOnce(page: Page): Promise<Buffer | undefined> {
   try {
-    return await liveSceneCanvas(page).locator('canvas').screenshot({ style: CANVAS_ONLY_STYLE })
+    return await liveSceneCanvas(page)
+      .locator('canvas')
+      .screenshot({ style: CANVAS_ONLY_STYLE, timeout: SCREENSHOT_TIMEOUT_MS })
   } catch (error) {
-    if (error instanceof Error && DETACHED_ELEMENT.test(error.message)) return undefined
+    if (isRetryableCaptureError(error)) return undefined
     throw error
   }
 }
 
 /**
  * The pixels the renderer drew, without the overlays above the canvas. The canvas is resolved
- * anew on every try, and a try that finds its element replaced is repeated inside the poll,
- * because expect.poll does not retry a callback that throws. Any other error ends the capture.
+ * anew on every try. Two things are tried again inside the poll, because expect.poll does not
+ * retry a callback that throws: a screenshot whose canvas was replaced while it ran (the pane
+ * swaps its stand-in canvas for the real one at start-up), and a screenshot that did not finish
+ * within its own time limit (one stuck call would otherwise block every later capture of the
+ * page). Any other error ends the capture. A pane that never gives a capture fails when the
+ * poll's limit is over.
  */
 export async function captureLiveFrame(page: Page): Promise<Buffer> {
   let frame: Buffer | undefined
@@ -78,7 +110,12 @@ export async function captureLiveFrame(page: Page): Promise<Buffer> {
         frame = await captureCanvasOnce(page)
         return frame !== undefined
       },
-      { message: 'waiting for a canvas of the live 3D pane that stays attached while captured' },
+      {
+        message:
+          'waiting for a capture of the live 3D canvas: either the canvas was replaced during ' +
+          `each try, or the screenshot did not finish within ${SCREENSHOT_TIMEOUT_MS} ms`,
+        timeout: CAPTURE_TIMEOUT_MS,
+      },
     )
     .toBe(true)
   return frame as Buffer
