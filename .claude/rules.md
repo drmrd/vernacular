@@ -4,7 +4,7 @@ These rules apply to every contribution to Vernacular, whether by a human or a C
 
 ## Hard invariants
 
-1. **Layer boundaries are non-negotiable.** `core/` does not import React or Three.js. `engine/` is the only layer that imports Three.js. `bridge/` is the only layer that touches both React state and Three.js scene state. Storage browser APIs are only used inside `storage/`. See ADR-0001.
+1. **Layer boundaries are non-negotiable.** `core/` does not import React or Three.js. `engine/` is the only layer that imports Three.js. `session/` imports no React and no Three.js and uses no DOM global. `bridge/` is the only layer that touches both React state and Three.js scene state. Storage browser APIs are only used inside `storage/`. See ADR-0001 and ADR-0175.
 
 2. **Apache-2.0 license, project-wide.** See ADR-0002 and `LICENSE`. Asset packs declare their own SPDX licenses; the export pipeline refuses incompatible mixes.
 
