@@ -52,8 +52,16 @@ updated: 2026-11-17
 > `WorkspaceFiles` for many projects under one root, `FolderFiles` for one project at the root of
 > a folder. `IndexedDbDirectory` is a third port adapter, for the IndexedDB store
 > ([[ADR-0211-stored-indexeddb-records-become-files]]). The shared contract in
-> `storage/fs/directory-contract.ts` covers both new methods. The sections below describe the
-> first form.
+> `storage/fs/directory-contract.ts` covers both new methods. On `FileSystemDirectory`,
+> `removeFile` removes a file only and `removeTree` removes a directory only. A path of the other
+> kind stays, and the call resolves. A folder that the user picked must never lose something that
+> the application did not create, and the three ports must agree. A project id names a directory
+> of a workspace, so `WorkspaceFiles` refuses an id that cannot do that safely: an empty id, an id
+> with a slash or a backslash, `.` or `..`, and `assets`, the directory of the shared asset pool.
+> The guard in `storage/project-files/project-id-guard.ts` throws `InvalidProjectIdError`, and its
+> message names the id and says what is wrong. An older check of project ids in
+> `storage/active-project/` still accepts a name that the guard refuses, such as `assets`, and an
+> issue tracks making the two one rule. The sections below describe the first form.
 
 Accepted, landed. The flat `DirectoryPort` interface, the `InMemoryDirectory`
 fake, the `SubdirectoryPort` view, and the single `FileSystemDirectory` adapter

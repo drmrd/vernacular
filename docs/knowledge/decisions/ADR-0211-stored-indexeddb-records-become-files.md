@@ -18,6 +18,7 @@ sourceFiles:
   [
     storage/indexeddb/indexeddb-directory.ts,
     storage/indexeddb/indexeddb-requests.ts,
+    storage/indexeddb/open-attempt.ts,
     storage/indexeddb/legacy-records.ts,
     storage/indexeddb/legacy-json.ts,
     storage/indexeddb/indexeddb-project-store.ts,
@@ -77,7 +78,8 @@ memory. The specification also says that records that exist today still open.
   those bytes and the record still turns into them.
 - Records convert one at a time, each in its own transactions, and an error on one is caught. One
   bad record does not stop the others or the open. A record that stays is tried again at the next
-  open.
+  open. A record whose conversion fails leaves a console warning with its id and the error. A
+  record that stays on purpose, because JSON cannot hold it unchanged, gives no warning.
 - A record converts only when JSON keeps its object: parsing the text must give the object back,
   and only a property whose value is undefined may drop out. Any other record stays and is served.
   A record that has no `project`, or whose id cannot name a project directory, is not converted,
@@ -94,15 +96,29 @@ memory. The specification also says that records that exist today still open.
   was saved by someone, and the conversion leaves both the file and the record alone.
 - Removing a project file, or a project's directory, deletes its record in the same transaction.
   A removed project does not come back from its record at the next open.
-- An open that another tab blocks, for example a tab of an older build that holds the database at
-  version 1, rejects at once with a message that asks the user to close that tab. The next call on
-  the same directory tries again. An open of a database at a version above 2 rejects too.
+- The directory keeps at most one pending open request and never starts a second while one is
+  pending. When another tab blocks the upgrade, for example a tab of an older build that holds the
+  database at version 1, the call that started the open rejects at once with a message that asks
+  the user to close that tab. Each later call on the same directory object waits on the same
+  pending open for a short fixed time, 500 milliseconds (`BLOCKED_OPEN_WAIT_MILLISECONDS`), and
+  then rejects with that message. When the other tab closes, the pending open succeeds and the next
+  call works. A connection that arrives while no call waits is closed. An open of a database at a
+  version above 2 rejects too.
 
 ## Consequences
 
 - An older build cannot open the database after the upgrade. It asks for version 1 and the browser
   refuses, because the database is at version 2. Going back to an older build loses access to the
   projects in the browser until the user returns to this build.
+- While a tab of an older build stays open, a tab of this build cannot upgrade the database. It
+  shows the message about the other tab until the old tab closes. The older builds hold no project
+  lock in production, so this build cannot see the old tab before it asks for the upgrade.
+- From the moment this build asks for the upgrade, the old tab's own database requests wait behind
+  it and then fail with a version error. The old tab can no longer save. The stored data stays as
+  it was, but edits made in the old tab after that moment are not stored.
+- One case stays open. A second directory object over the same database, made while the upgrade is
+  blocked, starts its own open request, and that request waits until the other tab closes. The
+  application makes one directory object.
 - A record that cannot convert stays and is served at every open. Its served bytes are JSON text,
   so the codec reads a value that JSON changes in its changed form: a number that is not finite
   reads as `null`. The stored object keeps the original value, but no part of the application
