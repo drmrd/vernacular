@@ -1,38 +1,26 @@
 // @vitest-environment node
 // ESLint's lintText reads files through Node's fs module, which needs the node environment, not the project-wide jsdom.
 import { fileURLToPath } from 'node:url'
-import { ESLint, type Linter } from 'eslint'
+import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
+import { lintConfig } from './lint-config-module'
 
-interface StorageAllowance {
-  file: string
-  allowImportOf: 'storage'
-  issue: number
-}
-
-interface ConfigModule {
-  buildConfig: (exceptions?: StorageAllowance[]) => Linter.Config[]
-}
-
-// eslint.config.js is plain JavaScript with no declaration file, so load it by a
-// path held in a variable. The module is typed here, at the one place it is read.
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
-const CONFIG_PATH = '../../eslint.config.js'
-const config = (await import(/* @vite-ignore */ CONFIG_PATH)) as ConfigModule
+const config = lintConfig
 
 const LINT_TIMEOUT_MS = 30_000
 const LAYER_RULE = 'boundaries/dependencies'
 const REMOVING_ISSUE = 717
-const LISTED_BRIDGE_FILE = 'bridge/sample.ts'
-const LISTED_EDITOR_FILE = 'editor/sample.tsx'
+const SAMPLE_BRIDGE_FILE = 'bridge/sample.ts'
+const SAMPLE_EDITOR_FILE = 'editor/sample.tsx'
 
 const committedConfig = new ESLint()
 const withListedFiles = new ESLint({
   cwd: repositoryRoot,
   overrideConfigFile: true,
   overrideConfig: config.buildConfig([
-    { file: LISTED_BRIDGE_FILE, allowImportOf: 'storage', issue: REMOVING_ISSUE },
-    { file: LISTED_EDITOR_FILE, allowImportOf: 'storage', issue: REMOVING_ISSUE },
+    { file: SAMPLE_BRIDGE_FILE, allowImportOf: 'storage', issue: REMOVING_ISSUE },
+    { file: SAMPLE_EDITOR_FILE, allowImportOf: 'storage', issue: REMOVING_ISSUE },
   ]),
 })
 
@@ -56,7 +44,7 @@ async function layerRuleReported(eslint: ESLint, sample: SampleImport): Promise<
   return result?.messages.some((message) => message.ruleId === LAYER_RULE) ?? false
 }
 
-const unlistedImporters = ['bridge/sample.ts', 'editor/sample.tsx']
+const unlistedImporters = [SAMPLE_BRIDGE_FILE, SAMPLE_EDITOR_FILE]
 const statements: Statement[] = ['value import', 'type import']
 const unlistedCases = unlistedImporters.flatMap((filePath) =>
   statements.map((statement) => ({ filePath, statement })),
@@ -83,7 +71,7 @@ describe('bridge and editor reach storage only through session', () => {
       'accepts the listed bridge file for a %s of storage',
       { timeout: LINT_TIMEOUT_MS },
       async (statement) => {
-        const sample = { filePath: LISTED_BRIDGE_FILE, specifier: '../storage', statement }
+        const sample = { filePath: SAMPLE_BRIDGE_FILE, specifier: '../storage', statement }
         expect(await layerRuleReported(withListedFiles, sample)).toBe(false)
       },
     )
@@ -92,13 +80,13 @@ describe('bridge and editor reach storage only through session', () => {
       'still accepts the listed bridge file for engine',
       { timeout: LINT_TIMEOUT_MS },
       async () => {
-        const sample = valueImport(LISTED_BRIDGE_FILE, '../engine')
+        const sample = valueImport(SAMPLE_BRIDGE_FILE, '../engine')
         expect(await layerRuleReported(withListedFiles, sample)).toBe(false)
       },
     )
 
     it('still rejects the listed bridge file for app', { timeout: LINT_TIMEOUT_MS }, async () => {
-      const sample = valueImport(LISTED_BRIDGE_FILE, '../app')
+      const sample = valueImport(SAMPLE_BRIDGE_FILE, '../app')
       expect(await layerRuleReported(withListedFiles, sample)).toBe(true)
     })
 
@@ -115,13 +103,25 @@ describe('bridge and editor reach storage only through session', () => {
       'accepts the listed editor file for a value import of storage',
       { timeout: LINT_TIMEOUT_MS },
       async () => {
-        const sample = valueImport(LISTED_EDITOR_FILE, '../storage')
+        const sample = valueImport(SAMPLE_EDITOR_FILE, '../storage')
+        expect(await layerRuleReported(withListedFiles, sample)).toBe(false)
+      },
+    )
+
+    it.each([
+      ['session', '../session'],
+      ['bridge', '../bridge'],
+    ])(
+      'still accepts the listed editor file for %s',
+      { timeout: LINT_TIMEOUT_MS },
+      async (_layer, specifier) => {
+        const sample = valueImport(SAMPLE_EDITOR_FILE, specifier)
         expect(await layerRuleReported(withListedFiles, sample)).toBe(false)
       },
     )
 
     it('still rejects the listed editor file for app', { timeout: LINT_TIMEOUT_MS }, async () => {
-      const sample = valueImport(LISTED_EDITOR_FILE, '../app')
+      const sample = valueImport(SAMPLE_EDITOR_FILE, '../app')
       expect(await layerRuleReported(withListedFiles, sample)).toBe(true)
     })
   })

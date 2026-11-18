@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 const SAMPLE_PATHS = [
   'core/sample.ts',
   'storage/sample.ts',
+  'session/sample.ts',
   'engine/sample.ts',
   'bridge/sample.tsx',
   'editor/sample.tsx',

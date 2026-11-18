@@ -29,9 +29,15 @@ describe('the layer lists beside the CI layer order', () => {
     }
   })
 
-  it('the coverage report includes the session layer', async () => {
-    const config = await readRepositoryFile('vite.config.ts')
-    expect(config).toContain(`'session/**/*.{ts,tsx}'`)
+  it('lets the import graph helper read every layer directory', async () => {
+    const helper = await readRepositoryFile('tests/architecture/import-graph.ts')
+    const [, listed = ''] = /LAYER_DIRECTORIES\s*=\s*\[([^\]]*)\]/.exec(helper) ?? []
+    for (const layer of LAYERS) {
+      expect(
+        listed,
+        `LAYER_DIRECTORIES in import-graph.ts is missing the ${layer} layer`,
+      ).toContain(`'${layer}'`)
+    }
   })
 
   it(

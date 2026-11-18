@@ -7,35 +7,15 @@ import { fileURLToPath } from 'node:url'
 import { ESLint, type Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
 import { filesImportingLayer, readLayerSources } from './import-graph'
+import {
+  type ImportException,
+  type LintException,
+  type RuleException,
+  lintConfig,
+} from './lint-config-module'
 
-interface RuleException {
-  file: string
-  rule: string
-  issue: number
-  max?: number
-  allowImportOf?: undefined
-}
-
-interface ImportAllowanceException {
-  file: string
-  allowImportOf: string
-  issue: number
-  rule?: undefined
-  max?: undefined
-}
-
-type LintException = RuleException | ImportAllowanceException
-
-interface ConfigModule {
-  lintExceptions: LintException[]
-  buildConfig: (exceptions?: LintException[]) => Linter.Config[]
-}
-
-// eslint.config.js is plain JavaScript with no declaration file, so load it by a
-// path held in a variable. The module is typed here, at the one place it is read.
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
-const CONFIG_PATH = '../../eslint.config.js'
-const config = (await import(/* @vite-ignore */ CONFIG_PATH)) as ConfigModule
+const config = lintConfig
 
 const SIZE_RULES = ['max-lines', 'max-lines-per-function', 'max-params', 'max-depth', 'complexity']
 
@@ -47,7 +27,7 @@ const ONE_BELOW_CAP = 1
 const STORAGE_LAYER = 'storage'
 const LAYERS_THROUGH_SESSION = ['bridge', 'editor']
 
-function isImportAllowance(entry: LintException): entry is ImportAllowanceException {
+function isImportAllowance(entry: LintException): entry is ImportException {
   return entry.allowImportOf !== undefined
 }
 
@@ -71,7 +51,7 @@ function describeEntry(entry: LintException): string {
   return `${entry.file} (${whatIsListed(entry)}, issue #${entry.issue})`
 }
 
-function problemsWithAllowance(entry: ImportAllowanceException): string[] {
+function problemsWithAllowance(entry: ImportException): string[] {
   const problems: string[] = []
   if (entry.allowImportOf !== STORAGE_LAYER) {
     problems.push(`${describeEntry(entry)}: allowImportOf must be '${STORAGE_LAYER}'`)

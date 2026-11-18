@@ -22,7 +22,6 @@ interface ImportCase {
   name: string
 }
 
-// The session layer has no barrel yet, so the name imported from '../session' is a neutral placeholder.
 const rejectedImports: readonly ImportCase[] = [
   {
     title: 'rejects a session module importing bridge',
@@ -49,6 +48,18 @@ const rejectedImports: readonly ImportCase[] = [
     name: 'SceneRoot',
   },
   {
+    title: 'rejects a storage module importing session',
+    importerPath: 'storage/boundary-sample.ts',
+    specifier: '../session',
+    name: 'EditorSession',
+  },
+  {
+    title: 'rejects an engine module importing session',
+    importerPath: 'engine/boundary-sample.ts',
+    specifier: '../session',
+    name: 'EditorSession',
+  },
+  {
     title: 'rejects an engine module importing storage',
     importerPath: 'engine/boundary-sample.ts',
     specifier: '../storage',
@@ -73,7 +84,7 @@ const allowedImports: readonly ImportCase[] = [
     title: 'allows a bridge module importing session',
     importerPath: 'bridge/boundary-sample.ts',
     specifier: '../session',
-    name: 'SessionSample',
+    name: 'EditorSession',
   },
   {
     title: 'allows a bridge module importing engine',
@@ -85,7 +96,7 @@ const allowedImports: readonly ImportCase[] = [
     title: 'allows an editor module importing session',
     importerPath: 'editor/boundary-sample.ts',
     specifier: '../session',
-    name: 'SessionSample',
+    name: 'EditorSession',
   },
   {
     title: 'allows an editor module importing bridge',

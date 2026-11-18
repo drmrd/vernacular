@@ -134,11 +134,35 @@ export function findValueImportCycles(sources: ReadonlyMap<string, string>): str
     .sort((first, second) => first.join().localeCompare(second.join()))
 }
 
-function anyModuleSpecifier(statement: ts.Statement): string | undefined {
+function statementSpecifier(statement: ts.Statement): string | undefined {
   const importsOrReexports =
     ts.isImportDeclaration(statement) ||
     (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
   return importsOrReexports ? (statement.moduleSpecifier as ts.StringLiteral).text : undefined
+}
+
+function dynamicImportSpecifier(node: ts.Node): string | undefined {
+  if (!ts.isCallExpression(node) || node.expression.kind !== ts.SyntaxKind.ImportKeyword) {
+    return undefined
+  }
+  const [argument] = node.arguments
+  return argument !== undefined && ts.isStringLiteral(argument) ? argument.text : undefined
+}
+
+function collectDynamicImportSpecifiers(node: ts.Node, found: string[]): string[] {
+  const specifier = dynamicImportSpecifier(node)
+  if (specifier !== undefined) found.push(specifier)
+  ts.forEachChild(node, (child) => void collectDynamicImportSpecifiers(child, found))
+  return found
+}
+
+function anyModuleSpecifiers(path: string, text: string): string[] {
+  const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest)
+  const fromStatements = sourceFile.statements.flatMap((statement) => {
+    const specifier = statementSpecifier(statement)
+    return specifier === undefined ? [] : [specifier]
+  })
+  return [...fromStatements, ...collectDynamicImportSpecifiers(sourceFile, [])]
 }
 
 function reachesLayer(importerPath: string, specifier: string, targetLayer: string): boolean {
@@ -149,7 +173,11 @@ function reachesLayer(importerPath: string, specifier: string, targetLayer: stri
 
 /**
  * Sorted paths of the files in `importerLayers` that import or re-export from a relative path
- * resolving into `targetLayer`. Type-only and value statements both count.
+ * resolving into `targetLayer`. Type-only and value statements both count, and so does a dynamic
+ * `import('<string literal>')` call anywhere in the file.
+ *
+ * It does not see a type expression such as `import('...').T`, or the path of a `vi.mock('...')`
+ * call. The lint boundary rule does not see those either.
  */
 export function filesImportingLayer(
   sources: ReadonlyMap<string, string>,
@@ -159,10 +187,9 @@ export function filesImportingLayer(
   const importers: string[] = []
   for (const [path, text] of sources) {
     if (!importerLayers.includes(path.split('/')[0] ?? '')) continue
-    const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest)
-    const reaches = sourceFile.statements
-      .map(anyModuleSpecifier)
-      .some((specifier) => specifier !== undefined && reachesLayer(path, specifier, targetLayer))
+    const reaches = anyModuleSpecifiers(path, text).some((specifier) =>
+      reachesLayer(path, specifier, targetLayer),
+    )
     if (reaches) importers.push(path)
   }
   return importers.sort()
