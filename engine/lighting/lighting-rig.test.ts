@@ -317,3 +317,59 @@ describe('setSunAndSkyColor', () => {
     expect(sun.color.equals(hemisphere.color)).toBe(false)
   })
 })
+
+describe('fitSunShadowToDirection with a direction that cannot be used', () => {
+  /** A valid direction of this length is normalized, so it must aim as the unit direction does. */
+  const LONG_DIRECTION_LENGTH = 5
+
+  const sunAimedAlong = (direction: {
+    x: number
+    y: number
+    z: number
+  }): THREE.DirectionalLight => {
+    const scene = new THREE.Scene()
+    const sun = castingSun(scene)
+    fitSunShadowToDirection(scene, direction, SHELL_BOUNDS)
+    return sun
+  }
+
+  const sunAimedByDefault = (): THREE.DirectionalLight => {
+    const scene = new THREE.Scene()
+    const sun = castingSun(scene)
+    fitSunShadowToBounds(scene, SHELL_BOUNDS)
+    return sun
+  }
+
+  it.each([
+    { x: NaN, y: 1, z: 0 },
+    { x: 1, y: NaN, z: 0 },
+    { x: 0, y: 1, z: Infinity },
+    { x: -Infinity, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+  ])('aims along the default direction for $x, $y, $z', (direction) => {
+    const sun = sunAimedAlong(direction)
+    const defaultSun = sunAimedByDefault()
+
+    expect(sun.position.toArray()).toEqual(defaultSun.position.toArray())
+    expect(sun.target.position.toArray()).toEqual(defaultSun.target.position.toArray())
+    const camera = sun.shadow.camera
+    const defaultCamera = defaultSun.shadow.camera
+    expect(camera.left).toBe(defaultCamera.left)
+    expect(camera.right).toBe(defaultCamera.right)
+    expect(camera.top).toBe(defaultCamera.top)
+    expect(camera.bottom).toBe(defaultCamera.bottom)
+    expect(camera.near).toBe(defaultCamera.near)
+    expect(camera.far).toBe(defaultCamera.far)
+    expect(sun.shadow.normalBias).toBe(defaultSun.shadow.normalBias)
+    for (const coordinate of sun.position.toArray()) {
+      expect(Number.isFinite(coordinate)).toBe(true)
+    }
+  })
+
+  it('normalizes a valid direction of any length instead of replacing it', () => {
+    const unit = sunAimedAlong({ x: 0, y: 1, z: 0 })
+    const long = sunAimedAlong({ x: 0, y: LONG_DIRECTION_LENGTH, z: 0 })
+
+    expect(long.position.toArray()).toEqual(unit.position.toArray())
+  })
+})
