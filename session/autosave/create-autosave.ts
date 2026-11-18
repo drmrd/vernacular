@@ -1,6 +1,6 @@
 import type { Project } from '../../core'
 import type { ProjectStore } from '../../storage'
-import type { EditorSession } from '../session/editor-session'
+import type { EditorSession } from '../editor-session/editor-session'
 
 export type AutosaveStatus = 'idle' | 'pending' | 'saved' | 'error'
 

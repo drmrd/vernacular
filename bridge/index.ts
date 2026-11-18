@@ -1,10 +1,10 @@
-export type { EditorSession } from './session/editor-session'
-export { createEditorSession } from './session/editor-session'
-export { loadOrCreateProject } from './session/load-or-create-project'
-export type { GuardDestructiveOptions } from './session/discard-guard'
-export { guardDestructive, needsDiscardConfirmation } from './session/discard-guard'
-export type { DirtyTracker } from './session/create-dirty-tracker'
-export { createDirtyTracker } from './session/create-dirty-tracker'
+export type { EditorSession } from '../session'
+export { createEditorSession } from '../session'
+export { loadOrCreateProject } from '../session'
+export type { GuardDestructiveOptions } from '../session'
+export { guardDestructive, needsDiscardConfirmation } from '../session'
+export type { DirtyTracker } from '../session'
+export { createDirtyTracker } from '../session'
 export { useDirtyState, useDirtyTracker } from './react/use-dirty-state'
 export type { SessionDirtyState } from './react/use-dirty-state'
 export type { SelectionStore } from './selection/selection-store'
@@ -22,16 +22,12 @@ export type {
   SnapshotWriter,
   SnapshotPruner,
   CommitProjectOptions,
-} from './autosave/create-autosave'
-export {
-  createAutosave,
-  commitProject,
-  DEFAULT_AUTOSAVE_DELAY_MS,
-} from './autosave/create-autosave'
+} from '../session'
+export { createAutosave, commitProject, DEFAULT_AUTOSAVE_DELAY_MS } from '../session'
 export { useEditorSession } from './react/editor-session-context'
 export type { EditorSessionProviderProps } from './react/editor-session-provider'
 export { EditorSessionProvider } from './react/editor-session-provider'
-export type { AssetCache } from '../storage'
+export type { AssetCache } from '../session'
 export { AssetCacheProvider, useAssetCache } from './react/asset-cache-context'
 export type { AssetCacheProviderProps } from './react/asset-cache-context'
 export { AssetRegistryProvider, useAssetRegistry } from './react/asset-registry-context'

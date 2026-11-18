@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
-import type { ProjectStore } from '../../storage'
 import {
   createAutosave,
   type AutosaveStatus,
+  type EditorSession,
+  type ProjectStore,
   type SnapshotPruner,
   type SnapshotWriter,
-} from '../autosave/create-autosave'
-import type { EditorSession } from '../session/editor-session'
+} from '../../session'
 
 export interface UseAutosaveOptions {
   session: EditorSession

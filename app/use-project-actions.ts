@@ -41,7 +41,7 @@ export interface ProjectActionsContext {
   notifications: NotificationApi
 
   /** Whether the live session has unsaved changes since the last save/load.
-   *  Source: the dirty tracker (bridge/session/create-dirty-tracker.ts) via
+   *  Source: the dirty tracker (session/editor-session/create-dirty-tracker.ts) via
    *  the app-layer useDirtyState hook. Treated as clean (false) when omitted. */
   isDirty?: boolean
 

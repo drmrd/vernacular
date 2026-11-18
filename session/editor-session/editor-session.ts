@@ -9,7 +9,7 @@ import {
 } from '../../core'
 
 /**
- * The dispatch boundary: the only bridge-layer entry point through which the
+ * The dispatch boundary: the only session-layer entry point through which the
  * model changes. Consumers dispatch commands; they do not mutate the project
  * directly. Subscribers are notified after each state-changing operation.
  */

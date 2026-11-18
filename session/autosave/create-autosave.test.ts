@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createAutosave, commitProject } from './create-autosave'
-import { createEditorSession } from '../session/editor-session'
+import { createEditorSession } from '../editor-session/editor-session'
 import { InMemoryProjectStore } from '../../storage'
 import { addFloor, createEmptyProject, type Project } from '../../core'
 
