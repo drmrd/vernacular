@@ -59,9 +59,14 @@ const engineTestingEntryInsideEngine = {
 const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
 
 const nodeGlobalNames = new Set(Object.keys(globals.node))
-const browserOnlyGlobals = Object.keys(globals.browser)
-  .filter((name) => !nodeGlobalNames.has(name))
-  .map((name) => ({ name, message: 'core/ uses no global that exists only in a browser.' }))
+const browserOnlyGlobalNames = Object.keys(globals.browser).filter(
+  (name) => !nodeGlobalNames.has(name),
+)
+const browserOnlyGlobalsFor = (layerName) =>
+  browserOnlyGlobalNames.map((name) => ({
+    name,
+    message: `${layerName}/ uses no global that exists only in a browser.`,
+  }))
 
 const layerPurityBlocks = [
   {
@@ -73,7 +78,18 @@ const layerPurityBlocks = [
     // under jsdom and may use the DOM to check output, so they are left out.
     files: ['core/**'],
     ignores: ['core/**/*.test.ts', 'core/**/*.test.tsx'],
-    rules: { 'no-restricted-globals': ['error', ...browserOnlyGlobals] },
+    rules: { 'no-restricted-globals': ['error', ...browserOnlyGlobalsFor('core')] },
+  },
+  {
+    files: ['session/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [reactPackages, threePackages] }] },
+  },
+  {
+    // Shipped session/ code is as free of the browser as core/ is. Its unit
+    // tests run under jsdom and may use the DOM to check output, so they are left out.
+    files: ['session/**'],
+    ignores: ['session/**/*.test.ts', 'session/**/*.test.tsx'],
+    rules: { 'no-restricted-globals': ['error', ...browserOnlyGlobalsFor('session')] },
   },
   {
     files: ['storage/**'],
