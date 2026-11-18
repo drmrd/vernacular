@@ -98,6 +98,22 @@ describe('DiscardDialog wording and answers', () => {
   })
 })
 
+// Opens the prompt in front of a control that belongs to the frame behind it, then clicks
+// the shade, which is what leaves focus on the shade or lets it fall to the body.
+async function renderAndClickShade(onCancel: () => void = () => {}) {
+  const user = userEvent.setup()
+  render(
+    <>
+      <button type="button">Behind</button>
+      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />
+    </>,
+  )
+  const dialog = screen.getByRole('alertdialog')
+  const backdrop = dialog.parentElement as HTMLElement
+  await user.click(backdrop)
+  return { user, dialog, backdrop }
+}
+
 describe('DiscardDialog focus, modality, and closing', () => {
   it('opens with focus on Cancel and keeps Tab inside the prompt', async () => {
     // An alertdialog that leaves focus behind it is answerable only with the
@@ -126,16 +142,8 @@ describe('DiscardDialog focus, modality, and closing', () => {
     // Escape handler bound to the inner panel alone, that click left focus on the
     // body: Escape stopped answering and the next Tab reached a control behind the
     // prompt, which is how a live prompt could be answered by proxy.
-    const user = userEvent.setup()
     const onCancel = vi.fn()
-
-    render(
-      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />,
-    )
-
-    const dialog = screen.getByRole('alertdialog')
-    const backdrop = dialog.parentElement as HTMLElement
-    await user.click(backdrop)
+    const { user, dialog, backdrop } = await renderAndClickShade(onCancel)
 
     // The shade has to be part of the prompt's focus surface. A shade that cannot
     // hold focus hands it to the document body instead, and from there neither the
@@ -152,17 +160,7 @@ describe('DiscardDialog focus, modality, and closing', () => {
   })
 
   it('sends Shift+Tab after a click on the shade to the destructive answer, not to the frame behind', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <>
-        <button type="button">Behind</button>
-        <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={() => {}} />
-      </>,
-    )
-
-    const dialog = screen.getByRole('alertdialog')
-    await user.click(dialog.parentElement as HTMLElement)
+    const { user, dialog } = await renderAndClickShade()
     await user.tab({ shift: true })
 
     expect(within(dialog).getByRole('button', { name: /discard/i })).toHaveFocus()

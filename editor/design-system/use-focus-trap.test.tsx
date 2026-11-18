@@ -128,3 +128,44 @@ describe('useFocusTrap and the pointer', () => {
     expect(screen.getByRole('dialog', { name: 'Shaded' })).toHaveFocus()
   })
 })
+
+function pressOn(element: Element): MouseEvent {
+  const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+  element.dispatchEvent(press)
+  return press
+}
+
+describe('useFocusTrap cleanup', () => {
+  // The container is held by reference and read after it has left the document, so the
+  // attribute that is checked is the one the hook itself put there and took away again.
+  it('takes back the tabindex it gave the container when the trap unmounts', () => {
+    const { rerender } = render(<Harness open={true} />)
+    const dialog = screen.getByRole('dialog', { name: 'Trapped' })
+    expect(dialog).toHaveAttribute('tabindex', '-1')
+
+    rerender(<Harness open={false} />)
+
+    expect(dialog.isConnected).toBe(false)
+    expect(dialog).not.toHaveAttribute('tabindex')
+  })
+
+  it('keeps the tabindex the caller gave the container, while mounted and after it unmounts', () => {
+    const { unmount } = render(<ShadedHarness tabIndex={0} />)
+    const dialog = screen.getByRole('dialog', { name: 'Shaded' })
+    expect(dialog).toHaveAttribute('tabindex', '0')
+
+    unmount()
+
+    expect(dialog).toHaveAttribute('tabindex', '0')
+  })
+
+  it('stops cancelling the default of a press outside the container once the trap unmounts', () => {
+    const { rerender } = render(<Harness open={true} />)
+    const opener = screen.getByRole('button', { name: 'Opener' })
+    expect(pressOn(opener).defaultPrevented).toBe(true)
+
+    rerender(<Harness open={false} />)
+
+    expect(pressOn(opener).defaultPrevented).toBe(false)
+  })
+})
