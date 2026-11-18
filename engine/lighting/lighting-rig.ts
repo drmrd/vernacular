@@ -231,7 +231,7 @@ export function fitSunShadowToBounds(scene: THREE.Object3D, bounds: Bounds3 | nu
  *
  * A direction that does not normalize to a finite, nonzero vector (a component that is not finite,
  * or a length of zero) aims the sun along `SUN_DIRECTION`, exactly as `fitSunShadowToBounds` does,
- * so the sun's position is always finite. It never throws.
+ * so the sun's position is finite whenever the bounds are. It never throws.
  */
 export function fitSunShadowToDirection(
   scene: THREE.Object3D,

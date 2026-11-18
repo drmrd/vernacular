@@ -364,7 +364,9 @@ field, and every number it returns is finite:
   sun: the sun at the place, the instant, and the UTC offset of `referenceLightingInput()` in
   `core/environment/daylight-reference.ts`. The north bearing and the cloud cover of the input
   still apply to it. The angles are not finite for a coordinate, an offset, or a minute that is not
-  finite, for a latitude too large for the formulas, and for a date that does not parse.
+  finite, for a latitude too large for the formulas, and for a date whose text gives no number,
+  such as `not a date`. A malformed date that still gives numbers keeps a finite sun of its own:
+  an empty date and a month of 13 are two that a probe found.
 - A north bearing that is not finite counts as 0.
 - A cloud cover of `NaN` counts as `DEFAULT_CLOUD_COVER`. Any other cloud cover is clamped into
   0..1 by `clampToUnitInterval`. The `cloudCover` of the result is the value used, so the visible
@@ -431,8 +433,8 @@ string. `applyEnvironmentScene` in `core/environment/environment-state.ts` parse
 numbers. The solar angles for that minute are not finite, and before this change the direction
 was not finite either. Finite inputs of extreme size give angles that are not finite too: the test
 row for a latitude of 1e308 is one. The path through a saved scene was read from the code. The rows
-for a minute of `NaN` and for a date that does not parse run the lighting side of it. Both inputs
-now get the reference sun.
+for a minute of `NaN` and for the date `not a date` run the lighting side of it. Both inputs now
+get the reference sun.
 
 The known limit of the amendment above, that the engine aimed the sun with the raw direction, no
 longer holds. The default aim takes its place.
@@ -446,8 +448,8 @@ command layer (#686). Handlers on `main` use two patterns today. One is a silent
 The other is a throw, which the dispatcher rolls back and rethrows. Typed rejections are meant to
 replace both, and the command layer edits every handler, so a change to these two now would
 collide with that work. The light no longer depends on them. The rules above and the location
-rule of [[ADR-0193-sample-daylight-for-a-project-with-no-site-location]] make any stored value
-safe for the sun.
+rule of [[ADR-0193-sample-daylight-for-a-project-with-no-site-location]] keep the sun finite for
+any stored value.
 
 What is left is the reload. JSON writes `NaN` as `null`, and the schema validators reject `null`
 for a latitude, so a project that stored a coordinate of `NaN` is expected to fail to reopen.
@@ -461,6 +463,10 @@ Whether the save path validates first was not checked. #852 tracks the handlers.
   the sample notice that the location rule brings. #854 tracks a notice.
 - A finite location out of range, such as a latitude of 200, passes to `solarPosition` as it is.
   The sun it gives was not examined. Range checks belong to the command layer.
+- A finite latitude too large for the formulas, such as 1e308, is a real location to the location
+  rule. The number input of the site editor guards only against `NaN`, so a person can store it.
+  Such a site gets the reference sun at the reference instant whatever time the person chooses,
+  and the panel shows no sample notice. The range check that removes this belongs to #852.
 - The engine does not guard the sky's uniforms or its environment map itself. Their one producer,
   `computeEnvironmentLighting`, is now total.
 

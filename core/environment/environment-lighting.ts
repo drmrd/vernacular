@@ -64,10 +64,10 @@ export interface EnvironmentLightingInput {
  *
  * Input that cannot be used falls back, and the function never throws. When the solar angles for
  * the site and instant are not finite (a coordinate, offset or minute that is not finite or too
- * large for the formulas, or a date that does not parse), the sun is the daylight reference sun:
- * the place, the instant, and the UTC offset of `referenceLightingInput()`, still under the input's
- * north bearing and cloud cover. A north bearing that is not finite counts as 0. A cloud cover of
- * `NaN` counts as `DEFAULT_CLOUD_COVER`, any other cloud cover is clamped into 0..1, and
+ * large for the formulas, or a date whose text gives no number), the sun is the daylight reference
+ * sun: the place, the instant, and the UTC offset of `referenceLightingInput()`, still under the
+ * input's north bearing and cloud cover. A north bearing that is not finite counts as 0. A cloud
+ * cover of `NaN` counts as `DEFAULT_CLOUD_COVER`, any other cloud cover is clamped into 0..1, and
  * `cloudCover` in the result is the value used. Every number of the result is then finite.
  */
 export function computeEnvironmentLighting(input: EnvironmentLightingInput): EnvironmentLighting {
