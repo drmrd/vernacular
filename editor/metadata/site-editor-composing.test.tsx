@@ -6,7 +6,7 @@ import { SiteEditor } from './site-editor'
 
 afterEach(cleanup)
 
-// Older engines report a key of a composition as key code 229 instead of isComposing.
+// Some engines report a key of a composition as key code 229 instead of isComposing.
 const COMPOSITION_KEY_CODE = 229
 const RADIANS_PER_DEGREE = Math.PI / 180
 

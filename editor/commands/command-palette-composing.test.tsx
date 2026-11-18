@@ -8,7 +8,7 @@ afterEach(cleanup)
 
 const context = {} as CommandContext
 
-// Older engines report a key of a composition as key code 229 instead of isComposing.
+// Some engines report a key of a composition as key code 229 instead of isComposing.
 const COMPOSITION_KEY_CODE = 229
 
 // The user-event library does not model input-method composition, so the keys of a
