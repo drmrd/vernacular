@@ -9,6 +9,7 @@ related:
     decisions/ADR-0176-commands-as-data-and-session-undo-history,
     decisions/ADR-0177-open-transactions-for-changes-in-progress,
     decisions/ADR-0180-one-settings-port,
+    decisions/ADR-0185-lint-warnings-fail-and-exceptions-are-recorded,
   ]
 sourceFiles:
   [
@@ -33,9 +34,10 @@ The `session/` directory exists. Its first tenants moved from `bridge/`: the edi
 tracking, the discard guard, the load helper, and autosave. Lint holds the table of this record and
 the purity rules for `session/`. The files of `bridge/` and `editor/` that still import `storage/`
 for the asset and library names are on the lint exception list, each with issue #717.
-`session/testing` gives store doubles to tests, and lint keeps it out of production files. A test
-that must run layers its own layer may not import lives under `tests/cross-layer/`. The document
-handle, the flows, and the settings service arrive with later pull requests of the same stage.
+`session/testing` gives store doubles to tests and stories, and lint keeps it out of production
+files. A test that must run layers its own layer may not import lives under `tests/cross-layer/`.
+The document handle, the flows, and the settings service arrive with later pull requests of the
+same stage.
 
 > Amended on 2026-11-15 by section 5.1 of
 > `docs/specs/2026-11-15-session-layer-and-document-identity.md`, which answers the question this

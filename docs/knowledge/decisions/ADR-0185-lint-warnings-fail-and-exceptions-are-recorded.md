@@ -35,9 +35,9 @@ ADR-0012. The lint configuration changed with #683, and every rule is now at err
 > Amended on 2026-11-18 by ADR-0175, which adds the `session/` layer. An entry of the exception list
 > may name one layer that its file may import beyond the list of its own layer
 > (`{ file, allowImportOf, issue }`) in place of a rule. The other entries still name a rule. The
-> session testing entry (`session/testing`) gets the same check as the engine testing entry, so a
-> relative import such as `../testing` is now checked inside `session/` as well as inside
-> `engine/`.
+> session testing entry (`session/testing`) gets a check like that of the engine testing entry,
+> except that story files may import it. A relative import such as `../testing` is now checked
+> inside `session/` as well as inside `engine/`.
 
 ## Context
 
