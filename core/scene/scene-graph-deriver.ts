@@ -237,11 +237,14 @@ function furnitureNodeFor(
  * nodes for entities whose reference is unchanged and rebuilds only replaced
  * ones. It pairs with the immutable-update handler convention, where an edited
  * floor or wall becomes a new object while untouched ones keep their reference.
- * Each cache entry also stores every value that its node reads and that its key
- * does not capture, and compares those values on a hit. A wall node, for
- * example, is rebuilt when the id or the `defaultCeilingHeight` of its floor
- * changes, because the node copies both from the floor; room, opening, and
- * furniture nodes compare the id of their floor in the same way.
+ * The floor cache and the stair cache are keyed on the whole source (the `Floor`
+ * object, the `project.stairs` array), so they store the node alone and compare
+ * nothing. The other four entries each store every value that their node reads
+ * and that their key does not capture, and compare it on a hit: the wall entry
+ * compares the floor's id and `defaultCeilingHeight`; the room entry, the floor's
+ * id, `defaultCeilingHeight`, and the `roomOverrides` reference; the opening
+ * entry, the floor's id, the host wall reference, and the room side; the
+ * furniture entry, the floor's id.
  * The WeakMaps are keyed by the source object so dropped entities do not leak.
  */
 export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
