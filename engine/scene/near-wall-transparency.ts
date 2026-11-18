@@ -19,14 +19,11 @@ interface WorldXZ {
   z: number
 }
 
-/** A wall's fade geometry: the world point and outward normal that decide its own fade. */
+/** An exterior run's fade geometry: the world point and outward normal that decide its own fade. */
 interface WallFacing {
   point: WorldXZ
   outwardNormal: WorldXZ
 }
-
-/** The factor that takes the sum of a span's two ends to its middle. */
-const SPAN_MIDDLE_FACTOR = 0.5
 
 /** The appearance a faded material is restored to: what it looked like before any fade. */
 interface FadeBaseline {
@@ -85,7 +82,7 @@ function privatizeMaterial(material: THREE.Material): FadeMaterial {
   return { material: clone, baseline }
 }
 
-/** An exterior wall's own materials plus the world geometry that decides its fade. */
+/** An exterior run's own materials plus the world geometry that decides its fade. */
 export interface NearWallTarget {
   materials: FadeMaterial[]
   point: WorldXZ
@@ -97,7 +94,7 @@ export interface NearWallTarget {
    */
   outwardNormal: WorldXZ
   /**
-   * For a conditional-hold junction fill, the facing of each incident exterior wall;
+   * For a conditional-hold junction fill, the facing of each incident exterior run;
    * the fill fades only when the camera is outside every one of them. Absent for
    * ordinary walls and unconditional-hold fills.
    */
@@ -177,7 +174,7 @@ function privatizeEntityMaterials(root: THREE.Object3D, entityId: string): FadeM
  * required because the fill's side faces share the `junction` role material; pinning the
  * shared instance would pin every junction's material. A fill whose junction has a non-fading
  * incident wall holds opaque unconditionally (the ADR-0103 tee, `holdOpaque` on every
- * record). A pure-exterior fill instead carries the facing of each incident wall, so
+ * record). A pure-exterior fill instead carries the facing of each incident run, so
  * the per-frame update fades it only when the camera is outside all of them (ADR-0140).
  */
 function enrollFillMesh(
@@ -210,7 +207,7 @@ function enrollFillMesh(
 
 /**
  * Enrolls every junction fill whose `junctionKey` matches a fade group that has at
- * least one incident exterior wall, delegating each fill's opaque-hold or conditional
+ * least one incident exterior run, delegating each fill's opaque-hold or conditional
  * facing to {@link enrollFillMesh}.
  */
 function enrollJunctionFills(
@@ -228,6 +225,9 @@ function enrollJunctionFills(
     )
   })
 }
+
+/** The factor that takes the sum of a span's two ends to its middle. */
+const SPAN_MIDDLE_FACTOR = 0.5
 
 /**
  * True when `mesh` belongs to `run`: its recorded span has its middle within the run's
@@ -362,8 +362,8 @@ export function prepareNearWallTransparency(
 
 /**
  * True when `target` is a conditional junction fill (ADR-0140): it carries at least one
- * incident wall facing, so its fade is decided by whether the camera is outside every one
- * of those walls rather than by the target's own `outwardNormal`.
+ * incident run facing, so its fade is decided by whether the camera is outside every one
+ * of those runs rather than by the target's own `outwardNormal`.
  */
 function hasConditionalFade(
   target: NearWallTarget,
@@ -420,8 +420,8 @@ export function restoreNearWallTransparency(targets: NearWallTarget[]): void {
 
 /**
  * Restores the targets a shrinking enrollment set left behind. Enrollment keys on the
- * exterior wall set, so an edit that changes room topology can reclassify a wall from
- * exterior to interior while it is mid-fade. The wall then drops out of the set with its
+ * exterior run set, so an edit that changes room topology can reclassify a run from
+ * exterior to interior while it is mid-fade. The run then drops out of the set with its
  * materials still at the fade opacity, and no later frame reaches them, since every update
  * and restore runs over the current set. Sweeping what left the set before tracking is
  * dropped puts those materials back on their baseline (issue #526).

@@ -59,15 +59,16 @@ export function buildWalls(input: WallBuildInput): THREE.Group {
   })
   const footprints = wallFootprints(input.graph, thicknessByEdge)
   input.graph.edges.forEach((edge, index) => {
-    const node = edgeWallNode(edge, input.graph.vertices, wallsByModelId)
-    if (node === null) return
+    const host = wallsByModelId.get(edge.wallId)
+    const node = edgeWallNode(edge, input.graph.vertices, host)
+    if (host === undefined || node === null) return
     const openings = openingsOnEdge(edge, input)
     const footprint = footprints[index] as WallFootprint
     const mesh =
       openings.length === 0
         ? buildWallPrism(node, footprint, input.materials)
         : buildOpeningWallMesh({ edge, wall: node, openings, footprint }, input)
-    markWallSpan(mesh, (wallsByModelId.get(edge.wallId) as WallSceneNode).start, node)
+    markWallSpan(mesh, host.start, node)
     group.add(mesh)
   })
   for (const mesh of buildJunctionFills(input, thicknessByEdge, wallsByModelId)) {
@@ -149,9 +150,8 @@ function indexWallsByModelId(walls: WallSceneNode[]): Map<string, WallSceneNode>
 function edgeWallNode(
   edge: GraphEdge,
   vertices: PlanarGraph['vertices'],
-  wallsByModelId: Map<string, WallSceneNode>,
+  wall: WallSceneNode | undefined,
 ): WallSceneNode | null {
-  const wall = wallsByModelId.get(edge.wallId)
   const a = vertices[edge.a]
   const b = vertices[edge.b]
   if (wall === undefined || a === undefined || b === undefined) return null
