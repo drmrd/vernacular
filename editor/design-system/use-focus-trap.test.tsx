@@ -59,3 +59,72 @@ describe('useFocusTrap', () => {
     expect(dialog.contains(document.activeElement)).toBe(true)
   })
 })
+
+function ShadedDialog({ tabIndex }: { tabIndex?: number | undefined }) {
+  const ref = useFocusTrap<HTMLDivElement>()
+  return (
+    <div data-testid="shade">
+      <div ref={ref} role="dialog" aria-label="Shaded" tabIndex={tabIndex}>
+        <p>Question</p>
+        <button type="button">First</button>
+        <button type="button">Last</button>
+      </div>
+    </div>
+  )
+}
+
+function ShadedHarness({ tabIndex }: { tabIndex?: number | undefined }) {
+  return (
+    <div>
+      <button type="button">Opener</button>
+      <ShadedDialog tabIndex={tabIndex} />
+    </div>
+  )
+}
+
+function renderShadedDialog(tabIndex?: number) {
+  render(<ShadedHarness tabIndex={tabIndex} />)
+}
+
+describe('useFocusTrap and the pointer', () => {
+  it('leaves focus where it is when the shade around the container is pressed', async () => {
+    const user = userEvent.setup()
+    renderShadedDialog()
+    expect(screen.getByRole('button', { name: 'First' })).toHaveFocus()
+
+    await user.click(screen.getByTestId('shade'))
+
+    expect(screen.getByRole('button', { name: 'First' })).toHaveFocus()
+  })
+
+  it('gives focus to the container when a part of it that cannot take focus is pressed', async () => {
+    const user = userEvent.setup()
+    renderShadedDialog()
+
+    await user.click(screen.getByText('Question'))
+
+    expect(screen.getByRole('dialog', { name: 'Shaded' })).toHaveFocus()
+  })
+
+  it('sends Tab from the container itself to the first focusable element and Shift+Tab to the last', async () => {
+    const user = userEvent.setup()
+    renderShadedDialog()
+
+    await user.click(screen.getByText('Question'))
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'First' })).toHaveFocus()
+
+    await user.click(screen.getByText('Question'))
+    await user.tab({ shift: true })
+    expect(screen.getByRole('button', { name: 'Last' })).toHaveFocus()
+  })
+
+  it('lets a container that already has its own tabindex take focus when it is pressed', async () => {
+    const user = userEvent.setup()
+    renderShadedDialog(-1)
+
+    await user.click(screen.getByText('Question'))
+
+    expect(screen.getByRole('dialog', { name: 'Shaded' })).toHaveFocus()
+  })
+})

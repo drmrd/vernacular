@@ -151,6 +151,23 @@ describe('DiscardDialog focus, modality, and closing', () => {
     expect(onCancel).toHaveBeenCalledOnce()
   })
 
+  it('sends Shift+Tab after a click on the shade to the destructive answer, not to the frame behind', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <>
+        <button type="button">Behind</button>
+        <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={() => {}} />
+      </>,
+    )
+
+    const dialog = screen.getByRole('alertdialog')
+    await user.click(dialog.parentElement as HTMLElement)
+    await user.tab({ shift: true })
+
+    expect(within(dialog).getByRole('button', { name: /discard/i })).toHaveFocus()
+  })
+
   it('marks itself modal so assistive technology ignores the frame behind it', () => {
     render(
       <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={() => {}} />,
