@@ -40,6 +40,31 @@ async function describeFocus(
   })
 }
 
+type RecordedKey = { key: string; defaultPrevented: boolean }
+
+// Records, for every keydown, whether the default was already cancelled when the event
+// reached `document` in the capture phase. That runs after the capture listener the
+// editor keeps on the window, and the dialog's rule at the body never stops the capture
+// phase, so this reads the flag the browser acts on.
+async function recordKeydowns(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const recorded: { key: string; defaultPrevented: boolean }[] = []
+    ;(window as unknown as { recordedKeydowns: typeof recorded }).recordedKeydowns = recorded
+    document.addEventListener(
+      'keydown',
+      (event) => recorded.push({ key: event.key, defaultPrevented: event.defaultPrevented }),
+      true,
+    )
+  })
+}
+
+async function recordedKeydowns(page: Page, key: string): Promise<RecordedKey[]> {
+  const all = await page.evaluate(
+    () => (window as unknown as { recordedKeydowns: RecordedKey[] }).recordedKeydowns,
+  )
+  return all.filter((entry) => entry.key === key)
+}
+
 async function openDiscardPrompt(page: Page): Promise<{ prompt: Locator; opener: Locator }> {
   await page.goto('/?e2e-storage')
   await page.waitForFunction(() => window.vernacularE2eStorage !== undefined)
@@ -180,5 +205,52 @@ test.describe('The command palette holds the keys and the focus', () => {
 
     await expect(palette).toBeVisible()
     await expect(splitViewButton(page)).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
+test.describe('A chord the editor binds is default-prevented in the browser', () => {
+  const SAVE_CHORD = 'ControlOrMeta+s'
+  const UNBOUND_KEY = 'F9'
+
+  test('with no dialog open, the save chord is prevented and saves', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByLabel('Floor plan')).toBeVisible()
+    await expect(page.getByText('Ready')).toBeVisible()
+    await recordKeydowns(page)
+
+    await page.keyboard.press(SAVE_CHORD)
+
+    expect(await recordedKeydowns(page, 's')).toEqual([{ key: 's', defaultPrevented: true }])
+    await expect(page.getByText('All changes saved')).toBeVisible()
+  })
+
+  test.describe('behind the discard prompt', () => {
+    test.beforeEach(({ browserName }) => {
+      test.skip(browserName === 'webkit', 'WebKit lacks main-thread OPFS createWritable')
+    })
+
+    test('the save chord is prevented and does not save', async ({ page }) => {
+      const { prompt } = await openDiscardPrompt(page)
+      await expect(page.getByText('Ready')).toBeVisible()
+      await recordKeydowns(page)
+
+      await page.keyboard.press(SAVE_CHORD)
+
+      expect(await recordedKeydowns(page, 's')).toEqual([{ key: 's', defaultPrevented: true }])
+      await expect(prompt).toBeVisible()
+      await expect(page.getByText('Ready')).toBeVisible()
+      await expect(page.getByText('All changes saved')).toHaveCount(0)
+    })
+
+    test('a key that nothing binds keeps its default', async ({ page }) => {
+      await openDiscardPrompt(page)
+      await recordKeydowns(page)
+
+      await page.keyboard.press(UNBOUND_KEY)
+
+      expect(await recordedKeydowns(page, UNBOUND_KEY)).toEqual([
+        { key: UNBOUND_KEY, defaultPrevented: false },
+      ])
+    })
   })
 })
