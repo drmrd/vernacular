@@ -11,11 +11,16 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // split view. Unlike the arrow keys it is not a key that a focused button owns, so the
 // editor would act on it whenever the dialog let it through. Every test that expects the
 // editor to stand still has a control that shows the key does change the view otherwise.
+//
+// A key typed in a text field proves nothing by the view, because the editor leaves a field's
+// own keys alone with or without the dialog. So the tests on the palette's search field read
+// the keys that reach a bubble-phase listener on the window instead.
 
 const PALETTE_SHORTCUT = 'ControlOrMeta+k'
 const SPLIT_VIEW_KEY = '2'
 const CORNER = { x: 5, y: 5 }
 const TABS_TO_TRY = 4
+const UNBOUND_KEY = 'F9'
 
 const paletteOf = (page: Page) => page.getByRole('dialog', { name: 'Command palette' })
 // Scoped to the view switcher: the open palette lists a command of the same name.
@@ -63,6 +68,32 @@ async function recordedKeydowns(page: Page, key: string): Promise<RecordedKey[]>
     () => (window as unknown as { recordedKeydowns: RecordedKey[] }).recordedKeydowns,
   )
   return all.filter((entry) => entry.key === key)
+}
+
+type KeyProbe = { listener: (event: KeyboardEvent) => void; keys: string[] }
+
+// Listens on the window in the bubble phase, where the editor's own shortcut listeners sit,
+// and records every key that arrives there. A text field owns its keys in the editor anyway,
+// so what the editor does with a key cannot show whether the dialog held it back. This list
+// can: it only gains a key that nothing stopped on the way from the focused element.
+async function listenForKeysAtWindow(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const keys: string[] = []
+    const listener = (event: KeyboardEvent) => keys.push(event.key)
+    ;(window as unknown as { keyProbe: KeyProbe }).keyProbe = { listener, keys }
+    window.addEventListener('keydown', listener)
+  })
+}
+
+async function keysAtWindow(page: Page): Promise<string[]> {
+  return page.evaluate(() => (window as unknown as { keyProbe: KeyProbe }).keyProbe.keys.slice())
+}
+
+async function stopListeningForKeysAtWindow(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const probe = (window as unknown as { keyProbe: KeyProbe }).keyProbe
+    window.removeEventListener('keydown', probe.listener)
+  })
 }
 
 async function openDiscardPrompt(page: Page): Promise<{ prompt: Locator; opener: Locator }> {
@@ -135,6 +166,25 @@ test.describe('The discard prompt holds the keys and the focus', () => {
     await expect(prompt.getByRole('button', { name: 'Cancel' })).toBeFocused()
   })
 
+  test('keeps every key, the one that cancels it included, from the listeners on the window', async ({
+    page,
+  }) => {
+    const { prompt } = await openDiscardPrompt(page)
+    await listenForKeysAtWindow(page)
+
+    await page.keyboard.press('a')
+    expect(await keysAtWindow(page), 'keys pressed while it is open').toEqual([])
+
+    await page.keyboard.press('Escape')
+    await expect(prompt).toBeHidden()
+    expect(await keysAtWindow(page), 'keys after the Escape that cancelled it').toEqual([])
+
+    await page.keyboard.press(UNBOUND_KEY)
+    expect(await keysAtWindow(page), 'keys after it closed').toEqual([UNBOUND_KEY])
+
+    await stopListeningForKeysAtWindow(page)
+  })
+
   test('a click on its shade and the Tab key leave focus inside it, and Escape returns it to the opener', async ({
     page,
   }) => {
@@ -167,12 +217,11 @@ test.describe('The discard prompt holds the keys and the focus', () => {
 })
 
 test.describe('The command palette holds the keys and the focus', () => {
-  test('stays open on a click on its shade, keeps focus in its search field, and holds the editor back', async ({
+  test('stays open on a click on its shade and keeps focus in its search field', async ({
     page,
   }) => {
     const palette = await openPalette(page)
     const search = palette.getByRole('textbox', { name: 'Search commands' })
-    await expect(splitViewButton(page)).toHaveAttribute('aria-pressed', 'false')
 
     await page.mouse.click(CORNER.x, CORNER.y)
 
@@ -182,15 +231,26 @@ test.describe('The command palette holds the keys and the focus', () => {
     await page.keyboard.type(SPLIT_VIEW_KEY)
 
     await expect(search).toHaveValue(SPLIT_VIEW_KEY)
-    await expect(splitViewButton(page)).toHaveAttribute('aria-pressed', 'false')
   })
 
-  test('closes on Escape', async ({ page }) => {
+  test('keeps every key, the one that closes it included, from the listeners on the window', async ({
+    page,
+  }) => {
     const palette = await openPalette(page)
+    await listenForKeysAtWindow(page)
+
+    await page.keyboard.type('a')
+    await page.keyboard.press('ArrowDown')
+    expect(await keysAtWindow(page), 'keys typed in the search field').toEqual([])
 
     await page.keyboard.press('Escape')
-
     await expect(palette).toBeHidden()
+    expect(await keysAtWindow(page), 'keys after the Escape that closed it').toEqual([])
+
+    await page.keyboard.press(UNBOUND_KEY)
+    expect(await keysAtWindow(page), 'keys after it closed').toEqual([UNBOUND_KEY])
+
+    await stopListeningForKeysAtWindow(page)
   })
 
   test('a key pressed after focus has been moved out of the search field does not reach the editor', async ({
@@ -210,7 +270,6 @@ test.describe('The command palette holds the keys and the focus', () => {
 
 test.describe('A chord the editor binds is default-prevented in the browser', () => {
   const SAVE_CHORD = 'ControlOrMeta+s'
-  const UNBOUND_KEY = 'F9'
 
   test('with no dialog open, the save chord is prevented and saves', async ({ page }) => {
     await page.goto('/')
