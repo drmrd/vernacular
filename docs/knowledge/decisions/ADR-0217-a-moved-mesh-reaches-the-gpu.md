@@ -132,9 +132,9 @@ passed and the door read shut in both runs, but three scene tests failed:
 
 The reading of `e2e/tests/scene-tone-curve.spec.ts`, the rendered code of the sunlit white wall less
 the code that the light model predicts, moved from -0.05 to -0.64. So the upgrade changes the
-rendering, and it needs its own change with new baselines. It is the right end state. A follow-up
-issue asks for it, and that change removes the patch. It lost here only because it cannot land as a
-small fix.
+rendering, and it needs its own change with new baselines. It is the right end state. #839 asks
+for it, and that change removes the patch. It lost here only because it cannot land as a small
+fix.
 
 **Upgrade to `three` 0.187.0.** Published on 2026-10-30, it was inside the 30-day dependency
 cooldown on the day of this decision. It would also carry the rendering changes of 0.186.0.
