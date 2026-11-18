@@ -20,6 +20,13 @@ describe('reminderMessages', () => {
     expect(joined.toLowerCase()).toContain('knowledge')
   })
 
+  it('gives a change in the session layer the same reminders as a change in another layer', () => {
+    const sessionReminders = reminderMessages(['session/editor-session/editor-session.ts'])
+
+    expect(sessionReminders).toHaveLength(2)
+    expect(sessionReminders).toEqual(reminderMessages(['core/model/types.ts']))
+  })
+
   it('reminds about the knowledge graph but not clean-code for a design-spec-only change', () => {
     const joined = reminderMessages(['docs/specs/2026-06-01-vernacular-design.md']).join('\n')
 

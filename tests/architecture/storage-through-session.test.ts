@@ -125,4 +125,47 @@ describe('bridge and editor reach storage only through session', () => {
       expect(await layerRuleReported(withListedFiles, sample)).toBe(true)
     })
   })
+
+  describe('under a config that lists engine/sample.ts for storage', () => {
+    const LISTED_ENGINE_FILE = 'engine/sample.ts'
+    const withListedEngineFile = new ESLint({
+      cwd: repositoryRoot,
+      overrideConfigFile: true,
+      overrideConfig: config.buildConfig([
+        { file: LISTED_ENGINE_FILE, allowImportOf: 'storage', issue: REMOVING_ISSUE },
+      ]),
+    })
+
+    it(
+      'still accepts the listed engine file for core, the layer it may always import',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport(LISTED_ENGINE_FILE, '../core')
+        expect(await layerRuleReported(withListedEngineFile, sample)).toBe(false)
+      },
+    )
+
+    it('accepts the listed engine file for storage', { timeout: LINT_TIMEOUT_MS }, async () => {
+      const sample = valueImport(LISTED_ENGINE_FILE, '../storage')
+      expect(await layerRuleReported(withListedEngineFile, sample)).toBe(false)
+    })
+
+    it(
+      'still rejects the listed engine file for bridge',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport(LISTED_ENGINE_FILE, '../bridge')
+        expect(await layerRuleReported(withListedEngineFile, sample)).toBe(true)
+      },
+    )
+
+    it(
+      'still rejects an engine file that is not listed for storage',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport('engine/other.ts', '../storage')
+        expect(await layerRuleReported(withListedEngineFile, sample)).toBe(true)
+      },
+    )
+  })
 })

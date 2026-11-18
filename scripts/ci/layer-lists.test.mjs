@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
+import { reminderMessages } from '../hooks/commit-reminders.mjs'
 import { LAYERS } from './layers.mjs'
 
 const repositoryRoot = resolve(import.meta.dirname, '../..')
@@ -45,4 +46,28 @@ describe('the layer lists beside the CI layer order', () => {
       }
     },
   )
+
+  it(
+    'lets the lint config include a pattern for every layer',
+    { timeout: CONFIG_TIMEOUT_MS },
+    async () => {
+      const eslint = new ESLint({ cwd: repositoryRoot })
+      const resolved = await eslint.calculateConfigForFile('core/index.ts')
+      const include = resolved.settings['boundaries/include']
+      for (const layer of LAYERS) {
+        expect(include, `the lint include list is missing the ${layer} layer`).toContain(
+          `${layer}/**`,
+        )
+      }
+    },
+  )
+
+  it('reminds about a staged change in every layer', () => {
+    for (const layer of LAYERS) {
+      expect(
+        reminderMessages([`${layer}/sample.ts`]),
+        `the commit reminders ignore the ${layer} layer`,
+      ).not.toEqual([])
+    }
+  })
 })
