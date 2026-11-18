@@ -1,4 +1,4 @@
-import { dot, leftNormal, negate, subtract, unit } from '../geometry/vector'
+import { leftNormal, negate } from '../geometry/vector'
 import type { Point } from '../model/types'
 import {
   WALL_NODE_PREFIX,
@@ -6,7 +6,7 @@ import {
   type RoomSceneNode,
   type WallSceneNode,
 } from './scene-graph'
-import { wallStretches, type WallStretch } from './wall-room-sides'
+import { distanceAlongWall, wallStretches, type WallStretch } from './wall-room-sides'
 
 /**
  * One exterior run of a wall: a stretch (see wallStretches) along which a room lies on exactly one
@@ -58,14 +58,13 @@ function hostedOpenings(
   openings: OpeningSceneNode[],
 ): { id: string; alongMm: number }[] {
   const rawId = rawWallId(wall.id)
-  const direction = unit(subtract(wall.end, wall.start))
   return (
     openings
       // An opening with no hostWallId never equals a raw wall id, so it joins no wall.
       .filter((opening) => opening.hostWallId === rawId)
       .map((opening) => ({
         id: opening.id,
-        alongMm: dot(subtract(opening.center, wall.start), direction),
+        alongMm: distanceAlongWall(wall, opening.center),
       }))
   )
 }

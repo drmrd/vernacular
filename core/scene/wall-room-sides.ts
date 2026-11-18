@@ -138,13 +138,20 @@ function sidesAmong(place: WallPlace, rings: readonly PreparedRing[]): WallRoomS
   return sidesFromFlags(flags)
 }
 
+/**
+ * The distance of `point` from the wall's start, in mm, measured along the wall's direction; the
+ * wall must have a length.
+ */
+export function distanceAlongWall(wall: { start: Point; end: Point }, point: Point): number {
+  return dot(subtract(point, wall.start), unit(subtract(wall.end, wall.start)))
+}
+
 /** The distances along the wall at which a room ring corner lies on the wall's centerline. */
 function cornerCutsMm(wall: WallSceneNode, rings: readonly PreparedRing[]): number[] {
-  const direction = unit(subtract(wall.end, wall.start))
   return rings
     .flatMap((ring) => [...ring.points])
     .filter((corner) => pointOnSegment(corner, wall.start, wall.end, ROOM_RING_TOLERANCE_MM))
-    .map((corner) => dot(subtract(corner, wall.start), direction))
+    .map((corner) => distanceAlongWall(wall, corner))
 }
 
 /** The sorted cut positions from 0 to the wall length, with near-duplicates and near-ends dropped. */

@@ -1,4 +1,4 @@
-import { dot, shift, subtract, unit } from '../geometry/vector'
+import { shift, subtract } from '../geometry/vector'
 import type { Point } from '../model/types'
 import type { GraphEdge, PlanarGraph } from '../topology/wall-graph'
 import { vertexIncidence } from '../topology/wall-footprint'
@@ -9,6 +9,7 @@ import {
   type RoomSceneNode,
   type WallSceneNode,
 } from './scene-graph'
+import { distanceAlongWall } from './wall-room-sides'
 
 /**
  * A junction gets a fade group only where this many or more walls meet. This is the
@@ -90,7 +91,9 @@ function runIndexesUnderEdge(edge: GraphEdge, lookup: RunLookup): number[] {
   const start = vertices[edge.a] as Point
   const end = vertices[edge.b] as Point
   const middle = shift(start, subtract(end, start), EDGE_MIDDLE_FACTOR)
-  const alongMm = dot(subtract(middle, wall.start), unit(subtract(wall.end, wall.start)))
+  const alongMm = distanceAlongWall(wall, middle)
+  // The middle can sit exactly on the boundary between two runs of its wall; the interval is
+  // closed at both ends, so both runs then join the group (an opening joins only the first run).
   return candidates.filter((runIndex) => {
     const run = lookup.exterior[runIndex] as ExteriorWall
     return alongMm >= run.fromMm && alongMm <= run.toMm
