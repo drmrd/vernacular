@@ -21,6 +21,8 @@ sourceFiles:
     bridge/react/scene-unsupported-status.tsx,
     bridge/react/scene-readiness.ts,
     editor/shell/scene-pane.tsx,
+    e2e/tests/scene-live-view-reopen.spec.ts,
+    e2e/tests/live-pane-frames.ts,
     app/use-before-unload-guard.ts,
     scripts/story-coverage/uncovered-components.ts,
   ]
@@ -43,6 +45,11 @@ Updated on 2026-11-18 (issue #820). An earlier limit said that no CI job ran the
 the reload. That was wrong for Linux: the `scene-visual` job ran it on three's WebGL 2 fallback. The
 gap was the WebGPU path on a real adapter, which the macOS live-view job of ADR-0171 now runs. The
 Evidence section says what runs where.
+
+Updated again on 2026-11-18 (issue #821). A browser case now closes and opens the live view with
+the real renderer. It replaces two limits. No test had run a real renderer through a close and an
+open, and no browser run had shown a clean console after the library's own teardown. The Evidence
+section says what the case proves and what it cannot detect.
 
 ## Context
 
@@ -307,6 +314,56 @@ plain headless shell, started through a temporary configuration that was not com
 failed with the guard's message when the variable was set. Without the variable they passed on the
 WebGL 2 fallback, as on Linux.
 
+`e2e/tests/scene-live-view-reopen.spec.ts` runs the real renderer through a close and an open. It
+opens the split view, draws a wall, and keeps the settled frame of the 3D canvas, captured without
+the overlays. Then, three times, it closes the 3D view, checks that the live canvas is gone, waits
+800 ms, opens the view again, and expects the same frame. The wait is longer than the 500 ms timer after
+which `@react-three/fiber` 9.6.1 tears down its own state. An init script counts the calls that free
+a renderer's GPU resources: `GPUDevice.destroy` on the WebGPU path, and `loseContext` of the
+`WEBGL_lose_context` extension on the WebGL 2 fallback. The case expects no such call while the view
+is open and exactly one more after each close. It fails on any console error or page error. It also
+fails on any warning outside a short list of exact texts, which the spec explains one by one.
+
+On the development Mac, on 2026-11-18, the first form of the case passed on a real WebGPU adapter in six runs of about
+5.3 seconds each. It also passed with no adapter, through the WebGL 2 fallback, in the plain headless
+shell and in the full browser build with the GPU turned off. Two temporary changes to the product,
+both undone, showed what the case detects. With the release removed, it failed at the counter after
+the first close: it expected 1 release and received 0. With the release run twice, it expected 1 and
+received 2. In both runs the console stayed clean and the pane still drew. Only the counters catch a
+missing or a double release.
+
+Only the wrapper's release reaches `destroy` or `loseContext`, through the renderer's `dispose()`.
+The library's delayed teardown calls `renderLists.dispose()` and `forceContextLoss()` only where the
+renderer has them. The three.js renderer of the live pane has neither, on either backend. The
+teardown also wraps its body in a `try`/`catch` that drops any throw. So a clean console cannot show
+a fault inside that teardown. What the case shows is that the pane draws again after the teardown
+ran, three times in a row, and that nothing outside the listed texts reaches the console.
+
+The Linux job `scene-visual` runs the whole `scene-webgl` project, so it runs this case on the WebGL 2
+fallback. Its first run there (run 44265227298) was flaky. The first try failed at the first settled
+capture with "locator.screenshot: Element is not attached to the DOM", and the retry passed. The
+cause was the start-up of the pane, not the release; the next paragraph explains it. The fixed case
+waits for the readiness marker of each mount, finds the canvas again for each capture, and repeats a
+capture that hits a detached element inside its poll. On the development Mac a CPU throttle alone
+did not reproduce the failure (0 of 12 runs at rates 6, 12, and 20). A delay of 150 or 300 ms on the
+renderer chunk together with a throttle at rate 6 did: the first form failed 10 of 10 runs with the
+same error, and the fixed case passed 10 of 10 with no retry. In run 44269064163, the next one on
+the Linux runner, the case passed on the first try: of 56 tests, 55 passed and 1 skipped, with none
+flaky.
+
+A test that reads the live canvas must wait until the start-up of the current mount has ended. Until
+the renderer module has loaded, `SceneRendererCanvas` returns a stand-in `<canvas>` styled by
+`LOADING_CANVAS_STYLE` to fill the pane. Once `useSceneRendererFactory` holds the factory, the
+wrapper swaps the stand-in for the canvas of the canvas library. The factory starts as `null` at each
+mount, so every open of the pane goes through the swap. A wait for a canvas with a settled height
+accepts the stand-in, and a capture can then hit an element that is detached a moment later. The
+signal to wait for is `data-harness-ready="true"` on the element with the test id
+`live-scene-canvas`. `LiveSceneCanvas` in `bridge/react/webgpu-scene-view.tsx` sets it through
+`useFirstFrameReadiness` once the renderer of that mount has drawn its first frame, and it starts at
+`false` with each mount. `data-live-view-ready` is not that signal: it can still read `true` from an
+earlier open when the pane mounts again (issue #829). `e2e/tests/live-pane-frames.ts` holds the wait
+and the capture helpers for other live-pane specs to share.
+
 `bridge/react/scene-renderer-canvas-strict-mode.test.tsx` renders the wrapper under StrictMode with a
 stand-in canvas that calls `gl` in a plain effect, which StrictMode runs twice. The stand-in
 therefore asks for two renderers. That is a worst case: by its source, the real library asks for one
@@ -330,9 +387,12 @@ hands each renderer over once. The engine test proves what the release then does
 
 ## Limits
 
-- No test runs a real three.js renderer. That `dispose()` after a resolved start stops the loop and
-  frees the device, and that an early or late `dispose()` misbehaves, was read from the three.js
-  0.184 source.
+- The reopen case shows that each close leads to one `GPUDevice.destroy` or `loseContext` call, which
+  `dispose()` makes. That `dispose()` also stops the animation loop, and that an early or late
+  `dispose()` misbehaves, was read from the three.js 0.184 source.
+- No CI job runs the reopen case on a real WebGPU adapter. The macOS job `live-view-visual` runs
+  named specs only, and this case is not one of them. CI runs the case only on the WebGL 2 fallback,
+  on Linux.
 - That the real library asks for one renderer under StrictMode, and two only when two setups start
   in one task, was read from the source of `@react-three/fiber` 9.6.1 and not run. The StrictMode
   tests force two requests with a stand-in canvas that has no cleanup of its own, so the
@@ -352,9 +412,6 @@ hands each renderer over once. The engine test proves what the release then does
 - Within one page, a later mount of the wrapper after a failed load imports the same address again.
   By the live run, that import fails at once, so reopening the 3D view shows the same alert. This
   is inferred and not tested; the unit test of a later mount uses a stubbed loader.
-- The library tears down its own state 500 ms after unmount, which is after the wrapper's release.
-  That teardown disposes scene objects, not the renderer, so no error is expected. No browser run
-  has confirmed that the console stays clean.
 - A start that fails after its backend took a GPU device or a WebGL context would keep it, because
   the release calls nothing after a failed start. This case is rare and not tested.
 - Under StrictMode the library's simulated unmount runs while the canvas has no measured size and no
