@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { Button, useFocusTrap } from '../design-system'
-import { isComposingKey } from '../design-system/composing-key'
+import { Button, isComposingKey, useFocusTrap } from '../design-system'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
 import { useViewMode } from '../viewport/view-mode'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
