@@ -64,8 +64,13 @@ function memoizeByRef<K extends object, V>(cache: WeakMap<K, V>, key: K, derive:
   return value
 }
 
-/** The opening node plus the host-wall reference and the room nodes it was derived against. */
+/**
+ * The opening node plus the inputs it was derived against: the id of the floor that held it, the
+ * host-wall reference, and the room nodes. The cache is keyed on the `Opening` alone, but the node
+ * copies the floor's id, so that id is compared explicitly.
+ */
 interface CachedOpeningNode {
+  floorId: string
   hostWall: Wall
   rooms: readonly RoomSceneNode[]
   node: OpeningSceneNode
@@ -88,13 +93,14 @@ function roomSideHolds(cached: CachedOpeningNode, rooms: readonly RoomSceneNode[
 
 /**
  * Derives a floor's opening nodes. Reuses a cached node only while the Opening and its host Wall
- * references are unchanged AND the opening's room side is unchanged: the floor's room-node array is
- * the same reference as when the node was cached, or openingRoomSide(cachedNode, rooms) still
- * equals cachedNode.roomSide (then the new array is remembered). Otherwise it derives a new node,
- * so a view that reuses a 3D group by node reference rebuilds a window exactly when its side
- * changes. A replaced host wall changes the opening geometry without changing the opening
- * reference, so the cache compares the host wall too. Module-scope so the deriver closure stays
- * under its line cap, like `memoizeByRef`.
+ * references and the floor's id are unchanged AND the opening's room side is unchanged: the floor's
+ * room-node array is the same reference as when the node was cached, or
+ * openingRoomSide(cachedNode, rooms) still equals cachedNode.roomSide (then the new array is
+ * remembered). Otherwise it derives a new node, so a view that reuses a 3D group by node reference
+ * rebuilds a window exactly when its side changes. A replaced host wall changes the opening
+ * geometry without changing the opening reference, so the cache compares the host wall too, and the
+ * node copies the floor's id, so that id is compared before the room side is read. Module-scope so
+ * the deriver closure stays under its line cap, like `memoizeByRef`.
  */
 function openingNodesFor(
   openingCache: WeakMap<Opening, CachedOpeningNode>,
@@ -107,11 +113,16 @@ function openingNodesFor(
       return []
     }
     const cached = openingCache.get(opening)
-    if (cached !== undefined && cached.hostWall === hostWall && roomSideHolds(cached, rooms)) {
+    if (
+      cached !== undefined &&
+      cached.floorId === floor.id &&
+      cached.hostWall === hostWall &&
+      roomSideHolds(cached, rooms)
+    ) {
       return [cached.node]
     }
     const node = withRoomSide(deriveOpeningNode(floor, opening, hostWall), rooms)
-    openingCache.set(opening, { hostWall, rooms, node })
+    openingCache.set(opening, { floorId: floor.id, hostWall, rooms, node })
     return [node]
   })
 }
