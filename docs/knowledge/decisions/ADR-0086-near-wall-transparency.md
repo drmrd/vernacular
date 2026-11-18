@@ -9,6 +9,7 @@ related:
     decisions/ADR-0067-three-dimensional-painted-preview,
     decisions/ADR-0078-three-dimensional-preview-surface-edges,
     decisions/ADR-0084-discoverable-camera-controls,
+    decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
   ]
 sourceFiles:
   [
@@ -26,7 +27,7 @@ sourceFiles:
     e2e/tests/scene-near-wall-transparency.spec.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 # ADR-0086: Near-wall transparency in the three-dimensional preview
@@ -137,3 +138,11 @@ A faded object no longer takes a click, for the selection and for the paint targ
 click on a faded wall goes to what is behind it. The fade marks each material it fades, and the
 pickers skip a hit on a marked object. The details are in the 2026-11-15 amendment to
 [[ADR-0056-surface-paint-selection-and-treatments]].
+
+## Note 2026-11-17: the fade works by exterior run
+
+The exterior decision above no longer tests points past the faces. Since
+[[ADR-0218-exterior-walls-follow-the-rooms-along-the-wall]], `exteriorWalls` lists exterior runs,
+the stretches of a wall with a room along one side only, read from the room boundaries, and the
+fade builds one target for each run. A long wall now fades only where it has open air on one side,
+and the stretch between an ell and the main block stays solid.

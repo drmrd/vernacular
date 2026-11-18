@@ -71,7 +71,7 @@ describe('openingRoomSide past the face that the room uses', () => {
     expect(roomSideOfWindow(floor)).toBe('positive')
   })
 
-  it('finds no side for a window 150 mm from an inside corner whose neighbor wall is 400 mm thick', () => {
+  it('does not let a 400 mm thick neighbor wall hide the room side of a window 150 mm from an inside corner', () => {
     const walls = withWall(counterClockwiseWalls(), 'west', {
       thickness: THICK_NEIGHBOR_THICKNESS,
     })
@@ -81,7 +81,7 @@ describe('openingRoomSide past the face that the room uses', () => {
       width: CORNER_WINDOW_WIDTH,
     })
 
-    expect(roomSideOfWindow(floor)).toBeUndefined()
+    expect(roomSideOfWindow(floor)).toBe('positive')
   })
 
   it('finds the room side for a window 150 mm from the reflex corner of an L-shaped room', () => {

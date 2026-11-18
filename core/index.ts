@@ -381,11 +381,7 @@ export {
 } from './scene/scene-graph'
 export type { ExteriorWall } from './scene/exterior-walls'
 export { exteriorWalls } from './scene/exterior-walls'
-export {
-  OPENING_ROOM_SIDE_SAMPLE_MM,
-  openingRoomSide,
-  withRoomSide,
-} from './scene/opening-room-side'
+export { openingRoomSide, withRoomSide } from './scene/opening-room-side'
 export type { FrontDirectionInput, PlanDirection } from './scene/front-direction'
 export { PLAN_DOWN, frontDirection } from './scene/front-direction'
 export type { WallPlanSegment } from './scene/wall-attached-furniture'
@@ -397,6 +393,8 @@ export {
 export { rawWallId } from './scene/wall-id'
 export type { JunctionFadeGroup } from './scene/junction-fade'
 export { junctionFadeGroups } from './scene/junction-fade'
+export type { WallPlace, WallRoomSides, WallStretch } from './scene/wall-room-sides'
+export { ROOM_RING_TOLERANCE_MM, roomSidesAt, wallStretches } from './scene/wall-room-sides'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
 export { sceneGraphForFloor } from './scene/scene-graph-for-floor'
 export { sceneGraphHasGeometry } from './scene/scene-graph-empty'

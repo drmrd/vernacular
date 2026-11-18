@@ -33,6 +33,7 @@ import { tessellateContourLoop } from './contour-tessellation'
 import { buildJunctionFill } from './junction-fill-builder'
 import { buildWallPrism, wallFaceRef } from './wall-prism'
 import { buildSectionMesh } from './wall-surface-table'
+import { markWallSpan } from './wall-span'
 
 /** Inputs for building a floor's walls from its planar graph. */
 export interface WallBuildInput {
@@ -58,15 +59,17 @@ export function buildWalls(input: WallBuildInput): THREE.Group {
   })
   const footprints = wallFootprints(input.graph, thicknessByEdge)
   input.graph.edges.forEach((edge, index) => {
-    const node = edgeWallNode(edge, input.graph.vertices, wallsByModelId)
-    if (node === null) return
+    const host = wallsByModelId.get(edge.wallId)
+    const node = edgeWallNode(edge, input.graph.vertices, host)
+    if (host === undefined || node === null) return
     const openings = openingsOnEdge(edge, input)
     const footprint = footprints[index] as WallFootprint
-    if (openings.length === 0) {
-      group.add(buildWallPrism(node, footprint, input.materials))
-    } else {
-      group.add(buildOpeningWallMesh({ edge, wall: node, openings, footprint }, input))
-    }
+    const mesh =
+      openings.length === 0
+        ? buildWallPrism(node, footprint, input.materials)
+        : buildOpeningWallMesh({ edge, wall: node, openings, footprint }, input)
+    markWallSpan(mesh, host.start, node)
+    group.add(mesh)
   })
   for (const mesh of buildJunctionFills(input, thicknessByEdge, wallsByModelId)) {
     group.add(mesh)
@@ -147,9 +150,8 @@ function indexWallsByModelId(walls: WallSceneNode[]): Map<string, WallSceneNode>
 function edgeWallNode(
   edge: GraphEdge,
   vertices: PlanarGraph['vertices'],
-  wallsByModelId: Map<string, WallSceneNode>,
+  wall: WallSceneNode | undefined,
 ): WallSceneNode | null {
-  const wall = wallsByModelId.get(edge.wallId)
   const a = vertices[edge.a]
   const b = vertices[edge.b]
   if (wall === undefined || a === undefined || b === undefined) return null

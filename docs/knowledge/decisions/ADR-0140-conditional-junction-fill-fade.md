@@ -10,6 +10,7 @@ related:
     decisions/ADR-0086-near-wall-transparency,
     decisions/ADR-0087-opening-fade-with-host-wall,
     decisions/ADR-0080-generalized-wall-junction-geometry,
+    decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
   ]
 sourceFiles:
   [
@@ -19,7 +20,7 @@ sourceFiles:
     bridge/react/framed-scene.ts,
   ]
 status: current
-updated: 2026-07-01
+updated: 2026-11-17
 ---
 
 # ADR-0140: A junction fill fades once every incident wall fades
@@ -177,3 +178,11 @@ receives.
   square-cap alternative would touch.
 - Issue #227: a faded T-junction cross wall reveals the leg wall's mitered end as a point,
   the report ADR-0103 closed and this decision preserves.
+
+## Note 2026-11-17: the incident facings are those of exterior runs
+
+The structural fact is now read per incident edge. A junction holds unconditionally when an
+incident edge lies on no exterior run, and a conditional fill takes the facings of the runs that
+its group names in `exteriorRunIndexes`
+([[ADR-0218-exterior-walls-follow-the-rooms-along-the-wall]]). So the tees at the ends of an ell
+flush with the end of a long wall now hold, where before they were conditional.

@@ -1,5 +1,6 @@
 import { pointInPolygon } from '../geometry/polygon'
 import { pointOnSegment, segmentIntersection } from '../geometry/segment'
+import { shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 import type { ExteriorWall } from './exterior-walls'
 import type { FurnitureSceneNode, WallSceneNode } from './scene-graph'
@@ -43,11 +44,21 @@ export function furnitureAttachedToWall(
   return pointInPolygon(wall.start, footprintCorners)
 }
 
+/** The stretch of the wall centerline from `fromMm` to `toMm`, with the wall's thickness. */
+function runSegment(wall: WallSceneNode, run: ExteriorWall): WallPlanSegment {
+  const direction = unit(subtract(wall.end, wall.start))
+  return {
+    start: shift(wall.start, direction, run.fromMm),
+    end: shift(wall.start, direction, run.toMm),
+    thickness: wall.thickness,
+  }
+}
+
 /**
- * The exterior walls with their `furnitureIds` filled in: each furniture piece joins
- * the first exterior wall (in `exterior` order) whose plan segment it stands against.
- * Joining exactly one wall means a corner piece never enrolls in two fade targets,
- * so two walls' opposite fade decisions cannot tug it both ways in one frame.
+ * The exterior runs with their `furnitureIds` filled in: each furniture piece joins the first run
+ * (in `exterior` order) whose stretch of the wall centerline, from `fromMm` to `toMm`, with the
+ * wall's thickness, it stands against (`furnitureAttachedToWall`). Joining exactly one run means a
+ * corner piece never enrolls in two fade targets.
  */
 export function withAttachedFurniture(
   exterior: ExteriorWall[],
@@ -55,21 +66,25 @@ export function withAttachedFurniture(
   furniture: FurnitureSceneNode[],
 ): ExteriorWall[] {
   const wallsById = new Map(walls.map((wall) => [wall.id, wall]))
-  const furnitureIdsByWallId = new Map<string, string[]>()
+  const segments = exterior.map((run) => {
+    const wall = wallsById.get(run.wallId)
+    return wall === undefined ? undefined : runSegment(wall, run)
+  })
+  const furnitureIdsByRunIndex = new Map<number, string[]>()
   for (const piece of furniture) {
-    const host = exterior.find((candidate) => {
-      const wall = wallsById.get(candidate.wallId)
-      return wall !== undefined && furnitureAttachedToWall(piece.footprintCorners, wall)
-    })
-    if (host !== undefined) {
-      const ids = furnitureIdsByWallId.get(host.wallId) ?? []
+    const hostIndex = segments.findIndex(
+      (segment) =>
+        segment !== undefined && furnitureAttachedToWall(piece.footprintCorners, segment),
+    )
+    if (hostIndex >= 0) {
+      const ids = furnitureIdsByRunIndex.get(hostIndex) ?? []
       ids.push(piece.id)
-      furnitureIdsByWallId.set(host.wallId, ids)
+      furnitureIdsByRunIndex.set(hostIndex, ids)
     }
   }
-  return exterior.map((wall) => ({
-    ...wall,
-    furnitureIds: furnitureIdsByWallId.get(wall.wallId) ?? [],
+  return exterior.map((run, runIndex) => ({
+    ...run,
+    furnitureIds: furnitureIdsByRunIndex.get(runIndex) ?? [],
   }))
 }
 

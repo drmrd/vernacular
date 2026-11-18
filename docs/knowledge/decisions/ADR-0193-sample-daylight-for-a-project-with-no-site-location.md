@@ -25,6 +25,7 @@ related:
     decisions/ADR-0151-ambient-occlusion-render-pipeline,
     decisions/ADR-0147-per-mode-tone-mapping,
     decisions/ADR-0158-millimeter-scale-shadow-and-occlusion-constants,
+    decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
   ]
 sourceFiles:
   [
@@ -50,7 +51,7 @@ sourceFiles:
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # ADR-0193: Sample daylight for a project with no site location
@@ -324,3 +325,17 @@ against the same site without a location, in both functions. Two more tests chec
 and the implied north for a `NaN` latitude, and that latitude 0 and longitude 0 is kept.
 `pnpm exec vitest run core/environment/daylight-site-location-not-finite.test.ts --project unit`
 passed 11 tests on 2026-11-17, and `core/environment/daylight-site.test.ts` passed its 46.
+
+## Note 2026-11-17: an exterior door is a door on an exterior run
+
+`frontDirection` did not change, but `exteriorWalls` now lists exterior runs
+([[ADR-0218-exterior-walls-follow-the-rooms-along-the-wall]]). An exterior door is a door whose
+center lies on a stretch of wall with a room along one side only, and the front is the outward
+normal of that run. So the front can turn in an existing project in either direction. A door that
+the old midpoint test missed now counts, such as one in the long wall of a house split by a
+centered partition. A door that the old test counted wrongly no longer counts: on the flush ell
+floor of ADR-0218, the door from the main room into the ell stood on a wall the old test listed
+whole, and with an 800 mm door added in the north wall the front turns from plan-down to plan-up.
+That flip came from a probe run in the branch review against the old function from `main`, and no
+committed test holds it. With no stored location or north bearing, the sample sun turns with the
+front.
