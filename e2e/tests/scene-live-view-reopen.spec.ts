@@ -1,4 +1,11 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+import {
+  liveSceneCanvas,
+  settledLiveFrame,
+  waitForLiveCanvasReady,
+  waitForLiveFrameDifferentFrom,
+  waitForLiveFrameEqualTo,
+} from './live-pane-frames'
 
 // Issue #821: the 3D canvas wrapper releases its renderer when the view closes (ADR-0197). Every
 // unit test of that rule uses a renderer double. This case runs the real renderer: it opens the
@@ -18,19 +25,11 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // present and requestAdapter resolves to null) three's own WebGL 2 backend draws the pane. Like
 // the neighbouring live-view specs it self-skips only without navigator.gpu.
 //
-// Like them it reads what the renderer drew and not a marker. The marker
-// data-live-view-ready is set once and stays set across a close, so it would say nothing about the
-// later opens. Each open must instead show the frame that the first open drew for the same
-// project: a canvas-only capture, which differs from the empty floor (so it holds the wall) and
-// is steady.
-
-// React Three Fiber mounts the canvas at the HTML default (~150px) height, then resizes it to
-// the real pane box; a settled canvas is past that default.
-const SETTLED_CANVAS_MIN_HEIGHT = 200
-
-// How long a drawn wall may take to appear in the live pane. The wall reaches the pane within a
-// few frames once it is committed, so the bound is generous margin, not a measured wait.
-const WALL_APPEARS_TIMEOUT_MS = 10_000
+// Like them it reads what the renderer drew and not only a marker. Each open waits for the
+// readiness marker of its own mount (see live-pane-frames.ts) and then must show the frame that the
+// first open drew for the same project: a canvas-only capture, which differs from the empty floor
+// (so it holds the wall) and is steady. The marker data-live-view-ready is not used, because it
+// can still read true from the earlier open when the pane mounts again.
 
 // @react-three/fiber 9.6.1 (dist/events-*.js, unmountComponentAtNode) tears a root down in a
 // setTimeout with the inline literal 500 ms, started once its React tree has unmounted. The
@@ -44,11 +43,6 @@ const TEARDOWN_WAIT_MS = LIBRARY_TEARDOWN_MS + 300
 // Three cycles of close and open show that a second and a third open work, and that the release
 // does not depend on the first open being special.
 const CYCLES = 3
-
-// Applied only for the duration of one screenshot. Visibility is inherited but can be restored
-// on a descendant, so the canvas stays visible while every other element is hidden.
-const CANVAS_ONLY_STYLE =
-  'body * { visibility: hidden !important; } canvas { visibility: visible !important; }'
 
 // The messages the page prints on this path that have nothing to do with the renderer's release.
 // Each is matched whole, so any other warning, and any other wording of these, still fails.
@@ -138,28 +132,6 @@ function collectConsoleProblems(page: Page): string[] {
   return problems
 }
 
-// The pixels the renderer drew, without the overlays above the canvas.
-async function drawnPixels(canvas: Locator): Promise<Buffer> {
-  return canvas.screenshot({ style: CANVAS_ONLY_STYLE })
-}
-
-// Polls until two consecutive canvas-only captures match, then returns that settled frame.
-async function settledDrawnPixels(canvas: Locator): Promise<Buffer> {
-  let last = await drawnPixels(canvas)
-  await expect
-    .poll(
-      async () => {
-        const next = await drawnPixels(canvas)
-        const steady = next.equals(last)
-        last = next
-        return steady
-      },
-      { message: 'waiting for the live 3D canvas to reach a stable frame' },
-    )
-    .toBe(true)
-  return last
-}
-
 // Commits one wall run in the plan pane: arm the Wall tool, click the two endpoints, then
 // press Enter so the buffered run commits.
 async function drawWall(page: Page, segment: { from: Point; to: Point }): Promise<void> {
@@ -170,17 +142,6 @@ async function drawWall(page: Page, segment: { from: Point; to: Point }): Promis
   await plan.click({ position: segment.to })
   await page.keyboard.press('Enter')
   await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(1)
-}
-
-async function settledPaneCanvas(pane: Locator): Promise<Locator> {
-  const canvas = pane.locator('canvas')
-  await expect(canvas).toHaveCount(1)
-  await expect
-    .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
-      message: 'waiting for the live 3D canvas to settle past its default size',
-    })
-    .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
-  return canvas
 }
 
 test.describe('Live three-dimensional pane opened and closed again', () => {
@@ -194,28 +155,25 @@ test.describe('Live three-dimensional pane opened and closed again', () => {
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
-    const pane = page.getByRole('region', { name: /3d preview/i })
-
     // First open, on the empty floor, then one wall: the frame that holds the wall is the proof of
     // what a drawn pane looks like for this project.
     await page.getByRole('button', { name: 'Split view' }).click()
-    const firstCanvas = await settledPaneCanvas(pane)
-    const emptyFloor = await settledDrawnPixels(firstCanvas)
+    await waitForLiveCanvasReady(page)
+    const emptyFloor = await settledLiveFrame(page)
     await drawWall(page, { from: { x: 100, y: 150 }, to: { x: 300, y: 150 } })
-    await expect
-      .poll(async () => (await drawnPixels(firstCanvas)).equals(emptyFloor), {
-        message: 'the live 3D pane never drew the wall: its frame still matches the empty floor',
-        timeout: WALL_APPEARS_TIMEOUT_MS,
-      })
-      .toBe(false)
-    const wallFrame = await settledDrawnPixels(firstCanvas)
+    await waitForLiveFrameDifferentFrom(
+      page,
+      emptyFloor,
+      'the live 3D pane never drew the wall: its frame still matches the empty floor',
+    )
+    const wallFrame = await settledLiveFrame(page)
     expect(await rendererReleaseCount(page), 'nothing is released while the pane is open').toBe(0)
     const canvasesInSplitView = await page.locator('canvas').count()
 
     for (let cycle = 1; cycle <= CYCLES; cycle += 1) {
       // Close: the plan view has no 3D pane, so the canvas unmounts.
       await page.getByRole('button', { name: 'Plan view' }).click()
-      await expect(pane).toHaveCount(0)
+      await expect(liveSceneCanvas(page)).toHaveCount(0)
       // The plan pane keeps its own canvas, so the page holds one canvas fewer than in split view.
       await expect(page.locator('canvas')).toHaveCount(canvasesInSplitView - 1)
 
@@ -230,13 +188,12 @@ test.describe('Live three-dimensional pane opened and closed again', () => {
 
       // Open again: the pane must draw the same wall frame as the first open.
       await page.getByRole('button', { name: 'Split view' }).click()
-      const canvas = await settledPaneCanvas(pane)
-      await expect
-        .poll(async () => (await drawnPixels(canvas)).equals(wallFrame), {
-          message: `open ${cycle + 1} of the live 3D pane never drew the frame the first open drew`,
-          timeout: WALL_APPEARS_TIMEOUT_MS,
-        })
-        .toBe(true)
+      await waitForLiveCanvasReady(page)
+      await waitForLiveFrameEqualTo(
+        page,
+        wallFrame,
+        `open ${cycle + 1} of the live 3D pane never drew the frame the first open drew`,
+      )
       expect(await rendererReleaseCount(page), 'an open pane has not released its renderer').toBe(
         cycle,
       )
