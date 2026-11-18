@@ -6,9 +6,14 @@ import { zipFolder, unzipFolder, type FolderEntries } from './zip-codec'
 import type { AssetCache } from '../asset-cache'
 import { DirectoryAssetCache } from '../directory-asset-cache'
 import { BACKUP_DIRECTORY } from '../documents/document-backups'
-import { AUTOSAVE_DIR } from '../snapshots/snapshot-store'
+import { AUTOSAVE_DIRECTORY } from '../snapshots/snapshot-store'
 
-const SIDECAR_DIRECTORIES = [BACKUP_DIRECTORY, AUTOSAVE_DIR]
+const SIDECAR_DIRECTORIES = [BACKUP_DIRECTORY, AUTOSAVE_DIRECTORY]
+
+/** Whether the path lies in a sidecar directory, which never travels in an archive. */
+function isSidecarPath(path: string): boolean {
+  return SIDECAR_DIRECTORIES.some((directory) => path.startsWith(`${directory}/`))
+}
 
 /**
  * Single-project store bound to one id, backed by an in-memory expansion of a .building bundle.
@@ -43,7 +48,7 @@ export class ZipBundleProjectStore extends DocumentStore {
   async exportBundle(): Promise<Uint8Array> {
     const entries: FolderEntries = new Map()
     for (const [path, content] of await this.storedFiles(this.bundleId)) {
-      if (!SIDECAR_DIRECTORIES.some((directory) => path.startsWith(`${directory}/`))) {
+      if (!isSidecarPath(path)) {
         entries.set(path, content)
       }
     }

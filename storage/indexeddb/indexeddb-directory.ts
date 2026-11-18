@@ -19,7 +19,7 @@ import {
 
 const DATABASE_VERSION = 2
 /** The first call of an open request rejects as soon as the browser reports the block. */
-const NO_GRACE_MILLISECONDS = 0
+const NO_WAIT_MILLISECONDS = 0
 /** Sorts after every character that can appear in a path, so it ends a prefix range. */
 const HIGHEST_CODE_UNIT = '\uffff'
 
@@ -172,7 +172,7 @@ export class IndexedDbDirectory implements DirectoryPort {
     const attempt = pending ?? this.startAttempt()
     const database = await waitForOpen(
       attempt,
-      pending === undefined ? NO_GRACE_MILLISECONDS : BLOCKED_OPEN_WAIT_MILLISECONDS,
+      pending === undefined ? NO_WAIT_MILLISECONDS : BLOCKED_OPEN_WAIT_MILLISECONDS,
     )
     database.onversionchange = () => {
       database.close()

@@ -14,8 +14,9 @@ export interface ProjectSnapshots {
 }
 
 /**
- * The snapshots of the project whose directory is `directory`. The seam exists because the snapshot
- * store moves bytes; this puts the codec in front of it.
+ * The snapshots of the project whose directory is `directory`. The snapshot store encodes and
+ * decodes through the codec itself; this wrapper hands its newest snapshot back as the codec's
+ * verdict, the shape that the document store gives for a document.
  */
 export function createProjectSnapshots(
   directory: DirectoryPort,

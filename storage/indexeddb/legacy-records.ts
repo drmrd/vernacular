@@ -1,11 +1,10 @@
+import { PROJECT_FILE } from '../project-files/project-file-name'
 import { assertProjectId } from '../project-files/project-id-guard'
 import { FILES_STORE, finish, readFileRecord, settle, type FileRecord } from './indexeddb-requests'
 import { faithfulJsonBytes, jsonBytes } from './legacy-json'
 
 /** The object store in which earlier versions kept each project as a live object. */
 export const LEGACY_STORE = 'projects'
-
-const PROJECT_FILE_NAME = 'vernacular.json'
 
 /**
  * A record carries no time, so a served record reports the start of the Unix
@@ -29,7 +28,7 @@ function legacyStore(database: IDBDatabase, mode: IDBTransactionMode): IDBObject
 }
 
 function legacyPath(id: string): string {
-  return `${id}/${PROJECT_FILE_NAME}`
+  return `${id}/${PROJECT_FILE}`
 }
 
 function bytesEqual(first: Uint8Array, second: Uint8Array): boolean {
@@ -51,7 +50,7 @@ function isLegacyProjectId(id: unknown): id is string {
 
 /** The project id of a path of the form `<id>/vernacular.json`, or undefined for any other path. */
 export function legacyProjectId(path: string): string | undefined {
-  const suffix = `/${PROJECT_FILE_NAME}`
+  const suffix = `/${PROJECT_FILE}`
   if (!path.endsWith(suffix)) {
     return undefined
   }
@@ -234,11 +233,11 @@ async function convertRecord(database: IDBDatabase, id: string, readBack: ReadBa
  * record converts on its own: one that fails stays and is reported with one
  * warning, and the others still convert. A record converts only when JSON keeps
  * its object unchanged, apart from properties whose value is undefined; any
- * other record stays without a warning and is served as JSON text. The file is written with a token of its own, then read
- * back, and the record goes only when the read-back equals the bytes written and
- * the file and the record still hold them. On a mismatch the stored bytes are
- * wrong, so the file goes while it still carries the token and the record
- * stays. A file with equal bytes left by an earlier conversion lets the record
+ * other record stays without a warning and is served as JSON text. The file is
+ * written with a token of its own, then read back, and the record goes only when
+ * the read-back equals the bytes written and the file and the record still hold
+ * them. On a mismatch the stored bytes are wrong, so the file goes while it
+ * still carries the token and the record stays. A file with equal bytes left by an earlier conversion lets the record
  * go; a token-marked file with other bytes is replaced; an unmarked file with
  * other bytes was saved by someone and is left alone with the record. A record
  * whose id cannot name a project directory is ignored. A database without the

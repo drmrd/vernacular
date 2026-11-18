@@ -1,3 +1,4 @@
+import { finish, settle } from '../indexeddb/indexeddb-requests'
 import type { FolderHandles, RememberedFolder } from './folder-access-types'
 
 const DEFAULT_DATABASE_NAME = 'vernacular-handles'
@@ -36,14 +37,12 @@ async function withStore<T>(
 ): Promise<T> {
   const database = await openDatabase(databaseName)
   try {
-    return await new Promise<T>((resolve, reject) => {
-      const transaction = database.transaction(STORE_NAME, mode)
-      const request = run(transaction.objectStore(STORE_NAME))
-      transaction.oncomplete = () => resolve(request.result)
-      transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB request failed'))
-      transaction.onabort = () =>
-        reject(transaction.error ?? new Error('IndexedDB transaction aborted'))
-    })
+    const transaction = database.transaction(STORE_NAME, mode)
+    const [result] = await Promise.all([
+      settle(run(transaction.objectStore(STORE_NAME))),
+      finish(transaction),
+    ])
+    return result
   } finally {
     database.close()
   }

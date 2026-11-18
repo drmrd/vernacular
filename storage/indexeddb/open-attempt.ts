@@ -40,15 +40,17 @@ export function startOpen(databaseName: string, version: number): OpenAttempt {
 
 /**
  * Resolves with the connection when the request finishes. When the request is
- * blocked, rejects with {@link BLOCKED_MESSAGE} once `graceMilliseconds` have
- * passed since the block, unless the request finishes first. The request itself
+ * blocked, rejects with {@link BLOCKED_MESSAGE} once `waitMilliseconds` have
+ * passed, unless the request finishes first. The wait counts from the moment the
+ * call learns of the block: from the block itself for a call that was already
+ * waiting, and from the call for a call made after the block. The request itself
  * stays pending; a later call can wait for it again.
  */
-export function waitForOpen(attempt: OpenAttempt, graceMilliseconds: number): Promise<IDBDatabase> {
+export function waitForOpen(attempt: OpenAttempt, waitMilliseconds: number): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     let timer: ReturnType<typeof setTimeout> | undefined
     void attempt.blocked.then(() => {
-      timer = setTimeout(() => reject(new Error(BLOCKED_MESSAGE)), graceMilliseconds)
+      timer = setTimeout(() => reject(new Error(BLOCKED_MESSAGE)), waitMilliseconds)
     })
     attempt.result.then(
       (database) => {
