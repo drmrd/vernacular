@@ -15,6 +15,90 @@ async function ruleIdsFor(code: string, filePath: string): Promise<(string | nul
   return result?.messages.map((message) => message.ruleId) ?? []
 }
 
+interface ImportCase {
+  title: string
+  importerPath: string
+  specifier: string
+  name: string
+}
+
+// The session layer has no barrel yet, so the name imported from '../session' is a neutral placeholder.
+const rejectedImports: readonly ImportCase[] = [
+  {
+    title: 'rejects a session module importing bridge',
+    importerPath: 'session/boundary-sample.ts',
+    specifier: '../bridge',
+    name: 'EditorSession',
+  },
+  {
+    title: 'rejects a session module importing editor',
+    importerPath: 'session/boundary-sample.ts',
+    specifier: '../editor',
+    name: 'EditorShellProps',
+  },
+  {
+    title: 'rejects a session module importing engine',
+    importerPath: 'session/boundary-sample.ts',
+    specifier: '../engine',
+    name: 'SceneRoot',
+  },
+  {
+    title: 'rejects an editor module importing engine',
+    importerPath: 'editor/boundary-sample.ts',
+    specifier: '../engine',
+    name: 'SceneRoot',
+  },
+  {
+    title: 'rejects an engine module importing storage',
+    importerPath: 'engine/boundary-sample.ts',
+    specifier: '../storage',
+    name: 'ProjectStore',
+  },
+]
+
+const allowedImports: readonly ImportCase[] = [
+  {
+    title: 'allows a session module importing core',
+    importerPath: 'session/boundary-sample.ts',
+    specifier: '../core',
+    name: 'Project',
+  },
+  {
+    title: 'allows a session module importing storage',
+    importerPath: 'session/boundary-sample.ts',
+    specifier: '../storage',
+    name: 'ProjectStore',
+  },
+  {
+    title: 'allows a bridge module importing session',
+    importerPath: 'bridge/boundary-sample.ts',
+    specifier: '../session',
+    name: 'SessionSample',
+  },
+  {
+    title: 'allows a bridge module importing engine',
+    importerPath: 'bridge/boundary-sample.ts',
+    specifier: '../engine',
+    name: 'SceneRoot',
+  },
+  {
+    title: 'allows an editor module importing session',
+    importerPath: 'editor/boundary-sample.ts',
+    specifier: '../session',
+    name: 'SessionSample',
+  },
+  {
+    title: 'allows an editor module importing bridge',
+    importerPath: 'editor/boundary-sample.ts',
+    specifier: '../bridge',
+    name: 'EditorSession',
+  },
+]
+
+function typeImportOf(specifier: string, name: string): string {
+  return `import type { ${name} } from '${specifier}'\nexport type Sample = ${name}\n`
+}
+
 describe('layer boundary enforcement', () => {
   it('rejects a core module importing storage', { timeout: LINT_TIMEOUT_MS }, async () => {
     const ids = await ruleIdsFor(
@@ -31,4 +115,22 @@ describe('layer boundary enforcement', () => {
     )
     expect(ids).not.toContain('boundaries/dependencies')
   })
+
+  it.each(rejectedImports)(
+    '$title',
+    { timeout: LINT_TIMEOUT_MS },
+    async ({ importerPath, specifier, name }) => {
+      const ids = await ruleIdsFor(typeImportOf(specifier, name), importerPath)
+      expect(ids).toContain('boundaries/dependencies')
+    },
+  )
+
+  it.each(allowedImports)(
+    '$title',
+    { timeout: LINT_TIMEOUT_MS },
+    async ({ importerPath, specifier, name }) => {
+      const ids = await ruleIdsFor(typeImportOf(specifier, name), importerPath)
+      expect(ids).not.toContain('boundaries/dependencies')
+    },
+  )
 })

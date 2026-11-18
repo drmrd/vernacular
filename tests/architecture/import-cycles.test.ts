@@ -115,4 +115,10 @@ describe('the repository import graph', () => {
     expect([...sources.keys()], 'sources read from the six layers').toContain('core/index.ts')
     expect(cycles, describeCycles(cycles)).toEqual([])
   })
+
+  it('reads the files of the session layer as part of the graph', () => {
+    const paths = [...readLayerSources(repositoryRoot).keys()]
+
+    expect(paths.some((path) => path.startsWith('session/'))).toBe(true)
+  })
 })
