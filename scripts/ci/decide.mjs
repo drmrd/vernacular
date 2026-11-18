@@ -27,8 +27,8 @@ const DEFAULT_BASE = 'origin/main'
 //   browser only in the end-to-end suite. src/setupTests.ts is also a setup file
 //   of the story test project (through vite.config.ts), so it turns on the story
 //   job too.
-// - session/: its code came from bridge/ and app/, which are in the list, so a
-//   change there must still turn on the end-to-end run.
+// - session/: it holds application code that is in the bundle the end-to-end
+//   suite loads, so a change there must turn on the end-to-end run.
 // - index.html: it is the entry document of the bundle that the suite loads.
 // - public/: it is served at run time for the end-to-end suite, and it is copied
 //   into the story build, where the stories use the mock service worker in it.

@@ -7,8 +7,9 @@
 
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { LAYERS } from '../ci/layers.mjs'
 
-const SOURCE_LAYER = /^(core|storage|engine|bridge|editor|app)\//
+const SOURCE_LAYER = new RegExp(`^(${LAYERS.join('|')})/`)
 const DESIGN_SPEC = /^docs\/specs\//
 
 const CLEAN_CODE_REMINDER =
