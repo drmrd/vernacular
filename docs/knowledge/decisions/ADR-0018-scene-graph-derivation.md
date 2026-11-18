@@ -20,6 +20,7 @@ sourceFiles:
     core/scene/scene-graph-assembly.ts,
     core/scene/scene-graph-deriver-wall-height.test.ts,
     core/scene/scene-graph-deriver-parity.test.ts,
+    core/scene/scene-graph-parity-fixtures.ts,
     core/scene/scene-graph-deriver-floor-id.test.ts,
     tests/performance/scene-rebuild-counts.test.ts,
   ]
@@ -257,10 +258,12 @@ walls array, an opening, or a piece of furniture to another floor. No rebuild co
 changed either: `tests/performance/baseline-scene-rebuild.json` is untouched, because no
 reference edit of the gate changes a floor id.
 
-The evidence is in two files. `core/scene/scene-graph-deriver-parity.test.ts` has 18
+The evidence is in two files. `core/scene/scene-graph-deriver-parity.test.ts` has 19
 tests. They compare the deriver with the pure projection on every field, cold and after
 each of nine kinds of edit, and also after a wall of the room is removed and after the
-ground floor takes another id. `core/scene/scene-graph-deriver-floor-id.test.ts` has
+ground floor takes another id. One test pins that the room override of the fixture
+applies to its room, so the comparison covers an override that is in use.
+`core/scene/scene-graph-deriver-floor-id.test.ts` has
 seven tests. For each of the three caches they move the source objects under a floor
 with another id, check that the node carries the new id, and pin that the node is
 reused on the next derivation.
@@ -270,4 +273,4 @@ Two functions that narrow a derived graph still list its fields by hand:
 `sceneGraphForBuilding` in `bridge/react/view-scene-graph.ts`. Both return a
 `SceneGraph`, so a new required field fails to compile there, but each must pass the
 optional `gradeElevation` through by hand, and a new optional field could be dropped
-without an error. A follow-up, issue #NARROWING ISSUE, tracks this.
+without an error. A follow-up, issue #873, tracks this.
