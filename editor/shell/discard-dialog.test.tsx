@@ -250,13 +250,32 @@ describe('DiscardDialog and the editor behind it', () => {
     expect(ran).toEqual([])
   })
 
-  it('still answers Escape as cancel with the editor commands bound behind it', async () => {
+  it('answers Escape as cancel without running the Escape command bound behind it', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()
-    renderPromptOverEditor([], onCancel)
+    const runEscapeCommand = vi.fn()
+    const escapeCommand: EditorCommand = {
+      id: 'clear-selection',
+      label: 'clear-selection',
+      keybindings: ['Escape'],
+      isEnabled: () => true,
+      run: runEscapeCommand,
+    }
+    function EscapeBehind() {
+      useKeybindings([escapeCommand], {} as CommandContext)
+      return <button type="button">Behind</button>
+    }
+    render(
+      <>
+        <EscapeBehind />
+        <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />
+      </>,
+    )
+    expect(screen.getByRole('button', { name: /cancel/i })).toHaveFocus()
 
     await user.keyboard('{Escape}')
 
     expect(onCancel).toHaveBeenCalledOnce()
+    expect(runEscapeCommand).not.toHaveBeenCalled()
   })
 })
