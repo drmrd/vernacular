@@ -13,11 +13,16 @@ related:
     decisions/ADR-0153-daylight-through-glass-role-stamp,
     decisions/ADR-0156-luminance-calibration-convention,
     decisions/ADR-0139-plan-to-world-orientation,
+    decisions/ADR-0193-sample-daylight-for-a-project-with-no-site-location,
   ]
 sourceFiles:
   [
     engine/lighting/lighting-rig.ts,
     engine/lighting/lighting-rig.test.ts,
+    core/environment/environment-lighting.ts,
+    core/environment/environment-lighting-fallback.test.ts,
+    core/environment/daylight-site.ts,
+    core/environment/daylight-site-location-not-finite.test.ts,
     engine/postprocessing/ambient-occlusion-params.ts,
     engine/postprocessing/ambient-occlusion-params.test.ts,
     core/environment/shadow-fit.ts,
@@ -315,10 +320,10 @@ the shell alone" in `engine/lighting/solar-lighting-provider.test.ts` catches th
 it requires the fitted radius to exceed half the diagonal of the casters, and a fit of the casters
 alone equals it.
 
-Known limit: the fit is finite for a direction that is not finite, but the engine still aims the
-sun with the raw direction. `fitSunShadowToDirection` in `engine/lighting/lighting-rig.ts`
-normalizes it and places the sun along it, so the sun and its shadow are wrong. #828 covers that
-guard.
+Known limit when this amendment was written: the fit was finite for a direction that is not
+finite, but the engine still aimed the sun with the raw direction. `fitSunShadowToDirection` in
+`engine/lighting/lighting-rig.ts` normalized it and placed the sun along it, so the sun and its
+shadow were wrong. The guard for #828 is in the next amendment.
 
 A caster box that is not finite is not covered. The acceptance condition of the issue assumes a
 finite one. With such a box the result is not finite either, because the fallback is a copy of
@@ -345,3 +350,134 @@ counts.
 `pnpm exec vitest run core/environment/shadow-fit.test.ts --project unit` passed 34 tests. The
 other two test files of the fit passed as well: `engine/lighting/solar-lighting-provider.test.ts`
 with 16 tests and `tests/performance/shadow-fit-reach.test.ts` with 5.
+
+## Amendment 2026-11-17: the lighting and the aim for input that is not finite
+
+The amendment above made the shadow fit total. Issue #828 asked the same of the sun's aim. The aim
+turned out to be the second place to guard. The first is the function that computes the light.
+Neither `computeEnvironmentLighting` nor `fitSunShadowToDirection` throws now.
+
+`computeEnvironmentLighting` in `core/environment/environment-lighting.ts` falls back field by
+field, and every number it returns is finite:
+
+- When the solar angles for the site and instant are not finite, the sun is the daylight reference
+  sun: the sun at the place, the instant, and the UTC offset of `referenceLightingInput()` in
+  `core/environment/daylight-reference.ts`. The north bearing and the cloud cover of the input
+  still apply to it. The angles are not finite for a coordinate, an offset, or a minute that is not
+  finite, for a latitude too large for the formulas, and for a date that does not parse.
+- A north bearing that is not finite counts as 0.
+- A cloud cover of `NaN` counts as `DEFAULT_CLOUD_COVER`. Any other cloud cover is clamped into
+  0..1 by `clampToUnitInterval`. The `cloudCover` of the result is the value used, so the visible
+  sky reads the same number the tints were computed with.
+
+A cloud cover in 0..1 gives the same numbers as before. The clamp returns its input there, apart
+from turning -0 into +0. The test rows for 0, 0.25, and 1 compare the result with the composition
+of the piece functions by exact equality.
+
+The fallback sun is the calibration light, and it is not an opening instant. The architecture test
+`tests/architecture/opening-instant-seam.test.ts` lets only three owner files name the reference
+instant constant ([[ADR-0193-sample-daylight-for-a-project-with-no-site-location]]), and
+`environment-lighting.ts` is not one of them. It reads the reference through
+`referenceLightingInput()`, which an owner file defines, so the seam holds.
+
+`fitSunShadowToDirection` in `engine/lighting/lighting-rig.ts` aims the sun along `SUN_DIRECTION`,
+as `fitSunShadowToBounds` does, when the direction does not normalize to a finite, nonzero vector.
+That covers a component that is not finite and a zero vector. It covers a finite vector too long
+to normalize as well. For a length of 1e200 the length overflows to infinity, the vector normalizes
+to zero, and the check for a zero length catches it. That chain was read from the code, and a test
+row for 1e200 runs the case.
+
+### Why both places
+
+One function feeds every engine reader of the light. The solar provider reads its sun direction
+for the shadow fit and the aim, its colors and sun level for the rig, and its sun direction, cloud
+cover, and sky ambient for the visible sky and its environment map. A total
+`computeEnvironmentLighting` makes all of them finite at once, and `core/` stays the authority for
+the light. A guard in each engine reader would repeat one rule in several places.
+
+The aim is guarded as well because `fitSunShadowToDirection` is an exported engine function and
+should be total, as `shadowFitBounds` is. With the source guarded, only a programming error
+reaches that guard.
+
+The fallbacks follow the reasons the amendment above gives for the fit. The one caller runs in a
+layout effect with no error boundary, and these are inputs for one instant, not document values a
+person can find from a message.
+
+### Why the reference sun
+
+The issue's example was a sun at the zenith. The reference place and instant are already the
+project's stand-in: a project with no location gets the reference place as its sample place, and
+every session opens at the reference instant through `openingInstant`. So the fallback is the sun
+a fresh project shows, a calibrated daytime sun. A zenith sun would be a third convention, and it
+casts no shadow a person can see. A night sun, with a sun level of 0, would look like a real night
+and hide the fault.
+
+A bearing that is not finite counts as 0 because `daylightSiteFor` already uses 0 for a located
+site with such a bearing. The fallback is per field, so the person's own place and time stay in
+force when only the bearing or the cloud cover is bad.
+
+### Why the default aim
+
+The issue's second option was to keep the last good direction. The default aim needs no state:
+one frame never depends on an earlier one, the harness and the tests stay reproducible, and the
+rig needs no new field. With the source guarded, continuity during a scrub buys nothing.
+
+### A correction to the amendment above
+
+The amendment above says that no shipped path gives a direction that is not finite. That was
+wrong. A saved environment scene stores `observedAt` as a string, and the schema asks only for a
+string. `applyEnvironmentScene` in `core/environment/environment-state.ts` parses it with
+`parseObservationInstant`, which gives a minute of `NaN` for a time that does not parse as
+numbers. The solar angles for that minute are not finite, and before this change the direction
+was not finite either. Finite inputs of extreme size give angles that are not finite too: the test
+row for a latitude of 1e308 is one. The path through a saved scene was read from the code. The rows
+for a minute of `NaN` and for a date that does not parse run the lighting side of it. Both inputs
+now get the reference sun.
+
+The known limit of the amendment above, that the engine aimed the sun with the raw direction, no
+longer holds. The default aim takes its place.
+
+### The handlers are left to the command layer
+
+The handlers of `setSiteLocation` and `setSiteNorthBearing` in
+`core/commands/handlers/site-commands.ts` still store any number. Their refusal belongs to the
+command layer (#686). Handlers on `main` use two patterns today. One is a silent no-op, as in
+`reorderFloorHandler`: `dispatch` still records an empty undo step, and the caller learns nothing.
+The other is a throw, which the dispatcher rolls back and rethrows. Typed rejections are meant to
+replace both, and the command layer edits every handler, so a change to these two now would
+collide with that work. The light no longer depends on them. The rules above and the location
+rule of [[ADR-0193-sample-daylight-for-a-project-with-no-site-location]] make any stored value
+safe for the sun.
+
+What is left is the reload. JSON writes `NaN` as `null`, and the schema validators reject `null`
+for a latitude, so a project that stored a coordinate of `NaN` is expected to fail to reopen.
+Whether the save path validates first was not checked. #852 tracks the handlers.
+
+### Limits
+
+- A saved scene with a malformed date and time still applies an instant that is not a number to
+  the session state. Only the sun is safe. #853 tracks it.
+- The fallback is silent. Nothing tells the person that the lighting uses a stand-in, apart from
+  the sample notice that the location rule brings. #854 tracks a notice.
+- A finite location out of range, such as a latitude of 200, passes to `solarPosition` as it is.
+  The sun it gives was not examined. Range checks belong to the command layer.
+- The engine does not guard the sky's uniforms or its environment map itself. Their one producer,
+  `computeEnvironmentLighting`, is now total.
+
+### Tests
+
+`pnpm exec vitest run <file> --project unit` passed each of these files on 2026-11-17:
+
+- `core/environment/environment-lighting-fallback.test.ts`, 25 tests. Eight inputs whose solar
+  angles are not finite must give the reference sun under the input's bearing and cloud cover.
+  Three bearings that are not finite must count as 0, and a finite bearing of 1e308 is kept. Five
+  cloud covers that cannot be used must be clamped or defaulted, and 0, 0.25, and 1 are kept. Five
+  valid inputs must keep the composition of the piece functions exactly.
+- `engine/lighting/lighting-rig.test.ts`, 23 tests. Its last describe block,
+  "fitSunShadowToDirection with a direction that cannot be used", has six rows that must aim, fit,
+  and bias the sun as `fitSunShadowToBounds` does: a `NaN` in x and in y, an infinite z, a
+  negative infinite x, the zero vector, and a length of 1e200. One more test checks that a valid
+  direction of length 5 is normalized and not replaced.
+- `core/environment/daylight-site-location-not-finite.test.ts`, 11 tests, for the location rule of
+  [[ADR-0193-sample-daylight-for-a-project-with-no-site-location]].
+- `tests/architecture/opening-instant-seam.test.ts`, 2 tests.
