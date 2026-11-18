@@ -17,7 +17,12 @@ import {
   wall,
   windowNode,
 } from './opening-room-side-test-fixtures'
-import { deriveRoomNodesForFloor, deriveWallNode, type RoomSceneNode } from './scene-graph'
+import {
+  deriveOpeningNodesForFloor,
+  deriveRoomNodesForFloor,
+  deriveWallNode,
+  type RoomSceneNode,
+} from './scene-graph'
 
 /** The same room drawn the other way: every wall reversed and the order reversed. */
 function clockwiseWalls(): Wall[] {
@@ -93,15 +98,19 @@ describe('openingRoomSide', () => {
       expect(roomSideOfWindow(floor)).toBeUndefined()
     })
 
-    it('differs from the wall-midpoint test, which does not list this wall as exterior', () => {
+    it('agrees with exteriorWalls, which lists the stretch beside the room', () => {
       const floor = floorWithWindow(walls, 'long-south', WINDOW_POSITION)
+      const rooms = deriveRoomNodesForFloor(floor)
       const wallNodes = floor.walls.map((raw) => deriveWallNode(floor, raw))
+      const openings = deriveOpeningNodesForFloor(floor, rooms)
 
-      const exteriorIds = exteriorWalls(wallNodes, deriveRoomNodesForFloor(floor)).map(
-        (exterior) => exterior.wallId,
-      )
+      const runs = exteriorWalls(wallNodes, rooms, openings)
 
-      expect(exteriorIds).not.toContain('wall:long-south')
+      expect(runs.find((run) => run.wallId === 'wall:long-south')).toMatchObject({
+        fromMm: expect.closeTo(0, 6),
+        toMm: expect.closeTo(4000, 6),
+        openingIds: [windowNode(floor).id],
+      })
     })
   })
 
