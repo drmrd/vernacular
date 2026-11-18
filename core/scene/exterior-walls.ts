@@ -1,4 +1,4 @@
-import { dot, leftNormal, subtract, unit } from '../geometry/vector'
+import { dot, leftNormal, negate, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 import {
   WALL_NODE_PREFIX,
@@ -49,7 +49,7 @@ function exteriorStretches(wall: WallSceneNode, rooms: RoomSceneNode[]): WallStr
 /** The unit normal of the wall that points away from the side of `stretch` with the room. */
 function outwardNormalOf(wall: WallSceneNode, stretch: WallStretch): Point {
   const normal = leftNormal(wall.start, wall.end)
-  return stretch.sides === 'positive' ? { x: -normal.x, y: -normal.y } : normal
+  return stretch.sides === 'positive' ? negate(normal) : normal
 }
 
 /** The openings hosted on `wall`, each with the distance along the wall of its center. */
