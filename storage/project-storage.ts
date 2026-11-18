@@ -3,8 +3,11 @@ import type { AssetCache } from './asset-cache'
 import { OpfsProjectStore } from './opfs/opfs-project-store'
 import { FileSystemDirectory } from './fs/file-system-directory'
 import { DirectoryAssetCache } from './directory-asset-cache'
-import { InMemoryAssetCache } from './in-memory-asset-cache'
-import { createDefaultProjectStore } from './indexeddb/indexeddb-project-store'
+import { IndexedDbDirectory } from './indexeddb/indexeddb-directory'
+import {
+  DEFAULT_PROJECT_DATABASE_NAME,
+  IndexedDbProjectStore,
+} from './indexeddb/indexeddb-project-store'
 
 /**
  * A durable project store paired with the asset cache that backs it. Resolved
@@ -32,14 +35,14 @@ export async function createOpfsProjectStorage(): Promise<ProjectStorage> {
 }
 
 /**
- * The default pair for hosts without OPFS: the IndexedDB project store paired
- * with an in-memory asset cache. Underlay rasters do not survive reload on this
- * backend; a durable IndexedDB-backed AssetCache is the near-term follow-up
- * (ADR-0042).
+ * The default pair for hosts without OPFS: one IndexedDB directory serves both the IndexedDB
+ * project store and a DirectoryAssetCache, so asset bytes sit in the shared pool at `assets/`
+ * and survive a reload, as they do on the OPFS backend (ADR-0042).
  */
 export function createDefaultProjectStorage(): ProjectStorage {
+  const directory = new IndexedDbDirectory(DEFAULT_PROJECT_DATABASE_NAME)
   return {
-    store: createDefaultProjectStore(),
-    assets: new InMemoryAssetCache(),
+    store: new IndexedDbProjectStore(directory),
+    assets: new DirectoryAssetCache(directory),
   }
 }

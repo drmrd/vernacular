@@ -93,6 +93,25 @@ describe('SnapshotStore', () => {
     expect(entries).not.toContain('snapshot-1.json')
   })
 
+  it('spares a file that only looks like a snapshot and does not count it against the cap', async () => {
+    const cap = 3
+    const foreignPath = `${AUTOSAVE_DIRECTORY}/snapshot-notes.txt`
+    const directory = new InMemoryDirectory()
+    await directory.writeFile(foreignPath, Uint8Array.of(9, 8, 7))
+    const store = new SnapshotStore(directory, {
+      maxSnapshots: cap,
+      now: clockReturning(1, 2, 3, 4, 5),
+    })
+
+    for (let write = 0; write < cap + 2; write += 1) {
+      await store.writeSnapshot(projectNamed('Snap'))
+    }
+
+    const entries = await directory.list(AUTOSAVE_DIRECTORY)
+    expect(await directory.readFile(foreignPath)).toEqual(Uint8Array.of(9, 8, 7))
+    expect(entries.filter((name) => /^snapshot-.*\.json$/.test(name))).toHaveLength(cap)
+  })
+
   it('restores the newest rolling snapshot', async () => {
     const directory = new InMemoryDirectory()
     const store = new SnapshotStore(directory, { now: clockReturning(1, 2) })
@@ -131,6 +150,22 @@ describe('SnapshotStore', () => {
     expect(await store.restore()).toBeUndefined()
     expect(await store.isRecoverable()).toBe(false)
     expect(await directory.list(AUTOSAVE_DIRECTORY)).toEqual([])
+  })
+
+  it('removes only the files that the snapshot store wrote and leaves any other file in the directory', async () => {
+    const directory = new InMemoryDirectory()
+    const store = new SnapshotStore(directory, { now: clockReturning(1, 2) })
+    await store.writeSnapshot(projectNamed('A'))
+    await store.writeSnapshot(projectNamed('B'))
+    await directory.writeFile(`${AUTOSAVE_DIRECTORY}/pre-migration-v3.json`, Uint8Array.of(1))
+    await directory.writeFile(`${AUTOSAVE_DIRECTORY}/notes.txt`, Uint8Array.of(2))
+
+    await store.prune()
+
+    expect(new Set(await directory.list(AUTOSAVE_DIRECTORY))).toEqual(
+      new Set(['pre-migration-v3.json', 'notes.txt']),
+    )
+    expect(await directory.readFile(`${AUTOSAVE_DIRECTORY}/notes.txt`)).toEqual(Uint8Array.of(2))
   })
 
   it('restores a version 8 snapshot as a document at the current schema version', async () => {

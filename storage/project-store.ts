@@ -1,9 +1,6 @@
-import type { Project } from '../core'
+import type { DocumentStore, ProjectSummary } from './documents/document-store'
 
-export interface ProjectSummary {
-  id: string
-  name: string
-}
+export type { ProjectSummary }
 
 /** Thrown by ProjectStore.load when no project exists under the given id. */
 export class ProjectNotFoundError extends Error {
@@ -13,9 +10,5 @@ export class ProjectNotFoundError extends Error {
   }
 }
 
-export interface ProjectStore {
-  list(): Promise<ProjectSummary[]>
-  load(id: string): Promise<Project>
-  save(id: string, project: Project): Promise<void>
-  delete(id: string): Promise<void>
-}
+/** What the application means by a project store: the document store with the codec in front. */
+export type ProjectStore = DocumentStore

@@ -59,6 +59,9 @@ interface Rig {
   snapshotIds: string[]
 }
 
+/** What a store resolves when a save found nothing to report. */
+const SAVE_REPORT = { faults: [], backedUp: false }
+
 // The stored project fails every load: this build cannot open it.
 async function rigWithAFailedProject(): Promise<Rig> {
   const root = new InMemoryDirectory()
@@ -69,6 +72,7 @@ async function rigWithAFailedProject(): Promise<Rig> {
   vi.spyOn(store, 'save').mockImplementation(async (id: string, project: Project) => {
     await save(id, project)
     rig.saved.push(id)
+    return SAVE_REPORT
   })
   return rig
 }

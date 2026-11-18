@@ -17,6 +17,8 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-24.04
+    outputs:
+      unit-selection: ${{ steps.select.outputs.mode }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,6 +58,38 @@ jobs:
         run: pnpm integration:audit
       - name: Build
         run: pnpm build
+
+  storage-browser:
+    name: Storage backends (chromium)
+    runs-on: ubuntu-24.04
+    needs: check
+    timeout-minutes: 15
+    # Follows the unit tests: skipped on a pull request whose changes select no unit tests, and
+    # always run on the other events.
+    if: github.event_name != 'pull_request' || needs.check.outputs.unit-selection != 'none'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run the storage backends in a real browser
+        run: pnpm test:storage-browser
 
   decide:
     name: Decide heavy suites
@@ -369,12 +403,22 @@ jobs:
     if: always()
     runs-on: ubuntu-24.04
     needs:
-      [check, decide, ping-pong, storybook-build, e2e, scene-visual, live-view-visual, lighthouse]
+      [
+        check,
+        storage-browser,
+        decide,
+        ping-pong,
+        storybook-build,
+        e2e,
+        scene-visual,
+        live-view-visual,
+        lighthouse,
+      ]
     steps:
       - name: Gate on required jobs
         run: |
-          echo "check=${{ needs.check.result }} decide=${{ needs.decide.result }} ping-pong=${{ needs.ping-pong.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} scene-visual=${{ needs.scene-visual.result }} live-view-visual=${{ needs.live-view-visual.result }} lighthouse=${{ needs.lighthouse.result }}"
-          for result in "${{ needs.check.result }}" "${{ needs.decide.result }}" "${{ needs.ping-pong.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.scene-visual.result }}" "${{ needs.live-view-visual.result }}" "${{ needs.lighthouse.result }}"; do
+          echo "check=${{ needs.check.result }} storage-browser=${{ needs.storage-browser.result }} decide=${{ needs.decide.result }} ping-pong=${{ needs.ping-pong.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} scene-visual=${{ needs.scene-visual.result }} live-view-visual=${{ needs.live-view-visual.result }} lighthouse=${{ needs.lighthouse.result }}"
+          for result in "${{ needs.check.result }}" "${{ needs.storage-browser.result }}" "${{ needs.decide.result }}" "${{ needs.ping-pong.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.scene-visual.result }}" "${{ needs.live-view-visual.result }}" "${{ needs.lighthouse.result }}"; do
             if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
               echo "A required job did not pass: $result"
               exit 1

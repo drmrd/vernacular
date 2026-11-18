@@ -13,6 +13,14 @@ function emptyProject(): Project {
   })
 }
 
+/** A write for a store double: runs the effect, then resolves what a save with nothing to report gives. */
+function savedAfter(effect: () => unknown): () => Promise<{ faults: never[]; backedUp: boolean }> {
+  return async () => {
+    effect()
+    return { faults: [], backedUp: false }
+  }
+}
+
 describe('createAutosave', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -102,9 +110,7 @@ describe('createAutosave', () => {
     const prune = vi.fn().mockImplementation(async () => {
       order.push('prune')
     })
-    const saveSpy = vi.spyOn(store, 'save').mockImplementation(async () => {
-      order.push('save')
-    })
+    const saveSpy = vi.spyOn(store, 'save').mockImplementation(savedAfter(() => order.push('save')))
     const snapshots = { writeSnapshot, prune }
     const statuses: string[] = []
     const autosave = createAutosave({
@@ -218,9 +224,11 @@ describe('createAutosave', () => {
     const store = new InMemoryProjectStore()
     const onSaved = vi.fn()
     let rev = 1
-    vi.spyOn(store, 'save').mockImplementation(async () => {
-      rev = 2
-    })
+    vi.spyOn(store, 'save').mockImplementation(
+      savedAfter(() => {
+        rev = 2
+      }),
+    )
     const autosave = createAutosave({
       session,
       store,
@@ -285,9 +293,7 @@ describe('commitProject', () => {
     const project = emptyProject()
     const store = new InMemoryProjectStore()
     const order: string[] = []
-    const saveSpy = vi.spyOn(store, 'save').mockImplementation(async () => {
-      order.push('save')
-    })
+    const saveSpy = vi.spyOn(store, 'save').mockImplementation(savedAfter(() => order.push('save')))
     const prune = vi.fn().mockImplementation(async () => {
       order.push('prune')
     })

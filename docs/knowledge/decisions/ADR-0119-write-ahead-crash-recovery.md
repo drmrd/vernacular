@@ -23,7 +23,7 @@ sourceFiles:
     app/use-project-actions.ts,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-17
 ---
 
 # ADR-0119: Write-ahead crash recovery
@@ -33,7 +33,8 @@ updated: 2026-11-14
 > Amended by [[ADR-0182-migration-backups-in-their-own-directory]] on 2026-11-14. The prune step
 > removes only the files the snapshot store wrote, which are the session-start snapshot and the
 > rolling snapshots. It leaves any other file in `.house-autosave/` alone. The order of the
-> autosave cycle is unchanged. Until that work lands, the prune empties the directory.
+> autosave cycle is unchanged. The code changed on 2026-11-17: `SnapshotStore.prune` removes only
+> those files.
 
 Accepted, landed. Autosave now writes a recovery snapshot, saves the canonical project, then prunes the
 snapshot, in that order. A plain reload restores the latest edit silently from the canonical store. A

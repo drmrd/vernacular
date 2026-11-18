@@ -1,8 +1,10 @@
-import type { Project } from '../../core'
+import { decodeDocument } from '../../core'
+import type { CodecOptions, DecodeResult, Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { encodeForWrite, openDecodedDocument } from '../documents/open-decoded'
 
-const AUTOSAVE_DIR = '.house-autosave'
+/** The directory of recovery snapshots: a sidecar of the document that never travels in an archive. */
+export const AUTOSAVE_DIRECTORY = '.house-autosave'
 const SESSION_START_FILE = 'session-start.json'
 const SNAPSHOT_PREFIX = 'snapshot-'
 const SNAPSHOT_SUFFIX = '.json'
@@ -13,6 +15,8 @@ export interface SnapshotStoreOptions {
   maxSnapshots?: number
   /** Injected for deterministic snapshot timestamps. Default Date.now. */
   now?: () => number
+  /** Handed to the codec on every write and read of a snapshot. */
+  codec?: CodecOptions
 }
 
 /**
@@ -22,6 +26,7 @@ export interface SnapshotStoreOptions {
 export class SnapshotStore {
   private readonly maxSnapshots: number
   private readonly now: () => number
+  private readonly codec: CodecOptions
 
   constructor(
     private readonly directory: DirectoryPort,
@@ -29,22 +34,23 @@ export class SnapshotStore {
   ) {
     this.maxSnapshots = options?.maxSnapshots ?? DEFAULT_MAX_SNAPSHOTS
     this.now = options?.now ?? Date.now
+    this.codec = options?.codec ?? {}
   }
 
   async writeSnapshot(project: Project): Promise<void> {
-    const bytes = encodeForWrite(project)
+    const bytes = encodeForWrite(project, undefined, this.codec)
     await this.ensureSessionStart(bytes)
     await this.directory.writeFile(
-      `${AUTOSAVE_DIR}/${SNAPSHOT_PREFIX}${this.now()}${SNAPSHOT_SUFFIX}`,
+      `${AUTOSAVE_DIRECTORY}/${SNAPSHOT_PREFIX}${this.now()}${SNAPSHOT_SUFFIX}`,
       bytes,
     )
     await this.pruneOldestRollingSnapshots()
   }
 
   private async ensureSessionStart(bytes: Uint8Array): Promise<void> {
-    const names = await this.directory.list(AUTOSAVE_DIR)
+    const names = await this.directory.list(AUTOSAVE_DIRECTORY)
     if (!names.includes(SESSION_START_FILE)) {
-      await this.directory.writeFile(`${AUTOSAVE_DIR}/${SESSION_START_FILE}`, bytes)
+      await this.directory.writeFile(`${AUTOSAVE_DIRECTORY}/${SESSION_START_FILE}`, bytes)
     }
   }
 
@@ -53,32 +59,52 @@ export class SnapshotStore {
   }
 
   async restore(): Promise<Project | undefined> {
-    const [newest] = await this.rollingNamesNewestFirst()
-    if (newest === undefined) {
-      return undefined
-    }
-    const bytes = await this.directory.readFile(`${AUTOSAVE_DIR}/${newest}`)
-    if (bytes === undefined) {
-      return undefined
-    }
+    const bytes = await this.newestSnapshotBytes()
     // A snapshot is a stored project document, so read it the way a project load does: through the
     // codec, which migrates an older snapshot forward rather than trusting its raw shape.
-    return openDecodedDocument(bytes).project
+    return bytes === undefined ? undefined : openDecodedDocument(bytes, this.codec).project
+  }
+
+  /** The codec's verdict on the newest snapshot, or undefined when none exists. */
+  async restoreDecoded(): Promise<DecodeResult | undefined> {
+    const bytes = await this.newestSnapshotBytes()
+    return bytes === undefined ? undefined : decodeDocument(bytes, this.codec)
+  }
+
+  private async newestSnapshotBytes(): Promise<Uint8Array | undefined> {
+    const [newest] = await this.rollingNamesNewestFirst()
+    return newest === undefined
+      ? undefined
+      : this.directory.readFile(`${AUTOSAVE_DIRECTORY}/${newest}`)
   }
 
   /**
-   * Deletes every autosave file, including the session-start snapshot. This is the full
-   * clear performed on an explicit save, distinct from the internal rolling-cap prune.
+   * Deletes the files this store wrote, including the session-start snapshot. This is the full
+   * clear performed on an explicit save, distinct from the internal rolling-cap prune. Any other
+   * file in the autosave directory, such as a backup an earlier build left there, stays.
    */
   async prune(): Promise<void> {
-    const names = await this.directory.list(AUTOSAVE_DIR)
-    for (const name of names) {
-      await this.directory.removeFile(`${AUTOSAVE_DIR}/${name}`)
+    const names = await this.directory.list(AUTOSAVE_DIRECTORY)
+    for (const name of names.filter((candidate) => this.isSnapshotFile(candidate))) {
+      await this.directory.removeFile(`${AUTOSAVE_DIRECTORY}/${name}`)
     }
   }
 
+  /**
+   * Whether prune deletes the file: the session-start snapshot or a name of the exact form
+   * `snapshot-<anything>.json`. This is narrower than the rolling rule below on purpose, so that a
+   * foreign file such as `snapshot-notes.txt` survives a prune.
+   */
+  private isSnapshotFile(name: string): boolean {
+    return (
+      name === SESSION_START_FILE ||
+      (name.startsWith(SNAPSHOT_PREFIX) && name.endsWith(SNAPSHOT_SUFFIX))
+    )
+  }
+
+  /** The names with the snapshot prefix, which is the rule that isRecoverable counts by. */
   private async rollingSnapshotNames(): Promise<string[]> {
-    const names = await this.directory.list(AUTOSAVE_DIR)
+    const names = await this.directory.list(AUTOSAVE_DIRECTORY)
     return names.filter((name) => name.startsWith(SNAPSHOT_PREFIX))
   }
 
@@ -97,7 +123,7 @@ export class SnapshotStore {
   private async pruneOldestRollingSnapshots(): Promise<void> {
     const ordered = await this.rollingNamesNewestFirst()
     for (const name of ordered.slice(this.maxSnapshots)) {
-      await this.directory.removeFile(`${AUTOSAVE_DIR}/${name}`)
+      await this.directory.removeFile(`${AUTOSAVE_DIRECTORY}/${name}`)
     }
   }
 

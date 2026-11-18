@@ -3,10 +3,16 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { encodeDocument } from '../../core'
 import { InMemoryDirectory } from '../../storage/fs/in-memory-directory'
-import { FolderProjectStore } from '../../storage/folder/folder-project-store'
+import { DocumentStore, FolderFiles } from '../../storage'
 
 // Extension keys are reverse-DNS namespaces (spec section 6.3), not camelCase by design.
 const COVERED_OUTDOOR_NAMESPACE = 'org.vernacular.covered-outdoor'
+const PROJECT_ID = 'house'
+
+/** The store over one project folder, whose document sits at the root of the directory. */
+function storeOver(directory: InMemoryDirectory): DocumentStore {
+  return new DocumentStore(new FolderFiles(PROJECT_ID, directory, { durable: true }))
+}
 
 const fixturePath = resolve(
   'tests/fixtures/projects/corpus',
@@ -38,7 +44,7 @@ function parseDocument(bytes: Uint8Array): ExtensionBearingDocument {
 }
 
 describe('Tier-2 corpus fixture preservation (ADR-0051 forward compatibility)', () => {
-  it('preserves covered-outdoor extension data across a FolderProjectStore round-trip', async () => {
+  it('preserves covered-outdoor extension data across a document store round-trip', async () => {
     const originalBytes = readFixtureBytes()
     const original = parseDocument(originalBytes)
 
@@ -51,10 +57,10 @@ describe('Tier-2 corpus fixture preservation (ADR-0051 forward compatibility)', 
 
     const directory = new InMemoryDirectory()
     await directory.writeFile('vernacular.json', originalBytes)
-    const store = new FolderProjectStore(directory)
+    const store = storeOver(directory)
 
-    const loaded = await store.loadProject()
-    await store.saveProject(loaded)
+    const loaded = await store.load(PROJECT_ID)
+    await store.save(PROJECT_ID, loaded)
 
     const savedBytes = await directory.readFile('vernacular.json')
     expect(savedBytes).toBeDefined()
@@ -86,10 +92,10 @@ describe('corpus documents survive a folder store round-trip with no edit', () =
     async (path) => {
       const directory = new InMemoryDirectory()
       await directory.writeFile('vernacular.json', new Uint8Array(readFileSync(resolve(path))))
-      const store = new FolderProjectStore(directory)
+      const store = storeOver(directory)
 
-      const loaded = await store.loadProject()
-      await store.saveProject(loaded)
+      const loaded = await store.load(PROJECT_ID)
+      await store.save(PROJECT_ID, loaded)
 
       const saved = await directory.readFile('vernacular.json')
       expect(new TextDecoder().decode(saved!)).toBe(

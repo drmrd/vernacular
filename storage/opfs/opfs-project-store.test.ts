@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import type { Project } from '../../core'
 import { CURRENT_SCHEMA_REVISION, createEmptyProject } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
-import type { ProjectSummary } from '../project-store'
 import { ProjectNotFoundError } from '../project-store'
 import { OpfsProjectStore } from './opfs-project-store'
+
+const SAVED_AT = '2026-03-04T05:06:07.000Z'
 
 function projectNamed(name: string): Project {
   return createEmptyProject({
@@ -35,20 +36,22 @@ describe('OpfsProjectStore', () => {
     expect(await root.readFile('alpha/vernacular.json')).toBeDefined()
   })
 
-  it('lists every saved project as an id and name summary', async () => {
-    const root = new InMemoryDirectory()
+  it('lists every saved project by id and time of last change, sorted by id, with no name', async () => {
+    const root = new InMemoryDirectory({ now: () => new Date(SAVED_AT) })
     const store = new OpfsProjectStore(root)
 
-    await store.save('alpha', projectNamed('Alpha House'))
     await store.save('beta', projectNamed('Beta House'))
+    await store.save('alpha', projectNamed('Alpha House'))
 
     const summaries = await store.list()
-    expect(new Set(summaries)).toEqual(
-      new Set([
-        { id: 'alpha', name: 'Alpha House' },
-        { id: 'beta', name: 'Beta House' },
-      ]),
-    )
+    expect(summaries).toEqual([
+      { id: 'alpha', lastChangedAt: SAVED_AT },
+      { id: 'beta', lastChangedAt: SAVED_AT },
+    ])
+    expect(summaries.map((summary) => Object.keys(summary).sort())).toEqual([
+      ['id', 'lastChangedAt'],
+      ['id', 'lastChangedAt'],
+    ])
   })
 
   it('lists nothing over an empty root', async () => {
@@ -84,20 +87,16 @@ describe('OpfsProjectStore', () => {
   })
 
   it('omits id directories that hold no vernacular.json from the listing', async () => {
-    const root = new InMemoryDirectory()
+    const root = new InMemoryDirectory({ now: () => new Date(SAVED_AT) })
     await root.writeFile('ghost/.house-autosave/snap.json', new TextEncoder().encode('x'))
     const store = new OpfsProjectStore(root)
     await store.save('alpha', projectNamed('Alpha House'))
 
-    const summaries = await store.list()
-
-    expect(summaries).toHaveLength(1)
-    expect(summaries).toContainEqual({ id: 'alpha', name: 'Alpha House' })
-    expect(summaries.map((summary: ProjectSummary) => summary.id)).not.toContain('ghost')
+    expect(await store.list()).toEqual([{ id: 'alpha', lastChangedAt: SAVED_AT }])
   })
 
-  it('omits id directories whose vernacular.json lacks a string meta.name from the listing', async () => {
-    const root = new InMemoryDirectory()
+  it('lists an id directory whose vernacular.json lacks a string meta.name', async () => {
+    const root = new InMemoryDirectory({ now: () => new Date(SAVED_AT) })
     await root.writeFile(
       'broken/vernacular.json',
       new TextEncoder().encode(JSON.stringify({ meta: {} })),
@@ -105,11 +104,22 @@ describe('OpfsProjectStore', () => {
     const store = new OpfsProjectStore(root)
     await store.save('alpha', projectNamed('Alpha House'))
 
-    const summaries = await store.list()
+    expect(await store.list()).toEqual([
+      { id: 'alpha', lastChangedAt: SAVED_AT },
+      { id: 'broken', lastChangedAt: SAVED_AT },
+    ])
+  })
 
-    expect(summaries).toHaveLength(1)
-    expect(summaries).toContainEqual({ id: 'alpha', name: 'Alpha House' })
-    expect(summaries.map((summary: ProjectSummary) => summary.id)).not.toContain('broken')
+  it('lists an id directory whose vernacular.json is not JSON, without parsing it', async () => {
+    const root = new InMemoryDirectory({ now: () => new Date(SAVED_AT) })
+    await root.writeFile('broken/vernacular.json', new TextEncoder().encode('{ this is not json'))
+    const store = new OpfsProjectStore(root)
+    await store.save('alpha', projectNamed('Alpha House'))
+
+    expect(await store.list()).toEqual([
+      { id: 'alpha', lastChangedAt: SAVED_AT },
+      { id: 'broken', lastChangedAt: SAVED_AT },
+    ])
   })
 
   it('removes a deleted project from later loads and listings', async () => {
@@ -119,6 +129,6 @@ describe('OpfsProjectStore', () => {
     await store.delete('alpha')
 
     await expect(store.load('alpha')).rejects.toBeInstanceOf(ProjectNotFoundError)
-    expect((await store.list()).map((summary: ProjectSummary) => summary.id)).not.toContain('alpha')
+    expect((await store.list()).map((summary) => summary.id)).not.toContain('alpha')
   })
 })

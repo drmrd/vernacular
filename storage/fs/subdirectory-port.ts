@@ -4,7 +4,7 @@ import type { DirectoryPort } from './directory-port'
  * A DirectoryPort view rooted at `prefix` inside another DirectoryPort. Every
  * operation forwards to `root` with `prefix/` prepended, so a store written
  * against the root path `vernacular.json` reads and writes `prefix/vernacular.json`.
- * This lets one FolderProjectStore operate inside a per-project subdirectory.
+ * This lets one project store operate inside a per-project subdirectory.
  */
 export class SubdirectoryPort implements DirectoryPort {
   constructor(
@@ -28,7 +28,15 @@ export class SubdirectoryPort implements DirectoryPort {
     return this.root.removeFile(this.prefixed(path))
   }
 
+  removeTree(prefix: string): Promise<void> {
+    return this.root.removeTree(this.prefixed(prefix))
+  }
+
   list(prefix: string): Promise<string[]> {
     return this.root.list(this.prefixed(prefix))
+  }
+
+  modifiedAt(path: string): Promise<string | undefined> {
+    return this.root.modifiedAt(this.prefixed(path))
   }
 }

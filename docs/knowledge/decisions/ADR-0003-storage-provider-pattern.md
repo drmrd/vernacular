@@ -12,6 +12,7 @@ related:
     decisions/ADR-0028-directory-port-folder-storage-seam,
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0030-additive-storage-capabilities,
+    decisions/ADR-0211-stored-indexeddb-records-become-files,
   ]
 sourceFiles:
   [
@@ -21,6 +22,8 @@ sourceFiles:
     storage/asset-cache.ts,
     storage/in-memory-project-store.ts,
     storage/indexeddb/indexeddb-project-store.ts,
+    storage/indexeddb/indexeddb-directory.ts,
+    storage/project-storage.ts,
     storage/storage-capabilities.ts,
     storage/select-project-store.ts,
     bridge/autosave/create-autosave.ts,
@@ -29,12 +32,20 @@ sourceFiles:
     app/app.tsx,
   ]
 status: current
-updated: 2026-06-06
+updated: 2026-11-17
 ---
 
 # ADR-0003: Provider pattern for storage with cloud-sync seam
 
 ## Status
+
+> Updated on 2026-11-17. `IndexedDbProjectStore` is no longer a thin adapter over one object store.
+> It is the common document store over `storage/indexeddb/indexeddb-directory.ts`, a directory port
+> over IndexedDB (ADR-0028), and existing records become files as
+> [[ADR-0211-stored-indexeddb-records-become-files]] describes. Its asset cache is a
+> `DirectoryAssetCache` in the same database (`storage/project-storage.ts`). Both run in a real
+> browser under `pnpm test:storage-browser`, the CI job `storage-browser`. The section on the
+> IndexedDB store below describes the first form.
 
 Accepted. The three provider interfaces, a Map-backed `InMemoryProjectStore`
 reference implementation, and a durable `IndexedDbProjectStore` are implemented

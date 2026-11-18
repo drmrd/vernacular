@@ -9,7 +9,25 @@ const rootDir = fileURLToPath(new URL('.', import.meta.url))
 export default defineConfig({
   test: {
     projects: [
-      { extends: './vite.config.ts', test: { name: 'unit' } },
+      {
+        extends: './vite.config.ts',
+        // Vitest appends this to the exclude list of vite.config.ts. The files need a real
+        // browser, and the storage-browser project runs them.
+        test: { name: 'unit', exclude: ['**/*.browser.test.ts'] },
+      },
+      {
+        extends: './vite.config.ts',
+        test: {
+          name: 'storage-browser',
+          include: ['**/*.browser.test.ts'],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: 'chromium' }],
+          },
+        },
+      },
       {
         extends: './vite.config.ts',
         plugins: [storybookTest({ configDir: join(rootDir, '.storybook') })],

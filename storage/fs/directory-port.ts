@@ -22,4 +22,14 @@ export interface DirectoryPort {
    * to tell files (empty listing) apart from directories (non-empty listing).
    */
   list(prefix: string): Promise<string[]>
+  /**
+   * Remove the directory at `prefix` with everything under it, and nothing
+   * else. Resolves when nothing is there. A file at `prefix` itself stays.
+   */
+  removeTree(prefix: string): Promise<void>
+  /**
+   * The ISO 8601 time of the last change of the file at `path`, or undefined
+   * when no file is there.
+   */
+  modifiedAt(path: string): Promise<string | undefined>
 }

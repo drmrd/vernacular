@@ -133,7 +133,7 @@ Today:
 Design:
 
 1. Backups go to `.house-backups/`, beside `vernacular.json`. Like `.house-autosave/`, the directory is not part of the format and never travels in an archive.
-2. A backup is written before the migration runs, as now, so a failed migration leaves the original file and an identical copy.
+2. A backup is written after a decode that migrated and succeeded, before the document reaches the caller. A decode that fails writes nothing. The decode works in memory, so a failed migration leaves the stored file as it was. ADR-0190 changed this point on 2026-11-15. Its first form wrote the backup before the migration ran, as the store did then.
 3. A backup write never replaces a file that has different bytes. Loading the same old file twice writes one backup. If the slot later holds a different file at the same old version, both backups stay. This can happen today because every project shares one slot: an older build that cannot read the slot can start a fresh project in it. A content hash in the file name is one way to get this behavior with a single rule.
 4. Nothing removes a backup except the deletion of its project. `ProjectStore.delete` already removes the whole project directory.
 5. `SnapshotStore.prune()` removes only the files the snapshot store wrote: `session-start.json` and `snapshot-*.json`. This is a second barrier. It also protects a backup that an earlier build left in `.house-autosave/`. Such a backup is left where it is.

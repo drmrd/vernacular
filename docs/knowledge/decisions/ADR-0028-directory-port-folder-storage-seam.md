@@ -9,6 +9,8 @@ related:
     decisions/ADR-0022-storage-capability-detection,
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0030-additive-storage-capabilities,
+    decisions/ADR-0182-migration-backups-in-their-own-directory,
+    decisions/ADR-0211-stored-indexeddb-records-become-files,
   ]
 sourceFiles:
   [
@@ -18,7 +20,11 @@ sourceFiles:
     storage/fs/in-memory-directory.ts,
     storage/fs/subdirectory-port.ts,
     storage/fs/file-system-directory.ts,
-    storage/folder/folder-project-store.ts,
+    storage/fs/directory-contract.ts,
+    storage/documents/document-store.ts,
+    storage/project-files/workspace-files.ts,
+    storage/project-files/folder-files.ts,
+    storage/indexeddb/indexeddb-directory.ts,
     core/format/codec/document-json.ts,
     storage/opfs/opfs-project-store.ts,
     storage/zip/zip-bundle-project-store.ts,
@@ -27,12 +33,35 @@ sourceFiles:
     e2e/tests/durable-storage.spec.ts,
   ]
 status: current
-updated: 2026-06-04
+updated: 2026-11-17
 ---
 
 # ADR-0028: Project-folder storage behind a flat DirectoryPort seam
 
 ## Status
+
+> Updated on 2026-11-17. The port gained two methods. `modifiedAt(path)` gives the ISO time of the
+> last change of a file, so a store lists a project with that time and never reads the document.
+> `removeTree(prefix)` removes a directory with everything under it and nothing else: a file whose
+> path only starts with the same letters stays. A workspace store removes a project with one call
+> on that project's directory, so the document, the backups, and the snapshots go, no empty
+> directory is left, and the other projects and the shared asset pool stay. The store of a picked
+> folder has no delete and never calls `removeTree`, so it removes no file that it did not write.
+> `FolderProjectStore` and `project-json` are gone. Every store is now `DocumentStore`
+> (`storage/documents/document-store.ts`) over project files from `storage/project-files/`:
+> `WorkspaceFiles` for many projects under one root, `FolderFiles` for one project at the root of
+> a folder. `IndexedDbDirectory` is a third port adapter, for the IndexedDB store
+> ([[ADR-0211-stored-indexeddb-records-become-files]]). The shared contract in
+> `storage/fs/directory-contract.ts` covers both new methods. On `FileSystemDirectory`,
+> `removeFile` removes a file only and `removeTree` removes a directory only. A path of the other
+> kind stays, and the call resolves. A folder that the user picked must never lose something that
+> the application did not create, and the three ports must agree. A project id names a directory
+> of a workspace, so `WorkspaceFiles` refuses an id that cannot do that safely: an empty id, an id
+> with a slash or a backslash, `.` or `..`, and `assets`, the directory of the shared asset pool.
+> The guard in `storage/project-files/project-id-guard.ts` throws `InvalidProjectIdError`, and its
+> message names the id and says what is wrong. An older check of project ids in
+> `storage/active-project/` still accepts a name that the guard refuses, such as `assets`, and an
+> issue tracks making the two one rule. The sections below describe the first form.
 
 Accepted, landed. The flat `DirectoryPort` interface, the `InMemoryDirectory`
 fake, the `SubdirectoryPort` view, and the single `FileSystemDirectory` adapter

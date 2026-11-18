@@ -24,6 +24,7 @@ related:
     decisions/ADR-0030-additive-storage-capabilities,
     decisions/ADR-0037-image-underlay-and-calibration,
     decisions/ADR-0041-phase-1-completion-boundary-finishing-slices,
+    decisions/ADR-0211-stored-indexeddb-records-become-files,
   ]
 sourceFiles:
   [
@@ -35,14 +36,23 @@ sourceFiles:
     editor/plan/use-resolve-underlays.ts,
     editor/plan/notify-user.ts,
     app/resolve-project-store.ts,
+    storage/project-storage.ts,
   ]
 status: current
-updated: 2026-08-31
+updated: 2026-11-17
 ---
 
 # ADR-0042: Underlay asset persistence via a directory-backed content-addressed AssetCache
 
 ## Status
+
+> Updated on 2026-11-17. The IndexedDB default no longer pairs with an `InMemoryAssetCache`.
+> `createDefaultProjectStorage` (`storage/project-storage.ts`) builds one IndexedDB directory and
+> serves both the project store and a `DirectoryAssetCache` from it, so assets in the shared pool
+> survive a reload on this backend too. The store and the cache run in a real browser under
+> `pnpm test:storage-browser`, the CI job `storage-browser`. See
+> [[ADR-0211-stored-indexeddb-records-become-files]]. The durable IndexedDB cache that this record
+> deferred is therefore built.
 
 Accepted (slice 13, underlay asset persistence, the first finishing slice of the
 Phase 1 two-dimensional plan editor per ADR-0041), landed on branch

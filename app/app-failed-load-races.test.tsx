@@ -73,6 +73,9 @@ interface Rig {
   saveGate: Promise<void>
 }
 
+/** What a store resolves when a save found nothing to report. */
+const SAVE_REPORT = { faults: [], backedUp: false }
+
 async function rigWithAFailedProject(): Promise<Rig> {
   const root = new InMemoryDirectory()
   await root.writeFile(`${FAILED_ID}/vernacular.json`, projectFromANewerBuild())
@@ -83,6 +86,7 @@ async function rigWithAFailedProject(): Promise<Rig> {
     await rig.saveGate
     await save(id, project)
     rig.saved.push(id)
+    return SAVE_REPORT
   })
   return rig
 }

@@ -1,47 +1,23 @@
-import { bestEffortProjectName } from '../../core'
-import type { Project } from '../../core'
+import { DocumentStore } from '../documents/document-store'
 import type { DirectoryPort } from '../fs/directory-port'
 import { FileSystemDirectory } from '../fs/file-system-directory'
-import {
-  FolderProjectStore,
-  PROJECT_FILE,
-  ProjectFileNotFoundError,
-} from '../folder/folder-project-store'
-import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from '../project-store'
+import { FolderFiles } from '../project-files/folder-files'
 import type { DirectoryHandleStore } from './directory-handle-store'
 
-/** Collect every file path stored under a directory, descending into subdirectories. */
-async function collectFilePaths(directory: DirectoryPort, prefix: string): Promise<string[]> {
-  const paths: string[] = []
-  for (const segment of await directory.list(prefix)) {
-    const childPath = prefix === '' ? segment : `${prefix}/${segment}`
-    const children = await directory.list(childPath)
-    if (children.length === 0) {
-      paths.push(childPath)
-    } else {
-      paths.push(...(await collectFilePaths(directory, childPath)))
-    }
-  }
-  return paths
-}
-
 /**
- * Single-project ProjectStore bound to one id, backed by a user-granted folder
- * handle through the File System Access API. Loading and saving delegate to a
- * FolderProjectStore over the same directory. The native folder picker and the
- * handle-permission flow are browser-only seams that Playwright cannot drive, so
- * this store is validated manually rather than by unit tests.
+ * Single-project store bound to one id: the project is the document at the root of a picked
+ * folder. It is the document store over folder files, and it has no delete, so no method removes a
+ * file from the folder. The native folder picker and the handle-permission flow are browser-only
+ * seams that Playwright cannot drive, so `open` and `reopen` are validated manually.
+ *
+ * `open` and `reopen` bind the caller's id to the folder and never read an identity from it. A
+ * folder that already holds a document is opened under the new id, and the first save writes over
+ * its `vernacular.json`: the codec grafts the unknown data of the previous file, and the wrapper
+ * keeps a `last-valid-` backup when the new document has faults.
  */
-export class FileSystemFolderProjectStore implements ProjectStore {
-  private readonly directory: FileSystemDirectory
-  private readonly folder: FolderProjectStore
-
-  constructor(
-    private readonly id: string,
-    handle: FileSystemDirectoryHandle,
-  ) {
-    this.directory = new FileSystemDirectory(handle)
-    this.folder = new FolderProjectStore(this.directory)
+export class FileSystemFolderProjectStore extends DocumentStore {
+  constructor(id: string, folder: DirectoryPort) {
+    super(new FolderFiles(id, folder, { durable: true }))
   }
 
   /**
@@ -54,7 +30,7 @@ export class FileSystemFolderProjectStore implements ProjectStore {
   ): Promise<FileSystemFolderProjectStore> {
     const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
     await handles.put(id, handle)
-    return new FileSystemFolderProjectStore(id, handle)
+    return new FileSystemFolderProjectStore(id, new FileSystemDirectory(handle))
   }
 
   /**
@@ -73,51 +49,6 @@ export class FileSystemFolderProjectStore implements ProjectStore {
     if (permission !== 'granted') {
       return undefined
     }
-    return new FileSystemFolderProjectStore(id, handle)
-  }
-
-  async list(): Promise<ProjectSummary[]> {
-    if (!(await this.folder.exists())) {
-      return []
-    }
-    const bytes = await this.directory.readFile(PROJECT_FILE)
-    if (bytes === undefined) {
-      return []
-    }
-    // Listing reads the stored name without a migration or a schema check, so a newer file is still listed.
-    const name = bestEffortProjectName(bytes) ?? ''
-    return [{ id: this.id, name }]
-  }
-
-  async load(id: string): Promise<Project> {
-    this.assertBoundId(id)
-    try {
-      return await this.folder.loadProject()
-    } catch (error) {
-      // A single read decides presence: absence surfaces as the id-keyed
-      // ProjectNotFoundError, while any other failure propagates unchanged.
-      if (error instanceof ProjectFileNotFoundError) {
-        throw new ProjectNotFoundError(id)
-      }
-      throw error
-    }
-  }
-
-  async save(id: string, project: Project): Promise<void> {
-    this.assertBoundId(id)
-    await this.folder.saveProject(project)
-  }
-
-  async delete(id: string): Promise<void> {
-    this.assertBoundId(id)
-    for (const path of await collectFilePaths(this.directory, '')) {
-      await this.directory.removeFile(path)
-    }
-  }
-
-  private assertBoundId(id: string): void {
-    if (id !== this.id) {
-      throw new ProjectNotFoundError(id)
-    }
+    return new FileSystemFolderProjectStore(id, new FileSystemDirectory(handle))
   }
 }

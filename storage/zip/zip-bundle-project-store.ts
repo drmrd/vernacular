@@ -1,41 +1,31 @@
-import { bestEffortProjectName } from '../../core'
-import type { Project } from '../../core'
+import { DocumentStore } from '../documents/document-store'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import type { DirectoryPort } from '../fs/directory-port'
-import { FolderProjectStore, PROJECT_FILE } from '../folder/folder-project-store'
-import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from '../project-store'
+import { FolderFiles } from '../project-files/folder-files'
 import { zipFolder, unzipFolder, type FolderEntries } from './zip-codec'
 import type { AssetCache } from '../asset-cache'
 import { DirectoryAssetCache } from '../directory-asset-cache'
+import { BACKUP_DIRECTORY } from '../documents/document-backups'
+import { AUTOSAVE_DIRECTORY } from '../snapshots/snapshot-store'
 
-/** Collect every file path stored under a directory, descending into subdirectories. */
-async function collectFilePaths(directory: DirectoryPort, prefix: string): Promise<string[]> {
-  const paths: string[] = []
-  for (const segment of await directory.list(prefix)) {
-    const childPath = prefix === '' ? segment : `${prefix}/${segment}`
-    const children = await directory.list(childPath)
-    if (children.length === 0) {
-      paths.push(childPath)
-    } else {
-      paths.push(...(await collectFilePaths(directory, childPath)))
-    }
-  }
-  return paths
+const SIDECAR_DIRECTORIES = [BACKUP_DIRECTORY, AUTOSAVE_DIRECTORY]
+
+/** Whether the path lies in a sidecar directory, which never travels in an archive. */
+function isSidecarPath(path: string): boolean {
+  return SIDECAR_DIRECTORIES.some((directory) => path.startsWith(`${directory}/`))
 }
 
 /**
- * Single-project ProjectStore bound to one id, backed by an in-memory expansion of a
- * .building bundle. Loading and saving delegate to a FolderProjectStore over the same
- * directory; exportBundle repacks the current directory contents into bundle bytes.
+ * Single-project store bound to one id, backed by an in-memory expansion of a .building bundle.
+ * It is the document store over the bundle's directory, which holds one project at its root;
+ * exportBundle repacks the document and its assets into bundle bytes.
  */
-export class ZipBundleProjectStore implements ProjectStore {
-  private readonly folder: FolderProjectStore
-
+export class ZipBundleProjectStore extends DocumentStore {
   constructor(
-    private readonly id: string,
-    private readonly directory: InMemoryDirectory = new InMemoryDirectory(),
+    private readonly bundleId: string,
+    private readonly directory: DirectoryPort = new InMemoryDirectory(),
   ) {
-    this.folder = new FolderProjectStore(this.directory)
+    super(new FolderFiles(bundleId, directory, { durable: false }))
   }
 
   static async fromBundle(id: string, bytes: Uint8Array): Promise<ZipBundleProjectStore> {
@@ -47,57 +37,21 @@ export class ZipBundleProjectStore implements ProjectStore {
     return new ZipBundleProjectStore(id, directory)
   }
 
-  async list(): Promise<ProjectSummary[]> {
-    if (!(await this.folder.exists())) {
-      return []
-    }
-    const bytes = await this.directory.readFile(PROJECT_FILE)
-    if (bytes === undefined) {
-      return []
-    }
-    // Listing reads the stored name without a migration or a schema check, so a newer file is still listed.
-    const name = bestEffortProjectName(bytes) ?? ''
-    return [{ id: this.id, name }]
-  }
-
-  async load(id: string): Promise<Project> {
-    this.assertBoundId(id)
-    if (!(await this.folder.exists())) {
-      throw new ProjectNotFoundError(id)
-    }
-    return this.folder.loadProject()
-  }
-
-  async save(id: string, project: Project): Promise<void> {
-    this.assertBoundId(id)
-    await this.folder.saveProject(project)
-  }
-
-  async delete(id: string): Promise<void> {
-    this.assertBoundId(id)
-    for (const path of await collectFilePaths(this.directory, '')) {
-      await this.directory.removeFile(path)
-    }
-  }
-
   assetCache(): AssetCache {
     return new DirectoryAssetCache(this.directory)
   }
 
+  /**
+   * Packs the document and its assets. The backups and the recovery snapshots are sidecars that
+   * never travel in an archive, so they stay out; nothing is removed from the store's directory.
+   */
   async exportBundle(): Promise<Uint8Array> {
     const entries: FolderEntries = new Map()
-    for (const path of await collectFilePaths(this.directory, '')) {
-      const content = await this.directory.readFile(path)
-      if (content !== undefined) {
+    for (const [path, content] of await this.storedFiles(this.bundleId)) {
+      if (!isSidecarPath(path)) {
         entries.set(path, content)
       }
     }
     return zipFolder(entries)
-  }
-
-  private assertBoundId(id: string): void {
-    if (id !== this.id) {
-      throw new ProjectNotFoundError(id)
-    }
   }
 }

@@ -11,6 +11,7 @@ related:
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0051-format-preservation-and-load-validation,
     decisions/ADR-0182-migration-backups-in-their-own-directory,
+    decisions/ADR-0190-strict-check-refuses-and-two-classes-of-repair,
   ]
 sourceFiles:
   [
@@ -22,10 +23,11 @@ sourceFiles:
     core/migrations/registries/index.ts,
     core/migrations/index.ts,
     core/migrations/schema/rekey-room-overrides.ts,
-    storage/folder/folder-project-store.ts,
+    storage/documents/document-store.ts,
+    storage/documents/document-backups.ts,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-17
 ---
 
 # ADR-0029: Schema-and-registry migration framework, pure core with storage-side atomicity
@@ -34,13 +36,20 @@ updated: 2026-11-14
 
 > Superseded in part by [[ADR-0182-migration-backups-in-their-own-directory]] on 2026-11-14. The
 > pre-migration backup moves from `.house-autosave/` to `.house-backups/` and stays until its
-> project is deleted. The migration framework is unchanged, and the backup is still written before
-> the migration runs. Until that work lands, the backup is written where this record says.
+> project is deleted. The migration framework is unchanged.
+
+> Updated on 2026-11-17. The code follows ADR-0182 and
+> [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]]. The backup is in `.house-backups/`,
+> and the store writes it after a decode that migrated and succeeded, not before the migration
+> runs. `FolderProjectStore` is gone. The load, the backup, and the save now live in one wrapper,
+> `DocumentStore` (`storage/documents/document-store.ts`, with the backup rule in
+> `storage/documents/document-backups.ts`), which every store kind uses. The sections below
+> describe the first form.
 
 Accepted, landed. The pure framework lives in `core/migrations/`
 (`migrateProject`, the migration types, the empty real chains, the barrel) and is
-exported from `core/index.ts`. The pre-migration backup and atomicity live in
-`FolderProjectStore` (`storage/folder/folder-project-store.ts`). The real schema
+exported from `core/index.ts`. The pre-migration backup and atomicity lived in
+`FolderProjectStore`, which was removed on 2026-11-17 (see the note above). The real schema
 and registry chains are empty today because the current schema version is `1`
 with no prior version; chaining, gap detection, per-registry application, and
 backup-on-failure are proven with synthetic fixture migrations in the tests, so
