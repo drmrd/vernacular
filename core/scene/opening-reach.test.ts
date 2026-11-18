@@ -34,6 +34,18 @@ function pocketDoorAtZ2000(id: string): OpeningSceneNode {
   }
 }
 
+// A double-hung window on the same wall as `doorAtZ2000`. Its frame spans world y
+// [900, 2100] in the plane z = -2000. Opening it slides a sash inside the frame; the
+// frame itself stays where it is.
+function hungWindowAtZ2000(id: string): OpeningSceneNode {
+  return {
+    ...doorAtZ2000(id),
+    type: 'double-hung-window',
+    height: 1200,
+    sillHeight: 900,
+  }
+}
+
 // A cased opening on the same wall as `doorAtZ2000`. A cased opening has no
 // door leaf: it is a trimmed hole with nothing in it to open.
 function casedOpeningAtZ2000(id: string): OpeningSceneNode {
@@ -197,5 +209,42 @@ describe('openingUnderReach', () => {
         reachMm: REACH_MM,
       }),
     ).toBe('opening:pocket-door')
+  })
+
+  describe('a double-hung window', () => {
+    const fullyOpen = new Map([['opening:hung-window', 1]])
+
+    it('is reached through the open lower part of its frame', () => {
+      const window = hungWindowAtZ2000('opening:hung-window')
+      const eye: Vector3 = { x: 1000, y: 1100, z: -1000 }
+
+      const hit = openingUnderReach(eye, towardDoor, [window], {
+        openness: fullyOpen,
+        reachMm: REACH_MM,
+      })
+
+      expect(hit).toBe('opening:hung-window')
+    })
+
+    it('is not reached by looking at the wall above its head when it is open', () => {
+      const window = hungWindowAtZ2000('opening:hung-window')
+      const eye: Vector3 = { x: 1000, y: 2400, z: -1000 }
+
+      const hit = openingUnderReach(eye, towardDoor, [window], {
+        openness: fullyOpen,
+        reachMm: REACH_MM,
+      })
+
+      expect(hit).toBeNull()
+    })
+
+    it('is reached through the same lower part of its frame when it is shut', () => {
+      const window = hungWindowAtZ2000('opening:hung-window')
+      const eye: Vector3 = { x: 1000, y: 1100, z: -1000 }
+
+      const hit = openingUnderReach(eye, towardDoor, [window], { reachMm: REACH_MM })
+
+      expect(hit).toBe('opening:hung-window')
+    })
   })
 })

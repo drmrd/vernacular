@@ -19,6 +19,20 @@ import {
 
 const DOOR_ID = 'opening:front-door'
 
+// True when any object below the group sits above its built position. The traversal
+// visits the group first, so it is skipped.
+function someDescendantRisen(group: {
+  traverse: (visit: (child: { position: { y: number } }) => void) => void
+}): boolean {
+  let visited = 0
+  let risen = false
+  group.traverse((child) => {
+    visited += 1
+    if (visited > 1 && child.position.y > 0) risen = true
+  })
+  return risen
+}
+
 // A door whose wall runs along world X at world Z = -2000 (plan y maps to world -z).
 function frontDoor(): OpeningSceneNode {
   return {
@@ -120,8 +134,10 @@ describe('walk interaction', () => {
     tickOpenings({ root, openings: [window], interaction: opened, openness }, FULL_STEP)
 
     expect(openness.get(window.id)).toBe(1)
-    // A hung window slides its sash up; the swing path would have left y at 0.
-    expect(group.position.y).toBeGreaterThan(0)
+    // A hung window raises its lower sash inside the group; the swing path would have
+    // turned the whole group instead.
+    expect(group.rotation.y).toBe(0)
+    expect(someDescendantRisen(group)).toBe(true)
   })
 
   it('leaves every opening shut when the walker looks at none within reach', () => {

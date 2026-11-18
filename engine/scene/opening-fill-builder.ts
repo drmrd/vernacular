@@ -5,6 +5,7 @@ import {
   openingFill,
   planToWorld,
   type ElementType,
+  type HungSash,
   type OpeningFillPart,
   type OpeningSceneNode,
   type Point,
@@ -18,12 +19,27 @@ const COMPONENTS_PER_VERTEX = 3
 /** The `userData` key under which each built part mesh carries its {@link OpeningFillRole}. */
 export const OPENING_FILL_ROLE_KEY = 'openingFillRole'
 
+/** The `userData` key under which each built part mesh of a hung window carries its {@link HungSash}. */
+export const OPENING_FILL_SASH_KEY = 'openingFillSash'
+
+/**
+ * The sash that a built fill mesh belongs to. Returns `undefined` for a mesh
+ * that is not part of a hung-window sash, and for any stamp that is not
+ * `'lower'` or `'upper'`.
+ */
+export function openingFillSashOf(object: THREE.Object3D): HungSash | undefined {
+  const stamp: unknown = object.userData[OPENING_FILL_SASH_KEY]
+  return stamp === 'lower' || stamp === 'upper' ? stamp : undefined
+}
+
 /**
  * Builds the solid body for one opening as a group of thin boxes, one per fill
  * part from {@link openingFill}. The group is named with the opening's id and
  * carries `userData.entityId`, so a raycaster walks up to the opening. Each box
  * is placed in world space through {@link planToWorld}, sharing the wall shell's
- * axis map.
+ * axis map. Each box is centered across the wall on its part's `acrossOffset`
+ * (on the centerline when the part has none), and a part's `sash`, when it has
+ * one, is stamped on its mesh under {@link OPENING_FILL_SASH_KEY}.
  */
 export function buildOpeningFill(
   node: OpeningSceneNode,
@@ -52,6 +68,9 @@ function buildPartMesh(
   geometry.computeVertexNormals()
   const mesh = new THREE.Mesh(geometry, materials.material(part.role))
   mesh.userData[OPENING_FILL_ROLE_KEY] = part.role
+  if (part.sash !== undefined) {
+    mesh.userData[OPENING_FILL_SASH_KEY] = part.sash
+  }
   return mesh
 }
 
@@ -139,13 +158,19 @@ const BOX_FACES: ReadonlyArray<Quad> = [
   ACROSS_MAX_FACE,
 ]
 
-/** The two extents of one fill-part box, centered on the wall centerline across. */
+/**
+ * The two extents of one fill-part box, centered across the wall on the part's
+ * track offset. The builder applies the offset as given and does not limit it,
+ * so a box can end up outside the wall. The fill in `core/` decides the offset,
+ * so a limit for a thin wall belongs there.
+ */
 function boxExtents(part: OpeningFillPart): BoxExtents {
   const half = part.thickness / 2
+  const offset = part.acrossOffset ?? 0
   return {
     along: [part.along.min, part.along.max],
     up: [part.up.min, part.up.max],
-    across: [-half, half],
+    across: [offset - half, offset + half],
   }
 }
 

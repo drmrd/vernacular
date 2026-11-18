@@ -60,8 +60,8 @@ export async function reopenSeenFromOrbit(page: Page, canvas: Locator): Promise<
 // The opening a search must end with open: the south view in orbit mode must differ from the
 // all-shut view inside the wanted region. The key is the sideways key the walker strafes with.
 // When another opening is already open, the search expects the key to leave it alone, because
-// from the head-on pose that opened it the key does nothing to it (see wantedOpening). A press
-// after a strafe could still swing it, so a change that is not the wanted opening then fails.
+// the walker is far from it when the search starts (see wantedOpening). A press after a strafe
+// could still swing it, so a change that is not the wanted opening then fails.
 export interface SearchTarget {
   readonly key: string
   readonly never: Buffer
@@ -73,11 +73,13 @@ export interface SearchTarget {
 // one, and returns the orbit frame if so.
 //
 // If not, the wrong opening is open and the walker is not at the wanted one. The open key cannot
-// shut it again from this pose: measured on the live view, a swing door that stands fully open
-// is parallel to the reach ray from the head-on pose that opened it, and a raised window sash is
-// above the ray, so a second press does nothing. The toolbar control does shut it, and the
-// control being disabled again confirms that nothing is left open. That undo is only taken
-// when no other opening was open before the search, because the control shuts all of them.
+// shut a door again from this pose: measured on the live view, a swing door that stands fully
+// open is parallel to the reach ray from the head-on pose that opened it, so a second press does
+// nothing. (A hung window is reached again, because the reach treats it as its shut frame; the
+// window scenario that presses the key twice checks that.) The toolbar control shuts either
+// one, and the control being disabled again confirms that nothing is left open. That undo is
+// only taken when no other opening was open before the search, because the control shuts all of
+// them.
 async function wantedOpening(
   page: Page,
   canvas: Locator,

@@ -59,6 +59,21 @@ function twoStoreyProject(): Project {
   return project
 }
 
+// Equality alone cannot show that a path sets the room side: both could omit it.
+describe('the room side of the door on the wall of a closed room', () => {
+  it('is on the positive side in the pure projection', () => {
+    const graph = deriveSceneGraph(twoStoreyProject())
+
+    expect(graph.openings.map((opening) => opening.roomSide)).toEqual(['positive'])
+  })
+
+  it('is on the positive side in the cold deriver', () => {
+    const graph = createSceneGraphDeriver()(twoStoreyProject())
+
+    expect(graph.openings.map((opening) => opening.roomSide)).toEqual(['positive'])
+  })
+})
+
 // Each parity test compares a fresh deriver with the pure projection: a cold cache only.
 describe('createSceneGraphDeriver parity with deriveSceneGraph', () => {
   it('derives the same scene graph as the pure projection when a site grade is set', () => {
@@ -81,5 +96,22 @@ describe('createSceneGraphDeriver parity with deriveSceneGraph', () => {
     const regraded = { ...project, site: { gradeElevation: DAYLIGHT_BASEMENT_GRADE_MM } }
 
     expect(derive(regraded).gradeElevation).toBe(DAYLIGHT_BASEMENT_GRADE_MM)
+  })
+})
+
+describe('a warm createSceneGraphDeriver after a change of the rooms', () => {
+  it('derives the same scene graph as the pure projection when a wall of the room is removed', () => {
+    const project = twoStoreyProject()
+    const derive = createSceneGraphDeriver()
+    derive(project)
+
+    const [ground, ...upperFloors] = project.floors
+    const withoutNorth: Floor = {
+      ...ground!,
+      walls: ground!.walls.filter((wall) => wall.id !== 'w-north'),
+    }
+    const edited = { ...project, floors: [withoutNorth, ...upperFloors] }
+
+    expect(derive(edited)).toStrictEqual(deriveSceneGraph(edited))
   })
 })

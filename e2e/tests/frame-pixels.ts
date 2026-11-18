@@ -95,14 +95,15 @@ function compareRegion(a: Pixels, b: Pixels, region: Region): FrameDifference {
   return { mean: sum / (pixels * COLOR_CHANNELS), changedFraction: changed / pixels }
 }
 
-function boxOfChange(a: Pixels, b: Pixels): Region | null {
+function boxOfChange(a: Pixels, b: Pixels, within?: Region): Region | null {
   requireSameSize(a, b)
+  const area = within ?? { x: 0, y: 0, w: a.width, h: a.height }
   let left = a.width
   let top = a.height
   let right = -1
   let bottom = -1
-  for (let y = 0; y < a.height; y++) {
-    for (let x = 0; x < a.width; x++) {
+  for (let y = area.y; y < area.y + area.h; y++) {
+    for (let x = area.x; x < area.x + area.w; x++) {
       if (pixelDelta(a, b, (y * a.width + x) * RGBA_STRIDE).largest <= BOX_DELTA) continue
       left = Math.min(left, x)
       top = Math.min(top, y)
@@ -118,8 +119,9 @@ export interface FrameReader {
   // Compares the same region of two frames of the same size.
   difference(a: Buffer, b: Buffer, region: Region): Promise<FrameDifference>
   // The box that holds every pixel where two frames differ strongly, or null when none does.
-  // The box is how a journey finds an object by what changes when it moves.
-  changedBox(a: Buffer, b: Buffer): Promise<Region | null>
+  // The box is how a journey finds an object by what changes when it moves. Only the pixels
+  // inside the optional region count, which keeps text drawn over the canvas out of the box.
+  changedBox(a: Buffer, b: Buffer, within?: Region): Promise<Region | null>
   // The whole frame as a region.
   whole(frame: Buffer): Promise<Region>
 }
@@ -139,7 +141,7 @@ export function frameReader(page: Page): FrameReader {
   }
   return {
     difference: async (a, b, region) => compareRegion(await pixelsOf(a), await pixelsOf(b), region),
-    changedBox: async (a, b) => boxOfChange(await pixelsOf(a), await pixelsOf(b)),
+    changedBox: async (a, b, within) => boxOfChange(await pixelsOf(a), await pixelsOf(b), within),
     whole: async (frame) => {
       const { width, height } = await pixelsOf(frame)
       return { x: 0, y: 0, w: width, h: height }

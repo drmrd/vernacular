@@ -7,28 +7,11 @@ import {
   SASH_FRAME_WIDTH_MM,
   SASH_FRAME_THICKNESS_MM,
   GLASS_THICKNESS_MM,
+  HUNG_SASH_TRACK_OFFSET_MM,
+  type HungSash,
   type OpeningFillPart,
 } from './opening-fill'
-
-/**
- * A single-swing door centered on a wall running along +x with its normal on +y.
- * Each test overrides the type and the opening dimensions it needs.
- */
-const baseOpening: OpeningSceneNode = {
-  id: 'opening-1',
-  kind: 'opening',
-  floorId: 'floor-1',
-  type: 'single-swing-door',
-  center: { x: 1000, y: 0 },
-  along: { x: 1, y: 0 },
-  normal: { x: 0, y: 1 },
-  width: 900,
-  height: 2032,
-  sillHeight: 0,
-  hostThickness: 120,
-  orientation: { hinge: 'start', facing: 'positive' },
-  hostWallId: 'south',
-}
+import { baseOpening, hungWindow, sashParts } from './opening-fill-test-fixtures'
 
 describe('openingFill', () => {
   it('fills a single door with one reveal-inset leaf at the door-leaf thickness', () => {
@@ -227,18 +210,24 @@ describe('openingFill hung-window fixed-sash geometry', () => {
           along: { min: -450, max: -390 },
           up: { min: 1590, max: 2040 },
           thickness: SASH_FRAME_THICKNESS_MM,
+          sash: 'upper',
+          acrossOffset: -HUNG_SASH_TRACK_OFFSET_MM,
         },
         {
           role: 'leaf',
           along: { min: 390, max: 450 },
           up: { min: 1590, max: 2040 },
           thickness: SASH_FRAME_THICKNESS_MM,
+          sash: 'upper',
+          acrossOffset: -HUNG_SASH_TRACK_OFFSET_MM,
         },
         {
           role: 'glass',
           along: { min: -390, max: 390 },
           up: { min: 1590, max: 2040 },
           thickness: GLASS_THICKNESS_MM,
+          sash: 'upper',
+          acrossOffset: -HUNG_SASH_TRACK_OFFSET_MM,
         },
       ]),
     )
@@ -256,12 +245,16 @@ describe('openingFill hung-window fixed-sash geometry', () => {
           along: { min: -450, max: 450 },
           up: { min: 1530, max: 1590 },
           thickness: SASH_FRAME_THICKNESS_MM,
+          sash: 'upper',
+          acrossOffset: -HUNG_SASH_TRACK_OFFSET_MM,
         },
         {
           role: 'leaf',
           along: { min: -450, max: 450 },
           up: { min: 2040, max: 2100 },
           thickness: SASH_FRAME_THICKNESS_MM,
+          sash: 'upper',
+          acrossOffset: -HUNG_SASH_TRACK_OFFSET_MM,
         },
         {
           role: 'glass',
@@ -269,8 +262,53 @@ describe('openingFill hung-window fixed-sash geometry', () => {
           up: { min: 1590, max: 2040 },
           thickness: GLASS_THICKNESS_MM,
           fixed: true,
+          sash: 'upper',
+          acrossOffset: -HUNG_SASH_TRACK_OFFSET_MM,
         },
       ]),
     )
+  })
+})
+
+describe('openingFill hung-window sash tracks', () => {
+  const expectSash = (parts: ReadonlyArray<OpeningFillPart>, sash: HungSash, offset: number) => {
+    expect(parts.map((p) => [p.sash, p.acrossOffset])).toEqual(parts.map(() => [sash, offset]))
+  }
+
+  it('names the sash of every part of a double-hung window and sets the sashes on two tracks', () => {
+    const window = hungWindow('double-hung-window')
+    const meetingRail = openingFill(window).find((p) => p.up.min === 1470 && p.up.max === 1530)
+
+    expect(openingFill(window).every((p) => p.sash !== undefined)).toBe(true)
+    expect(sashParts(window, 'lower')).toHaveLength(6)
+    expectSash(sashParts(window, 'lower'), 'lower', HUNG_SASH_TRACK_OFFSET_MM)
+    expect(sashParts(window, 'upper')).toHaveLength(5)
+    expectSash(sashParts(window, 'upper'), 'upper', -HUNG_SASH_TRACK_OFFSET_MM)
+    expect(meetingRail?.sash).toBe('lower')
+  })
+
+  it('splits a single-hung window into a lower sash of six parts and an upper sash of three', () => {
+    const window = hungWindow('single-hung-window')
+
+    expect(sashParts(window, 'lower')).toHaveLength(6)
+    expectSash(sashParts(window, 'lower'), 'lower', HUNG_SASH_TRACK_OFFSET_MM)
+    expect(sashParts(window, 'upper')).toHaveLength(3)
+    expectSash(sashParts(window, 'upper'), 'upper', -HUNG_SASH_TRACK_OFFSET_MM)
+  })
+
+  it('swaps the two tracks when the window faces the negative side', () => {
+    const window = hungWindow('double-hung-window', 'negative')
+
+    expectSash(sashParts(window, 'lower'), 'lower', -HUNG_SASH_TRACK_OFFSET_MM)
+    expectSash(sashParts(window, 'upper'), 'upper', HUNG_SASH_TRACK_OFFSET_MM)
+  })
+
+  it('leaves the parts of a door, a picture window, and a sliding window without a sash or a track', () => {
+    const others = [baseOpening, hungWindow('picture-window'), hungWindow('sliding-window')]
+
+    for (const part of others.flatMap((opening) => openingFill(opening))) {
+      expect(Object.keys(part)).not.toContain('sash')
+      expect(Object.keys(part)).not.toContain('acrossOffset')
+    }
   })
 })

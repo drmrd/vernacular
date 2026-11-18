@@ -3,6 +3,7 @@ import type { AssetReference } from '../model/asset-reference'
 import { furnitureFootprintCorners } from '../model/furniture-footprint'
 import { resolveGradeElevation } from '../model/site'
 import { effectiveWallThickness } from './construction-profile'
+import { withRoomSide } from './opening-room-side'
 import type {
   Dimension,
   Floor,
@@ -126,6 +127,12 @@ export interface OpeningSceneNode {
    * opening-to-edge resolver treats its absence as an opening it cannot place.
    */
   hostWallId?: string
+  /**
+   * Derived, never stored: the sign of `normal` that points into the room at the opening's center,
+   * from openingRoomSide. Omitted when both sides or neither side of the wall lie in a room there.
+   * A hung window puts its lower sash on this side; `orientation.facing` decides when it is absent.
+   */
+  roomSide?: OpeningOrientation['facing']
 }
 
 export interface DimensionSceneNode {
@@ -249,10 +256,15 @@ export function deriveOpeningNode(
   }
 }
 
-export function deriveOpeningNodesForFloor(floor: Floor): OpeningSceneNode[] {
+export function deriveOpeningNodesForFloor(
+  floor: Floor,
+  rooms: readonly RoomSceneNode[],
+): OpeningSceneNode[] {
   return floor.openings.flatMap((opening) => {
     const hostWall = floor.walls.find((wall) => wall.id === opening.hostWallId)
-    return hostWall ? [deriveOpeningNode(floor, opening, hostWall)] : []
+    return hostWall
+      ? [withRoomSide(deriveOpeningNode(floor, opening, hostWall), rooms, hostWall.thickness)]
+      : []
   })
 }
 
@@ -332,14 +344,19 @@ export function deriveStairNodes(project: Project): StairSceneNode[] {
 
 /** Pure projection of the project model into a normalized scene graph. */
 export function deriveSceneGraph(project: Project): SceneGraph {
+  const roomsByFloor = project.floors.map((floor) =>
+    deriveRoomNodesForFloor(floor, project.roomOverrides),
+  )
   return {
     nodes: project.floors.map(deriveFloorNode),
     walls: project.floors.flatMap((floor) =>
       floor.walls.map((wall) => deriveWallNode(floor, wall)),
     ),
-    rooms: project.floors.flatMap((floor) => deriveRoomNodesForFloor(floor, project.roomOverrides)),
+    rooms: roomsByFloor.flat(),
     underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
-    openings: project.floors.flatMap(deriveOpeningNodesForFloor),
+    openings: project.floors.flatMap((floor, index) =>
+      deriveOpeningNodesForFloor(floor, roomsByFloor[index] ?? []),
+    ),
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
     stairs: deriveStairNodes(project),
     furniture: project.floors.flatMap(deriveFurnitureNodesForFloor),

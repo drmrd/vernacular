@@ -1,3 +1,4 @@
+import { openingRoomSide, withRoomSide } from './opening-room-side'
 import {
   deriveDimensionNodesForFloor,
   deriveFloorNode,
@@ -60,22 +61,43 @@ function memoizeByRef<K extends object, V>(cache: WeakMap<K, V>, key: K, derive:
   return value
 }
 
-/** The opening node plus the host-wall reference it was derived against. */
+/** The opening node plus the host-wall reference and the room nodes it was derived against. */
 interface CachedOpeningNode {
   hostWall: Wall
+  rooms: readonly RoomSceneNode[]
   node: OpeningSceneNode
 }
 
 /**
- * Derives a floor's opening nodes, reusing each cached node while both its
- * source `Opening` reference and its host wall reference are unchanged. A
- * replaced host wall changes the opening geometry without changing the opening
- * reference, so the cache compares the host wall too. Module-scope so the
- * deriver closure stays under its line cap, like `memoizeByRef`.
+ * Whether the cached node's room side still holds. The same room-node array means nothing moved;
+ * otherwise the side is sampled again, and the new array is remembered when the side is unchanged.
+ */
+function roomSideHolds(cached: CachedOpeningNode, rooms: readonly RoomSceneNode[]): boolean {
+  if (cached.rooms === rooms) {
+    return true
+  }
+  const holds =
+    openingRoomSide(cached.node, rooms, cached.hostWall.thickness) === cached.node.roomSide
+  if (holds) {
+    cached.rooms = rooms
+  }
+  return holds
+}
+
+/**
+ * Derives a floor's opening nodes. Reuses a cached node only while the Opening and its host Wall
+ * references are unchanged AND the opening's room side is unchanged: the floor's room-node array is
+ * the same reference as when the node was cached, or openingRoomSide(cachedNode, rooms) still
+ * equals cachedNode.roomSide (then the new array is remembered). Otherwise it derives a new node,
+ * so a view that reuses a 3D group by node reference rebuilds a window exactly when its side
+ * changes. A replaced host wall changes the opening geometry without changing the opening
+ * reference, so the cache compares the host wall too. Module-scope so the deriver closure stays
+ * under its line cap, like `memoizeByRef`.
  */
 function openingNodesFor(
   openingCache: WeakMap<Opening, CachedOpeningNode>,
   floor: Floor,
+  rooms: readonly RoomSceneNode[],
 ): OpeningSceneNode[] {
   return floor.openings.flatMap((opening) => {
     const hostWall = floor.walls.find((wall) => wall.id === opening.hostWallId)
@@ -83,11 +105,15 @@ function openingNodesFor(
       return []
     }
     const cached = openingCache.get(opening)
-    if (cached !== undefined && cached.hostWall === hostWall) {
+    if (cached !== undefined && cached.hostWall === hostWall && roomSideHolds(cached, rooms)) {
       return [cached.node]
     }
-    const node = deriveOpeningNode(floor, opening, hostWall)
-    openingCache.set(opening, { hostWall, node })
+    const node = withRoomSide(
+      deriveOpeningNode(floor, opening, hostWall),
+      rooms,
+      hostWall.thickness,
+    )
+    openingCache.set(opening, { hostWall, rooms, node })
     return [node]
   })
 }
@@ -146,15 +172,22 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
       memoizeByRef(furnitureCache, item, () => deriveFurnitureNode(floor, item)),
     )
 
-  return (project) => ({
-    nodes: project.floors.map(floorNodeFor),
-    walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
-    rooms: project.floors.flatMap((floor) => roomNodesFor(roomCache, floor, project.roomOverrides)),
-    underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
-    openings: project.floors.flatMap((floor) => openingNodesFor(openingCache, floor)),
-    dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
-    stairs: stairNodesFor(project),
-    furniture: project.floors.flatMap(furnitureNodesFor),
-    gradeElevation: resolveGradeElevation(project.site),
-  })
+  return (project) => {
+    const roomsByFloor = project.floors.map((floor) =>
+      roomNodesFor(roomCache, floor, project.roomOverrides),
+    )
+    return {
+      nodes: project.floors.map(floorNodeFor),
+      walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
+      rooms: roomsByFloor.flat(),
+      underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
+      openings: project.floors.flatMap((floor, index) =>
+        openingNodesFor(openingCache, floor, roomsByFloor[index] ?? []),
+      ),
+      dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
+      stairs: stairNodesFor(project),
+      furniture: project.floors.flatMap(furnitureNodesFor),
+      gradeElevation: resolveGradeElevation(project.site),
+    }
+  }
 }

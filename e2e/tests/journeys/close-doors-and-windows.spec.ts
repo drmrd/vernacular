@@ -22,6 +22,7 @@ import {
   upperPart,
   within,
 } from './close-openings-views'
+import { checkHungWindowSashes } from './close-openings-window'
 import {
   openDoorSeenFromOrbit,
   paintFloorWhileWatching,
@@ -52,6 +53,13 @@ import {
 // from a canvas that has not drawn yet are dropped, and the check after the view switch rests
 // on only a few drawn readings (the run prints the counts). A flash of the wrong state that falls
 // between two reads would escape it, which issue #778 tracks.
+//
+// The last window scenario is about the hung window of issue #792. It selects the shut window
+// through the list of 3D entities, which draws an outline around its frame, and checks that
+// nothing of the open window appears outside that outline, that the open window does not flicker,
+// and that a second press of the open key from the pose that opened it shuts the window again.
+// The outline check does not show that only the lower sash rises, because the wall hides the
+// parts above the head. The unit tests in engine/scene/opening-motion.test.ts guard that.
 //
 // One thing is not asserted. On a fresh page the walker starts at a pose where the door is out
 // of sight, so the walker's first frames cannot show its leaf, and that case reads the control
@@ -320,6 +328,13 @@ test('closes a window like a door, and a door and a window together on one press
     within(whole, 'the walker held at the shut window'),
   )
   await openWithKey(page, canvas, atShutWindow)
+})
+
+test('keeps the sashes of an open hung window inside its frame, and reaches it again with the open key', async ({
+  page,
+}) => {
+  const { canvas } = await startOnLiveRoom(page, SUBJECT)
+  await checkHungWindowSashes(page, canvas)
 })
 
 test('starts a walk on a fresh page with nothing opened and the door shut', async ({ page }) => {

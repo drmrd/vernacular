@@ -381,6 +381,11 @@ export {
 } from './scene/scene-graph'
 export type { ExteriorWall } from './scene/exterior-walls'
 export { exteriorWalls } from './scene/exterior-walls'
+export {
+  OPENING_ROOM_SIDE_SAMPLE_MM,
+  openingRoomSide,
+  withRoomSide,
+} from './scene/opening-room-side'
 export type { FrontDirectionInput, PlanDirection } from './scene/front-direction'
 export { PLAN_DOWN, frontDirection } from './scene/front-direction'
 export type { WallPlanSegment } from './scene/wall-attached-furniture'
@@ -418,6 +423,7 @@ export type {
   HingeMotion,
   NoMotion,
   OpeningMotion,
+  OpeningPartId,
   SlideAxis,
   SlideMotion,
 } from './scene/opening-motion'
@@ -439,7 +445,12 @@ export {
   SASH_FRAME_THICKNESS_MM,
   GLASS_THICKNESS_MM,
 } from './scene/opening-fill'
-export type { OpeningFillPart, OpeningFillRole, OpeningFillExtent } from './scene/opening-fill'
+export type {
+  OpeningFillPart,
+  OpeningFillRole,
+  OpeningFillExtent,
+  HungSash,
+} from './scene/opening-fill'
 export type { OpeningFillKind } from './registries/element-types'
 export type { PointerLookDelta, WalkInput, WalkState } from './scene/walk-camera'
 export {

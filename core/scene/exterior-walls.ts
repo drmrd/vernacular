@@ -7,12 +7,10 @@ import {
   type RoomSceneNode,
   type WallSceneNode,
 } from './scene-graph'
+import { HALF } from './wall-half'
 
 /** A small outward nudge past a wall face, so a sample point clears the face. */
 const FACE_SAMPLE_EPS = 1
-
-/** Halves a wall's thickness to reach a face from its centerline. */
-const HALF = 2
 
 /**
  * An exterior wall and the plan-space unit direction toward the building's
@@ -35,7 +33,10 @@ function faceSample(midpoint: Point, normal: Point, distance: number): Point {
   return { x: midpoint.x + normal.x * distance, y: midpoint.y + normal.y * distance }
 }
 
-/** True when any room's clear polygon contains `point`. */
+/**
+ * True when any room's clear polygon contains `point`. It ignores room holes, unlike
+ * `insideRoom` in opening-room-side.ts; the two are kept apart on purpose.
+ */
 function insideAnyRoom(point: Point, rooms: RoomSceneNode[]): boolean {
   return rooms.some((room) => pointInPolygon(point, room.clearPolygon))
 }
