@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactElement } from 'react'
 import { planBasement, planUpperFloor, type PlannedFloor } from '../../core'
-import { Button, Field, Segmented } from '../design-system'
+import { Button, Field, isComposingKey, Segmented } from '../design-system'
 import './floor-switcher.css'
 
 export interface FloorSummary {
@@ -83,7 +83,8 @@ function FloorRenameForm({ initialName, onCommit, onCancel }: FloorRenameFormPro
           autoFocus
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Escape') {
+            // An Escape that cancels an input method candidate is not a cancel of the rename.
+            if (event.key === 'Escape' && !isComposingKey(event)) {
               onCancel()
             }
           }}

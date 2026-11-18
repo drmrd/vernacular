@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { Button, useFocusTrap } from '../design-system'
+import { Button, isComposingKey, useFocusTrap } from '../design-system'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
 import { useViewMode } from '../viewport/view-mode'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
@@ -101,6 +101,37 @@ function CommandList({ commands, onRun }: CommandListProps) {
   )
 }
 
+interface KeyDownHandlerOptions {
+  first: EditorCommand | undefined
+  run: (command: EditorCommand) => void
+  close: () => void
+}
+
+// Escape closes. Enter in the search field runs the first filtered command. Enter
+// on a focused row is left to the row, a button whose own click runs its command
+// once, so the dialog does not run the first command a second time. A key of a
+// text composition belongs to the input method: it confirms or cancels the text
+// and neither runs a command nor closes. The focus trap already holds it back from
+// the editor's listeners, so it needs no stop of propagation here.
+function createKeyDownHandler({ first, run, close }: KeyDownHandlerOptions) {
+  return (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (isComposingKey(event)) {
+      return
+    }
+    if (event.key === 'Escape') {
+      event.stopPropagation()
+      close()
+      return
+    }
+    if (event.key === 'Enter' && first !== undefined) {
+      event.stopPropagation()
+      if (event.target instanceof HTMLInputElement) {
+        run(first)
+      }
+    }
+  }
+}
+
 export function CommandPaletteDialog({ commands, context, onClose }: CommandPaletteDialogProps) {
   const [query, setQuery] = useState('')
   const dialogRef = useFocusTrap<HTMLDivElement>()
@@ -113,23 +144,7 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
     close()
   }
 
-  // Escape closes. Enter in the search field runs the first filtered command. Enter
-  // on a focused row is left to the row, a button whose own click runs its command
-  // once, so the dialog does not run the first command a second time.
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
-    if (event.key === 'Escape') {
-      event.stopPropagation()
-      close()
-      return
-    }
-    const first = filtered[0]
-    if (event.key === 'Enter' && first !== undefined) {
-      event.stopPropagation()
-      if (event.target instanceof HTMLInputElement) {
-        runCommand(first)
-      }
-    }
-  }
+  const handleKeyDown = createKeyDownHandler({ first: filtered[0], run: runCommand, close })
 
   return (
     <div className="command-palette__backdrop">

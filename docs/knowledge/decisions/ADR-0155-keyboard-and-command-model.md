@@ -14,6 +14,13 @@ sourceFiles:
     docs/specs/2026-07-06-arris-visual-design-language.md,
     docs/specs/2026-06-01-vernacular-design.md,
     editor/commands/use-keybindings.ts,
+    editor/design-system/composing-key.ts,
+    editor/design-system/composing-key.test.tsx,
+    editor/commands/command-palette-composing.test.tsx,
+    editor/metadata/site-editor-composing.test.tsx,
+    editor/shell/project-menu-composing.test.tsx,
+    editor/shell/floor-switcher-composing.test.tsx,
+    editor/environment/environment-scenes-composing.test.tsx,
   ]
 status: current
 updated: 2026-11-18
@@ -184,3 +191,80 @@ and the dialog stops that one. A bound chord behind a dialog does nothing and do
 browser, so "never borrowed" holds for `Cmd/Ctrl+S` there too. With no dialog open a bound chord
 runs once, as before. A chord typed in a text field still keeps its default, because the field owns
 it.
+
+## Update (2026-11-18): a key of a text composition belongs to the input method
+
+A person who types with an input method, for Japanese, Chinese or Korean text or for full-width
+digits, presses Enter to confirm a candidate and Escape to cancel it while the text is still being
+composed. The browser still sends a `keydown` for that key. Issue #863 found that the command
+palette took a composing Enter as its own: the first filtered command ran and the palette closed. A
+composing Escape closed the palette. Each field of the site editor committed the half-composed
+value on a composing Enter.
+
+The rule sharpens the top of the precedence ladder, where a focused text field owns its keys: a key
+that belongs to a text composition is the input method's key, not the app's. A handler that acts on
+Enter or Escape leaves such a key alone. It runs no command, closes or cancels nothing and commits
+nothing.
+
+- **One helper tells such a key.** `isComposingKey` in `editor/design-system/composing-key.ts`,
+  exported from the `editor/design-system` index, takes a DOM keyboard event or a React one and
+  reads the native event. It returns true when `isComposing` is set or when `keyCode` is 229, which
+  means "processed by an input method". Some engines do not set `isComposing` for such a key, the
+  key that ends a composition for instance, and report key code 229 instead. Which engines do so
+  was not checked here. `keyCode` is deprecated, but for those engines it is the only signal, so
+  the helper still reads it.
+- **The command palette follows it.** Its key handler, `createKeyDownHandler` in
+  `editor/commands/command-palette.tsx`, returns before its Escape and Enter branches. It does not
+  stop the propagation of such a key. While the palette is open the focus trap already holds every
+  `keydown` back from the editor's listeners (ADR-0106), so the key does not reach the shortcuts
+  behind the dialog either.
+- **The site editor follows it.** `useCommitOnBlur` in `editor/metadata/site-editor.tsx`, the
+  handler that the latitude, longitude, north bearing and timezone fields share, returns early. The
+  pending-edit flag stays set, so the plain Enter or the blur that comes later still commits, once.
+- **Three inline rename fields follow it.** They are the project name field of the project menu
+  (`editor/shell/project-menu.tsx`), the floor name field of the floor switcher
+  (`editor/shell/floor-switcher.tsx`) and the scene name field of the lighting scenes
+  (`editor/environment/environment-scenes.tsx`). Before, an Escape that cancelled a candidate also
+  cancelled the rename, and the typed name was lost. Now each cancels only on
+  `event.key === 'Escape' && !isComposingKey(event)`. A composing Escape leaves the field open with
+  the typed text, a later plain Escape cancels, and a submit commits the name once. These fields
+  commit through their form's submit, not in a `keydown` handler, so they need no check on Enter.
+  Whether a browser submits such a form on a composing Enter was not checked. The tests that a
+  composing Enter commits nothing cannot show it, because jsdom submits no form on a `keydown`.
+
+The rule does not cover every handler of a text field that acts on Enter or Escape yet. Under
+`editor/plan/` these are the room name editor (`room-name-editor.tsx`), the room sub purpose editor
+(`room-sub-purpose-editor.tsx`), the name field of the furniture inspector
+(`furniture-inspector.tsx`), the length field (`length-field.tsx`) and the angle field
+(`angle-field.tsx`), which commit on Enter. The underlay flyout (`underlay-menu.tsx`) is the other
+one. Its `useDismissOnEscape` adds a `keydown` listener on `document` that closes the flyout on any
+Escape, with no guard. The flyout holds the known distance field of calibration, so a composing
+Escape typed there closes the flyout, as read from the code. Issue #863 stays open for these six.
+
+The other handlers that act on these keys hold no text field and need no check: the menu of
+`use-menu-button.ts`, the discard dialog, the entity proxies in `entity-proxy.tsx` and their
+container in `use-overlay-keyboard.ts`. The plan's window listeners that act on Enter or Escape,
+the tool handlers in `authoring-tool-handlers.ts`, the wall run in `use-plan-interaction.ts`,
+`use-dimension-tool.ts`, `use-calibration-arming.ts` and `use-escape-to-select.ts`, skip a key whose
+target is a text field through `isTextEntry` or `ownsKeystroke` in `editor/plan/keyboard-guard.ts`,
+so a composing key does not reach them. Two other window listeners, the spacebar pan and fit key in
+`use-viewport-controls.ts` and the held-Alt tracker in `use-held-alt-key.ts`, do not use that guard
+but act on other keys.
+
+No run with a real input method in a browser was made. The tests fire `keydown` events with
+`isComposing` set, or with key code 229, in jsdom. As run on 2026-11-18, all passing:
+
+- `editor/design-system/composing-key.test.tsx`: 6 tests, on DOM and React keyboard events.
+- `editor/commands/command-palette-composing.test.tsx`: 5 tests. A composing Enter, by either
+  signal, runs no command and does not close the palette; a composing Escape does not close it; the
+  next plain Enter runs the first command once and closes once; a plain Escape closes once.
+- `editor/metadata/site-editor-composing.test.tsx`: 20 tests, five for each of the four fields. A
+  composing Enter, by either signal, commits nothing; the plain Enter or the blur after it commits
+  once; a plain Enter with no composition commits once.
+- `editor/shell/project-menu-composing.test.tsx`, `editor/shell/floor-switcher-composing.test.tsx`
+  and `editor/environment/environment-scenes-composing.test.tsx`: 6 tests each. A composing Escape,
+  by either signal, keeps the rename open with the typed name; the plain Escape after it cancels; a
+  submit after it commits the name once; a composing Enter commits nothing; a plain Escape cancels
+  without a commit.
+
+That makes 49 tests in six files.

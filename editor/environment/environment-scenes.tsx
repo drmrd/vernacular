@@ -15,7 +15,7 @@ import {
   removeEnvironmentScene,
   renameEnvironmentScene,
 } from '../../core'
-import { Button, Field, Stack } from '../design-system'
+import { Button, Field, isComposingKey, Stack } from '../design-system'
 
 const SCENE_NAME_INPUT_ID = 'environment-scene-name'
 
@@ -84,7 +84,8 @@ function SceneRenameForm({ scene, onCommit, onCancel }: SceneRenameFormProps): R
     onCommit(draft)
   }
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Escape') {
+    // An Escape that cancels an input method candidate is not a cancel of the rename.
+    if (event.key === 'Escape' && !isComposingKey(event)) {
       onCancel()
     }
   }
