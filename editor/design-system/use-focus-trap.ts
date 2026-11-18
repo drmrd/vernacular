@@ -42,6 +42,13 @@ function tabTarget(
 // traps do not know each other; a keyboard router with a modal scope is meant to replace it.
 const mountedTraps: HTMLElement[] = []
 
+// The keydown that started while a trap was the active one, and that may still be on its way to
+// the body. The capture listener records it before React's handlers run; the shared body listener
+// stops it there even when the trap has unmounted in the meantime. Only the event in flight is
+// held, so nothing else is kept and a later key is never touched. Like `mountedTraps`, it is
+// module state that a keyboard router with a modal scope is meant to replace.
+let keyDownInFlight: KeyboardEvent | null = null
+
 function isActiveTrap(container: HTMLElement): boolean {
   return mountedTraps[mountedTraps.length - 1] === container
 }
@@ -79,16 +86,12 @@ function isInside(container: HTMLElement, target: EventTarget | null): boolean {
   return target instanceof Node && container.contains(target)
 }
 
-// Runs at the body in the bubble phase, after the handlers inside the container, React's
-// included, so those still receive every key. Stopping it here keeps it from the bubble-phase
-// listeners on `document` and `window`. A key that starts outside the container pulls focus back in; for Tab the default is
-// cancelled as well, so that the next press does not walk on from where focus was.
-function holdKeyBack(event: KeyboardEvent, container: HTMLElement): void {
-  if (!isActiveTrap(container)) {
-    return
-  }
-  event.stopPropagation()
-  if (isInside(container, event.target)) {
+// Runs at the body in the bubble phase, after the handlers inside the container, so those still
+// receive every key. A key that starts outside the container pulls focus back in; for Tab the
+// default is cancelled as well, so that the next press does not walk on from where focus was.
+// Holding the key back is not done here but by `stopKeyDownInFlight`.
+function pullFocusIntoTrap(event: KeyboardEvent, container: HTMLElement): void {
+  if (!isActiveTrap(container) || isInside(container, event.target)) {
     return
   }
   if (event.key === 'Tab') {
@@ -98,14 +101,12 @@ function holdKeyBack(event: KeyboardEvent, container: HTMLElement): void {
   first.focus()
 }
 
-// The keydown that started while a trap was the active one, and that may still be on its way to
-// the body. The capture listener records it before React's handlers run; the body listener below
-// stops it there even when the trap has unmounted in the meantime. Only the event in flight is
-// held, so nothing else is kept and a later key is never touched.
-let keyDownInFlight: KeyboardEvent | null = null
-
-// One shared listener, so adding it again for another key is a no-op rather than a second copy.
-// It acts for the recorded event only and removes itself on whatever event reaches it first.
+// The one place that holds a key back: it stops the event, so the bubble-phase listeners on
+// `document` and `window` do not see it, when a trap was the active one as the dispatch started.
+// It is a single shared listener, so adding it again for another key is a no-op rather than a
+// second copy. It acts for the recorded event only and removes itself on whatever event reaches
+// it first. If a handler inside stops the event, it never reaches the body, and the next keydown
+// that reaches the body clears the record.
 function stopKeyDownInFlight(event: KeyboardEvent): void {
   const held = event === keyDownInFlight
   keyDownInFlight = null
@@ -162,9 +163,10 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  *
  * Keys are held back at `document.body`, which assumes that the React root renders inside the
  * body. A capture-phase listener, an earlier listener on the body itself, and an event
- * dispatched straight at `document` or `window` still see every key. The global key listeners of
- * the editor listen in the bubble phase, so none of them is a capture-phase listener today. A
- * keyboard router with a modal scope is meant to replace that rule.
+ * dispatched straight at `document` or `window` still see every key. The editor's global key
+ * listeners that run commands listen in the bubble phase; the one capture-phase `keydown` listener
+ * on `window`, in `use-keybindings.ts`, only prevents the browser default of a bound chord and
+ * runs no command.
  */
 export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T | null> {
   const ref = useRef<T | null>(null)
@@ -178,7 +180,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T
     focusableDescendants(container)[0]?.focus()
     const onKeyDown = (event: KeyboardEvent) => trapTab(event, container)
     const onMouseDown = (event: MouseEvent) => keepFocusOnPressOutside(event, container)
-    const onBodyKeyDown = (event: KeyboardEvent) => holdKeyBack(event, container)
+    const onBodyKeyDown = (event: KeyboardEvent) => pullFocusIntoTrap(event, container)
     const onCaptureKeyDown = (event: KeyboardEvent) => recordKeyDownInFlight(event, container)
     const body = document.body
     mountedTraps.push(container)
