@@ -6,7 +6,7 @@ import {
   type Command,
   type Site,
 } from '../../core'
-import { Stack } from '../design-system'
+import { isComposingKey, Stack } from '../design-system'
 
 // Name the per-degree scalar so the no-magic-numbers lint rule stays quiet.
 const DEGREES_PER_HALF_TURN = 180
@@ -44,6 +44,12 @@ function useCommitOnBlur({ isCommittable, applyChange, onCommit }: PendingEditCo
       hasPendingEditRef.current = true
     },
     onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
+      // An Enter that belongs to a text composition only confirms the input
+      // method's candidate. It commits nothing and leaves the pending edit
+      // alone, so the later plain Enter or blur still commits once.
+      if (isComposingKey(event)) {
+        return
+      }
       // Enter is the explicit accelerator: it commits even without a pending
       // edit, so a user can deliberately re-dispatch the shown value.
       if (event.key === 'Enter' && isCommittable) {
