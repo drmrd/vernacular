@@ -211,7 +211,7 @@ open and import specification already describes.
 - ADR-0119 (the write-ahead autosave that turned each debounced cycle into a
   canonical store write, so a successful autosave now clears the dirty baseline).
 - ADR-0001 (the six-layer architecture: the tracker and guard stay
-  framework-free in `bridge/`, the dialog lives in `editor/`, and the wiring
+  framework-free in `session/` (ADR-0175), the dialog lives in `editor/`, and the wiring
   lives in `app/`).
 
 ## Update (2026-08-17): every session-swap path now routes through the guard

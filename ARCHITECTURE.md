@@ -99,9 +99,9 @@ The bootstrap foundation (Phase 0) and the two-dimensional plan editor
 (Phase 1) are complete: all seven layers are scaffolded and in active use,
 from the pure-TypeScript domain, registries, commands, and scene-graph
 derivation in `core/`, through the durable project stores in `storage/`,
-the editor session and autosave in `session/`,
+the editor session (which holds the dispatcher) and autosave in `session/`,
 the Canvas plan renderer and accessible DOM overlay in `editor/`, and the
-command-dispatch boundary in `bridge/`. The `engine/` Three.js layer holds
+React adapters over the session in `bridge/`. The `engine/` Three.js layer holds
 the scene-renderer skeleton. The remaining MVP work proceeds as the parallel
 delivery tracks recorded in ADR-0044 and `docs/delivery-strategy.md`, beginning
 with the three-dimensional preview, the assets and furniture pipeline, and the
