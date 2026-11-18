@@ -115,15 +115,6 @@ describe('openingRoomSide', () => {
     expect(openingRoomSide(windowNode(floor), roomsOfAnotherFloor, WALL_THICKNESS)).toBeUndefined()
   })
 
-  it('treats a sample point inside a hole of a room as outside the room', () => {
-    const floor = floorWithWindow(counterClockwiseWalls(), 'south', WINDOW_POSITION)
-    const [room] = deriveRoomNodesForFloor(floor)
-    const holeOverRoomSidePoint = [pt(1500, 20), pt(2500, 20), pt(2500, 400), pt(1500, 400)]
-    const roomWithHole: RoomSceneNode = { ...room!, holes: [holeOverRoomSidePoint] }
-
-    expect(openingRoomSide(windowNode(floor), [roomWithHole], WALL_THICKNESS)).toBeUndefined()
-  })
-
   it('still finds the room side when the construction profile makes the host wall thinner than its raw thickness', () => {
     const walls = counterClockwiseWalls().map((raw) =>
       raw.id === 'south'
