@@ -9,6 +9,8 @@ import { type SolarAngles, type SolarPositionInput, solarPosition } from './sola
 import { projectDomeToSphericalHarmonics } from './spherical-harmonics'
 import { sunWorldDirection } from './sun-world-direction'
 
+const FALLBACK_NORTH_BEARING = 0
+
 /** Everything the outdoor-lighting rig needs for one site, instant, and sky. */
 export interface EnvironmentLighting {
   /** Unit world-space direction pointing from the scene toward the sun. */
@@ -56,8 +58,8 @@ export interface EnvironmentLightingInput {
  * from the solar altitude and cloud cover. `sunLevel` passes straight through
  * from `skyLighting`, carrying the fade along the light's path, 0 at and below the horizon, so
  * the direct sun fades to nothing as it sets. `skyAmbient` projects the same analytic sky dome into
- * spherical-harmonic coefficients for the ambient probe, and `cloudCover` passes
- * straight through so the visible sky mesh can read the value it was computed with.
+ * spherical-harmonic coefficients for the ambient probe, and `cloudCover` reports the
+ * cloud cover the sky was computed with, so the visible sky mesh can read it.
  * Frame and unit conventions follow those piece functions.
  *
  * Input that cannot be used falls back, and the function never throws. When the solar angles for
@@ -69,10 +71,10 @@ export interface EnvironmentLightingInput {
  * `cloudCover` in the result is the value used. Every number of the result is then finite.
  */
 export function computeEnvironmentLighting(input: EnvironmentLightingInput): EnvironmentLighting {
-  const angles = solarAnglesOrReference(input)
-  const cloudCover = cloudCoverUsed(input)
+  const angles = lightingSolarAngles(input)
+  const cloudCover = lightingCloudCover(input)
   const { sunColor, skyColor, sunLevel } = skyLighting(angles.altitude, cloudCover)
-  const sunDirection = sunWorldDirection(angles, northBearingOrZero(input))
+  const sunDirection = sunWorldDirection(angles, lightingNorthBearing(input))
   return {
     sunDirection,
     sunColor,
@@ -83,25 +85,23 @@ export function computeEnvironmentLighting(input: EnvironmentLightingInput): Env
   }
 }
 
-const FALLBACK_NORTH_BEARING = 0
-
-function northBearingOrZero(input: EnvironmentLightingInput): number {
+function lightingNorthBearing(input: EnvironmentLightingInput): number {
   return Number.isFinite(input.northBearing) ? input.northBearing : FALLBACK_NORTH_BEARING
 }
 
-function cloudCoverUsed(input: EnvironmentLightingInput): number {
+function lightingCloudCover(input: EnvironmentLightingInput): number {
   return Number.isNaN(input.cloudCover)
     ? DEFAULT_CLOUD_COVER
     : clampToUnitInterval(input.cloudCover)
 }
 
-function solarAnglesOrReference(input: EnvironmentLightingInput): SolarAngles {
-  const angles = solarPosition(solarPositionInput(input))
+function lightingSolarAngles(input: EnvironmentLightingInput): SolarAngles {
+  const angles = solarPosition(solarPositionOf(input))
   if (Number.isFinite(angles.azimuth) && Number.isFinite(angles.altitude)) return angles
-  return solarPosition(solarPositionInput(referenceLightingInput()))
+  return solarPosition(solarPositionOf(referenceLightingInput()))
 }
 
-function solarPositionInput(input: EnvironmentLightingInput): SolarPositionInput {
+function solarPositionOf(input: EnvironmentLightingInput): SolarPositionInput {
   return {
     latitude: input.latLong.latitude,
     longitude: input.latLong.longitude,
