@@ -31,7 +31,7 @@ export interface EnvironmentLighting {
 export interface EnvironmentLightingInput {
   /** Site location in decimal degrees. */
   latLong: LatLong
-  /** Site north bearing in radians, plan-up to true north. */
+  /** Site north bearing in radians, plan-up to true north. A bearing that is not finite counts as 0. */
   northBearing: number
   /** Offset from UTC in minutes; local civil time = UTC + this offset. */
   utcOffsetMinutes: number
@@ -57,12 +57,12 @@ export interface EnvironmentLightingInput {
  * the site and instant are not finite (a coordinate, offset or minute that is not finite or too
  * large for the formulas, or a date that does not parse), the sun is the daylight reference sun:
  * the place, the instant, and the UTC offset of `referenceLightingInput()`, still under the input's
- * north bearing and cloud cover.
+ * north bearing and cloud cover. A north bearing that is not finite counts as 0.
  */
 export function computeEnvironmentLighting(input: EnvironmentLightingInput): EnvironmentLighting {
   const angles = solarAnglesOrReference(input)
   const { sunColor, skyColor, sunLevel } = skyLighting(angles.altitude, input.cloudCover)
-  const sunDirection = sunWorldDirection(angles, input.northBearing)
+  const sunDirection = sunWorldDirection(angles, northBearingOrZero(input))
   return {
     sunDirection,
     sunColor,
@@ -71,6 +71,12 @@ export function computeEnvironmentLighting(input: EnvironmentLightingInput): Env
     cloudCover: input.cloudCover,
     skyAmbient: projectDomeToSphericalHarmonics({ sunDirection, cloudCover: input.cloudCover }),
   }
+}
+
+const FALLBACK_NORTH_BEARING = 0
+
+function northBearingOrZero(input: EnvironmentLightingInput): number {
+  return Number.isFinite(input.northBearing) ? input.northBearing : FALLBACK_NORTH_BEARING
 }
 
 function solarAnglesOrReference(input: EnvironmentLightingInput): SolarAngles {
