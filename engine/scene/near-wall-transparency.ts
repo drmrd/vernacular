@@ -1,8 +1,14 @@
 import * as THREE from 'three'
 
-import { FURNITURE_NODE_PREFIX, type ExteriorWall, type JunctionFadeGroup } from '../../core'
+import {
+  FURNITURE_NODE_PREFIX,
+  ROOM_RING_TOLERANCE_MM,
+  type ExteriorWall,
+  type JunctionFadeGroup,
+} from '../../core'
 
 import { markFadedForPicking } from './faded-for-picking'
+import { wallSpanOf } from './wall-span'
 
 /** Opacity of a wall the camera looks at from outside, so the interior reads through it. */
 const FADED_OPACITY = 0.1
@@ -18,6 +24,9 @@ interface WallFacing {
   point: WorldXZ
   outwardNormal: WorldXZ
 }
+
+/** The factor that takes the sum of a span's two ends to its middle. */
+const SPAN_MIDDLE_FACTOR = 0.5
 
 /** The appearance a faded material is restored to: what it looked like before any fade. */
 interface FadeBaseline {
@@ -174,7 +183,7 @@ function privatizeEntityMaterials(root: THREE.Object3D, entityId: string): FadeM
 function enrollFillMesh(
   mesh: THREE.Mesh,
   group: JunctionFadeGroup,
-  facingByWallId: Map<string, WallFacing>,
+  facingByRunIndex: Map<number, WallFacing>,
 ): NearWallTarget {
   const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3())
   const point = { x: center.x, z: center.z }
@@ -189,12 +198,12 @@ function enrollFillMesh(
     materials: privatizeMeshMaterials(mesh),
     point,
     outwardNormal: { x: 0, z: 0 },
-    // One facing per incident exterior wall actually built into `root`. An empty array
-    // (every incident wall absent from the built scene) leaves the update with no facing
+    // One facing per incident exterior run actually built into `root`. An empty array
+    // (every incident run absent from the built scene) leaves the update with no facing
     // to test, and `hasConditionalFade` reports false, so the fill never fades: the safe
-    // hold when none of the walls it stood in for are present.
-    incidentFacings: group.exteriorWallIds
-      .map((wallId) => facingByWallId.get(wallId))
+    // hold when none of the runs it stood in for are present.
+    incidentFacings: group.exteriorRunIndexes
+      .map((runIndex) => facingByRunIndex.get(runIndex))
       .filter((facing): facing is WallFacing => facing !== undefined),
   }
 }
@@ -207,7 +216,7 @@ function enrollFillMesh(
 function enrollJunctionFills(
   root: THREE.Object3D,
   fadeGroups: JunctionFadeGroup[],
-  facingByWallId: Map<string, WallFacing>,
+  facingByRunIndex: Map<number, WallFacing>,
 ): NearWallTarget[] {
   return fadeGroups.flatMap((group) => {
     if (group.exteriorWallIds.length === 0) {
@@ -215,21 +224,45 @@ function enrollJunctionFills(
     }
     const junctionKey = group.edgeIndexes.join(':')
     return findMeshesBy(root, (node) => node.userData.junctionKey === junctionKey).map((mesh) =>
-      enrollFillMesh(mesh, group, facingByWallId),
+      enrollFillMesh(mesh, group, facingByRunIndex),
     )
   })
 }
 
 /**
- * The world point and outward normal that decide `wall`'s fade, or null if no mesh in
- * `root` carries its id. The segments are collinear, so the point is the center of a
- * box expanded over every segment mesh, keeping it on the wall's plane. The outward
- * normal is a plan-space direction; it maps to world the same way `planToWorld` maps
- * points, so plan y becomes world -z, and negating keeps it aligned with the
- * (z-flipped) wall geometry.
+ * True when `mesh` belongs to `run`: its recorded span has its middle within the run's
+ * extent, widened by the room-ring tolerance. A mesh with no recorded span belongs to
+ * every run of its wall, so a scene built without spans fades each wall as a whole.
+ */
+function meshBelongsToRun(mesh: THREE.Object3D, run: ExteriorWall): boolean {
+  const span = wallSpanOf(mesh)
+  if (span === undefined) {
+    return true
+  }
+  const middleMm = (span.fromMm + span.toMm) * SPAN_MIDDLE_FACTOR
+  return (
+    middleMm >= run.fromMm - ROOM_RING_TOLERANCE_MM && middleMm <= run.toMm + ROOM_RING_TOLERANCE_MM
+  )
+}
+
+/** Every wall mesh in `root` that carries the run's wall id and belongs to the run. */
+function runMeshes(root: THREE.Object3D, run: ExteriorWall): THREE.Mesh[] {
+  return findMeshesBy(
+    root,
+    (node) => node.userData.entityId === run.wallId && meshBelongsToRun(node, run),
+  )
+}
+
+/**
+ * The world point and outward normal that decide the fade of `wall`, one exterior run,
+ * or null if no mesh in `root` belongs to the run. The segments are collinear, so the
+ * point is the center of a box expanded over every mesh of the run, keeping it on the
+ * wall's plane. The outward normal is a plan-space direction; it maps to world the same
+ * way `planToWorld` maps points, so plan y becomes world -z, and negating keeps it
+ * aligned with the (z-flipped) wall geometry.
  */
 function wallFacing(root: THREE.Object3D, wall: ExteriorWall): WallFacing | null {
-  const meshes = findMeshesBy(root, (node) => node.userData.entityId === wall.wallId)
+  const meshes = runMeshes(root, wall)
   if (meshes.length === 0) {
     return null
   }
@@ -244,16 +277,19 @@ function wallFacing(root: THREE.Object3D, wall: ExteriorWall): WallFacing | null
   }
 }
 
-/** Maps each exterior wall's id to its fade facing, skipping walls absent from `root`. */
-function wallFacingMap(root: THREE.Object3D, exterior: ExteriorWall[]): Map<string, WallFacing> {
-  const facingByWallId = new Map<string, WallFacing>()
-  for (const wall of exterior) {
-    const facing = wallFacing(root, wall)
+/**
+ * Maps each exterior run's position in `exterior` to its fade facing, skipping runs
+ * with no mesh in `root`.
+ */
+function wallFacingMap(root: THREE.Object3D, exterior: ExteriorWall[]): Map<number, WallFacing> {
+  const facingByRunIndex = new Map<number, WallFacing>()
+  exterior.forEach((run, runIndex) => {
+    const facing = wallFacing(root, run)
     if (facing !== null) {
-      facingByWallId.set(wall.wallId, facing)
+      facingByRunIndex.set(runIndex, facing)
     }
-  }
-  return facingByWallId
+  })
+  return facingByRunIndex
 }
 
 /**
@@ -267,25 +303,19 @@ function furnitureEntityId(nodeId: string): string {
 }
 
 /**
- * Builds one fade target covering every segment mesh of `wall` plus its hosted
- * openings and the furniture standing against it, or none if `wall` has no facing
- * (its mesh is absent from `root`). A split wall yields several sibling meshes
- * sharing its entity id; each is privatized so they all fade together. The facing is
- * read from the map `prepareNearWallTransparency` already built, so the wall's
- * geometry is traversed once, not again here.
+ * Builds the one fade target of an exterior run: every mesh of the run (see
+ * {@link runMeshes}) plus the hosted openings and the furniture standing against it.
+ * A split wall yields several sibling meshes sharing its entity id; each mesh of the
+ * run is privatized so they all fade together. The facing comes from the map
+ * `prepareNearWallTransparency` already built, so the run's geometry is traversed
+ * once for it, not again here.
  */
 function buildWallTarget(
   root: THREE.Object3D,
   wall: ExteriorWall,
-  facingByWallId: Map<string, WallFacing>,
-): NearWallTarget[] {
-  const facing = facingByWallId.get(wall.wallId)
-  if (facing === undefined) {
-    return []
-  }
-  const materials = findMeshesBy(root, (node) => node.userData.entityId === wall.wallId).flatMap(
-    (mesh) => privatizeMeshMaterials(mesh),
-  )
+  facing: WallFacing,
+): NearWallTarget {
+  const materials = runMeshes(root, wall).flatMap((mesh) => privatizeMeshMaterials(mesh))
   materials.push(
     ...wall.openingIds.flatMap((openingId) => privatizeEntityMaterials(root, openingId)),
   )
@@ -294,33 +324,40 @@ function buildWallTarget(
       privatizeEntityMaterials(root, furnitureEntityId(furnitureId)),
     ),
   )
-  return [{ materials, point: facing.point, outwardNormal: facing.outwardNormal }]
+  return { materials, point: facing.point, outwardNormal: facing.outwardNormal }
 }
 
 /**
- * Clones each exterior wall's materials, plus those of its hosted openings and of
- * the furniture standing against it (`furnitureIds`, filled in by the core pairing;
- * each piece belongs to at most one wall, so a corner piece never enrolls twice),
- * into private instances so the wall and its dependents fade together while their
- * opacity animates independently of the rest of the scene. Records the world point
- * and outward normal that decide whether the camera sees the wall from outside. Walls
- * whose mesh is not found in `root` are skipped. Each junction fade group with an
- * incident exterior wall also enrolls its tagged fill mesh, privatized so holding or
- * fading one fill never pins another, by one of two paths (see {@link enrollFillMesh}):
- * an unconditional-hold group enrolls a hold-opaque fill member that stays solid,
- * covering the leg-end miter and dividing the rooms, while its incident walls fade
- * (ADR-0103); a pure-exterior group enrolls a conditional fill member carrying its
- * incident wall facings, which fades only once the camera is outside every one of them
- * (ADR-0140).
+ * Yields one fade target for each entry of `exterior`, that is, for each exterior run.
+ * A run's target covers the meshes whose `userData.entityId` equals the run's `wallId`
+ * and whose recorded span has its middle within [fromMm - ROOM_RING_TOLERANCE_MM,
+ * toMm + ROOM_RING_TOLERANCE_MM]; a wall mesh with no recorded span belongs to every
+ * run of its wall. It clones the materials of those meshes, plus those of the run's
+ * hosted openings and of the furniture standing against it (`furnitureIds`, filled in
+ * by the core pairing; each piece belongs to at most one run, so a corner piece never
+ * enrolls twice), into private instances so the run and its dependents fade together
+ * while their opacity animates independently of the rest of the scene. The run's facing
+ * point is the center of the bounds of its meshes; with the outward normal it decides
+ * whether the camera sees the run from outside. Runs with no mesh in `root` are
+ * skipped. Each junction fade group with an incident exterior run also enrolls its
+ * tagged fill mesh, privatized so holding or fading one fill never pins another, by one
+ * of two paths (see {@link enrollFillMesh}): an unconditional-hold group enrolls a
+ * hold-opaque fill member that stays solid, covering the leg-end miter and dividing the
+ * rooms, while its incident runs fade (ADR-0103); a pure-exterior group enrolls a
+ * conditional fill member carrying the facings of the runs its `exteriorRunIndexes`
+ * name, which fades only once the camera is outside every one of them (ADR-0140).
  */
 export function prepareNearWallTransparency(
   root: THREE.Object3D,
   exterior: ExteriorWall[],
   fadeGroups: JunctionFadeGroup[] = [],
 ): NearWallTarget[] {
-  const facingByWallId = wallFacingMap(root, exterior)
-  const wallTargets = exterior.flatMap((wall) => buildWallTarget(root, wall, facingByWallId))
-  return [...wallTargets, ...enrollJunctionFills(root, fadeGroups, facingByWallId)]
+  const facingByRunIndex = wallFacingMap(root, exterior)
+  const wallTargets = exterior.flatMap((run, runIndex) => {
+    const facing = facingByRunIndex.get(runIndex)
+    return facing === undefined ? [] : [buildWallTarget(root, run, facing)]
+  })
+  return [...wallTargets, ...enrollJunctionFills(root, fadeGroups, facingByRunIndex)]
 }
 
 /**

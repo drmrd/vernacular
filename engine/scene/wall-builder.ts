@@ -33,6 +33,7 @@ import { tessellateContourLoop } from './contour-tessellation'
 import { buildJunctionFill } from './junction-fill-builder'
 import { buildWallPrism, wallFaceRef } from './wall-prism'
 import { buildSectionMesh } from './wall-surface-table'
+import { markWallSpan } from './wall-span'
 
 /** Inputs for building a floor's walls from its planar graph. */
 export interface WallBuildInput {
@@ -62,11 +63,12 @@ export function buildWalls(input: WallBuildInput): THREE.Group {
     if (node === null) return
     const openings = openingsOnEdge(edge, input)
     const footprint = footprints[index] as WallFootprint
-    if (openings.length === 0) {
-      group.add(buildWallPrism(node, footprint, input.materials))
-    } else {
-      group.add(buildOpeningWallMesh({ edge, wall: node, openings, footprint }, input))
-    }
+    const mesh =
+      openings.length === 0
+        ? buildWallPrism(node, footprint, input.materials)
+        : buildOpeningWallMesh({ edge, wall: node, openings, footprint }, input)
+    markWallSpan(mesh, (wallsByModelId.get(edge.wallId) as WallSceneNode).start, node)
+    group.add(mesh)
   })
   for (const mesh of buildJunctionFills(input, thicknessByEdge, wallsByModelId)) {
     group.add(mesh)
