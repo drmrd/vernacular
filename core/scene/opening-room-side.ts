@@ -14,15 +14,14 @@ import { roomSidesAt } from './wall-room-sides'
  * along only part of its length.
  *
  * `_rawWallThickness` is not read: the rule depends on no thickness and no construction profile.
- * It stays optional until the callers in bridge/react/harness-fixtures.ts and its test stop
- * passing it.
+ * The parameter stays only because callers in bridge/ still pass it; a follow-up removes it.
  */
 export function openingRoomSide(
   node: OpeningSceneNode,
   rooms: readonly RoomSceneNode[],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for callers in bridge/ that still pass it
   _rawWallThickness?: number,
 ): OpeningOrientation['facing'] | undefined {
+  void _rawWallThickness
   const sides = roomSidesAt(
     { point: node.center, normal: node.normal, floorId: node.floorId },
     rooms,
@@ -32,14 +31,15 @@ export function openingRoomSide(
 
 /**
  * The node with `roomSide` set from openingRoomSide, or the node without it when undefined.
- * `_rawWallThickness` is not read (see openingRoomSide).
+ * `_rawWallThickness` is not read; it stays only because callers in bridge/ still pass it, and a
+ * follow-up removes it.
  */
 export function withRoomSide(
   node: OpeningSceneNode,
   rooms: readonly RoomSceneNode[],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for callers in bridge/ that still pass it
   _rawWallThickness?: number,
 ): OpeningSceneNode {
+  void _rawWallThickness
   const roomSide = openingRoomSide(node, rooms)
   return roomSide === undefined ? node : { ...node, roomSide }
 }
