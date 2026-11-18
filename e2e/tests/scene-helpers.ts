@@ -103,23 +103,39 @@ export async function drawnRoomWithDoorCanvas(page: Page): Promise<Locator> {
   return settledSceneCanvas(page)
 }
 
-// Boots the deterministic scene harness with the given query (for example
-// `&scene=winter-afternoon`) and returns its canvas once the lit frame is ready. The harness
-// renders through WebGL 2, so it runs on darwin Metal and on the linux SwiftShader lane and
-// self-skips only where no WebGL 2 context can be created. The harness draws a second frame
-// once the lazily loaded lighting reports ready and marks data-harness-ready in the same
-// commit pass, so awaiting the attribute means a sample reads the sky-lit frame.
-export async function settledHarnessCanvas(page: Page, query: string): Promise<Locator> {
+// Opens the deterministic scene harness with the given query (for example
+// `&scene=winter-afternoon`) and returns its canvas once it is visible, WITHOUT waiting for the
+// lit frame. The harness renders through WebGL 2, so it runs on darwin Metal and on the linux
+// SwiftShader lane and self-skips only where no WebGL 2 context can be created; the subject
+// names the spec in the skip message. A caller that screenshots the bare shell, or that needs a
+// step before the readiness wait, uses this and waits for the frame itself.
+export async function openHarnessScene(
+  page: Page,
+  query: string,
+  subject: string,
+): Promise<Locator> {
   await page.goto(`/?fixture=scene-harness${query}`)
-  const harness = page.getByTestId('scene-harness')
-  const canvas = harness.locator('canvas')
+  const canvas = page.getByTestId('scene-harness').locator('canvas')
   await expect(canvas).toBeVisible()
   const hasWebGl2 = await page.evaluate(() => {
     const probe = document.createElement('canvas')
     return probe.getContext('webgl2') !== null
   })
-  test.skip(!hasWebGl2, 'No WebGL 2 context on this runner; the harness gate self-skips here.')
-  await expect(harness).toHaveAttribute('data-harness-ready', 'true')
+  test.skip(!hasWebGl2, `No WebGL 2 context on this runner; ${subject} self-skips here.`)
+  return canvas
+}
+
+// Opens the harness as `openHarnessScene` does, then WAITS for the lit frame, so a sample reads
+// the sky-lit frame. The harness draws a second frame once the lazily loaded lighting reports
+// ready and marks data-harness-ready in the same commit pass. The subject defaults to the text
+// the specs without a subject of their own have always got.
+export async function settledHarnessCanvas(
+  page: Page,
+  query: string,
+  subject = 'the harness gate',
+): Promise<Locator> {
+  const canvas = await openHarnessScene(page, query, subject)
+  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
   return canvas
 }
 

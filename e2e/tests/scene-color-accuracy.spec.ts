@@ -12,7 +12,7 @@ import {
   srgbToOkLab,
   perceptualDistance,
 } from '../../core'
-import { logReading, sampleCanvasColor } from './scene-helpers'
+import { settledHarnessCanvas, logReading, sampleCanvasColor } from './scene-helpers'
 
 // The color-accuracy gate, the headline acceptance of the realistic-environmental-lighting
 // epic. It renders each known swatch on the shell floor under the color-check reference
@@ -34,20 +34,11 @@ const FLOOR_SAMPLE_CENTER = { x: 0.5, y: 0.5 }
 
 // Puts the harness in the reference condition with a swatch painted on the floor.
 async function gotoPaintedReference(page: Page, hex: string): Promise<Locator> {
-  await page.goto(`/?fixture=scene-harness&scene=${REFERENCE_SCENE}&paint=${hex}`)
-  const harness = page.getByTestId('scene-harness')
-  const canvas = harness.locator('canvas')
-  await expect(canvas).toBeVisible()
-  const hasWebGl2 = await page.evaluate(() => {
-    const probe = document.createElement('canvas')
-    return probe.getContext('webgl2') !== null
-  })
-  test.skip(
-    !hasWebGl2,
-    'No WebGL 2 context on this runner; the color-accuracy gate self-skips here.',
+  return settledHarnessCanvas(
+    page,
+    `&scene=${REFERENCE_SCENE}&paint=${hex}`,
+    'the color-accuracy gate',
   )
-  await expect(harness).toHaveAttribute('data-harness-ready', 'true')
-  return canvas
 }
 
 test.describe('Decorating color-accuracy gate', () => {

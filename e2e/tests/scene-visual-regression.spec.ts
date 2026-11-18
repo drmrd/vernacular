@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { openHarnessScene } from './scene-helpers'
 
 // The three-dimensional render harness boots a deterministic, fixed-size scene via the
 // `?fixture=scene-harness` seam (see app/app.tsx) and screenshots the rendered canvas.
@@ -19,16 +20,7 @@ const SHELL_THRESHOLD = 0.35
 const SHELL_MAX_DIFF_PIXEL_RATIO = 0.05
 
 async function captureShell(page: Page, query: string, snapshot: string): Promise<void> {
-  await page.goto(`/?fixture=scene-harness${query}`)
-
-  const canvas = page.locator('[data-testid="scene-harness"] canvas')
-  await expect(canvas).toBeVisible()
-
-  const hasWebGl2 = await page.evaluate(() => {
-    const probe = document.createElement('canvas')
-    return probe.getContext('webgl2') !== null
-  })
-  test.skip(!hasWebGl2, 'No WebGL 2 context on this runner; scene harness self-skips here.')
+  const canvas = await openHarnessScene(page, query, 'scene harness')
 
   // The harness renders a single static frame on mount (no animation). Wait for the
   // canvas backing store to reach its pinned size so the rendered frame is in the

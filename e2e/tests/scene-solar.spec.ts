@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { openHarnessScene } from './scene-helpers'
 
 // The solar cases boot the deterministic render harness via the `?fixture=scene-harness`
 // seam (see app/app.tsx) and select a named canonical environment state with the `scene`
@@ -91,16 +92,7 @@ interface ShellCapture {
 }
 
 async function captureShell(page: Page, capture: ShellCapture): Promise<void> {
-  await page.goto(`/?fixture=scene-harness${capture.query}`)
-
-  const canvas = page.locator('[data-testid="scene-harness"] canvas')
-  await expect(canvas).toBeVisible()
-
-  const hasWebGl2 = await page.evaluate(() => {
-    const probe = document.createElement('canvas')
-    return probe.getContext('webgl2') !== null
-  })
-  test.skip(!hasWebGl2, 'No WebGL 2 context on this runner; scene harness self-skips here.')
+  const canvas = await openHarnessScene(page, capture.query, 'scene harness')
 
   // The harness renders a single static frame on mount (no animation). Wait for the
   // canvas backing store to reach its pinned size so the rendered frame is in the
