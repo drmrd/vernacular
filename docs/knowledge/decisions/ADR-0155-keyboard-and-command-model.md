@@ -3,15 +3,20 @@ slug: decisions/ADR-0155-keyboard-and-command-model
 title: 'ADR-0155: Adopt the keyboard and command model as a target'
 type: decision
 tags: [keyboard, command-model, shortcuts, interaction-grammar, accessibility, keybindings]
-related: [decisions/ADR-0154-arris-visual-design-language]
+related:
+  [
+    decisions/ADR-0154-arris-visual-design-language,
+    decisions/ADR-0106-modal-focus-trap-and-focus-restore,
+  ]
 sourceFiles:
   [
     docs/specs/2026-07-06-keyboard-and-command-model.md,
     docs/specs/2026-07-06-arris-visual-design-language.md,
     docs/specs/2026-06-01-vernacular-design.md,
+    editor/commands/use-keybindings.ts,
   ]
 status: current
-updated: 2026-08-18
+updated: 2026-11-18
 ---
 
 # ADR-0155: Adopt the keyboard and command model as a target
@@ -168,3 +173,13 @@ only then would it belong back on the toolbar. The visual-design-language spec
 (docs/specs/2026-06-13-visual-design-language.md, header section) prescribed the same
 phantom tooltip text; the same change rewrites that passage to match, so the spec no
 longer instructs the hints this update removed.
+
+## Update (2026-11-18): bound chords behind a dialog
+
+An open modal dialog now holds every keydown back from the editor's listeners, as the ADR-0106
+update of the same date records. `useKeybindings` therefore splits its work into two listeners on
+`window`. The capture-phase one cancels the browser default of a keystroke that an enabled command
+binds, before the dialog can hold it back. The bubble-phase one runs the command, and the dialog
+stops that one. A bound chord behind a dialog does nothing and does not reach the browser, so
+"never borrowed" holds for `Cmd/Ctrl+S` there too. With no dialog open a bound chord runs once, as
+before. A chord typed in a text field still keeps its default, because the field owns it.
