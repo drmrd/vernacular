@@ -11,7 +11,7 @@
  * from layers earlier in this list.
  * @type {readonly string[]}
  */
-export const LAYERS = ['core', 'storage', 'engine', 'bridge', 'editor', 'app']
+export const LAYERS = ['core', 'storage', 'session', 'engine', 'bridge', 'editor', 'app']
 
 /**
  * Map a repo-relative file path to its layer, or null if it is not in a layer.
@@ -27,7 +27,9 @@ export function layerOf(file) {
 /**
  * Reverse-dependency closure: given the changed layers, return the lowest one
  * and every layer above it. Because the stack is a linear chain, that is a
- * suffix of LAYERS.
+ * suffix of LAYERS. The engine layer does not import the session layer, so a
+ * change in session also selects the engine tests, which costs time but misses
+ * nothing.
  *
  * @param {Iterable<string>} changedLayers
  * @returns {string[]} affected layers, lowest first (empty when none match)

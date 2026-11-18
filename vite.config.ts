@@ -34,6 +34,7 @@ export default defineConfig({
         'src/**/*.{ts,tsx}',
         'core/**/*.{ts,tsx}',
         'storage/**/*.{ts,tsx}',
+        'session/**/*.{ts,tsx}',
         'engine/**/*.{ts,tsx}',
         'bridge/**/*.{ts,tsx}',
         'editor/**/*.{ts,tsx}',
