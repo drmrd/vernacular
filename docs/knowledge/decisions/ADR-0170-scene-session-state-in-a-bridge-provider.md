@@ -35,9 +35,10 @@ sourceFiles:
     bridge/react/ambient-occlusion-render-takeover.test.tsx,
     editor/shell/editor-shell.tsx,
     editor/shell/shell-providers.tsx,
+    e2e/tests/journeys/scene-view-switch-keeps-state.spec.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # ADR-0170: Scene session state moves into a bridge-owned provider
@@ -298,3 +299,32 @@ Two limits found on the way are older than this change. Both are left for #829:
   so the attribute can read `"true"` over a frame of the old lighting. The visual-regression gate
   and the two journeys that read the attribute wait for a stable frame after it. The startup spec
   reads it too, and after it waits only for the canvas to reach its settled size.
+
+## Amendment 2026-11-18: a journey drives the store in a real browser
+
+Issue #621 asked for an end-to-end proof, because the editor shell test renders in jsdom, where the
+3D pane shows its unsupported message and has no toolbar. The journey
+`e2e/tests/journeys/scene-view-switch-keeps-state.spec.ts` runs the real pane and reads frames of
+the canvas, since nothing in the page exposes the camera or the walk pose as a value. It has three
+tests. The first flips the "Surface edges" toggle and drags the orbit camera, switches to the plan
+view and back, and expects the toggle still pressed (read through `aria-pressed`) and the settled
+frame equal to the one kept before the switch. The second walks forward, takes a detour to orbit
+mode with a dragged orbit camera, returns to walk mode within one mount, and expects the kept walk
+frame. The third walks forward, switches to the plan view and back, and expects walk mode and the
+same walk frame. Two temporary product changes, both undone, showed that the tests can fail. A fresh
+session store for the unmounting preview made the first and third tests fail, with messages that
+name the lost state. Ignoring the saved walk pose made the second test fail.
+
+The file name starts with `scene-`, so the journey runs in the `scene-webgl` project. With a WebGPU
+adapter the pane draws through WebGPU, and without one through the WebGL 2 fallback of three. On
+2026-11-18 the journey passed on both paths on the development Mac. In CI only the Linux job
+`scene-visual` runs it, through that fallback. The macOS job runs named specs only, and this journey
+is not one of them. In run 44275652421, its first run on the Linux runner, the journey passed on the
+first try: of 59 tests, 58 passed and 1 skipped, with none flaky.
+
+The journey covers the edge overlay, the camera mode, the saved orbit camera position, and the walk
+pose. It does not touch the Select and reveal-interior toggles, the applied preset, the view color
+temperature, the building scope, the underground visibility, or the open doors. Unit tests keep
+those: `bridge/react/use-scene-navigation.test.tsx` for the toggles, the preset, and the open
+doors, `bridge/react/use-scene-environment.test.tsx` for the color temperature, and
+`bridge/react/use-building-view-state.test.ts` for the scope and the underground setting.
