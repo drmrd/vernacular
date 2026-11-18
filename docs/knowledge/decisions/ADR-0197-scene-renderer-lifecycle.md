@@ -24,7 +24,7 @@ sourceFiles:
     scripts/story-coverage/uncovered-components.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # ADR-0197: The 3D canvas wrapper releases every renderer it builds and tells a failed load from a failed start
@@ -93,7 +93,9 @@ that its owner is done with. `started` is the promise that `init()` returned. Th
 it to settle. After a resolved start it calls `dispose()` once. After a failed start it calls
 nothing, because no loop exists and `dispose()` would raise the unhandled rejection described above.
 It may be called while the start is pending; `dispose()` never runs before the start settles. The
-promise it returns does not reject for a failed start. The module imports three.js types only.
+promise it returns never rejects. It does not reject for a failed start, and since 2026-11-18 it
+does not reject when `dispose()` throws: the function reports the error with `console.error` and
+resolves. The module imports three.js types only.
 
 The rule depends on how this three.js version behaves, so it lives in the engine, beside the one
 place that builds the renderer.
@@ -121,9 +123,11 @@ settles.
 It cannot return `undefined`. The library builds its own WebGL renderer on the canvas for any `gl`
 result that is not a renderer. It cannot rethrow either, because the error would escape the
 library's setup as an unhandled rejection. The pending promise stops the library's setup, and the
-next render swaps the canvas for the status, so nothing waits on that promise. The library's types
-allow a `gl` function that returns a renderer, or one that returns a promise, but not one that can
-return either. This one can, so its return carries a type cast.
+next render swaps the canvas for the status. The setup of the library still awaits that promise
+(`@react-three/fiber` 9.6.1 awaits the result of the `gl` function), so the stopped setup stays
+reachable; the limits below say what follows from that. The library's types allow a `gl` function
+that returns a renderer, or one that returns a promise, but not one that can return either. This
+one can, so its return carries a type cast.
 
 ### Only the current renderer sets the state
 
@@ -247,7 +251,9 @@ would grow into a list of lifecycle patches. ADR-0004 is corrected in place inst
 `engine/renderer/release-renderer.test.ts` proves the release rule against a fake renderer with a
 `dispose` spy. A resolved start leads to one `dispose()`. A pending start holds `dispose()` back
 until it resolves. A failed start leads to no `dispose()`, the release promise resolves, and no
-unhandled rejection is reported.
+unhandled rejection is reported. A `dispose()` that throws after a resolved start leads to one
+`console.error` call with the thrown error and a release promise that resolves, and a `dispose()`
+that returns normally logs nothing.
 
 `bridge/react/scene-renderer-canvas-release.test.tsx` covers the release-once rule. Three cycles of
 open, start, and close build three renderers and release each one once, with never more than one
@@ -302,8 +308,14 @@ hands each renderer over once. The engine test proves what the release then does
   in one task, was read from the source of `@react-three/fiber` 9.6.1 and not run. The StrictMode
   tests force two requests with a stand-in canvas that has no cleanup of its own, so the
   current-renderer rule is tested only against that forced case.
-- A `dispose()` that throws would reject the release promise. The wrapper discards that promise and
-  does not catch the rejection, so the browser would report it. Not verified.
+- No path is known on which `dispose()` throws after a resolved start. The release catches such a
+  throw (see above), so the wrapper, which discards the release promise, gets no rejection. A
+  `dispose()` that returns a rejected promise is not covered; the library types it as returning
+  nothing.
+- When a renderer cannot be built, the wrapper gives the canvas library one pending promise that is
+  a constant of the module. The library attaches its handlers to it, so each failed build stays
+  reachable for the life of the page. #819 keeps this point: the wrapper should return a new
+  pending promise for each failed build.
 - That the browser keeps a failed dynamic import was seen in one browser, Chromium 148. Other
   browsers were not run. The reload does not depend on it, since a new page fetches the chunk again.
 - The end-to-end case for the reload runs in one browser only, and only where WebGPU exists. It does
