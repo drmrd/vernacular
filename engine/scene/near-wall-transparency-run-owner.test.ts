@@ -1,21 +1,17 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import type { ExteriorWall } from '../../core'
+import { exteriorWalls, type ExteriorWall } from '../../core'
 import { centeredEllFloor, flushEllFloor } from '../../core/scene/wall-runs-test-fixtures'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { buildScene } from './build-scene'
-import {
-  prepareNearWallTransparency,
-  updateNearWallTransparency,
-  type NearWallTarget,
-} from './near-wall-transparency'
+import { prepareNearWallTransparency, type NearWallTarget } from './near-wall-transparency'
 import { enrollNearWallTargets } from './near-wall-transparency-enrollment'
-import { fadedScene, piecesOf, SPAN_KEY, sceneGraphOf } from './near-wall-transparency-test-support'
+import { fadedScene, piecesOf, sceneGraphOf } from './near-wall-transparency-test-support'
+import { WALL_SPAN_KEY } from './wall-span'
 
 const LONG_SOUTH = 'wall:long-south'
 // Plan y maps to world -z, so a camera at positive z stands south of the house, on the outside
-// of the long south wall, whose two exterior runs both face south.
-const SOUTH_OF_CENTERED_ELL = { x: 5000, z: 8000 }
+// of the long south wall.
 const SOUTH_OF_FLUSH_ELL = { x: 7000, z: 8000 }
 
 const BOUNDARY_MM = 4000
@@ -46,17 +42,14 @@ const meshesOfWall = (root: THREE.Object3D, entityId: string): THREE.Mesh[] => {
 function centeredEllWithoutSpans() {
   const graph = sceneGraphOf(centeredEllFloor())
   const root = buildScene(graph, new NeutralMaterialProvider())
-  for (const mesh of meshesOfWall(root, LONG_SOUTH)) delete mesh.userData[SPAN_KEY]
+  for (const mesh of meshesOfWall(root, LONG_SOUTH)) delete mesh.userData[WALL_SPAN_KEY]
   return { graph, root, targets: enrollNearWallTargets(root, graph) }
 }
-
-const opacitiesOfWall = (root: THREE.Object3D, entityId: string): number[][] =>
-  meshesOfWall(root, entityId).map((mesh) => materialsOf(mesh).map((material) => material.opacity))
 
 const plainWallMesh = (fromMm: number, toMm: number): THREE.Mesh => {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial())
   mesh.userData.entityId = 'wall:w'
-  mesh.userData[SPAN_KEY] = { fromMm, toMm }
+  mesh.userData[WALL_SPAN_KEY] = { fromMm, toMm }
   return mesh
 }
 
@@ -69,18 +62,16 @@ const runOfWallW = (fromMm: number, toMm: number, normalY: number): ExteriorWall
 })
 
 describe('the owner run of a wall mesh in the near-wall fade', () => {
-  it('gives a wall mesh with no recorded span to one run, whatever the order of the targets', () => {
-    const { root, targets } = centeredEllWithoutSpans()
+  it('gives a wall mesh with no recorded span to the first run of its wall', () => {
+    const { graph, root, targets } = centeredEllWithoutSpans()
+    const exterior = exteriorWalls(graph.walls, graph.rooms, graph.openings)
+    // The first run of the long south wall in the exterior order is the one from 0 to 3000.
+    const firstRunIndex = exterior.findIndex((run) => run.wallId === LONG_SOUTH)
     const meshes = meshesOfWall(root, LONG_SOUTH)
 
+    expect(firstRunIndex).toBeGreaterThanOrEqual(0)
     expect(meshes.length).toBeGreaterThan(0)
-    for (const mesh of meshes) expect(holdingTargetIndexes(targets, mesh)).toHaveLength(1)
-
-    updateNearWallTransparency(targets, SOUTH_OF_CENTERED_ELL)
-    const reversed = centeredEllWithoutSpans()
-    updateNearWallTransparency(reversed.targets.reverse(), SOUTH_OF_CENTERED_ELL)
-
-    expect(opacitiesOfWall(reversed.root, LONG_SOUTH)).toEqual(opacitiesOfWall(root, LONG_SOUTH))
+    for (const mesh of meshes) expect(holdingTargetIndexes(targets, mesh)).toEqual([firstRunIndex])
   })
 
   it('gives a wall mesh whose middle lies on the boundary of two runs to the first run', () => {
@@ -96,6 +87,20 @@ describe('the owner run of a wall mesh in the near-wall fade', () => {
 
     expect(holdingTargetIndexes(targets, first)).toEqual([FIRST_RUN_INDEX])
     expect(holdingTargetIndexes(targets, boundary)).toEqual([FIRST_RUN_INDEX])
+  })
+
+  it('gives a mesh whose middle lies in no run to no target, and one within the tolerance to the run', () => {
+    const inGap = plainWallMesh(3500, 4500)
+    const atToleranceEdge = plainWallMesh(3000.5, 3001.5)
+    const root = new THREE.Group().add(inGap, atToleranceEdge)
+
+    const targets = prepareNearWallTransparency(root, [
+      runOfWallW(0, 3000, -1),
+      runOfWallW(5000, WALL_END_MM, 1),
+    ])
+
+    expect(holdingTargetIndexes(targets, inGap)).toEqual([])
+    expect(holdingTargetIndexes(targets, atToleranceEdge)).toEqual([FIRST_RUN_INDEX])
   })
 
   it('still fades only the run past a flush ell, with recorded spans in place', () => {
