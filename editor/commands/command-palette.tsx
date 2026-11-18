@@ -113,6 +113,9 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
     close()
   }
 
+  // Escape closes. Enter in the search field runs the first filtered command. Enter
+  // on a focused row is left to the row, a button whose own click runs its command
+  // once, so the dialog does not run the first command a second time.
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key === 'Escape') {
       event.stopPropagation()
@@ -122,7 +125,9 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
     const first = filtered[0]
     if (event.key === 'Enter' && first !== undefined) {
       event.stopPropagation()
-      runCommand(first)
+      if (event.target instanceof HTMLInputElement) {
+        runCommand(first)
+      }
     }
   }
 
