@@ -61,7 +61,6 @@ describe('withAttachedFurniture on a block with an ell in the middle of its long
   it('pairs a piece that spans the end of the first run and the stretch between the rooms with that run only', () => {
     const { holding, firstLongSouth } = runsHolding(pieceAt('furniture:across-run-end', 2700))
 
-    expect(holding.length).toBeLessThanOrEqual(1)
-    expect(holding.filter((index) => index !== firstLongSouth)).toEqual([])
+    expect(holding).toEqual([firstLongSouth])
   })
 })

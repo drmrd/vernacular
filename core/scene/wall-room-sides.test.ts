@@ -136,11 +136,19 @@ describe('wallStretches', () => {
 
   it('treats two room corners closer together than the tolerance as one cut and returns no stretch shorter than it', () => {
     const left = roomNode([pt(0, 0), pt(2000, 0), pt(2000, 3000), pt(0, 3000)])
-    const right = roomNode([pt(2000.5, 0), pt(4000, 0), pt(4000, 3000), pt(2000.5, 3000)])
+    const below = roomNode([pt(2000.5, -3000), pt(4000, -3000), pt(4000, 0), pt(2000.5, 0)])
 
-    const stretches = wallStretches(wallNode('wall:s', pt(0, 0), pt(4000, 0)), [left, right])
+    const stretches = wallStretches(wallNode('wall:s', pt(0, 0), pt(4000, 0)), [left, below])
 
-    expectStretches(stretches, [[0, 4000, 'positive']])
+    expect(stretches).toHaveLength(2)
+    const [first, second] = stretches as [WallStretch, WallStretch]
+    expect(first.sides).toBe('positive')
+    expect(second.sides).toBe('negative')
+    expect(first.fromMm).toBe(0)
+    expect(second.toMm).toBe(4000)
+    expect(first.toMm).toBe(second.fromMm)
+    expect(first.toMm).toBeGreaterThan(1999)
+    expect(first.toMm).toBeLessThan(2001.5)
     for (const stretch of stretches) {
       expect(stretch.toMm - stretch.fromMm).toBeGreaterThanOrEqual(ROOM_RING_TOLERANCE_MM)
     }
