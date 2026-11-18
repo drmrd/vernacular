@@ -397,6 +397,8 @@ export {
 export { rawWallId } from './scene/wall-id'
 export type { JunctionFadeGroup } from './scene/junction-fade'
 export { junctionFadeGroups } from './scene/junction-fade'
+export type { WallPlace, WallRoomSides, WallStretch } from './scene/wall-room-sides'
+export { ROOM_RING_TOLERANCE_MM, roomSidesAt, wallStretches } from './scene/wall-room-sides'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
 export { sceneGraphForFloor } from './scene/scene-graph-for-floor'
 export { sceneGraphHasGeometry } from './scene/scene-graph-empty'
