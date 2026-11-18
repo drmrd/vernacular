@@ -1,78 +1,23 @@
-import * as THREE from 'three'
+import type * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import type { Floor, SceneGraph } from '../../core'
 import {
   centeredEllFloor,
   flushEllFloor,
   longNorthWallFloor,
-  nodesOf,
   offCenterPartitionFloor,
 } from '../../core/scene/wall-runs-test-fixtures'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { findByEntityId } from '../testing'
 import { buildScene } from './build-scene'
-import { updateNearWallTransparency } from './near-wall-transparency'
 import { enrollNearWallTargets } from './near-wall-transparency-enrollment'
+import { fadedScene, isFaded, piecesOf, sceneGraphOf } from './near-wall-transparency-test-support'
 
-const FADED_OPACITY = 0.1
-const SPAN_KEY = 'wallSpanMm'
 // The off-center partition floor is an 8000 x 4000 block of four exterior walls (south, east,
 // north, west) cut by an interior partition at x = 3000. The partition meets the south and the
 // north wall in a three-wall junction each, and each of those walls has an exterior run on an
 // edge of its junction, so two junction fills are enrolled beside the four wall targets.
 const EXTERIOR_WALL_COUNT = 4
 const JUNCTION_FILL_COUNT = 2
-
-interface Span {
-  fromMm: number
-  toMm: number
-}
-
-interface Piece {
-  span: Span | undefined
-  faded: boolean
-}
-
-const sceneGraphOf = (floor: Floor): SceneGraph => ({
-  nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
-  ...nodesOf(floor),
-  underlays: [],
-  dimensions: [],
-  stairs: [],
-  furniture: [],
-})
-
-/** The scene of `floor` with the near-wall fade applied for a camera at `camera`. */
-function fadedScene(floor: Floor, camera: { x: number; z: number }): THREE.Group {
-  const graph = sceneGraphOf(floor)
-  const root = buildScene(graph, new NeutralMaterialProvider())
-  updateNearWallTransparency(enrollNearWallTargets(root, graph), camera)
-  return root
-}
-
-/** True when some material of a mesh at or under `object` sits at the faded opacity. */
-function isFaded(object: THREE.Object3D): boolean {
-  let faded = false
-  object.traverse((part) => {
-    if (!(part instanceof THREE.Mesh)) return
-    const materials: THREE.Material[] = Array.isArray(part.material)
-      ? part.material
-      : [part.material]
-    faded ||= materials.some((material) => material.opacity === FADED_OPACITY)
-  })
-  return faded
-}
-
-/** The meshes of the wall `entityId` with their recorded span and whether each is faded, by start. */
-function piecesOf(root: THREE.Object3D, entityId: string): Piece[] {
-  const pieces: Piece[] = []
-  root.traverse((object) => {
-    if (object instanceof THREE.Mesh && object.userData.entityId === entityId) {
-      pieces.push({ span: object.userData[SPAN_KEY] as Span | undefined, faded: isFaded(object) })
-    }
-  })
-  return pieces.sort((a, b) => (a.span?.fromMm ?? 0) - (b.span?.fromMm ?? 0))
-}
 
 function openingFaded(root: THREE.Object3D, openingId: string): boolean {
   const group = findByEntityId(root, openingId)
