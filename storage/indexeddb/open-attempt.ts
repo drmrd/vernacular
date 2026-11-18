@@ -1,16 +1,20 @@
 import { FILES_STORE } from './indexeddb-requests'
 
-/** The message of a call that the storage of another tab holds up. */
-export const BLOCKED_MESSAGE =
-  'Another tab holds the storage open with an older version of the app. Close that tab and try again.'
+/**
+ * The message of a call whose open did not arrive in time. It holds whether or
+ * not the browser reported a block, because the browser reports it only to the
+ * first request that waits for the other connection.
+ */
+export const OPEN_HELD_UP_MESSAGE =
+  'The storage did not open. Another tab of the app may hold it open with an older version. Close that tab and try again.'
 
 /**
- * How long a call waits for an open request that the browser holds back, before
- * it rejects with {@link BLOCKED_MESSAGE}. The browser finishes that request a
- * few milliseconds after the other tab lets go, so a call made right after
- * that moment still gets its connection.
+ * How long a call waits for an open request that is already pending, before it
+ * rejects with {@link OPEN_HELD_UP_MESSAGE}. The browser finishes a held-back
+ * request a few milliseconds after the other tab lets go, so a call made right
+ * after that moment still gets its connection.
  */
-export const BLOCKED_OPEN_WAIT_MILLISECONDS = 500
+export const PENDING_OPEN_WAIT_MILLISECONDS = 500
 
 /** One open request of the browser. It cannot be cancelled, so it is kept until it ends. */
 export interface OpenAttempt {
@@ -38,27 +42,36 @@ export function startOpen(databaseName: string, version: number): OpenAttempt {
   return { result, blocked }
 }
 
+/** How long a call waits for an open request. */
+export interface OpenWaits {
+  /** The longest wait, counted from the call, whether or not the browser reports a block. */
+  total: number
+  /** The longest wait after the browser reports a block, counted from that report. */
+  afterBlock: number
+}
+
 /**
- * Resolves with the connection when the request finishes. When the request is
- * blocked, rejects with {@link BLOCKED_MESSAGE} once `waitMilliseconds` have
- * passed, unless the request finishes first. The wait counts from the moment the
- * call learns of the block: from the block itself for a call that was already
- * waiting, and from the call for a call made after the block. The request itself
- * stays pending; a later call can wait for it again.
+ * Resolves with the connection when the request finishes. Rejects with
+ * {@link OPEN_HELD_UP_MESSAGE} when the request has not finished after
+ * `waits.total` milliseconds, or after `waits.afterBlock` milliseconds from the
+ * block, whichever comes first. Both timers end when the request finishes. The
+ * request itself stays pending; a later call can wait for it again.
  */
-export function waitForOpen(attempt: OpenAttempt, waitMilliseconds: number): Promise<IDBDatabase> {
+export function waitForOpen(attempt: OpenAttempt, waits: OpenWaits): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    let timer: ReturnType<typeof setTimeout> | undefined
+    const rejectHeldUp = () => reject(new Error(OPEN_HELD_UP_MESSAGE))
+    const timers = [setTimeout(rejectHeldUp, waits.total)]
     void attempt.blocked.then(() => {
-      timer = setTimeout(() => reject(new Error(BLOCKED_MESSAGE)), waitMilliseconds)
+      timers.push(setTimeout(rejectHeldUp, waits.afterBlock))
     })
+    const endTimers = () => timers.forEach((timer) => clearTimeout(timer))
     attempt.result.then(
       (database) => {
-        clearTimeout(timer)
+        endTimers()
         resolve(database)
       },
       (error: unknown) => {
-        clearTimeout(timer)
+        endTimers()
         reject(error instanceof Error ? error : new Error('Failed to open IndexedDB'))
       },
     )

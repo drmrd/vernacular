@@ -11,15 +11,23 @@ import {
   readLegacyFile,
 } from './legacy-records'
 import {
-  BLOCKED_OPEN_WAIT_MILLISECONDS,
+  PENDING_OPEN_WAIT_MILLISECONDS,
   startOpen,
   waitForOpen,
   type OpenAttempt,
+  type OpenWaits,
 } from './open-attempt'
 
 const DATABASE_VERSION = 2
-/** The first call of an open request rejects as soon as the browser reports the block. */
-const NO_WAIT_MILLISECONDS = 0
+/** An open normally arrives in a few milliseconds; this is long enough for a slow start. */
+const DEFAULT_OPEN_WAIT_MILLISECONDS = 3000
+/** The call that starts an open request rejects as soon as the browser reports a block. */
+const NO_WAIT_AFTER_BLOCK_MILLISECONDS = 0
+/** What a call that finds the open request pending waits, with or without a report of a block. */
+const LATER_WAITS: OpenWaits = {
+  total: PENDING_OPEN_WAIT_MILLISECONDS,
+  afterBlock: PENDING_OPEN_WAIT_MILLISECONDS,
+}
 /** Sorts after every character that can appear in a path, so it ends a prefix range. */
 const HIGHEST_CODE_UNIT = '\uffff'
 
@@ -44,6 +52,12 @@ function childNames(paths: string[], directoryPath: string): string[] {
 export interface IndexedDbDirectoryOptions {
   /** Runs once after the database opens, before the first operation resolves. */
   convertLegacy?: (database: IDBDatabase) => Promise<void>
+  /**
+   * How many milliseconds the call that starts an open waits for the database to
+   * open, before it rejects with a message about another tab. Defaults to a few
+   * seconds.
+   */
+  openWaitMilliseconds?: number
 }
 
 /**
@@ -58,24 +72,29 @@ export interface IndexedDbDirectoryOptions {
  * converts again.
  *
  * While a tab of an older build holds the database open, the upgrade is blocked
- * and the browser keeps the open request pending. The first call rejects at once
- * with a message about the other tab. Every later call waits a short fixed time
- * for the pending request and then rejects with the same message; no call waits
- * without end, and no second request starts while one is pending. When the other
- * tab lets go, the next call gets the connection of that request. A connection
- * that arrives while no call waits is closed.
+ * and the browser keeps the open request pending. No call waits without end.
+ * The call that starts the request rejects with a message about another tab at
+ * once when the browser reports the block, and otherwise when the request has
+ * not arrived after `openWaitMilliseconds`; the browser reports a block only to
+ * the first request that waits for the other connection. Every later call waits
+ * a short fixed time for the pending request and then rejects with the same
+ * message. No second request starts while one is pending. When the other tab
+ * lets go, the next call gets the connection of that request. A connection that
+ * arrives while no call waits is closed.
  */
 export class IndexedDbDirectory implements DirectoryPort {
   private connection: Promise<IDBDatabase> | undefined
   /** The open request that the browser has not finished; at most one exists. */
   private attempt: OpenAttempt | undefined
   private readonly convertLegacy: (database: IDBDatabase) => Promise<void>
+  private readonly openWaitMilliseconds: number
 
   constructor(
     private readonly databaseName: string,
     options: IndexedDbDirectoryOptions = {},
   ) {
     this.convertLegacy = options.convertLegacy ?? ((database) => convertLegacyRecords(database))
+    this.openWaitMilliseconds = options.openWaitMilliseconds ?? DEFAULT_OPEN_WAIT_MILLISECONDS
   }
 
   async readFile(path: string): Promise<Uint8Array | undefined> {
@@ -162,23 +181,28 @@ export class IndexedDbDirectory implements DirectoryPort {
   }
 
   /**
-   * The connection of the open request. A call that starts the request rejects at
-   * once when the browser reports a block. A call that finds the request still
-   * pending waits a short time for it and then rejects, so that no call waits
-   * without end while another tab holds the upgrade up.
+   * The connection of the open request. The call that starts the request waits
+   * for the open wait of the directory, and rejects at once when the browser
+   * reports a block. A call that finds the request still pending waits a short
+   * time for it. Each of them then rejects, so that no call waits without end,
+   * with or without a report of a block.
    */
   private async arrive(): Promise<IDBDatabase> {
     const pending = this.attempt
     const attempt = pending ?? this.startAttempt()
     const database = await waitForOpen(
       attempt,
-      pending === undefined ? NO_WAIT_MILLISECONDS : BLOCKED_OPEN_WAIT_MILLISECONDS,
+      pending === undefined ? this.firstWaits() : LATER_WAITS,
     )
     database.onversionchange = () => {
       database.close()
       this.connection = undefined
     }
     return database
+  }
+
+  private firstWaits(): OpenWaits {
+    return { total: this.openWaitMilliseconds, afterBlock: NO_WAIT_AFTER_BLOCK_MILLISECONDS }
   }
 
   private startAttempt(): OpenAttempt {
