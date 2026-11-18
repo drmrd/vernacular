@@ -1,68 +1,45 @@
-import { pointInPolygon } from '../geometry/polygon'
-import type { OpeningOrientation, Point } from '../model/types'
+import type { OpeningOrientation } from '../model/types'
 import type { OpeningSceneNode, RoomSceneNode } from './scene-graph'
-import { HALF } from './wall-half'
+import { roomSidesAt } from './wall-room-sides'
 
 /**
- * The clearance, in mm, past the wall face that the room uses, so the sample lies clearly inside
- * a room that begins at that face.
- */
-export const OPENING_ROOM_SIDE_SAMPLE_MM = 50
-
-/**
- * True when the point lies in the room's clear polygon and in none of its holes. Unlike
- * `insideAnyRoom` in exterior-walls.ts, this excludes holes; the two are kept apart on purpose.
- */
-function insideRoom(point: Point, room: RoomSceneNode): boolean {
-  if (!pointInPolygon(point, room.clearPolygon)) return false
-  return !(room.holes ?? []).some((hole) => pointInPolygon(point, hole))
-}
-
-/** The point at `distance` from the opening's center along its normal, signed by `direction`. */
-function sampleAcross(node: OpeningSceneNode, direction: 1 | -1, distance: number): Point {
-  return {
-    x: node.center.x + node.normal.x * distance * direction,
-    y: node.center.y + node.normal.y * distance * direction,
-  }
-}
-
-/**
- * The side of an opening's wall, as a sign of the opening's `normal`, that lies in a room at the
- * opening's own center: 'positive' when only the point `center + normal * d` lies in a room,
- * 'negative' when only `center - normal * d` does, where d = max(rawWallThickness,
- * node.hostThickness) / 2 + OPENING_ROOM_SIDE_SAMPLE_MM. A point lies in a room when it is inside
- * the room's clearPolygon and inside none of its holes. Only rooms on the opening's floor count.
- * Undefined when both points or neither lie in a room: a wall between two rooms, or one that
- * bounds no room there.
+ * The side of an opening's wall, as a sign of the opening's `normal`, that has a room along it at
+ * the opening's center: roomSidesAt({ point: node.center, normal: node.normal, floorId:
+ * node.floorId }, rooms) when that is 'positive' or 'negative', and undefined when it is 'both'
+ * (a wall between two rooms there) or 'neither' (no room along the wall there). It is the rule
+ * exteriorWalls uses (ADR-0218): a derived opening has a room side exactly when its center lies on
+ * an exterior run of its host wall.
  *
- * Today a room's clear polygon is inset by the raw thickness of its walls (issue #674). Once
- * rooms follow the faces of the construction profile, the effective thickness takes over. Taking
- * the larger of the two puts the sample past the face the room uses in either case.
+ * The side is read at the opening, not for the whole wall, because one long wall can bound a room
+ * along only part of its length.
  *
- * The side is sampled at the opening, not at the middle of the wall, because one long wall can
- * bound a room along only part of its length: the middle of the wall can lie beside a room that
- * the opening is nowhere near, or beside none while the opening stands in front of one.
+ * `_rawWallThickness` is not read: the rule depends on no thickness and no construction profile.
+ * It stays optional until the callers in bridge/react/harness-fixtures.ts and its test stop
+ * passing it.
  */
 export function openingRoomSide(
   node: OpeningSceneNode,
   rooms: readonly RoomSceneNode[],
-  rawWallThickness: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for callers in bridge/ that still pass it
+  _rawWallThickness?: number,
 ): OpeningOrientation['facing'] | undefined {
-  const distance =
-    Math.max(rawWallThickness, node.hostThickness) / HALF + OPENING_ROOM_SIDE_SAMPLE_MM
-  const floorRooms = rooms.filter((room) => room.floorId === node.floorId)
-  const positive = floorRooms.some((room) => insideRoom(sampleAcross(node, 1, distance), room))
-  const negative = floorRooms.some((room) => insideRoom(sampleAcross(node, -1, distance), room))
-  if (positive === negative) return undefined
-  return positive ? 'positive' : 'negative'
+  const sides = roomSidesAt(
+    { point: node.center, normal: node.normal, floorId: node.floorId },
+    rooms,
+  )
+  return sides === 'positive' || sides === 'negative' ? sides : undefined
 }
 
-/** The node with `roomSide` set from openingRoomSide, or the node without it when undefined. */
+/**
+ * The node with `roomSide` set from openingRoomSide, or the node without it when undefined.
+ * `_rawWallThickness` is not read (see openingRoomSide).
+ */
 export function withRoomSide(
   node: OpeningSceneNode,
   rooms: readonly RoomSceneNode[],
-  rawWallThickness: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for callers in bridge/ that still pass it
+  _rawWallThickness?: number,
 ): OpeningSceneNode {
-  const roomSide = openingRoomSide(node, rooms, rawWallThickness)
+  const roomSide = openingRoomSide(node, rooms)
   return roomSide === undefined ? node : { ...node, roomSide }
 }

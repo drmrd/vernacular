@@ -262,9 +262,7 @@ export function deriveOpeningNodesForFloor(
 ): OpeningSceneNode[] {
   return floor.openings.flatMap((opening) => {
     const hostWall = floor.walls.find((wall) => wall.id === opening.hostWallId)
-    return hostWall
-      ? [withRoomSide(deriveOpeningNode(floor, opening, hostWall), rooms, hostWall.thickness)]
-      : []
+    return hostWall ? [withRoomSide(deriveOpeningNode(floor, opening, hostWall), rooms)] : []
   })
 }
 

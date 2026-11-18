@@ -70,14 +70,13 @@ interface CachedOpeningNode {
 
 /**
  * Whether the cached node's room side still holds. The same room-node array means nothing moved;
- * otherwise the side is sampled again, and the new array is remembered when the side is unchanged.
+ * otherwise the side is read again, and the new array is remembered when the side is unchanged.
  */
 function roomSideHolds(cached: CachedOpeningNode, rooms: readonly RoomSceneNode[]): boolean {
   if (cached.rooms === rooms) {
     return true
   }
-  const holds =
-    openingRoomSide(cached.node, rooms, cached.hostWall.thickness) === cached.node.roomSide
+  const holds = openingRoomSide(cached.node, rooms) === cached.node.roomSide
   if (holds) {
     cached.rooms = rooms
   }
@@ -108,11 +107,7 @@ function openingNodesFor(
     if (cached !== undefined && cached.hostWall === hostWall && roomSideHolds(cached, rooms)) {
       return [cached.node]
     }
-    const node = withRoomSide(
-      deriveOpeningNode(floor, opening, hostWall),
-      rooms,
-      hostWall.thickness,
-    )
+    const node = withRoomSide(deriveOpeningNode(floor, opening, hostWall), rooms)
     openingCache.set(opening, { hostWall, rooms, node })
     return [node]
   })
