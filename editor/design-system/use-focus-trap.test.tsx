@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi, type Mock } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useFocusTrap } from './use-focus-trap'
@@ -167,5 +167,168 @@ describe('useFocusTrap cleanup', () => {
     rerender(<Harness open={false} />)
 
     expect(pressOn(opener).defaultPrevented).toBe(false)
+  })
+})
+
+type KeyEventType = 'keydown' | 'keyup'
+
+interface KeySpies {
+  onWindow: Mock<(event: KeyboardEvent) => void>
+  onDocument: Mock<(event: KeyboardEvent) => void>
+}
+
+// Listens for the key on both places an editor-wide handler would sit, and always lets go.
+async function whileListening(type: KeyEventType, body: (spies: KeySpies) => Promise<void>) {
+  const spies: KeySpies = { onWindow: vi.fn(), onDocument: vi.fn() }
+  window.addEventListener(type, spies.onWindow)
+  document.addEventListener(type, spies.onDocument)
+  try {
+    await body(spies)
+  } finally {
+    window.removeEventListener(type, spies.onWindow)
+    document.removeEventListener(type, spies.onDocument)
+  }
+}
+
+function ListeningDialog({ onKeyDown }: { onKeyDown: (event: React.KeyboardEvent) => void }) {
+  const ref = useFocusTrap<HTMLDivElement>()
+  return (
+    <div ref={ref} role="dialog" aria-label="Listening" onKeyDown={onKeyDown}>
+      <input aria-label="First field" />
+    </div>
+  )
+}
+
+function OuterTrap() {
+  const ref = useFocusTrap<HTMLDivElement>()
+  return (
+    <div ref={ref} role="dialog" aria-label="Outer">
+      <input aria-label="Outer first" />
+      <input aria-label="Outer second" />
+    </div>
+  )
+}
+
+function InnerTrap() {
+  const ref = useFocusTrap<HTMLDivElement>()
+  return (
+    <div ref={ref} role="dialog" aria-label="Inner">
+      <button type="button">Inner first</button>
+      <button type="button">Inner second</button>
+    </div>
+  )
+}
+
+function TwoTraps({ inner }: { inner: boolean }) {
+  return (
+    <div>
+      <button type="button">Elsewhere</button>
+      <OuterTrap />
+      {inner ? <InnerTrap /> : null}
+    </div>
+  )
+}
+
+describe('useFocusTrap and the keys behind it', () => {
+  it('hides every keydown from the listeners on the document and the window', async () => {
+    const user = userEvent.setup()
+    render(<Harness open={true} />)
+
+    await whileListening('keydown', async ({ onWindow, onDocument }) => {
+      await user.keyboard('{Control>}k{/Control}')
+      await user.keyboard('{Delete}')
+      await user.keyboard('w')
+
+      expect(onWindow).not.toHaveBeenCalled()
+      expect(onDocument).not.toHaveBeenCalled()
+    })
+  })
+
+  it('still hands every key to the handlers on the container itself', async () => {
+    const user = userEvent.setup()
+    const keys: string[] = []
+    render(<ListeningDialog onKeyDown={(event) => keys.push(event.key)} />)
+
+    await user.keyboard('{Escape}')
+
+    expect(keys).toEqual(['Escape'])
+  })
+
+  it('lets the field inside the container take typed text', async () => {
+    const user = userEvent.setup()
+    render(<Harness open={true} />)
+    const firstField = screen.getByRole('textbox', { name: 'First field' })
+
+    await user.type(firstField, 'abc')
+
+    expect(firstField).toHaveValue('abc')
+  })
+
+  it('lets keyup through so that a held key is released', async () => {
+    const user = userEvent.setup()
+    render(<Harness open={true} />)
+
+    await whileListening('keyup', async ({ onWindow }) => {
+      await user.keyboard('a')
+
+      expect(onWindow).toHaveBeenCalled()
+    })
+  })
+
+  it('holds back a key pressed with focus outside and moves focus into the container', async () => {
+    const user = userEvent.setup()
+    render(<Harness open={true} />)
+    ;(document.activeElement as HTMLElement).blur()
+
+    await whileListening('keydown', async ({ onWindow }) => {
+      await user.keyboard('{Delete}')
+
+      expect(onWindow).not.toHaveBeenCalled()
+    })
+    expect(screen.getByRole('textbox', { name: 'First field' })).toHaveFocus()
+  })
+
+  it('lets keys reach the window again once the trap unmounts', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<Harness open={true} />)
+    rerender(<Harness open={false} />)
+
+    await whileListening('keydown', async ({ onWindow }) => {
+      await user.keyboard('x')
+
+      expect(onWindow).toHaveBeenCalled()
+    })
+  })
+
+  it('lets only the newest of two traps act, and hands over to the older one when it unmounts', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<TwoTraps inner={false} />)
+    rerender(<TwoTraps inner={true} />)
+    const innerFirst = screen.getByRole('button', { name: 'Inner first' })
+    const innerSecond = screen.getByRole('button', { name: 'Inner second' })
+    const elsewhere = screen.getByRole('button', { name: 'Elsewhere' })
+    expect(innerFirst).toHaveFocus()
+
+    await whileListening('keydown', async ({ onWindow, onDocument }) => {
+      await user.keyboard('x')
+      expect(onWindow).not.toHaveBeenCalled()
+      expect(onDocument).not.toHaveBeenCalled()
+      expect(innerFirst).toHaveFocus()
+
+      expect(pressOn(innerSecond).defaultPrevented).toBe(false)
+      expect(pressOn(elsewhere).defaultPrevented).toBe(true)
+      await user.click(innerSecond)
+      expect(innerSecond).toHaveFocus()
+
+      rerender(<TwoTraps inner={false} />)
+      expect(screen.getByRole('textbox', { name: 'Outer first' })).toHaveFocus()
+      await user.keyboard('x')
+      expect(onWindow).not.toHaveBeenCalled()
+      expect(onDocument).not.toHaveBeenCalled()
+
+      expect(pressOn(screen.getByRole('button', { name: 'Elsewhere' })).defaultPrevented).toBe(true)
+      await user.tab({ shift: true })
+      expect(screen.getByRole('textbox', { name: 'Outer second' })).toHaveFocus()
+    })
   })
 })

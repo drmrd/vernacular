@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { CommandContext, EditorCommand } from '../commands/command'
+import { useKeybindings } from '../commands/use-keybindings'
 import { DiscardDialog } from './discard-dialog'
 
 afterEach(cleanup)
@@ -200,5 +202,61 @@ describe('DiscardDialog focus, modality, and closing', () => {
     )
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('DiscardDialog and the editor behind it', () => {
+  function bindingTo(id: string, chord: string, ran: string[]): EditorCommand {
+    return {
+      id,
+      label: id,
+      keybindings: [chord],
+      isEnabled: () => true,
+      run: () => ran.push(id),
+    }
+  }
+
+  function EditorBehind({ ran }: { ran: string[] }) {
+    useKeybindings(
+      [
+        bindingTo('open-palette', 'Mod+K', ran),
+        bindingTo('undo', 'Mod+Z', ran),
+        bindingTo('delete-selection', 'Delete', ran),
+      ],
+      {} as CommandContext,
+    )
+    return <button type="button">Behind</button>
+  }
+
+  function renderPromptOverEditor(ran: string[], onCancel: () => void = () => {}) {
+    render(
+      <>
+        <EditorBehind ran={ran} />
+        <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />
+      </>,
+    )
+  }
+
+  it('runs none of the editor commands for the keys pressed while the prompt is open', async () => {
+    const user = userEvent.setup()
+    const ran: string[] = []
+    renderPromptOverEditor(ran)
+    expect(screen.getByRole('button', { name: /cancel/i })).toHaveFocus()
+
+    await user.keyboard('{Control>}k{/Control}')
+    await user.keyboard('{Control>}z{/Control}')
+    await user.keyboard('{Delete}')
+
+    expect(ran).toEqual([])
+  })
+
+  it('still answers Escape as cancel with the editor commands bound behind it', async () => {
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+    renderPromptOverEditor([], onCancel)
+
+    await user.keyboard('{Escape}')
+
+    expect(onCancel).toHaveBeenCalledOnce()
   })
 })
