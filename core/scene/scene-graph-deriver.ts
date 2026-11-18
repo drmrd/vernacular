@@ -1,15 +1,15 @@
 import { openingRoomSide, withRoomSide } from './opening-room-side'
 import {
-  deriveDimensionNodesForFloor,
+  PURE_NODE_DERIVATIONS,
   deriveFloorNode,
   deriveFurnitureNode,
   deriveOpeningNode,
   deriveRoomNodesForFloor,
   deriveStairNodes,
-  deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene-graph'
-import { resolveGradeElevation } from '../model/site'
+import { assembleSceneGraph } from './scene-graph-assembly'
+import type { SceneNodeDerivations } from './scene-graph-assembly'
 import type {
   Floor,
   FurnitureInstance,
@@ -195,33 +195,17 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
   const furnitureCache = new WeakMap<FurnitureInstance, FurnitureSceneNode>()
 
-  const floorNodeFor = (floor: Floor) =>
-    memoizeByRef(floorCache, floor, () => deriveFloorNode(floor))
-  const stairNodesFor = (project: Project) =>
-    memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project))
-  const furnitureNodesFor = (floor: Floor): FurnitureSceneNode[] =>
-    floor.furniture.map((item) =>
+  const derivations: SceneNodeDerivations = {
+    ...PURE_NODE_DERIVATIONS,
+    floorNode: (floor) => memoizeByRef(floorCache, floor, () => deriveFloorNode(floor)),
+    wallNode: (floor, wall) => wallNodeFor(wallCache, floor, wall),
+    roomNodes: (floor, overrides) => roomNodesFor(roomCache, floor, overrides),
+    openingNodes: (floor, rooms) => openingNodesFor(openingCache, floor, rooms),
+    stairNodes: (project) =>
+      memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project)),
+    furnitureNode: (floor, item) =>
       memoizeByRef(furnitureCache, item, () => deriveFurnitureNode(floor, item)),
-    )
-
-  return (project) => {
-    const roomsByFloor = project.floors.map((floor) =>
-      roomNodesFor(roomCache, floor, project.roomOverrides),
-    )
-    return {
-      nodes: project.floors.map(floorNodeFor),
-      walls: project.floors.flatMap((floor) =>
-        floor.walls.map((wall) => wallNodeFor(wallCache, floor, wall)),
-      ),
-      rooms: roomsByFloor.flat(),
-      underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
-      openings: project.floors.flatMap((floor, index) =>
-        openingNodesFor(openingCache, floor, roomsByFloor[index] ?? []),
-      ),
-      dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
-      stairs: stairNodesFor(project),
-      furniture: project.floors.flatMap(furnitureNodesFor),
-      gradeElevation: resolveGradeElevation(project.site),
-    }
   }
+
+  return (project) => assembleSceneGraph(project, derivations)
 }
