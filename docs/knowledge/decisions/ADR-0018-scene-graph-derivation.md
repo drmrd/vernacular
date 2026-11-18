@@ -17,9 +17,11 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
     core/scene/scene-graph.ts,
     core/scene/scene-graph-deriver.ts,
+    core/scene/scene-graph-deriver-wall-height.test.ts,
+    tests/performance/scene-rebuild-counts.test.ts,
   ]
 status: current
-updated: 2026-06-07
+updated: 2026-11-18
 ---
 
 # ADR-0018: Scene-graph derivation as a memoized projection
@@ -138,3 +140,49 @@ maintain.
   mutation, but more code and slower, and it would paper over violations of the
   immutable-update convention rather than surfacing them. Reference identity is
   the cheaper and stricter choice given the convention is already in force.
+
+## Update (2026-11-18): the wall cache compares what a wall node reads from its floor
+
+The decision above keys each wall's cached node on the `Wall` object alone. That key
+misses part of the node. `deriveWallNode` copies two values from the floor: the floor id
+as `floorId`, and `defaultCeilingHeight` as the node's `height`. The ceiling height
+command (`setFloorCeilingHeight`) replaces the floor object but keeps the same wall
+objects. A warm deriver then found every wall in its cache and returned nodes with the
+old height, 2438 where the floor now said 4000 (issue #676). No control in the editor
+dispatches that command yet, so no user could trigger the fault. A test did record it,
+though: the rebuild count baseline had stored the stale reuse as the expected count, as
+the paragraph on the preview below shows.
+
+The wall cache now follows this rule: a cache entry stores every input its key does not
+capture and compares those inputs on a hit. The other caches of the file follow it only
+in part. For a wall node the inputs are the floor id and the ceiling height.
+`CachedWallNode` holds both next to the node, and `wallNodeFor` returns the cached node
+only while both still match the current floor. Otherwise it derives a new node and
+caches that one. The room cache in the same file already did this for the room overrides
+and the ceiling height: `CachedRoomNodes` stores both, and `roomNodesFor` compares them.
+It does not compare the floor id. That cache keys on the floor's `walls` array, not on
+the `Floor` object as the consequences above say. It has done so since the change of
+2026-06-15 that [[ADR-0089-within-floor-mesh-reuse]] records.
+
+A ceiling height change now gives every wall of that floor a new node. The preview
+reconciler of [[ADR-0089-within-floor-mesh-reuse]] reuses a floor's wall sub-group only
+while every wall node keeps its reference (`reuseOrBuildWall` in
+`bridge/react/floor-build.ts`). So after this change the wall sub-group of that floor
+rebuilds, where before it was reused at the old height. The rebuild count gate
+`tests/performance/scene-rebuild-counts.test.ts` shows this. For its reference edit
+`set-ceiling-height`, the baseline `tests/performance/baseline-scene-rebuild.json` had
+recorded 0 rebuilt wall groups, so the walls of the preview kept the old height. It now
+records 1, and no other count in the baseline changed.
+
+One limit is left, in three caches. The room cache keys on the floor's `walls` array,
+the opening cache on the `Opening` object, and the furniture cache on the
+`FurnitureInstance` object. `deriveRoomNodesForFloor`, `deriveOpeningNode`, and
+`deriveFurnitureNode` all copy the floor id into the node, and none of the three caches
+compares it. The wall cache is now the only one that does. That is safe today because no
+command changes a floor's id or carries the same walls array, opening, or furniture
+object to another floor. If a command ever does, those caches need the same comparison.
+
+The evidence is `core/scene/scene-graph-deriver-wall-height.test.ts`, seven tests. They
+cover a warm deriver after a ceiling height change, both directly and through the
+command, a match with the pure projection, a return to the old height, reuse when the
+floor changes in other ways, and a wall object that moves under another floor id.

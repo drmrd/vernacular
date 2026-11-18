@@ -22,7 +22,7 @@ sourceFiles:
     bridge/react/near-wall-fade.tsx,
   ]
 status: current
-updated: 2026-08-17
+updated: 2026-11-18
 ---
 
 # ADR-0089: Within-floor mesh reuse in the three-dimensional preview
@@ -173,3 +173,11 @@ its materials still at the fade opacity, where no update or restore reaches them
 it, comparing by material instance so a wall the rebuild enrolls again keeps the appearance
 the frame gave it. The update above says no consumer depends on that list's identity. This
 one now does, for the length of a single rebuild.
+
+## Update (2026-11-18): a ceiling height edit rebuilds the wall sub-group
+
+A wall no longer keeps its node reference across a ceiling height change of its floor, so
+that edit rebuilds the floor's wall sub-group rather than reusing it. The rule is in the
+2026-11-18 update of [[ADR-0018-scene-graph-derivation]]. For the `set-ceiling-height`
+edit, the rebuild count baseline in `tests/performance/baseline-scene-rebuild.json` went
+from 0 rebuilt wall groups to 1.
