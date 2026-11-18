@@ -46,7 +46,7 @@ export function describeListing(begin: BeginRun, holdsMany: boolean): void {
       const listed = (await run.open().list()).map((summary) => summary.id)
 
       if (holdsMany) expect(listed).toEqual([PROJECT_ID, OTHER_PROJECT_ID])
-      else expect(listed).toContain(PROJECT_ID)
+      else expect(listed).toEqual([PROJECT_ID])
     })
   })
 }

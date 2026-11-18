@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 import {
   CURRENT_SCHEMA_VERSION,
   createEmptyProject,
@@ -170,13 +170,8 @@ describe('deleting a project from a workspace store', () => {
       new FolderFiles('p', new InMemoryDirectory(), { durable: true }),
     )
 
-    // Never run: only the compiler checks that the member does not exist.
-    const neverCalled = () => {
-      // @ts-expect-error a store over one folder cannot delete the folder
-      return store.delete('p')
-    }
-
-    expect(neverCalled).toBeTypeOf('function')
+    expect('delete' in store).toBe(false)
+    expectTypeOf(store).not.toHaveProperty('delete')
   })
 })
 

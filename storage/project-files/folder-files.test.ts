@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 import { ASSET_DIRECTORY_PREFIX } from '../directory-asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
@@ -53,13 +53,8 @@ describe('FolderFiles', () => {
   it('has no way to remove a project, so it can never delete a file it did not write', () => {
     const files = new FolderFiles('p', new InMemoryDirectory(), { durable: true })
 
-    // Never run: only the compiler checks that the member does not exist.
-    const neverCalled = () => {
-      // @ts-expect-error FolderFiles is not removable
-      return files.remove('p')
-    }
-
-    expect(neverCalled).toBeTypeOf('function')
+    expect('remove' in files).toBe(false)
+    expectTypeOf(files).not.toHaveProperty('remove')
   })
 
   it('reflects the durable option', () => {

@@ -52,7 +52,7 @@ describe('a record that cannot be converted', () => {
     )
     const directory = new IndexedDbDirectory(name)
 
-    await expect(directory.list('')).resolves.toBeDefined()
+    await expect(directory.list('')).resolves.toEqual(['current', 'cyclic'])
 
     expect(await storedFilePathsOf(name)).toEqual([CURRENT_PROJECT_PATH])
     expect(await firstLayoutIdsOf(name)).toEqual(['cyclic'])

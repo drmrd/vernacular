@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 import { createEmptyProject, encodeDocument } from '../../core'
 import type { Project } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
@@ -117,13 +117,8 @@ describe('the store of a picked folder', () => {
   it('has no delete', () => {
     const store = storeOver(new InMemoryDirectory())
 
-    // Never run: only the compiler checks that the member does not exist.
-    const neverCalled = () => {
-      // @ts-expect-error a store over a picked folder cannot remove files from it
-      return store.delete(PROJECT_ID)
-    }
-
-    expect(neverCalled).toBeTypeOf('function')
+    expect('delete' in store).toBe(false)
+    expectTypeOf(store).not.toHaveProperty('delete')
   })
 
   it('saves the document to vernacular.json at the folder root, where a second store loads it', async () => {

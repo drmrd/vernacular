@@ -80,7 +80,7 @@ describe('the token of a conversion', () => {
     await directory.writeFile(CURRENT_PROJECT_PATH, SAVED_BYTES)
 
     const saved = await fileRecordAt(name, CURRENT_PROJECT_PATH)
-    expect(Object.keys(saved ?? {})).toEqual(['path', 'bytes', 'modifiedAt'])
+    expect(saved).not.toHaveProperty('convertedBy')
     expect(await storedFileBytesOf(name, CURRENT_PROJECT_PATH)).toEqual(SAVED_BYTES)
   })
 })
@@ -98,7 +98,7 @@ describe('a conversion that meets trouble while it reads back', () => {
         : Promise.resolve(storedFileBytesOf(name, path))
     const directory = directoryReadingBackWith(name, readBack)
 
-    await expect(directory.list('')).resolves.toBeDefined()
+    await expect(directory.list('')).resolves.toEqual(['a-one', 'b-two'])
 
     expect(await storedFilePathsOf(name)).toContain('b-two/vernacular.json')
     expect(await firstLayoutIdsOf(name)).toEqual(['a-one'])
