@@ -198,14 +198,50 @@ function wallNodeFor(
 }
 
 /**
- * Builds a stateful deriver that memoizes each floor's and wall's scene node by
- * the source object's reference. This is the entity-keyed dirty tracking from
+ * A cached furniture node plus the id of the floor that held the piece. The
+ * furniture cache is keyed on the `FurnitureInstance` alone, but the node copies
+ * the floor's id, and the same piece can move under another floor, so the id is
+ * compared explicitly. The id is compared, never the floor object: a new floor
+ * object with the same id reuses the node.
+ */
+interface CachedFurnitureNode {
+  floorId: string
+  node: FurnitureSceneNode
+}
+
+/**
+ * Derives a piece's scene node, reusing the cached node while the piece
+ * reference and the floor's id are unchanged. Otherwise it derives a new node
+ * and caches it. Module-scope so the deriver closure stays under its line cap,
+ * like `wallNodeFor`.
+ */
+function furnitureNodeFor(
+  furnitureCache: WeakMap<FurnitureInstance, CachedFurnitureNode>,
+  floor: Floor,
+  item: FurnitureInstance,
+): FurnitureSceneNode {
+  const cached = furnitureCache.get(item)
+  if (cached !== undefined && cached.floorId === floor.id) {
+    return cached.node
+  }
+  const node = deriveFurnitureNode(floor, item)
+  furnitureCache.set(item, { floorId: floor.id, node })
+  return node
+}
+
+/**
+ * Builds a stateful deriver that memoizes each floor's, wall's, room's,
+ * opening's, stair's, and furniture's scene nodes by the source object's
+ * reference. This is the entity-keyed dirty tracking from
  * the design specification, sections 6.1 and 6.10: re-deriving reuses cached
  * nodes for entities whose reference is unchanged and rebuilds only replaced
  * ones. It pairs with the immutable-update handler convention, where an edited
  * floor or wall becomes a new object while untouched ones keep their reference.
- * A wall node is also rebuilt when the id or the `defaultCeilingHeight` of its
- * floor changes, because the node copies both from the floor.
+ * Each cache entry also stores every value that its node reads and that its key
+ * does not capture, and compares those values on a hit. A wall node, for
+ * example, is rebuilt when the id or the `defaultCeilingHeight` of its floor
+ * changes, because the node copies both from the floor; room, opening, and
+ * furniture nodes compare the id of their floor in the same way.
  * The WeakMaps are keyed by the source object so dropped entities do not leak.
  */
 export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
@@ -214,7 +250,7 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const roomCache = new WeakMap<readonly Wall[], CachedRoomNodes>()
   const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
-  const furnitureCache = new WeakMap<FurnitureInstance, FurnitureSceneNode>()
+  const furnitureCache = new WeakMap<FurnitureInstance, CachedFurnitureNode>()
 
   const derivations: SceneNodeDerivations = {
     ...PURE_NODE_DERIVATIONS,
@@ -224,8 +260,7 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     openingNodes: (floor, rooms) => openingNodesFor(openingCache, floor, rooms),
     stairNodes: (project) =>
       memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project)),
-    furnitureNode: (floor, item) =>
-      memoizeByRef(furnitureCache, item, () => deriveFurnitureNode(floor, item)),
+    furnitureNode: (floor, item) => furnitureNodeFor(furnitureCache, floor, item),
   }
 
   return (project) => assembleSceneGraph(project, derivations)
