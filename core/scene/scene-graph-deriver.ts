@@ -130,11 +130,10 @@ function openingNodesFor(
 /**
  * Derives a floor's room nodes, reusing the cached nodes while the floor's walls
  * array, the `overrides` reference, `defaultCeilingHeight`, and the floor's id
- * are all unchanged.
- * Keying on `floor.walls` lets an edit that yields a new floor with the same
- * walls (an opening edit) reuse the rooms, while an override edit or a ceiling
- * height change still rebuilds them. Module-scope so the deriver closure stays
- * under its line cap, like `openingNodesFor`.
+ * are all unchanged. Keying on `floor.walls` lets an edit that yields a new
+ * floor with the same walls (an opening edit) reuse the rooms, while an
+ * override edit or a ceiling height change still rebuilds them. Module-scope so
+ * the deriver closure stays under its line cap, like `openingNodesFor`.
  */
 function roomNodesFor(
   roomCache: WeakMap<readonly Wall[], CachedRoomNodes>,
