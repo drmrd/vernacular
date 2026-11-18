@@ -17,7 +17,10 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
     core/scene/scene-graph.ts,
     core/scene/scene-graph-deriver.ts,
+    core/scene/scene-graph-assembly.ts,
     core/scene/scene-graph-deriver-wall-height.test.ts,
+    core/scene/scene-graph-deriver-parity.test.ts,
+    core/scene/scene-graph-deriver-floor-id.test.ts,
     tests/performance/scene-rebuild-counts.test.ts,
   ]
 status: current
@@ -154,13 +157,13 @@ though: the rebuild count baseline had stored the stale reuse as the expected co
 the paragraph on the preview below shows.
 
 The wall cache now follows this rule: a cache entry stores every input its key does not
-capture and compares those inputs on a hit. The other caches of the file follow it only
-in part. For a wall node the inputs are the floor id and the ceiling height.
+capture and compares those inputs on a hit. The other caches of the file then followed it
+only in part. For a wall node the inputs are the floor id and the ceiling height.
 `CachedWallNode` holds both next to the node, and `wallNodeFor` returns the cached node
 only while both still match the current floor. Otherwise it derives a new node and
 caches that one. The room cache in the same file already did this for the room overrides
 and the ceiling height: `CachedRoomNodes` stores both, and `roomNodesFor` compares them.
-It does not compare the floor id. That cache keys on the floor's `walls` array, not on
+It did not compare the floor id then. That cache keys on the floor's `walls` array, not on
 the `Floor` object as the consequences above say. It has done so since the change of
 2026-06-15 that [[ADR-0089-within-floor-mesh-reuse]] records.
 
@@ -174,15 +177,88 @@ rebuilds, where before it was reused at the old height. The rebuild count gate
 recorded 0 rebuilt wall groups, so the walls of the preview kept the old height. It now
 records 1, and no other count in the baseline changed.
 
-One limit is left, in three caches. The room cache keys on the floor's `walls` array,
+One limit was left, in three caches. The room cache keys on the floor's `walls` array,
 the opening cache on the `Opening` object, and the furniture cache on the
 `FurnitureInstance` object. `deriveRoomNodesForFloor`, `deriveOpeningNode`, and
 `deriveFurnitureNode` all copy the floor id into the node, and none of the three caches
-compares it. The wall cache is now the only one that does. That is safe today because no
+compared it. The wall cache was then the only one that did. That was safe because no
 command changes a floor's id or carries the same walls array, opening, or furniture
-object to another floor. If a command ever does, those caches need the same comparison.
+object to another floor. The next update closes this limit.
 
 The evidence is `core/scene/scene-graph-deriver-wall-height.test.ts`, seven tests. They
 cover a warm deriver after a ceiling height change, both directly and through the
 command, a match with the pure projection, a return to the old height, reuse when the
 floor changes in other ways, and a wall object that moves under another floor id.
+
+## Update (2026-11-18): one list of fields, and the floor id in every cache
+
+The fields of a `SceneGraph` are now listed in one place. `assembleSceneGraph(project,
+derive)` in `core/scene/scene-graph-assembly.ts` builds all nine of them. Its second
+argument is a `SceneNodeDerivations` object with one function for each kind of node.
+`deriveSceneGraph` passes `PURE_NODE_DERIVATIONS`, which `core/scene/scene-graph.ts`
+builds from the pure helpers. The function that `createSceneGraphDeriver()` returns
+passes the same set with the floor, wall, room, opening, stair, and furniture members
+replaced by cached ones. The underlay and dimension members stay pure, and
+`assembleSceneGraph` reads the grade through `resolveGradeElevation`, so both paths
+derive underlays, dimensions, and the grade on every call. Before this, each entry point
+wrote the nine fields by hand, and a field added to one could be left out of the other.
+That happened once, with the grade elevation.
+
+A new field now goes into the `SceneGraph` interface in `core/scene/scene-graph.ts` and
+gets one line in `assembleSceneGraph`. If it holds a new kind of node, it also needs a
+member in `SceneNodeDerivations` and a pure function for that member in
+`PURE_NODE_DERIVATIONS`. That constant has the interface as its type, so the code does
+not compile until the member is there. The deriver spreads `PURE_NODE_DERIVATIONS` and
+replaces only the members it caches, so the new member uses the pure function until it
+opts into a cache. The fixture of the parity test needs the new field as well: one of
+its tests fails while any field of the pure graph is empty.
+
+Writing the pure projection as a call to a fresh deriver was rejected for two reasons.
+`scene-graph.ts` would then import a value from `scene-graph-deriver.ts`, which imports
+values from `scene-graph.ts`. That is a value import cycle, and
+`tests/architecture/import-cycles.test.ts` fails on any such cycle among the files of
+the six layers. The pure projection would also stop being an independent check. The
+parity tests compare a warm deriver with `deriveSceneGraph`, and with that design each
+of them would compare the cache with itself. The new file imports only types from
+`scene-graph.ts`, so the chosen design has no cycle. The list did not become an optional
+second parameter of `deriveSceneGraph` either. The function is public, so the parameter
+would change its signature, and it would let a caller hand a stateful wrapper to a
+function that promises to have no hidden state.
+
+The room, opening, and furniture entries now store the floor id next to the node.
+`CachedRoomNodes`, `CachedOpeningNode`, and the new `CachedFurnitureNode` each hold a
+`floorId`, and `roomNodesFor`, `openingNodesFor`, and `furnitureNodeFor` return the
+cached node only while that id equals the id of the current floor. They compare the id,
+never the floor object, so a new floor object with the same id does not by itself
+rebuild the node.
+The nodes keep their `floorId` field because readers in four layers use it.
+`buildFloorGroup` in `engine/scene/build-scene.ts` and `floorEntities` in
+`bridge/react/floor-build.ts` filter rooms, openings, and furniture by it.
+`roomsSharingFloor` in `editor/shell/inspector.tsx` counts the rooms of a floor with it,
+and `sceneGraphForFloor` in `core/scene/scene-graph-for-floor.ts` narrows the graph by
+it.
+
+This closes the limit that the update above named, and every cache of the deriver now
+follows the rule stated there. The floor cache keys on the `Floor` object and the stair
+cache on the `project.stairs` array. Each key is the whole source of its nodes, so those
+two entries store the node alone and have nothing to compare.
+
+The fault was latent. No handler in `core/commands/` writes the id of a floor or moves a
+walls array, an opening, or a piece of furniture to another floor. No rebuild count
+changed either: `tests/performance/baseline-scene-rebuild.json` is untouched, because no
+reference edit of the gate changes a floor id.
+
+The evidence is in two files. `core/scene/scene-graph-deriver-parity.test.ts` has 18
+tests. They compare the deriver with the pure projection on every field, cold and after
+each of nine kinds of edit, and also after a wall of the room is removed and after the
+ground floor takes another id. `core/scene/scene-graph-deriver-floor-id.test.ts` has
+seven tests. For each of the three caches they move the source objects under a floor
+with another id, check that the node carries the new id, and pin that the node is
+reused on the next derivation.
+
+Two functions that narrow a derived graph still list its fields by hand:
+`sceneGraphForFloor` in `core/scene/scene-graph-for-floor.ts` and
+`sceneGraphForBuilding` in `bridge/react/view-scene-graph.ts`. Both return a
+`SceneGraph`, so a new required field fails to compile there, but each must pass the
+optional `gradeElevation` through by hand, and a new optional field could be dropped
+without an error. A follow-up, issue #NARROWING ISSUE, tracks this.
