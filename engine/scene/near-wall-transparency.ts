@@ -229,40 +229,72 @@ function enrollJunctionFills(
 /** The factor that takes the sum of a span's two ends to its middle. */
 const SPAN_MIDDLE_FACTOR = 0.5
 
-/**
- * True when `mesh` belongs to `run`: its recorded span has its middle within the run's
- * extent, widened by the room-ring tolerance. A mesh with no recorded span belongs to
- * every run of its wall, so a scene built without spans fades each wall as a whole.
- */
-function meshBelongsToRun(mesh: THREE.Object3D, run: ExteriorWall): boolean {
-  const span = wallSpanOf(mesh)
-  if (span === undefined) {
-    return true
-  }
-  const middleMm = (span.fromMm + span.toMm) * SPAN_MIDDLE_FACTOR
-  return (
-    middleMm >= run.fromMm - ROOM_RING_TOLERANCE_MM && middleMm <= run.toMm + ROOM_RING_TOLERANCE_MM
-  )
+/** The meshes each exterior run owns, keyed by the run's position in `exterior`. */
+type MeshesByRunIndex = Map<number, THREE.Mesh[]>
+
+/** The positions in `exterior` of each wall's runs, indexed by wall id, in `exterior` order. */
+function runIndexesByWallId(exterior: ExteriorWall[]): Map<string, number[]> {
+  const runIndexes = new Map<string, number[]>()
+  exterior.forEach((run, runIndex) => {
+    runIndexes.set(run.wallId, [...(runIndexes.get(run.wallId) ?? []), runIndex])
+  })
+  return runIndexes
 }
 
-/** Every wall mesh in `root` that carries the run's wall id and belongs to the run. */
-function runMeshes(root: THREE.Object3D, run: ExteriorWall): THREE.Mesh[] {
-  return findMeshesBy(
-    root,
-    (node) => node.userData.entityId === run.wallId && meshBelongsToRun(node, run),
-  )
+/**
+ * The position in `exterior` of the run that owns `mesh`, chosen among the wall's runs
+ * (`wallRunIndexes`, in `exterior` order): the first whose stretch, widened by the
+ * room-ring tolerance, holds the middle of the mesh's recorded span. A mesh with no
+ * recorded span belongs to the first run, so a scene built without spans fades each
+ * wall as a whole. Undefined when the middle lies in no run.
+ */
+function ownerRunIndex(
+  mesh: THREE.Object3D,
+  wallRunIndexes: number[],
+  exterior: ExteriorWall[],
+): number | undefined {
+  const span = wallSpanOf(mesh)
+  if (span === undefined) {
+    return wallRunIndexes[0]
+  }
+  const middleMm = (span.fromMm + span.toMm) * SPAN_MIDDLE_FACTOR
+  return wallRunIndexes.find((runIndex) => {
+    const run = exterior[runIndex] as ExteriorWall
+    return (
+      middleMm >= run.fromMm - ROOM_RING_TOLERANCE_MM &&
+      middleMm <= run.toMm + ROOM_RING_TOLERANCE_MM
+    )
+  })
+}
+
+/**
+ * Groups every wall mesh in `root` under the position in `exterior` of the run that owns
+ * it (see {@link ownerRunIndex}). Each mesh lands in at most one group; a mesh of a wall
+ * with no run, or whose span middle lies in none of its wall's runs, lands in none.
+ */
+function ownedMeshesByRunIndex(root: THREE.Object3D, exterior: ExteriorWall[]): MeshesByRunIndex {
+  const runIndexes = runIndexesByWallId(exterior)
+  const meshesByRunIndex: MeshesByRunIndex = new Map()
+  const wallMeshes = findMeshesBy(root, (node) => runIndexes.has(node.userData.entityId as string))
+  for (const mesh of wallMeshes) {
+    const wallRunIndexes = runIndexes.get(mesh.userData.entityId as string) ?? []
+    const runIndex = ownerRunIndex(mesh, wallRunIndexes, exterior)
+    if (runIndex !== undefined) {
+      meshesByRunIndex.set(runIndex, [...(meshesByRunIndex.get(runIndex) ?? []), mesh])
+    }
+  }
+  return meshesByRunIndex
 }
 
 /**
  * The world point and outward normal that decide the fade of `wall`, one exterior run,
- * or null if no mesh in `root` belongs to the run. The segments are collinear, so the
+ * or null if the run owns no mesh (`meshes`). The segments are collinear, so the
  * point is the center of a box expanded over every mesh of the run, keeping it on the
  * wall's plane. The outward normal is a plan-space direction; it maps to world the same
  * way `planToWorld` maps points, so plan y becomes world -z, and negating keeps it
  * aligned with the (z-flipped) wall geometry.
  */
-function wallFacing(root: THREE.Object3D, wall: ExteriorWall): WallFacing | null {
-  const meshes = runMeshes(root, wall)
+function wallFacing(meshes: THREE.Mesh[], wall: ExteriorWall): WallFacing | null {
   if (meshes.length === 0) {
     return null
   }
@@ -279,12 +311,15 @@ function wallFacing(root: THREE.Object3D, wall: ExteriorWall): WallFacing | null
 
 /**
  * Maps each exterior run's position in `exterior` to its fade facing, skipping runs
- * with no mesh in `root`.
+ * that own no mesh.
  */
-function wallFacingMap(root: THREE.Object3D, exterior: ExteriorWall[]): Map<number, WallFacing> {
+function wallFacingMap(
+  meshesByRunIndex: MeshesByRunIndex,
+  exterior: ExteriorWall[],
+): Map<number, WallFacing> {
   const facingByRunIndex = new Map<number, WallFacing>()
   exterior.forEach((run, runIndex) => {
-    const facing = wallFacing(root, run)
+    const facing = wallFacing(meshesByRunIndex.get(runIndex) ?? [], run)
     if (facing !== null) {
       facingByRunIndex.set(runIndex, facing)
     }
@@ -303,19 +338,19 @@ function furnitureEntityId(nodeId: string): string {
 }
 
 /**
- * Builds the one fade target of an exterior run: every mesh of the run (see
- * {@link runMeshes}) plus the hosted openings and the furniture standing against it.
- * A split wall yields several sibling meshes sharing its entity id; each mesh of the
- * run is privatized so they all fade together. The facing comes from the map
- * `prepareNearWallTransparency` already built, so the run's geometry is traversed
- * once for it, not again here.
+ * Builds the one fade target of an exterior run: every mesh the run owns (see
+ * {@link ownerRunIndex}) plus the hosted openings and the furniture standing against it.
+ * A split wall yields several sibling meshes sharing its entity id; each mesh the
+ * run owns is privatized so they all fade together. The meshes and the facing come from
+ * what `prepareNearWallTransparency` already worked out, so the scene is not searched
+ * again here.
  */
 function buildWallTarget(
   root: THREE.Object3D,
   wall: ExteriorWall,
-  facing: WallFacing,
+  { meshes, facing }: { meshes: THREE.Mesh[]; facing: WallFacing },
 ): NearWallTarget {
-  const materials = runMeshes(root, wall).flatMap((mesh) => privatizeMeshMaterials(mesh))
+  const materials = meshes.flatMap((mesh) => privatizeMeshMaterials(mesh))
   materials.push(
     ...wall.openingIds.flatMap((openingId) => privatizeEntityMaterials(root, openingId)),
   )
@@ -329,16 +364,16 @@ function buildWallTarget(
 
 /**
  * Yields one fade target for each entry of `exterior`, that is, for each exterior run.
- * A run's target covers the meshes whose `userData.entityId` equals the run's `wallId`
- * and whose recorded span has its middle within [fromMm - ROOM_RING_TOLERANCE_MM,
- * toMm + ROOM_RING_TOLERANCE_MM]; a wall mesh with no recorded span belongs to every
- * run of its wall. It clones the materials of those meshes, plus those of the run's
+ * Each wall mesh belongs to at most one fade target: the first run, in `exterior` order,
+ * of its wall whose stretch (widened by `ROOM_RING_TOLERANCE_MM`) holds the middle of the
+ * mesh's recorded span. A wall mesh with no recorded span belongs to the first run of its
+ * wall. A run's target clones the materials of the meshes it owns, plus those of the run's
  * hosted openings and of the furniture standing against it (`furnitureIds`, filled in
  * by the core pairing; each piece belongs to at most one run, so a corner piece never
  * enrolls twice), into private instances so the run and its dependents fade together
  * while their opacity animates independently of the rest of the scene. The run's facing
  * point is the center of the bounds of its meshes; with the outward normal it decides
- * whether the camera sees the run from outside. Runs with no mesh in `root` are
+ * whether the camera sees the run from outside. Runs that own no mesh are
  * skipped. Each junction fade group with an incident exterior run also enrolls its
  * tagged fill mesh, privatized so holding or fading one fill never pins another, by one
  * of two paths (see {@link enrollFillMesh}): an unconditional-hold group enrolls a
@@ -352,10 +387,12 @@ export function prepareNearWallTransparency(
   exterior: ExteriorWall[],
   fadeGroups: JunctionFadeGroup[] = [],
 ): NearWallTarget[] {
-  const facingByRunIndex = wallFacingMap(root, exterior)
+  const meshesByRunIndex = ownedMeshesByRunIndex(root, exterior)
+  const facingByRunIndex = wallFacingMap(meshesByRunIndex, exterior)
   const wallTargets = exterior.flatMap((run, runIndex) => {
     const facing = facingByRunIndex.get(runIndex)
-    return facing === undefined ? [] : [buildWallTarget(root, run, facing)]
+    const meshes = meshesByRunIndex.get(runIndex) ?? []
+    return facing === undefined ? [] : [buildWallTarget(root, run, { meshes, facing })]
   })
   return [...wallTargets, ...enrollJunctionFills(root, fadeGroups, facingByRunIndex)]
 }
