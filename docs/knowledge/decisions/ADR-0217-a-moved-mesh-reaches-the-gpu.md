@@ -67,7 +67,7 @@ in the same render is uploaded only when its world matrix differs from that reco
 
 Doors and hung windows meet this through their materials. `buildOpeningFill` in
 `engine/scene/opening-fill-builder.ts` calls `materials.material(part.role)` with no surface
-reference, and both providers cache one material for each role. In `core/scene/opening-fill.ts` a
+reference, and every provider caches one material for each role. In `core/scene/opening-fill.ts` a
 door leaf has the role `leaf`, and so does every bar of a sash (the rails and the stiles, through
 `leafBar`). Only the glass has the role `glass`. So a door leaf and the bars of a hung window get
 the same material object, the same shader, and one observer.
@@ -104,8 +104,10 @@ The patch changes `needsRefresh` in three files of the package:
 `true`, because the shared uniform buffers must be updated once in each render. But the function
 no longer returns early. It runs the `equals()` pass, which keeps the record in step, and returns
 the first-in-render answer or the result of `equals()`. Static and bundled objects get the same
-answers as before: `true` for the first in a render and `false` after it. This is the logic of
-`three` 0.186.0 for this function, in the boolean form of 0.184.0.
+answers as before: `true` for the first in a render and `false` after it. One detail differs: the
+`equals()` pass of a first object now records the bundle version too, so a static bundle can take
+that branch one render sooner. The application uses no bundle group and marks no object static.
+This is the logic of `three` 0.186.0 for this function, in the boolean form of 0.184.0.
 
 The application imports `three/webgpu`, which the package resolves to `build/three.webgpu.js`.
 Plain `three` resolves to `build/three.module.js`, which has no observer. The two minified builds,
@@ -128,9 +130,11 @@ passed and the door read shut in both runs, but three scene tests failed:
 - the ambient occlusion gate "crease darker than open floor", which read 0.0094 against a minimum
   of 0.0095.
 
-The tone curve reading moved from -0.05 to -0.64. So the upgrade changes the rendering, and it
-needs its own change with new baselines. It is the right end state. A follow-up issue asks for it,
-and that change removes the patch. It lost here only because it cannot land as a small fix.
+The reading of `e2e/tests/scene-tone-curve.spec.ts`, the rendered code of the sunlit white wall less
+the code that the light model predicts, moved from -0.05 to -0.64. So the upgrade changes the
+rendering, and it needs its own change with new baselines. It is the right end state. A follow-up
+issue asks for it, and that change removes the patch. It lost here only because it cannot land as a
+small fix.
 
 **Upgrade to `three` 0.187.0.** Published on 2026-10-30, it was inside the 30-day dependency
 cooldown on the day of this decision. It would also carry the rendering changes of 0.186.0.
@@ -151,7 +155,9 @@ fault, and the shut pose would no longer equal the built one, which ADR-0128 rel
 
 `engine/scene/moved-mesh-upload.test.ts` builds the library's observer for one material and asks
 it, in draw order, whether each of two plain render objects needs an upload, as the renderer does
-in each render. It reads the answer with `Boolean(...)`. Its three cases prove these points:
+in each render. It takes the observer class from `three/webgpu`, which is the build file that the
+application loads, so it also guards the hunk of the patch for that file. It reads the answer with
+`Boolean(...)`. Its three cases prove these points:
 
 1. A door leaf in a group and a window bar share the observer. Two renders with the bar first and
    the door shut, then a swing through openness 0.4, 1, 0.6, and 0.2 with the leaf first, then
@@ -176,12 +182,16 @@ without the patch, so that job alone does not prove the fix.
 ## Consequences and limits
 
 - The patch must go when `three` is upgraded, in the same change. Its entry names 0.184.0 only.
-- The guard test reads an internal module of the library. A later version can move or rename it,
-  and then the test fails at the import. In 0.186.0 the observer also reads `renderObject.scene`,
-  and `needsRefresh` answers with a number code where zero means no upload. The plain render
-  objects of the test may then need a `scene` field. `Boolean(...)` already reads the number code.
+- The guard test uses a class of the renderer that `three/webgpu` exports but that is not meant
+  for application code. A later version can change it. In 0.186.0 the observer also reads
+  `renderObject.scene`, and `needsRefresh` answers with a number code where zero means no upload.
+  The plain render objects of the test may then need a `scene` field. `Boolean(...)` already reads
+  the number code.
 - The corrected function runs `equals()` for one more render object in each render, for each
   observer. That cost was not measured.
+- The early return for a render with a velocity target (`needsVelocity`) is unchanged, and it also
+  skips `equals()`. Such a render would leave a record stale in the same way. The application sets
+  no such target.
 - Any mesh that moves and shares a shader with other meshes was exposed, not only doors: a sliding
   sash, for example. The patch is in the library function, so it covers them all. No test here
   proves each one.
@@ -192,7 +202,7 @@ without the patch, so that job alone does not prove the fix.
 2. Delete `patches/three@0.184.0.patch` and the `three@0.184.0` entry of `patchedDependencies` in
    `package.json`. Run the install so that the lockfile drops the patch hash.
 3. Run `engine/scene/moved-mesh-upload.test.ts` and the scene tests. Case 1 must pass on the
-   library alone. If the observer module moved, point the import at its new home.
+   library alone. If the observer changed its shape, adapt the plain render objects of the test.
 
 ## References
 
