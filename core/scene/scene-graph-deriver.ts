@@ -145,17 +145,56 @@ function roomNodesFor(
 }
 
 /**
+ * A cached wall node plus the inputs it was built from. The wall cache is keyed
+ * on the `Wall` alone, but the node also copies the floor's id and
+ * `defaultCeilingHeight`. A ceiling-height edit replaces the floor and keeps
+ * the same wall objects, and the same wall objects can move under another
+ * floor, so both values are compared explicitly to avoid serving a stale node.
+ */
+interface CachedWallNode {
+  floorId: string
+  defaultCeilingHeight: number
+  node: WallSceneNode
+}
+
+/**
+ * Derives a wall's scene node, reusing the cached node while the wall
+ * reference, the floor's id, and the floor's `defaultCeilingHeight` are all
+ * unchanged. Otherwise it derives a new node and caches it. Module-scope so the
+ * deriver closure stays under its line cap, like `roomNodesFor`.
+ */
+function wallNodeFor(
+  wallCache: WeakMap<Wall, CachedWallNode>,
+  floor: Floor,
+  wall: Wall,
+): WallSceneNode {
+  const cached = wallCache.get(wall)
+  if (
+    cached !== undefined &&
+    cached.floorId === floor.id &&
+    cached.defaultCeilingHeight === floor.defaultCeilingHeight
+  ) {
+    return cached.node
+  }
+  const node = deriveWallNode(floor, wall)
+  wallCache.set(wall, { floorId: floor.id, defaultCeilingHeight: floor.defaultCeilingHeight, node })
+  return node
+}
+
+/**
  * Builds a stateful deriver that memoizes each floor's and wall's scene node by
  * the source object's reference. This is the entity-keyed dirty tracking from
  * the design specification, sections 6.1 and 6.10: re-deriving reuses cached
  * nodes for entities whose reference is unchanged and rebuilds only replaced
  * ones. It pairs with the immutable-update handler convention, where an edited
  * floor or wall becomes a new object while untouched ones keep their reference.
+ * A wall node is also rebuilt when the id or the `defaultCeilingHeight` of its
+ * floor changes, because the node copies both from the floor.
  * The WeakMaps are keyed by the source object so dropped entities do not leak.
  */
 export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const floorCache = new WeakMap<Floor, SceneNode>()
-  const wallCache = new WeakMap<Wall, WallSceneNode>()
+  const wallCache = new WeakMap<Wall, CachedWallNode>()
   const roomCache = new WeakMap<readonly Wall[], CachedRoomNodes>()
   const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
@@ -163,8 +202,6 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
 
   const floorNodeFor = (floor: Floor) =>
     memoizeByRef(floorCache, floor, () => deriveFloorNode(floor))
-  const wallNodeFor = (floor: Floor, wall: Wall) =>
-    memoizeByRef(wallCache, wall, () => deriveWallNode(floor, wall))
   const stairNodesFor = (project: Project) =>
     memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project))
   const furnitureNodesFor = (floor: Floor): FurnitureSceneNode[] =>
@@ -178,7 +215,9 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     )
     return {
       nodes: project.floors.map(floorNodeFor),
-      walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
+      walls: project.floors.flatMap((floor) =>
+        floor.walls.map((wall) => wallNodeFor(wallCache, floor, wall)),
+      ),
       rooms: roomsByFloor.flat(),
       underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
       openings: project.floors.flatMap((floor, index) =>
