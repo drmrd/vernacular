@@ -176,10 +176,11 @@ longer instructs the hints this update removed.
 
 ## Update (2026-11-18): bound chords behind a dialog
 
-An open modal dialog now holds every keydown back from the editor's listeners, as the ADR-0106
-update of the same date records. `useKeybindings` therefore splits its work into two listeners on
-`window`. The capture-phase one cancels the browser default of a keystroke that an enabled command
-binds, before the dialog can hold it back. The bubble-phase one runs the command, and the dialog
-stops that one. A bound chord behind a dialog does nothing and does not reach the browser, so
-"never borrowed" holds for `Cmd/Ctrl+S` there too. With no dialog open a bound chord runs once, as
-before. A chord typed in a text field still keeps its default, because the field owns it.
+An open modal dialog now holds every keydown back from the editor's bubble-phase listeners, as the
+ADR-0106 update of the same date records. `useKeybindings` therefore splits its work into two
+listeners on `window`. The capture-phase one cancels the browser default of a keystroke that an
+enabled command binds, before the dialog can hold it back. The bubble-phase one runs the command,
+and the dialog stops that one. A bound chord behind a dialog does nothing and does not reach the
+browser, so "never borrowed" holds for `Cmd/Ctrl+S` there too. With no dialog open a bound chord
+runs once, as before. A chord typed in a text field still keeps its default, because the field owns
+it.

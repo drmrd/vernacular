@@ -26,6 +26,7 @@ sourceFiles:
     editor/design-system/use-focus-trap.ts,
     editor/design-system/use-focus-trap.test.tsx,
     editor/design-system/use-focus-trap-stack.test.tsx,
+    editor/design-system/use-focus-trap-closing-key.test.tsx,
     editor/commands/command-palette.tsx,
     editor/commands/command-palette-shade-click.test.tsx,
     editor/commands/command-palette-keys.test.tsx,
@@ -191,14 +192,24 @@ two dialogs differ here only because their traps sit on different elements.
 ### Keys
 
 While a trap is the active one, a `keydown` does not reach the bubble-phase listeners on `document`
-and `window`. The hook adds a `keydown` listener on `document.body`, in the bubble phase, that
-stops the propagation of every keydown. React dispatches its handlers at the root element, which
+and `window`. The hook decides this when the dispatch starts. Each trap adds a capture-phase
+`keydown` listener on `document`, `recordKeyDownInFlight`. When its trap is the active one, it
+records the event in the module variable `keyDownInFlight` and adds one shared listener,
+`stopKeyDownInFlight`, on `document.body`. When the event reaches the body in the bubble phase, that
+listener clears the record, removes itself, and stops the propagation of the recorded event. It is
+the one place where the hook holds a key back, and it stops no other event. If a handler inside the
+dialog stops the event first, the shared listener stays until the next keydown reaches the body,
+and it acts only on the event it recorded. React dispatches its handlers at the root element, which
 sits inside the body, so the dialog's own handlers still receive every key first. `keyup` passes,
 so a key held when the dialog opened is still released in walk mode, in the spacebar pan, and in the
-held-Alt tracker. A keydown whose target is outside the container, with focus on the body for
-example, is stopped as well, and focus moves to the first focusable descendant, or to the container
-when it has none. For a Tab from outside the hook also cancels the default, so that the next press
-does not walk on from where focus was.
+held-Alt tracker.
+
+Each trap also keeps a bubble-phase `keydown` listener of its own on the body, `pullFocusIntoTrap`.
+It holds nothing back. For a keydown whose target is outside the container, with focus on the body
+for example, it moves focus to the first focusable descendant, or to the container when it has
+none. For a Tab from outside it also cancels the default, so that the next press does not walk on
+from where focus was. Such a key started while the trap was active, so the shared listener holds it
+back like any other.
 
 The rule sits at the body because the listeners are many and their guards cannot see a dialog. The
 editor has twelve bubble-phase `keydown` listeners on `window`, in `editor/plan/`,
@@ -221,13 +232,38 @@ were weighed:
 - Each listener looks for an `aria-modal` ancestor. That changes the same files as `inert`.
 
 The chosen rule is the third alternative done once, in the hook, for every dialog that uses it. It
-changes none of the listeners. Both dialogs keep their own `stopPropagation()` on Escape and Enter.
-Those calls are redundant while the body rule exists and matter again once it goes.
+changes none of the listeners.
+
+The first version of the rule was wrong about the key that closes a dialog. In it, the trap's own
+body listener stopped every keydown, and this record said that the dialogs' own
+`stopPropagation()` on Escape and Enter was redundant while that rule existed. When a handler inside
+the dialog closes it during a `keydown`, React in a browser commits the unmount before the event
+reaches the body. The cleanup of the hook then removed the body listener, and the same `keydown`
+went on to `document` and `window`, where the Escape ladder, deselect and the underlay flyout
+listen. That order was inferred from how React schedules such an event, and shown in jsdom with
+`flushSync` from `react-dom`, which commits in the same order: a `window` listener received the
+Escape. Nothing leaked in the product, because both dialogs stop the propagation of Escape
+themselves, and the palette also stops the Enter that runs a command. The commit "fix: hold back
+the key that closes a focus trap" moved the decision to the start of the dispatch, as described
+above. A `keydown` that starts while a trap is active is now held back even when the trap unmounts
+while the event is handled, and the hold covers that one event only, so the next key reaches
+`window` again. The dialogs keep their own `stopPropagation()` calls. Today they are a second guard,
+and they matter again when the keyboard router of #691 replaces the rule at the body.
 
 The rule has limits. It assumes that the React root renders inside `document.body`, which holds for
 the app's `#root` in `index.html`. No dialog renders through a portal today, and a dialog portaled
-straight into the body was not checked. A capture-phase listener, a listener added to the body
-before the trap's own, and an event dispatched straight at `document` or `window` still see a key.
+straight into the body was not checked. A capture-phase listener, a `keydown` listener on the body
+itself that runs before the shared stop, and an event dispatched straight at `document` or `window`
+still see a key. Besides the trap's own `recordKeyDownInFlight`, the editor has one capture-phase
+`keydown` listener, the one `useKeybindings` adds on `window`. It only cancels the browser default
+of a bound chord and runs no command; the next part describes it.
+
+A key that is down when a dialog opens keeps its effect until it is released. A walk key held as a
+dialog opens keeps the walker moving behind the dialog until the key is released. Its `keyup`
+passes, so no key gets stuck. An Alt pressed while a dialog is open is not seen as held after the
+dialog closes, until the next key event. One more surface carries `role="dialog"`: the snap
+precision popover in `editor/shell/snap-status.tsx`. It is not modal and has no trap, so keys
+behind it still act. Nothing changes for it here.
 
 Only the most recently mounted trap acts. A module-level list, `mountedTraps`, holds the mounted
 containers in mount order, and each listener of a trap does nothing unless its container is last.
@@ -251,8 +287,9 @@ This change has the module that owns the bindings cancel the default. `useKeybin
 listeners on `window` that share one private matcher, `findCommand`, which applies the
 `ownsKeystroke` guard and then `resolveCommandForEvent`. The capture-phase listener only cancels the
 default of a keystroke that an enabled command binds. The bubble-phase listener only runs the
-command. The capture listener runs before the trap's body listener, so the default is cancelled
-behind a dialog. The bubble listener runs after it, so the dialog holds the command back. With no
+command. The capture listener runs before the trap stops the key at the body, so the default is
+cancelled behind a dialog. The bubble listener would run after that stop, so the dialog holds the
+command back. With no
 dialog open a bound chord runs once, as before. The keyboard spec says that `Cmd/Ctrl+S` "is never
 borrowed" (ADR-0155), and that now holds behind a dialog too.
 
@@ -283,9 +320,13 @@ The unit tests as run on 2026-11-18, all passing, in jsdom with the testing libr
 - `editor/design-system/use-focus-trap-stack.test.tsx`: 6 tests, in "useFocusTrap with two traps
   mounted", "useFocusTrap and a key pressed with focus outside the trap", and "useFocusTrap under
   the development double mount".
+- `editor/design-system/use-focus-trap-closing-key.test.tsx`: 5 tests, in "useFocusTrap and the key
+  that closes it". Its dialogs close with `flushSync`, so the unmount commits during the keydown as
+  it does in a browser.
 - `editor/shell/discard-dialog.test.tsx`: 13 tests. New are the case "sends Shift+Tab after a click
   on the shade to the destructive answer, not to the frame behind" and the describe block
-  "DiscardDialog and the editor behind it".
+  "DiscardDialog and the editor behind it". Its Escape case binds an Escape command behind the
+  prompt and checks that the command does not run while the prompt cancels.
 - `editor/commands/command-palette-shade-click.test.tsx`: 1 test, in "the palette dialog and a click
   on its shade".
 - `editor/commands/command-palette-keys.test.tsx`: 1 test, in "the palette dialog and the keys
@@ -293,17 +334,19 @@ The unit tests as run on 2026-11-18, all passing, in jsdom with the testing libr
 - `editor/commands/use-keybindings.test.tsx`: 11 tests. The six in "useKeybindings and the browser
   default" are new.
 
-jsdom cannot show two facts that the rules depend on: that a key reaches the body listener after
-React's own handlers, and that a cancelled `mousedown` keeps focus. A Playwright spec,
-`e2e/tests/modal-dialogs-hold-keys-and-focus.spec.ts`, ran both in Chromium on 2026-11-18, and its
-10 tests passed. With the discard prompt open, the palette shortcut opened no palette and a view
-key changed nothing; without a dialog each did its work. A click on the prompt's shade left the
+jsdom cannot show two facts that the rules depend on: when React commits the unmount of a dialog
+that a key closes, and that a cancelled `mousedown` keeps focus. A Playwright spec,
+`e2e/tests/modal-dialogs-hold-keys-and-focus.spec.ts`, ran in Chromium on 2026-11-18, and its
+11 tests passed. With the discard prompt open, the palette shortcut opened no palette and a
+view key changed nothing; without a dialog each did its work. A click on the prompt's shade left the
 prompt open with focus on the shade, Shift+Tab and Tab stayed inside, and Escape closed it and
 returned focus to the control that opened it. A click on the palette's shade left the palette open
-with focus in its search field, and a key typed there did not reach the editor. A capture-phase
-listener on `document` read the real key event: `Mod+S` was default-prevented with the prompt open
-and with no dialog, the save ran only with no dialog, and `F9`, which nothing binds, kept its
-default.
+with focus in its search field. For each of the two dialogs, a bubble-phase `keydown` listener
+added to `window` through the page recorded no key while the dialog was open and none for the
+Escape that closed it, and it recorded the next key pressed after the dialog had closed. A
+capture-phase listener on `document` read the real key event: `Mod+S` was default-prevented with
+the prompt open and with no dialog, the save ran only with no dialog, and `F9`, which nothing binds,
+kept its default.
 
 An end-to-end test cannot ask a browser whether its own save-page dialog opened, so the proof for
 `Mod+S` is the flag on the event. WebKit and Firefox were not run. Touch input and the right mouse
@@ -313,9 +356,9 @@ browser may spend on releasing the lock, are not known.
 
 ### What is left
 
-- Epic #691 plans one keyboard router with a stack of scopes. Its modal scope replaces the key rule
-  at the body and the list of traps. The focus rules stay in the hook, because a router routes keys
-  and does not manage focus.
+- Epic #691 plans one keyboard router with a stack of scopes. Its modal scope replaces the key rule,
+  with its record of the key in flight and its stop at the body, and the list of traps. The focus
+  rules stay in the hook, because a router routes keys and does not manage focus.
 - The third point of #595, the age of a recovery snapshot, moved to #714.
 - Enter on a focused row of the command palette runs the first listed command as well as the
   focused row's, and asks the palette to close twice. It was found during this work and is not
