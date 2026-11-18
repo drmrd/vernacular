@@ -37,8 +37,17 @@ function tabTarget(
   return undefined
 }
 
+// The containers of the traps that are mounted, in mount order. Only the last one acts, so that
+// a trap opened over another is not treated as "outside" by it. It is module state because the
+// traps do not know each other; a keyboard router with a modal scope is meant to replace it.
+const mountedTraps: HTMLElement[] = []
+
+function isActiveTrap(container: HTMLElement): boolean {
+  return mountedTraps[mountedTraps.length - 1] === container
+}
+
 function trapTab(event: KeyboardEvent, container: HTMLElement): void {
-  if (event.key !== 'Tab') {
+  if (event.key !== 'Tab' || !isActiveTrap(container)) {
     return
   }
   const target = tabTarget(focusableDescendants(container), document.activeElement, event.shiftKey)
@@ -61,9 +70,32 @@ function makeContainerFocusable(container: HTMLElement): () => void {
 // Cancelling the default of a mousedown is what stops the browser from moving focus;
 // the click that follows still reaches its handlers.
 function keepFocusOnPressOutside(event: MouseEvent, container: HTMLElement): void {
-  if (!(event.target instanceof Node) || !container.contains(event.target)) {
+  if (isActiveTrap(container) && !isInside(container, event.target)) {
     event.preventDefault()
   }
+}
+
+function isInside(container: HTMLElement, target: EventTarget | null): boolean {
+  return target instanceof Node && container.contains(target)
+}
+
+// Runs at the body in the bubble phase, after the handlers inside the container, React's
+// included, so those still receive every key. Stopping it here keeps it from `document` and
+// `window`. A key that starts outside the container pulls focus back in; for Tab the default is
+// cancelled as well, so that the next press does not walk on from where focus was.
+function holdKeyBack(event: KeyboardEvent, container: HTMLElement): void {
+  if (!isActiveTrap(container)) {
+    return
+  }
+  event.stopPropagation()
+  if (isInside(container, event.target)) {
+    return
+  }
+  if (event.key === 'Tab') {
+    event.preventDefault()
+  }
+  const first = focusableDescendants(container)[0] ?? container
+  first.focus()
 }
 
 // Skip the restore when the caller has already moved focus to a live element
@@ -91,6 +123,14 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  * - A mouse press outside the container, its shade included, leaves focus where it is.
  * - On unmount, focus returns to the opener, unless the caller has already moved it to a live
  *   element outside the container.
+ * - No keydown reaches a listener on `document` or `window`. Handlers inside the container, React
+ *   ones included, still receive every key, and keyup passes untouched so that held keys are
+ *   released. A keydown that starts outside the container is held back as well, and focus moves
+ *   to the first focusable descendant (the container when there is none).
+ * - When several traps are mounted, only the most recently mounted one acts.
+ *
+ * Keys are held back at `document.body`, which assumes that the React root renders inside the
+ * body. A keyboard router with a modal scope is meant to replace that rule.
  */
 export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T | null> {
   const ref = useRef<T | null>(null)
@@ -104,10 +144,16 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T
     focusableDescendants(container)[0]?.focus()
     const onKeyDown = (event: KeyboardEvent) => trapTab(event, container)
     const onMouseDown = (event: MouseEvent) => keepFocusOnPressOutside(event, container)
+    const onBodyKeyDown = (event: KeyboardEvent) => holdKeyBack(event, container)
+    const body = container.ownerDocument.body
+    mountedTraps.push(container)
     container.addEventListener('keydown', onKeyDown)
+    body.addEventListener('keydown', onBodyKeyDown)
     document.addEventListener('mousedown', onMouseDown, true)
     return () => {
+      mountedTraps.splice(mountedTraps.lastIndexOf(container), 1)
       container.removeEventListener('keydown', onKeyDown)
+      body.removeEventListener('keydown', onBodyKeyDown)
       document.removeEventListener('mousedown', onMouseDown, true)
       undoFocusable()
       restoreFocus(opener, container)
