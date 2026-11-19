@@ -120,11 +120,22 @@ function buildAuthoringTools(
   }
 }
 
+// The keys an entity proxy answers to by selecting its entity.
+const SELECT_KEYS: ReadonlySet<string> = new Set(['Enter', ' '])
+
+// A press of Enter or Space whose default an element has already prevented.
+function isSelectionPressAlreadyHandled(event: KeyboardEvent): boolean {
+  return event.defaultPrevented && SELECT_KEYS.has(event.key)
+}
+
 // Install the window keydown listener that routes a keystroke to the active
 // tool, with cleanup. Kept out of the hook body so usePlanAuthoring stays lean.
+// An entity proxy selects on Enter or Space and prevents the default, so the tool
+// must not act on the same press. Other handled keys such as Escape still reach
+// the tool, because the tool must still cancel a run.
 function listenForAuthoringKeys(tools: AuthoringTools): () => void {
   const listener = (event: KeyboardEvent): void => {
-    if (!isTextEntry(event.target)) {
+    if (!isTextEntry(event.target) && !isSelectionPressAlreadyHandled(event)) {
       routeAuthoringKey(tools, event)
     }
   }
