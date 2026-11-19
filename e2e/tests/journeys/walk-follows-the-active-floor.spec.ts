@@ -1,10 +1,9 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
-import { frameReader } from '../frame-pixels'
 import { configureGpuChromiumOnMac, guardLiveSceneSupport } from '../live-webgpu'
-import { logReading, stableFrame } from '../scene-helpers'
 import {
   enterOrbit,
   enterWalkReady,
+  expectSameView,
   liveCanvas,
   settledLiveFrame,
   walkToDoor,
@@ -27,20 +26,9 @@ import { gotoEditor, selectors } from './support'
 
 configureGpuChromiumOnMac()
 
-// Two frames of one view are equal when the mean channel difference (0..255) stays below the
-// first bar and the share of strongly changed pixels stays below the second.
-const EQUAL_MEAN_LIMIT = 1.0
-const EQUAL_CHANGED_FRACTION_LIMIT = 0.01
-
 // The journey draws two rooms, walks to a door, and settles several frames, so its budget leaves
 // a wide margin for a slower runner.
 const TEST_TIMEOUT_MS = 120_000
-
-// How long the view is given to draw the rebuilt upper floor before the journey takes the settled
-// frame as it stands. A rebuild that leaves the walker's view as it was draws no change.
-const REBUILD_DRAW_MS = 5_000
-
-const READING_DIGITS = 3
 
 const GROUND_FLOOR = 'Ground'
 const UPPER_FLOOR = '2nd Floor'
@@ -74,44 +62,22 @@ async function drawRoomWithDoor(page: Page): Promise<void> {
   await expect(page.getByRole('option', { name: / wide$/ })).toHaveCount(1)
 }
 
-// Makes a floor active and returns the settled frame once the scene shows it. The rebuilt scene
-// draws a change when the view differs, and may draw nothing when the view stays the same, so the
-// wait for a change is bounded and the settled frame is taken either way.
-async function frameAfterFloorChange(
-  page: Page,
-  canvas: Locator,
-  change: { floor: string; before: Buffer },
-): Promise<Buffer> {
-  await floorButton(page, change.floor).click()
-  await expect
-    .poll(async () => (await canvas.screenshot()).equals(change.before), {
-      timeout: REBUILD_DRAW_MS,
-    })
-    .toBe(false)
-    .catch(() => undefined)
-  return stableFrame(canvas)
-}
-
-// Reads the two frames over the whole canvas, prints the reading, and expects them to be equal.
-async function expectSameView(
-  page: Page,
-  label: string,
-  frames: { first: Buffer; second: Buffer },
-): Promise<void> {
-  const reader = frameReader(page)
-  const { mean, changedFraction } = await reader.difference(
-    frames.first,
-    frames.second,
-    await reader.whole(frames.first),
+// Makes a floor active and returns the settled frame once the scene shows it. The wait does not
+// look at the picture, because the picture may stay as it was when the walker follows the floor.
+// It waits for the state: the floors bar shows this floor, and only this one, as the pressed
+// button. That is the store's active floor after the click has been applied. Two animation frames
+// then pass, so the live view has run a frame step of the walker with that floor, and the settled
+// frame is taken after the ready marker of the pane.
+async function frameAfterFloorChange(page: Page, canvas: Locator, floor: string): Promise<Buffer> {
+  await floorButton(page, floor).click()
+  await expect(
+    page.getByRole('group', { name: 'Floors', exact: true }).getByRole('button', { pressed: true }),
+  ).toHaveText(floor)
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))),
   )
-  logReading(
-    label,
-    `mean ${mean.toFixed(READING_DIGITS)} (limit ${EQUAL_MEAN_LIMIT}), changed ${changedFraction.toFixed(READING_DIGITS)} (limit ${EQUAL_CHANGED_FRACTION_LIMIT})`,
-  )
-  expect(mean, 'mean channel difference over the whole canvas').toBeLessThan(EQUAL_MEAN_LIMIT)
-  expect(changedFraction, 'fraction of changed pixels over the whole canvas').toBeLessThan(
-    EQUAL_CHANGED_FRACTION_LIMIT,
-  )
+  return settledLiveFrame(page, canvas)
 }
 
 test("keeps the walker's view when the upper floor becomes active mid-walk", async ({ page }) => {
@@ -138,10 +104,7 @@ test("keeps the walker's view when the upper floor becomes active mid-walk", asy
 
   // The upper floor becomes active while the walk goes on. The walker keeps the plan position and
   // the heading and stands on the upper floor, so the view is the one it had.
-  const onUpperFloor = await frameAfterFloorChange(page, canvas, {
-    floor: UPPER_FLOOR,
-    before: onGroundFloor,
-  })
+  const onUpperFloor = await frameAfterFloorChange(page, canvas, UPPER_FLOOR)
   await expectSameView(page, 'same, the walker at the door before and after the floor changes', {
     first: onGroundFloor,
     second: onUpperFloor,

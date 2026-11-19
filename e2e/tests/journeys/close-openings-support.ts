@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
-import { settledSceneCanvas, stableFrame } from '../scene-helpers'
+import { frameReader } from '../frame-pixels'
+import { logReading, settledSceneCanvas, stableFrame } from '../scene-helpers'
 import { LIVE_VIEW_READY, inspectorOf, selectionStatusOf } from '../live-pane'
 
 // Steps shared by the close-doors-and-windows journeys: a room with a door and a window, the
@@ -250,4 +251,33 @@ export async function openKeyChangesView(page: Page, canvas: Locator): Promise<b
     }
   }
   return false
+}
+
+// Two frames of one view are equal when the mean channel difference (0..255) stays below the
+// first bar and the share of strongly changed pixels stays below the second.
+const EQUAL_MEAN_LIMIT = 1.0
+const EQUAL_CHANGED_FRACTION_LIMIT = 0.01
+
+const READING_DIGITS = 3
+
+// Reads the two frames over the whole canvas, prints the reading, and expects them to be equal.
+export async function expectSameView(
+  page: Page,
+  label: string,
+  frames: { first: Buffer; second: Buffer },
+): Promise<void> {
+  const reader = frameReader(page)
+  const { mean, changedFraction } = await reader.difference(
+    frames.first,
+    frames.second,
+    await reader.whole(frames.first),
+  )
+  logReading(
+    label,
+    `mean ${mean.toFixed(READING_DIGITS)} (limit ${EQUAL_MEAN_LIMIT}), changed ${changedFraction.toFixed(READING_DIGITS)} (limit ${EQUAL_CHANGED_FRACTION_LIMIT})`,
+  )
+  expect(mean, 'mean channel difference over the whole canvas').toBeLessThan(EQUAL_MEAN_LIMIT)
+  expect(changedFraction, 'fraction of changed pixels over the whole canvas').toBeLessThan(
+    EQUAL_CHANGED_FRACTION_LIMIT,
+  )
 }
