@@ -67,7 +67,8 @@ export function createAutosave(config: AutosaveConfig): Autosave {
   const writeWhenUnwritten = (): void => {
     timer = undefined
     if (hasUnwrittenChange(progress)) {
-      // A failed write reports its status, so its rejection needs no other handler.
+      // Nobody awaits this write. A failed write has reported its status, a write dropped after
+      // dispose is silent on purpose, and a callback that throws is left unreported here.
       queue.request().catch(noop)
     }
   }

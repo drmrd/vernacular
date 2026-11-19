@@ -1,24 +1,10 @@
 import { DocumentStore } from '../../storage'
 import type { SessionPorts } from '../ports'
-import type { OpenFailure, OpenRequest } from './handle-types'
+import type { OpenFailed, OpenRequest } from './handle-types'
+import { storageUnavailable } from './thrown-failures'
 
 /** The store that holds a project, or why it cannot be reached. */
-export type FoundStore =
-  | { readonly ok: true; readonly store: DocumentStore }
-  | { readonly ok: false; readonly failure: OpenFailure }
-
-/** The message of a thrown value: the message of an Error, and the value as text otherwise. */
-export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-/** A failure for a step whose storage did not answer. */
-export function storageUnavailable(error: unknown): {
-  readonly ok: false
-  readonly failure: OpenFailure
-} {
-  return { ok: false, failure: { kind: 'storage-unavailable', message: messageOf(error) } }
-}
+export type FoundStore = { readonly ok: true; readonly store: DocumentStore } | OpenFailed
 
 /**
  * The store of a folder. Access is asked of the browser only after it says that access is

@@ -3,7 +3,7 @@ import type { AutosaveConfig } from './create-autosave'
 
 const noop = (): void => {}
 
-/** The message of the error that a write asked for after dispose gives instead of saving. */
+/** The message of the error that a write that would start after dispose gives instead of saving. */
 const AUTOSAVE_DISPOSED_MESSAGE = 'Autosave has stopped, so nothing was saved.'
 
 /** What autosave knows of the changes of its session and of its writes. */

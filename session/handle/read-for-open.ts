@@ -1,7 +1,7 @@
 import type { DecodeFailure, Project } from '../../core'
 import { InvalidProjectIdError, type DocumentStore } from '../../storage'
-import { storageUnavailable } from './find-document-store'
-import type { OpenFailure, OpenRequest } from './handle-types'
+import type { OpenFailed, OpenRequest } from './handle-types'
+import { storageUnavailable } from './thrown-failures'
 
 /** The project that an open starts from, and what the read found out about it. */
 export interface OpenedProject {
@@ -12,11 +12,12 @@ export interface OpenedProject {
 }
 
 /** The project to open, or why it did not open. */
-export type ReadForOpen =
-  | { readonly ok: true; readonly opened: OpenedProject }
-  | { readonly ok: false; readonly failure: OpenFailure }
+export type ReadForOpen = { readonly ok: true; readonly opened: OpenedProject } | OpenFailed
 
-function openedOn(project: Project, flags: Partial<OpenedProject> = {}): ReadForOpen {
+function openedOn(
+  project: Project,
+  flags: Partial<Omit<OpenedProject, 'project'>> = {},
+): ReadForOpen {
   const opened = { project, savedByNewerBuild: false, openedDespiteFaults: false, ...flags }
   return { ok: true, opened }
 }
@@ -39,13 +40,12 @@ async function readStored(store: DocumentStore, request: OpenRequest): Promise<R
   if (read.ok) {
     return openedOn(read.value.project, { savedByNewerBuild: read.value.savedByNewerBuild })
   }
-  if (read.failure.kind === 'decode') {
-    return openFailedDecode(store, request.id, read.failure.decode)
+  if (read.failure.kind === 'not-found') {
+    return request.create === undefined
+      ? { ok: false, failure: { kind: 'not-found' } }
+      : openedOn(request.create())
   }
-  if (request.create === undefined) {
-    return { ok: false, failure: { kind: 'not-found' } }
-  }
-  return openedOn(request.create())
+  return openFailedDecode(store, request.id, read.failure.decode)
 }
 
 /**

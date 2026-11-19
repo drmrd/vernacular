@@ -1,10 +1,11 @@
 import type { DocumentStore, ProjectLockHold } from '../../storage'
 import { createAutosave } from '../autosave/create-autosave'
 import { createEditorSession } from '../editor-session/editor-session'
-import { messageOf } from './find-document-store'
+import { callGuarded } from './guarded-call'
 import { createHandleNotices } from './handle-notices'
 import type { DocumentHandle, OpenRequest, SaveOutcome, SaveStatus } from './handle-types'
 import type { OpenedProject } from './read-for-open'
+import { messageOf } from './thrown-failures'
 
 /** What an open found, from which a handle is built. */
 export interface DocumentHandleParts {
@@ -22,15 +23,6 @@ interface SaveStatusCell {
 
 const SAVED: SaveOutcome = { ok: true }
 
-/** Calls the listener; an error it throws goes to the console, so the other listeners still run. */
-function callListener(listener: () => void): void {
-  try {
-    listener()
-  } catch (error) {
-    console.error(error)
-  }
-}
-
 /** The save status, which tells its listeners of each new value and of no repeated one. */
 function createSaveStatusCell(): SaveStatusCell {
   let status: SaveStatus = 'idle'
@@ -43,7 +35,7 @@ function createSaveStatusCell(): SaveStatusCell {
       }
       status = next
       for (const listener of [...listeners]) {
-        callListener(listener)
+        callGuarded(listener)
       }
     },
     subscribe(listener) {

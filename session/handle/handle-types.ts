@@ -39,10 +39,14 @@ export interface DocumentHandle {
   close(): Promise<SaveOutcome>
 }
 
+/** An open that failed, with the reason. */
+export interface OpenFailed {
+  readonly ok: false
+  readonly failure: OpenFailure
+}
+
 /** The handle of a project that opened, or why it did not open. */
-export type OpenResult =
-  | { readonly ok: true; readonly handle: DocumentHandle }
-  | { readonly ok: false; readonly failure: OpenFailure }
+export type OpenResult = { readonly ok: true; readonly handle: DocumentHandle } | OpenFailed
 
 /** Which project to open, and where it is kept. */
 export interface OpenRequest {

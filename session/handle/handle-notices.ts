@@ -1,3 +1,4 @@
+import { callGuarded } from './guarded-call'
 import type { HandleNotice } from './handle-types'
 
 /** The notices of one handle: each kind is raised once and delivered once. */
@@ -10,13 +11,8 @@ export interface HandleNotices {
 
 type NoticeListener = (notice: HandleNotice) => void
 
-/** Calls the listener; an error it throws goes to the console, so the other listeners still run. */
 function deliver(listener: NoticeListener, notice: HandleNotice): void {
-  try {
-    listener(notice)
-  } catch (error) {
-    console.error(error)
-  }
+  callGuarded(() => listener(notice))
 }
 
 /** Notices with no listener yet and no notice raised. */

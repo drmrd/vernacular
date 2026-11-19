@@ -1,13 +1,12 @@
 import type { ProjectLockHold } from '../../storage'
 import type { SessionPorts } from '../ports'
 import { createDocumentHandle, type DocumentHandleParts } from './document-handle'
-import { findDocumentStore, storageUnavailable } from './find-document-store'
-import type { OpenFailure, OpenRequest, OpenResult } from './handle-types'
+import { findDocumentStore } from './find-document-store'
+import type { OpenFailed, OpenRequest, OpenResult } from './handle-types'
 import { readForOpen } from './read-for-open'
+import { storageUnavailable } from './thrown-failures'
 
-type TakenLock =
-  | { readonly ok: true; readonly hold: ProjectLockHold }
-  | { readonly ok: false; readonly failure: OpenFailure }
+type TakenLock = { readonly ok: true; readonly hold: ProjectLockHold } | OpenFailed
 
 /** Takes the project's lock without waiting. It never rejects. */
 async function takeLock(ports: SessionPorts, id: string): Promise<TakenLock> {
