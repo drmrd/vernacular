@@ -7,42 +7,22 @@ import {
   parseProcessList,
   stillCrashHandlers,
 } from './timing-browser-processes.mjs'
+import {
+  BROWSER,
+  BROWSER_PID,
+  BROWSER_ROOT,
+  DRIVER_PID,
+  FIRST_HANDLER_PID,
+  OLDER_HANDLER_PID,
+  SECOND_HANDLER_PID,
+  processes,
+} from './timing-browser-processes-fixture'
 
 // The timing browser leaves its two crash handler helpers behind: they are double-forked (parent
 // process id 1), they name nothing of their browser, and they keep the browser's error channel
 // open. The driver tells its own helpers by time (new after its launch) and by what they still
 // are. These functions read a listing of `ps -Ao pid=,ppid=,command=` and hold no process access.
 
-const DRIVER_PID = 52339
-const BROWSER_PID = 52375
-const FIRST_HANDLER_PID = 52388
-const SECOND_HANDLER_PID = 52392
-const OLDER_HANDLER_PID = 41001
-
-const CACHE = '/Users/dan/Library/Caches/ms-playwright/chromium-1223/chrome-mac-arm64'
-const APP = `${CACHE}/Google Chrome for Testing.app/Contents`
-const HANDLER = `${APP}/Frameworks/Google Chrome for Testing Framework.framework/Versions/148.0.7778.96/Helpers/chrome_crashpad_handler`
-const GPU_HELPER = `${APP}/Frameworks/Google Chrome for Testing Framework.framework/Versions/148.0.7778.96/Helpers/Google Chrome for Testing Helper (GPU).app/Contents/MacOS/Google Chrome for Testing Helper (GPU)`
-const BROWSER = `${APP}/MacOS/Google Chrome for Testing`
-const DATABASE =
-  '--database=/Users/dan/Library/Application Support/Google/Chrome for Testing/Crashpad'
-
-const PROCESS_LIST = `
-${BROWSER_PID.toString().padStart(5)} ${DRIVER_PID} ${BROWSER} --disable-field-trial-config --no-first-run --remote-debugging-pipe --user-data-dir=/var/folders/zz/T/playwright_chromiumdev_profile-AbCdEf about:blank
-${FIRST_HANDLER_PID.toString().padStart(5)}     1 ${HANDLER} --monitor-self --monitor-self-annotation=ptype=crashpad-handler ${DATABASE} --annotation=plat=OS X --handshake-fd=7
-${SECOND_HANDLER_PID.toString().padStart(5)}     1 ${HANDLER} --no-periodic-tasks --monitor-self-annotation=ptype=crashpad-handler ${DATABASE} --handshake-fd=4
-52407 ${BROWSER_PID} ${GPU_HELPER} --type=gpu-process
-${DRIVER_PID} 52001 node /Users/dan/workspace/vernacular/scripts/performance/report-times.mjs --quick
-  411     1 /usr/libexec/logd
-${OLDER_HANDLER_PID}     1 ${HANDLER} --monitor-self --handshake-fd=7
-52500 ${BROWSER_PID} ${HANDLER} --handshake-fd=9
-53000 52001 grep chrome_crashpad_handler
-53010     1 /usr/bin/helper-tool --watch=${CACHE}/chrome_crashpad_handler
-52350 ${DRIVER_PID} /bin/zsh -c pnpm preview
-61000 60999 ${BROWSER} --no-first-run --remote-debugging-pipe about:blank
-`
-
-const processes = parseProcessList(PROCESS_LIST)
 const pidsOf = (list: { pid: number }[]): number[] => list.map(({ pid }) => pid)
 
 describe('the parsing of a process listing', () => {
@@ -84,7 +64,7 @@ describe('the parsing of a process listing', () => {
 
 describe('the crash handlers in a process listing', () => {
   it('finds the processes that have the parent id 1 and an executable named chrome_crashpad_handler', () => {
-    expect(crashHandlerPids(processes)).toEqual([
+    expect(crashHandlerPids(processes, BROWSER_ROOT)).toEqual([
       FIRST_HANDLER_PID,
       SECOND_HANDLER_PID,
       OLDER_HANDLER_PID,
@@ -92,28 +72,28 @@ describe('the crash handlers in a process listing', () => {
   })
 
   it('does not include a process of that name under another parent', () => {
-    expect(crashHandlerPids(processes)).not.toContain(52500)
+    expect(crashHandlerPids(processes, BROWSER_ROOT)).not.toContain(52500)
   })
 
   it.each([
     ['a command that only searches for the name', 53000],
     ['a process under the parent 1 whose arguments only mention the name', 53010],
   ])('does not include %s', (_label, pid) => {
-    expect(crashHandlerPids(processes)).not.toContain(pid)
+    expect(crashHandlerPids(processes, BROWSER_ROOT)).not.toContain(pid)
   })
 
   it('finds a crash handler that has no arguments', () => {
     const bare = [{ pid: 9, ppid: 1, command: '/opt/x/chrome_crashpad_handler' }]
 
-    expect(crashHandlerPids(bare)).toEqual([9])
+    expect(crashHandlerPids(bare, '/opt/x')).toEqual([9])
   })
 
   it('does not include an unrelated process under the parent 1', () => {
-    expect(crashHandlerPids(processes)).not.toContain(411)
+    expect(crashHandlerPids(processes, BROWSER_ROOT)).not.toContain(411)
   })
 
   it('finds nothing in an empty listing', () => {
-    expect(crashHandlerPids([])).toEqual([])
+    expect(crashHandlerPids([], BROWSER_ROOT)).toEqual([])
   })
 })
 
@@ -125,8 +105,9 @@ describe('the ids that are new after a launch', () => {
   it('leaves out a crash handler of another browser that existed before the launch', () => {
     const before = crashHandlerPids(
       processes.filter(({ pid }) => pid !== FIRST_HANDLER_PID && pid !== SECOND_HANDLER_PID),
+      BROWSER_ROOT,
     )
-    const after = crashHandlerPids(processes)
+    const after = crashHandlerPids(processes, BROWSER_ROOT)
 
     expect(newPids(before, after)).toEqual([FIRST_HANDLER_PID, SECOND_HANDLER_PID])
   })
@@ -165,23 +146,24 @@ describe('the main process of the timing browser', () => {
 
 describe('the helpers that are still crash handlers', () => {
   it('keeps the given ids that are crash handlers now', () => {
-    expect(stillCrashHandlers([FIRST_HANDLER_PID, SECOND_HANDLER_PID], processes)).toEqual([
-      FIRST_HANDLER_PID,
-      SECOND_HANDLER_PID,
-    ])
+    expect(
+      stillCrashHandlers([FIRST_HANDLER_PID, SECOND_HANDLER_PID], processes, BROWSER_ROOT),
+    ).toEqual([FIRST_HANDLER_PID, SECOND_HANDLER_PID])
   })
 
   it('drops an id whose process has gone', () => {
-    expect(stillCrashHandlers([FIRST_HANDLER_PID, 777777], processes)).toEqual([FIRST_HANDLER_PID])
+    expect(stillCrashHandlers([FIRST_HANDLER_PID, 777777], processes, BROWSER_ROOT)).toEqual([
+      FIRST_HANDLER_PID,
+    ])
   })
 
   it('drops an id that the system gave to another program meanwhile', () => {
-    expect(stillCrashHandlers([FIRST_HANDLER_PID, 411, 53010], processes)).toEqual([
+    expect(stillCrashHandlers([FIRST_HANDLER_PID, 411, 53010], processes, BROWSER_ROOT)).toEqual([
       FIRST_HANDLER_PID,
     ])
   })
 
   it('gives nothing for no ids', () => {
-    expect(stillCrashHandlers([], processes)).toEqual([])
+    expect(stillCrashHandlers([], processes, BROWSER_ROOT)).toEqual([])
   })
 })
