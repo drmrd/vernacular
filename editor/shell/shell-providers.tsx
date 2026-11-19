@@ -66,7 +66,7 @@ function EntitySurfaceBridge() {
 }
 
 // The snap preferences store over the settings of the tree, made once for each settings service.
-function useSnapPreferencesOfSettings(): SnapPreferencesStore {
+function useSnapPreferencesStoreOfSettings(): SnapPreferencesStore {
   const settings = useSettingsService()
   return useMemo(() => createSnapPreferencesStore(settings), [settings])
 }
@@ -124,7 +124,7 @@ function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
  * viewport only ever consumes on its first render.
  */
 export function ShellProviders({ onSave, children }: ProviderLayerProps) {
-  const snapPreferences = useSnapPreferencesOfSettings()
+  const snapPreferences = useSnapPreferencesStoreOfSettings()
   const session = useEditorSession()
   const activeFloorStore = useContext(ActiveFloorContext)
   if (activeFloorStore === null) {
