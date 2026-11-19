@@ -65,15 +65,26 @@ export function piecesOf(root: THREE.Object3D, entityId: string): Piece[] {
   return pieces.sort((a, b) => (a.span?.fromMm ?? 0) - (b.span?.fromMm ?? 0))
 }
 
-/** A camera outside the bottom wall of the door room: that wall fades. */
+/**
+ * A camera outside the bottom wall of the door room: that wall fades. In world space it
+ * stands at positive z, the open-air side of the door wall (the door wall is at z = 0).
+ */
 export const CAMERA_OUTSIDE = { x: 2000, z: 3000 }
 
-/** A camera inside the door room, on the bottom wall's inner side: that wall restores. */
+/**
+ * A camera inside the door room, on the bottom wall's inner side: that wall restores. In
+ * world space it stands at negative z, the room side of the door wall (plan y maps to world -z).
+ */
 export const CAMERA_INSIDE = { x: 2000, z: -3000 }
+
+/** A camera outside the bottom and the right wall at once: both fade. */
+export const CAMERA_OUTSIDE_CORNER = { x: 6000, z: 3000 }
 
 const ROOM_SIDE_MM = 4000
 const WALL_THICKNESS_MM = 200
 const WALL_HEIGHT_MM = 2400
+const WINDOW_HEIGHT_MM = 1200
+const WINDOW_SILL_MM = 900
 
 type Point = { x: number; y: number }
 
@@ -136,12 +147,29 @@ export const roomWithDoorGraph = (): SceneGraph => ({
   furniture: [],
 })
 
-/** The enrolled fade targets of the door room, every material at its solid baseline. */
-export function enrolledDoorRoomTargets(): NearWallTarget[] {
-  const graph = roomWithDoorGraph()
+/** The door room with a double-hung window in its bottom wall instead of the door. */
+export const roomWithWindowGraph = (): SceneGraph => ({
+  ...roomWithDoorGraph(),
+  openings: [
+    {
+      ...doorInBottomWall,
+      id: 'opening:window',
+      type: 'double-hung-window',
+      height: WINDOW_HEIGHT_MM,
+      sillHeight: WINDOW_SILL_MM,
+    },
+  ],
+})
+
+/** The enrolled fade targets of `graph`, every material at its solid baseline. */
+export function enrolledTargetsOf(graph: SceneGraph): NearWallTarget[] {
   const root = buildScene(graph, new NeutralMaterialProvider())
   return prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms, graph.openings))
 }
+
+/** The enrolled fade targets of the door room, every material at its solid baseline. */
+export const enrolledDoorRoomTargets = (): NearWallTarget[] =>
+  enrolledTargetsOf(roomWithDoorGraph())
 
 /** A material with the two flags the fade writes and the version the renderer reads. */
 export interface MaterialState {
@@ -166,3 +194,7 @@ export function materialStatesOf(targets: NearWallTarget[]): MaterialState[] {
 export const drawFlagsChanged = (before: MaterialState): boolean =>
   before.material.transparent !== before.transparent ||
   before.material.depthWrite !== before.depthWrite
+
+/** True when the material's version is the one `before` recorded. */
+export const versionUnchanged = (before: MaterialState): boolean =>
+  before.material.version === before.version
