@@ -3,10 +3,9 @@ import { InMemorySettingsPort } from '../../storage'
 import type { SettingsPort } from '../../storage'
 import { createSettingsService } from './settings-service'
 import type { SettingKey } from './settings-service'
+import { parseText, TEXT_DEFAULT, TEXT_NAME, textKeyWith } from './settings-service-test-support'
 
-const TEXT_NAME = 'text'
 const SHAPE_NAME = 'shape'
-const TEXT_DEFAULT = 'fallback'
 
 interface Shape {
   readonly size: number
@@ -14,20 +13,11 @@ interface Shape {
 
 const SHAPE_DEFAULT: Shape = { size: 0 }
 
-function parseText(raw: unknown): string | undefined {
-  return typeof raw === 'string' ? raw : undefined
-}
-
 /** Builds a new object from the stored one, so a stored shape is never the object that get gives. */
 function parseShape(raw: unknown): Shape | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined
   const size = (raw as { size?: unknown }).size
   return typeof size === 'number' ? { size } : undefined
-}
-
-function textKeyWith(parse: (raw: unknown) => string | undefined, name = TEXT_NAME) {
-  const key: SettingKey<string> = { name, defaultValue: TEXT_DEFAULT, parse }
-  return key
 }
 
 const textKey = textKeyWith(parseText)

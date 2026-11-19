@@ -2,11 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LocalStorageSettingsPort } from './local-storage-settings-port'
 import type { SettingsStorage } from './local-storage-settings-port'
 import { assertSettingsPortContract } from './settings-port-contract'
-import { memoryStorage, refusing } from './settings-storage-test-kit'
+import { memoryStorage, OLD_SNAP_KEY, refusing } from './settings-storage-test-kit'
 
 const KEY_PREFIX = 'vernacular.settings.'
 const THEME_KEY = `${KEY_PREFIX}theme`
-const OLD_SNAP_KEY = 'vernacular.snap-preferences'
 const ACTIVE_PROJECT_KEY = 'vernacular.activeProjectId'
 const UNRELATED_KEY = 'other'
 
@@ -174,8 +173,9 @@ describe('LocalStorageSettingsPort beside other users of the storage', () => {
     expect(storage.entries.get(UNRELATED_KEY)).toBe('kept')
     expect(keysCalled()).not.toContain(ACTIVE_PROJECT_KEY)
     expect(keysCalled()).not.toContain(UNRELATED_KEY)
-    expect(keysCalled().every((key) => key.startsWith(KEY_PREFIX) || key === OLD_SNAP_KEY)).toBe(
-      true,
+    const called = keysCalled()
+    expect(called.filter((key) => key.startsWith(KEY_PREFIX) || key === OLD_SNAP_KEY)).toEqual(
+      called,
     )
   })
 

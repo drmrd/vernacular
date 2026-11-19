@@ -1,12 +1,24 @@
 import { StrictMode } from 'react'
-import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSetting } from '../bridge'
 import { createTestPorts } from '../session/handle/handle-test-kit'
-import { DEFAULT_SNAP_PREFERENCES, SNAP_PREFERENCES_SETTING } from '../editor/plan/snap-preferences'
+import { SNAP_PREFERENCES_SETTING } from '../editor/plan/snap-preferences'
 import { LocalStorageSettingsPort, type SettingsPort } from '../storage'
-import { memoryStorage, type MemoryStorage } from '../storage/settings/settings-storage-test-kit'
+import {
+  memoryStorage,
+  NEW_SNAP_KEY,
+  OLD_SNAP_KEY,
+  type MemoryStorage,
+} from '../storage/settings/settings-storage-test-kit'
+import { stubEmptyBrowserStorage } from '../editor/design-system/browser-environment-test-support'
+import {
+  expectStoredWithGridOff,
+  imitateBrowserStorage,
+  OLDER_BUILD_SNAP_TEXT,
+  WHOLE_APPLICATION_TIMEOUT_MS,
+} from './app-settings-test-support'
 import { AppSettings } from './app-settings'
 import {
   chooseFromTheProjectMenu,
@@ -19,37 +31,16 @@ import {
   stubCapableStorage,
 } from './app-test-support'
 
-/** The key under which an older build stored the snap preferences. */
-const OLD_SNAP_KEY = 'vernacular.snap-preferences'
-
-/** The key under which the snap preferences are stored now. */
-const NEW_SNAP_KEY = 'vernacular.settings.snapPreferences'
-
-/** Snap preferences as an older build stored them: grid snapping off, everything else on. */
-const OLD_SNAP_TEXT = '{"enabled":true,"kinds":{"grid":false},"pixelRadius":18}'
-
 /** A text that an older build could not have written, and that is not JSON. */
 const BROKEN_TEXT = 'not json {'
 
 const HOUSE_NAME = 'Corner House'
 
-/** A whole-application case starts the shell, and may need more time on a busy machine. */
-const WHOLE_APPLICATION_TIMEOUT_MS = 20_000
-
 const GRID_OFF_PROBE = 'grid off, radius 18'
 
-interface BrowserStorageCalls {
-  entries: Map<string, string>
-  setItem: MockInstance<Storage['setItem']>
-  removeItem: MockInstance<Storage['removeItem']>
-}
-
-// The browser storage of the test run answers that it holds nothing and keeps nothing, unless a
-// case imitates it, so that no case passes through what an earlier case left there.
+// A case that imitates the browser storage does so after this stub, and replaces it.
 beforeEach(() => {
-  vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null)
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => undefined)
-  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => undefined)
+  stubEmptyBrowserStorage()
 })
 
 afterEach(() => {
@@ -62,19 +53,6 @@ afterEach(() => {
 function SnapProbe() {
   const [preferences] = useSetting(SNAP_PREFERENCES_SETTING)
   return <p>{`grid ${preferences.kinds.grid ? 'on' : 'off'}, radius ${preferences.pixelRadius}`}</p>
-}
-
-/** A browser storage in a map, reached through the storage object of the test run. */
-function imitateBrowserStorage(initial: Readonly<Record<string, string>>): BrowserStorageCalls {
-  const entries = new Map(Object.entries(initial))
-  vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => entries.get(key) ?? null)
-  const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, value) => {
-    entries.set(key, value)
-  })
-  const removeItem = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation((key) => {
-    entries.delete(key)
-  })
-  return { entries, setItem, removeItem }
 }
 
 /** Starts the whole application over `settings`, with a project named `HOUSE_NAME` stored. */
@@ -101,7 +79,7 @@ async function closeTheSnapControl(): Promise<void> {
 
 describe('the first start of the snap preferences under strict mode', () => {
   it('carries the old preferences once: one write of the new key, one removal of the old key', () => {
-    const { setItem, removeItem } = imitateBrowserStorage({ [OLD_SNAP_KEY]: OLD_SNAP_TEXT })
+    const { setItem, removeItem } = imitateBrowserStorage({ [OLD_SNAP_KEY]: OLDER_BUILD_SNAP_TEXT })
 
     render(
       <StrictMode>
@@ -112,12 +90,12 @@ describe('the first start of the snap preferences under strict mode', () => {
     )
 
     expect(screen.getByText(GRID_OFF_PROBE)).toBeInTheDocument()
-    expect(setItem.mock.calls).toEqual([[NEW_SNAP_KEY, OLD_SNAP_TEXT]])
+    expect(setItem.mock.calls).toEqual([[NEW_SNAP_KEY, OLDER_BUILD_SNAP_TEXT]])
     expect(removeItem.mock.calls).toEqual([[OLD_SNAP_KEY]])
   })
 
   it('keeps the old preferences in effect and the old key when the browser refuses the carry', () => {
-    const { entries } = imitateBrowserStorage({ [OLD_SNAP_KEY]: OLD_SNAP_TEXT })
+    const { entries } = imitateBrowserStorage({ [OLD_SNAP_KEY]: OLDER_BUILD_SNAP_TEXT })
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('The storage refuses this call.', 'SecurityError')
     })
@@ -131,13 +109,13 @@ describe('the first start of the snap preferences under strict mode', () => {
     )
 
     expect(screen.getByText(GRID_OFF_PROBE)).toBeInTheDocument()
-    expect(entries.get(OLD_SNAP_KEY)).toBe(OLD_SNAP_TEXT)
+    expect(entries.get(OLD_SNAP_KEY)).toBe(OLDER_BUILD_SNAP_TEXT)
   })
 })
 
 describe('a second start of the application over the same browser storage', () => {
   it('shows the same preferences and writes and removes nothing', () => {
-    const storage = memoryStorage({ [OLD_SNAP_KEY]: OLD_SNAP_TEXT })
+    const storage = memoryStorage({ [OLD_SNAP_KEY]: OLDER_BUILD_SNAP_TEXT })
     const first = render(
       <AppSettings port={new LocalStorageSettingsPort(storage)}>
         <SnapProbe />
@@ -194,11 +172,7 @@ describe('the snap preferences across the life of the application', () => {
 
       await userEvent.click(within(control).getByRole('checkbox', { name: /grid/i }))
 
-      const stored: unknown = JSON.parse(storage.entries.get(NEW_SNAP_KEY) ?? 'null')
-      expect(stored).toEqual({
-        ...DEFAULT_SNAP_PREFERENCES,
-        kinds: { ...DEFAULT_SNAP_PREFERENCES.kinds, grid: false },
-      })
+      expectStoredWithGridOff(storage.entries)
     },
     WHOLE_APPLICATION_TIMEOUT_MS,
   )

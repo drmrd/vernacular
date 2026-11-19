@@ -3,71 +3,28 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup, act, screen, within } from '@testing-library/react'
 import type { SettingKey, SettingsService } from '../../session'
 import { createSettingsService } from '../../session'
-import { InMemorySettingsPort } from '../../session/testing'
-import { SettingsProvider, useSetting, useSettingsService } from './settings-context'
+import { SettingsProvider, useSettingsService } from './settings-context'
+import { Reader, ServiceProbe } from './settings-context-test-support'
+import {
+  counting,
+  FRAME,
+  GREETING,
+  VOLUME,
+  recording,
+  serviceHolding,
+  type Frame,
+  type Recording,
+} from './settings-context-fixtures-test-support'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
 })
 
-const GREETING: SettingKey<string> = {
-  name: 'greeting',
-  defaultValue: 'hello',
-  parse: (raw) => (typeof raw === 'string' ? raw : undefined),
-}
-
-const VOLUME: SettingKey<number> = {
-  name: 'volume',
-  defaultValue: 5,
-  parse: (raw) => (typeof raw === 'number' ? raw : undefined),
-}
-
-interface Frame {
-  readonly width: number
-}
-
-const FRAME: SettingKey<Frame> = {
-  name: 'frame',
-  defaultValue: { width: 1 },
-  parse: (raw) =>
-    typeof raw === 'object' && raw !== null && 'width' in raw && typeof raw.width === 'number'
-      ? { width: raw.width }
-      : undefined,
-}
-
-/** What a reader component saw: each value it rendered, and the setter of each render. */
-interface Recording<T> {
-  readonly values: T[]
-  readonly setters: Array<(value: T) => void>
-}
-
-function recording<T>(): Recording<T> {
-  return { values: [], setters: [] }
-}
-
 function lastSetter<T>(seen: Recording<T>): (value: T) => void {
   const setter = seen.setters.at(-1)
   if (setter === undefined) throw new Error('the reader has not rendered')
   return setter
-}
-
-interface ReaderProps<T> {
-  settingKey: SettingKey<T>
-  seen: Recording<T>
-}
-
-function Reader<T>({ settingKey, seen }: ReaderProps<T>): ReactElement {
-  const [value, setValue] = useSetting(settingKey)
-  seen.values.push(value)
-  seen.setters.push(setValue)
-  return <output>{String(value)}</output>
-}
-
-/** Records the service that each render of the component gets. */
-function ServiceProbe({ services }: { services: SettingsService[] }): null {
-  services.push(useSettingsService())
-  return null
 }
 
 function providedReader<T>(
@@ -80,40 +37,6 @@ function providedReader<T>(
       <Reader settingKey={key} seen={seen} />
     </SettingsProvider>
   )
-}
-
-function serviceHolding(name: string, stored: unknown): SettingsService {
-  const port = new InMemorySettingsPort()
-  port.write(name, stored)
-  return createSettingsService(port)
-}
-
-interface SubscriptionCounts {
-  started: number
-  ended: number
-}
-
-/** A service that counts each subscription that starts and each one that ends. */
-function counting(service: SettingsService): {
-  service: SettingsService
-  counts: SubscriptionCounts
-} {
-  const counts: SubscriptionCounts = { started: 0, ended: 0 }
-  const counted: SettingsService = {
-    get: (key) => service.get(key),
-    set: (key, value) => {
-      service.set(key, value)
-    },
-    subscribe: (key, listener) => {
-      counts.started += 1
-      const end = service.subscribe(key, listener)
-      return () => {
-        counts.ended += 1
-        end()
-      }
-    },
-  }
-  return { service: counted, counts }
 }
 
 describe('the settings provider and hook', () => {

@@ -4,34 +4,16 @@ import { render, screen, cleanup } from '@testing-library/react'
 import { SettingsProvider } from '../../bridge'
 import { createSettingsService, type SettingsService } from '../../session'
 import { InMemorySettingsPort } from '../../session/testing'
+import { mockMatchMedia, stubEmptyBrowserStorage } from './browser-environment-test-support'
 import type { ThemeChoice } from './theme'
 import { ThemeProvider, useTheme } from './theme-provider'
 
 /** The name that the theme choice is kept under in the settings. */
 const THEME_NAME = 'theme'
 
-function mockMatchMedia(prefersDark: boolean) {
-  vi.stubGlobal(
-    'matchMedia',
-    vi.fn().mockImplementation((query: string) => ({
-      matches: prefersDark && query.includes('dark'),
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  )
-}
-
-// The browser storage of the test run answers that it holds nothing and keeps nothing, so that no
-// case passes through what an earlier case left there.
 beforeEach(() => {
   mockMatchMedia(false)
-  vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null)
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => undefined)
-  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => undefined)
+  stubEmptyBrowserStorage()
 })
 
 afterEach(() => {
@@ -175,9 +157,7 @@ describe('a theme provider under strict mode', () => {
     )
 
     expect(commits.length).toBeGreaterThan(0)
-    expect(commits.every((commit) => commit.resolved === 'dark' && commit.wrapper === 'dark')).toBe(
-      true,
-    )
+    expect(commits).toEqual(commits.map(() => ({ resolved: 'dark', wrapper: 'dark' })))
     expect(write).not.toHaveBeenCalled()
   })
 })

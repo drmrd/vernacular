@@ -3,38 +3,23 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup, act, screen } from '@testing-library/react'
 import type { SettingKey, SettingsService } from '../../session'
 import { createSettingsService } from '../../session'
-import { InMemorySettingsPort } from '../../session/testing'
-import { SettingsProvider, useSetting, useSettingsService } from './settings-context'
+import { SettingsProvider, useSetting } from './settings-context'
+import { Reader, ServiceProbe } from './settings-context-test-support'
+import {
+  counting,
+  FRAME,
+  GREETING,
+  VOLUME,
+  recording,
+  serviceHolding,
+  type Frame,
+  type Recording,
+} from './settings-context-fixtures-test-support'
 
 afterEach(cleanup)
 
 /** More renders than any settled tree needs; a loop would pass it. */
 const RENDER_BOUND = 10
-
-const GREETING: SettingKey<string> = {
-  name: 'greeting',
-  defaultValue: 'hello',
-  parse: (raw) => (typeof raw === 'string' ? raw : undefined),
-}
-
-const VOLUME: SettingKey<number> = {
-  name: 'volume',
-  defaultValue: 5,
-  parse: (raw) => (typeof raw === 'number' ? raw : undefined),
-}
-
-interface Frame {
-  readonly width: number
-}
-
-const FRAME: SettingKey<Frame> = {
-  name: 'frame',
-  defaultValue: { width: 1 },
-  parse: (raw) =>
-    typeof raw === 'object' && raw !== null && 'width' in raw && typeof raw.width === 'number'
-      ? { width: raw.width }
-      : undefined,
-}
 
 /** A key with the same name, default, and parse as GREETING, but a new object each time. */
 function freshGreetingKey(): SettingKey<string> {
@@ -43,52 +28,6 @@ function freshGreetingKey(): SettingKey<string> {
     defaultValue: GREETING.defaultValue,
     parse: (raw) => (typeof raw === 'string' ? raw : undefined),
   }
-}
-
-function serviceHolding(name: string, stored: unknown): SettingsService {
-  const port = new InMemorySettingsPort()
-  port.write(name, stored)
-  return createSettingsService(port)
-}
-
-interface SubscriptionCounts {
-  started: number
-  ended: number
-}
-
-/** A service that counts each subscription that starts and each one that ends. */
-function counting(service: SettingsService): {
-  service: SettingsService
-  counts: SubscriptionCounts
-} {
-  const counts: SubscriptionCounts = { started: 0, ended: 0 }
-  const counted: SettingsService = {
-    get: (key) => service.get(key),
-    set: (key, value) => {
-      service.set(key, value)
-    },
-    subscribe: (key, listener) => {
-      counts.started += 1
-      const end = service.subscribe(key, listener)
-      return () => {
-        counts.ended += 1
-        end()
-      }
-    },
-  }
-  return { service: counted, counts }
-}
-
-/** The values a reader rendered, in order. */
-function Reader<T>({ settingKey, seen }: { settingKey: SettingKey<T>; seen: T[] }): ReactElement {
-  const [value] = useSetting(settingKey)
-  seen.push(value)
-  return <output>{String(value)}</output>
-}
-
-function ServiceProbe({ services }: { services: SettingsService[] }): null {
-  services.push(useSettingsService())
-  return null
 }
 
 describe('the nearest settings provider', () => {
@@ -109,7 +48,7 @@ describe('the nearest settings provider', () => {
   it('uses the inner provider when two providers are nested', () => {
     const outer = serviceHolding('greeting', 'from the outer')
     const inner = serviceHolding('greeting', 'from the inner')
-    const seen: string[] = []
+    const seen = recording<string>()
     const services: SettingsService[] = []
 
     render(
@@ -127,14 +66,14 @@ describe('the nearest settings provider', () => {
   })
 })
 
-function FreshKeyReader({ seen }: { seen: string[] }): ReactElement {
+function FreshKeyReader({ seen }: { seen: Recording<string> }): ReactElement {
   return <Reader settingKey={freshGreetingKey()} seen={seen} />
 }
 
 describe('a setting key that is new on every render', () => {
   it('shows the stored value, stays stable, and does not loop', () => {
     const service = serviceHolding('greeting', 'stored')
-    const seen: string[] = []
+    const seen = recording<string>()
     const tree = (): ReactElement => (
       <SettingsProvider service={service}>
         <FreshKeyReader seen={seen} />
@@ -144,22 +83,22 @@ describe('a setting key that is new on every render', () => {
     view.rerender(tree())
     view.rerender(tree())
 
-    expect(new Set(seen)).toEqual(new Set(['stored']))
-    expect(seen.length).toBeLessThan(RENDER_BOUND)
+    expect(new Set(seen.values)).toEqual(new Set(['stored']))
+    expect(seen.values.length).toBeLessThan(RENDER_BOUND)
 
     act(() => {
       service.set(GREETING, 'from outside')
     })
 
     expect(screen.getByRole('status')).toHaveTextContent('from outside')
-    expect(seen.at(-1)).toBe('from outside')
-    expect(seen.length).toBeLessThan(RENDER_BOUND)
+    expect(seen.values.at(-1)).toBe('from outside')
+    expect(seen.values.length).toBeLessThan(RENDER_BOUND)
   })
 })
 
 describe('the settings hook under StrictMode', () => {
   it('shows the stored value at the first committed render', () => {
-    const seen: string[] = []
+    const seen = recording<string>()
 
     render(
       <StrictMode>
@@ -170,11 +109,11 @@ describe('the settings hook under StrictMode', () => {
     )
 
     expect(screen.getByRole('status')).toHaveTextContent('stored')
-    expect(seen[0]).toBe('stored')
+    expect(seen.values[0]).toBe('stored')
   })
 
   it('does not loop on an object value', () => {
-    const seen: Frame[] = []
+    const seen = recording<Frame>()
 
     render(
       <StrictMode>
@@ -184,8 +123,8 @@ describe('the settings hook under StrictMode', () => {
       </StrictMode>,
     )
 
-    expect(seen.length).toBeLessThan(RENDER_BOUND)
-    expect(seen.at(-1)).toEqual({ width: 3 })
+    expect(seen.values.length).toBeLessThan(RENDER_BOUND)
+    expect(seen.values.at(-1)).toEqual({ width: 3 })
   })
 
   it('ends every subscription that it made after an unmount', () => {
@@ -193,7 +132,7 @@ describe('the settings hook under StrictMode', () => {
     const view = render(
       <StrictMode>
         <SettingsProvider service={service}>
-          <Reader settingKey={GREETING} seen={[]} />
+          <Reader settingKey={GREETING} seen={recording<string>()} />
         </SettingsProvider>
       </StrictMode>,
     )
@@ -255,7 +194,7 @@ describe('two calls of the hook in one component', () => {
 describe('the settings hook when the key changes', () => {
   it('follows the new key only, and ends every subscription at the unmount', () => {
     const { service, counts } = counting(createSettingsService())
-    const seen: Array<string | number> = []
+    const seen = recording<string | number>()
     const tree = (key: SettingKey<string | number>): ReactElement => (
       <SettingsProvider service={service}>
         <Reader settingKey={key} seen={seen} />
@@ -263,18 +202,18 @@ describe('the settings hook when the key changes', () => {
     )
     const view = render(tree(GREETING as SettingKey<string | number>))
     view.rerender(tree(VOLUME as SettingKey<string | number>))
-    const rendersAfterChange = seen.length
+    const rendersAfterChange = seen.values.length
 
     act(() => {
       service.set(GREETING, 'old key')
     })
-    expect(seen).toHaveLength(rendersAfterChange)
+    expect(seen.values).toHaveLength(rendersAfterChange)
 
     act(() => {
       service.set(VOLUME, 9)
     })
-    expect(seen.length).toBeGreaterThan(rendersAfterChange)
-    expect(seen.at(-1)).toBe(9)
+    expect(seen.values.length).toBeGreaterThan(rendersAfterChange)
+    expect(seen.values.at(-1)).toBe(9)
 
     view.unmount()
     expect(counts.ended).toBe(counts.started)

@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LocalStorageSettingsPort } from './local-storage-settings-port'
 import { assertSettingsPortContract } from './settings-port-contract'
-
-const OLD_KEY = 'vernacular.snap-preferences'
-const NEW_KEY = 'vernacular.settings.snapPreferences'
-const OLD_TEXT = '{"enabled":false,"kinds":{"grid":false},"pixelRadius":12}'
+import { NEW_SNAP_KEY, OLD_SNAP_KEY, OLD_SNAP_TEXT } from './settings-storage-test-kit'
 
 beforeEach(() => {
   localStorage.clear()
@@ -21,7 +18,7 @@ assertSettingsPortContract('LocalStorageSettingsPort on the storage of this brow
 
 describe('LocalStorageSettingsPort on the storage of this browser', () => {
   it('carries the snap preferences from the old key', () => {
-    localStorage.setItem(OLD_KEY, OLD_TEXT)
+    localStorage.setItem(OLD_SNAP_KEY, OLD_SNAP_TEXT)
 
     const port = new LocalStorageSettingsPort()
 
@@ -30,8 +27,8 @@ describe('LocalStorageSettingsPort on the storage of this browser', () => {
       kinds: { grid: false },
       pixelRadius: 12,
     })
-    expect(localStorage.getItem(NEW_KEY)).toBe(OLD_TEXT)
-    expect(localStorage.getItem(OLD_KEY)).toBeNull()
+    expect(localStorage.getItem(NEW_SNAP_KEY)).toBe(OLD_SNAP_TEXT)
+    expect(localStorage.getItem(OLD_SNAP_KEY)).toBeNull()
   })
 
   it('stores the JSON text under vernacular.settings and the name', () => {

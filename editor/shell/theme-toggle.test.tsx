@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SettingsProvider } from '../../bridge'
@@ -7,18 +7,7 @@ import { InMemorySettingsPort } from '../../session/testing'
 import { ThemeProvider } from '../design-system'
 import { ThemeToggle } from './theme-toggle'
 
-// The browser storage of the test run answers that it holds nothing and keeps nothing, so that no
-// case passes through what an earlier case left there.
-beforeEach(() => {
-  vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null)
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => undefined)
-  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => undefined)
-})
-
-afterEach(() => {
-  cleanup()
-  vi.restoreAllMocks()
-})
+afterEach(cleanup)
 
 function renderToggle() {
   return render(

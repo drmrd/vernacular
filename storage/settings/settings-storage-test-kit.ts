@@ -2,6 +2,15 @@ import type { SettingsStorage } from './local-storage-settings-port'
 
 /** Shared set-up of the tests of the browser settings port: storage objects with known faults. */
 
+/** The key under which an older build stored the snap preferences. */
+export const OLD_SNAP_KEY = 'vernacular.snap-preferences'
+
+/** The key under which the snap preferences are stored now. */
+export const NEW_SNAP_KEY = 'vernacular.settings.snapPreferences'
+
+/** Snap preferences as an older build stored them under the old key: master off, grid off, radius 12. */
+export const OLD_SNAP_TEXT = '{"enabled":false,"kinds":{"grid":false},"pixelRadius":12}'
+
 /** The name of one method of a settings storage. */
 export type SettingsStorageMethod = keyof SettingsStorage
 

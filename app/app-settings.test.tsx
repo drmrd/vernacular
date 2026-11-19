@@ -4,9 +4,20 @@ import userEvent from '@testing-library/user-event'
 import { useSetting } from '../bridge'
 import type { SettingKey } from '../session'
 import { createTestPorts } from '../session/handle/handle-test-kit'
-import { DEFAULT_SNAP_PREFERENCES } from '../editor/plan/snap-preferences'
 import { InMemorySettingsPort, LocalStorageSettingsPort, type SettingsPort } from '../storage'
-import { memoryStorage, refusing } from '../storage/settings/settings-storage-test-kit'
+import {
+  memoryStorage,
+  NEW_SNAP_KEY,
+  OLD_SNAP_KEY,
+  refusing,
+} from '../storage/settings/settings-storage-test-kit'
+import { stubEmptyBrowserStorage } from '../editor/design-system/browser-environment-test-support'
+import {
+  expectStoredWithGridOff,
+  imitateBrowserStorage,
+  OLDER_BUILD_SNAP_TEXT,
+  WHOLE_APPLICATION_TIMEOUT_MS,
+} from './app-settings-test-support'
 import { AppSettings } from './app-settings'
 import {
   chooseFromTheProjectMenu,
@@ -16,15 +27,6 @@ import {
   renderApp,
   stubCapableStorage,
 } from './app-test-support'
-
-/** The key under which an older build stored the snap preferences. */
-const OLD_SNAP_KEY = 'vernacular.snap-preferences'
-
-/** The key under which the snap preferences are stored now. */
-const NEW_SNAP_KEY = 'vernacular.settings.snapPreferences'
-
-/** Snap preferences as an older build stored them: grid snapping off, everything else on. */
-const OLD_SNAP_TEXT = '{"enabled":true,"kinds":{"grid":false},"pixelRadius":18}'
 
 /** A setting of the test, with a text value. */
 const NOTE: SettingKey<string> = {
@@ -44,15 +46,9 @@ const THEME_NAME = 'theme'
 /** The key under which the browser keeps the theme choice. */
 const THEME_BROWSER_KEY = 'vernacular.settings.theme'
 
-/** A whole-application case starts the shell, and may need more time on a busy machine. */
-const WHOLE_APPLICATION_TIMEOUT_MS = 20_000
-
-// The browser storage of the test run answers that it holds nothing and keeps nothing, unless a
-// case imitates it, so that no case passes through what an earlier case left there.
+// A case that imitates the browser storage does so after this stub, and replaces it.
 beforeEach(() => {
-  vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null)
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => undefined)
-  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => undefined)
+  stubEmptyBrowserStorage()
 })
 
 afterEach(() => {
@@ -69,19 +65,6 @@ function NoteProbe() {
       {note}
     </button>
   )
-}
-
-/** A browser storage in a map, reached through the storage object of the test run. */
-function imitateBrowserStorage(initial: Readonly<Record<string, string>>): Map<string, string> {
-  const entries = new Map(Object.entries(initial))
-  vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => entries.get(key) ?? null)
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, value) => {
-    entries.set(key, value)
-  })
-  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation((key) => {
-    entries.delete(key)
-  })
-  return entries
 }
 
 /** Starts the application on test ports with `settings`, and opens the snap control of the status bar. */
@@ -157,25 +140,25 @@ describe('AppSettings', () => {
 
 describe('the snap preferences of the application', () => {
   it('snap preferences that an older build stored are in effect in the application', async () => {
-    const storage = memoryStorage({ [OLD_SNAP_KEY]: OLD_SNAP_TEXT })
+    const storage = memoryStorage({ [OLD_SNAP_KEY]: OLDER_BUILD_SNAP_TEXT })
     const settings = new LocalStorageSettingsPort(storage)
 
     const control = await startAndOpenTheSnapControl(settings)
 
     expect(within(control).getByRole('checkbox', { name: /grid/i })).not.toBeChecked()
     expect(within(control).getByRole('checkbox', { name: /endpoint/i })).toBeChecked()
-    expect(storage.entries.get(NEW_SNAP_KEY)).toBe(OLD_SNAP_TEXT)
+    expect(storage.entries.get(NEW_SNAP_KEY)).toBe(OLDER_BUILD_SNAP_TEXT)
     expect(storage.entries.has(OLD_SNAP_KEY)).toBe(false)
   })
 
   it('snap preferences that an older build stored in this browser are in effect at the first start', async () => {
-    const entries = imitateBrowserStorage({ [OLD_SNAP_KEY]: OLD_SNAP_TEXT })
+    const { entries } = imitateBrowserStorage({ [OLD_SNAP_KEY]: OLDER_BUILD_SNAP_TEXT })
 
     const control = await startAndOpenTheSnapControl()
 
     expect(within(control).getByRole('checkbox', { name: /grid/i })).not.toBeChecked()
     expect(within(control).getByRole('checkbox', { name: /endpoint/i })).toBeChecked()
-    expect(entries.get(NEW_SNAP_KEY)).toBe(OLD_SNAP_TEXT)
+    expect(entries.get(NEW_SNAP_KEY)).toBe(OLDER_BUILD_SNAP_TEXT)
     expect(entries.has(OLD_SNAP_KEY)).toBe(false)
   })
 
@@ -185,11 +168,7 @@ describe('the snap preferences of the application', () => {
 
     await userEvent.click(within(control).getByRole('checkbox', { name: /grid/i }))
 
-    const stored: unknown = JSON.parse(storage.entries.get(NEW_SNAP_KEY) ?? 'null')
-    expect(stored).toEqual({
-      ...DEFAULT_SNAP_PREFERENCES,
-      kinds: { ...DEFAULT_SNAP_PREFERENCES.kinds, grid: false },
-    })
+    expectStoredWithGridOff(storage.entries)
     expect(storage.entries.has(OLD_SNAP_KEY)).toBe(false)
   })
 

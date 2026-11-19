@@ -11,6 +11,7 @@ import {
   type SnapPreferences,
   type TogglableSnapKind,
 } from './snap-preferences'
+import { storeHolding } from './snap-preferences-test-support'
 
 /** The eight running snap kinds the preferences govern (everything except the draw-aid trace). */
 const RUNNING_SNAP_KINDS: readonly TogglableSnapKind[] = [
@@ -202,5 +203,45 @@ describe('the snap preferences setting', () => {
 
     expect(stored).toEqual(storedBefore)
     expect(DEFAULT_SNAP_PREFERENCES).toEqual(defaultsBefore)
+  })
+})
+
+/** The text of a radius that is too large for a number: JSON reads it as infinity. */
+const OVERSIZED_RADIUS_TEXT = '{"pixelRadius":1e999}'
+
+/** The value that JSON text gives, as a browser port would read it. */
+function fromText(text: string): unknown {
+  return JSON.parse(text)
+}
+
+describe('the snap preferences setting reading a stored value with an own __proto__ key', () => {
+  it('at the top level changes nothing', () => {
+    const withKey = fromText('{"enabled":false,"__proto__":{"polluted":true}}')
+    const withoutKey = fromText('{"enabled":false}')
+
+    expect(SNAP_PREFERENCES_SETTING.parse(withKey)).toEqual(
+      SNAP_PREFERENCES_SETTING.parse(withoutKey),
+    )
+    expect(storeHolding(withKey).store.getPreferences().enabled).toBe(false)
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
+  })
+
+  it('inside the kinds changes nothing', () => {
+    const withKey = fromText('{"kinds":{"grid":false,"__proto__":{"polluted":true}}}')
+    const withoutKey = fromText('{"kinds":{"grid":false}}')
+
+    expect(SNAP_PREFERENCES_SETTING.parse(withKey)).toEqual(
+      SNAP_PREFERENCES_SETTING.parse(withoutKey),
+    )
+    expect(storeHolding(withKey).store.getPreferences().kinds.grid).toBe(false)
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
+  })
+})
+
+describe('the snap preferences setting reading a stored radius that is too large for a number', () => {
+  it('records the present behavior: the radius is read as infinity and is not clamped on read', () => {
+    const parsed = SNAP_PREFERENCES_SETTING.parse(fromText(OVERSIZED_RADIUS_TEXT))
+
+    expect(parsed?.pixelRadius).toBe(Infinity)
   })
 })

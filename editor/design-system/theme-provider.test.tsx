@@ -1,10 +1,15 @@
 import type { ReactNode } from 'react'
-import { describe, it, expect, afterEach, beforeEach, vi, type MockInstance } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, screen, cleanup, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SettingsProvider } from '../../bridge'
 import { createSettingsService, type SettingKey, type SettingsService } from '../../session'
 import { InMemorySettingsPort } from '../../session/testing'
+import {
+  mockMatchMedia,
+  stubEmptyBrowserStorage,
+  type EmptyBrowserStorage,
+} from './browser-environment-test-support'
 import { isThemeChoice, type ThemeChoice } from './theme'
 import { ThemeProvider, useTheme } from './theme-provider'
 
@@ -18,24 +23,7 @@ const THEME_KEY: SettingKey<ThemeChoice> = {
   parse: (raw) => (isThemeChoice(raw) ? raw : undefined),
 }
 
-function mockMatchMedia(prefersDark: boolean) {
-  vi.stubGlobal(
-    'matchMedia',
-    vi.fn().mockImplementation((query: string) => ({
-      matches: prefersDark && query.includes('dark'),
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  )
-}
-
-let browserReads: MockInstance<Storage['getItem']>
-let browserWrites: MockInstance<Storage['setItem']>
-let browserRemovals: MockInstance<Storage['removeItem']>
+let browser: EmptyBrowserStorage
 
 afterEach(() => {
   cleanup()
@@ -43,13 +31,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-// The browser storage of the test run answers that it holds nothing and keeps nothing, so that no
-// case passes through what an earlier case left there.
 beforeEach(() => {
   mockMatchMedia(false)
-  browserReads = vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null)
-  browserWrites = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => undefined)
-  browserRemovals = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => undefined)
+  browser = stubEmptyBrowserStorage()
 })
 
 function ThemeReadout() {
@@ -181,7 +165,7 @@ describe('ThemeProvider over a settings service', () => {
     )
 
     expect(seen.length).toBeGreaterThan(0)
-    expect(seen.every((theme) => theme === 'dark')).toBe(true)
+    expect(seen).toEqual(seen.map(() => 'dark'))
     expect(shownTheme(container)).toBe('dark')
   })
 
@@ -289,8 +273,8 @@ describe('ThemeProvider with no settings above it', () => {
     )
 
     expect(screen.getByText('choice: system')).toBeInTheDocument()
-    expect(browserReads).not.toHaveBeenCalled()
-    expect(browserWrites).not.toHaveBeenCalled()
-    expect(browserRemovals).not.toHaveBeenCalled()
+    expect(browser.reads).not.toHaveBeenCalled()
+    expect(browser.writes).not.toHaveBeenCalled()
+    expect(browser.removals).not.toHaveBeenCalled()
   })
 })
