@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { RefObject } from 'react'
-import { switchProject } from '../session'
 import type { OpenFailureCause } from './open-failure-text'
 import type {
   DocumentHandle,
@@ -8,8 +6,18 @@ import type {
   OpenRequest,
   SessionPorts,
   SwitchFailure,
-  SwitchResult,
 } from '../session'
+import {
+  dropHandle,
+  isBusy,
+  launchDueStart,
+  launchRetry,
+  newMemory,
+  resume,
+  show,
+} from './owner-start'
+import type { OwnerMemory, OwnerView } from './owner-start'
+import { recordPendingClose } from './pending-closes'
 
 /** A step that may replace the open project: it gets the ports and the project open now. */
 export type Flow<Refusal = never> = (
@@ -31,45 +39,6 @@ export interface OpenProject {
   readonly runFlow: RunFlow
   /** Runs the start again after it failed. */
   readonly retry: () => void
-}
-
-/** What the owner shows: the open project, or why none is open. */
-interface OwnerView {
-  readonly handle: DocumentHandle | null
-  readonly failure: SwitchFailure | null
-}
-
-type SetView = (view: OwnerView) => void
-
-/** Which start an open belongs to: one ports object, one request, and one attempt. */
-interface StartKey {
-  readonly ports: SessionPorts
-  readonly request: OpenRequest
-  readonly attempt: number
-}
-
-/** An open of the start that runs or ran, and who waits for its result. */
-interface RunningStart {
-  readonly ports: SessionPorts
-  readonly id: string
-  readonly attempt: number
-  /** Takes the result; null when no mounted owner waits, so the handle is closed instead. */
-  deliver: ((result: SwitchResult) => void) | null
-}
-
-/** What the owner keeps between renders, read by the effects and by the callbacks. */
-interface OwnerMemory {
-  ports: SessionPorts | null
-  handle: DocumentHandle | null
-  failure: SwitchFailure | null
-  /** True while the start or a flow runs. */
-  busy: boolean
-  mounted: boolean
-  start: RunningStart | null
-}
-
-function newMemory(): OwnerMemory {
-  return { ports: null, handle: null, failure: null, busy: false, mounted: false, start: null }
 }
 
 /** The kinds that the first switch of isSwitchFailure leaves to the second one. */
@@ -126,144 +95,108 @@ function isSwitchFailure(failure: unknown): failure is SwitchFailure {
   )
 }
 
-/** Records the view in the owner's memory at once, so callbacks see it before the next render. */
-function show(memory: OwnerMemory, setView: SetView, view: OwnerView): void {
-  memory.handle = view.handle
-  memory.failure = view.failure
-  setView(view)
-}
-
-function viewOf(result: SwitchResult): OwnerView {
-  return result.ok
-    ? { handle: result.handle, failure: null }
-    : { handle: null, failure: result.failure }
-}
-
-function sameStart(running: RunningStart | null, key: StartKey): running is RunningStart {
-  return (
-    running !== null &&
-    running.ports === key.ports &&
-    running.id === key.request.id &&
-    running.attempt === key.attempt
-  )
-}
-
-/** Opens the start request. A result that nobody waits for has its handle closed. */
-function launchStart(memory: OwnerMemory, key: StartKey): RunningStart {
-  const running: RunningStart = {
-    ports: key.ports,
-    id: key.request.id,
-    attempt: key.attempt,
-    deliver: null,
-  }
-  memory.busy = true
-  void switchProject(key.ports, undefined, key.request).then((result) => {
-    if (memory.start === running) {
-      memory.busy = false
-    }
-    if (running.deliver !== null) {
-      running.deliver(result)
-    } else if (result.ok) {
-      void result.handle.close()
-    }
-  })
-  return running
-}
-
-/**
- * Waits for the open of the start, and starts it when no open for the same key runs. A second
- * effect run for the same key attaches to the running open. Returns the function that detaches.
- */
-function attachStart(memory: OwnerMemory, key: StartKey, deliver: (result: SwitchResult) => void) {
-  const running = sameStart(memory.start, key) ? memory.start : launchStart(memory, key)
-  memory.start = running
-  running.deliver = deliver
-  return () => {
-    running.deliver = null
-  }
-}
-
-/** Installs what a flow gave, or closes its handle when the owner is gone. */
-function settleFlow<Refusal>(
-  memory: OwnerMemory,
-  setView: SetView,
-  result: FlowResult<Refusal>,
-): void {
-  if (!memory.mounted) {
+/** Installs what a flow gave, or closes its handle when the owner's effects are cleaned up. */
+function settleFlow<Refusal>(memory: OwnerMemory, result: FlowResult<Refusal>): void {
+  if (!memory.live) {
     if (result.ok && result.handle !== memory.handle) {
-      void result.handle.close()
+      dropHandle(memory, result.handle)
     }
     return
   }
   if (result.ok) {
-    show(memory, setView, { handle: result.handle, failure: null })
+    show(memory, { handle: result.handle, failure: null })
   } else if (memory.handle === null && isSwitchFailure(result.failure)) {
-    show(memory, setView, { handle: null, failure: result.failure })
+    show(memory, { handle: null, failure: result.failure })
+  }
+}
+
+/** Calls the flow. A flow that throws or rejects is logged and gives storage-unavailable. */
+async function callFlow<Refusal>(
+  flow: Flow<Refusal>,
+  ports: SessionPorts,
+  current: DocumentHandle | undefined,
+): Promise<FlowResult<Refusal>> {
+  try {
+    return await flow(ports, current)
+  } catch (error) {
+    console.error(error)
+    const message = error instanceof Error ? error.message : String(error)
+    return { ok: false, failure: { kind: 'storage-unavailable', message } }
   }
 }
 
 async function runOneFlow<Refusal>(
   memory: OwnerMemory,
-  setView: SetView,
   flow: Flow<Refusal>,
 ): Promise<FlowResult<Refusal> | undefined> {
   const ports = memory.ports
-  if (ports === null || memory.busy) {
+  if (ports === null || isBusy(memory)) {
     return undefined
   }
-  memory.busy = true
-  try {
-    const result = await flow(ports, memory.handle ?? undefined)
-    settleFlow(memory, setView, result)
-    return result
-  } finally {
-    memory.busy = false
-  }
+  memory.flowRunning = true
+  const result = await callFlow(flow, ports, memory.handle ?? undefined)
+  memory.flowRunning = false
+  settleFlow(memory, result)
+  launchDueStart(memory)
+  return result
 }
 
-/** Keeps the owner's ports current, marks it mounted, and closes the open project on unmount. */
-function useOwnerLifetime(memoryRef: RefObject<OwnerMemory>, ports: SessionPorts | null): void {
-  useEffect(() => {
-    memoryRef.current.ports = ports
-  }, [memoryRef, ports])
-  useEffect(() => {
-    const memory = memoryRef.current
-    memory.mounted = true
-    return () => {
-      memory.mounted = false
-      if (memory.handle !== null) {
-        void memory.handle.close()
+/**
+ * Closes the open project one microtask after a clean-up, unless the effects were set up again
+ * by then. The close is recorded for the ports at once, so a new owner on them waits for it.
+ */
+function deferClose(memory: OwnerMemory): void {
+  const { handle, ports, setUps } = memory
+  if (handle === null) {
+    return
+  }
+  const decided = new Promise<unknown>((resolve) => {
+    queueMicrotask(() => {
+      if (memory.setUps !== setUps || memory.handle !== handle) {
+        resolve(undefined)
+        return
       }
-    }
-  }, [memoryRef])
+      memory.handle = null
+      dropHandle(memory, handle)
+      resolve(memory.closed?.closing)
+    })
+  })
+  if (ports !== null) {
+    recordPendingClose(ports, decided)
+  }
 }
 
 /**
  * The one owner of the open project. It opens the start request once, installs the handle that
- * each flow gives, runs one flow at a time, and closes the open project when it unmounts.
+ * each flow gives, runs the start and the flows one at a time, and closes the open project when
+ * its effects are cleaned up and not set up again in the same step. A later set-up opens that
+ * project again.
  */
 export function useOpenProject(ports: SessionPorts | null, start: OpenRequest | null): OpenProject {
-  const memoryRef = useRef<OwnerMemory>(newMemory())
   const [view, setView] = useState<OwnerView>({ handle: null, failure: null })
-  const [attempt, setAttempt] = useState(0)
-  useOwnerLifetime(memoryRef, ports)
+  const memoryRef = useRef<OwnerMemory>(newMemory(setView))
   useEffect(() => {
     const memory = memoryRef.current
-    if (ports === null || start === null || memory.handle !== null) {
-      return undefined
+    memory.live = true
+    memory.setUps += 1
+    resume(memory)
+    return () => {
+      memory.live = false
+      deferClose(memory)
     }
-    return attachStart(memory, { ports, request: start, attempt }, (result) => {
-      show(memory, setView, viewOf(result))
-    })
-  }, [ports, start, attempt])
-  const runFlow = useCallback<RunFlow>((flow) => runOneFlow(memoryRef.current, setView, flow), [])
+  }, [])
+  useEffect(() => {
+    const memory = memoryRef.current
+    memory.ports = ports
+    memory.request = start
+    launchDueStart(memory)
+  }, [ports, start])
+  const runFlow = useCallback<RunFlow>((flow) => runOneFlow(memoryRef.current, flow), [])
   const retry = useCallback(() => {
     const memory = memoryRef.current
-    if (memory.failure === null || memory.busy) {
-      return
+    if (memory.failure !== null && !isBusy(memory)) {
+      launchRetry(memory)
     }
-    show(memory, setView, { handle: null, failure: null })
-    setAttempt((count) => count + 1)
   }, [])
   return { handle: view.handle, failure: view.failure, runFlow, retry }
 }
