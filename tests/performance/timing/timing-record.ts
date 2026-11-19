@@ -65,9 +65,14 @@ export interface TimingRun {
 const TIMING_RUN_FORMAT = 1
 const JSON_INDENT = 2
 
-/** The run as JSON with two-space indent and a final newline, keys in the order above. */
+/**
+ * The run as JSON with two-space indent and a final newline, keys in the order of the type above
+ * whatever the insertion order of the given object; the entries of the free-keyed records keep
+ * the order they have. The run is checked and rebuilt first, so a run that fails the check throws
+ * here, at write time, instead of landing in a file that gets committed.
+ */
 export function serializeTimingRun(run: TimingRun): string {
-  return `${JSON.stringify(run, null, JSON_INDENT)}\n`
+  return `${JSON.stringify(parseTimingRun(run), null, JSON_INDENT)}\n`
 }
 
 type Reader<Value> = (value: unknown, path: string) => Value
@@ -92,6 +97,20 @@ const readNumber: Reader<number> = (value, path) => {
     throw mismatch(path, 'a finite number', value)
   }
   return value
+}
+
+const readCount: Reader<number> = (value, path) => {
+  const number = readNumber(value, path)
+  if (!Number.isInteger(number) || number < 0) {
+    throw mismatch(path, 'a whole number of zero or more', value)
+  }
+  return number
+}
+
+const readMeasure: Reader<number> = (value, path) => {
+  const number = readNumber(value, path)
+  if (number < 0) throw mismatch(path, 'a finite number of zero or more', value)
+  return number
 }
 
 const readString: Reader<string> = (value, path) => {
@@ -144,9 +163,9 @@ function readRecordOf<Value>(read: Reader<Value>): Reader<Record<string, Value>>
 const readSummary: Reader<TimingSummary> = (value, path) => {
   const field = openObject(value, path)
   return {
-    samples: field('samples', readNumber),
-    medianMs: field('medianMs', readNumber),
-    p95Ms: field('p95Ms', readNumber),
+    samples: field('samples', readCount),
+    medianMs: field('medianMs', readMeasure),
+    p95Ms: field('p95Ms', readMeasure),
   }
 }
 
@@ -161,16 +180,16 @@ const readFrameTiming: Reader<FrameTiming> = (value, path) => {
 const readSampleCounts: Reader<SampleCounts> = (value, path) => {
   const field = openObject(value, path)
   return {
-    warmup: field('warmup', readNumber),
-    timed: field('timed', readNumber),
+    warmup: field('warmup', readCount),
+    timed: field('timed', readCount),
   }
 }
 
 const readPixelSize: Reader<PixelSize> = (value, path) => {
   const field = openObject(value, path)
   return {
-    width: field('width', readNumber),
-    height: field('height', readNumber),
+    width: field('width', readMeasure),
+    height: field('height', readMeasure),
   }
 }
 
@@ -178,7 +197,7 @@ const readBuild: Reader<TimingRun['build']> = (value, path) => {
   const field = openObject(value, path)
   return {
     mode: field('mode', readOneOf(['production'] as const)),
-    timerResolutionMs: field('timerResolutionMs', readNumber),
+    timerResolutionMs: field('timerResolutionMs', readMeasure),
   }
 }
 
@@ -186,8 +205,8 @@ const readMachine: Reader<TimingRun['machine']> = (value, path) => {
   const field = openObject(value, path)
   return {
     processor: field('processor', readString),
-    logicalCores: field('logicalCores', readNumber),
-    memoryGiB: field('memoryGiB', readNumber),
+    logicalCores: field('logicalCores', readCount),
+    memoryGiB: field('memoryGiB', readMeasure),
     operatingSystem: field('operatingSystem', readString),
     browser: field('browser', readString),
     webGpuAdapter: field('webGpuAdapter', readString),
@@ -202,8 +221,8 @@ const readConditions: Reader<TimingRun['conditions']> = (value, path) => {
     visibleThroughout: field('visibleThroughout', readBoolean),
     focused: field('focused', readBoolean),
     power: field('power', readOneOf(['mains', 'battery', 'unknown'] as const)),
-    devicePixelRatio: field('devicePixelRatio', readNumber),
-    displayFrameMs: field('displayFrameMs', readNumber),
+    devicePixelRatio: field('devicePixelRatio', readMeasure),
+    displayFrameMs: field('displayFrameMs', readMeasure),
     planCanvasPx: field('planCanvasPx', readPixelSize),
     sceneCanvasCssPx: field('sceneCanvasCssPx', readPixelSize),
     sceneDrawingBufferPx: field('sceneDrawingBufferPx', readPixelSize),
