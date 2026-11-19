@@ -36,12 +36,6 @@ export interface AutosaveConfig extends AutosaveOptions {
   store: ProjectStore
   projectId: string
   snapshots?: SnapshotWriter & SnapshotPruner
-  /** Reads the dirty-tracker revision. Read when a write starts, before it yields, so onSaved
-   *  reports the revision of the project actually written, never a later edit's. */
-  revision?: () => number
-  /** Called after a write that succeeded, with the revision read when that write started. Not
-   *  called when the write fails. */
-  onSaved?: (savedRevision: number) => void
   /** Called each time a store save resolves, with what the save found. */
   onReport?: (report: SaveReport) => void
 }

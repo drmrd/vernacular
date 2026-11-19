@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createActiveFloorStore, createSelectionStore } from '../bridge'
 import {
+  guardDestructive,
   restoreSnapshot,
   type DocumentHandle,
   type FlowResult,
@@ -17,9 +18,9 @@ import { useDiscardConfirmation } from './use-discard-confirmation'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 import { useHandleNotices } from './use-handle-notices'
 import { useLatest } from './use-latest'
-import { guardSessionSwap } from './project-action-helpers'
+import type { RecentEntry } from './project-action-helpers'
 import type { RunFlow } from './use-open-project'
-import { useProjectActions, type RecentEntry } from './use-project-actions'
+import { useProjectActions } from './use-project-actions'
 import { useSwitchNotices } from './use-switch-notices'
 
 // The per-render state EditorWorkspace renders from: the context stores, the asset
@@ -102,16 +103,20 @@ function buildRecovery(context: RecoveryHandlersContext): Recovery {
     // The restore replaces the open document with the recovered one, so unsaved work
     // goes through the unsaved-changes prompt first. The owner hands the flow its project.
     onRestore: () =>
-      guardSessionSwap({ isDirty: readUnsaved(), confirmDiscard }, async () => {
-        const result = await runFlow<RestoreRefusal>((_ports, current) => restoreInto(current))
-        if (result === undefined || !isLive()) {
-          return
-        }
-        if (result.ok || result.failure.kind === 'nothing-to-restore') {
-          dismiss()
-          return
-        }
-        notify(result, { action: 'Restore' })
+      guardDestructive({
+        isDirty: readUnsaved(),
+        confirm: confirmDiscard,
+        run: async () => {
+          const result = await runFlow<RestoreRefusal>((_ports, current) => restoreInto(current))
+          if (result === undefined || !isLive()) {
+            return
+          }
+          if (result.ok || result.failure.kind === 'nothing-to-restore') {
+            dismiss()
+            return
+          }
+          notify(result, { action: 'Restore' })
+        },
       }),
     // Pruning deletes every recovered snapshot, so it is gated behind the ADR-0104
     // confirm seam: prune (and clear recovery) only when the user confirms.

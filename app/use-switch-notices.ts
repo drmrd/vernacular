@@ -1,7 +1,12 @@
 import { useCallback } from 'react'
 import { useNotifications } from '../editor/design-system'
-import type { FlowResult, FolderRefusal, ImportFailure, RestoreRefusal } from '../session'
-import { fixedFailureReason, openFailureReason, type OpenFailureCause } from './open-failure-text'
+import type { FlowResult } from '../session'
+import {
+  fixedFailureReason,
+  openFailureReason,
+  type FlowRefusal,
+  type OpenFailureCause,
+} from './open-failure-text'
 
 /** How a failed flow is reported: the action it names and whether the toast offers a Retry. */
 export interface FlowNoticeOptions {
@@ -26,7 +31,7 @@ function noticeText(failure: OpenFailureCause, action: string): string | null {
 
 /** Gives a function that shows what the result of a flow means to the user. */
 export function useSwitchNotices(): (
-  result: FlowResult<ImportFailure | FolderRefusal | RestoreRefusal> | undefined,
+  result: FlowResult<FlowRefusal> | undefined,
   options?: FlowNoticeOptions,
 ) => void {
   const { error } = useNotifications()

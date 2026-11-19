@@ -26,7 +26,7 @@ export interface DiscardPrompt {
 
 // The recovery banner's Discard deletes the recovered snapshots and leaves the open
 // document untouched, so its confirmation must not borrow the unsaved-changes wording
-// New and Open use. Both prompts come out of the one confirm seam in
+// that the restore of a recovered copy asks with. Both prompts come out of the one confirm seam in
 // useWorkspaceState, which carries no wording with the request, so the label is staged
 // here instead: this sits at the one point holding both the banner's Discard handler
 // and the prompt that handler opens.

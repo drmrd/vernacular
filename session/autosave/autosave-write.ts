@@ -97,18 +97,12 @@ export function createStatusReporter(config: AutosaveConfig): (status: AutosaveS
   }
 }
 
-interface StartedWrite {
-  startedFrom: number
-  revision: number | undefined
-}
-
-/** Reads the project, the revision, and the count of changes, then stores the project. */
-async function startAndStore(
-  config: AutosaveConfig,
-  progress: WriteProgress,
-): Promise<StartedWrite> {
+/**
+ * Reads the project and the count of changes, then stores the project. Gives the count of changes
+ * read at the start.
+ */
+async function startAndStore(config: AutosaveConfig, progress: WriteProgress): Promise<number> {
   const project = config.session.getProject()
-  const revision = config.revision?.()
   const startedFrom = progress.changes
   progress.runningFrom = startedFrom
   try {
@@ -116,16 +110,15 @@ async function startAndStore(
   } finally {
     progress.runningFrom = undefined
   }
-  return { startedFrom, revision }
+  return startedFrom
 }
 
 /**
- * The write that the queue of an autosave runs. It reads the project, the revision, and the count
- * of changes when it starts, before it yields, so a write that waited stores the later state and
- * reports the revision of its own start. A write that fails for any reason marks the last write as
- * failed, reports error, and rejects with its own error; a write that succeeds clears that mark.
- * After dispose it saves nothing and reports nothing. A callback that throws goes to console.error
- * and never changes the outcome of the write.
+ * The write that the queue of an autosave runs. It reads the project and the count of changes when
+ * it starts, before it yields, so a write that waited stores the later state. A write that fails
+ * for any reason marks the last write as failed, reports error, and rejects with its own error; a
+ * write that succeeds clears that mark. After dispose it saves nothing and reports nothing. A
+ * callback that throws goes to console.error and never changes the outcome of the write.
  */
 export function createAutosaveWrite(
   config: AutosaveConfig,
@@ -136,23 +129,18 @@ export function createAutosaveWrite(
     if (progress.disposed) {
       throw new Error(AUTOSAVE_DISPOSED_MESSAGE)
     }
-    let started: StartedWrite
+    let startedFrom: number
     try {
-      started = await startAndStore(config, progress)
+      startedFrom = await startAndStore(config, progress)
     } catch (error) {
       progress.lastWriteFailed = true
       report('error')
       throw error
     }
-    const { startedFrom, revision } = started
     progress.storedChanges = startedFrom
     progress.lastWriteFailed = false
     if (progress.changes === startedFrom) {
       report('saved')
-    }
-    if (revision !== undefined) {
-      const { onSaved } = config
-      callGuarded(() => onSaved?.(revision))
     }
   }
 }

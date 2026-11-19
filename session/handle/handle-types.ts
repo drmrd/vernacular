@@ -1,5 +1,6 @@
 import type { DecodeFailure, Project } from '../../core'
 import type { ProjectLocation, ProjectSnapshots } from '../../storage'
+import type { AutosaveStatus } from '../autosave/create-autosave'
 import type { EditorSession } from '../editor-session/editor-session'
 
 /** Why a project did not open. */
@@ -9,7 +10,7 @@ export type OpenFailure =
   | { readonly kind: 'storage-unavailable'; readonly message: string }
 
 /** Whether the changes of an open project are stored. */
-export type SaveStatus = 'idle' | 'pending' | 'saved' | 'error'
+export type SaveStatus = AutosaveStatus
 
 /** How a save ended: stored, or not stored with the reason. */
 export type SaveOutcome = { readonly ok: true } | { readonly ok: false; readonly message: string }

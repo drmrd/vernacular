@@ -1,12 +1,12 @@
 import { useCallback } from 'react'
-import { guardDestructive } from '../bridge'
-import type { DocumentHandle, FolderRefusal, ImportFailure, RestoreRefusal } from '../session'
+import type { DocumentHandle } from '../session'
 import {
   recentEntryFor,
   type ProjectBackend,
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
+import type { FlowRefusal } from './open-failure-text'
 import type { Flow, RunFlow } from './use-open-project'
 import { useLatest } from './use-latest'
 import { useSwitchNotices, type FlowNoticeOptions } from './use-switch-notices'
@@ -14,23 +14,23 @@ import { useSwitchNotices, type FlowNoticeOptions } from './use-switch-notices'
 /**
  * Map the resolved default store to a recent-list backend. The recent-list
  * `ProjectBackend` union has no `'indexeddb'` member, so only the OPFS default
- * earns a recent entry; the IndexedDB default stays the implicit current project
- * and records nothing on boot. The clean mapping is finalized when the create-time
+ * earns a recent entry. On the IndexedDB fallback no recent backend is known, so
+ * nothing is recorded. The clean mapping is finalized when the create-time
  * backend chooser lands (see the plan's Open questions on backend memory).
  */
 function defaultStoreBackend(capabilities: StorageCapabilities): ProjectBackend | null {
   return capabilities.opfs ? 'opfs' : null
 }
 
-/** What the recent list records for one project. */
-export interface RecentInput {
+/** What the recent list records and shows for one project. */
+export interface RecentEntry {
   id: string
   name: string
   backend: ProjectBackend
 }
 
 /** Record an opened-or-saved project under the given backend, ignoring failures. */
-function recordRecent(recentProjects: RecentProjectStore, input: RecentInput): void {
+function recordRecent(recentProjects: RecentProjectStore, input: RecentEntry): void {
   void Promise.resolve()
     .then(() =>
       recentProjects.record(
@@ -52,7 +52,7 @@ function recordRecent(recentProjects: RecentProjectStore, input: RecentInput): v
 export function recentInputOf(
   handle: DocumentHandle,
   capabilities: StorageCapabilities,
-): RecentInput | null {
+): RecentEntry | null {
   const backend =
     handle.location.kind === 'folder' ? 'file-system-folder' : defaultStoreBackend(capabilities)
   if (backend === null) {
@@ -62,7 +62,7 @@ export function recentInputOf(
 }
 
 /** Records the project, when its recent entry has a backend. */
-export function recordProject(recentProjects: RecentProjectStore, input: RecentInput | null): void {
+export function recordProject(recentProjects: RecentProjectStore, input: RecentEntry | null): void {
   if (input !== null) {
     recordRecent(recentProjects, input)
   }
@@ -76,22 +76,21 @@ export interface SwitchFlowContext {
   capabilities: StorageCapabilities
 }
 
-/** The refusals that a flow which replaces the open project can give. */
-type SwitchRefusal = ImportFailure | FolderRefusal | RestoreRefusal
-
 /** How a switch records and reports what its flow gave. */
 export interface SwitchOptions extends FlowNoticeOptions {
   /**
    * Whether the project that the flow opened gets a recent entry. Default true. A flow that opens
    * a project which is not stored yet sets it to false: an entry for that project could not be
-   * opened. The first save of the project, or a later switch that leaves it, records it. Only the
-   * New project action sets it, because its opened project is not stored yet.
+   * opened. The first save of the project records it. A switch that leaves the project with no
+   * edit made records it as the project that was left although it is not stored, so that entry
+   * cannot be opened; the project index that comes later replaces the recent list. Only the New
+   * project action sets it, because its opened project is not stored yet.
    */
   readonly recordOpened?: boolean
 }
 
 /** Runs a flow through the owner, then records and reports what it gave. */
-export type RunSwitch = <Refusal extends SwitchRefusal = never>(
+export type RunSwitch = <Refusal extends FlowRefusal = never>(
   flow: Flow<Refusal>,
   options?: SwitchOptions,
 ) => Promise<void>
@@ -109,7 +108,7 @@ export function useSwitchFlow(context: SwitchFlowContext): RunSwitch {
   // Set in a layout effect, so a Retry before the passive effects reads the committed handle.
   const latestHandle = useLatest(handle)
   return useCallback(
-    async <Refusal extends SwitchRefusal = never>(flow: Flow<Refusal>, options?: SwitchOptions) => {
+    async <Refusal extends FlowRefusal = never>(flow: Flow<Refusal>, options?: SwitchOptions) => {
       const { recordOpened = true, ...noticeOptions } = options ?? {}
       const left = recentInputOf(latestHandle.current, capabilities)
       const result = await runFlow(flow)
@@ -123,28 +122,4 @@ export function useSwitchFlow(context: SwitchFlowContext): RunSwitch {
     },
     [latestHandle, runFlow, recentProjects, capabilities, notify],
   )
-}
-
-/** The unsaved-work half of an actions context: what the discard guard reads. */
-export interface DiscardGuardSeam {
-  isDirty: boolean | undefined
-  confirmDiscard: (() => boolean | Promise<boolean>) | undefined
-}
-
-/**
- * Run a step that replaces the open document behind the ADR-0104 unsaved-work
- * prompt. The restore of a recovered copy is the one caller: the actions that
- * open another project store the unsaved change first and ask nothing. A seam
- * carrying neither half (hook-level tests) reads as clean and runs the step
- * straight away.
- */
-export function guardSessionSwap(
-  seam: DiscardGuardSeam,
-  run: () => void | Promise<void>,
-): Promise<void> {
-  return guardDestructive({
-    isDirty: seam.isDirty ?? false,
-    confirm: seam.confirmDiscard ?? (() => true),
-    run,
-  })
 }

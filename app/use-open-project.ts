@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { OpenFailureCause } from './open-failure-text'
+import { storageUnavailableOf, type OpenFailureCause } from './open-failure-text'
 import type {
   DocumentHandle,
   FlowResult,
@@ -127,8 +127,7 @@ async function callFlow<Refusal>(
     return await flow(ports, current)
   } catch (error) {
     console.error(error)
-    const message = error instanceof Error ? error.message : String(error)
-    return { ok: false, failure: { kind: 'storage-unavailable', message } }
+    return { ok: false, failure: storageUnavailableOf(error) }
   }
 }
 

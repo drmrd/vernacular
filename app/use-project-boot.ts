@@ -9,6 +9,7 @@ import {
   type BuiltSessionPorts,
 } from './create-session-ports'
 import { useActiveProjectId } from './use-active-project-id'
+import { storageUnavailableOf } from './open-failure-text'
 import { useOpenProject, type RunFlow } from './use-open-project'
 import { useRememberSavedProject } from './use-remember-saved-project'
 
@@ -37,11 +38,6 @@ function startRequest(id: string): OpenRequest {
   return { id, location: { kind: 'workspace' }, create: createInitialProject }
 }
 
-function builderFailure(error: unknown): SwitchFailure {
-  const message = error instanceof Error ? error.message : String(error)
-  return { kind: 'storage-unavailable', message }
-}
-
 interface BootPorts {
   built: BuiltSessionPorts | null
   /** Why the ports did not resolve; null while they resolve and after they did. */
@@ -67,7 +63,7 @@ function useBootPorts(inputs: ProjectBootInputs): BootPorts {
     const build = resolvePorts ?? createSessionPorts
     void Promise.resolve()
       .then(build)
-      .then(setBuilt, (error: unknown) => setFailure(builderFailure(error)))
+      .then(setBuilt, (error: unknown) => setFailure(storageUnavailableOf(error)))
   }, [provided, resolvePorts, attempt])
   const rebuild = () => {
     setFailure(null)

@@ -9,8 +9,17 @@ export const FOLDER_UNAVAILABLE = 'The folder of this project cannot be reached.
 export const SAVE_FAILED_DURING_SWITCH =
   'The changes could not be saved, so the project stays open.'
 
+/** The refusals that an import, an open folder, or a restore adds to the failures of a switch. */
+export type FlowRefusal = ImportFailure | FolderRefusal | RestoreRefusal
+
 /** Every reason a switch, an import, an open folder, or a restore can give for not opening. */
-export type OpenFailureCause = SwitchFailure | ImportFailure | FolderRefusal | RestoreRefusal
+export type OpenFailureCause = SwitchFailure | FlowRefusal
+
+/** The failure that a thrown value becomes when a flow or a boot step throws instead of failing. */
+export function storageUnavailableOf(error: unknown): SwitchFailure {
+  const message = error instanceof Error ? error.message : String(error)
+  return { kind: 'storage-unavailable', message }
+}
 
 /** The kinds of failure that carry their own detail: a decode failure, a message, a file name. */
 type DetailedKind =

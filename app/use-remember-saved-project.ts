@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import type { DocumentHandle } from '../session'
 import type { ActiveProjectIdStore } from '../storage'
+import { useLatest } from './use-latest'
 
 export interface RememberSavedProjectContext {
   /** The id the boot read at start, which is already the remembered one; null until it is read. */
@@ -16,24 +17,24 @@ export interface RememberSavedProjectContext {
 export function useRememberSavedProject(
   context: RememberSavedProjectContext,
 ): (handle: DocumentHandle) => void {
-  const latest = useRef(context)
-  useEffect(() => {
-    latest.current = context
-  })
+  const latest = useLatest(context)
   const written = useRef<string | null>(null)
 
-  return useCallback((handle: DocumentHandle) => {
-    const { startId, activeProjectIds } = latest.current
-    if (activeProjectIds === undefined || !handle.durable) return
-    if (handle.location.kind !== 'workspace') return
-    const known = written.current ?? startId
-    const id = handle.id
-    if (id === known) return
-    written.current = id
-    void Promise.resolve()
-      .then(() => activeProjectIds.write(id))
-      .catch(() => {
-        if (written.current === id) written.current = known
-      })
-  }, [])
+  return useCallback(
+    (handle: DocumentHandle) => {
+      const { startId, activeProjectIds } = latest.current
+      if (activeProjectIds === undefined || !handle.durable) return
+      if (handle.location.kind !== 'workspace') return
+      const known = written.current ?? startId
+      const id = handle.id
+      if (id === known) return
+      written.current = id
+      void Promise.resolve()
+        .then(() => activeProjectIds.write(id))
+        .catch(() => {
+          if (written.current === id) written.current = known
+        })
+    },
+    [latest],
+  )
 }

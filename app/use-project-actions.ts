@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { createNewProject, openFolder, openRecent, type DocumentHandle } from '../session'
-import type { ProjectBackend, RecentProjectStore, StorageCapabilities } from '../storage'
+import type { RecentProjectStore, StorageCapabilities } from '../storage'
 import { type NotificationApi } from '../editor/design-system'
 import { createInitialProject } from './create-initial-project'
 import {
@@ -17,12 +17,6 @@ import {
 } from './use-export-actions'
 import { useOpenFileAction } from './use-open-file-action'
 import type { RunFlow } from './use-open-project'
-
-export interface RecentEntry {
-  id: string
-  name: string
-  backend: ProjectBackend
-}
 
 export interface ProjectActionsContext {
   /** The open project of the latest render. */
@@ -78,7 +72,9 @@ function useSaveAction(context: ProjectActionsContext): () => void {
 
 // New project asks nothing: the switch stores an unsaved change of the open project first. The new
 // project is not stored yet, so it gets no recent entry now: opening that entry would find nothing.
-// Its first save records it, and so does a later switch that leaves it.
+// Its first save records it. A new project that the user leaves with no edit is recorded as the
+// project that was left although it is not stored, so that entry cannot be opened; the project
+// index that comes later replaces the recent list.
 function useNewProjectAction(runSwitch: RunSwitch): () => Promise<void> {
   return useCallback(
     () =>
