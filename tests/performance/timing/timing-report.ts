@@ -41,6 +41,7 @@ interface TimingRow {
 }
 
 function lookup<Value>(record: Record<string, Value> | undefined, key: string): Value | undefined {
+  // find over the entries, not record[key]: a scenario name is data and must never hit a prototype member.
   return record === undefined
     ? undefined
     : Object.entries(record).find(([name]) => name === key)?.[1]
@@ -96,12 +97,21 @@ function milliseconds(value: number): string {
   return value.toFixed(TIME_DECIMALS)
 }
 
+function roundedMilliseconds(value: number): number {
+  return Number(milliseconds(value))
+}
+
+/** The change of the medians as printed: both are rounded first, so the printed cells subtract exactly. */
 function changeCell(current: TimingSummary, baseline: TimingSummary | undefined): string {
-  if (baseline === undefined || baseline.medianMs === 0) return NOT_AVAILABLE
-  const difference = current.medianMs - baseline.medianMs
+  if (baseline === undefined) return NOT_AVAILABLE
+  const now = roundedMilliseconds(current.medianMs)
+  const before = roundedMilliseconds(baseline.medianMs)
+  const difference = now - before
   const sign = difference < 0 ? '-' : '+'
-  const ratio = current.medianMs / baseline.medianMs
-  return `${sign}${milliseconds(Math.abs(difference))} ms (${milliseconds(ratio)}x)`
+  const change = `${sign}${milliseconds(Math.abs(difference))} ms`
+  return before === 0
+    ? `${change} (${NOT_AVAILABLE})`
+    : `${change} (${milliseconds(now / before)}x)`
 }
 
 function formatRow(row: TimingRow, labelWidth: number): string {
@@ -172,7 +182,7 @@ function headerLines(run: TimingRun, baseline: TimingRun | undefined): string[] 
         machine.operatingSystem,
     ],
     ['Browser', `${machine.browser}, headed`],
-    ['Adapter', `WebGPU ${machine.webGpuAdapter}; WebGL ${machine.webGlRenderer}`],
+    ['Adapter', `hardware; WebGPU ${machine.webGpuAdapter}; WebGL ${machine.webGlRenderer}`],
     [
       'Display',
       `device pixel ratio ${conditions.devicePixelRatio}, a frame every ${conditions.displayFrameMs} ms`,
@@ -204,6 +214,16 @@ function differenceWarnings(current: TimingRun, baseline: TimingRun | undefined)
       what: 'drawing buffer size',
       now: sizeText(current.conditions.sceneDrawingBufferPx),
       before: sizeText(baseline.conditions.sceneDrawingBufferPx),
+    },
+    {
+      what: 'plan canvas size',
+      now: sizeText(current.conditions.planCanvasPx),
+      before: sizeText(baseline.conditions.planCanvasPx),
+    },
+    {
+      what: 'CSS size of the 3D canvas',
+      now: sizeText(current.conditions.sceneCanvasCssPx),
+      before: sizeText(baseline.conditions.sceneCanvasCssPx),
     },
     { what: 'browser', now: current.machine.browser, before: baseline.machine.browser },
     {
