@@ -1,12 +1,5 @@
 import type { SettingsStorage } from './local-storage-settings-port'
 
-const SETTING_KEY_PREFIX = 'vernacular.settings.'
-
-/** The storage key of a setting. */
-export function settingStorageKey(name: string): string {
-  return `${SETTING_KEY_PREFIX}${name}`
-}
-
 /** Each setting that an older build stored under a key of its own. */
 export const LEGACY_SETTING_KEYS: ReadonlyArray<readonly [name: string, oldKey: string]> = [
   ['snapPreferences', 'vernacular.snap-preferences'],
@@ -15,12 +8,16 @@ export const LEGACY_SETTING_KEYS: ReadonlyArray<readonly [name: string, oldKey: 
 /**
  * Copies each old text, unchanged and unparsed, to its new key, and removes the old key once the
  * new key reads back equal. Where a text is already under the new key, both keys stay as they are.
- * Returns the texts that the storage did not take, by setting name.
+ * Returns the texts that the storage did not take, by setting name. The key function gives the
+ * current storage key of a setting name.
  */
-export function carryLegacySettings(storage: SettingsStorage): Map<string, string> {
+export function carryLegacySettings(
+  storage: SettingsStorage,
+  keyOf: (name: string) => string,
+): Map<string, string> {
   const untaken = new Map<string, string>()
   for (const [name, oldKey] of LEGACY_SETTING_KEYS) {
-    const text = carryOne(storage, settingStorageKey(name), oldKey)
+    const text = carryOne(storage, keyOf(name), oldKey)
     if (text !== undefined) untaken.set(name, text)
   }
   return untaken
@@ -29,6 +26,7 @@ export function carryLegacySettings(storage: SettingsStorage): Map<string, strin
 function carryOne(storage: SettingsStorage, newKey: string, oldKey: string): string | undefined {
   let oldText: string | null
   try {
+    // A new key that cannot be read may hold a newer value, so nothing is written.
     oldText = storage.getItem(oldKey)
     if (oldText === null || storage.getItem(newKey) !== null) return undefined
   } catch {

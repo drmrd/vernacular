@@ -1,8 +1,14 @@
-import { carryLegacySettings, settingStorageKey } from './legacy-setting-keys'
+import { carryLegacySettings } from './legacy-setting-keys'
 import type { SettingsPort } from './settings-port'
 
 /** The part of the browser's storage object that the settings port uses. */
 export type SettingsStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+const SETTING_KEY_PREFIX = 'vernacular.settings.'
+
+function settingStorageKey(name: string): string {
+  return `${SETTING_KEY_PREFIX}${name}`
+}
 
 function browserStorage(): SettingsStorage | null {
   try {
@@ -33,7 +39,9 @@ export class LocalStorageSettingsPort implements SettingsPort {
   /** With no argument: the storage of this browser, or memory where the browser refuses it. */
   constructor(storage?: SettingsStorage) {
     this.storage = storage ?? browserStorage()
-    this.unstored = new Map(this.storage === null ? [] : carryLegacySettings(this.storage))
+    this.unstored = new Map(
+      this.storage === null ? [] : carryLegacySettings(this.storage, settingStorageKey),
+    )
   }
 
   read(name: string): unknown {
