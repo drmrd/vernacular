@@ -346,20 +346,46 @@ function hasConditionalFade(
 }
 
 /**
+ * Writes the two flags that change how a material is drawn, and marks the material for a
+ * rebuild only when one of them really changes. The renderer builds a program for a
+ * material at its first draw and rebuilds it only when the material is marked
+ * (`needsUpdate`), so a flag flipped without the mark leaves the program built under the
+ * old flags (issue #781). Setting both flags still raises the version by exactly one, and
+ * a call that changes neither leaves it alone, so no frame pays for a needless rebuild.
+ */
+function setDrawFlags(
+  material: THREE.Material,
+  flags: { transparent: boolean; depthWrite: boolean },
+): void {
+  const changed =
+    material.transparent !== flags.transparent || material.depthWrite !== flags.depthWrite
+  material.transparent = flags.transparent
+  material.depthWrite = flags.depthWrite
+  if (changed) {
+    material.needsUpdate = true
+  }
+}
+
+/**
  * The one place a fade material's opacity state is written: the faded values together
  * with the picking flag when `fade` is true, the captured baseline with the flag cleared
- * otherwise.
+ * otherwise. The draw flags go through {@link setDrawFlags}, which marks the material for
+ * a rebuild when they change; the opacity alone needs no rebuild.
  */
 function applyFadeState({ material, baseline }: FadeMaterial, fade: boolean): void {
-  material.transparent = fade ? true : baseline.transparent
+  setDrawFlags(material, {
+    transparent: fade ? true : baseline.transparent,
+    depthWrite: fade ? false : baseline.depthWrite,
+  })
   material.opacity = fade ? FADED_OPACITY : baseline.opacity
-  material.depthWrite = fade ? false : baseline.depthWrite
   markFadedForPicking(material, fade)
 }
 
 /**
  * Fades each target's materials when the camera looks at the wall from outside,
- * and restores full opacity otherwise.
+ * and restores full opacity otherwise. A material whose `transparent` or `depthWrite` this
+ * call changes is marked `needsUpdate`, so the renderer builds its shader again; a call that
+ * changes neither leaves its version alone.
  */
 export function updateNearWallTransparency(
   targets: NearWallTarget[],
@@ -382,7 +408,9 @@ export function updateNearWallTransparency(
  * camera position. Callers use this when the view leaves orbit mode, for example
  * while walking on the floor inside the building, where fading the surrounding walls
  * would be wrong: a wall faded from outside snaps back to full opacity (#256,
- * builds on ADR-0086).
+ * builds on ADR-0086). A material whose `transparent` or `depthWrite` this call changes is
+ * marked `needsUpdate`, so the renderer builds its shader again; a call that changes neither
+ * leaves its version alone.
  */
 export function restoreNearWallTransparency(targets: NearWallTarget[]): void {
   for (const target of targets) {
@@ -398,7 +426,9 @@ export function restoreNearWallTransparency(targets: NearWallTarget[]): void {
  * exterior to interior while it is mid-fade. The run then drops out of the set with its
  * materials still at the fade opacity, and no later frame reaches them, since every update
  * and restore runs over the current set. Sweeping what left the set before tracking is
- * dropped puts those materials back on their baseline (issue #526).
+ * dropped puts those materials back on their baseline (issue #526). A material whose
+ * `transparent` or `depthWrite` this call changes is marked `needsUpdate`, so the renderer
+ * builds its shader again; a call that changes neither leaves its version alone.
  */
 export function restoreUnenrolledNearWallTargets(
   previous: NearWallTarget[],
