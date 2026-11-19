@@ -2,7 +2,8 @@
  * Pure helpers that find the timing browser's crash handler processes in a
  * process list. The handlers are orphaned from the start (parent id 1) and
  * nothing in their command line links them to their browser, so the driver
- * notes them before and after it launches its browser.
+ * notes them before and after it launches its browser, and accepts only those
+ * inside the folder of the browser it launched.
  */
 
 /**
@@ -17,6 +18,12 @@ const ORPHAN_PARENT_PID = 1
 
 /** Executable name of the browser's crash handler helper. */
 const CRASH_HANDLER_EXECUTABLE = '/chrome_crashpad_handler'
+
+/** Suffix of a macOS application bundle folder. */
+const BUNDLE_SUFFIX = '.app'
+
+/** Path inside an application bundle that leads to its executables. */
+const BUNDLE_EXECUTABLE_PATH = `${BUNDLE_SUFFIX}/Contents/MacOS/`
 
 /** Argument that marks the browser's main process (driver pipe). */
 const BROWSER_PIPE_ARGUMENT = '--remote-debugging-pipe'
@@ -63,17 +70,45 @@ function executableOf(command) {
 }
 
 /**
- * Returns the ids, in list order, of processes with parent id 1 whose executable name ends with the crash handler name.
+ * Returns the folder that holds the browser of the main process: the
+ * application bundle for a macOS bundle executable, otherwise the directory of
+ * the executable. Returns undefined when the pid is undefined or not listed.
  * @param {ProcessRow[]} processes
+ * @param {number | undefined} mainPid
+ * @returns {string | undefined}
+ */
+export function browserInstallRoot(processes, mainPid) {
+  if (mainPid === undefined) return undefined
+  const row = processes.find((candidate) => candidate.pid === mainPid)
+  if (row === undefined) return undefined
+  const executable = executableOf(row.command)
+  const bundleIndex = executable.indexOf(BUNDLE_EXECUTABLE_PATH)
+  if (bundleIndex !== -1) return executable.slice(0, bundleIndex + BUNDLE_SUFFIX.length)
+  return executable.slice(0, executable.lastIndexOf('/'))
+}
+
+/**
+ * Returns the ids, in list order, of processes with parent id 1 whose
+ * executable name ends with the crash handler name and lies inside the install
+ * root. The folder is part of the rule because other programs built on the same
+ * browser engine run a helper with the same name. Without a root it returns an
+ * empty list.
+ * @param {ProcessRow[]} processes
+ * @param {string | undefined} installRoot
  * @returns {number[]}
  */
-export function crashHandlerPids(processes) {
+export function crashHandlerPids(processes, installRoot) {
+  if (installRoot === undefined) return []
+  const rootPrefix = `${installRoot}/`
   return processes
-    .filter(
-      (row) =>
+    .filter((row) => {
+      const executable = executableOf(row.command)
+      return (
         row.ppid === ORPHAN_PARENT_PID &&
-        executableOf(row.command).endsWith(CRASH_HANDLER_EXECUTABLE),
-    )
+        executable.endsWith(CRASH_HANDLER_EXECUTABLE) &&
+        executable.startsWith(rootPrefix)
+      )
+    })
     .map((row) => row.pid)
 }
 
@@ -100,12 +135,13 @@ export function browserMainPid(processes, driverPid) {
 }
 
 /**
- * Returns the given ids, in their order, that are crash handlers in the process list now.
+ * Returns the given ids, in their order, that are crash handlers of the install root in the process list now.
  * @param {number[]} pids
  * @param {ProcessRow[]} processes
+ * @param {string | undefined} installRoot
  * @returns {number[]}
  */
-export function stillCrashHandlers(pids, processes) {
-  const current = new Set(crashHandlerPids(processes))
+export function stillCrashHandlers(pids, processes, installRoot) {
+  const current = new Set(crashHandlerPids(processes, installRoot))
   return pids.filter((pid) => current.has(pid))
 }
