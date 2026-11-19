@@ -14,6 +14,7 @@ import {
   materialStatesOf,
   roomWithWindowGraph,
   versionUnchanged,
+  type MaterialState,
 } from './near-wall-transparency-test-support'
 
 describe('the near-wall fade marks a material whose transparency changes', () => {
@@ -79,10 +80,14 @@ describe('the near-wall fade leaves a material alone when its flags stay the sam
 
   it('never changes the version of a window glass pane through a fade and a restore', () => {
     const targets = enrolledTargetsOf(roomWithWindowGraph())
-    const panes = materialStatesOf(targets).filter((m) => m.transparent && !m.depthWrite)
+    const baseline = materialStatesOf(targets)
+    const isPane = (m: MaterialState): boolean => m.transparent && !m.depthWrite
+    const panes = baseline.filter(isPane)
+    const walls = baseline.filter((m) => !isPane(m))
     expect(panes.length).toBeGreaterThan(0)
 
     updateNearWallTransparency(targets, CAMERA_OUTSIDE)
+    expect(walls.some((m) => m.material.transparent !== m.transparent)).toBe(true)
     expect(panes.every(versionUnchanged)).toBe(true)
 
     restoreNearWallTransparency(targets)
