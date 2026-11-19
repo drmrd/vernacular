@@ -7,11 +7,53 @@ import { furnitureFootprintCorners } from '../../core'
 import {
   buildFurnitureModelGroup,
   disposeObject,
+  hasUsableGeometry,
   normalizeModelIntoBox,
   parseFurnitureModel,
+  UnusableFurnitureModelError,
 } from './furniture-model'
 
 const CUBE_GLB = resolve(dirname(fileURLToPath(import.meta.url)), '../../e2e/fixtures/cube.glb')
+
+const GLTF_ASSET = { version: '2.0' }
+const FLOAT_BYTES = 4
+const FLOAT_COMPONENT_TYPE = 5126
+const VERTEX_COUNT = 3
+const POSITION_ATTRIBUTE = 'POSITION' // glTF attribute names are upper case by specification
+
+function gltfBytes(gltf: object): Uint8Array {
+  return new TextEncoder().encode(JSON.stringify(gltf))
+}
+
+/** A glTF with one triangle whose three vertices all have z = 0, so the model has no depth. */
+function flatTriangleBytes(): Uint8Array {
+  const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0])
+  const base64 = Buffer.from(positions.buffer).toString('base64')
+  return gltfBytes({
+    asset: GLTF_ASSET,
+    scene: 0,
+    scenes: [{ nodes: [0] }],
+    nodes: [{ mesh: 0 }],
+    meshes: [{ primitives: [{ attributes: { [POSITION_ATTRIBUTE]: 0 } }] }],
+    accessors: [
+      {
+        bufferView: 0,
+        componentType: FLOAT_COMPONENT_TYPE,
+        count: VERTEX_COUNT,
+        type: 'VEC3',
+        min: [0, 0, 0],
+        max: [1, 1, 0],
+      },
+    ],
+    bufferViews: [{ buffer: 0, byteLength: positions.length * FLOAT_BYTES }],
+    buffers: [
+      {
+        byteLength: positions.length * FLOAT_BYTES,
+        uri: `data:application/octet-stream;base64,${base64}`,
+      },
+    ],
+  })
+}
 
 function nodeFor({
   width,
@@ -65,6 +107,35 @@ describe('normalizeModelIntoBox', () => {
   })
 })
 
+describe('hasUsableGeometry', () => {
+  it('is false for an empty group', () => {
+    expect(hasUsableGeometry(new THREE.Group())).toBe(false)
+  })
+
+  it('is false for a group that holds only a light and a camera', () => {
+    const group = new THREE.Group()
+    group.add(new THREE.PointLight(), new THREE.PerspectiveCamera())
+    expect(hasUsableGeometry(group)).toBe(false)
+  })
+
+  it('is false for a mesh that is flat on one axis', () => {
+    const flat = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000)) // no extent along z
+    expect(hasUsableGeometry(flat)).toBe(false)
+  })
+
+  it('is true for a box mesh', () => {
+    expect(hasUsableGeometry(new THREE.Mesh(new THREE.BoxGeometry(1000, 1000, 1000)))).toBe(true)
+  })
+
+  it('is true for a box mesh under a parent with a non-identity transform', () => {
+    const parent = new THREE.Group()
+    parent.position.set(50, 50, 50)
+    parent.scale.set(2, 2, 2)
+    parent.add(new THREE.Mesh(new THREE.BoxGeometry(1000, 1000, 1000)))
+    expect(hasUsableGeometry(parent)).toBe(true)
+  })
+})
+
 describe('parseFurnitureModel', () => {
   it('resolves to a THREE.Object3D when given a valid GLB', async () => {
     const bytes = new Uint8Array(readFileSync(CUBE_GLB))
@@ -74,6 +145,28 @@ describe('parseFurnitureModel', () => {
 
   it('rejects when given bytes that are not a valid GLB', async () => {
     await expect(parseFurnitureModel(new Uint8Array([1, 2, 3, 4]))).rejects.toBeTruthy()
+  })
+
+  it('rejects with UnusableFurnitureModelError when the scene holds only empty nodes', async () => {
+    const bytes = gltfBytes({
+      asset: GLTF_ASSET,
+      scene: 0,
+      scenes: [{ nodes: [0] }],
+      nodes: [{ name: 'empty' }],
+    })
+    await expect(parseFurnitureModel(bytes)).rejects.toBeInstanceOf(UnusableFurnitureModelError)
+  })
+
+  it('rejects a flat triangle with UnusableFurnitureModelError and disposes its geometry', async () => {
+    const disposeSpy = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose')
+    try {
+      await expect(parseFurnitureModel(flatTriangleBytes())).rejects.toBeInstanceOf(
+        UnusableFurnitureModelError,
+      )
+      expect(disposeSpy).toHaveBeenCalled()
+    } finally {
+      disposeSpy.mockRestore()
+    }
   })
 })
 

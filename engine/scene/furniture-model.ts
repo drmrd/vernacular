@@ -4,11 +4,29 @@ import { FURNITURE_NODE_PREFIX } from '../../core'
 import { parseGltfBytes } from '../loaders/gltf-loader'
 import { markShadowCasters } from './shadow-casters'
 
-/** Parses GLB bytes into a Three.js object, rejecting on any loader error. */
-export function parseFurnitureModel(bytes: Uint8Array): Promise<THREE.Object3D> {
+/** The error a furniture model parse rejects with when the model has no usable geometry. */
+export class UnusableFurnitureModelError extends Error {
+  constructor() {
+    super('The furniture model has no usable geometry')
+    this.name = 'UnusableFurnitureModelError'
+  }
+}
+
+/**
+ * Parses GLB or glTF bytes into a Three.js object. Rejects on any loader error, and rejects
+ * with UnusableFurnitureModelError when the parsed model has no usable geometry, after it
+ * frees what the parse built. The model cache then settles the entry to `failed`, so every
+ * instance of the asset shows the failed box.
+ */
+export async function parseFurnitureModel(bytes: Uint8Array): Promise<THREE.Object3D> {
   const buffer = new ArrayBuffer(bytes.byteLength)
   new Uint8Array(buffer).set(bytes)
-  return parseGltfBytes(buffer)
+  const model = await parseGltfBytes(buffer)
+  if (!hasUsableGeometry(model)) {
+    disposeObject(model)
+    throw new UnusableFurnitureModelError()
+  }
+  return model
 }
 
 function edgeLength(a: Point, b: Point): number {
@@ -33,6 +51,24 @@ export function disposeObject(object: THREE.Object3D): void {
   })
 }
 
+/** The world-space box of a model, or null when it is empty or flat along any axis. */
+function measureUsableBox(model: THREE.Object3D): THREE.Box3 | null {
+  model.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(model)
+  if (box.isEmpty()) return null
+  const size = box.getSize(new THREE.Vector3())
+  return size.x !== 0 && size.y !== 0 && size.z !== 0 ? box : null
+}
+
+/**
+ * Whether a parsed model can be fitted into a furniture box: its world-space bounding box is
+ * not empty and has a size above zero on all three axes. A model with only empty nodes, lights,
+ * or cameras has none; a model flat along one axis has a zero size.
+ */
+export function hasUsableGeometry(model: THREE.Object3D): boolean {
+  return measureUsableBox(model) !== null
+}
+
 /**
  * Fits a parsed model into a furniture node's footprint and height. Scales uniformly to fit
  * inside the box, centers on the footprint center in plan, anchors the model's bottom to the
@@ -43,11 +79,9 @@ export function normalizeModelIntoBox(
   model: THREE.Object3D,
   node: FurnitureSceneNode,
 ): THREE.Group | null {
-  model.updateMatrixWorld(true)
-  const box = new THREE.Box3().setFromObject(model)
-  if (box.isEmpty()) return null
+  const box = measureUsableBox(model)
+  if (!box) return null
   const size = box.getSize(new THREE.Vector3())
-  if (size.x === 0 || size.y === 0 || size.z === 0) return null
 
   const [tl, tr, br, bl] = node.footprintCorners
   const targetWidth = edgeLength(tl, tr)
