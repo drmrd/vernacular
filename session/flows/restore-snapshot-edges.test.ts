@@ -19,7 +19,7 @@ import {
   workspaceRequest,
 } from '../handle/handle-test-kit'
 import { PROJECT_ID, openStored, snapshotRecovered } from './restore-snapshot-test-kit'
-import type { OpenedProject } from './restore-snapshot-test-kit'
+import type { StoredAndOpen } from './restore-snapshot-test-kit'
 import { restoreSnapshot } from './restore-snapshot'
 
 const SNAPSHOT_FAILURE = 'The snapshot store failed'
@@ -79,7 +79,7 @@ describe('a restore of a faulty snapshot that was migrated', () => {
    * A handle on a stored document that already breaks the format rules, so that the save of the
    * restored document has no last sound document to keep in a backup.
    */
-  async function openStoredFaulty(): Promise<OpenedProject> {
+  async function openStoredFaulty(): Promise<StoredAndOpen> {
     const ports = createTestPorts()
     await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
     const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
@@ -87,7 +87,7 @@ describe('a restore of a faulty snapshot that was migrated', () => {
   }
 
   /** Writes a snapshot through the handle, then puts an older document with a fault in its place. */
-  async function plantMigratedFaultySnapshot({ ports, handle }: OpenedProject): Promise<void> {
+  async function plantMigratedFaultySnapshot({ ports, handle }: StoredAndOpen): Promise<void> {
     await handle.snapshots.writeSnapshot(faultyProject())
     const names = await ports.root.list(SNAPSHOT_DIRECTORY)
     if (names.length === 0) throw new Error(`Expected a snapshot under ${SNAPSHOT_DIRECTORY}`)

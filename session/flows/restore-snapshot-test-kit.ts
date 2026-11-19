@@ -14,7 +14,7 @@ import type { DocumentHandle } from '../handle/handle-types'
 export const PROJECT_ID = 'a'
 export const RECOVERED_NAME = 'Recovered after a crash'
 
-export interface OpenedProject {
+export interface StoredAndOpen {
   readonly ports: TestPorts
   /** The ports that the handle was opened with: those of `ports`, with the locks of the test. */
   readonly sessionPorts: SessionPorts
@@ -22,7 +22,7 @@ export interface OpenedProject {
 }
 
 /** The ports, and a handle on a stored sound document of the project `a`. */
-export async function openStored(locks?: ControlledLocks): Promise<OpenedProject> {
+export async function openStored(locks?: ControlledLocks): Promise<StoredAndOpen> {
   const ports = createTestPorts()
   await placeDocument(ports, PROJECT_ID, currentBytes())
   const sessionPorts = locks === undefined ? ports : { ...ports, locks: locks.port }

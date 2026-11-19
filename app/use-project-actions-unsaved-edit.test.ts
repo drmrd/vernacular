@@ -70,7 +70,7 @@ describe('The project actions keep an unsaved edit when they switch projects', (
   it('an open folder stores the edit of the project that was left', async () => {
     const { ports, handle } = await openDrafthouseWithAnEdit()
     const folder = new InMemoryDirectory()
-    await folder.writeFile(DOCUMENT_FILE, await documentBytes(namedProject(OTHER_NAME)))
+    await folder.writeFile(DOCUMENT_FILE, documentBytes(namedProject(OTHER_NAME)))
     pickFolder(ports, folder, OTHER_NAME)
     const capabilities = { ...capableCapabilities(), fileSystemAccess: true }
     const { result } = renderActions({ ports, handle, capabilities }, useProjectActions)

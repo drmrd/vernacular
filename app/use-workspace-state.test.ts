@@ -113,7 +113,7 @@ async function addASecondFloor(handle: DocumentHandle): Promise<void> {
 }
 
 describe('useWorkspaceState crash recovery', () => {
-  it('raises the discard confirmation before restoring over a dirty project', async () => {
+  it('raises the discard confirmation before restoring over a project with unsaved work', async () => {
     const { handle, owner, props } = await recoverableProject()
     const restore = vi.spyOn(handle.snapshots, 'restore')
     const { result } = renderWorkspaceState(props)
@@ -258,7 +258,7 @@ describe('useWorkspaceState discard confirmation of the recovered copy', () => {
 
 describe('useWorkspaceState restore over unsaved work', () => {
   // A restore replaces the open project with the recovered one, so it asks as a discard does.
-  it('holds a restore of recovered work until the dirty session confirms the discard', async () => {
+  it('holds a restore of recovered work until a session with unsaved work confirms the discard', async () => {
     const { handle, owner, props } = await recoverableProject()
     const restore = vi.spyOn(handle.snapshots, 'restore')
     const { result } = renderWorkspaceState(props)
@@ -276,7 +276,7 @@ describe('useWorkspaceState restore over unsaved work', () => {
     })
   })
 
-  it('restores recovered work once the dirty session confirms the discard', async () => {
+  it('restores recovered work once a session with unsaved work confirms the discard', async () => {
     const { handle, owner, props } = await recoverableProject()
     const { result } = renderWorkspaceState(props)
     await waitFor(() => expect(result.current.recovery).not.toBeNull())

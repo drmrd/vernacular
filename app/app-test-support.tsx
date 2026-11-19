@@ -6,6 +6,7 @@ import {
   createEmptyProject,
   createFloor,
   createWall,
+  encodeDocument,
   type Project,
 } from '../core'
 import { NotificationProvider, type NotificationApi } from '../editor/design-system'
@@ -21,7 +22,6 @@ import {
   type StorageCapabilities,
 } from '../storage'
 import {
-  DOCUMENT_FILE,
   createTestPorts,
   failureOf,
   placeDocument,
@@ -52,7 +52,7 @@ export const FAILED_ID = 'current'
 export const AUTOSAVE_TIMEOUT_MS = 3000
 
 /** Time for whatever follows a late save (such as a write of the remembered id) to run. */
-export const SETTLE_MS = 300
+const SETTLE_MS = 300
 
 /** The name that a new project starts with. */
 export const NEW_PROJECT_NAME = 'Untitled project'
@@ -122,12 +122,8 @@ export function projectFromANewerBuild(): Uint8Array {
 }
 
 /** The bytes of the document of `project`, as the application stores them. */
-export async function documentBytes(project: Project): Promise<Uint8Array> {
-  const scratch = createTestPorts()
-  await scratch.workspace.save(FAILED_ID, project)
-  const bytes = await scratch.root.readFile(`${FAILED_ID}/${DOCUMENT_FILE}`)
-  if (bytes === undefined) throw new Error('The scratch store wrote no document')
-  return bytes
+export function documentBytes(project: Project): Uint8Array {
+  return encodeDocument(project, undefined).bytes
 }
 
 /** Stores a sound project named `name` under `id` in the workspace of `ports`. */

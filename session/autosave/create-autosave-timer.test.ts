@@ -99,17 +99,6 @@ describe('createAutosave waiting for the delay', () => {
 
     expect(statuses).toEqual([])
   })
-
-  it('saves normally when revision and onSaved are omitted', async () => {
-    const { session, store, autosave } = setUp()
-
-    session.dispatch(addFloor('Ground'))
-    await vi.advanceTimersByTimeAsync(DELAY_MS)
-
-    expect(await storedFloorCount(store)).toBe(1)
-
-    autosave.dispose()
-  })
 })
 
 describe('createAutosave asked to save now', () => {

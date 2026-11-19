@@ -176,7 +176,7 @@ describe('The remembered id after a switch between projects', () => {
     vi.stubGlobal('showDirectoryPicker', () => Promise.reject(new Error('not used')))
     const ports = createTestPorts({ durable: true })
     const folder = new InMemoryDirectory()
-    await folder.writeFile(DOCUMENT_FILE, await documentBytes(namedProject('Folder House')))
+    await folder.writeFile(DOCUMENT_FILE, documentBytes(namedProject('Folder House')))
     const before = await documentText(folder)
     pickFolder(ports, folder, 'Old house')
     const port = new RecordingActiveProjectIdStore()

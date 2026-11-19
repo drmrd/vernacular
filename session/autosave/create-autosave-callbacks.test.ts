@@ -8,7 +8,6 @@ import { addFloor, createEmptyProject, type Project } from '../../core'
 
 const DELAY_MS = 500
 const PROJECT_ID = 'current'
-const REVISION = 7
 
 function emptyProject(): Project {
   return createEmptyProject({
@@ -47,16 +46,6 @@ function throwingOn(trigger: AutosaveStatus, error: Error): (status: AutosaveSta
   }
 }
 
-/** A revision reader that throws `error` on its first call and gives a number after that. */
-function revisionThrowingOnce(error: Error): () => number {
-  let calls = 0
-  return () => {
-    calls += 1
-    if (calls === 1) throw error
-    return REVISION
-  }
-}
-
 let consoleError: ReturnType<typeof vi.spyOn>
 
 /** Every value that was passed to `console.error`, in one list. */
@@ -73,42 +62,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('createAutosave with an onSaved callback that throws', () => {
-  it('save() resolves with the project stored, and the error is reported once to console.error', async () => {
-    const failure = new Error('onSaved failed')
-    const onSaved = vi.fn(() => {
-      throw failure
-    })
-    const { session, store, autosave } = setUp({ revision: () => REVISION, onSaved })
-    session.dispatch(addFloor('Ground'))
-
-    await expect(autosave.save()).resolves.toBeUndefined()
-
-    expect(onSaved).toHaveBeenCalledTimes(1)
-    expect(await storedFloorCount(store)).toBe(1)
-    expect(consoleError).toHaveBeenCalledTimes(1)
-    expect(loggedValues()).toContain(failure)
-    autosave.dispose()
-  })
-})
-
 describe('createAutosave with an onStatusChange callback that throws', () => {
-  it('a throw on saved does not stop onSaved from hearing of the write', async () => {
-    const onSaved = vi.fn()
-    const { session, autosave } = setUp({
-      revision: () => REVISION,
-      onSaved,
-      onStatusChange: throwingOn('saved', new Error('status callback failed')),
-    })
-
-    session.dispatch(addFloor('Ground'))
-    await vi.advanceTimersByTimeAsync(DELAY_MS)
-
-    expect(onSaved).toHaveBeenCalledTimes(1)
-    expect(onSaved).toHaveBeenCalledWith(REVISION)
-    autosave.dispose()
-  })
-
   it('a throw on saved is reported once to console.error', async () => {
     const failure = new Error('status callback failed')
     const { session, autosave } = setUp({ onStatusChange: throwingOn('saved', failure) })
@@ -137,14 +91,16 @@ describe('createAutosave with an onStatusChange callback that throws', () => {
 
 describe('createAutosave when the start of a write throws', () => {
   it('save() rejects and the status is error, and the next save stores and reports saved', async () => {
-    const failure = new Error('the revision cannot be read')
+    const failure = new Error('the project cannot be read')
     const statuses: AutosaveStatus[] = []
     const { session, store, autosave } = setUp({
-      revision: revisionThrowingOnce(failure),
       onStatusChange: (status) => statuses.push(status),
     })
     session.dispatch(addFloor('Ground'))
     statuses.length = 0
+    vi.spyOn(session, 'getProject').mockImplementationOnce(() => {
+      throw failure
+    })
 
     await expect(autosave.save()).rejects.toBe(failure)
     expect(statuses).toEqual(['error'])
@@ -193,12 +149,9 @@ describe('createAutosave after a failed save and after dispose', () => {
     expect(statuses).toEqual([])
   })
 
-  it('a write that runs when dispose() is called still reports saved and calls onSaved when it ends', async () => {
+  it('a write that runs when dispose() is called still reports saved when it ends', async () => {
     const statuses: AutosaveStatus[] = []
-    const onSaved = vi.fn()
     const { session, store, autosave } = setUp({
-      revision: () => REVISION,
-      onSaved,
       onStatusChange: (status) => statuses.push(status),
     })
     const gate = gateSaves(store)
@@ -211,6 +164,5 @@ describe('createAutosave after a failed save and after dispose', () => {
     await settle()
 
     expect(statuses).toEqual(['pending', 'saved'])
-    expect(onSaved).toHaveBeenCalledWith(REVISION)
   })
 })

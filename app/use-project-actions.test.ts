@@ -121,7 +121,7 @@ describe('useProjectActions New project and Open folder', () => {
   it('Open folder opens the picked folder and records it as a folder project', async () => {
     const { ports, handle } = await openDrafthouse()
     const folder = new InMemoryDirectory()
-    await folder.writeFile(DOCUMENT_FILE, await documentBytes(namedProject(FOLDER_PROJECT_NAME)))
+    await folder.writeFile(DOCUMENT_FILE, documentBytes(namedProject(FOLDER_PROJECT_NAME)))
     pickFolder(ports, folder, PICKED_FOLDER_NAME)
     const recentProjects = new InMemoryRecentProjectStore()
     const capabilities = { ...capableCapabilities(), fileSystemAccess: true }

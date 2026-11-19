@@ -151,59 +151,6 @@ describe('createAutosave writing a project', () => {
 
     autosave.dispose()
   })
-
-  it('reports the saved revision once after a successful save', async () => {
-    const onSaved = vi.fn()
-    const { session, autosave } = setUp({ revision: () => 7, onSaved })
-
-    session.dispatch(addFloor('Ground'))
-    await vi.advanceTimersByTimeAsync(DELAY_MS)
-
-    expect(onSaved).toHaveBeenCalledTimes(1)
-    expect(onSaved).toHaveBeenCalledWith(7)
-
-    autosave.dispose()
-  })
-
-  it('reports the revision captured at persist start, not one bumped during the write', async () => {
-    const onSaved = vi.fn()
-    let rev = 1
-    const { session, store, autosave } = setUp({ revision: () => rev, onSaved })
-    vi.spyOn(store, 'save').mockImplementation(
-      savedAfter(() => {
-        rev = 2
-      }),
-    )
-
-    session.dispatch(addFloor('Ground'))
-    await vi.advanceTimersByTimeAsync(DELAY_MS)
-
-    expect(onSaved).toHaveBeenCalledTimes(1)
-    expect(onSaved).toHaveBeenCalledWith(1)
-
-    autosave.dispose()
-  })
-
-  it('does not report a saved revision when the canonical save fails', async () => {
-    const onSaved = vi.fn()
-    const statuses: string[] = []
-    const { session, store, autosave } = setUp({
-      revision: () => 3,
-      onSaved,
-      onStatusChange: (status) => statuses.push(status),
-    })
-    vi.spyOn(store, 'save').mockImplementation(async () => {
-      throw new Error('disk full')
-    })
-
-    session.dispatch(addFloor('Ground'))
-    await vi.advanceTimersByTimeAsync(DELAY_MS)
-
-    expect(onSaved).not.toHaveBeenCalled()
-    expect(statuses).toEqual(['pending', 'error'])
-
-    autosave.dispose()
-  })
 })
 
 describe('createAutosave and a prune that rejects', () => {
@@ -265,31 +212,6 @@ describe('createAutosave writing through one queue', () => {
 
     expect(gate.mostRunningTogether()).toBe(1)
     expect(await storedFloorCount(store)).toBe(2)
-
-    autosave.dispose()
-  })
-
-  it('a write that waited reports the revision read when it started, not when it was asked for', async () => {
-    const onSaved = vi.fn()
-    let revision = 1
-    const { session, store, autosave } = setUp({ revision: () => revision, onSaved })
-    const gate = gateSaves(store)
-    session.dispatch(addFloor('Ground'))
-    await vi.advanceTimersByTimeAsync(DELAY_MS)
-    revision = 2
-    session.dispatch(addFloor('Upper'))
-    await vi.advanceTimersByTimeAsync(DELAY_MS)
-    revision = 3
-    session.dispatch(addFloor('Attic'))
-
-    gate.endOldestSave()
-    await settle()
-    gate.endOldestSave()
-    await settle()
-    await vi.advanceTimersByTimeAsync(DELAY_MS)
-
-    expect(onSaved.mock.calls).toEqual([[1], [3]])
-    expect(gate.started()).toBe(2)
 
     autosave.dispose()
   })

@@ -54,7 +54,7 @@ async function addASecondFloor(handle: DocumentHandle): Promise<void> {
 }
 
 describe('The unsaved-changes guard of the workspace', () => {
-  it('arms the beforeunload guard while dirty and disarms it after an explicit Save', async () => {
+  it('arms the beforeunload guard while work is unsaved and disarms it after an explicit Save', async () => {
     stubCapableStorage()
     const handle = await openDrafthouse(createTestPorts())
     renderWorkspace(handle)
