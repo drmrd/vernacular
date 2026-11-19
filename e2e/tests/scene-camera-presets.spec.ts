@@ -1,10 +1,9 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
-import { frameReader } from './frame-pixels'
+import { expectSameView, frameAfterChange, navButton } from './journeys/close-openings-support'
 import { LIVE_VIEW_READY } from './live-pane'
 import {
   drawnRoomCanvas,
   drawnRoomWithDoorCanvas,
-  logReading,
   settledSceneCanvas,
   stableFrame,
 } from './scene-helpers'
@@ -23,12 +22,6 @@ import {
 // The floor journeys compare two frames of one run, never a baseline. Two floors hold the
 // same room and door, so the Doorway view of the other floor must equal the one of Ground.
 
-// Two frames of one view are equal when the mean channel difference (0..255) stays below the
-// first bar and the share of strongly changed pixels stays below the second.
-const EQUAL_MEAN_LIMIT = 1.0
-const EQUAL_CHANGED_FRACTION_LIMIT = 0.01
-const READING_DIGITS = 3
-
 // The closed room and its door, in plan pixels.
 const ROOM_CORNERS = [
   { x: 100, y: 120 },
@@ -42,12 +35,6 @@ const DOOR_AT = { x: 200, y: 120 }
 // The floor buttons of the switcher. `exact` matters: "Ground" also matches "Underground levels".
 function floorButton(page: Page, name: string): Locator {
   return page.getByRole('navigation', { name: 'Floors' }).getByRole('button', { name, exact: true })
-}
-
-function navButton(page: Page, name: string): Locator {
-  return page
-    .getByRole('toolbar', { name: '3D navigation' })
-    .getByRole('button', { name, exact: true })
 }
 
 // Draws the closed room and one door on the active floor, and waits until both are there.
@@ -67,18 +54,6 @@ async function showFloor(page: Page, name: string): Promise<void> {
   await expect(floorButton(page, name)).toHaveAttribute('aria-pressed', 'true')
 }
 
-// The first settled frame that differs from the given one. A change that was just requested
-// may not have drawn yet, and two equal screenshots taken before it draws would also look
-// settled.
-async function frameAfterChange(canvas: Locator, before: Buffer): Promise<Buffer> {
-  await expect
-    .poll(async () => (await canvas.screenshot()).equals(before), {
-      message: 'waiting for the live 3D canvas to draw a change',
-    })
-    .toBe(false)
-  return stableFrame(canvas)
-}
-
 // The settled Doorway frame of the shown floor. The Top down step comes first so that the wait
 // for a changed frame is safe: a Doorway frame may equal the frame before it, but never the
 // top-down frame.
@@ -88,27 +63,6 @@ async function doorwayFrame(page: Page, canvas: Locator): Promise<Buffer> {
   const topDown = await frameAfterChange(canvas, settled)
   await navButton(page, 'Doorway').click()
   return frameAfterChange(canvas, topDown)
-}
-
-async function expectSameView(
-  page: Page,
-  label: string,
-  frames: { first: Buffer; second: Buffer },
-): Promise<void> {
-  const reader = frameReader(page)
-  const { mean, changedFraction } = await reader.difference(
-    frames.first,
-    frames.second,
-    await reader.whole(frames.first),
-  )
-  logReading(
-    label,
-    `mean ${mean.toFixed(READING_DIGITS)} (limit ${EQUAL_MEAN_LIMIT}), changed ${changedFraction.toFixed(READING_DIGITS)} (limit ${EQUAL_CHANGED_FRACTION_LIMIT})`,
-  )
-  expect(mean, 'mean channel difference over the whole canvas').toBeLessThan(EQUAL_MEAN_LIMIT)
-  expect(changedFraction, 'fraction of changed pixels over the whole canvas').toBeLessThan(
-    EQUAL_CHANGED_FRACTION_LIMIT,
-  )
 }
 
 // Builds Ground and a second floor that hold the same room and door, shows Ground in the
