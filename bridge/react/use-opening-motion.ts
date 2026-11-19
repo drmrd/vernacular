@@ -1,7 +1,8 @@
 /**
  * The motion of the 3D view's doors and windows: the open set they follow, the pose they take
- * on each newly built scene root, and the per-frame tick that swings them toward that set. It
- * runs in both camera modes, so a change made outside a walk still reaches the live scene.
+ * on each newly built scene root or newly shown list, and the per-frame tick that swings them
+ * toward that set. It runs in both camera modes, so a change made outside a walk still reaches
+ * the live scene.
  */
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { sceneGraphForFloor, type OpeningInteractionState, type OpeningSceneNode } from '../../core'
@@ -26,7 +27,8 @@ export interface OpeningMotionRefs {
   openings: RefObject<OpeningSceneNode[]>
   /**
    * Every opening the 3D view shows: the active floor's in the floor view, and every visible
-   * floor's in the whole-building view. The per-frame tick and the pose of a new root read these.
+   * floor's in the whole-building view. The per-frame tick reads these, and so does the pose of
+   * a new root or of a new shown list.
    */
   shownOpenings: RefObject<OpeningSceneNode[]>
   interaction: RefObject<OpeningInteractionState>
@@ -51,15 +53,15 @@ function useShownOpenings(): OpeningSceneNode[] {
   return useShownSceneGraph().openings
 }
 
-// Holds the opening refs. The open/closed state follows the doors the session store holds
-// open, copied so the walk keys never reach back into the store's set (ADR-0170). It takes
+// Owns the opening refs and returns them. The open/closed state follows the doors the session
+// store holds open, copied so the walk keys never reach back into the store's set (ADR-0170). It takes
 // the store's set whenever that set changes, so a reset made in orbit mode reaches the live
 // scene. The walk keys report their own changes to the store, and following a set with the
 // same doors keeps the same state, so that echo changes nothing. Each change of the set also
 // seats the openings the view does not show at their new target, because no tick reaches them:
 // the R key in a walk resets the state before the store echoes it, so the settle must not wait
 // for the state to differ.
-function useFollowedOpenings(
+function useOpeningMotionRefs(
   storedOpenDoorIds: ReadonlySet<string>,
   shownOpenings: OpeningSceneNode[],
 ): OpeningMotionRefs {
@@ -120,7 +122,7 @@ export function useOpeningMotion(
   storedOpenDoorIds: ReadonlySet<string>,
 ): OpeningMotionRefs {
   const shownOpenings = useShownOpenings()
-  const refs = useFollowedOpenings(storedOpenDoorIds, shownOpenings)
+  const refs = useOpeningMotionRefs(storedOpenDoorIds, shownOpenings)
   useRestoreOpenings(root, shownOpenings, refs)
   return refs
 }
