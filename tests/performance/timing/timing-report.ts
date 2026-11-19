@@ -19,7 +19,7 @@ const HEADER_LABEL_WIDTH = 13
 const BUDGET_WIDTH = 6
 /** The width of the Median column and of the p95 column, in characters. */
 const TIME_WIDTH = 6
-/** The width of the Base median column, in characters; wide enough for "not measured". */
+/** The width of the Base med/p95 column, in characters; wide enough for "not measured". */
 const BASE_WIDTH = 12
 /** The space between two columns of the table. */
 const COLUMN_GAP = ' '
@@ -31,6 +31,8 @@ const BUDGET_DECIMALS = 1
 const COMMIT_LENGTH = 8
 
 const NOT_MEASURED = 'not measured'
+const BASE_HEADING = 'Base med/p95'
+const MEDIAN_P95_SEPARATOR = '/'
 const NOT_AVAILABLE = 'n/a'
 const PLAN_ROW_LABEL = 'Plan redraw, endpoint drag, ground floor'
 const PLAN_BUDGET_NOTE = '* one frame at 60 fps; design specification 6.10 states no plan budget.'
@@ -117,14 +119,20 @@ function changeCell(current: TimingSummary, baseline: TimingSummary | undefined)
     : `${change} (${milliseconds(roundedToStep(now / before))}x)`
 }
 
+/** The baseline's median and 95th percentile, joined by a slash; "not measured" without a baseline. */
+function baseCell(baseline: TimingSummary | undefined): string {
+  return baseline === undefined
+    ? NOT_MEASURED
+    : [baseline.medianMs, baseline.p95Ms].map(milliseconds).join(MEDIAN_P95_SEPARATOR)
+}
+
 function formatRow(row: TimingRow, labelWidth: number): string {
-  const baseMedian = row.baseline === undefined ? NOT_MEASURED : milliseconds(row.baseline.medianMs)
   return [
     row.label.padEnd(labelWidth),
     row.budget.padStart(BUDGET_WIDTH),
     milliseconds(row.current.medianMs).padStart(TIME_WIDTH),
     milliseconds(row.current.p95Ms).padStart(TIME_WIDTH),
-    baseMedian.padStart(BASE_WIDTH),
+    baseCell(row.baseline).padStart(BASE_WIDTH),
     changeCell(row.current, row.baseline),
   ].join(COLUMN_GAP)
 }
@@ -137,7 +145,7 @@ function formatTable(run: TimingRun, baseline: TimingRun | undefined): string[] 
     'Budget'.padStart(BUDGET_WIDTH),
     'Median'.padStart(TIME_WIDTH),
     'p95'.padStart(TIME_WIDTH),
-    'Base median'.padStart(BASE_WIDTH),
+    BASE_HEADING.padStart(BASE_WIDTH),
     'Change',
   ].join(COLUMN_GAP)
   return [heading, ...rows.map((row) => formatRow(row, labelWidth))]
