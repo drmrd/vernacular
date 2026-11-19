@@ -37,8 +37,6 @@ export interface OwnerMemory {
   failure: SwitchFailure | null
   /** True while the owner's effects are set up. */
   live: boolean
-  /** Counts the set-ups of the owner's effects. */
-  setUps: number
   /** The start that runs, as a token that its result is checked against. */
   start: object | null
   flowRunning: boolean
@@ -57,7 +55,6 @@ export function newMemory(setView: (view: OwnerView) => void): OwnerMemory {
     handle: null,
     failure: null,
     live: false,
-    setUps: 0,
     start: null,
     flowRunning: false,
     launched: null,
@@ -78,16 +75,49 @@ export function isBusy(memory: OwnerMemory): boolean {
   return memory.start !== null || memory.flowRunning
 }
 
-/** Closes a handle that no set-up owner takes, and records the close for its ports. */
-export function dropHandle(memory: OwnerMemory, handle: DocumentHandle): void {
+/**
+ * Closes a handle that no set-up owner takes, and gives the close. The close is recorded for the
+ * latest ports of the owner, which can differ from the ports that the handle was opened on after a
+ * change of ports.
+ */
+export function dropHandle(memory: OwnerMemory, handle: DocumentHandle): Promise<SaveOutcome> {
   const closing = handle.close()
   memory.closed = { handle, closing }
   if (memory.ports !== null) {
     recordPendingClose(memory.ports, closing)
   }
+  return closing
+}
+
+/**
+ * Closes the open project one microtask after a clean-up, unless the effects were set up again
+ * by then or the project changed. The close is recorded for the ports at once, so a new owner on
+ * them waits for it. A clean-up, a set-up, and a second clean-up in one step close the project
+ * once: the first microtask closes it and clears the handle, so the second finds it gone.
+ */
+export function deferClose(memory: OwnerMemory): void {
+  const { handle, ports } = memory
+  if (handle === null) {
+    return
+  }
+  const decided = new Promise<unknown>((resolve) => {
+    queueMicrotask(() => {
+      if (memory.live || memory.handle !== handle) {
+        resolve(undefined)
+        return
+      }
+      memory.handle = null
+      resolve(dropHandle(memory, handle))
+    })
+  })
+  if (ports !== null) {
+    recordPendingClose(ports, decided)
+  }
 }
 
 function settleStart(memory: OwnerMemory, token: object, result: SwitchResult): void {
+  // A guard: every launch of a start but the reopen waits while one runs, and the reopen never
+  // overlaps a start, so no start is replaced today.
   if (memory.start !== token) {
     if (result.ok) {
       dropHandle(memory, result.handle)
@@ -143,25 +173,29 @@ export function launchRetry(memory: OwnerMemory): void {
   }
 }
 
-function startIsDue(memory: OwnerMemory): boolean {
+/**
+ * The start that is due: the latest ports and request, when the effects are set up, no project is
+ * open, nothing runs, and no start was launched for this ports and request yet. Otherwise null.
+ */
+function dueTarget(memory: OwnerMemory): StartTarget | null {
   if (!memory.live || memory.handle !== null || isBusy(memory)) {
-    return false
+    return null
   }
   const { ports, request, launched } = memory
   if (ports === null || request === null) {
-    return false
+    return null
   }
-  return launched === null || launched.ports !== ports || launched.id !== request.id
+  const isNew = launched === null || launched.ports !== ports || launched.id !== request.id
+  return isNew ? { ports, request } : null
 }
 
 /** Launches the start for the latest ports and request when no project is open and none runs. */
 export function launchDueStart(memory: OwnerMemory): void {
-  const { ports, request } = memory
-  if (!startIsDue(memory) || ports === null || request === null) {
+  const target = dueTarget(memory)
+  if (target === null) {
     return
   }
-  memory.launched = { ports, id: request.id }
-  const target = { ports, request }
+  memory.launched = { ports: target.ports, id: target.request.id }
   launchStart(memory, target, openAfterCloses(target))
 }
 
@@ -177,9 +211,12 @@ function reopenClosed(memory: OwnerMemory, closed: ClosedHandle): void {
   const { handle } = closed
   const project = handle.session.getProject()
   const request: OpenRequest = { id: handle.id, location: handle.location, create: () => project }
-  const reopen = openAfterCloses({ ports, request })
+  const target = { ports, request }
+  const reopen = openAfterCloses(target)
+  // The deferred close cleared the handle in the memory and updated no view, so while the owner is
+  // hidden the memory and the view differ. Showing no handle brings the view to the memory.
   show(memory, { handle: null, failure: null })
-  launchStart(memory, { ports, request }, () =>
+  launchStart(memory, target, () =>
     closed.closing.then((outcome): Promise<SwitchResult> | SwitchResult =>
       outcome.ok ? reopen() : { ok: true, handle },
     ),
@@ -192,7 +229,9 @@ export function resume(memory: OwnerMemory): void {
   memory.closed = null
   if (closed !== null) {
     reopenClosed(memory, closed)
-  } else if (memory.failure !== null && memory.handle === null) {
+  } else if (memory.failure !== null) {
+    // A failure is kept only while no handle is open: show clears it with any handle, and the
+    // settle of a start sets it only after the launch of that start cleared the handle.
     memory.setView({ handle: null, failure: memory.failure })
   }
 }

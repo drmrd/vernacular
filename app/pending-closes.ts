@@ -8,15 +8,11 @@ const pendingCloses = new WeakMap<SessionPorts, Set<Promise<unknown>>>()
 
 /** Records a close for the ports until it settles. */
 export function recordPendingClose(ports: SessionPorts, closing: Promise<unknown>): void {
-  let closes = pendingCloses.get(ports)
-  if (closes === undefined) {
-    closes = new Set()
-    pendingCloses.set(ports, closes)
-  }
-  const recorded = closes
-  recorded.add(closing)
+  const closes = pendingCloses.get(ports) ?? new Set<Promise<unknown>>()
+  pendingCloses.set(ports, closes)
+  closes.add(closing)
   const forget = (): void => {
-    recorded.delete(closing)
+    closes.delete(closing)
   }
   closing.then(forget, forget)
 }

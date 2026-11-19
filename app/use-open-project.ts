@@ -8,6 +8,7 @@ import type {
   SwitchFailure,
 } from '../session'
 import {
+  deferClose,
   dropHandle,
   isBusy,
   launchDueStart,
@@ -15,9 +16,8 @@ import {
   newMemory,
   resume,
   show,
-} from './owner-start'
-import type { OwnerMemory, OwnerView } from './owner-start'
-import { recordPendingClose } from './pending-closes'
+} from './owner-memory'
+import type { OwnerMemory, OwnerView } from './owner-memory'
 
 /** A step that may replace the open project: it gets the ports and the project open now. */
 export type Flow<Refusal = never> = (
@@ -142,31 +142,6 @@ async function runOneFlow<Refusal>(
 }
 
 /**
- * Closes the open project one microtask after a clean-up, unless the effects were set up again
- * by then. The close is recorded for the ports at once, so a new owner on them waits for it.
- */
-function deferClose(memory: OwnerMemory): void {
-  const { handle, ports, setUps } = memory
-  if (handle === null) {
-    return
-  }
-  const decided = new Promise<unknown>((resolve) => {
-    queueMicrotask(() => {
-      if (memory.setUps !== setUps || memory.handle !== handle) {
-        resolve(undefined)
-        return
-      }
-      memory.handle = null
-      dropHandle(memory, handle)
-      resolve(memory.closed?.closing)
-    })
-  })
-  if (ports !== null) {
-    recordPendingClose(ports, decided)
-  }
-}
-
-/**
  * The one owner of the open project. It opens the start request once, installs the handle that
  * each flow gives, runs the start and the flows one at a time, and closes the open project when
  * its effects are cleaned up and not set up again in the same step. A later set-up opens that
@@ -178,7 +153,6 @@ export function useOpenProject(ports: SessionPorts | null, start: OpenRequest | 
   useEffect(() => {
     const memory = memoryRef.current
     memory.live = true
-    memory.setUps += 1
     resume(memory)
     return () => {
       memory.live = false

@@ -17,8 +17,9 @@ export interface DocumentHandleParts {
   /** A session built ahead on the opened project; when absent, the handle builds its own. */
   readonly session?: EditorSession
   /**
-   * The snapshots of the request's id on the store, got ahead; when absent, the handle asks the
-   * store for them.
+   * The snapshots of the request's id on the store, obtained ahead; when absent, the handle asks
+   * the store for them. After a restore, the closed old handle and the new handle share one
+   * snapshots object, which is safe because that object holds no state of a session.
    */
   readonly snapshots?: ProjectSnapshots
 }

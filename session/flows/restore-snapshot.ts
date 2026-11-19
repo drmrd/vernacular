@@ -92,18 +92,17 @@ export async function restoreSnapshot(current: DocumentHandle): Promise<RestoreR
   const { request, store } = internals
   let handle: DocumentHandle
   try {
-    const snapshots = current.snapshots
     handle = createDocumentHandle({
       request,
       store,
       hold: handedOver.hold,
       opened,
       session,
-      snapshots,
+      snapshots: current.snapshots,
     })
   } catch (error) {
-    // The builder calls no store method here, so nothing in it is known to throw. The branch frees
-    // the lock so that it cannot leak if it does.
+    // Defence in depth: the builder calls no store method here, so nothing in it is known to throw.
+    // The branch frees the lock so that it cannot leak if it does.
     await callGuardedAsync(() => handedOver.hold.release())
     return storageUnavailable(error)
   }
