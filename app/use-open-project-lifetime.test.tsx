@@ -2,7 +2,6 @@ import { StrictMode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { openDocumentHandle, switchProject } from '../session'
-import type { OpenRequest } from '../session'
 import { settle } from '../session/autosave/save-gate-test-kit'
 import {
   createControlledLocks,
@@ -14,9 +13,9 @@ import {
   rename,
 } from '../session/handle/handle-test-kit'
 import type { TestPorts } from '../session/handle/handle-test-kit'
-import { createInitialProject } from './create-initial-project'
 import { useOpenProject } from './use-open-project'
 import {
+  countingStart,
   gatedFlow,
   lockCalls,
   OTHER_ID,
@@ -37,19 +36,6 @@ async function storeStartProject(ports: TestPorts): Promise<void> {
   const handle = await openOrThrow(createTestPorts({ root: ports.root }), startRequest())
   await handle.save()
   await handle.close()
-}
-
-/** A start request whose `create` names each new document by the order of its call. */
-function countingStart(): OpenRequest {
-  let created = 0
-  return {
-    ...startRequest(),
-    create: () => {
-      created += 1
-      const project = createInitialProject()
-      return { ...project, meta: { ...project.meta, name: `Created ${created}` } }
-    },
-  }
 }
 
 afterEach(() => {

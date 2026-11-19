@@ -35,6 +35,19 @@ export function startRequest(id: string = START_ID): OpenRequest {
   return { ...workspaceRequest(id), create: createInitialProject }
 }
 
+/** A start request whose `create` names each new document by the order of its call. */
+export function countingStart(): OpenRequest {
+  let created = 0
+  return {
+    ...startRequest(),
+    create: () => {
+      created += 1
+      const project = createInitialProject()
+      return { ...project, meta: { ...project.meta, name: `Created ${created}` } }
+    },
+  }
+}
+
 /** The lock calls of a log of recording ports, in their order. */
 export function lockCalls(log: readonly string[]): string[] {
   return log.filter((entry) => entry.startsWith('lock:') || entry.startsWith('unlock:'))

@@ -159,6 +159,26 @@ describe('useOpenProject when the start request changes while a flow runs', () =
     await unmountAndSettle(unmount)
   })
 
+  it('when that flow opened a project, no lock call after the change takes the lock of the start', async () => {
+    const log: string[] = []
+    const ports = recordingPorts(log)
+    const { result, rerender, unmount } = await renderFailedStart(ports)
+    const held = gatedFlow((given) => openDocumentHandle(given, startRequest(OTHER_ID)))
+    const running = startFlow(result, held.flow)
+    rerender({ ports, start: startRequest() })
+    const mark = log.length
+    await act(settle)
+
+    await act(async () => {
+      held.letEnd()
+      await running
+      await settle()
+    })
+
+    expect(lockCalls(log.slice(mark))).not.toContain(`lock:${START_ID}`)
+    await unmountAndSettle(unmount)
+  })
+
   it('when that flow opened nothing, the changed start opens after it', async () => {
     const log: string[] = []
     const ports = recordingPorts(log)
