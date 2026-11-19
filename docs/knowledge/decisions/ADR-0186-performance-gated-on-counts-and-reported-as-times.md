@@ -442,7 +442,7 @@ tooling, and it stays out of the release notes.
 
 The unit tests run with
 `pnpm exec vitest run tests/performance/timing scripts/performance --project unit`: 21 test files
-and 360 tests at the head of the branch on 2026-11-18, and all of them pass.
+and 363 tests on 2026-11-18, after the change of the baseline cell, and all of them pass.
 
 - `scripts/performance/timing-arguments.test.ts`: 14
 - `scripts/performance/timing-browser-processes.test.ts`: 29
@@ -462,7 +462,7 @@ and 360 tests at the head of the branch on 2026-11-18, and all of them pass.
 - `tests/performance/timing/run-timing-guards.test.ts`: 19
 - `tests/performance/timing/scene-update-timing.test.ts`: 9
 - `tests/performance/timing/timing-record.test.ts`: 28
-- `tests/performance/timing/timing-report.test.ts`: 32
+- `tests/performance/timing/timing-report.test.ts`: 35
 - `tests/performance/timing/timing-report-details.test.ts`: 18
 - `tests/performance/timing/timing-statistics.test.ts`: 15
 
