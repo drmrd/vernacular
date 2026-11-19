@@ -108,6 +108,7 @@ export function fakeObservation(): Observation {
     productionBuild: true,
     webGpuAdapter: { name: machine.webGpuAdapter, isFallback: false },
     visible: true,
+    everHidden: false,
     displayFrameMs: conditions.displayFrameMs,
     takenAt,
     timerResolutionMs: build.timerResolutionMs,
@@ -143,7 +144,12 @@ export function timingInput(changes: Partial<TimingInput> = {}): TimingInput {
 
 /** What a test changes in the fake page. */
 export interface FakeOptions {
+  /** Changes to the description of the page at both observations. */
   observed?: Partial<Observation>
+  /** Further changes to the description at the second observation only, after the last phase. */
+  observedAtEnd?: Partial<Observation>
+  planRedraw?: number[]
+  sceneUpdate?: Record<string, number[]>
   renderFrames?: Record<string, FrameSample[]>
   renderAfterEdits?: Record<string, FrameSample[]>
   /** The phase that rejects with the error when it is called. */
@@ -160,6 +166,7 @@ export interface FakeTiming {
 /** Fake phases that log their calls and return fixed samples, one list for each edit or variant. */
 export function fakeTimingPhases(options: FakeOptions = {}): FakeTiming {
   const calls: PhaseName[] = []
+  let observations = 0
   const counts: Partial<Record<PhaseName, SampleCounts>> = {}
   function step<Result>(phase: PhaseName, result: Result, given?: SampleCounts): Promise<Result> {
     calls.push(phase)
@@ -169,12 +176,17 @@ export function fakeTimingPhases(options: FakeOptions = {}): FakeTiming {
       : Promise.resolve(result)
   }
   const phases: TimingPhases = {
-    observe: () => step('observe', { ...fakeObservation(), ...options.observed }),
-    planRedraw: (given) => step('planRedraw', FAKE_PLAN_REDRAW_MS, given),
+    observe: () => {
+      observations += 1
+      const atEnd = observations > 1 ? options.observedAtEnd : undefined
+      return step('observe', { ...fakeObservation(), ...options.observed, ...atEnd })
+    },
+    planRedraw: (given) => step('planRedraw', options.planRedraw ?? FAKE_PLAN_REDRAW_MS, given),
     sceneUpdate: (given) =>
       step(
         'sceneUpdate',
-        Object.fromEntries(REFERENCE_EDITS.map((edit, i) => [edit.name, fakeSceneUpdateMs(i)])),
+        options.sceneUpdate ??
+          Object.fromEntries(REFERENCE_EDITS.map((edit, i) => [edit.name, fakeSceneUpdateMs(i)])),
         given,
       ),
     renderFrames: (given) =>

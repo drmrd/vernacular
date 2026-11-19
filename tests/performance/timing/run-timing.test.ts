@@ -129,10 +129,10 @@ describe('a timing run that cannot be trusted', () => {
 })
 
 describe('a timing run under good conditions', () => {
-  it('runs the phases in the fixed order: conditions, plan redraw, 3D update, frames, frames after edits', async () => {
+  it('runs the phases in the fixed order: conditions, plan redraw, 3D update, frames, frames after edits, conditions again', async () => {
     const fake = fakeTimingPhases()
     await runTiming(fake.phases, timingInput())
-    expect(fake.calls).toEqual(['observe', ...MEASURING_PHASES])
+    expect(fake.calls).toEqual(['observe', ...MEASURING_PHASES, 'observe'])
   })
 
   it.each([
