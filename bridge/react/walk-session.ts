@@ -66,16 +66,28 @@ export function seedWalkState(camera: WalkCamera, floorElevationMm: number): Wal
   }
 }
 
+// The same pose with the eye on the given floor: its elevation plus the walk eye height.
+// The plan position, yaw and pitch stay; the input pose is never changed.
+export function walkStateOnFloor(state: WalkState, floorElevationMm: number): WalkState {
+  return {
+    ...state,
+    position: { ...state.position, y: floorElevationMm + WALK_EYE_HEIGHT_MM },
+  }
+}
+
 // Resumes the pose the last walk session left behind, so a view-mode switch or a
 // detour through orbit puts the walker back where they stood instead of wherever the
-// camera happens to sit now (ADR-0170). With no pose to resume, the camera seeds the
-// walk the way it always has.
+// camera happens to sit now (ADR-0170). The pose is seated on the active floor, which
+// may differ from the floor it was left on. With no pose to resume, the camera seeds
+// the walk the way it always has.
 export function resumedWalkState(
   saved: WalkState | null,
   camera: WalkCamera,
   floorElevationMm: number,
 ): WalkState {
-  return saved ?? seedWalkState(camera, floorElevationMm)
+  return saved === null
+    ? seedWalkState(camera, floorElevationMm)
+    : walkStateOnFloor(saved, floorElevationMm)
 }
 
 // The active floor's elevation, read from its scene-graph node; 0 when no floor
