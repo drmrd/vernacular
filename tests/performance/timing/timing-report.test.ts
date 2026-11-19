@@ -147,11 +147,39 @@ describe('the change of a time against the baseline', () => {
     allTimeRows(report).forEach((row) => expect(row).toContain('+0.00 ms (1.00x)'))
   })
 
-  it('shows the median of the baseline, and no n/a, on a row that has one', () => {
+  it('shows the median and the 95th percentile of the baseline, and no n/a, on a row that has one', () => {
     const [row] = rowsStartingWith(reportWithMedians(2.5, 2), UPDATE_ROW)
 
-    expect(row).toContain('2.00')
+    expect(row).toContain('2.00/4.00')
     expect(row).not.toContain('n/a')
+  })
+
+  it('does not let the 95th percentile of the baseline change the change cell', () => {
+    const changeWithBaselineP95 = (baselineP95Ms: number): string | undefined => {
+      const current = withEdit((run) => {
+        run.times.sceneUpdate[MOVED_WALL] = summary(2.5, 4.5)
+      })
+      const baseline = withEdit((run) => {
+        run.times.sceneUpdate[MOVED_WALL] = summary(2, baselineP95Ms)
+      })
+      const [row] = rowsStartingWith(formatTimingReport(current, baseline), UPDATE_ROW)
+      return row?.match(/[+-]\d+\.\d+ ms \(\d+\.\d+x\)/)?.[0]
+    }
+
+    expect(changeWithBaselineP95(3)).toBe('+0.50 ms (1.25x)')
+    expect(changeWithBaselineP95(9)).toBe('+0.50 ms (1.25x)')
+  })
+})
+
+describe('the heading of the baseline column of the timing report', () => {
+  const report = formatTimingReport(aTimingRun(), aTimingRun())
+
+  it('names the median and the 95th percentile', () => {
+    expect(report).toContain('Base med/p95')
+  })
+
+  it('no longer names the median alone', () => {
+    expect(report).not.toContain('Base median')
   })
 })
 
