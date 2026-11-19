@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Floor, Project, SceneGraph } from '../../core'
 import {
@@ -13,6 +16,7 @@ import type { Object3D } from '../../engine/testing'
 import { createFurnitureModelCache } from './furniture-model-cache'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 
+const CUBE_GLB = resolve(dirname(fileURLToPath(import.meta.url)), '../../e2e/fixtures/cube.glb')
 const FLOOR_ID = 'g'
 const CHAIR_ID = 'chair-unusable'
 const MODEL_HASH = 'unusable-model'
@@ -106,6 +110,14 @@ async function loadThroughRealParser(bytes: Uint8Array) {
   return cache
 }
 
+/** Reconciles the placed chair against the cache and names the material of its first mesh. */
+function builtMaterialName(cache: Awaited<ReturnType<typeof loadThroughRealParser>>): string {
+  const build = createFramedSceneReconciler().reconcile(chairGraph(), {}, cache)
+  const group = findByEntityId(build.root, CHAIR_ID)
+  if (group === null) throw new Error('expected the placed piece to build a group')
+  return firstMeshMaterialName(group)
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
 })
@@ -121,9 +133,22 @@ describe('a placed piece whose model has no usable geometry', () => {
 
     expect(cache.get(MODEL_HASH)?.status).toBe('failed')
     expect(warn).toHaveBeenCalledTimes(1)
-    const build = createFramedSceneReconciler().reconcile(chairGraph(), {}, cache)
-    const group = findByEntityId(build.root, CHAIR_ID)
-    if (group === null) throw new Error('expected the placed piece to build a group')
-    expect(firstMeshMaterialName(group)).toBe('furnitureFailed')
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(MODEL_HASH),
+      expect.objectContaining({ name: 'UnusableFurnitureModelError' }),
+    )
+    expect(builtMaterialName(cache)).toBe('furnitureFailed')
+  })
+
+  it('still builds the mesh, not the failed box, for a model with usable geometry', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const cache = await loadThroughRealParser(new Uint8Array(readFileSync(CUBE_GLB)))
+
+    expect(cache.get(MODEL_HASH)?.status).toBe('ready')
+    expect(warn).not.toHaveBeenCalled()
+    const material = builtMaterialName(cache)
+    expect(material).not.toBe('furnitureFailed')
+    expect(material).not.toBe('furniture')
   })
 })
