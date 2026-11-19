@@ -169,10 +169,11 @@ floor.
 The doorway view took its look direction from the centre of the shown bounds. In the
 whole-building view those bounds span every shown floor, so the door of an upper room at
 one end of a long building looked out of its room. The floor view had the same fault
-when the floor's centre lay outside the door's room, as with a detached outbuilding or
-the inner corner of an L-shaped plan. The pose also turned the wall normal into a world
-direction without the flip of plan north, so on a wall at an angle to the plan axes the
-camera looked along the wall.
+when the floor's centre lay on the outer side of the door's wall, as with a detached
+outbuilding or the inner corner of an L-shaped plan. The pose also turned the wall
+normal into a world direction without the flip of plan north, so on a wall at an angle
+to the plan axes the camera looked askew: turned away from the door by twice the wall's
+angle, and along the wall itself at 45 degrees.
 
 The look side comes from the door alone. A door with a room side looks toward that side,
 whatever its leaf does. A door without one, such as a door between two rooms, looks
