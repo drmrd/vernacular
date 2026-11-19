@@ -10,21 +10,21 @@ export interface PointerWallRunResets {
 }
 
 /**
- * Ends the pointer wall run when the tool changes, the way Escape does: the run goes
- * idle and the cursor and snap are cleared. The walls it already committed stay. A
- * run that outlived its tool would continue, with a stale rubber band, as soon as
- * the tool is armed again.
+ * Ends the pointer wall run when the tool or the floor changes, the way Escape does:
+ * the run goes idle and the cursor and snap are cleared. The walls it already
+ * committed stay. A run that outlived its tool or its floor would continue, with a
+ * stale rubber band, as soon as the tool is armed again or on the other floor.
  *
  * The effect lists the scope's fields, never the scope object, which is new on every
  * render and would end the run each time.
  */
 export function useDiscardPointerWallRun(
-  { tool }: RunScope,
+  { tool, activeFloorId }: RunScope,
   { setToolState, setPointer, clearSnap }: PointerWallRunResets,
 ): void {
   useEffect(() => {
     setToolState(IDLE_WALL_TOOL)
     setPointer(null)
     clearSnap()
-  }, [tool, setToolState, setPointer, clearSnap])
+  }, [tool, activeFloorId, setToolState, setPointer, clearSnap])
 }
