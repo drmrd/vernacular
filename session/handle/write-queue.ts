@@ -46,6 +46,8 @@ export function createWriteQueue(write: () => Promise<void>): WriteQueue {
   function startWrite(): Promise<void> {
     isWriting = true
     const outcome = callWrite(write)
+    // Attach endWrite before any caller can attach a handler to the outcome. A caller that
+    // requests again from its own handler then finds the flag already false and starts a write.
     outcome.then(endWrite, endWrite)
     return outcome
   }
