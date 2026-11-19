@@ -31,6 +31,15 @@ const NOTE_BROWSER_KEY = 'vernacular.settings.testNote'
 
 const WRITTEN_NOTE = 'written by the probe'
 
+/** The name under which the settings keep the theme choice. */
+const THEME_NAME = 'theme'
+
+/** The key under which the browser keeps the theme choice. */
+const THEME_BROWSER_KEY = 'vernacular.settings.theme'
+
+/** A whole-application case starts the shell, and may need more time on a busy machine. */
+const WHOLE_APPLICATION_TIMEOUT_MS = 20_000
+
 // The browser storage of the test run answers that it holds nothing and keeps nothing, unless a
 // case imitates it, so that no case passes through what an earlier case left there.
 beforeEach(() => {
@@ -75,6 +84,17 @@ async function startAndOpenTheSnapControl(settings?: SettingsPort): Promise<HTML
   await findTheShell()
   await userEvent.click(screen.getByRole('button', { name: /snap/i }))
   return screen.findByRole('dialog', { name: /snapping precision/i })
+}
+
+/** The theme that the element with a `data-theme` attribute around the shell shows. */
+function shellTheme(shell: HTMLElement): string | null | undefined {
+  return shell.closest('[data-theme]')?.getAttribute('data-theme')
+}
+
+/** Chooses Dark in the theme toggle of the shell. */
+async function chooseDark(): Promise<void> {
+  const toggle = screen.getByRole('group', { name: /theme/i })
+  await userEvent.click(within(toggle).getByRole('button', { name: /^dark$/i }))
 }
 
 describe('AppSettings', () => {
@@ -176,4 +196,53 @@ describe('the snap preferences of the application', () => {
     expect(within(control).getByRole('checkbox', { name: /grid/i })).not.toBeChecked()
     expect(storage.entries.size).toBe(0)
   })
+})
+
+describe('the theme of the application', () => {
+  it(
+    'a theme choice is in effect after a new mount over the same port',
+    async () => {
+      const port = new InMemorySettingsPort()
+      stubCapableStorage()
+      const first = renderApp(createTestPorts(), { settings: port })
+      await findTheShell()
+      await chooseDark()
+      first.unmount()
+
+      renderApp(createTestPorts(), { settings: port })
+      const shell = await findTheShell()
+
+      expect(shellTheme(shell)).toBe('dark')
+    },
+    WHOLE_APPLICATION_TIMEOUT_MS,
+  )
+
+  it(
+    'the shell starts in the stored theme',
+    async () => {
+      const port = new InMemorySettingsPort()
+      port.write(THEME_NAME, 'dark')
+      stubCapableStorage()
+
+      renderApp(createTestPorts(), { settings: port })
+      const shell = await findTheShell()
+
+      expect(shellTheme(shell)).toBe('dark')
+    },
+    WHOLE_APPLICATION_TIMEOUT_MS,
+  )
+
+  it(
+    'with no port given the application takes the theme that this browser stores',
+    async () => {
+      imitateBrowserStorage({ [THEME_BROWSER_KEY]: JSON.stringify('dark') })
+      stubCapableStorage()
+
+      renderApp(createTestPorts())
+      const shell = await findTheShell()
+
+      expect(shellTheme(shell)).toBe('dark')
+    },
+    WHOLE_APPLICATION_TIMEOUT_MS,
+  )
 })
