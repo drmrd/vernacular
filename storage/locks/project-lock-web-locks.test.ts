@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WebLocksProjectLockPort } from './project-lock'
+import type { ProjectLockHold } from './project-lock'
 
 const NEXT_MACROTASK_DELAY_MS = 0
+/** How long a case waits for a request that may never settle, before it calls it unsettled. */
+const SETTLE_WAIT_MS = 50
 
 /**
  * A small model of the browser lock manager. Every port built while it is
@@ -124,5 +127,81 @@ describe('WebLocksProjectLockPort over a browser lock manager', () => {
     await hold?.release()
 
     await expect(otherTab.tryAcquire('a')).resolves.toBeDefined()
+  })
+})
+
+/**
+ * A browser that has the Web Locks API and refuses every call, as where site data is blocked or
+ * the origin is opaque: request and query both reject with a SecurityError.
+ */
+class RefusingLockManager {
+  request(): Promise<never> {
+    return Promise.reject(refusal())
+  }
+
+  query(): Promise<never> {
+    return Promise.reject(refusal())
+  }
+}
+
+function refusal(): DOMException {
+  return new DOMException('Access to the Locks API is denied in this context.', 'SecurityError')
+}
+
+const DID_NOT_SETTLE = Symbol('did not settle')
+
+/** The value of `promise`, or `DID_NOT_SETTLE` when it is still pending after the bounded wait. */
+async function settledWithinBound<T>(promise: Promise<T>): Promise<T | typeof DID_NOT_SETTLE> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const bound = new Promise<typeof DID_NOT_SETTLE>((resolve) => {
+    timer = setTimeout(() => resolve(DID_NOT_SETTLE), SETTLE_WAIT_MS)
+  })
+  try {
+    return await Promise.race([promise, bound])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+describe('WebLocksProjectLockPort when the browser refuses the lock calls', () => {
+  const unhandled: unknown[] = []
+  const recordUnhandled = (reason: unknown): void => {
+    unhandled.push(reason)
+  }
+
+  beforeEach(() => {
+    unhandled.length = 0
+    process.on('unhandledRejection', recordUnhandled)
+    vi.stubGlobal('navigator', { locks: new RefusingLockManager() })
+  })
+
+  afterEach(() => {
+    process.off('unhandledRejection', recordUnhandled)
+    vi.unstubAllGlobals()
+  })
+
+  it('still reports support, because the API exists', () => {
+    expect(new WebLocksProjectLockPort().supported).toBe(true)
+  })
+
+  it('gives a hold when the browser refuses the lock request, as with no lock API', async () => {
+    const hold = await settledWithinBound(new WebLocksProjectLockPort().tryAcquire('a'))
+
+    expect(hold, 'the request did not settle').not.toBe(DID_NOT_SETTLE)
+    expect(hold).toBeDefined()
+    const { release } = hold as ProjectLockHold
+    await expect(release()).resolves.toBeUndefined()
+    await expect(release()).resolves.toBeUndefined()
+  })
+
+  it('leaves no unhandled rejection when the browser refuses the lock request', async () => {
+    await settledWithinBound(new WebLocksProjectLockPort().tryAcquire('a'))
+    await new Promise((turn) => setTimeout(turn, NEXT_MACROTASK_DELAY_MS))
+
+    expect(unhandled).toEqual([])
+  })
+
+  it('lists no held ids when the browser refuses the query', async () => {
+    await expect(new WebLocksProjectLockPort().heldIds()).resolves.toEqual(new Set())
   })
 })
