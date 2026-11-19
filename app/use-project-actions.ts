@@ -76,10 +76,15 @@ function useSaveAction(context: ProjectActionsContext): () => void {
   }, [handle, recentProjects, capabilities])
 }
 
-// New project asks nothing: the switch stores an unsaved change of the open project first.
+// New project asks nothing: the switch stores an unsaved change of the open project first. The new
+// project is not stored yet, so it gets no recent entry now: opening that entry would find nothing.
+// Its first save records it, and so does a later switch that leaves it.
 function useNewProjectAction(runSwitch: RunSwitch): () => Promise<void> {
   return useCallback(
-    () => runSwitch((ports, current) => createNewProject(ports, current, createInitialProject)),
+    () =>
+      runSwitch((ports, current) => createNewProject(ports, current, createInitialProject), {
+        recordOpened: false,
+      }),
     [runSwitch],
   )
 }

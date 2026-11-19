@@ -79,17 +79,28 @@ export interface SwitchFlowContext {
 /** The refusals that a flow which replaces the open project can give. */
 type SwitchRefusal = ImportFailure | FolderRefusal | RestoreRefusal
 
+/** How a switch records and reports what its flow gave. */
+export interface SwitchOptions extends FlowNoticeOptions {
+  /**
+   * Whether the project that the flow opened gets a recent entry. Default true. A flow that opens
+   * a project which is not stored yet sets it to false: an entry for that project could not be
+   * opened. The first save of the project, or a later switch that leaves it, records it.
+   */
+  readonly recordOpened?: boolean
+}
+
 /** Runs a flow through the owner, then records and reports what it gave. */
 export type RunSwitch = <Refusal extends SwitchRefusal = never>(
   flow: Flow<Refusal>,
-  options?: FlowNoticeOptions,
+  options?: SwitchOptions,
 ) => Promise<void>
 
 /**
  * Gives a function that runs a flow through the owner. It reads the project that is open before
  * the flow runs. After a flow that opened a project it records both that project and the one that
- * was left; a result of any kind is then shown. A flow that the owner did not run records and
- * shows nothing. The open project is read from the latest render, also for a Retry of a toast.
+ * was left, unless the options turn off the record of the opened one; a result of any kind is then
+ * shown. A flow that the owner did not run records and shows nothing. The open project is read from
+ * the latest render, also for a Retry of a toast.
  */
 export function useSwitchFlow(context: SwitchFlowContext): RunSwitch {
   const { handle, runFlow, recentProjects, capabilities } = context
@@ -97,17 +108,17 @@ export function useSwitchFlow(context: SwitchFlowContext): RunSwitch {
   // Set in a layout effect, so a Retry before the passive effects reads the committed handle.
   const latestHandle = useLatest(handle)
   return useCallback(
-    async <Refusal extends SwitchRefusal = never>(
-      flow: Flow<Refusal>,
-      options?: FlowNoticeOptions,
-    ) => {
+    async <Refusal extends SwitchRefusal = never>(flow: Flow<Refusal>, options?: SwitchOptions) => {
+      const { recordOpened = true, ...noticeOptions } = options ?? {}
       const left = recentInputOf(latestHandle.current, capabilities)
       const result = await runFlow(flow)
       if (result?.ok === true) {
         recordProject(recentProjects, left)
-        recordProject(recentProjects, recentInputOf(result.handle, capabilities))
+        if (recordOpened) {
+          recordProject(recentProjects, recentInputOf(result.handle, capabilities))
+        }
       }
-      notify(result, options)
+      notify(result, noticeOptions)
     },
     [latestHandle, runFlow, recentProjects, capabilities, notify],
   )
