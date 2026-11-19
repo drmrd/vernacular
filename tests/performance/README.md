@@ -130,14 +130,14 @@ adapter, operating system, and browser.
 
 Then comes a table with one row for each time:
 
-| Column      | Meaning                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| Time        | What the row measures.                                                                   |
-| Budget      | The budget for the row, in milliseconds.                                                 |
-| Median      | The median of the timed samples, in milliseconds.                                        |
-| p95         | The 95th percentile, by nearest rank, in milliseconds.                                   |
-| Base median | The median in the baseline, or "not measured" when there is no baseline.                 |
-| Change      | The difference of the two medians and their ratio, such as `+0.42 ms (1.08x)`, or `n/a`. |
+| Column       | Meaning                                                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Time         | What the row measures.                                                                                                                                    |
+| Budget       | The budget for the row, in milliseconds.                                                                                                                  |
+| Median       | The median of the timed samples, in milliseconds.                                                                                                         |
+| p95          | The 95th percentile, by nearest rank, in milliseconds.                                                                                                    |
+| Base med/p95 | The median and the 95th percentile in the baseline, in milliseconds, joined by a slash, such as `2.00/4.00`, or "not measured" when there is no baseline. |
+| Change       | The difference of the two medians and their ratio, such as `+0.42 ms (1.08x)`, or `n/a`.                                                                  |
 
 The rows come in four groups:
 
