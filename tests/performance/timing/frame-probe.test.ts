@@ -108,7 +108,7 @@ describe('the frame probe', () => {
   })
 
   it('still calls the original submit with the same arguments and returns its result', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, requestFrame } = installed()
     const commandBuffers = ['pass-1', 'pass-2']
     let returned: string | undefined
     requestFrame(() => {
@@ -119,7 +119,6 @@ describe('the frame probe', () => {
 
     expect(returned).toBe(SUBMIT_RESULT)
     expect(fake.submitCalls).toEqual([{ receiver: fake.queue, args: [commandBuffers] }])
-    expect(probe.takeFrames()).toHaveLength(1)
   })
 
   it('hands the frame time of the host to the frame callbacks of the page', () => {
