@@ -18,6 +18,7 @@ import {
   type WallKeyContext,
 } from './authoring-tool-handlers'
 import { useOpeningTool } from './opening-tool-context'
+import type { RunScope } from './run-scope'
 
 // The keyboard authoring run seeds its candidate at the world origin when no
 // viewport is supplied, so the candidate is reachable before any pointer move.
@@ -206,6 +207,16 @@ function useDiscardKeyboardRunsOnToolChange(
   }, [tool, setWallState, setDimensionState])
 }
 
+// A keyboard announcement does not outlive the tool it was spoken under. If it
+// stayed, the first step of the next run would put the same text into the live
+// region and a screen reader would speak nothing. clearAnnouncement is stable
+// (useCallback), so the effect runs on a change of tool and once at mount.
+function useClearKeyboardAnnouncement({ tool }: RunScope, clearAnnouncement: () => void): void {
+  useEffect(() => {
+    clearAnnouncement()
+  }, [tool, clearAnnouncement])
+}
+
 /**
  * Binds the creative-tool authoring keystrokes to the window. While the
  * draw-wall, dimension, place-opening, or place-furniture tool is active, arrow
@@ -225,6 +236,7 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
   const [announcement, setAnnouncement] = useState('')
   const clearAnnouncement = useCallback(() => setAnnouncement(''), [])
   useDiscardKeyboardRunsOnToolChange(tool, setWallToolState, setDimensionToolState)
+  useClearKeyboardAnnouncement(deps, clearAnnouncement)
 
   useEffect(() => {
     if (!isAuthoringTool(tool)) {
