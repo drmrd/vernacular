@@ -75,6 +75,15 @@ const LOCATED_SITE: Site = {
   northBearing: 0,
 }
 
+// In New York on 20 March the clock runs four hours behind UTC, so the sun reaches the west front
+// later than at the sample place, where the same front opens at 14:00.
+const LOCATED_WEST_OPENING_MINUTES = clockMinutes(15, 4)
+const LOCATED_SOUTH_OPENING_MINUTES = clockMinutes(10, 30)
+const SAMPLE_PLACE_WEST_INSTANT: ObservationInstant = {
+  date: FIXED_DATE,
+  minutesSinceMidnight: clockMinutes(14, 0),
+}
+
 function clockMinutes(hours: number, minutes: number): number {
   return hours * MINUTES_PER_HOUR + minutes
 }
@@ -100,8 +109,12 @@ function everySiteAndFront(): { label: string; site: Site | undefined; front: Pl
 // The rule of the opening time, written from its statement: the sun is high enough, and the unit
 // direction toward it makes a large enough cosine with the front's outward normal in the ground
 // plane (plan +y is world -Z).
-function frontTakesSunAt(front: PlanDirection, observedAt: ObservationInstant): boolean {
-  const daylight = daylightSiteFor(NORTH_SET_SITE, front, observedAt.date)
+function frontTakesSunAt(
+  front: PlanDirection,
+  observedAt: ObservationInstant,
+  site: Site = NORTH_SET_SITE,
+): boolean {
+  const daylight = daylightSiteFor(site, front, observedAt.date)
   const angles = solarPosition({
     latitude: daylight.latLong.latitude,
     longitude: daylight.latLong.longitude,
@@ -125,6 +138,16 @@ function distanceFromTheFixedMinutes(minutesSinceMidnight: number): number {
   return Math.abs(minutesSinceMidnight - FIXED_MINUTES_SINCE_MIDNIGHT)
 }
 
+function takesSunOnTheFixedDate(degrees: number): boolean {
+  return minutesOfTheFixedDateThatSuit(frontAtAngle(degrees)).length > 0
+}
+
+// A front that takes no sun at all on 20 March falls to a later date, so it is not asked here.
+const ANGLES_OF_FRONTS_THAT_TAKE_SUN_ON_THE_FIXED_DATE: readonly number[] =
+  FRONT_ANGLES_AROUND_THE_CIRCLE.filter(takesSunOnTheFixedDate)
+const ANGLES_OF_FRONTS_THAT_TAKE_NO_SUN_ON_THE_FIXED_DATE: readonly number[] =
+  FRONT_ANGLES_AROUND_THE_CIRCLE.filter((degrees) => !takesSunOnTheFixedDate(degrees))
+
 describe('openingConditions', () => {
   it.each(everySiteAndFront())(
     'opens a site whose north is implied at 20 March 10:30 under the default cloud cover: $label',
@@ -137,7 +160,7 @@ describe('openingConditions', () => {
   )
 
   it.each(NAMED_FRONTS_OF_A_HOUSE_WITH_A_SET_NORTH)(
-    'opens a house whose north is set at the minute of 20 March nearest 10:30 at which the sun is at least 25 degrees up and meets the front at a cosine of at least 0.5: front to the $label',
+    'opens a house with a set north at the nearest qualifying minute of 20 March: front to the $label',
     ({ front, minutesSinceMidnight }) => {
       const conditions = openingConditions({ site: NORTH_SET_SITE, front })
 
@@ -149,13 +172,16 @@ describe('openingConditions', () => {
     },
   )
 
-  // A front that takes no sun at all on 20 March falls to a later date, so it is not asked here.
-  it.each(FRONT_ANGLES_AROUND_THE_CIRCLE)(
+  it('splits the fronts around the circle into some that take sun on 20 March and some that do not', () => {
+    expect(ANGLES_OF_FRONTS_THAT_TAKE_SUN_ON_THE_FIXED_DATE).not.toHaveLength(0)
+    expect(ANGLES_OF_FRONTS_THAT_TAKE_NO_SUN_ON_THE_FIXED_DATE).not.toHaveLength(0)
+  })
+
+  it.each(ANGLES_OF_FRONTS_THAT_TAKE_SUN_ON_THE_FIXED_DATE)(
     'opens a house whose north is set at a minute of 20 March that suits its front, with none nearer 10:30, for a front %i degrees from plan-right',
     (degrees) => {
       const front = frontAtAngle(degrees)
       const suitable = minutesOfTheFixedDateThatSuit(front)
-      if (suitable.length === 0) return
       const { observedAt } = openingConditions({ site: NORTH_SET_SITE, front })
       const chosenDistance = distanceFromTheFixedMinutes(observedAt.minutesSinceMidnight)
 
@@ -168,6 +194,25 @@ describe('openingConditions', () => {
       expect(nearerThanChosen).toEqual([])
     },
   )
+
+  it('scans a located site in its own civil time', () => {
+    const westFront = { x: -1, y: 0 }
+    const southFront = { x: 0, y: -1 }
+
+    const west = openingConditions({ site: LOCATED_SITE, front: westFront })
+    const south = openingConditions({ site: LOCATED_SITE, front: southFront })
+
+    expect(west).toEqual({
+      observedAt: { date: FIXED_DATE, minutesSinceMidnight: LOCATED_WEST_OPENING_MINUTES },
+      cloudCover: DEFAULT_CLOUD_COVER,
+    })
+    expect(south).toEqual({
+      observedAt: { date: FIXED_DATE, minutesSinceMidnight: LOCATED_SOUTH_OPENING_MINUTES },
+      cloudCover: DEFAULT_CLOUD_COVER,
+    })
+    expect(frontTakesSunAt(westFront, west.observedAt, LOCATED_SITE)).toBe(true)
+    expect(frontTakesSunAt(westFront, SAMPLE_PLACE_WEST_INSTANT, LOCATED_SITE)).toBe(false)
+  })
 })
 
 describe('openingInstant', () => {
