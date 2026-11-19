@@ -3,11 +3,13 @@ import {
   createElement,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
 
+import type { Point, SceneGraph } from '../../core'
 import type { ToolId } from '../tools/active-tool-context'
 import type { PlacementRefusal } from './overlay-announce'
 
@@ -53,6 +55,32 @@ export function useForgetRefusalOnToolChange(tool: ToolId): void {
   useEffect(() => {
     setPlacementRefusal(null)
   }, [tool, setPlacementRefusal])
+}
+
+/** What a standing refusal was computed from, and the signs that the person has moved on. */
+export interface RefusalBasis {
+  tool: ToolId
+  /** The plan's scene graph. A new reference means the plan changed: an edit, an undo, a redo. */
+  sceneGraph: SceneGraph
+  activeFloorId: string | null
+  /** A new set means the selection changed. */
+  selectedIds: ReadonlySet<string>
+  /** The keyboard authoring candidate. A new point means an arrow key moved it. */
+  candidate: Point
+}
+
+/**
+ * Retires the standing refusal, before paint, when any basis field or the provider's placement
+ * type takes a new value or reference. The same references keep it. Clears on mount. A refusal
+ * is about one placement under one situation, so a changed plan, floor, selection, candidate,
+ * tool, or placement type ends it rather than leaving a sentence that may no longer be true.
+ */
+export function useRetireStaleRefusal(basis: RefusalBasis): void {
+  const { placementType, setPlacementRefusal } = useOpeningTool()
+  const { tool, sceneGraph, activeFloorId, selectedIds, candidate } = basis
+  useLayoutEffect(() => {
+    setPlacementRefusal(null)
+  }, [tool, sceneGraph, activeFloorId, selectedIds, candidate, placementType, setPlacementRefusal])
 }
 
 export interface OpeningToolProviderProps {
