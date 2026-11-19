@@ -76,15 +76,15 @@ afterEach(() => {
 describe('createAutosave with an onSaved callback that throws', () => {
   it('save() resolves with the project stored, and the error is reported once to console.error', async () => {
     const failure = new Error('onSaved failed')
-    const { session, store, autosave } = setUp({
-      onSaved: () => {
-        throw failure
-      },
+    const onSaved = vi.fn(() => {
+      throw failure
     })
+    const { session, store, autosave } = setUp({ revision: () => REVISION, onSaved })
     session.dispatch(addFloor('Ground'))
 
     await expect(autosave.save()).resolves.toBeUndefined()
 
+    expect(onSaved).toHaveBeenCalledTimes(1)
     expect(await storedFloorCount(store)).toBe(1)
     expect(consoleError).toHaveBeenCalledTimes(1)
     expect(loggedValues()).toContain(failure)
