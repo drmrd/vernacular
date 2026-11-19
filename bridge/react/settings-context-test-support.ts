@@ -1,9 +1,13 @@
-import type { ReactElement } from 'react'
+import { createElement, type ReactElement } from 'react'
 import type { SettingKey, SettingsService } from '../../session'
 import { useSetting, useSettingsService } from './settings-context'
 import type { Recording } from './settings-context-fixtures-test-support'
 
-/** Shared reader components of the tests of the settings provider and hooks. */
+/**
+ * Reader components of the tests of the settings provider and hooks. They are built with
+ * `createElement` in a `.ts` file, so that this support module exports no component of the
+ * application.
+ */
 
 interface ReaderProps<T> {
   settingKey: SettingKey<T>
@@ -15,7 +19,7 @@ export function Reader<T>({ settingKey, seen }: ReaderProps<T>): ReactElement {
   const [value, setValue] = useSetting(settingKey)
   seen.values.push(value)
   seen.setters.push(setValue)
-  return <output>{String(value)}</output>
+  return createElement('output', null, String(value))
 }
 
 /** Records the service that each render of the component gets. */
