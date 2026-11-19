@@ -48,6 +48,34 @@ describe('the folder that holds the timing browser', () => {
   it('is undefined when the main process id is undefined', () => {
     expect(browserInstallRoot(processes, undefined)).toBeUndefined()
   })
+
+  it('is undefined for an executable that sits directly under the file system root', () => {
+    const list = parseProcessList(' 8001  8000 /chrome --remote-debugging-pipe --no-first-run')
+
+    expect(browserInstallRoot(list, 8001)).toBeUndefined()
+  })
+
+  it('is undefined for an executable that has no folder at all', () => {
+    const list = parseProcessList(' 8002  8000 chrome --remote-debugging-pipe')
+
+    expect(browserInstallRoot(list, 8002)).toBeUndefined()
+  })
+})
+
+describe('a folder that cannot be a browser folder', () => {
+  const handlers = [
+    { pid: 21, ppid: 1, command: '/opt/other/chrome_crashpad_handler --monitor-self' },
+    { pid: 22, ppid: 1, command: '/chrome_crashpad_handler' },
+  ]
+
+  it('stops nothing when the folder is empty', () => {
+    expect(crashHandlerPids(handlers, '')).toEqual([])
+    expect(stillCrashHandlers([21, 22], handlers, '')).toEqual([])
+  })
+
+  it('stops nothing when the folder is the file system root', () => {
+    expect(crashHandlerPids(handlers, '/')).toEqual([])
+  })
 })
 
 describe('the crash handlers inside the folder of the timing browser', () => {
