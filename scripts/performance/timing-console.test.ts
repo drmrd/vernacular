@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { classifyPageMessages } from './timing-console.mjs'
+import { classifyPageMessages, judgeConsole } from './timing-console.mjs'
 
 // In the real page a failure can show only as a console message: the ambient-occlusion pipeline
 // of the realistic lighting that fails to build is logged once, and the product goes on without
@@ -159,5 +159,120 @@ describe('the texts that the console check looks for', () => {
     ],
   ])('still occur in the source that logs %s', (_name, path, text) => {
     expect(readFileSync(resolve(path), 'utf8')).toContain(text)
+  })
+})
+
+// judgeConsole applies the console of the page to the outcome of a run: a measured run becomes a
+// refused one when the page logged a failure, and the console lines say what the page logged.
+
+const SHOWN_UNEXPECTED_LIMIT = 10
+const EARLIER_REASON = 'The window was hidden during the run, so the times were discarded.'
+
+// The tooling TypeScript project cannot reach the run fixture of tests/performance (its import of
+// the reference project pulls in storage files that need browser types), so the measured outcome
+// is the smallest object of the shape of Outcome; judgeConsole never reads the run.
+type Outcome =
+  | { kind: 'measured'; run: object; recordText: string; report: string }
+  | { kind: 'refused'; reasons: string[] }
+
+function aMeasuredOutcome(): Outcome {
+  return { kind: 'measured', run: {}, recordText: 'record text', report: 'report text' }
+}
+
+function unexpectedMessages(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    type: 'error',
+    text: `Unexpected failure number ${index + 1}`,
+  }))
+}
+
+describe('applying the console of the page to the outcome of a run', () => {
+  it('keeps the very same outcome and reports the known count for known messages only', () => {
+    const measured = aMeasuredOutcome()
+    const refused: Outcome = { kind: 'refused', reasons: [EARLIER_REASON] }
+
+    const fromMeasured = judgeConsole(measured, [FURNITURE_MESSAGE, CLOCK_MESSAGE])
+    const fromRefused = judgeConsole(refused, [FURNITURE_MESSAGE])
+
+    expect(fromMeasured.outcome).toBe(measured)
+    expect(fromMeasured.consoleLines).toEqual([
+      'Console',
+      '  2 known harmless messages; 0 unexpected',
+    ])
+    expect(fromRefused.outcome).toBe(refused)
+    expect(fromRefused.consoleLines).toEqual([
+      'Console',
+      '  1 known harmless messages; 0 unexpected',
+    ])
+  })
+
+  it('reports zero known and zero unexpected messages for an empty list', () => {
+    const measured = aMeasuredOutcome()
+
+    const result = judgeConsole(measured, [])
+
+    expect(result.outcome).toBe(measured)
+    expect(result.consoleLines).toEqual(['Console', '  0 known harmless messages; 0 unexpected'])
+  })
+
+  it('turns a measured run into a refused one when the ambient-occlusion pipeline failed', () => {
+    const { outcome } = judgeConsole(aMeasuredOutcome(), [AMBIENT_OCCLUSION_MESSAGE])
+
+    expect(outcome.kind).toBe('refused')
+    const reasons = outcome.kind === 'refused' ? outcome.reasons : []
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('ambient-occlusion')
+  })
+
+  it('puts the console reasons before the earlier reasons of a refused run', () => {
+    const refused: Outcome = { kind: 'refused', reasons: [EARLIER_REASON] }
+
+    const { outcome } = judgeConsole(refused, [DEVICE_LOST_MESSAGE])
+
+    expect(outcome.kind).toBe('refused')
+    const reasons = outcome.kind === 'refused' ? outcome.reasons : []
+    expect(reasons).toHaveLength(2)
+    expect(reasons[0]).toContain('device was lost')
+    expect(reasons[1]).toBe(EARLIER_REASON)
+  })
+
+  it('lists each unexpected message with its type, in order, after the counts', () => {
+    const first = { type: 'error', text: 'Uncaught TypeError: x is not a function' }
+    const second = { type: 'warning', text: 'A warning that nobody knows' }
+    const third = { type: 'pageerror', text: 'ReferenceError: y is not defined' }
+
+    const { consoleLines } = judgeConsole(aMeasuredOutcome(), [
+      first,
+      FURNITURE_MESSAGE,
+      second,
+      third,
+    ])
+
+    expect(consoleLines).toEqual([
+      'Console',
+      '  1 known harmless messages; 3 unexpected',
+      '  error: Uncaught TypeError: x is not a function',
+      '  warning: A warning that nobody knows',
+      '  pageerror: ReferenceError: y is not defined',
+    ])
+  })
+
+  it('lists ten of twelve unexpected messages and says that two more exist', () => {
+    const messages = unexpectedMessages(12)
+
+    const { consoleLines } = judgeConsole(aMeasuredOutcome(), messages)
+
+    expect(consoleLines).toHaveLength(2 + SHOWN_UNEXPECTED_LIMIT + 1)
+    expect(consoleLines[1]).toBe('  0 known harmless messages; 12 unexpected')
+    expect(consoleLines[2]).toBe('  error: Unexpected failure number 1')
+    expect(consoleLines[11]).toBe('  error: Unexpected failure number 10')
+    expect(consoleLines[12]).toBe('  and 2 more unexpected messages')
+  })
+
+  it('lists exactly ten unexpected messages without a line about more', () => {
+    const { consoleLines } = judgeConsole(aMeasuredOutcome(), unexpectedMessages(10))
+
+    expect(consoleLines).toHaveLength(2 + SHOWN_UNEXPECTED_LIMIT)
+    expect(consoleLines.some((line) => line.includes('more unexpected'))).toBe(false)
   })
 })
