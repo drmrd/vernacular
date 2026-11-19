@@ -190,14 +190,15 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
   )
 }
 
-// A keyboard wall run or measurement does not outlive the tool it was started
-// under. Without this, a run left open when the tool changed would continue,
-// unseen, when the tool is armed again. Both setters come from useState, so they
-// are stable, so the effect runs on a change of tool, and one time at mount,
-// where it sets idle over idle. `useDiscardOnLeave` in `use-dimension-tool.ts`
-// does the same for the pointer half of the dimension tool.
-function useDiscardKeyboardRunsOnToolChange(
-  tool: ToolId,
+// Keyboard runs and their announcement do not outlive the tool they began under.
+// The setters and the callback are stable, so each effect runs on a change of
+// tool and one time at mount, where it changes nothing.
+
+// A run left open would continue, unseen, when the tool is armed again.
+// `useDiscardOnLeave` in `use-dimension-tool.ts` does the same for the pointer
+// half of the dimension tool.
+function useDiscardKeyboardRuns(
+  { tool }: RunScope,
   setWallState: (state: WallToolState) => void,
   setDimensionState: (state: DimensionToolState) => void,
 ): void {
@@ -207,10 +208,8 @@ function useDiscardKeyboardRunsOnToolChange(
   }, [tool, setWallState, setDimensionState])
 }
 
-// A keyboard announcement does not outlive the tool it was spoken under. If it
-// stayed, the first step of the next run would put the same text into the live
-// region and a screen reader would speak nothing. clearAnnouncement is stable
-// (useCallback), so the effect runs on a change of tool and once at mount.
+// A sentence that stays would make the first vertex of the next run write the
+// same text, and a screen reader does not speak text that did not change.
 function useClearKeyboardAnnouncement({ tool }: RunScope, clearAnnouncement: () => void): void {
   useEffect(() => {
     clearAnnouncement()
@@ -235,7 +234,7 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [announcement, setAnnouncement] = useState('')
   const clearAnnouncement = useCallback(() => setAnnouncement(''), [])
-  useDiscardKeyboardRunsOnToolChange(tool, setWallToolState, setDimensionToolState)
+  useDiscardKeyboardRuns(deps, setWallToolState, setDimensionToolState)
   useClearKeyboardAnnouncement(deps, clearAnnouncement)
 
   useEffect(() => {
