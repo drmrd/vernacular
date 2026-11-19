@@ -54,7 +54,8 @@ function valueImportSpecifiers(path: string, text: string): string[] {
   })
 }
 
-function resolveSpecifier(
+/** The file of `sources` that a relative `specifier` of `importerPath` names, or `undefined`. */
+export function resolveSpecifier(
   importerPath: string,
   specifier: string,
   sources: ReadonlyMap<string, string>,
@@ -156,7 +157,8 @@ function collectDynamicImportSpecifiers(node: ts.Node, found: string[]): string[
   return found
 }
 
-function anyModuleSpecifiers(path: string, text: string): string[] {
+/** Every module specifier of a file: imports, re-exports, and dynamic `import('<literal>')`. */
+export function anyModuleSpecifiers(path: string, text: string): string[] {
   const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest)
   const fromStatements = sourceFile.statements.flatMap((statement) => {
     const specifier = statementSpecifier(statement)
