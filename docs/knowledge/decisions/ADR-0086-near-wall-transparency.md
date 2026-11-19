@@ -5,10 +5,11 @@ type: decision
 tags: [architecture, three-dimensional, transparency, walls, camera, preview]
 related:
   [
-    decisions/ADR-0061-three-dimensional-wall-shell,
+    decisions/ADR-0061-three-dimensional-wall-shell-junctions-and-visual-tier,
     decisions/ADR-0067-three-dimensional-painted-preview,
     decisions/ADR-0078-three-dimensional-preview-surface-edges,
     decisions/ADR-0084-discoverable-camera-controls,
+    decisions/ADR-0217-a-moved-mesh-reaches-the-gpu,
     decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
   ]
 sourceFiles:
@@ -39,8 +40,8 @@ updated: 2026-11-19
 
 Accepted. Issue #122, owner feedback that an opaque exterior wall blocks the interior
 when the camera looks at the building from outside. It builds on the wall shell
-([[ADR-0061-three-dimensional-wall-shell]]) and the painted preview's material seam
-([[ADR-0067-painted-three-dimensional-preview]]).
+([[ADR-0061-three-dimensional-wall-shell-junctions-and-visual-tier]]) and the painted
+preview's material seam ([[ADR-0067-three-dimensional-painted-preview]]).
 
 ## Context
 
