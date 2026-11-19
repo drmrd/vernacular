@@ -36,6 +36,8 @@ export interface EscapeToSelectDeps {
  * listeners of the same event, so a microtask can still run before a later listener
  * has claimed the key; only a task is sure to run after every listener of that press.
  * Deciding earlier would make the ladder depend on the order those hooks mount.
+ * A decision still pending when the tool changes or the hook unmounts is dropped,
+ * because it belonged to the old tool.
  *
  * Inert under any non-placement tool, mirroring use-furniture-keyboard. A tool chip
  * left holding focus by the click that armed the tool does not swallow the key,
@@ -47,19 +49,23 @@ export function useEscapeToSelect(deps: EscapeToSelectDeps): void {
     if (!isPlacementTool(tool)) {
       return undefined
     }
+    const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
     const listener = (event: KeyboardEvent): void => {
       if (ownsKeystroke(event.target, event.key) || event.key !== ESCAPE_KEY) {
         return
       }
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        pendingTimers.delete(timer)
         if (!wasKeystrokeClaimed(event)) {
           setTool('select')
         }
       }, 0)
+      pendingTimers.add(timer)
     }
     window.addEventListener('keydown', listener)
     return () => {
       window.removeEventListener('keydown', listener)
+      pendingTimers.forEach(clearTimeout)
     }
   }, [tool, setTool])
 }
