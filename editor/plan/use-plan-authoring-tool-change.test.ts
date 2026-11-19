@@ -89,4 +89,19 @@ describe('usePlanAuthoring when the active tool changes', () => {
     )
     expect(result.current.announcement).not.toMatch(/Dimension measured/)
   })
+
+  it('clears the keyboard authoring announcement when the tool changes', () => {
+    const dispatch = vi.fn()
+    const { result, rerender } = renderAuthoring(dispatch, WALL_TOOL)
+
+    // Anchor a run: the step is announced.
+    pressKey('Enter')
+    expect(result.current.announcement).toBe('Wall vertex dropped')
+
+    // A stale sentence would make the next identical sentence a silent no-op for a
+    // screen reader, so the change of tool must empty it.
+    rerender({ tool: SELECT_TOOL })
+
+    expect(result.current.announcement).toBe('')
+  })
 })
