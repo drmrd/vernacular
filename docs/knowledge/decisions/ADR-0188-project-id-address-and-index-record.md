@@ -22,7 +22,7 @@ sourceFiles:
     core/export/svg/svg-plan-exporter.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-18
 ---
 
 # ADR-0188: A project has a random id, an address, and a record in the project index
@@ -37,6 +37,16 @@ in this stage, and approved the rest with that specification. It amends ADR-0183
 project index takes over, and it supersedes the recent-project store of ADR-0030. The code changes
 with #685. Until then the application opens one id, the remembered id of ADR-0183 decides it, and
 the recent-project store holds one entry at most.
+
+> Updated on 2026-11-18. The application no longer has one project slot. New project, Open file, a
+> newly picked folder, and a project started after a failed load each get a new id from
+> `newProjectId`. That id still has the form `project-<uuid>`
+> (`storage/active-project/active-project-id-store.ts`). The recent-project store keeps one entry
+> for each id, and the remembered id of ADR-0183 follows the last workspace project saved on a
+> durable store. The project index, the addresses, and the preview are not built yet. A workspace
+> project on the IndexedDB fallback still gets no recent entry. On that fallback, once the project
+> made by New project or Open file is saved, the earlier project stays stored, but nothing in the
+> application opens it again.
 
 ## Context
 

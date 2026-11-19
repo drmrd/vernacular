@@ -4,8 +4,7 @@ title: 'ADR-0100: Upgrade the test stack to Vitest 3 and Vite 6'
 type: decision
 tags: [tooling, testing, vitest, vite, coverage, dependencies, cooldown, storybook, build]
 related: [decisions/ADR-0013-cooldown-exclusions, decisions/ADR-0016-lighthouse-stryker-fixtures]
-sourceFiles:
-  [package.json, pnpm-lock.yaml, vite.config.ts, app/app.test.tsx, .npmrc, stryker.conf.json]
+sourceFiles: [package.json, pnpm-lock.yaml, vite.config.ts, .npmrc, stryker.conf.json]
 status: current
 updated: 2026-06-18
 ---

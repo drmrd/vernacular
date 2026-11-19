@@ -27,12 +27,12 @@ sourceFiles:
     storage/storage-capabilities.ts,
     storage/select-project-store.ts,
     session/autosave/create-autosave.ts,
-    session/editor-session/load-or-create-project.ts,
+    session/handle/read-for-open.ts,
     app/resolve-project-store.ts,
     app/app.tsx,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # ADR-0003: Provider pattern for storage with cloud-sync seam
@@ -46,6 +46,16 @@ updated: 2026-11-17
 > `DirectoryAssetCache` in the same database (`storage/project-storage.ts`). Both run in a real
 > browser under `pnpm test:storage-browser`, the CI job `storage-browser`. The section on the
 > IndexedDB store below describes the first form.
+
+> Updated on 2026-11-18. `DocumentStore.load` and `loadOrCreateProject` are gone. Opening a
+> document handle reads the project once through `DocumentStore.read`
+> (`session/handle/read-for-open.ts`). A `not-found` result starts from the request's `create` step
+> when the request has one, and fails the open with `not-found` when it does not. A stored document
+> that does not decode fails the open, unless it only breaks the format rules and opens under the
+> interim rule of ADR-0190. A broken project is still never replaced by an empty one.
+> `ProjectNotFoundError` remains for an archive that holds no document and for a stored file that is
+> gone when `openDespiteFormatFaults` reads it. The section below on the typed "not found"
+> describes the earlier form.
 
 Accepted. The three provider interfaces, a Map-backed `InMemoryProjectStore`
 reference implementation, and a durable `IndexedDbProjectStore` are implemented

@@ -39,6 +39,11 @@ ADR-0012. The lint configuration changed with #683, and every rule is now at err
 > except that story files may import it. A relative import such as `../testing` is now checked
 > inside `session/` as well as inside `engine/`.
 
+> Updated on 2026-11-18. In `bridge/`, `editor/`, `app/`, and `src/`, a test support module (a file
+> named `*-test-support.ts` or `*-test-support.tsx`) may import `session/testing`, as a test or a
+> story may. The other import checks of its layer still apply to it, so it still cannot import the
+> engine testing entry.
+
 ## Context
 
 ADR-0012 set the size and complexity rules to `warn`. Section 9.8 of the design specification

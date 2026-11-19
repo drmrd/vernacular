@@ -16,10 +16,11 @@ sourceFiles:
   [
     storage/locks/project-lock.ts,
     storage/locks/web-locks-manager.ts,
+    session/handle/open-document-handle.ts,
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-18
 ---
 
 # ADR-0189: One tab writes a document, and a second tab sees the Projects page
@@ -32,6 +33,17 @@ rails of section 5.12 the same day, with that specification. Later that day the 
 first guard rail: a delete also takes the lock and holds it while it runs. It supersedes the
 read-only outcome of the project lock in ADR-0030. The code changes with #685. Until then no code
 takes a lock when it opens a project, and two tabs can write the same document.
+
+> Updated on 2026-11-18. The document handle takes the lock when it opens a project and frees it
+> when it closes, through `ProjectLockPort` (`tryAcquire`, `heldIds`, `supported`) in
+> `storage/locks/project-lock.ts`. The application builds the port once, in
+> `app/create-session-ports.ts`. Where the browser has the lock API, two tabs no longer write the
+> same document. The second tab does not show the Projects page yet. Its open fails with
+> `open-elsewhere`, and the application shows the failed-open view with one sentence, "This
+> project is open in another tab." When the Projects page lands, the second tab shows the page
+> instead. A switch frees the lock of the project it leaves. The restore of a recovered copy hands
+> the lock from the old handle to the new one without freeing it. The delete that holds the lock,
+> and the project list that reads `heldIds()`, are not built yet.
 
 ## Context
 

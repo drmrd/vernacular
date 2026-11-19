@@ -33,7 +33,7 @@ sourceFiles:
     e2e/tests/durable-storage.spec.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-18
 ---
 
 # ADR-0030: Additive storage capabilities for recent projects, multi-tab locks, and autosave snapshots
@@ -62,6 +62,18 @@ routing) is recorded in the "Project save, open, and recent wiring" section belo
 > The document handle takes the lock when it opens a project. A second tab that asks for the same
 > project shows the Projects page, so the `read-only` outcome has no use and the interface for
 > taking ownership is not built. Until that work lands, nothing in the application takes the lock.
+
+> Updated on 2026-11-18. The document handle now takes the lock when it opens a project, through
+> `ProjectLockPort` (`tryAcquire`, `heldIds`, `supported`) in `storage/locks/project-lock.ts`, which
+> has a Web Locks form and an in-memory form. `ProjectLock`, `LockManagerPort`, and
+> `createProjectLock` are gone. `WebLocksManager` is no longer exported: it is the private part of
+> the Web Locks form and keeps the held-promise release described below. Until the Projects page
+> lands, a second tab that asks for an open project shows the failed-open view with "This project
+> is open in another tab." `commitProject` is gone too. Save, autosave, and every switch write
+> through the handle (ADR-0119). New project, Open file, Open folder, a recent project, and Export
+> run as flows in `session/flows/`. When the browser denies access to the folder of a recent folder
+> project, the open now fails with a message. It used to open the project of the default store
+> instead.
 
 ## Context
 

@@ -16,16 +16,16 @@ sourceFiles:
   [
     app/app.tsx,
     app/use-workspace-state.ts,
-    session/editor-session/load-or-create-project.ts,
+    session/handle/read-for-open.ts,
     storage/project-store.ts,
     storage/active-project/active-project-id-store.ts,
     app/use-active-project-id.ts,
-    app/use-fresh-project.ts,
+    app/use-open-project.ts,
     app/use-project-boot.ts,
     app/use-remember-saved-project.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-18
 ---
 
 # ADR-0183: A project started after a failed load gets its own id
@@ -45,6 +45,17 @@ that id after the project's first successful save.
 > Amended by [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]] on 2026-11-15. The dialog
 > for a project that did not open loses the "Start a new project" control, because the Projects
 > page has New project. The rule that nothing writes under the id that failed is unchanged.
+
+> Updated on 2026-11-18. One owner hook, `app/use-open-project.ts`, holds the open project, and
+> `app/use-fresh-project.ts` and `loadOrCreateProject` are gone. "Start a new project" is now a new
+> start of that owner in `app/use-project-boot.ts`: it opens a workspace request under a new id,
+> with the first document as the request's `create` step. The new project's handle, autosave, and
+> snapshots use the new id from the start, so no snapshot store has to be resolved again. When the
+> storage did not resolve, the new project runs on ports kept in memory. The new id is no longer
+> checked against the list of stored projects. If a stored project had that id, the open would
+> read that project and write nothing over it. The remembered id now follows the last workspace
+> project saved on a durable store (`app/use-remember-saved-project.ts`), whether or not it was
+> started after a failed load.
 
 ## Context
 
