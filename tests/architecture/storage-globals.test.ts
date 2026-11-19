@@ -2,71 +2,30 @@
 // ESLint's lintText reads files through Node's fs module, which needs the node environment, not the project-wide jsdom.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { ESLint, type Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
 import { lintConfig } from './lint-config-module'
+import {
+  LINT_TIMEOUT_MS,
+  STORAGE_API_NAMES,
+  STORAGE_RULES,
+  disablesStorageRule,
+  expectAccepted,
+  expectRejected,
+  globalRuleMessages,
+  repositoryRoot,
+  rows,
+} from './storage-globals-test-kit'
 
-// One shared instance: building the flat config is the expensive part. Linting is
-// CPU-bound, so allow extra time over Vitest's 5s per-test default.
-const eslint = new ESLint()
-const LINT_TIMEOUT_MS = 30_000
 // Reading about 1,500 source files to scan their comments outlasts the default limit under load.
 const SOURCE_SCAN_TIMEOUT_MS = 30_000
 
-const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
-
-const STORAGE_MESSAGE_TEXT = 'storage/'
-const GLOBAL_RULE = 'no-restricted-globals'
-const STORAGE_RULES = [GLOBAL_RULE, 'no-restricted-properties', 'no-restricted-syntax']
-const STORAGE_API_NAMES = [
-  'localStorage',
-  'sessionStorage',
-  'indexedDB',
-  'caches',
-  'showDirectoryPicker',
-  'showOpenFilePicker',
-  'showSaveFilePicker',
-]
 const GLOBAL_OBJECTS = ['window', 'globalThis', 'self']
-
-/** A sample text and the file name that it is linted under. */
-type Row = [source: string, filePath: string]
-
-async function lintMessages(source: string, filePath: string): Promise<Linter.LintMessage[]> {
-  const [result] = await eslint.lintText(`${source}\n`, { filePath })
-  const messages = result?.messages ?? []
-  const parseFailure = messages.find((message) => message.fatal === true)
-  if (parseFailure !== undefined) {
-    throw new Error(`${filePath} did not parse: ${parseFailure.message}`)
-  }
-  return messages
-}
-
-async function storageMessages(source: string, filePath: string): Promise<string[]> {
-  const messages = await lintMessages(source, filePath)
-  return messages
-    .map((message) => message.message)
-    .filter((text) => text.includes(STORAGE_MESSAGE_TEXT))
-}
-
-async function globalRuleMessages(source: string, filePath: string): Promise<string[]> {
-  const messages = await lintMessages(source, filePath)
-  return messages
-    .filter((message) => message.ruleId === GLOBAL_RULE)
-    .map((message) => message.message)
-}
-
-function rows(sources: readonly string[], filePaths: readonly string[]): Row[] {
-  return filePaths.flatMap((filePath) => sources.map((source): Row => [source, filePath]))
-}
 
 function bareUse(name: string): string {
   return `export const value = ${name}`
 }
 
 const SOURCE_FILE_PATTERN = /\.tsx?$/
-const DISABLE_DIRECTIVE = /eslint-disable(?:-next-line|-line)?([^\n]*)/g
 // The six layers under the rule, and the folder of the application entry points. Not storage/.
 const FOLDERS_UNDER_THE_RULE = ['app', 'bridge', 'core', 'editor', 'engine', 'session', 'src']
 
@@ -84,14 +43,6 @@ function sourcesUnderTheRule(): Map<string, string> {
     }
   }
   return sources
-}
-
-function disablesStorageRule(text: string): boolean {
-  return [...text.matchAll(DISABLE_DIRECTIVE)].some(([, rest]) => {
-    const named = (rest ?? '').split('--')[0] ?? ''
-    const bare = named.replace('*/', '').trim() === ''
-    return bare || STORAGE_RULES.some((rule) => named.includes(rule))
-  })
 }
 
 function filesDisablingStorageRules(sources: Map<string, string>): string[] {
@@ -163,14 +114,6 @@ const SHADOWED_NAMES = [
 ]
 
 const WINDOW_USE = 'export const value = window'
-
-async function expectRejected(source: string, filePath: string): Promise<void> {
-  expect(await storageMessages(source, filePath)).not.toEqual([])
-}
-
-async function expectAccepted(source: string, filePath: string): Promise<void> {
-  expect(await storageMessages(source, filePath)).toEqual([])
-}
 
 describe('storage globals outside storage: where the rule applies', () => {
   it.each(rows(STORAGE_USES, FILES_UNDER_THE_RULE))(
