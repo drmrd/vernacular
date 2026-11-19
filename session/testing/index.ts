@@ -19,3 +19,4 @@ export {
   DOCUMENT_FILE,
 } from '../handle/handle-test-kit'
 export { gateSaves, settle } from '../autosave/save-gate-test-kit'
+export { InMemorySettingsPort } from '../../storage'
