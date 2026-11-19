@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { expectWallCount, gotoEditor, selectWallTool, selectors } from './journeys/support'
 
 test.describe('Keyboard plan authoring', () => {
   test('authors a wall using only the keyboard', async ({ page }) => {
@@ -61,8 +62,33 @@ test.describe('Keyboard plan authoring', () => {
     // tool does not run, so no door lands and no refusal notice appears.
     await page.keyboard.press('Enter')
 
+    // A zero count can be true before the key press has had any effect, so wait
+    // for the selection first and only then check that nothing was placed.
+    await expect(wall).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByRole('option', { name: / wide$/ })).toHaveCount(0)
     await expect(page.locator('.plan-overlay__refusal')).toHaveCount(0)
+  })
+
+  test('keeps a pointer wall run open when Enter selects a focused wall', async ({ page }) => {
+    await gotoEditor(page)
+    const canvas = selectors.planCanvas(page)
+
+    // Draw one wall with the pointer: the run stays open for the next corner.
+    await selectWallTool(page)
+    await canvas.click({ position: { x: 120, y: 200 } })
+    await canvas.click({ position: { x: 520, y: 200 } })
+    await expectWallCount(page, 1)
+
+    // Enter on the wall's proxy only selects the wall. It must not finish the run.
+    const wall = selectors.wallProxy(page)
+    await wall.focus()
+    await expect(wall).toBeFocused()
+    await page.keyboard.press('Enter')
     await expect(wall).toHaveAttribute('aria-selected', 'true')
+
+    // The run went on, so the next corner chains a second wall.
+    await canvas.click({ position: { x: 520, y: 400 } })
+
+    await expectWallCount(page, 2)
   })
 })
