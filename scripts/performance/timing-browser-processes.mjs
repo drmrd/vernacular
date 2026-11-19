@@ -73,7 +73,9 @@ function executableOf(command) {
 /**
  * Returns the folder that holds the browser of the main process: the
  * application bundle for a macOS bundle executable, otherwise the directory of
- * the executable. Returns undefined when the pid is undefined or not listed.
+ * the executable: the text before its last slash. Returns undefined when the
+ * pid is undefined or not listed, and when the executable holds no slash or
+ * sits directly under the file system root (the directory text is empty).
  * @param {ProcessRow[]} processes
  * @param {number | undefined} mainPid
  * @returns {string | undefined}
@@ -85,21 +87,22 @@ export function browserInstallRoot(processes, mainPid) {
   const executable = executableOf(row.command)
   const bundleIndex = executable.indexOf(BUNDLE_EXECUTABLE_PATH)
   if (bundleIndex !== -1) return executable.slice(0, bundleIndex + BUNDLE_SUFFIX.length)
-  return executable.slice(0, executable.lastIndexOf('/'))
+  const directoryEnd = executable.lastIndexOf('/')
+  return directoryEnd > 0 ? executable.slice(0, directoryEnd) : undefined
 }
 
 /**
  * Returns the ids, in list order, of processes with parent id 1 whose
  * executable name ends with the crash handler name and lies inside the install
  * root. The folder is part of the rule because other programs built on the same
- * browser engine run a helper with the same name. Without a root it returns an
- * empty list.
+ * browser engine run a helper with the same name. Without a root (undefined or
+ * an empty string) it returns an empty list.
  * @param {ProcessRow[]} processes
  * @param {string | undefined} installRoot
  * @returns {number[]}
  */
 export function crashHandlerPids(processes, installRoot) {
-  if (installRoot === undefined) return []
+  if (installRoot === undefined || installRoot === '') return []
   const rootPrefix = `${installRoot}/`
   return processes
     .filter((row) => {
@@ -137,6 +140,7 @@ export function browserMainPid(processes, driverPid) {
 
 /**
  * Returns the given ids, in their order, that are crash handlers of the install root in the process list now.
+ * Without a root (undefined or an empty string) it returns an empty list.
  * @param {number[]} pids
  * @param {ProcessRow[]} processes
  * @param {string | undefined} installRoot
