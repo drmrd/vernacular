@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
-import type { EditorSession } from '../session/editor-session'
-import { createDirtyTracker, type DirtyTracker } from '../session/create-dirty-tracker'
+import { createDirtyTracker, type DirtyTracker, type EditorSession } from '../../session'
 
 /**
  * Subscribes a React component to a dirty tracker so it re-renders on every

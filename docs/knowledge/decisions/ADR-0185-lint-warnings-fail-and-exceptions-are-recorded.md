@@ -20,7 +20,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-18
 ---
 
 # ADR-0185: Lint warnings fail CI, and exceptions are one recorded list
@@ -31,6 +31,13 @@ Current. The owner chose on 2026-11-14 that warnings fail CI and that each exist
 either fixed or recorded against the issue that removes it. The owner approved the rest the same
 day, with section 5.5 of `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. It amends
 ADR-0012. The lint configuration changed with #683, and every rule is now at error level.
+
+> Amended on 2026-11-18 by ADR-0175, which adds the `session/` layer. An entry of the exception list
+> may name one layer that its file may import beyond the list of its own layer
+> (`{ file, allowImportOf, issue }`) in place of a rule. The other entries still name a rule. The
+> session testing entry (`session/testing`) gets a check like that of the engine testing entry,
+> except that story files may import it. A relative import such as `../testing` is now checked
+> inside `session/` as well as inside `engine/`.
 
 ## Context
 

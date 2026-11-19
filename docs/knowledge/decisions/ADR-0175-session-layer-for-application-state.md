@@ -9,11 +9,17 @@ related:
     decisions/ADR-0176-commands-as-data-and-session-undo-history,
     decisions/ADR-0177-open-transactions-for-changes-in-progress,
     decisions/ADR-0180-one-settings-port,
+    decisions/ADR-0185-lint-warnings-fail-and-exceptions-are-recorded,
   ]
 sourceFiles:
-  [bridge/session/editor-session.ts, eslint.config.js, tests/architecture/layer-boundaries.test.ts]
+  [
+    session/index.ts,
+    session/editor-session/editor-session.ts,
+    eslint.config.js,
+    tests/architecture/layer-boundaries.test.ts,
+  ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-18
 ---
 
 # ADR-0175: A session layer holds application state and logic that needs no React
@@ -24,9 +30,14 @@ Current. The owner chose this structure on 2026-11-14 and approved the architect
 specification (`docs/specs/2026-11-14-architecture-refactor-round.md`) the same day. It supersedes
 the layer list in ADR-0001.
 
-The `session/` directory does not exist yet. It is created in the stage of that round that brings
-its first tenants, and the lint configuration, `ARCHITECTURE.md`, `CLAUDE.md`, and
-`.claude/rules.md` change in the same stage. Until then lint enforces the six layers of ADR-0001.
+The `session/` directory exists. Its first tenants moved from `bridge/`: the editor session, dirty
+tracking, the discard guard, the load helper, and autosave. Lint holds the table of this record and
+the purity rules for `session/`. The files of `bridge/` and `editor/` that still import `storage/`
+for the asset and library names are on the lint exception list, each with issue #717.
+`session/testing` gives store doubles to tests and stories, and lint keeps it out of production
+files. A test that must run layers its own layer may not import lives under `tests/cross-layer/`.
+The document handle, the flows, and the settings service arrive with later pull requests of the
+same stage.
 
 > Amended on 2026-11-15 by section 5.1 of
 > `docs/specs/2026-11-15-session-layer-and-document-identity.md`, which answers the question this

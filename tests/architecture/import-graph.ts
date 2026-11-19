@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join, posix } from 'node:path'
 import ts from 'typescript'
 
-const LAYER_DIRECTORIES = ['app', 'bridge', 'core', 'editor', 'engine', 'storage']
+const LAYER_DIRECTORIES = ['app', 'bridge', 'core', 'editor', 'engine', 'session', 'storage']
 const SOURCE_FILE_PATTERN = /\.tsx?$/
 const RESOLUTION_SUFFIXES = ['', '.ts', '.tsx', '/index.ts']
 const MINIMUM_CYCLE_SIZE = 2
@@ -134,7 +134,68 @@ export function findValueImportCycles(sources: ReadonlyMap<string, string>): str
     .sort((first, second) => first.join().localeCompare(second.join()))
 }
 
-/** Every `.ts` and `.tsx` file under the six layer directories. */
+function statementSpecifier(statement: ts.Statement): string | undefined {
+  const importsOrReexports =
+    ts.isImportDeclaration(statement) ||
+    (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
+  return importsOrReexports ? (statement.moduleSpecifier as ts.StringLiteral).text : undefined
+}
+
+function dynamicImportSpecifier(node: ts.Node): string | undefined {
+  if (!ts.isCallExpression(node) || node.expression.kind !== ts.SyntaxKind.ImportKeyword) {
+    return undefined
+  }
+  const [argument] = node.arguments
+  return argument !== undefined && ts.isStringLiteral(argument) ? argument.text : undefined
+}
+
+function collectDynamicImportSpecifiers(node: ts.Node, found: string[]): string[] {
+  const specifier = dynamicImportSpecifier(node)
+  if (specifier !== undefined) found.push(specifier)
+  ts.forEachChild(node, (child) => void collectDynamicImportSpecifiers(child, found))
+  return found
+}
+
+function anyModuleSpecifiers(path: string, text: string): string[] {
+  const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest)
+  const fromStatements = sourceFile.statements.flatMap((statement) => {
+    const specifier = statementSpecifier(statement)
+    return specifier === undefined ? [] : [specifier]
+  })
+  return [...fromStatements, ...collectDynamicImportSpecifiers(sourceFile, [])]
+}
+
+function reachesLayer(importerPath: string, specifier: string, targetLayer: string): boolean {
+  if (!specifier.startsWith('.')) return false
+  const target = posix.normalize(posix.join(posix.dirname(importerPath), specifier))
+  return target === targetLayer || target.startsWith(`${targetLayer}/`)
+}
+
+/**
+ * Sorted paths of the files in `importerLayers` that import or re-export from a relative path
+ * resolving into `targetLayer`. Type-only and value statements both count, and so does a dynamic
+ * `import('<string literal>')` call anywhere in the file.
+ *
+ * It does not see a type expression such as `import('...').T`, or the path of a `vi.mock('...')`
+ * call. The lint boundary rule does not see those either.
+ */
+export function filesImportingLayer(
+  sources: ReadonlyMap<string, string>,
+  importerLayers: readonly string[],
+  targetLayer: string,
+): string[] {
+  const importers: string[] = []
+  for (const [path, text] of sources) {
+    if (!importerLayers.includes(path.split('/')[0] ?? '')) continue
+    const reaches = anyModuleSpecifiers(path, text).some((specifier) =>
+      reachesLayer(path, specifier, targetLayer),
+    )
+    if (reaches) importers.push(path)
+  }
+  return importers.sort()
+}
+
+/** Every `.ts` and `.tsx` file under the layer directories. */
 export function readLayerSources(repositoryRoot: string): Map<string, string> {
   const sources = new Map<string, string>()
   for (const layer of LAYER_DIRECTORIES) {

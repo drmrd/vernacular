@@ -431,7 +431,7 @@ describe('App unsaved-changes guard', () => {
     // A discard confirmation names the dirty project and offers Cancel. The dialog's
     // open path is synchronous (the menu click resolves confirmDiscard's promise
     // executor, which sets state before any await; see
-    // bridge/session/discard-guard.ts and app/use-discard-confirmation.ts), so there
+    // session/editor-session/discard-guard.ts and app/use-discard-confirmation.ts), so there
     // is no async precondition here to await deterministically instead of polling.
     // This test has been observed to time out on findByRole's default 1000ms budget
     // only under a full-suite run (#472), never in isolation: the signature of the

@@ -28,18 +28,27 @@ describe('runSelectTests', () => {
     expect(d.outputs.paths).toBe('app/ editor/ tests/')
   })
 
+  it('selects the session layer and every layer above it when the session layer changes', async () => {
+    const d = deps(['session/index.ts'])
+    await runSelectTests(['--base', 'origin/main'], d)
+    expect(d.outputs.mode).toBe('some')
+    expect(d.outputs.paths).toBe('app/ bridge/ editor/ engine/ session/ tests/')
+  })
+
   it('selects the tests directory with every layer when core changes', async () => {
     const d = deps(['core/model/types.ts'])
     await runSelectTests(['--base', 'origin/main'], d)
     expect(d.outputs.mode).toBe('some')
-    expect(d.outputs.paths).toBe('app/ bridge/ core/ editor/ engine/ storage/ tests/')
+    expect(d.outputs.paths).toBe('app/ bridge/ core/ editor/ engine/ session/ storage/ tests/')
   })
 
   it('selects scripts, every layer, and tests when the schema scripts change', async () => {
     const d = deps(['scripts/schema/generate-schema.mjs'])
     await runSelectTests(['--base', 'origin/main'], d)
     expect(d.outputs.mode).toBe('some')
-    expect(d.outputs.paths).toBe('app/ bridge/ core/ editor/ engine/ scripts/ storage/ tests/')
+    expect(d.outputs.paths).toBe(
+      'app/ bridge/ core/ editor/ engine/ scripts/ session/ storage/ tests/',
+    )
   })
 
   it('treats a runAll input as a full run', async () => {
@@ -59,7 +68,7 @@ describe('runSelectTests', () => {
   it('expands edge prefixes before the closure (schema reaches core -> all)', async () => {
     const d = deps(['schema/project.schema.json'])
     await runSelectTests(['--base', 'origin/main'], d)
-    expect(d.outputs.paths).toBe('app/ bridge/ core/ editor/ engine/ storage/ tests/')
+    expect(d.outputs.paths).toBe('app/ bridge/ core/ editor/ engine/ session/ storage/ tests/')
   })
 
   it('includes changed non-layer test dirs (scripts, tests)', async () => {

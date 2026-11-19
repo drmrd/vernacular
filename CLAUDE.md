@@ -12,8 +12,9 @@ Vernacular is an open-source floor planner for power users, with first-class sup
 .
 ├── app/              top-level routes, providers, state
 ├── editor/           React UI: shell, tools, panels, gizmos
-├── bridge/           R3F glue and the command-dispatch boundary
+├── bridge/           R3F glue and the React adapters over `session/`
 ├── engine/           Three.js scene mgmt, renderers, loaders
+├── session/          application state and logic. No React. No Three.js.
 ├── storage/          ProjectStore, LibraryStore, AssetCache
 ├── core/             Pure-TS domain. No React. No Three.js.
 ├── docs/
@@ -27,21 +28,22 @@ Vernacular is an open-source floor planner for power users, with first-class sup
     └── commands/     project slash commands
 ```
 
-All six source layers are live: `core/`, `storage/`, `engine/`, `bridge/`, `editor/`, and `app/` each carry substantial production code and tests. `src/` holds the Vite entry points (bootstrap, service worker, test setup). New work lands in the appropriate layer; see `ARCHITECTURE.md` for where things live.
+All seven source layers are live: `core/`, `storage/`, `session/`, `engine/`, `bridge/`, `editor/`, and `app/` each carry substantial production code and tests. `src/` holds the Vite entry points (bootstrap, service worker, test setup). New work lands in the appropriate layer; see `ARCHITECTURE.md` for where things live.
 
 ## Hard invariants
 
 See `.claude/rules.md` for the authoritative list. The non-negotiable highlights:
 
 1. `core/` does not import React or Three.js.
-2. `engine/` is the only Three.js importer.
-3. All mutations flow through `dispatch(command)`.
-4. Asset references are content-addressed.
-5. 30-day dependency cooldown (`.npmrc` `minimum-release-age=43200`); exact version pins, no ranges (`save-exact=true`, committed lockfile).
-6. No `Co-Authored-By` trailers in commit messages.
-7. No em-dashes in newly composed text.
-8. Conventional Commits.
-9. Author identity: `Dan Moore <9156191+drmrd@users.noreply.github.com>`.
+2. `session/` imports no React and no Three.js and uses no DOM global.
+3. `engine/` is the only Three.js importer.
+4. All mutations flow through `dispatch(command)`.
+5. Asset references are content-addressed.
+6. 30-day dependency cooldown (`.npmrc` `minimum-release-age=43200`); exact version pins, no ranges (`save-exact=true`, committed lockfile).
+7. No `Co-Authored-By` trailers in commit messages.
+8. No em-dashes in newly composed text.
+9. Conventional Commits.
+10. Author identity: `Dan Moore <9156191+drmrd@users.noreply.github.com>`.
 
 ## Naming and language policies
 

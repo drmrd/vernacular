@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { describe, it, expect } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { addEnvironmentScene, createEmptyProject, type EnvironmentScene } from '../../core'
-import { createEditorSession } from '../session/editor-session'
+import { createEditorSession } from '../../session'
 import { EditorSessionProvider } from './editor-session-provider'
 import { useProjectEnvironmentScenes } from './use-project-environment-scenes'
 

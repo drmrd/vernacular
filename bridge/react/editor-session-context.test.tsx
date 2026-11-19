@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { EditorSessionProvider } from './editor-session-provider'
 import { useEditorSession } from './editor-session-context'
-import { createEditorSession } from '../session/editor-session'
+import { createEditorSession } from '../../session'
 import { createEmptyProject } from '../../core'
 
 function Probe() {

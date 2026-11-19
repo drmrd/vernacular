@@ -50,7 +50,7 @@ describe('the files under core', () => {
       findJsonImportsWithoutAttribute(path, text).map((specifier) => `  ${path}: ${specifier}`),
     )
 
-    expect([...sources.keys()], 'sources read from the six layers').toContain('core/index.ts')
+    expect([...sources.keys()], 'sources read from the seven layers').toContain('core/index.ts')
     expect(offenders, describeOffenders(offenders)).toEqual([])
   })
 })

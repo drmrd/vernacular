@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { EditorSession } from '../session/editor-session'
+import type { EditorSession } from '../../session'
 import { EditorSessionContext } from './editor-session-context'
 
 export interface EditorSessionProviderProps {

@@ -19,7 +19,7 @@ sourceFiles:
     editor/shell/project-menu.tsx,
     app/use-project-actions.ts,
     app/use-open-file-action.ts,
-    bridge/session/discard-guard.ts,
+    session/editor-session/discard-guard.ts,
     docs/specs/2026-11-14-architecture-refactor-round.md,
   ]
 status: current

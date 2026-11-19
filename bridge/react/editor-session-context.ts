@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { EditorSession } from '../session/editor-session'
+import type { EditorSession } from '../../session'
 
 export const EditorSessionContext = createContext<EditorSession | null>(null)
 

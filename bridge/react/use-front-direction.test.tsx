@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import type { OpeningSceneNode, Point, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
 import { EditorSessionProvider } from './editor-session-provider'
-import type { EditorSession } from '../session/editor-session'
+import type { EditorSession } from '../../session'
 import { useFrontDirection } from './use-front-direction'
 
 afterEach(cleanup)

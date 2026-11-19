@@ -8,11 +8,12 @@ Read it first.
 This file is a tour pointer for contributors who want a quick map of
 the codebase, not the spec itself.
 
-## Six-layer structure
+## Seven-layer structure
 
-The codebase is divided into six layers. Each layer depends only on the
-layers below it. Layer-crossing imports are enforced by ESLint
-boundary rules (ADR-0012, ADR-0017).
+The codebase is divided into seven layers. Each layer depends only on the
+layers below it, and the table after the diagram names the layers that
+each one may import. Layer-crossing imports are enforced by ESLint
+boundary rules (ADR-0012, ADR-0017, ADR-0175).
 
 ```
 +------------------------------------------------------------+
@@ -20,9 +21,13 @@ boundary rules (ADR-0012, ADR-0017).
 +------------------------------------------------------------+
 |  editor/      React UI: shell, tools, panels, gizmos       |
 +------------------------------------------------------------+
-|  bridge/      R3F glue, the command-dispatch boundary      |
+|  bridge/      R3F glue, the command-dispatch boundary,     |
+|               React adapters over session/                 |
 +------------------------------------------------------------+
 |  engine/      Three.js scene management, renderers, loaders|
++------------------------------------------------------------+
+|  session/     Application state and logic. No React.       |
+|               No Three.js.                                 |
 +------------------------------------------------------------+
 |  storage/     Project store, library store, asset cache    |
 +------------------------------------------------------------+
@@ -33,16 +38,37 @@ boundary rules (ADR-0012, ADR-0017).
 +------------------------------------------------------------+
 ```
 
+A layer may import only the layers in its row of this table
+(ADR-0175):
+
+| Layer     | May import                  |
+| --------- | --------------------------- |
+| `core`    | nothing in the repo         |
+| `storage` | `core`                      |
+| `session` | `core`, `storage`           |
+| `engine`  | `core`                      |
+| `bridge`  | `core`, `session`, `engine` |
+| `editor`  | `core`, `session`, `bridge` |
+| `app`     | every layer                 |
+
 Hard invariants:
 
 - `core/` has zero React, zero Three.js, zero DOM imports. Pure TS,
   testable in Node.
 - `engine/` is the only layer that imports Three.js.
+- `session/` imports no React and no Three.js and uses no DOM global.
+  Lint enforces this. The layer holds the editor session, dirty
+  tracking, the discard guard, the load helper, and autosave.
 - `bridge/` is the only place that touches both React state and
   Three.js scene state. All mutations flow through `dispatch(command)`
   at this boundary.
 - `storage/` exposes provider interfaces; multiple implementations
   exist (file system, OPFS, zip bundle, future cloud sync).
+- `bridge/` and `editor/` reach `storage/` only through `session/`. A
+  file that still imports `storage/` is on the lint exception list with
+  issue #717, which moves the asset and library ports behind `session/`.
+  `session/testing` is the entry for store doubles in tests, and lint
+  keeps production files from importing it.
 
 ## Where to find things
 
@@ -70,11 +96,12 @@ See `CLAUDE.md` for the full command list and `.claude/rules.md` for the rubric 
 ## Status
 
 The bootstrap foundation (Phase 0) and the two-dimensional plan editor
-(Phase 1) are complete: all six layers are scaffolded and in active use,
+(Phase 1) are complete: all seven layers are scaffolded and in active use,
 from the pure-TypeScript domain, registries, commands, and scene-graph
 derivation in `core/`, through the durable project stores in `storage/`,
+the editor session (which holds the dispatcher) and autosave in `session/`,
 the Canvas plan renderer and accessible DOM overlay in `editor/`, and the
-command-dispatch boundary in `bridge/`. The `engine/` Three.js layer holds
+React adapters over the session in `bridge/`. The `engine/` Three.js layer holds
 the scene-renderer skeleton. The remaining MVP work proceeds as the parallel
 delivery tracks recorded in ADR-0044 and `docs/delivery-strategy.md`, beginning
 with the three-dimensional preview, the assets and furniture pipeline, and the

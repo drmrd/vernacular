@@ -23,11 +23,11 @@ import {
   type SurfaceRef,
   type WallSceneNode,
 } from '../../core'
-import { ThemeProvider } from '../design-system'
-import { NotificationProvider } from '../design-system/notifications/use-notifications'
-import { ActiveToolProvider } from '../tools/active-tool-provider'
-import { EditLayerProvider } from '../tools/edit-layer-provider'
-import { ShellProviders } from './shell-providers'
+import { ThemeProvider } from '../../editor/design-system'
+import { NotificationProvider } from '../../editor/design-system/notifications/use-notifications'
+import { ActiveToolProvider } from '../../editor/tools/active-tool-provider'
+import { EditLayerProvider } from '../../editor/tools/edit-layer-provider'
+import { ShellProviders } from '../../editor/shell/shell-providers'
 
 afterEach(cleanup)
 

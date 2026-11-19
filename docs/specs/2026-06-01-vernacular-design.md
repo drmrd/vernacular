@@ -26,7 +26,7 @@
 
 ### 2.1 Layered structure
 
-Six top-level layers with hard boundaries; each depends only on layers below it.
+Seven top-level layers with hard boundaries; each depends only on layers below it, and the table after the diagram names the layers each one may import (ADR-0175).
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -34,9 +34,13 @@ Six top-level layers with hard boundaries; each depends only on layers below it.
 ├────────────────────────────────────────────────────────────┤
 │  editor/      React UI: shell, tools, panels, gizmos       │
 ├────────────────────────────────────────────────────────────┤
-│  bridge/      R3F glue, command dispatch boundary          │
+│  bridge/      R3F glue, command dispatch boundary,         │
+│               React adapters over session/                 │
 ├────────────────────────────────────────────────────────────┤
 │  engine/      Three.js scene mgmt, renderers, loaders      │
+├────────────────────────────────────────────────────────────┤
+│  session/     Application state and logic (no React,       │
+│               no Three.js)                                 │
 ├────────────────────────────────────────────────────────────┤
 │  storage/     Project store, library store, asset cache    │
 ├────────────────────────────────────────────────────────────┤
@@ -47,12 +51,24 @@ Six top-level layers with hard boundaries; each depends only on layers below it.
 └────────────────────────────────────────────────────────────┘
 ```
 
+| Layer     | May import                  |
+| --------- | --------------------------- |
+| `core`    | nothing in the repo         |
+| `storage` | `core`                      |
+| `session` | `core`, `storage`           |
+| `engine`  | `core`                      |
+| `bridge`  | `core`, `session`, `engine` |
+| `editor`  | `core`, `session`, `bridge` |
+| `app`     | every layer                 |
+
 **Hard invariants** (enforced by lint + boundaries rules):
 
 - `core/` has zero React, zero Three.js, zero DOM dependencies. Pure TypeScript, testable in Node.
 - `engine/` is the only layer that imports Three.js.
+- `session/` imports no React and no Three.js and uses no DOM global. It holds the editor session, dirty tracking, the discard guard, the load helper, and autosave.
 - `bridge/` is the only place that touches both React state and Three.js scene state. It owns the command dispatch boundary: UI events → commands → `core/` mutations → engine sync.
 - `storage/` is provider-shaped from day one: `ProjectStore`, `LibraryStore`, `AssetCache` interfaces with multiple implementations.
+- `bridge/` and `editor/` reach `storage/` only through `session/`. A file that still imports `storage/` is on the lint exception list with the issue that removes it.
 
 ### 2.2 Extension points (designed in, not added later)
 
@@ -564,7 +580,7 @@ interface CommandHandler<P> {
 - **Per session, not saved.** History lasts for the editing session and is bounded to about 200 commands. It is not written to the project or to autosave snapshots, and the file format carries no history (ADR-0176). Commands and their inverse steps become plain data with the command-layer work of the architecture refactor round, and the diagnostic export in section 7.6 can then read the history.
 - **Atomic on error.** Command throws → inverse is replayed → command rejected with a clear error.
 
-Commands live in `core/commands/handlers/`, grouped by domain. Single dispatcher in `core/commands/dispatch.ts`. The `bridge/` is the only place outside `core/commands/` that calls `dispatch`.
+Commands live in `core/commands/handlers/`, grouped by domain. Single dispatcher in `core/commands/dispatcher.ts`. The editor session in `session/` (`createEditorSession`) is the only place outside `core/commands/` that builds a dispatcher. The rest of the application calls `dispatch` on that session, and `bridge/` gives the session to the React tree (ADR-0175).
 
 The architecture refactor round (`2026-11-14-architecture-refactor-round.md`, section 5.3) changes this section further as its command-layer work lands: a typed command map, data inverses, and change sets (ADR-0176), open transactions for a change in progress (ADR-0177), and domain rules enforced in the handlers (ADR-0179). The interfaces above show the original design.
 
@@ -961,16 +977,18 @@ Configured in `eslint.config.js`. Each rule has one limit, and lint fails above 
 - `@typescript-eslint/naming-convention` strict
 - `no-magic-numbers` with allowlist
 - `no-nested-ternary`, `no-console`
-- `boundaries/dependencies` (eslint-plugin-boundaries): enforces the direction of the six layers
+- `boundaries/dependencies` (eslint-plugin-boundaries): enforces the direction of the seven layers
 - `unused-imports`
 
 Duplicate detection is not an ESLint rule. `pnpm dup` runs `jscpd` and only reports.
 
-Exceptions sit in one list in `eslint.config.js`, the only place in the config where a limit is raised or a rule is turned off for a file. Each entry names a file, a rule, and the issue that removes the entry. For a size rule it also gives the measured limit of that file. A test fails an entry that is no longer needed. An inline disable comment is also allowed, and it needs a reason (ADR-0185).
+Exceptions sit in one list in `eslint.config.js`, the only place in the config where a limit is raised or a rule is turned off for a file. Each entry names a file and the issue that removes the entry. It also names either a rule or one layer that the file may import beyond the list of its own layer (`allowImportOf`). An entry for a size rule also gives the measured limit of that file. A test fails an entry that is no longer needed. An inline disable comment is also allowed, and it needs a reason (ADR-0185).
 
-Lint holds the purity rules of each layer. `core/` imports no React or Three.js package, and its production files use no global that exists only in a browser. `storage/` imports no React or Three.js package. `engine/` imports no React package. Only `engine/` imports `three`, and only `bridge/` imports `@react-three/*`. The engine testing entry (`engine/testing`) is for test files only, and lint fails a production file of `bridge/`, `editor/`, `app/`, or `src/`, or of `engine/` outside `engine/testing/`, that imports it, except that a file of `engine/` named `*-test-support.ts` or `*-test-support.tsx` counts as test support.
+Lint holds the purity rules of each layer. `core/` imports no React or Three.js package, and its production files use no global that exists only in a browser. `storage/` imports no React or Three.js package. `session/` imports no React or Three.js package, and its production files use no global that exists only in a browser. `engine/` imports no React package. Only `engine/` imports `three`, and only `bridge/` imports `@react-three/*`. The engine testing entry (`engine/testing`) is for test files only, and lint fails a production file of `bridge/`, `editor/`, `app/`, or `src/`, or of `engine/` outside `engine/testing/`, that imports it, except that a file of `engine/` named `*-test-support.ts` or `*-test-support.tsx` counts as test support. The session testing entry (`session/testing`) is for test and story files only, and lint fails a production file of `bridge/`, `editor/`, `app/`, or `src/`, or of `session/` outside `session/testing/`, that imports it.
 
-A test under `tests/architecture/` fails a cycle of value imports among the files of the six layers. A cycle of type-only imports is allowed.
+A test under `tests/architecture/` fails a cycle of value imports among the files of the seven layers. A cycle of type-only imports is allowed.
+
+The import table in section 2.1 holds for test files too. A test that must run code from layers its own layer may not import lives under `tests/cross-layer/`, outside the layers.
 
 Pre-commit (incremental) and CI (full).
 

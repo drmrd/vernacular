@@ -6,24 +6,16 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ESLint, type Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
+import { filesImportingLayer, readLayerSources } from './import-graph'
+import {
+  type ImportException,
+  type LintException,
+  type RuleException,
+  lintConfig,
+} from './lint-config-module'
 
-interface LintException {
-  file: string
-  rule: string
-  issue: number
-  max?: number
-}
-
-interface ConfigModule {
-  lintExceptions: LintException[]
-  buildConfig: (exceptions?: LintException[]) => Linter.Config[]
-}
-
-// eslint.config.js is plain JavaScript with no declaration file, so load it by a
-// path held in a variable. The module is typed here, at the one place it is read.
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
-const CONFIG_PATH = '../../eslint.config.js'
-const config = (await import(/* @vite-ignore */ CONFIG_PATH)) as ConfigModule
+const config = lintConfig
 
 const SIZE_RULES = ['max-lines', 'max-lines-per-function', 'max-params', 'max-depth', 'complexity']
 
@@ -32,13 +24,42 @@ const LINT_ALL_FILES_TIMEOUT_MS = 120_000
 const LINT_SAMPLE_TIMEOUT_MS = 30_000
 const RAISED_PARAM_LIMIT = 4
 const ONE_BELOW_CAP = 1
+const STORAGE_LAYER = 'storage'
+const LAYERS_THROUGH_SESSION = ['bridge', 'editor']
+
+function isImportAllowance(entry: LintException): entry is ImportException {
+  return entry.allowImportOf !== undefined
+}
+
+function isRuleException(entry: LintException): entry is RuleException {
+  return !isImportAllowance(entry)
+}
 
 function isSizeRule(rule: string): boolean {
   return SIZE_RULES.includes(rule)
 }
 
+function whatIsListed(entry: LintException): string {
+  return isImportAllowance(entry) ? `allowImportOf ${entry.allowImportOf}` : entry.rule
+}
+
+function entryKey(entry: LintException): string {
+  return `${entry.file} (${whatIsListed(entry)})`
+}
+
 function describeEntry(entry: LintException): string {
-  return `${entry.file} (${entry.rule}, issue #${entry.issue})`
+  return `${entry.file} (${whatIsListed(entry)}, issue #${entry.issue})`
+}
+
+function problemsWithAllowance(entry: ImportException): string[] {
+  const problems: string[] = []
+  if (entry.allowImportOf !== STORAGE_LAYER) {
+    problems.push(`${describeEntry(entry)}: allowImportOf must be '${STORAGE_LAYER}'`)
+  }
+  if (entry.rule !== undefined || entry.max !== undefined) {
+    problems.push(`${describeEntry(entry)}: an allowImportOf entry has no rule and no max`)
+  }
+  return problems
 }
 
 function problemsWithEntry(entry: LintException): string[] {
@@ -49,6 +70,7 @@ function problemsWithEntry(entry: LintException): string[] {
   if (!existsSync(join(repositoryRoot, entry.file))) {
     problems.push(`${describeEntry(entry)}: file does not exist`)
   }
+  if (isImportAllowance(entry)) return [...problems, ...problemsWithAllowance(entry)]
   if (isSizeRule(entry.rule) !== (entry.max !== undefined)) {
     problems.push(`${describeEntry(entry)}: max is required for a size rule and only for one`)
   }
@@ -57,7 +79,7 @@ function problemsWithEntry(entry: LintException): string[] {
 
 /** Lints each distinct listed file once and returns the rule ids reported for it. */
 async function reportedRulesByFile(
-  exceptions: LintException[],
+  exceptions: RuleException[],
   configToLint: Linter.Config[],
 ): Promise<Map<string, Set<string | null>>> {
   const eslint = new ESLint({
@@ -81,8 +103,8 @@ async function reportedRulesByFile(
 function duplicatedPairs(entries: LintException[]): string[] {
   const seen = new Set<string>()
   const duplicated = new Set<string>()
-  for (const { file, rule } of entries) {
-    const pair = `${file} (${rule})`
+  for (const entry of entries) {
+    const pair = entryKey(entry)
     if (seen.has(pair)) duplicated.add(pair)
     seen.add(pair)
   }
@@ -90,9 +112,9 @@ function duplicatedPairs(entries: LintException[]): string[] {
 }
 
 /** Whether the entry's file still reports the entry's rule once the entry's cap is one lower. */
-async function capIsTight(entry: LintException): Promise<boolean> {
+async function capIsTight(entry: RuleException): Promise<boolean> {
   const lowered = config.lintExceptions.map((candidate) =>
-    candidate === entry ? { ...candidate, max: (candidate.max ?? 0) - ONE_BELOW_CAP } : candidate,
+    candidate === entry ? { ...entry, max: (entry.max ?? 0) - ONE_BELOW_CAP } : candidate,
   )
   const reported = await reportedRulesByFile([entry], config.buildConfig(lowered))
   return reported.get(entry.file)?.has(entry.rule) ?? false
@@ -118,7 +140,8 @@ describe('lint exception list', () => {
     'reports nothing for a listed rule in its listed file under the recorded exceptions',
     { timeout: LINT_ALL_FILES_TIMEOUT_MS },
     async () => {
-      const { lintExceptions, buildConfig } = config
+      const { buildConfig } = config
+      const lintExceptions = config.lintExceptions.filter(isRuleException)
       const reported = await reportedRulesByFile(lintExceptions, buildConfig())
       const unmet = lintExceptions.filter((entry) => reported.get(entry.file)?.has(entry.rule))
       expect(unmet.map(describeEntry), 'entries that do not cover their file').toEqual([])
@@ -129,7 +152,8 @@ describe('lint exception list', () => {
     'reports each listed rule in its listed file without the exceptions, so no entry is stale',
     { timeout: LINT_ALL_FILES_TIMEOUT_MS },
     async () => {
-      const { lintExceptions, buildConfig } = config
+      const { buildConfig } = config
+      const lintExceptions = config.lintExceptions.filter(isRuleException)
       const reported = await reportedRulesByFile(lintExceptions, buildConfig([]))
       const stale = lintExceptions.filter((entry) => !reported.get(entry.file)?.has(entry.rule))
       expect(stale.map(describeEntry), 'stale entries: their file now meets the limit').toEqual([])
@@ -140,11 +164,29 @@ describe('lint exception list', () => {
     expect(duplicatedPairs(config.lintExceptions), 'pairs listed more than once').toEqual([])
   })
 
+  it('lists exactly the bridge and editor files that import storage, no more and no fewer', () => {
+    const importers = filesImportingLayer(
+      readLayerSources(repositoryRoot),
+      LAYERS_THROUGH_SESSION,
+      STORAGE_LAYER,
+    )
+    const listed = config.lintExceptions
+      .filter(isImportAllowance)
+      .filter((entry) => entry.allowImportOf === STORAGE_LAYER)
+      .map((entry) => entry.file)
+      .sort()
+    expect(listed, 'allowImportOf storage entries against the files that import storage').toEqual(
+      importers,
+    )
+  })
+
   it(
     'reports the listed rule in its listed file when the cap is one lower, so no cap is loose',
     { timeout: LINT_ALL_FILES_TIMEOUT_MS },
     async () => {
-      const capped = config.lintExceptions.filter((entry) => entry.max !== undefined)
+      const capped = config.lintExceptions
+        .filter(isRuleException)
+        .filter((entry) => entry.max !== undefined)
       const loose: string[] = []
       for (const entry of capped) {
         if (!(await capIsTight(entry))) loose.push(`${describeEntry(entry)}, cap ${entry.max}`)
@@ -154,7 +196,7 @@ describe('lint exception list', () => {
   )
 
   describe('an entry that caps max-params at four for core/sample.ts', () => {
-    const entry: LintException = {
+    const entry: RuleException = {
       file: 'core/sample.ts',
       rule: 'max-params',
       issue: 1,

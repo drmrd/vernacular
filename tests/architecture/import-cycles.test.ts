@@ -1,7 +1,7 @@
 // @vitest-environment node
 // The import graph is read from disk through Node's fs module, which needs the node environment, not the project-wide jsdom.
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { findValueImportCycles, readLayerSources } from './import-graph'
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
@@ -108,11 +108,22 @@ describe('value-import cycle detection', () => {
 })
 
 describe('the repository import graph', () => {
-  it('has no value-import cycle among the files of the six layers', () => {
-    const sources = readLayerSources(repositoryRoot)
+  let sources: Map<string, string>
+
+  beforeAll(() => {
+    sources = readLayerSources(repositoryRoot)
+  })
+
+  it('has no value-import cycle among the files of the seven layers', () => {
     const cycles = findValueImportCycles(sources)
 
-    expect([...sources.keys()], 'sources read from the six layers').toContain('core/index.ts')
+    expect([...sources.keys()], 'sources read from the seven layers').toContain('core/index.ts')
     expect(cycles, describeCycles(cycles)).toEqual([])
+  })
+
+  it('reads the files of the session layer as part of the graph', () => {
+    const paths = [...sources.keys()]
+
+    expect(paths.some((path) => path.startsWith('session/'))).toBe(true)
   })
 })

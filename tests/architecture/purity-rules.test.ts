@@ -25,6 +25,13 @@ async function purityRuleIds(code: string, filePath: string): Promise<(string | 
     .filter((ruleId) => ruleId !== null && purityRules.includes(ruleId))
 }
 
+async function globalRuleMessages(code: string, filePath: string): Promise<string[]> {
+  const [result] = await eslint.lintText(code, { filePath })
+  return (result?.messages ?? [])
+    .filter((message) => message.ruleId === GLOBAL_RULE)
+    .map((message) => message.message)
+}
+
 function importSample(specifier: string, statement?: ImportCase['statement']): string {
   if (statement === 'type-import') {
     return `import type { Imported } from '${specifier}'\nexport type Value = Imported\n`
@@ -46,6 +53,10 @@ const rejectedImports: readonly ImportCase[] = [
   { filePath: 'core/sample.ts', specifier: 'three' },
   { filePath: 'core/sample.ts', specifier: 'three/addons/controls/OrbitControls.js' },
   { filePath: 'core/sample.ts', specifier: '@react-three/drei' },
+  { filePath: 'session/sample.ts', specifier: 'react' },
+  { filePath: 'session/sample.ts', specifier: 'react-dom/client' },
+  { filePath: 'session/sample.ts', specifier: '@react-three/fiber' },
+  { filePath: 'session/sample.ts', specifier: 'three' },
   { filePath: 'storage/sample.ts', specifier: 'react' },
   { filePath: 'storage/sample.ts', specifier: 'react-dom' },
   { filePath: 'storage/sample.ts', specifier: 'three' },
@@ -152,6 +163,60 @@ describe('layer purity: browser globals', () => {
     const ids = await purityRuleIds(globalSample('window'), 'core/sample.test.ts')
     expect(ids).toEqual([])
   })
+
+  it.each(['window', 'document'])(
+    'rejects a session module using the global %s',
+    { timeout: LINT_TIMEOUT_MS },
+    async (name) => {
+      const ids = await purityRuleIds(globalSample(name), 'session/sample.ts')
+      expect(ids).toContain(GLOBAL_RULE)
+    },
+  )
+
+  it('allows a session module using setTimeout', { timeout: LINT_TIMEOUT_MS }, async () => {
+    const code = 'export const value = setTimeout(() => undefined, 0)\n'
+    const ids = await purityRuleIds(code, 'session/sample.ts')
+    expect(ids).toEqual([])
+  })
+
+  it(
+    'allows a session module using crypto.randomUUID()',
+    { timeout: LINT_TIMEOUT_MS },
+    async () => {
+      const ids = await purityRuleIds(
+        'export const value = crypto.randomUUID()\n',
+        'session/sample.ts',
+      )
+      expect(ids).toEqual([])
+    },
+  )
+
+  it(
+    'allows a session test file using the global window',
+    { timeout: LINT_TIMEOUT_MS },
+    async () => {
+      const ids = await purityRuleIds(globalSample('window'), 'session/sample.test.ts')
+      expect(ids).toEqual([])
+    },
+  )
+
+  it(
+    'names the session layer in the message for a session module using window',
+    { timeout: LINT_TIMEOUT_MS },
+    async () => {
+      const messages = await globalRuleMessages(globalSample('window'), 'session/sample.ts')
+      expect(messages.join('\n')).toContain('session/')
+    },
+  )
+
+  it(
+    'names the core layer in the message for a core module using window',
+    { timeout: LINT_TIMEOUT_MS },
+    async () => {
+      const messages = await globalRuleMessages(globalSample('window'), 'core/sample.ts')
+      expect(messages.join('\n')).toContain('core/')
+    },
+  )
 
   it('allows a core module using Math.max', { timeout: LINT_TIMEOUT_MS }, async () => {
     const ids = await purityRuleIds('export const value = Math.max(1, 2)\n', 'core/sample.ts')

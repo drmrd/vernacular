@@ -1,0 +1,171 @@
+// @vitest-environment node
+// ESLint's lintText reads files through Node's fs module, which needs the node environment, not the project-wide jsdom.
+import { fileURLToPath } from 'node:url'
+import { ESLint } from 'eslint'
+import { describe, expect, it } from 'vitest'
+import { lintConfig } from './lint-config-module'
+
+const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
+const config = lintConfig
+
+const LINT_TIMEOUT_MS = 30_000
+const LAYER_RULE = 'boundaries/dependencies'
+const REMOVING_ISSUE = 717
+const SAMPLE_BRIDGE_FILE = 'bridge/sample.ts'
+const SAMPLE_EDITOR_FILE = 'editor/sample.tsx'
+
+const committedConfig = new ESLint()
+const withListedFiles = new ESLint({
+  cwd: repositoryRoot,
+  overrideConfigFile: true,
+  overrideConfig: config.buildConfig([
+    { file: SAMPLE_BRIDGE_FILE, allowImportOf: 'storage', issue: REMOVING_ISSUE },
+    { file: SAMPLE_EDITOR_FILE, allowImportOf: 'storage', issue: REMOVING_ISSUE },
+  ]),
+})
+
+type Statement = 'value import' | 'type import'
+
+function importSample(specifier: string, statement: Statement): string {
+  return statement === 'type import'
+    ? `import type { Imported } from '${specifier}'\nexport type Value = Imported\n`
+    : `import { Imported } from '${specifier}'\nexport const value = Imported\n`
+}
+
+interface SampleImport {
+  filePath: string
+  specifier: string
+  statement: Statement
+}
+
+async function layerRuleReported(eslint: ESLint, sample: SampleImport): Promise<boolean> {
+  const code = importSample(sample.specifier, sample.statement)
+  const [result] = await eslint.lintText(code, { filePath: sample.filePath })
+  return result?.messages.some((message) => message.ruleId === LAYER_RULE) ?? false
+}
+
+const unlistedImporters = [SAMPLE_BRIDGE_FILE, SAMPLE_EDITOR_FILE]
+const statements: Statement[] = ['value import', 'type import']
+const unlistedCases = unlistedImporters.flatMap((filePath) =>
+  statements.map((statement) => ({ filePath, statement })),
+)
+
+function valueImport(filePath: string, specifier: string): SampleImport {
+  return { filePath, specifier, statement: 'value import' }
+}
+
+describe('bridge and editor reach storage only through session', () => {
+  describe('under the committed lint config', () => {
+    it.each(unlistedCases)(
+      'rejects $filePath for a $statement of storage',
+      { timeout: LINT_TIMEOUT_MS },
+      async ({ filePath, statement }) => {
+        const sample = { filePath, specifier: '../storage', statement }
+        expect(await layerRuleReported(committedConfig, sample)).toBe(true)
+      },
+    )
+  })
+
+  describe('under a config that lists bridge/sample.ts and editor/sample.tsx for storage', () => {
+    it.each(statements)(
+      'accepts the listed bridge file for a %s of storage',
+      { timeout: LINT_TIMEOUT_MS },
+      async (statement) => {
+        const sample = { filePath: SAMPLE_BRIDGE_FILE, specifier: '../storage', statement }
+        expect(await layerRuleReported(withListedFiles, sample)).toBe(false)
+      },
+    )
+
+    it(
+      'still accepts the listed bridge file for engine',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport(SAMPLE_BRIDGE_FILE, '../engine')
+        expect(await layerRuleReported(withListedFiles, sample)).toBe(false)
+      },
+    )
+
+    it('still rejects the listed bridge file for app', { timeout: LINT_TIMEOUT_MS }, async () => {
+      const sample = valueImport(SAMPLE_BRIDGE_FILE, '../app')
+      expect(await layerRuleReported(withListedFiles, sample)).toBe(true)
+    })
+
+    it(
+      'still rejects a bridge file that is not listed for storage',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport('bridge/other.ts', '../storage')
+        expect(await layerRuleReported(withListedFiles, sample)).toBe(true)
+      },
+    )
+
+    it(
+      'accepts the listed editor file for a value import of storage',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport(SAMPLE_EDITOR_FILE, '../storage')
+        expect(await layerRuleReported(withListedFiles, sample)).toBe(false)
+      },
+    )
+
+    it.each([
+      ['session', '../session'],
+      ['bridge', '../bridge'],
+    ])(
+      'still accepts the listed editor file for %s',
+      { timeout: LINT_TIMEOUT_MS },
+      async (_layer, specifier) => {
+        const sample = valueImport(SAMPLE_EDITOR_FILE, specifier)
+        expect(await layerRuleReported(withListedFiles, sample)).toBe(false)
+      },
+    )
+
+    it('still rejects the listed editor file for app', { timeout: LINT_TIMEOUT_MS }, async () => {
+      const sample = valueImport(SAMPLE_EDITOR_FILE, '../app')
+      expect(await layerRuleReported(withListedFiles, sample)).toBe(true)
+    })
+  })
+
+  describe('under a config that lists engine/sample.ts for storage', () => {
+    const LISTED_ENGINE_FILE = 'engine/sample.ts'
+    const withListedEngineFile = new ESLint({
+      cwd: repositoryRoot,
+      overrideConfigFile: true,
+      overrideConfig: config.buildConfig([
+        { file: LISTED_ENGINE_FILE, allowImportOf: 'storage', issue: REMOVING_ISSUE },
+      ]),
+    })
+
+    it(
+      'still accepts the listed engine file for core, the layer it may always import',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport(LISTED_ENGINE_FILE, '../core')
+        expect(await layerRuleReported(withListedEngineFile, sample)).toBe(false)
+      },
+    )
+
+    it('accepts the listed engine file for storage', { timeout: LINT_TIMEOUT_MS }, async () => {
+      const sample = valueImport(LISTED_ENGINE_FILE, '../storage')
+      expect(await layerRuleReported(withListedEngineFile, sample)).toBe(false)
+    })
+
+    it(
+      'still rejects the listed engine file for bridge',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport(LISTED_ENGINE_FILE, '../bridge')
+        expect(await layerRuleReported(withListedEngineFile, sample)).toBe(true)
+      },
+    )
+
+    it(
+      'still rejects an engine file that is not listed for storage',
+      { timeout: LINT_TIMEOUT_MS },
+      async () => {
+        const sample = valueImport('engine/other.ts', '../storage')
+        expect(await layerRuleReported(withListedEngineFile, sample)).toBe(true)
+      },
+    )
+  })
+})

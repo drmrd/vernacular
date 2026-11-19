@@ -48,7 +48,7 @@ that scene graph (ADR-0018) and turns it into a Three.js group tree.
 We had to pin actual library versions and decide how the WebGPU build, which is
 shipped as a separate `three/webgpu` entry point and requires an async
 initialization step, threads through the layering without pulling Three.js into
-layers that must not import it (hard invariant 2: `engine/` is the only Three.js
+layers that must not import it (hard invariant 1 of `.claude/rules.md`: `engine/` is the only Three.js
 importer).
 
 ## Decision
@@ -68,7 +68,7 @@ with the project owner before landing.
 
 ### Layering: only `engine/` touches `three`
 
-`engine/` is the sole importer of `three` and `three/webgpu` (hard invariant 2).
+`engine/` is the sole importer of `three` and `three/webgpu` (hard invariant 1 of `.claude/rules.md`).
 It exposes a small, renderer-agnostic surface through `engine/index.ts`:
 
 - `buildScene(graph)` (`engine/scene/build-scene.ts`) turns the pure
@@ -142,7 +142,7 @@ which ADR-0174 changed.) See ADR-0019 for the bridge side of this seam.
 - Design specification, section 6.3 (3D scene renderer) and section 6.1 (scene
   graph). This ADR records the implemented versions and layering; the spec is
   authoritative.
-- ADR-0001 (six-layer architecture; hard invariant 2 makes `engine/` the only
+- ADR-0001 (six-layer architecture; hard invariant 1 of `.claude/rules.md` makes `engine/` the only
   Three.js importer).
 - ADR-0018 (scene-graph derivation, the pure projection this renderer consumes).
 - ADR-0019 (the bridge dispatch boundary and the R3F canvas that drives this

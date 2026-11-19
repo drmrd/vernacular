@@ -14,7 +14,7 @@ sourceFiles:
   [
     docs/specs/2026-06-01-vernacular-design.md,
     bridge/index.ts,
-    bridge/session/editor-session.ts,
+    session/editor-session/editor-session.ts,
     bridge/react/editor-session-context.ts,
     bridge/react/editor-session-provider.tsx,
     bridge/react/scene-canvas.tsx,
@@ -38,7 +38,7 @@ tested, completing the source skeleton on top of `core/`, `storage/`, and
 
 ## Context
 
-Hard invariant 3 (CLAUDE.md, ADR-0001) requires every model mutation to flow
+Hard invariant 3 (`.claude/rules.md`, ADR-0001) requires every model mutation to flow
 through `dispatch(command)`, and the command machinery lives entirely in
 `core/commands/` (ADR-0005). The React side of the application needs a single,
 typed entry point to that machinery so that `editor/` and `app/` can drive the
@@ -53,7 +53,7 @@ renders.
 
 ### The editor session wraps the dispatcher
 
-`createEditorSession(project)` (`bridge/session/editor-session.ts`) is the only
+`createEditorSession(project)` (`session/editor-session/editor-session.ts`) is the only
 place outside `core/commands/` that constructs and drives a `Dispatcher`. It
 builds a `CommandRegistry<Project>`, seeds it with `registerProjectCommands` and
 `registerWallCommands`, constructs the `Dispatcher`, and creates a memoized

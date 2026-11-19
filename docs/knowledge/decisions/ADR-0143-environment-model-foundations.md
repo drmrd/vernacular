@@ -34,7 +34,7 @@ sourceFiles:
     core/migrations/schema/add-environment-scenes.ts,
     core/commands/handlers/environment-scene-commands.ts,
     core/commands/handlers/site-commands.ts,
-    bridge/session/editor-session.ts,
+    session/editor-session/editor-session.ts,
   ]
 status: current
 updated: 2026-07-02

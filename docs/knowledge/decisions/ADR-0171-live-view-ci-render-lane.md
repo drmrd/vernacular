@@ -140,7 +140,7 @@ The rule: a path is on a list when a change to it can alter the result of a heav
 cheaper job proves the change. Selecting too much is accepted. A push to `main` runs every
 suite, so a path left off costs a late failure, not a lost one.
 
-The lists as committed. `E2E_PATHS` is `app/`, `editor/`, `bridge/`, `engine/`, `e2e/`,
+The lists as committed. `E2E_PATHS` is `app/`, `editor/`, `bridge/`, `session/`, `engine/`, `e2e/`,
 `playwright.config.ts`, `vite.config.ts`, `index.html`, `src/`, `public/`, `pnpm-lock.yaml`.
 `VISUAL_PATHS` is `editor/`, `bridge/react/`, `.storybook/`, `playwright.stories.config.ts`,
 `e2e/stories/`, `vite.config.ts`, `vitest.config.ts`, `public/`, `src/setupTests.ts`,

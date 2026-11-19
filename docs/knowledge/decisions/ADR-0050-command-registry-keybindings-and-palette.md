@@ -31,7 +31,7 @@ sourceFiles:
     editor/commands/command-palette.tsx,
     editor/commands/command-context.tsx,
     editor/shell/editor-shell.tsx,
-    bridge/session/editor-session.ts,
+    session/editor-session/editor-session.ts,
     e2e/tests/journeys/undo-redo.spec.ts,
     e2e/tests/journeys/delete-selection.spec.ts,
   ]

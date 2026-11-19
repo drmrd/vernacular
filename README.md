@@ -17,7 +17,7 @@ Edwardian, Craftsman, Mid-Century, and earlier.
 
 ## Documentation map
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md): one-page overview of the six-layer
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): one-page overview of the seven-layer
   codebase and where to find things.
 - [`docs/delivery-strategy.md`](docs/delivery-strategy.md): delivery strategy and
   track model. Live per-item status is on the
