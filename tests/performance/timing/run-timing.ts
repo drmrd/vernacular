@@ -49,7 +49,10 @@ export type HostDescription = Pick<TimingRun, 'commit' | 'uncommittedChanges'> &
 
 /**
  * What the page knows beyond the conditions of the run: clock, renderer, sizes, power. The page
- * describes itself twice, before the first phase and after the last one.
+ * describes itself twice, before the first phase and after the last one. The record takes the
+ * pixel ratio and the three canvas sizes from the end description, because the 3D canvas exists
+ * only after the first view mounted. It takes the clock, the date, the renderer, the adapter, and
+ * the power state from the start description.
  */
 export interface PageDescription extends ObservedConditions {
   /**
@@ -187,6 +190,13 @@ function machineFrom(host: HostDescription, page: PageDescription): TimingRun['m
   }
 }
 
+/**
+ * The record takes the pixel ratio and the three canvas sizes from the end observation, because the
+ * 3D canvas does not exist at the start and the page can only state the sizes it expects there.
+ * The display frame time, the power state, and the focus of the start observation stay, and the
+ * focus is also required at the end. The date, the timer resolution, and the machine facts come
+ * from the start observation (see `recordFrom`).
+ */
 function conditionsFrom(page: PageDescription, atEnd: PageDescription): TimingRun['conditions'] {
   return {
     // True by construction: a run is refused before the record when either observation shows a
@@ -194,11 +204,11 @@ function conditionsFrom(page: PageDescription, atEnd: PageDescription): TimingRu
     visibleThroughout: true,
     focused: page.focused && atEnd.focused,
     power: page.power,
-    devicePixelRatio: page.devicePixelRatio,
+    devicePixelRatio: atEnd.devicePixelRatio,
     displayFrameMs: page.displayFrameMs ?? 0,
-    planCanvasPx: page.planCanvasPx,
-    sceneCanvasCssPx: page.sceneCanvasCssPx,
-    sceneDrawingBufferPx: page.sceneDrawingBufferPx,
+    planCanvasPx: atEnd.planCanvasPx,
+    sceneCanvasCssPx: atEnd.sceneCanvasCssPx,
+    sceneDrawingBufferPx: atEnd.sceneDrawingBufferPx,
   }
 }
 
