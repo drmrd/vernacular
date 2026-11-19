@@ -90,8 +90,8 @@ model's base to the elevation, and rotates to the footprint orientation. It maps
 to world x and plan y to world z with world y up, the same axis convention the massing
 box uses, so a model lands where its box stood. It returns null for geometry that is
 empty or has a zero extent, so a direct caller can fall back. Since #698 the parse
-rejects such a model first, so the live view never reaches that null. `buildFurnitureModelGroup` wraps
-a normalized model as a sub-group that carries the box's scene name and raw entity id but
+rejects such a model first, so the live view never reaches that null.
+`buildFurnitureModelGroup` wraps a normalized model as a sub-group that carries the box's scene name and raw entity id but
 no edge overlay, so it selects in step with the plan and reads as a real mesh rather than
 a massing block. `disposeObject` frees the geometries, materials, and textures of a tree.
 
@@ -131,9 +131,9 @@ end-to-end test can wait on a real swap without racing the network.
 - A placed piece shows its real model in the preview, fit to the footprint and height it
   already drew the box at, so placement, rotation, and elevation resolve before any model
   loads and the model simply replaces the box in place.
-- A load failure is silent by contract: the piece keeps its massing box and a warning lands
-  in the console, with no user-facing error in this slice. A visible failure affordance and
-  a loading affordance are deferred follow-ups.
+- In this slice a load failure kept the massing box and only warned in the console. ADR-0107
+  later gave a failed load its own gray `furnitureFailed` box, and ADR-0109 gave a model that
+  is still loading the amber `furnitureLoading` box.
 - The bridge holds parsed Three.js objects without importing Three.js. The cache is generic
   over the model type, the reconciler types the template from the engine builder's
   signature, and the signal reads only `Object3D` methods, so the engine stays the only

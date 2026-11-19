@@ -27,6 +27,7 @@ sourceFiles:
     engine/scene/furniture-builder.ts,
     engine/scene/floor-subgroups.ts,
     bridge/react/framed-scene-reconciler.ts,
+    bridge/react/floor-build.ts,
     engine/scene/furniture-model.ts,
     engine/scene/furniture-model.test.ts,
     bridge/react/furniture-model-unusable-geometry.test.ts,
@@ -87,10 +88,12 @@ appearance is engine-local because it is not paint.
 **The reconciler maps a load status onto a role.** `buildFurnitureMassing` and
 `buildFurnitureSubgroup` take an optional role, defaulting to `furniture`, so the
 box geometry is built once and the reconciler asks for the failed appearance without
-a duplicate builder. `buildFurnitureGroup` in
-`bridge/react/framed-scene-reconciler.ts` now selects in three steps: a ready model
-builds the mesh, a `failed` entry builds the box with the `furnitureFailed` role, and
-everything else, including `loading` and an absent entry, builds the plain box. This
+a duplicate builder. `buildFurnitureGroup`, first in
+`bridge/react/framed-scene-reconciler.ts` and now in `bridge/react/floor-build.ts`,
+selected in three steps: a ready model builds the mesh, a `failed` entry builds the box
+with the `furnitureFailed` role, and everything else, including `loading` and an absent
+entry, builds the plain box. ADR-0109 later gave a `loading` entry its own
+`furnitureLoading` box. This
 establishes the convention that the reconciler maps a model-cache load status onto a
 furniture surface role, and that the appearance for each state has one home in
 `roleMaterialParameters`.
@@ -140,7 +143,7 @@ spec-change ADR companion.
 
 A furniture model can parse and still have nothing to fit. Its scene may hold only
 empty nodes, lights, or cameras, or the model may be flat along one axis. Until #698
-the cache marked such a model `ready`. The build then fit it into an empty group, so
+the cache marked such a model `ready`. The build then returned an empty group, so
 the placed piece showed nothing in the 3D view, not even a box, and a click there
 selected nothing.
 
@@ -161,8 +164,10 @@ and the reuse key and the build could then drift apart. With the check at the pa
 a `failed` entry maps to `failedBox` as before, and neither the reuse key nor the
 cache changed.
 
-A flat model, for example a rug or a picture drawn as one plane, also gets the failed
-box for now. Drawing a flat model as a flat piece would be a separate decision.
+A model whose bounding box is exactly flat on one axis, for example a rug or a picture
+drawn as one plane, also gets the failed box for now. A plane under a rotated node can
+measure a tiny thickness from rounding, and it then loads as a flat mesh. Drawing a flat
+model as a flat piece would be a separate decision.
 
 `normalizeModelIntoBox` keeps its `null` result for a direct caller. The live view no
 longer reaches it, because the parse rejects the model first.
@@ -178,7 +183,10 @@ These tests hold the rule:
   under `normalizeModelIntoBox`, "returns null when the model has no geometry".
 - `bridge/react/furniture-model-unusable-geometry.test.ts`: "a placed piece whose model
   has no usable geometry shows the failed box for %s", run once for a scene with only
-  empty nodes and once for a model that is flat along one axis.
+  empty nodes and once for a model that is flat along one axis. Each run also checks that
+  the warning carries `UnusableFurnitureModelError`. A third test, "still builds the
+  mesh, not the failed box, for a model with usable geometry", holds that a sound model
+  is not rejected.
 
 ## References
 
