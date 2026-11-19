@@ -77,7 +77,7 @@ describe('a frame with GPU work of several earlier frames pending', () => {
 })
 
 describe('a frame callback that throws', () => {
-  it('lets the other callbacks of the host frame run, reaches the host, and keeps a sample', () => {
+  it('lets the other callbacks of the host frame run, reaches the host, and keeps one sample for the frame', () => {
     const { fake, probe, requestFrame } = installed()
     const ran: string[] = []
     requestFrame(() => ran.push('first'))
@@ -90,7 +90,7 @@ describe('a frame callback that throws', () => {
     expect(() => fake.runFrame()).toThrow('page error')
 
     expect(ran).toEqual(['first', 'thrower', 'third'])
-    expect(probe.takeFrames()).toHaveLength(3)
+    expect(probe.takeFrames()).toHaveLength(1)
   })
 
   it('leaves the next host frame serving a callback that is requested afterwards', () => {

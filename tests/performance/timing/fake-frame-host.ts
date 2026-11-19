@@ -10,6 +10,15 @@ interface FakeQueue {
 export const SUBMIT_RESULT = 'submitted'
 const SETTLE_ROUNDS = 8
 
+/** Runs a frame callback like a browser: an error is collected, not allowed to stop the frame. */
+function runAndCollect(callback: FrameRequestCallback, frameTimeMs: number, errors: unknown[]) {
+  try {
+    callback(frameTimeMs)
+  } catch (error) {
+    errors.push(error)
+  }
+}
+
 /** The frame queue of a page: frames run only when `runFrame` says so. */
 function createFrameQueue() {
   let nextId = 1
@@ -30,18 +39,19 @@ function createFrameQueue() {
   /**
    * Runs the callbacks that wait now; those they request wait for the next frame. A callback that
    * throws does not stop the others, as in a browser; the first error is rethrown after the frame.
+   * `betweenCallbacks` runs after one host callback and before the next one of the same frame:
+   * time that the page spends between its callbacks, which a test can use to move the clock.
    */
-  const runFrame = (frameTimeMs = 0) => {
+  const runFrame = (frameTimeMs = 0, betweenCallbacks?: () => void) => {
     running = waiting
     waiting = []
     const errors: unknown[] = []
+    let ranAny = false
     for (const entry of running) {
       if (entry.cancelled) continue
-      try {
-        entry.callback(frameTimeMs)
-      } catch (error) {
-        errors.push(error)
-      }
+      if (ranAny) betweenCallbacks?.()
+      ranAny = true
+      runAndCollect(entry.callback, frameTimeMs, errors)
     }
     running = []
     if (errors.length > 0) throw errors[0]
