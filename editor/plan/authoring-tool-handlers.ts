@@ -11,7 +11,7 @@ import type { LibraryItem } from '../../storage'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
-import { placementRefusalMessage, type PlacementRefusal } from './overlay-announce'
+import type { PlacementRefusal } from './overlay-announce'
 import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
 import { selectPlacedEntity, selectPlacedOpening } from './select-placed-entity'
 import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
@@ -211,8 +211,9 @@ export function handleDimensionKey(ctx: DimensionKeyContext): void {
 // nothing. A hit that would overlap an opening already in the wall is refused with
 // the same reason the pointer path gives. Every outcome also goes to the placement
 // notice (a refusal reason, or null when the opening lands), so a keyboard refusal
-// shows on the canvas as a pointer refusal does. Both refusals announce the same
-// sentence the placement notice shows.
+// shows on the canvas as a pointer refusal does. A refusal clears the authoring
+// announcement, so the live region speaks the refusal through its own entry and
+// stops when the notice retires.
 function dropOpening(ctx: OpeningKeyContext): void {
   if (ctx.graph === undefined || ctx.placementType === undefined) {
     return
@@ -221,7 +222,7 @@ function dropOpening(ctx: OpeningKeyContext): void {
   const target = placeOpeningTarget(ctx.graph, ctx.candidate, DEFAULT_HIT_TOLERANCE_MM)
   if (target === null) {
     ctx.setPlacementRefusal('no-host-wall')
-    ctx.setAnnouncement(placementRefusalMessage('no-host-wall'))
+    ctx.setAnnouncement('')
     return
   }
   const opening = createOpening({
@@ -231,7 +232,7 @@ function dropOpening(ctx: OpeningKeyContext): void {
   })
   if (placementWouldOverlap(ctx.session.getProject(), target.floorId, opening)) {
     ctx.setPlacementRefusal('opening-overlap')
-    ctx.setAnnouncement(placementRefusalMessage('opening-overlap'))
+    ctx.setAnnouncement('')
     return
   }
   ctx.setPlacementRefusal(null)
