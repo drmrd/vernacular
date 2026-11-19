@@ -1,14 +1,24 @@
 import { vi, expect } from 'vitest'
 import { act, render, screen, waitFor, within, type RenderResult } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, type Project } from '../core'
+import {
+  CURRENT_SCHEMA_VERSION,
+  createEmptyProject,
+  createFloor,
+  createWall,
+  type Project,
+} from '../core'
+import { NotificationProvider, type NotificationApi } from '../editor/design-system'
+import type { DocumentHandle } from '../session'
 import {
   InMemoryActiveProjectIdStore,
   InMemoryAssetCache,
+  InMemoryRecentProjectStore,
   type ActiveProjectIdStore,
   type DirectoryPort,
   type DocumentStore,
   type SaveReport,
+  type StorageCapabilities,
 } from '../storage'
 import {
   DOCUMENT_FILE,
@@ -18,8 +28,15 @@ import {
   workspaceRequest,
   type TestPorts,
 } from '../session/handle/handle-test-kit'
-import { App, type AppProps, type BuiltSessionPorts } from './app'
+import {
+  App,
+  EditorWorkspace,
+  type AppProps,
+  type BuiltSessionPorts,
+  type EditorWorkspaceProps,
+} from './app'
 import { openFailureReason } from './open-failure-text'
+import type { RunFlow } from './use-open-project'
 
 export { lockCalls } from './use-open-project-test-kit'
 
@@ -59,6 +76,39 @@ export function namedProject(name: string): Project {
     appVersion: '0.0.0-test',
   })
   return { ...base, floors: [createFloor('Ground')] }
+}
+
+/** A project named `name` whose ground floor holds `wallCount` walls in a row. */
+export function projectWithWalls(name: string, wallCount: number): Project {
+  const walls = Array.from({ length: wallCount }, (_unused, index) =>
+    createWall({ x: index, y: 0 }, { x: index + 1, y: 0 }),
+  )
+  return { ...namedProject(name), floors: [createFloor('Ground', { walls })] }
+}
+
+/** The storage of a browser that offers everything but folder access. */
+export function capableCapabilities(): StorageCapabilities {
+  return {
+    opfs: true,
+    indexedDb: true,
+    fileSystemAccess: false,
+    persisted: true,
+    estimatedQuotaBytes: null,
+  }
+}
+
+/** A notification API whose every method is a spy. */
+export function fakeNotifications(): NotificationApi {
+  return {
+    notifications: [],
+    success: vi.fn(() => 'id'),
+    info: vi.fn(() => 'id'),
+    warning: vi.fn(() => 'id'),
+    error: vi.fn(() => 'id'),
+    banner: vi.fn(() => 'id'),
+    promise: vi.fn((task) => task),
+    dismiss: vi.fn(),
+  }
 }
 
 /** A project written by a newer build: it lists by id, but this build cannot open it. */
@@ -106,6 +156,36 @@ export function builtPorts(ports: TestPorts): BuiltSessionPorts {
 /** Renders the application on injected ports. */
 export function renderApp(ports: TestPorts, props: Omit<AppProps, 'ports'> = {}): RenderResult {
   return render(<App ports={ports} {...props} />)
+}
+
+/** The `runFlow` of an owner that is busy: it calls nothing and resolves undefined. */
+export const runNothing: RunFlow = () => Promise.resolve(undefined)
+
+/** The properties of the workspace around `handle`, with no owner behind it unless one is given. */
+export function workspaceProps(
+  handle: DocumentHandle,
+  overrides: Partial<EditorWorkspaceProps> = {},
+): EditorWorkspaceProps {
+  return {
+    handle,
+    runFlow: runNothing,
+    libraryAssets: new InMemoryAssetCache(),
+    recentProjects: new InMemoryRecentProjectStore(),
+    capabilities: capableCapabilities(),
+    ...overrides,
+  }
+}
+
+/** Renders the workspace of the editor around an open handle, inside the notifications. */
+export function renderWorkspace(
+  handle: DocumentHandle,
+  props: Partial<EditorWorkspaceProps> = {},
+): RenderResult {
+  return render(
+    <NotificationProvider>
+      <EditorWorkspace {...workspaceProps(handle, props)} />
+    </NotificationProvider>,
+  )
 }
 
 /** The sentence of the failure view when the start cannot open the project under `id`. */
