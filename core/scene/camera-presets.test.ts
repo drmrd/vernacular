@@ -135,50 +135,31 @@ describe('cameraPresetPose elevations', () => {
   }
 })
 
+const GROUND_FLOOR_ELEVATION_MM = 0
+const UPPER_FLOOR_ELEVATION_MM = 3000
+const STOREY_HEIGHT_MM = 3000
+
+function makeDoor(normal: { x: number; y: number }): OpeningSceneNode {
+  return {
+    id: 'door-north',
+    kind: 'opening',
+    floorId: 'floor-1',
+    type: 'door',
+    center: { x: 2000, y: 0 },
+    along: { x: 1, y: 0 },
+    normal,
+    width: 900,
+    height: 2032,
+    sillHeight: 0,
+    hostThickness: 150,
+    orientation: { hinge: 'start', facing: 'positive' },
+  }
+}
+
 describe('doorwayPose', () => {
   const HORIZONTAL_TOLERANCE = 1e-6
-  const GROUND_FLOOR_ELEVATION_MM = 0
-  const UPPER_FLOOR_ELEVATION_MM = 3000
   const BASEMENT_FLOOR_ELEVATION_MM = -3000
-  const STOREY_HEIGHT_MM = 3000
   const DOOR_EYE_HEIGHT_MM = 1016
-
-  function makeDoor(normal: { x: number; y: number }): OpeningSceneNode {
-    return {
-      id: 'door-north',
-      kind: 'opening',
-      floorId: 'floor-1',
-      type: 'door',
-      center: { x: 2000, y: 0 },
-      along: { x: 1, y: 0 },
-      normal,
-      width: 900,
-      height: 2032,
-      sillHeight: 0,
-      hostThickness: 150,
-      orientation: { hinge: 'start', facing: 'positive' },
-    }
-  }
-
-  function lookVector(pose: CameraPose) {
-    return {
-      x: pose.target.x - pose.position.x,
-      y: pose.target.y - pose.position.y,
-      z: pose.target.z - pose.position.z,
-    }
-  }
-
-  function towardCenter(pose: CameraPose) {
-    return {
-      x: CENTER.x - pose.position.x,
-      y: CENTER.y - pose.position.y,
-      z: CENTER.z - pose.position.z,
-    }
-  }
-
-  function dot(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) {
-    return a.x * b.x + a.y * b.y + a.z * b.z
-  }
 
   const outwardDoor = makeDoor({ x: 0, y: -1 })
   const eye = outwardDoor.sillHeight + outwardDoor.height / 2
@@ -192,17 +173,6 @@ describe('doorwayPose', () => {
   it('looks horizontally so the eye holds its height across the opening', () => {
     const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
     expect(Math.abs(pose.target.y - pose.position.y)).toBeLessThan(HORIZONTAL_TOLERANCE)
-  })
-
-  it('looks toward the interior even when the raw normal points away from it', () => {
-    const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
-    expect(dot(lookVector(pose), towardCenter(pose))).toBeGreaterThan(0)
-  })
-
-  it('looks toward the interior when the raw normal already points toward it', () => {
-    const inwardDoor = makeDoor({ x: 0, y: 1 })
-    const pose = doorwayPose(inwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
-    expect(dot(lookVector(pose), towardCenter(pose))).toBeGreaterThan(0)
   })
 
   it('keeps the up vector pointing toward world +Y', () => {
@@ -256,5 +226,91 @@ describe('doorwayPose', () => {
     const expectedEyeY = BASEMENT_FLOOR_ELEVATION_MM + DOOR_EYE_HEIGHT_MM
     expect(pose.position).toEqual({ x: 2000, y: expectedEyeY, z: 0 })
     expect(pose.target.y).toBe(expectedEyeY)
+  })
+})
+
+describe('doorwayPose: the look side', () => {
+  const LOOK_DIGITS = 9
+
+  function expectLook(pose: CameraPose, expected: { x: number; z: number }): void {
+    expect(pose.target.x - pose.position.x).toBeCloseTo(expected.x, LOOK_DIGITS)
+    expect(pose.target.y - pose.position.y).toBeCloseTo(0, LOOK_DIGITS)
+    expect(pose.target.z - pose.position.z).toBeCloseTo(expected.z, LOOK_DIGITS)
+  }
+
+  const upperRoomDoor: OpeningSceneNode = {
+    ...makeDoor({ x: 1, y: 0 }),
+    center: { x: 8000, y: 1500 },
+    along: { x: 0, y: -1 },
+    roomSide: 'positive',
+    orientation: { hinge: 'start', facing: 'negative' },
+  }
+  const wholeBuildingBounds: Bounds3 = {
+    min: { x: 0, y: 0, z: -STOREY_HEIGHT_MM },
+    max: { x: 10000, y: 5438, z: 0 },
+  }
+  const upperFloorBounds: Bounds3 = {
+    min: { x: 8000, y: UPPER_FLOOR_ELEVATION_MM, z: -STOREY_HEIGHT_MM },
+    max: { x: 10000, y: 5438, z: 0 },
+  }
+
+  it("looks into the room on the door's room side in the whole-building view, where the centre of the shown bounds lies outside that room", () => {
+    const pose = doorwayPose(upperRoomDoor, wholeBuildingBounds, UPPER_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: 1, z: 0 })
+  })
+
+  it('looks plan north, world -Z, when the room side is the side opposite a normal that points plan south', () => {
+    const door: OpeningSceneNode = { ...makeDoor({ x: 0, y: -1 }), roomSide: 'negative' }
+    const pose = doorwayPose(door, houseBounds, GROUND_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: 0, z: -1 })
+  })
+
+  it('looks straight through a door in a wall at 45 degrees to the plan axes', () => {
+    const door: OpeningSceneNode = {
+      ...makeDoor({ x: Math.SQRT1_2, y: -Math.SQRT1_2 }),
+      center: { x: 500, y: 2500 },
+      along: { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
+      roomSide: 'positive',
+    }
+    const bounds: Bounds3 = {
+      min: { x: 0, y: 0, z: -STOREY_HEIGHT_MM },
+      max: { x: 4000, y: 2438, z: 0 },
+    }
+    const pose = doorwayPose(door, bounds, GROUND_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: Math.SQRT1_2, z: Math.SQRT1_2 })
+  })
+
+  it('gives the door of an upper room the same look in the floor view and in the whole-building view', () => {
+    const floorView = doorwayPose(upperRoomDoor, upperFloorBounds, UPPER_FLOOR_ELEVATION_MM)
+    const wholeBuilding = doorwayPose(upperRoomDoor, wholeBuildingBounds, UPPER_FLOOR_ELEVATION_MM)
+    expectLook(wholeBuilding, {
+      x: floorView.target.x - floorView.position.x,
+      z: floorView.target.z - floorView.position.z,
+    })
+  })
+
+  const interiorDoor = (facing: 'positive' | 'negative'): OpeningSceneNode => ({
+    ...makeDoor({ x: -1, y: 0 }),
+    center: { x: 4000, y: 1500 },
+    along: { x: 0, y: 1 },
+    orientation: { hinge: 'start', facing },
+  })
+
+  it('looks toward the side its leaf opens to when the door has no room side, whatever the centre of the shown bounds', () => {
+    const bounds: Bounds3 = {
+      min: { x: 0, y: 0, z: -STOREY_HEIGHT_MM },
+      max: { x: 10000, y: 2438, z: 0 },
+    }
+    const pose = doorwayPose(interiorDoor('positive'), bounds, GROUND_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: -1, z: 0 })
+  })
+
+  it('looks against the normal when the door has no room side and its leaf opens to the negative side', () => {
+    const bounds: Bounds3 = {
+      min: { x: 0, y: 0, z: -STOREY_HEIGHT_MM },
+      max: { x: 6000, y: 2438, z: 0 },
+    }
+    const pose = doorwayPose(interiorDoor('negative'), bounds, GROUND_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: 1, z: 0 })
   })
 })

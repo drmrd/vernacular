@@ -15,6 +15,9 @@ sourceFiles:
     docs/specs/2026-06-14-three-dimensional-camera-presets.md,
     docs/plans/2026-06-14-three-dimensional-camera-presets.md,
     core/scene/camera-presets.ts,
+    core/scene/camera-presets.test.ts,
+    core/scene/opening-room-side.ts,
+    core/scene/opening-fill.ts,
     bridge/react/use-scene-navigation.ts,
     bridge/react/use-doorway-target.ts,
     bridge/react/scene-camera-effects.tsx,
@@ -160,3 +163,31 @@ that is not the active one. Issue #922 tracked the floor elevation.
 Two new tests in `e2e/tests/scene-camera-presets.spec.ts` compare the doorway view of an
 upper floor and of a basement with the view of the same room and door on the ground
 floor.
+
+## Update (2026-11-19): the doorway view looks into the room its door serves
+
+The doorway view took its look direction from the centre of the shown bounds. In the
+whole-building view those bounds span every shown floor, so the door of an upper room at
+one end of a long building looked out of its room. The floor view had the same fault
+when the floor's centre lay on the outer side of the door's wall, as with a detached
+outbuilding or the inner corner of an L-shaped plan. The pose also turned the wall
+normal into a world direction without the flip of plan north, so on a wall at an angle
+to the plan axes the camera looked askew: turned away from the door by twice the wall's
+angle, and along the wall itself at 45 degrees.
+
+The look side comes from the door alone. A door with a room side looks toward that side,
+whatever its leaf does. A door without one, such as a door between two rooms, looks
+toward the side that its leaf opens to, so Flip swing turns the view around. A hung
+window places its lower sash by the same rule. The bounds still set the near and far
+planes and the fallback to the default pose. Issue #925 tracked the change.
+
+For a door between two rooms this changes the earlier behavior: the view went into the
+room that held the centre of the bounds, and the leaf had no effect. That such a door
+follows its leaf is a working assumption. The project owner has not decided it.
+
+Unit tests in `core/scene/camera-presets.test.ts` hold both rules, the angled wall, and
+that the floor view and the whole-building view agree. Three tests in
+`e2e/tests/scene-camera-presets.spec.ts` hold on a live view that the floor view and the
+whole-building view agree, that drawing an outbuilding on the same floor leaves the view
+of a house door unchanged, and that Flip swing turns the view of a door between two
+rooms.

@@ -55,25 +55,21 @@ export function cameraPresetPose(
   }
 }
 
-/** A unit world-horizontal direction flipped to point from `position` toward the
- *  interior `center`. */
-function towardInterior(
-  unit: { x: number; z: number },
-  position: Vector3,
-  center: Vector3,
-): { x: number; z: number } {
-  const towardCenter = unit.x * (center.x - position.x) + unit.z * (center.z - position.z)
-  const sign = towardCenter < 0 ? -1 : 1
-  return { x: unit.x * sign, z: unit.z * sign }
+/** +1 when the opening serves the positive side of the wall's left-hand normal, else -1:
+ *  its room side, or the side its leaf opens to when it has no room side. */
+function servedSideSign(opening: OpeningSceneNode): number {
+  return (opening.roomSide ?? opening.orientation.facing) === 'positive' ? 1 : -1
 }
 
 /**
  * Derives the camera pose for standing in `opening` and looking into the model.
  * The camera sits at the opening center, at the opening's vertical middle above its
- * own floor, and looks horizontally along the wall normal toward the bounds interior.
+ * own floor, and looks horizontally along the wall normal into the room the opening
+ * serves: toward its room side, or toward the side its leaf opens to when it has none.
  * `floorElevationMm` is the world elevation of that floor (the opening's heights are
- * measured on it). An empty (null) or zero-size scene, or an opening with a
- * zero-length wall normal, returns the fixed default pose.
+ * measured on it). The bounds give only the depth range and the fallback: an empty
+ * (null) or zero-size scene, or an opening with a zero-length wall normal, returns
+ * the fixed default pose.
  */
 export function doorwayPose(
   opening: OpeningSceneNode,
@@ -81,14 +77,14 @@ export function doorwayPose(
   floorElevationMm: number,
 ): CameraPose {
   if (bounds === null) return DEFAULT_CAMERA_POSE
-  const { center, diagonal } = centerAndDiagonal(bounds)
+  const { diagonal } = centerAndDiagonal(bounds)
   if (diagonal === 0) return DEFAULT_CAMERA_POSE
   const length = Math.hypot(opening.normal.x, opening.normal.y)
   if (length === 0) return DEFAULT_CAMERA_POSE
   const eye = floorElevationMm + opening.sillHeight + opening.height / 2
   const position = planToWorld(opening.center, eye)
-  const unit = { x: opening.normal.x / length, z: opening.normal.y / length }
-  const inward = towardInterior(unit, position, center)
+  const scale = servedSideSign(opening) / length
+  const inward = planToWorld({ x: opening.normal.x * scale, y: opening.normal.y * scale }, 0)
   return {
     position,
     target: { x: position.x + inward.x, y: position.y, z: position.z + inward.z },
