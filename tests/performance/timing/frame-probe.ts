@@ -48,6 +48,14 @@ export interface FrameProbe {
    * the page is held until that work is done, so each timed frame starts with an idle GPU.
    */
   setPaced(paced: boolean): void
+  /**
+   * Turns the hold on or off. While held, a host frame runs no callback of the page and records no
+   * sample; the callbacks stay queued in request order, and a callback requested during the hold
+   * waits too. After `setHeld(false)` they run on the next host frame. The hold combines with paced
+   * mode: a callback runs only when neither holds it. `setHeld(false)` without a hold, and a second
+   * `setHeld(true)`, change nothing.
+   */
+  setHeld(held: boolean): void
   /** Returns the complete samples since the last call and clears them. */
   takeFrames(): FrameSample[]
   /**
@@ -64,6 +72,8 @@ export interface FrameProbe {
 
 interface ProbeState {
   paced: boolean
+  /** True while the page holds all its callbacks, whatever the GPU is doing. */
+  held: boolean
   /** The samples whose done promise is still pending; paced mode holds while this is above zero. */
   pendingGpuWorkCount: number
   /** The host frame whose callbacks are running now, or null between host frames. */
@@ -122,8 +132,14 @@ function endFrame(state: ProbeState, host: FrameProbeHost, frame: RunningFrame):
   watchQueueWait(state, frame, host.now)
 }
 
-/** True while paced mode holds the callbacks: watched GPU work is pending, or this frame submitted. */
+/**
+ * True while the callbacks are held: by the page's own hold, or in paced mode while watched GPU work
+ * is pending or this frame submitted.
+ */
 function isHeld(state: ProbeState): boolean {
+  if (state.held) {
+    return true
+  }
   if (!state.paced) {
     return false
   }
@@ -230,6 +246,19 @@ function createSubmitWrapper(
   }
 }
 
+function createProbeState(): ProbeState {
+  return {
+    paced: false,
+    held: false,
+    pendingGpuWorkCount: 0,
+    running: null,
+    complete: [],
+    waiting: new Map(),
+    nextId: 0,
+    hostRequestId: null,
+  }
+}
+
 /**
  * Wraps `target.requestAnimationFrame` and `target.cancelAnimationFrame` and the `submit` of the
  * queue prototype of the host, and records one {@link FrameSample} for each host frame in which at
@@ -263,20 +292,16 @@ function createSubmitWrapper(
  * mode, and hands every held callback to the host's original request function, so it runs on the
  * next host frame whether the GPU work has finished or not. After `uninstall`, a sample that was
  * still waiting for its done promise is completed and stays available to `takeFrames`.
+ *
+ * `setHeld(true)` holds every callback of the page, in paced mode and out of it, until
+ * `setHeld(false)`: a host frame under the hold runs nothing and records no sample, and the probe
+ * keeps its one host request so frames keep coming. `uninstall` ends the hold.
  */
 export function installFrameProbe(
   host: FrameProbeHost,
   target: { requestAnimationFrame: unknown; cancelAnimationFrame: unknown },
 ): FrameProbe {
-  const state: ProbeState = {
-    paced: false,
-    pendingGpuWorkCount: 0,
-    running: null,
-    complete: [],
-    waiting: new Map(),
-    nextId: 0,
-    hostRequestId: null,
-  }
+  const state = createProbeState()
   const originalRequest = target.requestAnimationFrame
   const originalCancel = target.cancelAnimationFrame
   const originalSubmit = host.queuePrototype?.submit
@@ -289,6 +314,9 @@ export function installFrameProbe(
     setPaced: (paced) => {
       state.paced = paced
     },
+    setHeld: (held) => {
+      state.held = held
+    },
     takeFrames: () => state.complete.splice(0),
     uninstall: () => {
       target.requestAnimationFrame = originalRequest
@@ -297,6 +325,7 @@ export function installFrameProbe(
         host.queuePrototype.submit = originalSubmit
       }
       state.paced = false
+      state.held = false
       releaseWaitingCallbacks(state, host)
     },
   }

@@ -69,3 +69,31 @@ export function classifyPageMessages(messages) {
     knownCount: rest.filter(isKnown).length,
   }
 }
+
+// The most unexpected console messages printed below the report; the rest are counted.
+const CONSOLE_LINE_LIMIT = 10
+
+/**
+ * Applies the page's console to the outcome: a known failure message refuses the run, and every
+ * other message is returned as the lines of the report's "Console" part. Without a refusal the
+ * outcome returned is the one given; with one, the refusals come first and then the reasons of an
+ * outcome that was already refused.
+ * @template {{ kind: 'measured' } | { kind: 'refused', reasons: string[] }} Outcome
+ * @param {Outcome} outcome
+ * @param {PageMessage[]} messages
+ * @returns {{ outcome: Outcome | { kind: 'refused', reasons: string[] }, consoleLines: string[] }}
+ */
+export function judgeConsole(outcome, messages) {
+  const { refusals, unexpected, knownCount } = classifyPageMessages(messages)
+  const shown = unexpected.slice(0, CONSOLE_LINE_LIMIT).map((m) => `  ${m.type}: ${m.text}`)
+  const more = unexpected.length - shown.length
+  const consoleLines = [
+    'Console',
+    `  ${knownCount} known harmless messages; ${unexpected.length} unexpected`,
+    ...shown,
+    ...(more > 0 ? [`  and ${more} more unexpected messages`] : []),
+  ]
+  if (refusals.length === 0) return { outcome, consoleLines }
+  const earlier = outcome.kind === 'refused' ? outcome.reasons : []
+  return { outcome: { kind: 'refused', reasons: [...refusals, ...earlier] }, consoleLines }
+}

@@ -15,7 +15,7 @@ import { build, preview } from 'vite'
 import { baselineWriteRefusals } from '../../tests/performance/timing/run-conditions.ts'
 import { parseTimingRun, serializeTimingRun } from '../../tests/performance/timing/timing-record.ts'
 import { parseTimingArguments } from './timing-arguments.mjs'
-import { classifyPageMessages } from './timing-console.mjs'
+import { judgeConsole } from './timing-console.mjs'
 import { timingLaunchArgs } from './timing-launch.mjs'
 
 /** @typedef {import('./timing-arguments.mjs').TimingOptions} TimingOptions */
@@ -47,8 +47,6 @@ const RUN_LIMIT_MS = 30 * MILLISECONDS_PER_MINUTE
 const BROWSER_CLOSE_LIMIT_MS = 10_000
 // The pause before the process ends by itself, so the last output lines are flushed first.
 const EXIT_DELAY_MS = 200
-// The most unexpected console messages printed below the report; the rest are counted.
-const CONSOLE_LINE_LIMIT = 10
 const CROSS_ORIGIN_ISOLATION_HEADERS = {
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'require-corp',
@@ -229,28 +227,6 @@ export async function runTimingPage(page, input, limitMs = RUN_LIMIT_MS) {
   } finally {
     clearTimeout(timer)
   }
-}
-
-/**
- * Applies the page's console to the outcome: a known failure message refuses the run, and every
- * other message is returned as the lines of the report's "Console" part.
- * @param {TimingOutcome} outcome
- * @param {PageMessage[]} messages
- * @returns {{ outcome: TimingOutcome, consoleLines: string[] }}
- */
-export function judgeConsole(outcome, messages) {
-  const { refusals, unexpected, knownCount } = classifyPageMessages(messages)
-  const shown = unexpected.slice(0, CONSOLE_LINE_LIMIT).map((m) => `  ${m.type}: ${m.text}`)
-  const more = unexpected.length - shown.length
-  const consoleLines = [
-    'Console',
-    `  ${knownCount} known harmless messages; ${unexpected.length} unexpected`,
-    ...shown,
-    ...(more > 0 ? [`  and ${more} more unexpected messages`] : []),
-  ]
-  if (refusals.length === 0) return { outcome, consoleLines }
-  const earlier = outcome.kind === 'refused' ? outcome.reasons : []
-  return { outcome: { kind: 'refused', reasons: [...refusals, ...earlier] }, consoleLines }
 }
 
 /** @param {Date} date */
