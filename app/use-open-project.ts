@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import { switchProject } from '../session'
 import type {
   DocumentHandle,
@@ -66,16 +67,26 @@ interface OwnerMemory {
   start: RunningStart | null
 }
 
-/** The kinds of a failed switch. A flow's refusal of another kind leaves the failure as it is. */
-const SWITCH_FAILURE_KINDS: ReadonlySet<string> = new Set<SwitchFailure['kind']>([
-  'flush-failed',
-  'open-elsewhere',
-  'not-found',
-  'folder-permission',
-  'folder-unavailable',
-  'did-not-open',
-  'storage-unavailable',
-])
+function newMemory(): OwnerMemory {
+  return { ports: null, handle: null, failure: null, busy: false, mounted: false, start: null }
+}
+
+/**
+ * The kinds of a failed switch. A flow's refusal of another kind leaves the failure as it is. The
+ * object literal must name every kind of SwitchFailure, so a new kind is a type error here. Its
+ * keys are computed names because the kinds are kebab-case.
+ */
+const SWITCH_FAILURE_KINDS: ReadonlySet<string> = new Set(
+  Object.keys({
+    ['flush-failed']: true,
+    ['open-elsewhere']: true,
+    ['not-found']: true,
+    ['folder-permission']: true,
+    ['folder-unavailable']: true,
+    ['did-not-open']: true,
+    ['storage-unavailable']: true,
+  } satisfies Record<SwitchFailure['kind'], true>),
+)
 
 /** True for a failure that says why a project could not open, as opposed to a flow's refusal. */
 function isSwitchFailure(failure: unknown): failure is SwitchFailure {
@@ -184,11 +195,12 @@ async function runOneFlow<Refusal>(
 }
 
 /** Keeps the owner's ports current, marks it mounted, and closes the open project on unmount. */
-function useOwnerLifetime(memory: OwnerMemory, ports: SessionPorts | null): void {
+function useOwnerLifetime(memoryRef: RefObject<OwnerMemory>, ports: SessionPorts | null): void {
   useEffect(() => {
-    memory.ports = ports
-  }, [memory, ports])
+    memoryRef.current.ports = ports
+  }, [memoryRef, ports])
   useEffect(() => {
+    const memory = memoryRef.current
     memory.mounted = true
     return () => {
       memory.mounted = false
@@ -196,7 +208,7 @@ function useOwnerLifetime(memory: OwnerMemory, ports: SessionPorts | null): void
         void memory.handle.close()
       }
     }
-  }, [memory])
+  }, [memoryRef])
 }
 
 /**
@@ -204,32 +216,27 @@ function useOwnerLifetime(memory: OwnerMemory, ports: SessionPorts | null): void
  * each flow gives, runs one flow at a time, and closes the open project when it unmounts.
  */
 export function useOpenProject(ports: SessionPorts | null, start: OpenRequest | null): OpenProject {
-  const [memory] = useState<OwnerMemory>(() => ({
-    ports: null,
-    handle: null,
-    failure: null,
-    busy: false,
-    mounted: false,
-    start: null,
-  }))
+  const memoryRef = useRef<OwnerMemory>(newMemory())
   const [view, setView] = useState<OwnerView>({ handle: null, failure: null })
   const [attempt, setAttempt] = useState(0)
-  useOwnerLifetime(memory, ports)
+  useOwnerLifetime(memoryRef, ports)
   useEffect(() => {
+    const memory = memoryRef.current
     if (ports === null || start === null || memory.handle !== null) {
       return undefined
     }
     return attachStart(memory, { ports, request: start, attempt }, (result) => {
       show(memory, setView, viewOf(result))
     })
-  }, [memory, ports, start, attempt])
-  const runFlow = useCallback<RunFlow>((flow) => runOneFlow(memory, setView, flow), [memory])
+  }, [ports, start, attempt])
+  const runFlow = useCallback<RunFlow>((flow) => runOneFlow(memoryRef.current, setView, flow), [])
   const retry = useCallback(() => {
+    const memory = memoryRef.current
     if (memory.failure === null || memory.busy) {
       return
     }
     show(memory, setView, { handle: null, failure: null })
     setAttempt((count) => count + 1)
-  }, [memory])
+  }, [])
   return { handle: view.handle, failure: view.failure, runFlow, retry }
 }
