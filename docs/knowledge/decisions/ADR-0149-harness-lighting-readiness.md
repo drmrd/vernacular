@@ -104,16 +104,17 @@ someone does, a scene-baseline change means a local regeneration with
 
 ## Update (2026-11-19): the ready frame is drawn on a fresh frame of the renderer
 
-The harness drew each frame in a React layout effect, so it drew whenever a commit changed what
-the frame depends on. The renderer of `three` resets its render counts, and advances the frame
-counter that its once-per-frame work is keyed on, at the start of each frame of its own animation
-loop, and a draw does neither. When two harness draws fell inside one animation frame, the second
-one skipped that work. On the ambient occlusion path the passes of the pipeline did not run again,
-so the frame only composited the textures of the earlier draw. On every path the light colors and
-the shadow map were the ones that the earlier draw had computed. A change of readiness made two
-commits, so this was common. The captured pictures were still correct, because nothing changed
-between the two draws. But a change that takes effect at readiness through that work could be
-missing from a capture.
+The harness drew each frame in a React layout effect, so it drew whenever a commit changed what the
+frame depends on. The renderer of `three` resets its render counts, and advances the frame counter
+that its once-per-frame work is keyed on, at the start of each frame of its own animation loop, and
+a draw does neither. When two harness draws fell inside one animation frame, the second one skipped
+that work. On the ambient occlusion path the passes of the pipeline did not run again, so the frame
+only composited the textures of the earlier draw. On every path the light colors and the shadow map
+were the ones that the earlier draw had computed. A change of readiness made two commits, so this
+happened in ordinary loads: one set of runs saw it in 44 of 54 loads and a second, independent set
+in 9 of 72, so its rate depends on the load of the machine. The captured pictures were still
+correct, because nothing changed between the two draws. But a change that takes effect at readiness
+through that work could be missing from a capture.
 
 The harness hands each draw to the renderer's own animation loop through `drawOnNextRendererFrame`
 (`engine/renderer/draw-on-next-renderer-frame.ts`). The renderer calls that loop right after it
