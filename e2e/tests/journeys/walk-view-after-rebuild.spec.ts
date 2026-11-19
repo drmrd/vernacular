@@ -1,10 +1,12 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { frameReader } from '../frame-pixels'
 import { configureGpuChromiumOnMac, guardLiveSceneSupport } from '../live-webgpu'
 import { logReading, stableFrame } from '../scene-helpers'
 import {
   enterOrbit,
   enterWalkReady,
+  frameAfterChange,
+  navButton,
   openRoomIn3d,
   toggleEdges,
   walkToDoor,
@@ -35,6 +37,28 @@ const TEST_TIMEOUT_MS = 120_000
 
 const READING_DIGITS = 3
 
+// Reads the two frames over the whole canvas, prints the reading, and expects them to be equal.
+async function expectSameView(
+  page: Page,
+  label: string,
+  frames: { first: Buffer; second: Buffer },
+): Promise<void> {
+  const reader = frameReader(page)
+  const { mean, changedFraction } = await reader.difference(
+    frames.first,
+    frames.second,
+    await reader.whole(frames.first),
+  )
+  logReading(
+    label,
+    `mean ${mean.toFixed(READING_DIGITS)} (limit ${EQUAL_MEAN_LIMIT}), changed ${changedFraction.toFixed(READING_DIGITS)} (limit ${EQUAL_CHANGED_FRACTION_LIMIT})`,
+  )
+  expect(mean, 'mean channel difference over the whole canvas').toBeLessThan(EQUAL_MEAN_LIMIT)
+  expect(changedFraction, 'fraction of changed pixels over the whole canvas').toBeLessThan(
+    EQUAL_CHANGED_FRACTION_LIMIT,
+  )
+}
+
 test('shows the walker the same view of the shut door after a scene rebuild', async ({ page }) => {
   test.setTimeout(TEST_TIMEOUT_MS)
   await gotoEditor(page)
@@ -55,18 +79,41 @@ test('shows the walker the same view of the shut door after a scene rebuild', as
   // The walker resumes at its saved pose, so the view is the one it left.
   const after = await enterWalkReady(page, canvas)
 
-  const reader = frameReader(page)
-  const { mean, changedFraction } = await reader.difference(
-    before,
-    after,
-    await reader.whole(before),
-  )
-  logReading(
-    'same, the walker at the shut door before and after a scene rebuild',
-    `mean ${mean.toFixed(READING_DIGITS)} (limit ${EQUAL_MEAN_LIMIT}), changed ${changedFraction.toFixed(READING_DIGITS)} (limit ${EQUAL_CHANGED_FRACTION_LIMIT})`,
-  )
-  expect(mean, 'mean channel difference over the whole canvas').toBeLessThan(EQUAL_MEAN_LIMIT)
-  expect(changedFraction, 'fraction of changed pixels over the whole canvas').toBeLessThan(
-    EQUAL_CHANGED_FRACTION_LIMIT,
+  await expectSameView(page, 'same, the walker at the shut door before and after a scene rebuild', {
+    first: before,
+    second: after,
+  })
+})
+
+// The same fix has a larger effect than the walker's view. A wall whose first draw was solid
+// built its shader program opaque, so it stayed solid when the orbit camera later moved outside
+// it. This journey builds the scene from the default south-east camera, where the north wall is
+// solid at its first draw, moves the camera to the north, and rebuilds the scene again. A wall
+// that fades when the camera moves outside it looks the same in both frames.
+test('fades a wall that was solid at its first draw when the camera moves outside it', async ({
+  page,
+}) => {
+  test.setTimeout(TEST_TIMEOUT_MS)
+  await gotoEditor(page)
+  await guardLiveSceneSupport(page, 'the walk-view-after-rebuild journey')
+  const canvas = await openRoomIn3d(page)
+
+  // A rebuild from the default camera: the north wall is drawn solid, and its program stays so.
+  const fromSouthEast = await stableFrame(canvas)
+  const withEdges = await toggleEdges(page, canvas, fromSouthEast)
+  const rebuilt = await toggleEdges(page, canvas, withEdges)
+
+  // The camera moves outside the north wall, which is where the wall must fade.
+  await navButton(page, 'North').click()
+  const frameA = await frameAfterChange(canvas, rebuilt)
+
+  // A rebuild from the north draws the wall faded at its first draw.
+  const northWithEdges = await toggleEdges(page, canvas, frameA)
+  const frameB = await toggleEdges(page, canvas, northWithEdges)
+
+  await expectSameView(
+    page,
+    'same, the north wall seen from the north before and after a scene rebuild',
+    { first: frameA, second: frameB },
   )
 })
