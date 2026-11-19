@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
+import type { DocumentHandle, SaveStatus } from '../session'
 
 /**
  * Warns the browser before the tab unloads while the project has unsaved
@@ -26,4 +27,18 @@ export function useBeforeUnloadGuard(isDirty: boolean): void {
       window.removeEventListener('beforeunload', warnBeforeUnload)
     }
   }, [isDirty])
+}
+
+/** The save status of the handle, read again each time it changes. */
+export function useSaveStatus(handle: DocumentHandle): SaveStatus {
+  return useSyncExternalStore(handle.subscribe, handle.saveStatus)
+}
+
+/**
+ * Arms the leave warning while the handle has a change that is not stored: a save that waits, or
+ * a save that failed.
+ */
+export function useUnsavedChangesGuard(handle: DocumentHandle): void {
+  const status = useSaveStatus(handle)
+  useBeforeUnloadGuard(status === 'pending' || status === 'error')
 }

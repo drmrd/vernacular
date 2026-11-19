@@ -4,7 +4,6 @@ import {
   EditorSessionProvider,
   SceneHarnessView,
   SelectionProvider,
-  type EditorSession,
 } from '../bridge'
 import {
   ActiveToolProvider,
@@ -18,7 +17,6 @@ import {
   DESIGN_LANGUAGE_PREVIEW_PARAM,
   NotificationProvider,
   ThemeProvider,
-  humanMessage,
   resolveDesignLanguage,
   type DesignLanguage,
 } from '../editor/design-system'
@@ -27,18 +25,19 @@ import {
   probeStorageCapabilities,
   type ActiveProjectIdStore,
   type AssetCache,
-  type ProjectStore,
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
+import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
 import { type Project, type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
+import { OPEN_ELSEWHERE, openFailureReason } from './open-failure-text'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 import { useProjectBoot } from './use-project-boot'
-import { useResolvedSnapshots } from './use-resolved-snapshots'
 import { useSessionKey } from './use-session-key'
 import { useDiscardPrompt } from './use-discard-prompt'
+import type { RunFlow } from './use-open-project'
 import { useWorkspaceState } from './use-workspace-state'
 
 export { DEFAULT_PROJECT_ID } from './use-active-project-id'
@@ -83,7 +82,10 @@ export function requestedDesignLanguage(): DesignLanguage {
   return resolveDesignLanguage(searchParam(DESIGN_LANGUAGE_PREVIEW_PARAM))
 }
 
-/** The subset of SnapshotStore the app depends on for autosave and crash recovery. */
+/**
+ * The subset of SnapshotStore that the snapshot resolver gives. The resolver and its hook still
+ * name this type; the application itself reads the snapshots of the open handle.
+ */
 export interface SnapshotsPort {
   writeSnapshot(project: Project): Promise<void>
   prune(): Promise<void>
@@ -91,18 +93,24 @@ export interface SnapshotsPort {
   restore(): Promise<Project | undefined>
 }
 
+/** The ports of the session layer, with the pool of the user's library beside them. */
+export interface BuiltSessionPorts {
+  readonly ports: SessionPorts
+  readonly libraryAssets: AssetCache
+}
+
 export interface AppProps {
-  store?: ProjectStore
-  /** Injected asset cache; defaults to the boot-resolved cache, or in-memory under an injected store. */
-  assets?: AssetCache
-  resolveStore?: () => Promise<ProjectStore>
+  /** Injected ports (tests, stories). When set, nothing is resolved. */
+  ports?: SessionPorts
+  /** Builds the ports. Defaults to the builder of the application. */
+  resolvePorts?: () => Promise<BuiltSessionPorts>
+  /** The pool of the user's library. Defaults to the built one, or in memory under `ports`. */
+  libraryAssets?: AssetCache
   /** An override for tests; when set, the remembered id is not read. */
   projectId?: string
   /** Remembers which project opens at start; defaults to in memory, nothing remembered. */
   activeProjectIds?: ActiveProjectIdStore
   recentProjects?: RecentProjectStore
-  snapshots?: SnapshotsPort
-  resolveSnapshots?: (projectId: string) => Promise<SnapshotsPort | undefined>
 }
 
 export function App(props: AppProps) {
@@ -133,9 +141,7 @@ export function App(props: AppProps) {
 
 function AppWorkspace(props: AppProps) {
   const boot = useProjectBoot(props)
-  const { projectId, store, assets, session, setSession, error, retryBoot, startFreshProject } =
-    boot
-  const snapshots = useResolvedSnapshots(props.snapshots, props.resolveSnapshots, projectId)
+  const { handle, failure, libraryAssets } = boot
   const providedRecentProjects = props.recentProjects
   const recentProjects = useMemo(
     () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
@@ -144,29 +150,20 @@ function AppWorkspace(props: AppProps) {
   const capabilities = useStorageCapabilities()
   useDegradedStorageBanner(capabilities)
 
-  if (error !== null) {
-    return bootErrorView(error, retryBoot, startFreshProject)
+  if (failure !== null) {
+    return bootErrorView(failure, boot.retryBoot, boot.startFreshProject)
   }
-  if (
-    store === null ||
-    assets === null ||
-    session === null ||
-    capabilities === null ||
-    projectId === null
-  ) {
+  if (handle === null || libraryAssets === null || capabilities === null) {
     return bootLoadingView()
   }
 
   return (
     <EditorWorkspace
-      session={session}
-      store={store}
-      assets={assets}
-      projectId={projectId}
+      handle={handle}
+      runFlow={boot.runFlow}
+      libraryAssets={libraryAssets}
       recentProjects={recentProjects}
       capabilities={capabilities}
-      snapshots={snapshots}
-      onSession={setSession}
       onProjectSaved={boot.rememberSavedProject}
     />
   )
@@ -192,7 +189,7 @@ function useStorageCapabilities(): StorageCapabilities | null {
   return capabilities
 }
 
-// The pre-shell placeholder while the store or the project is still resolving.
+// The pre-shell placeholder while the ports or the project are still resolving.
 function bootLoadingView() {
   return (
     <main aria-label="Loading">
@@ -201,14 +198,23 @@ function bootLoadingView() {
   )
 }
 
+// Why the start failed, in one sentence. Another tab that holds the project says so alone; every
+// other failure names its reason after a fixed opening.
+function bootFailureText(failure: SwitchFailure): string {
+  if (failure.kind === 'open-elsewhere') {
+    return OPEN_ELSEWHERE
+  }
+  return `Could not open the project: ${openFailureReason(failure)}`
+}
+
 // The pre-shell failure notice: why the boot failed and the two ways out of it.
 // A stored document that fails every load (corrupt bytes, a broken migration)
 // would otherwise lock the user out on every reload. Plain elements, because this
 // renders above the editor's provider tree.
-function bootErrorView(error: Error, onRetry: () => void, onStartFresh: () => void) {
+function bootErrorView(failure: SwitchFailure, onRetry: () => void, onStartFresh: () => void) {
   return (
     <main aria-label="Error">
-      <p role="alert">Could not open the project: {humanMessage(error)}</p>
+      <p role="alert">{bootFailureText(failure)}</p>
       <button type="button" onClick={onRetry}>
         Retry
       </button>
@@ -221,24 +227,21 @@ function bootErrorView(error: Error, onRetry: () => void, onStartFresh: () => vo
 }
 
 export interface EditorWorkspaceProps {
-  session: EditorSession
-  store: ProjectStore
-  assets: AssetCache
-  projectId: string
+  handle: DocumentHandle
+  runFlow: RunFlow
+  libraryAssets: AssetCache
   recentProjects: RecentProjectStore
   capabilities: StorageCapabilities
-  snapshots: SnapshotsPort | undefined
-  onSession: (session: EditorSession) => void
-  /** Called after each successful autosave or explicit save. */
-  onProjectSaved?: () => void
+  /** Called each time the save status of the handle becomes `saved`. */
+  onProjectSaved?: (handle: DocumentHandle) => void
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
-  const { session, assets } = props
+  const { session } = props.handle
   const ws = useWorkspaceState(props)
   const projectName = session.getProject().meta.name
   const prompt = useDiscardPrompt(ws, projectName)
-  // Remount the tool provider when the active session is replaced (mid-session New,
+  // Remount the tool provider when a new handle brings a new session (mid-session New,
   // Open, or restore) so a fresh empty project re-arms the wall tool (#351), keeping
   // the #318 initial-tool decision in sync past the very first mount.
   const sessionKey = useSessionKey(session)
@@ -246,7 +249,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   return (
     <ThemeProvider designLanguage={requestedDesignLanguage()}>
       <EditorSessionProvider session={session}>
-        <AssetProviders assets={assets} library={ws.assetLibrary}>
+        <AssetProviders handle={props.handle} library={ws.assetLibrary}>
           <SelectionProvider store={ws.selection}>
             <ActiveFloorProvider store={ws.activeFloorStore}>
               <ActiveToolProvider

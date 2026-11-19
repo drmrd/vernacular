@@ -214,8 +214,6 @@ const layerPurityBlocks = [
  * @type {LintException[]}
  */
 export const lintExceptions = [
-  { file: 'app/app.test.tsx', rule: 'max-lines', issue: 685, max: 434 },
-  { file: 'app/use-project-actions.test.ts', rule: 'max-lines', issue: 685, max: 410 },
   {
     file: 'core/commands/handlers/furniture-commands.test.ts',
     rule: 'max-lines',

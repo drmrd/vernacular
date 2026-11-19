@@ -1,10 +1,14 @@
+import { useCallback, useEffect, useRef } from 'react'
 import { guardDestructive } from '../bridge'
+import type { DocumentHandle, FolderRefusal, ImportFailure, RestoreRefusal } from '../session'
 import {
   recentEntryFor,
   type ProjectBackend,
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
+import type { Flow, RunFlow } from './use-open-project'
+import { useSwitchNotices, type FlowNoticeOptions } from './use-switch-notices'
 
 /**
  * Map the resolved default store to a recent-list backend. The recent-list
@@ -17,18 +21,96 @@ export function defaultStoreBackend(capabilities: StorageCapabilities): ProjectB
   return capabilities.opfs ? 'opfs' : null
 }
 
+/** What the recent list records for one project. */
+export interface RecentInput {
+  id: string
+  name: string
+  backend: ProjectBackend
+}
+
 /** Record an opened-or-saved project under the given backend, ignoring failures. */
-export function recordRecent(
-  recentProjects: RecentProjectStore,
-  input: { id: string; name: string; backend: ProjectBackend },
-): void {
-  void recentProjects.record(
-    recentEntryFor({
-      id: input.id,
-      name: input.name,
-      backend: input.backend,
-      openedAt: Date.now(),
-    }),
+export function recordRecent(recentProjects: RecentProjectStore, input: RecentInput): void {
+  void Promise.resolve()
+    .then(() =>
+      recentProjects.record(
+        recentEntryFor({
+          id: input.id,
+          name: input.name,
+          backend: input.backend,
+          openedAt: Date.now(),
+        }),
+      ),
+    )
+    .catch(() => undefined)
+}
+
+/**
+ * The recent entry of the project that the handle holds, or null where no backend is known: a
+ * folder project is a folder, and a workspace project takes the backend of the default store.
+ */
+export function recentInputOf(
+  handle: DocumentHandle,
+  capabilities: StorageCapabilities,
+): RecentInput | null {
+  const backend =
+    handle.location.kind === 'folder' ? 'file-system-folder' : defaultStoreBackend(capabilities)
+  if (backend === null) {
+    return null
+  }
+  return { id: handle.id, name: handle.session.getProject().meta.name, backend }
+}
+
+/** Records the project, when its recent entry has a backend. */
+export function recordProject(recentProjects: RecentProjectStore, input: RecentInput | null): void {
+  if (input !== null) {
+    recordRecent(recentProjects, input)
+  }
+}
+
+/** What an adapter needs to run a flow that may replace the open project. */
+export interface SwitchFlowContext {
+  handle: DocumentHandle
+  runFlow: RunFlow
+  recentProjects: RecentProjectStore
+  capabilities: StorageCapabilities
+}
+
+/** The refusals that a flow which replaces the open project can give. */
+type SwitchRefusal = ImportFailure | FolderRefusal | RestoreRefusal
+
+/** Runs a flow through the owner, then records and reports what it gave. */
+export type RunSwitch = <Refusal extends SwitchRefusal = never>(
+  flow: Flow<Refusal>,
+  options?: FlowNoticeOptions,
+) => Promise<void>
+
+/**
+ * Gives a function that runs a flow through the owner. It reads the project that is open before
+ * the flow runs. After a flow that opened a project it records both that project and the one that
+ * was left; a result of any kind is then shown. A flow that the owner did not run records and
+ * shows nothing. The open project is read from the latest render, also for a Retry of a toast.
+ */
+export function useSwitchFlow(context: SwitchFlowContext): RunSwitch {
+  const { handle, runFlow, recentProjects, capabilities } = context
+  const notify = useSwitchNotices()
+  const latestHandle = useRef(handle)
+  useEffect(() => {
+    latestHandle.current = handle
+  }, [handle])
+  return useCallback(
+    async <Refusal extends SwitchRefusal = never>(
+      flow: Flow<Refusal>,
+      options?: FlowNoticeOptions,
+    ) => {
+      const left = recentInputOf(latestHandle.current, capabilities)
+      const result = await runFlow(flow)
+      if (result?.ok === true) {
+        recordProject(recentProjects, left)
+        recordProject(recentProjects, recentInputOf(result.handle, capabilities))
+      }
+      notify(result, options)
+    },
+    [runFlow, recentProjects, capabilities, notify],
   )
 }
 
@@ -39,11 +121,11 @@ export interface DiscardGuardSeam {
 }
 
 /**
- * Replace the live session behind the ADR-0104 unsaved-work prompt. Every action
- * that swaps the session (New, Open folder, Open recent, Open file, restore)
- * routes through here, so one destructive click prompts at most once. A context
- * carrying neither half of the seam (hook-level tests, hosts that track no dirty
- * state) reads as clean and runs the swap straight away.
+ * Run a step that replaces the open document behind the ADR-0104 unsaved-work
+ * prompt. The restore of a recovered copy is the one caller: the actions that
+ * open another project store the unsaved change first and ask nothing. A seam
+ * carrying neither half (hook-level tests) reads as clean and runs the step
+ * straight away.
  */
 export function guardSessionSwap(
   seam: DiscardGuardSeam,

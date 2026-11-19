@@ -6,9 +6,9 @@ interface DiscardDialogProps {
   projectName: string
   /**
    * The question to ask, when the default is wrong for what is being thrown away.
-   * Guards that swap the open project (New, Open, Import) want the default; the
-   * recovery banner, whose Discard deletes recovered snapshots and leaves the open
-   * document alone, supplies its own.
+   * The restore of a recovered copy, which replaces unsaved changes, wants the
+   * default; the recovery banner's Discard, which deletes recovered snapshots and
+   * leaves the open document alone, supplies its own.
    */
   message?: string | undefined
   /**
