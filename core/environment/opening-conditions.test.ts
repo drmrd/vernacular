@@ -69,6 +69,90 @@ const FRONT_ANGLES_AROUND_THE_CIRCLE: readonly number[] = Array.from(
   (_, step) => step * FRONT_STEP_DEGREES,
 )
 
+const JUNE_SOLSTICE_DATE = '2026-06-21'
+const DECEMBER_SOLSTICE_DATE = '2026-12-21'
+
+const SOUTHERN_MID_LATITUDE = -40
+const JUST_SOUTH_OF_THE_EQUATOR = -0.01
+const THE_EQUATOR = 0
+const NEAR_THE_NORTH_POLE = 89
+const PRIME_MERIDIAN = 0
+
+const COMPONENT_OF_A_DIAGONAL_FRONT = 0.7071
+const EAST_COMPONENT_OF_A_FRONT_SIXTY_DEGREES_FROM_SOUTH = 0.5
+const SOUTH_COMPONENT_OF_A_FRONT_SIXTY_DEGREES_FROM_SOUTH = 0.866
+
+function siteAtLatitude(latitude: number): Site {
+  return { latLong: { latitude, longitude: PRIME_MERIDIAN }, northBearing: 0 }
+}
+
+const FRONT_TO_THE_NORTH_WEST: PlanDirection = {
+  x: -COMPONENT_OF_A_DIAGONAL_FRONT,
+  y: COMPONENT_OF_A_DIAGONAL_FRONT,
+}
+const FRONT_TO_THE_SOUTH_EAST: PlanDirection = {
+  x: COMPONENT_OF_A_DIAGONAL_FRONT,
+  y: -COMPONENT_OF_A_DIAGONAL_FRONT,
+}
+const FRONT_SIXTY_DEGREES_EAST_OF_SOUTH: PlanDirection = {
+  x: EAST_COMPONENT_OF_A_FRONT_SIXTY_DEGREES_FROM_SOUTH,
+  y: -SOUTH_COMPONENT_OF_A_FRONT_SIXTY_DEGREES_FROM_SOUTH,
+}
+
+// Fronts that take no sun on 20 March, but do on the solstice of their hemisphere.
+const FRONTS_THAT_OPEN_AT_A_SOLSTICE: readonly {
+  label: string
+  site: Site
+  front: PlanDirection
+  date: string
+  minutesSinceMidnight: number
+}[] = [
+  {
+    label: 'a north-west front in the northern hemisphere opens on 21 June',
+    site: NORTH_SET_SITE,
+    front: FRONT_TO_THE_NORTH_WEST,
+    date: JUNE_SOLSTICE_DATE,
+    minutesSinceMidnight: clockMinutes(15, 32),
+  },
+  {
+    label: 'a south-east front at latitude -40 opens on 21 December',
+    site: siteAtLatitude(SOUTHERN_MID_LATITUDE),
+    front: FRONT_TO_THE_SOUTH_EAST,
+    date: DECEMBER_SOLSTICE_DATE,
+    minutesSinceMidnight: clockMinutes(8, 20),
+  },
+  {
+    label: 'a front 60 degrees east of south at latitude -0.01 opens on 21 December',
+    site: siteAtLatitude(JUST_SOUTH_OF_THE_EQUATOR),
+    front: FRONT_SIXTY_DEGREES_EAST_OF_SOUTH,
+    date: DECEMBER_SOLSTICE_DATE,
+    minutesSinceMidnight: clockMinutes(10, 30),
+  },
+]
+
+// Fronts that take no sun on 20 March, nor on the solstice of their hemisphere.
+const FRONTS_THAT_OPEN_AT_THE_FIXED_INSTANT: readonly {
+  label: string
+  site: Site
+  front: PlanDirection
+}[] = [
+  {
+    label: 'a north front in the northern hemisphere',
+    site: NORTH_SET_SITE,
+    front: { x: 0, y: 1 },
+  },
+  {
+    label: 'a front 60 degrees east of south at latitude 0, where 21 June is the one scanned',
+    site: siteAtLatitude(THE_EQUATOR),
+    front: FRONT_SIXTY_DEGREES_EAST_OF_SOUTH,
+  },
+  {
+    label: 'a south front at latitude 89, where the sun stays below the minimum altitude',
+    site: siteAtLatitude(NEAR_THE_NORTH_POLE),
+    front: { x: 0, y: -1 },
+  },
+]
+
 const LOCATED_SITE: Site = {
   latLong: { latitude: NORTH_AMERICAN_LATITUDE, longitude: NORTH_AMERICAN_LONGITUDE },
   timezone: 'America/New_York',
@@ -128,10 +212,14 @@ function frontTakesSunAt(
   return angles.altitude >= radiansOf(MIN_SUN_ALTITUDE_DEGREES) && cosine >= MIN_FRONT_COSINE
 }
 
-function minutesOfTheFixedDateThatSuit(front: PlanDirection): number[] {
+function minutesOfADateThatSuit(front: PlanDirection, date: string, site?: Site): number[] {
   return Array.from({ length: MINUTES_PER_DAY }, (_, minutes) => minutes).filter((minutes) =>
-    frontTakesSunAt(front, { date: FIXED_DATE, minutesSinceMidnight: minutes }),
+    frontTakesSunAt(front, { date, minutesSinceMidnight: minutes }, site),
   )
+}
+
+function minutesOfTheFixedDateThatSuit(front: PlanDirection): number[] {
+  return minutesOfADateThatSuit(front, FIXED_DATE)
 }
 
 function distanceFromTheFixedMinutes(minutesSinceMidnight: number): number {
@@ -213,6 +301,48 @@ describe('openingConditions', () => {
     expect(frontTakesSunAt(westFront, west.observedAt, LOCATED_SITE)).toBe(true)
     expect(frontTakesSunAt(westFront, SAMPLE_PLACE_WEST_INSTANT, LOCATED_SITE)).toBe(false)
   })
+})
+
+describe('openingConditions at a solstice', () => {
+  it.each(FRONTS_THAT_OPEN_AT_A_SOLSTICE)(
+    'opens at the solstice of the hemisphere when 20 March gives the front no sun: $label',
+    ({ site, front, date, minutesSinceMidnight }) => {
+      const conditions = openingConditions({ site, front })
+
+      expect(conditions).toEqual({
+        observedAt: { date, minutesSinceMidnight },
+        cloudCover: DEFAULT_CLOUD_COVER,
+      })
+      expect(frontTakesSunAt(front, conditions.observedAt, site)).toBe(true)
+    },
+  )
+
+  it.each(FRONTS_THAT_OPEN_AT_A_SOLSTICE)(
+    'opens at the qualifying minute of the solstice nearest 10:30: $label',
+    ({ site, front, date }) => {
+      const suitable = minutesOfADateThatSuit(front, date, site)
+      const { observedAt } = openingConditions({ site, front })
+      const chosenDistance = distanceFromTheFixedMinutes(observedAt.minutesSinceMidnight)
+
+      const nearerThanChosen = suitable.filter(
+        (minutes) => distanceFromTheFixedMinutes(minutes) < chosenDistance,
+      )
+
+      expect(observedAt.date).toBe(date)
+      expect(suitable).toContain(observedAt.minutesSinceMidnight)
+      expect(nearerThanChosen).toEqual([])
+    },
+  )
+
+  it.each(FRONTS_THAT_OPEN_AT_THE_FIXED_INSTANT)(
+    'keeps the fixed instant when no minute of either day qualifies: $label',
+    ({ site, front }) => {
+      expect(openingConditions({ site, front })).toEqual({
+        observedAt: FIXED_INSTANT,
+        cloudCover: DEFAULT_CLOUD_COVER,
+      })
+    },
+  )
 })
 
 describe('openingInstant', () => {
