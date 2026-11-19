@@ -150,7 +150,9 @@ The rows come in four groups:
   the start of the frame until the GPU reports that its work is finished. Each frame starts with an
   idle GPU, so the figure is the time of one isolated frame.
 - 3D frame after an edit: the first frame after each of the six edits, in the building view with
-  schematic lighting, in the same two rows.
+  schematic lighting, in the same two rows. The page holds its frame callbacks from just before
+  the edit until the 3D scene has taken it, so the timed frame is the first frame that can draw
+  the edit.
 
 The 3D rows have a budget of 8.0 ms, from section 6.10 of the design specification. The plan row has
 16.7 ms, one frame at 60 a second, marked with an asterisk, because the specification states no plan
@@ -182,6 +184,9 @@ exits with code 1. The reasons, with what to do:
   returned no frames. Run again. If it repeats, the timing page needs a fix.
 - An edit did not reach the 3D scene within 5 seconds. Run again. If it repeats, the timing page
   needs a fix.
+- A view changed while it was timed, in its scope, its lighting, or its pipeline state. Run again.
+  If it repeats, report it, because nothing in the timing page should change a view while it is
+  timed.
 - The ambient-occlusion pipeline of the realistic lighting failed to build, so the realistic views
   would be drawn without the effect and the times are discarded. Run again. If it repeats, report
   it as a product fault.
