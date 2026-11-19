@@ -20,6 +20,9 @@ import {
 
 const DOOR_ID = 'opening:front-door'
 
+// The default floor-to-floor height puts the second floor 3000mm above the ground-floor datum.
+const UPPER_FLOOR_ELEVATION_MM = 3000
+
 // A pose a walker left behind mid-tour: off the origin, turned away from the
 // default -Z heading, and looking slightly down.
 const SAVED_WALK_POSE: WalkState = {
@@ -183,5 +186,25 @@ describe('resumedWalkState', () => {
     const resumed = resumedWalkState(null, camera, upperFloorElevationMm)
 
     expect(resumed).toEqual(seedWalkState(camera, upperFloorElevationMm))
+  })
+
+  it('resumes a pose left on another floor at the same plan position and heading, with the eye on the active floor', () => {
+    // The walker left the ground floor, and the upper floor is active when the walk resumes.
+    const camera = stubCamera() as unknown as Parameters<typeof seedWalkState>[0]
+    const poseLeftOnGroundFloor: WalkState = {
+      position: { x: 1200, y: WALK_EYE_HEIGHT_MM, z: -800 },
+      yaw: 1.25,
+      pitch: -0.4,
+    }
+    const expectedPose: WalkState = {
+      position: { x: 1200, y: UPPER_FLOOR_ELEVATION_MM + WALK_EYE_HEIGHT_MM, z: -800 },
+      yaw: 1.25,
+      pitch: -0.4,
+    }
+
+    const resumed = resumedWalkState(poseLeftOnGroundFloor, camera, UPPER_FLOOR_ELEVATION_MM)
+
+    expect(resumed).toEqual(expectedPose)
+    expect(poseLeftOnGroundFloor.position.y).toBe(WALK_EYE_HEIGHT_MM)
   })
 })
