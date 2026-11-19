@@ -8,7 +8,14 @@ import { DEFAULT_SNAP_PREFERENCES } from '../editor/plan/snap-preferences'
 import { InMemorySettingsPort, LocalStorageSettingsPort, type SettingsPort } from '../storage'
 import { memoryStorage, refusing } from '../storage/settings/settings-storage-test-kit'
 import { AppSettings } from './app-settings'
-import { findTheShell, renderApp, stubCapableStorage } from './app-test-support'
+import {
+  chooseFromTheProjectMenu,
+  expectOpenProject,
+  findTheShell,
+  NEW_PROJECT_NAME,
+  renderApp,
+  stubCapableStorage,
+} from './app-test-support'
 
 /** The key under which an older build stored the snap preferences. */
 const OLD_SNAP_KEY = 'vernacular.snap-preferences'
@@ -228,6 +235,26 @@ describe('the theme of the application', () => {
       const shell = await findTheShell()
 
       expect(shellTheme(shell)).toBe('dark')
+    },
+    WHOLE_APPLICATION_TIMEOUT_MS,
+  )
+
+  it(
+    'the dark theme stays on the same themed element after a new project is started',
+    async () => {
+      stubCapableStorage()
+      renderApp(createTestPorts(), { settings: new InMemorySettingsPort() })
+      const shellBefore = await findTheShell()
+      await chooseDark()
+      const wrapperBefore = shellBefore.closest('[data-theme]')
+      expect(wrapperBefore).not.toBeNull()
+
+      await chooseFromTheProjectMenu(/new project/i)
+      await expectOpenProject(NEW_PROJECT_NAME)
+
+      const shellAfter = await findTheShell()
+      expect(shellTheme(shellAfter)).toBe('dark')
+      expect(shellAfter.closest('[data-theme]')).toBe(wrapperBefore)
     },
     WHOLE_APPLICATION_TIMEOUT_MS,
   )
