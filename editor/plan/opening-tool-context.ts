@@ -24,7 +24,10 @@ export interface OpeningToolValue {
   placementType: string
   /** Choose the element-type id to place next. */
   setPlacementType: (id: string) => void
-  /** Why the last placement put nothing down, or null when it landed. */
+  /**
+   * Why the last placement attempt put nothing down, while the situation it was computed from
+   * stands; null when it landed or once that situation changed (see useRetireStaleRefusal).
+   */
   placementRefusal: PlacementRefusal | null
   /**
    * Report a refused attempt, or clear the notice with null. Each call with a reason is a new
@@ -64,7 +67,8 @@ export interface RefusalBasis {
   /** The plan's scene graph. A new reference means the plan changed: an edit, an undo, a redo. */
   sceneGraph: SceneGraph
   activeFloorId: string | null
-  /** Compared by reference: the selection store hands out one set until the selection changes. */
+  /** Compared by reference: the store's own set, which is replaced on every select, toggle, or
+   *  setSelection call, also one that keeps the same members, so such a call retires the notice. */
   selectedIds: ReadonlySet<string>
   /** The keyboard authoring candidate, compared by `x` and `y`: a re-created point with the same
    *  coordinates keeps the notice. */
@@ -77,6 +81,10 @@ export interface RefusalBasis {
  * The same references keep it. Clears on mount. A refusal is about one placement under one
  * situation, so a changed plan, floor, selection, candidate, tool, or placement type ends it
  * rather than leaving a sentence that may no longer be true.
+ *
+ * The stair refusal (`no-floor-above`) follows the same rule: adding or removing a floor is a plan
+ * change, and switching floors is a floor change. A pointer move, a pan or zoom, and the passing of
+ * time keep the notice.
  *
  * A refusal reported since the hook last ran stands, even when the basis changed in that same
  * commit: it describes the attempt that just happened, and it retires at the next change.
