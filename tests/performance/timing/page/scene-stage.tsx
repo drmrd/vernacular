@@ -31,12 +31,19 @@ import {
   type SceneCanvasSizes,
 } from './page-layout'
 import { collectGarbage, nextTask } from './page-waits'
+import { sceneChildren, waitForSceneCommit } from './scene-commit'
 
 /**
  * The longest wait for a new live view to draw its first frame after its pipelines settled; the
  * host frames must still come within the page's frame limit meanwhile.
  */
 const READY_LIMIT_MS = 30_000
+/**
+ * The longest gap between host frames while a new view gets ready. On a cold first mount the GPU
+ * process builds the render pipelines and shaders, which can stall host frames for seconds; the
+ * readiness limit above still bounds the whole wait.
+ */
+const READY_FRAME_GAP_LIMIT_MS = 10_000
 /** The host frames that pass untimed after each undo, so the next edit starts from a drawn undo. */
 const UNTIMED_FRAMES_AFTER_UNDO = 2
 /** The view in which the first frame after each edit is timed. */
@@ -141,39 +148,87 @@ async function waitUntilReady(view: MountedView): Promise<SceneCanvasSizes> {
           'so nothing was measured',
       )
     }
-    await nextHostPoll(view.watch)
+    await nextHostPoll(view.watch, READY_FRAME_GAP_LIMIT_MS)
     view.watch.probe.takeFrames()
   }
   return measureSceneCanvas(sceneHost())
 }
 
 /**
+ * Throws when the view no longer is the variant it was mounted as: its scope or lighting mode
+ * changed in the stores, or a pipeline build started again, during the timed frames.
+ */
+function checkViewUnchanged(view: MountedView, variant: RenderVariant): void {
+  const sceneSession = view.stores.sceneSession.getSceneSession()
+  const lighting = view.stores.environment.getEnvironment().mode
+  if (
+    sceneSession.scope !== variant.scope ||
+    lighting !== variant.lighting ||
+    !sceneSession.frameDrawnSincePipelineSettled
+  ) {
+    throw new Error(
+      `The view "${variant.name}" changed while it was timed (scope ${sceneSession.scope}, ` +
+        `lighting ${lighting}, pipeline settled ${sceneSession.frameDrawnSincePipelineSettled}), ` +
+        'so nothing was measured',
+    )
+  }
+}
+
+/**
  * The warm-up frames unpaced, then the switch to paced mode with its split frames dropped, then the
  * timed frames paced, each starting with an idle GPU. One sample is one host frame.
  */
-async function timedFrames(watch: FrameWatch, counts: SampleCounts): Promise<FrameSample[]> {
+async function timedFrames(
+  view: MountedView,
+  variant: RenderVariant,
+  counts: SampleCounts,
+): Promise<FrameSample[]> {
+  const { watch } = view
   await collectFrames(watch, counts.warmup, 0)
   await switchToPaced(watch)
   try {
-    return await collectFrames(watch, counts.timed, performance.now())
+    const frames = await collectFrames(watch, counts.timed, performance.now())
+    checkViewUnchanged(view, variant)
+    return frames
   } finally {
     watch.probe.setPaced(false)
   }
 }
 
-/** Dispatches the edit, lets React commit, takes the next frame, undoes, lets frames pass. */
+/** One edit of the after-edit phase: its name and a command built from the pristine project. */
+interface TimedEdit {
+  readonly name: string
+  readonly command: () => Command
+}
+
+/** Runs the change and waits until the 3D scene has taken it, so a frame after it draws it. */
+async function changeAndWaitForScene(
+  view: MountedView,
+  editName: string,
+  change: () => void,
+): Promise<void> {
+  const before = sceneChildren()
+  change()
+  await waitForSceneCommit(view.watch, editName, before)
+}
+
+/**
+ * Dispatches the edit and waits until the 3D scene has taken the new scene root, then takes the
+ * first frame that starts after that: the frame that draws the edit. Then it undoes the edit, waits
+ * for the scene to take that too, and lets frames pass untimed.
+ */
 async function framesAfterEdit(
   view: MountedView,
-  command: () => Command,
+  edit: TimedEdit,
   timed: number,
 ): Promise<FrameSample[]> {
+  const { session } = view.stores
   const frames: FrameSample[] = []
   for (let sample = 0; sample < timed; sample += 1) {
     await nextTask()
-    view.stores.session.dispatch(command())
-    await nextTask()
+    await changeAndWaitForScene(view, edit.name, () => session.dispatch(edit.command()))
     frames.push(await frameStartingAfter(view.watch, performance.now()))
-    view.stores.session.undo()
+    await changeAndWaitForScene(view, edit.name, () => session.undo())
     await collectFrames(view.watch, UNTIMED_FRAMES_AFTER_UNDO, performance.now())
   }
   return frames
@@ -206,7 +261,7 @@ export function createSceneStage(instruments: PageInstruments): SceneStage {
     renderFrames: async (counts) => {
       const byVariant: Record<string, FrameSample[]> = {}
       for (const variant of RENDER_VARIANTS) {
-        byVariant[variant.name] = await timedFrames((await mount(variant)).watch, counts)
+        byVariant[variant.name] = await timedFrames(await mount(variant), variant, counts)
       }
       return byVariant
     },
@@ -228,7 +283,8 @@ async function timeEdits(
   try {
     await switchToPaced(view.watch)
     for (const edit of REFERENCE_EDITS) {
-      byEdit[edit.name] = await framesAfterEdit(view, () => edit.command(pristine), counts.timed)
+      const timedEdit = { name: edit.name, command: () => edit.command(pristine) }
+      byEdit[edit.name] = await framesAfterEdit(view, timedEdit, counts.timed)
     }
     return byEdit
   } finally {

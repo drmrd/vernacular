@@ -63,6 +63,11 @@ function adapterName(info: GPUAdapterInfo): string {
     .join(' / ')
 }
 
+/**
+ * The adapter of the page's own default `requestAdapter()` call. On a machine with two GPUs it may
+ * differ from the adapter the 3D renderer asked for with its own options; on a machine with one GPU
+ * they are the same.
+ */
 async function webGpuAdapter(): Promise<PageDescription['webGpuAdapter']> {
   if (!('gpu' in navigator)) return null
   const adapter = await navigator.gpu.requestAdapter()

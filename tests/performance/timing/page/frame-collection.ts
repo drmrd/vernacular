@@ -1,5 +1,5 @@
 import { firstFrameAfter, type FrameProbe, type FrameSample } from '../frame-probe'
-import { frameWithinLimit } from './page-waits'
+import { NO_FRAME_LIMIT_MS, frameWithinLimit } from './page-waits'
 
 /**
  * The longest wait for one finished frame sample. In paced mode the probe rightly holds the page's
@@ -37,11 +37,14 @@ function sampleLimitError(what: string): Error {
 }
 
 /**
- * Waits for the next host frame, which must come within the frame limit of the page (a hidden or
- * minimized window stops host frames), then checks the live view.
+ * Waits for the next host frame, which must come within the limit ({@link NO_FRAME_LIMIT_MS} by
+ * default; a hidden or minimized window stops host frames), then checks the live view.
  */
-export async function nextHostPoll(watch: FrameWatch): Promise<void> {
-  await frameWithinLimit(watch.hostFrame, watch.what)
+export async function nextHostPoll(
+  watch: FrameWatch,
+  limitMs: number = NO_FRAME_LIMIT_MS,
+): Promise<void> {
+  await frameWithinLimit(watch.hostFrame, watch.what, limitMs)
   watch.checkHealth()
 }
 
