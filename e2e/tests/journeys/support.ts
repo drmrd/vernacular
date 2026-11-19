@@ -51,6 +51,16 @@ export async function canvasBox(page: Page) {
   return box
 }
 
+// A point on the plan canvas in page coordinates, from the canvas box read now. Aim a raw
+// pointer action with this just before it, so that an earlier box can never be stale.
+export async function canvasPoint(
+  page: Page,
+  at: { x: number; y: number },
+): Promise<{ x: number; y: number }> {
+  const box = await canvasBox(page)
+  return { x: box.x + at.x, y: box.y + at.y }
+}
+
 // Activate the wall-drawing tool. Drawing is an explicit tool choice now that
 // Select (drag-to-pan) is the default (ADR-0069), so a draw must select it first.
 export async function selectWallTool(page: Page): Promise<void> {

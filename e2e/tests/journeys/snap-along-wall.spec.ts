@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { gotoEditor, drawWall, expectWallCount, selectors } from './support'
+import { canvasPoint, gotoEditor, drawWall, expectWallCount, selectors } from './support'
 
 test('snaps a new wall onto an existing wall', async ({ page }) => {
   await gotoEditor(page)
@@ -9,16 +9,13 @@ test('snaps a new wall onto an existing wall', async ({ page }) => {
   await expectWallCount(page, 1)
 
   const canvas = selectors.planCanvas(page)
-  const box = await canvas.boundingBox()
-  if (box === null) {
-    throw new Error('plan canvas has no bounding box')
-  }
 
   // Start a second wall well clear of the first, then move toward a point along the
   // existing wall that is clear of its endpoints, its midpoint, and the perpendicular
   // and parallel construction lines, so the on-edge snap is the only one in range.
   await canvas.click({ position: { x: 400, y: 360 } })
-  await page.mouse.move(box.x + 250, box.y + 206)
+  const aim = await canvasPoint(page, { x: 250, y: 206 })
+  await page.mouse.move(aim.x, aim.y)
   await expect(selectors.liveRegion(page)).toHaveText('Snapped to edge')
 
   // Commit the second wall at the snapped point; the plan now holds two walls.
