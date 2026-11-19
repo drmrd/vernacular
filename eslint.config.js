@@ -65,6 +65,7 @@ const sessionTestingEntryInsideSession = {
 }
 const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
 const storyFileGlobs = ['**/*.stories.{ts,tsx}']
+const sessionTestingUsers = [...testFileGlobs, ...storyFileGlobs, '**/*-test-support.{ts,tsx}']
 
 const nodeGlobalNames = new Set(Object.keys(globals.node))
 const browserOnlyGlobalNames = Object.keys(globals.browser).filter(
@@ -145,8 +146,10 @@ const layerPurityBlocks = [
   },
   {
     // Tests and stories may use the session doubles; production code may not.
+    // Test support modules (named *-test-support) only serve tests, so they are left out too.
+    // The earlier blocks still apply to them, so a support module cannot import the 3D packages.
     files: ['bridge/**'],
-    ignores: [...testFileGlobs, ...storyFileGlobs],
+    ignores: sessionTestingUsers,
     rules: {
       'no-restricted-imports': [
         'error',
@@ -156,7 +159,7 @@ const layerPurityBlocks = [
   },
   {
     files: ['editor/**', 'app/**'],
-    ignores: [...testFileGlobs, ...storyFileGlobs],
+    ignores: sessionTestingUsers,
     rules: {
       'no-restricted-imports': [
         'error',
@@ -166,7 +169,7 @@ const layerPurityBlocks = [
   },
   {
     files: ['src/**'],
-    ignores: [...testFileGlobs, ...storyFileGlobs],
+    ignores: sessionTestingUsers,
     rules: {
       'no-restricted-imports': ['error', { patterns: [engineTestingEntry, sessionTestingEntry] }],
     },
