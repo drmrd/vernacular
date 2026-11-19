@@ -1,4 +1,5 @@
 import type { FrameTiming, PixelSize, TimingRun, TimingSummary } from './timing-record'
+import { roundedToStep } from './timing-statistics'
 
 /** The budget of a 3D scene update, in milliseconds (design specification 6.10). */
 export const SCENE_UPDATE_BUDGET_MS = 8
@@ -19,7 +20,7 @@ const TIME_WIDTH = 6
 const BASE_WIDTH = 12
 /** The space between two columns of the table. */
 const COLUMN_GAP = ' '
-/** Decimals of a measured time. */
+/** Decimals printed for a measured time; matches the 0.01 ms step of the statistics module. */
 const TIME_DECIMALS = 2
 /** Decimals of a budget. */
 const BUDGET_DECIMALS = 1
@@ -97,21 +98,17 @@ function milliseconds(value: number): string {
   return value.toFixed(TIME_DECIMALS)
 }
 
-function roundedMilliseconds(value: number): number {
-  return Number(milliseconds(value))
-}
-
 /** The change of the medians as printed: both are rounded first, so the printed cells subtract exactly. */
 function changeCell(current: TimingSummary, baseline: TimingSummary | undefined): string {
   if (baseline === undefined) return NOT_AVAILABLE
-  const now = roundedMilliseconds(current.medianMs)
-  const before = roundedMilliseconds(baseline.medianMs)
+  const now = roundedToStep(current.medianMs)
+  const before = roundedToStep(baseline.medianMs)
   const difference = now - before
   const sign = difference < 0 ? '-' : '+'
   const change = `${sign}${milliseconds(Math.abs(difference))} ms`
   return before === 0
     ? `${change} (${NOT_AVAILABLE})`
-    : `${change} (${milliseconds(now / before)}x)`
+    : `${change} (${milliseconds(roundedToStep(now / before))}x)`
 }
 
 function formatRow(row: TimingRow, labelWidth: number): string {

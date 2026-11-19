@@ -4,7 +4,8 @@ const PERCENTILE_RANK = 0.95
 const STEPS_PER_MS = 100 // rounds to 0.01 ms
 const MIDDLE_PAIR_DIVISOR = 2
 
-function roundedToStep(valueMs: number): number {
+/** A time in milliseconds rounded to the 0.01 ms step; the one rounding rule of the timing code. */
+export function roundedToStep(valueMs: number): number {
   return Math.round(valueMs * STEPS_PER_MS) / STEPS_PER_MS
 }
 
