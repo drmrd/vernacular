@@ -6,9 +6,11 @@ import {
   PerceivedColorProvider,
   SceneSessionProvider,
   SelectionProvider,
+  SurfaceSelectionProvider,
   createActiveFloorStore,
   createPerceivedColorStore,
   createSelectionStore,
+  createSurfaceSelectionStore,
   type EditorSession,
   type EnvironmentSessionStore,
   type SceneSessionStore,
@@ -31,10 +33,12 @@ export interface ReferenceSceneProvidersProps {
 
 /**
  * The providers the live 3D view needs, fed by the given stores: the editor session, the
- * selection (empty), the active floor (`floor-1`), the environment session, the scene
- * session, and the perceived color. The order follows the app's stack. The asset providers
- * are left out: the reference project has no model assets, so the live view draws furniture
- * as boxes. The stage does not mount the 3D canvas itself; the page puts it inside.
+ * selection (empty), the active floor (`floor-1`), the surface selection (empty), the
+ * environment session, the scene session, and the perceived color. The order follows the
+ * app's stack. The asset providers are left out: the reference project has no model assets,
+ * so the live view draws furniture as boxes. The entity surface bridge is left out too: it
+ * only follows selection changes, and nothing selects here. The stage does not mount the 3D
+ * canvas itself; the page puts it inside.
  */
 export function ReferenceSceneProviders({
   stores,
@@ -42,16 +46,19 @@ export function ReferenceSceneProviders({
 }: ReferenceSceneProvidersProps): ReactElement {
   const selection = useMemo(() => createSelectionStore(), [])
   const activeFloor = useMemo(() => createActiveFloorStore(ACTIVE_FLOOR_ID), [])
+  const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
   const perceivedColor = useMemo(() => createPerceivedColorStore(), [])
   return (
     <EditorSessionProvider session={stores.session}>
       <SelectionProvider store={selection}>
         <ActiveFloorProvider store={activeFloor}>
-          <PerceivedColorProvider store={perceivedColor}>
-            <EnvironmentSessionProvider store={stores.environment}>
-              <SceneSessionProvider store={stores.sceneSession}>{children}</SceneSessionProvider>
-            </EnvironmentSessionProvider>
-          </PerceivedColorProvider>
+          <SurfaceSelectionProvider store={surfaceSelection}>
+            <PerceivedColorProvider store={perceivedColor}>
+              <EnvironmentSessionProvider store={stores.environment}>
+                <SceneSessionProvider store={stores.sceneSession}>{children}</SceneSessionProvider>
+              </EnvironmentSessionProvider>
+            </PerceivedColorProvider>
+          </SurfaceSelectionProvider>
         </ActiveFloorProvider>
       </SelectionProvider>
     </EditorSessionProvider>
