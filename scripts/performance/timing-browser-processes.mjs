@@ -24,6 +24,10 @@ const BROWSER_PIPE_ARGUMENT = '--remote-debugging-pipe'
 /** Separator that starts the arguments of a command. */
 const ARGUMENT_SEPARATOR = ' --'
 
+/** The browser pipe argument as a whole token: bounded by spaces or the command ends. */
+const BROWSER_PIPE_TOKEN = new RegExp(`(?:^| )${BROWSER_PIPE_ARGUMENT}(?: |$)`)
+
+/** One `ps` line: pid, parent pid, then the whole command text. */
 const PROCESS_LINE = /^\s*(\d+)\s+(\d+)\s+(.*\S)\s*$/
 
 /**
@@ -48,6 +52,8 @@ export function parseProcessList(text) {
 }
 
 /**
+ * Returns the executable part of a command, cut at the first space followed by
+ * two hyphens; a path that itself contains that sequence is cut there too.
  * @param {string} command
  * @returns {string}
  */
@@ -57,6 +63,7 @@ function executableOf(command) {
 }
 
 /**
+ * Returns the ids, in list order, of processes with parent id 1 whose executable name ends with the crash handler name.
  * @param {ProcessRow[]} processes
  * @returns {number[]}
  */
@@ -71,6 +78,7 @@ export function crashHandlerPids(processes) {
 }
 
 /**
+ * Returns the ids of `after`, in their order, that are not in `before`.
  * @param {number[]} before
  * @param {number[]} after
  * @returns {number[]}
@@ -81,17 +89,18 @@ export function newPids(before, after) {
 }
 
 /**
+ * Returns the id of the first child of the driver whose command holds the browser pipe argument as a whole token, or undefined.
  * @param {ProcessRow[]} processes
  * @param {number} driverPid
  * @returns {number | undefined}
  */
 export function browserMainPid(processes, driverPid) {
-  return processes.find(
-    (row) => row.ppid === driverPid && row.command.includes(BROWSER_PIPE_ARGUMENT),
-  )?.pid
+  return processes.find((row) => row.ppid === driverPid && BROWSER_PIPE_TOKEN.test(row.command))
+    ?.pid
 }
 
 /**
+ * Returns the given ids, in their order, that are crash handlers in the process list now.
  * @param {number[]} pids
  * @param {ProcessRow[]} processes
  * @returns {number[]}
