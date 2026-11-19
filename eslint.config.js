@@ -103,8 +103,8 @@ const propertyNamed = (names) =>
   `:matches([property.name=${anyOf(names)}], [property.value=${anyOf(names)}])`
 const keyNamed = (names) => `:matches([key.name=${anyOf(names)}], [key.value=${anyOf(names)}])`
 const typeScriptWrapper = anyOf(['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression'])
-// True when the node at the path is a global object, plain or behind one TypeScript wrapper.
-const isGlobalObject = (path) =>
+// Matches when the node at the path is a global object, plain or behind one TypeScript wrapper.
+const globalObjectAt = (path) =>
   `:matches([${path}.name=${anyOf(globalObjectNames)}], ` +
   `[${path}.type=${typeScriptWrapper}][${path}.expression.name=${anyOf(globalObjectNames)}])`
 const storageSelector = (selector) => ({ selector, message: storageApiMessage })
@@ -112,7 +112,7 @@ const storageSelector = (selector) => ({ selector, message: storageApiMessage })
 // navigator reached through a global object: globalThis.navigator.storage
 const navigatorThroughAnObject = storageSelector(
   "MemberExpression[object.type='MemberExpression'][object.property.name='navigator']" +
-    isGlobalObject('object.object') +
+    globalObjectAt('object.object') +
     propertyNamed(navigatorStorageMembers),
 )
 // A global object behind a TypeScript wrapper: (window as Window).localStorage
@@ -126,13 +126,13 @@ const wrappedGlobalObject = storageSelector(
 const wrappedNavigator = storageSelector(
   `MemberExpression[object.type=${typeScriptWrapper}]` +
     ":matches([object.expression.name='navigator'], " +
-    `[object.expression.property.name='navigator']${isGlobalObject('object.expression.object')})` +
+    `[object.expression.property.name='navigator']${globalObjectAt('object.expression.object')})` +
     propertyNamed(navigatorStorageMembers),
 )
 // A destructuring from a navigator read from a global object: const { storage } = globalThis.navigator
 const destructuredFromNavigatorThroughAnObject = storageSelector(
   "VariableDeclarator[init.type='MemberExpression'][init.property.name='navigator']" +
-    isGlobalObject('init.object') +
+    globalObjectAt('init.object') +
     ` > ObjectPattern > Property${keyNamed(navigatorStorageMembers)}`,
 )
 // A destructuring of navigator out of a global object: const { navigator: { storage } } = window
