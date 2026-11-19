@@ -192,7 +192,9 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
 // A keyboard wall run or measurement does not outlive the tool it was started
 // under. Without this, a run left open when the tool changed would continue,
 // unseen, when the tool is armed again. Both setters come from useState, so they
-// are stable and a change of tool is the only thing that runs this.
+// are stable, so the effect runs on a change of tool, and one time at mount,
+// where it sets idle over idle. `useDiscardOnLeave` in `use-dimension-tool.ts`
+// does the same for the pointer half of the dimension tool.
 function useDiscardKeyboardRunsOnToolChange(
   tool: ToolId,
   setWallState: (state: WallToolState) => void,
