@@ -226,7 +226,10 @@ with code 2.
 - Input latency.
 
 The `main thread` figure is the time of the page's frame callbacks. The browser's own style,
-layout, and paint after them are not in it. The camera does not move during the timed frames.
+layout, and paint after them are not in it. The timing page gives the view no camera input, so the
+camera is where the live view's automatic framing puts it. That framing can set the camera again
+after an edit that changes the bounds of the model. The command does not time a camera that orbits
+or walks.
 
 Two facts about the timing page. Furniture is drawn as boxes, because the reference project names a
 model that no catalog holds, so each mount of the 3D view logs one failed model load in the browser
