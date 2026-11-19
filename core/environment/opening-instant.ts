@@ -93,22 +93,46 @@ function northIsImplied(daylightSite: DaylightSite): boolean {
   return daylightSite.sample === 'location-and-north'
 }
 
+/** The date tried second at a site in the northern hemisphere, or on the equator: the June solstice. */
+const NORTHERN_SOLSTICE_DATE = '2026-06-21'
+/** The date tried second at a site in the southern hemisphere: the December solstice. */
+const SOUTHERN_SOLSTICE_DATE = '2026-12-21'
+
+/** The dates a scan tries, in order: the March equinox, then the solstice of the hemisphere. */
+function datesToTry(daylightSite: DaylightSite): readonly string[] {
+  const solsticeDate =
+    daylightSite.latLong.latitude >= 0 ? NORTHERN_SOLSTICE_DATE : SOUTHERN_SOLSTICE_DATE
+  return [EQUINOX_DATE, solsticeDate]
+}
+
+/**
+ * The first date in the list with a qualifying minute, and that minute. The site is resolved
+ * again for each date, because the offset from UTC depends on the date.
+ */
+function firstQualifyingInstant(
+  input: OpeningConditionsInput,
+  dates: readonly string[],
+): ObservationInstant | undefined {
+  for (const date of dates) {
+    const daylightSite = daylightSiteFor(input.site, input.front, date)
+    const minutesSinceMidnight = nearestQualifyingMinute(daylightSite, input.front, date)
+    if (minutesSinceMidnight !== undefined) return { date, minutesSinceMidnight }
+  }
+  return undefined
+}
+
 /**
  * The instant and the cloud cover a project opens at. A site whose north is implied opens at
- * the fixed instant. Any other site opens at the qualifying minute of 20 March 2026 nearest
- * 10:30, the earlier of two equally near; when no minute qualifies, the fixed instant applies.
+ * the fixed instant. Any other site opens at the qualifying minute nearest 10:30, the earlier
+ * of two equally near, on the first date that has one. The dates are tried in order: 20 March
+ * 2026, then 21 June 2026 at a latitude of 0 or more or 21 December 2026 below 0. When no minute
+ * of either date qualifies, the fixed instant applies.
  */
 export function openingConditions(input: OpeningConditionsInput): OpeningConditions {
-  const fixed: OpeningConditions = {
-    observedAt: openingInstant({ site: input.site }),
-    cloudCover: DEFAULT_CLOUD_COVER,
-  }
-  const daylightSite = daylightSiteFor(input.site, input.front, EQUINOX_DATE)
-  if (northIsImplied(daylightSite)) return fixed
-  const minutesSinceMidnight = nearestQualifyingMinute(daylightSite, input.front, EQUINOX_DATE)
-  if (minutesSinceMidnight === undefined) return fixed
-  return {
-    observedAt: { date: EQUINOX_DATE, minutesSinceMidnight },
-    cloudCover: DEFAULT_CLOUD_COVER,
-  }
+  const fixedInstant = openingInstant({ site: input.site })
+  const equinoxSite = daylightSiteFor(input.site, input.front, EQUINOX_DATE)
+  const observedAt = northIsImplied(equinoxSite)
+    ? fixedInstant
+    : (firstQualifyingInstant(input, datesToTry(equinoxSite)) ?? fixedInstant)
+  return { observedAt, cloudCover: DEFAULT_CLOUD_COVER }
 }
