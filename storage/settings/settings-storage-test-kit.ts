@@ -70,3 +70,42 @@ export function dropping(storage: SettingsStorage): SettingsStorage {
     },
   }
 }
+
+/**
+ * A storage whose `getItem` of `key` throws a `SecurityError` from the call numbered `fromCall` on
+ * (the first call is number 1). Reads of other keys, and the other methods, pass through.
+ */
+export function refusingReadOf(
+  storage: SettingsStorage,
+  key: string,
+  fromCall: number = 1,
+): SettingsStorage {
+  let calls = 0
+  return {
+    getItem: (asked) => {
+      if (asked !== key) return storage.getItem(asked)
+      calls += 1
+      if (calls >= fromCall) throw securityError()
+      return storage.getItem(asked)
+    },
+    setItem: (asked, value) => {
+      storage.setItem(asked, value)
+    },
+    removeItem: (asked) => {
+      storage.removeItem(asked)
+    },
+  }
+}
+
+/** A storage whose `setItem` stores `otherText` instead of the text it was given. */
+export function storingOtherText(storage: SettingsStorage, otherText: string): SettingsStorage {
+  return {
+    getItem: (key) => storage.getItem(key),
+    setItem: (key) => {
+      storage.setItem(key, otherText)
+    },
+    removeItem: (key) => {
+      storage.removeItem(key)
+    },
+  }
+}
