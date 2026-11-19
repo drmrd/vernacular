@@ -1,4 +1,4 @@
-import type { DocumentStore, ProjectLockHold, SaveReport } from '../../storage'
+import type { DocumentStore, ProjectLockHold, ProjectSnapshots, SaveReport } from '../../storage'
 import { type Autosave, createAutosave } from '../autosave/create-autosave'
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuarded, callGuardedAsync } from '../guarded-call'
@@ -16,6 +16,11 @@ export interface DocumentHandleParts {
   readonly opened: OpenedProject
   /** A session built ahead on the opened project; when absent, the handle builds its own. */
   readonly session?: EditorSession
+  /**
+   * The snapshots of the request's id on the store, got ahead; when absent, the handle asks the
+   * store for them.
+   */
+  readonly snapshots?: ProjectSnapshots
 }
 
 interface SaveStatusCell {
@@ -204,7 +209,7 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     location: request.location,
     durable: store.durable,
     session,
-    snapshots: store.snapshots(request.id),
+    snapshots: parts.snapshots ?? store.snapshots(request.id),
     saveStatus: status.get,
     subscribe: status.subscribe,
     onNotice: notices.onNotice,
