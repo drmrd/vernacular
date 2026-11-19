@@ -25,38 +25,75 @@ type DetailedCause = Extract<OpenFailureCause, { readonly kind: DetailedKind }>
 /** The failures whose text never changes. */
 type FixedCause = Exclude<OpenFailureCause, DetailedCause>
 
-/**
- * The object literal must name every detailed kind. Its keys are computed names because the kinds
- * are kebab-case.
- */
-const DETAILED_KINDS: ReadonlySet<string> = new Set(
-  Object.keys({
-    ['did-not-open']: true,
-    ['did-not-import']: true,
-    ['did-not-restore']: true,
-    ['storage-unavailable']: true,
-    ['unsupported-file']: true,
-  } satisfies Record<DetailedKind, true>),
-)
+type FixedKind = FixedCause['kind']
+
+/** The fixed kinds that the first switch of isDetailedKind leaves to the second one. */
+type RestKind = Exclude<
+  FixedKind,
+  'flush-failed' | 'open-elsewhere' | 'not-found' | 'folder-permission'
+>
 
 /**
- * The text of each failure that never changes. The record must name every fixed kind, so a new
- * kind of failure is a type error here until it has its text. A cancelled pick and a restore with
- * nothing to restore give the empty string, since they are never shown.
+ * The text of each failure that never changes. The switch names every fixed kind and has no
+ * default, so a new kind of failure is a type error here until it has its text. A cancelled pick
+ * and a restore with nothing to restore give the empty string, since they are never shown.
  */
-const FIXED_REASONS: Readonly<Record<FixedCause['kind'], string>> = {
-  ['open-elsewhere']: OPEN_ELSEWHERE,
-  ['not-found']: NOT_STORED,
-  ['folder-empty']: FOLDER_EMPTY,
-  ['folder-permission']: FOLDER_PERMISSION,
-  ['folder-unavailable']: FOLDER_UNAVAILABLE,
-  ['flush-failed']: SAVE_FAILED_DURING_SWITCH,
-  cancelled: '',
-  ['nothing-to-restore']: '',
+function fixedReason(kind: FixedKind): string {
+  switch (kind) {
+    case 'open-elsewhere':
+      return OPEN_ELSEWHERE
+    case 'not-found':
+      return NOT_STORED
+    case 'folder-empty':
+      return FOLDER_EMPTY
+    case 'folder-permission':
+      return FOLDER_PERMISSION
+    case 'folder-unavailable':
+      return FOLDER_UNAVAILABLE
+    case 'flush-failed':
+      return SAVE_FAILED_DURING_SWITCH
+    case 'cancelled':
+    case 'nothing-to-restore':
+      return ''
+  }
+}
+
+/** The last fixed kinds of isDetailedKind. None of them carries detail. */
+function isDetailedRestKind(kind: RestKind): false {
+  switch (kind) {
+    case 'folder-unavailable':
+    case 'folder-empty':
+    case 'cancelled':
+    case 'nothing-to-restore':
+      return false
+  }
+}
+
+/**
+ * Whether the kind carries its own detail. The switch names every detailed kind and some fixed
+ * ones, and hands the rest of the kinds to a second switch. Neither has a default for a kind it
+ * names, so a new kind of failure is a type error until it is placed.
+ */
+function isDetailedKind(kind: OpenFailureCause['kind']): boolean {
+  switch (kind) {
+    case 'did-not-open':
+    case 'did-not-import':
+    case 'did-not-restore':
+    case 'storage-unavailable':
+    case 'unsupported-file':
+      return true
+    case 'flush-failed':
+    case 'open-elsewhere':
+    case 'not-found':
+    case 'folder-permission':
+      return false
+    default:
+      return isDetailedRestKind(kind)
+  }
 }
 
 function isDetailed(failure: OpenFailureCause): failure is DetailedCause {
-  return DETAILED_KINDS.has(failure.kind)
+  return isDetailedKind(failure.kind)
 }
 
 /** The text of a failure that carries its own detail. */
@@ -78,10 +115,10 @@ function detailedReason(failure: DetailedCause): string {
  * The empty string means the failure is never shown.
  */
 export function fixedFailureReason(failure: OpenFailureCause): string | undefined {
-  return isDetailed(failure) ? undefined : FIXED_REASONS[failure.kind]
+  return isDetailed(failure) ? undefined : fixedReason(failure.kind)
 }
 
 /** One sentence for a failure of a switch, an import, an open folder, or a restore. */
 export function openFailureReason(failure: OpenFailureCause): string {
-  return isDetailed(failure) ? detailedReason(failure) : FIXED_REASONS[failure.kind]
+  return isDetailed(failure) ? detailedReason(failure) : fixedReason(failure.kind)
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { switchProject } from '../session'
+import type { OpenFailureCause } from './open-failure-text'
 import type {
   DocumentHandle,
   FlowResult,
@@ -71,31 +72,57 @@ function newMemory(): OwnerMemory {
   return { ports: null, handle: null, failure: null, busy: false, mounted: false, start: null }
 }
 
-/**
- * The kinds of a failed switch. A flow's refusal of another kind leaves the failure as it is. The
- * object literal must name every kind of SwitchFailure, so a new kind is a type error here. Its
- * keys are computed names because the kinds are kebab-case.
- */
-const SWITCH_FAILURE_KINDS: ReadonlySet<string> = new Set(
-  Object.keys({
-    ['flush-failed']: true,
-    ['open-elsewhere']: true,
-    ['not-found']: true,
-    ['folder-permission']: true,
-    ['folder-unavailable']: true,
-    ['did-not-open']: true,
-    ['storage-unavailable']: true,
-  } satisfies Record<SwitchFailure['kind'], true>),
-)
+/** The kinds that the first switch of isSwitchFailure leaves to the second one. */
+type OtherKind = Exclude<
+  OpenFailureCause['kind'],
+  SwitchFailure['kind'] | 'cancelled' | 'folder-empty'
+>
 
-/** True for a failure that says why a project could not open, as opposed to a flow's refusal. */
+/** The last kinds of isSwitchFailure. None of them is a kind of a failed switch. */
+function isSwitchKindOfOther(kind: OtherKind): false {
+  switch (kind) {
+    case 'nothing-to-restore':
+    case 'did-not-import':
+    case 'did-not-restore':
+    case 'unsupported-file':
+      return false
+  }
+}
+
+/**
+ * True for a kind of a failed switch, as opposed to a flow's refusal. The switch names every kind of
+ * SwitchFailure and some refusals, and hands the other kinds to a second switch. Neither has a
+ * default for a kind it names, so a new kind is a type error until it is placed.
+ */
+function isSwitchKind(kind: OpenFailureCause['kind']): boolean {
+  switch (kind) {
+    case 'flush-failed':
+    case 'open-elsewhere':
+    case 'not-found':
+    case 'folder-permission':
+    case 'folder-unavailable':
+    case 'did-not-open':
+    case 'storage-unavailable':
+      return true
+    case 'cancelled':
+    case 'folder-empty':
+      return false
+    default:
+      return isSwitchKindOfOther(kind)
+  }
+}
+
+/**
+ * True for a failure that says why a project could not open, as opposed to a flow's refusal. Every
+ * refusal that a flow gives is one of the kinds of OpenFailureCause.
+ */
 function isSwitchFailure(failure: unknown): failure is SwitchFailure {
   return (
     typeof failure === 'object' &&
     failure !== null &&
     'kind' in failure &&
     typeof failure.kind === 'string' &&
-    SWITCH_FAILURE_KINDS.has(failure.kind)
+    isSwitchKind(failure.kind as OpenFailureCause['kind'])
   )
 }
 
