@@ -1,6 +1,8 @@
 import type { Project } from '../../core'
 import type { ProjectStore } from '../../storage'
 import type { EditorSession } from '../editor-session/editor-session'
+import { createWriteQueue } from '../handle/write-queue'
+import { createAutosaveWrite, createWriteProgress, hasUnwrittenChange } from './autosave-write'
 
 export type AutosaveStatus = 'idle' | 'pending' | 'saved' | 'error'
 
@@ -28,73 +30,64 @@ export interface AutosaveConfig extends AutosaveOptions {
   store: ProjectStore
   projectId: string
   snapshots?: SnapshotWriter & SnapshotPruner
-  /** Reads the dirty-tracker revision. Captured synchronously at persist time
-   *  (before any await) so onSaved reports the revision of the project actually
-   *  written, never a later edit's. */
+  /** Reads the dirty-tracker revision. Read when a write starts, before it yields, so onSaved
+   *  reports the revision of the project actually written, never a later edit's. */
   revision?: () => number
-  /** Called after a successful persist with the revision captured at persist
-   *  start. Not called when the persist fails. */
+  /** Called after a write that succeeded, with the revision read when that write started. Not
+   *  called when the write fails. */
   onSaved?: (savedRevision: number) => void
 }
 
 export interface Autosave {
+  /** Cancels the wait and asks for a write now, also when nothing changed. Resolves when a write
+   *  that started after this call has ended, and rejects with that write's error. */
+  save(): Promise<void>
+  /** Ends the session subscription and the wait. A write that waits never starts. */
   dispose(): void
 }
 
+/**
+ * Stores the project of the session a moment after each change. Every write, of the timer or of
+ * `save()`, goes through one queue, so two saves never run together and the last state wins.
+ */
 export function createAutosave(config: AutosaveConfig): Autosave {
-  const { session, store, projectId, snapshots } = config
   const delayMs = config.delayMs ?? DEFAULT_AUTOSAVE_DELAY_MS
   const report = config.onStatusChange ?? noop
+  const progress = createWriteProgress()
+  const queue = createWriteQueue(createAutosaveWrite(config, progress))
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  // Resolve the persistence strategy once: with snapshots configured we write
-  // ahead, otherwise we save canonically. persist() then closes over a single
-  // write function with no per-call branching.
-  const write: (project: Project) => Promise<unknown> = snapshots
-    ? async (project) => {
-        // Write ahead to a snapshot first so a crash mid-save still recovers the
-        // edit, then save canonically, then prune. prune() runs only after the
-        // canonical save resolves, so a failed save leaves the snapshot intact.
-        await snapshots.writeSnapshot(project)
-        await store.save(projectId, project)
-        await snapshots.prune()
-      }
-    : (project) => store.save(projectId, project)
-
-  const persist = (): void => {
-    // getProject() is a live reference; reading it when the debounce fires saves
-    // the latest coalesced edit. ProjectStore.save clones synchronously, so a
-    // dispatch arriving mid-save does not corrupt the written snapshot.
-    //
-    // Capture the revision synchronously here, before the async write begins, so
-    // a dispatch arriving mid-write advances the live revision while
-    // savedRevision stays fixed to the project actually persisted.
-    const project = session.getProject()
-    const savedRevision = config.revision?.()
-    void write(project)
-      .then(() => {
-        report('saved')
-        if (savedRevision !== undefined) {
-          config.onSaved?.(savedRevision)
-        }
-      })
-      .catch(() => report('error'))
-  }
-
-  const unsubscribe = session.subscribe(() => {
-    report('pending')
+  const cancelWait = (): void => {
     if (timer !== undefined) {
       clearTimeout(timer)
+      timer = undefined
     }
-    timer = setTimeout(persist, delayMs)
+  }
+
+  const writeWhenUnwritten = (): void => {
+    timer = undefined
+    if (hasUnwrittenChange(progress)) {
+      // A failed write reports its status, so its rejection needs no other handler.
+      queue.request().catch(noop)
+    }
+  }
+
+  const unsubscribe = config.session.subscribe(() => {
+    progress.changes += 1
+    report('pending')
+    cancelWait()
+    timer = setTimeout(writeWhenUnwritten, delayMs)
   })
 
   return {
+    save() {
+      cancelWait()
+      return queue.request()
+    },
     dispose() {
+      progress.disposed = true
       unsubscribe()
-      if (timer !== undefined) {
-        clearTimeout(timer)
-      }
+      cancelWait()
     },
   }
 }

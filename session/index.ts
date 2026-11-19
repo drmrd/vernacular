@@ -21,4 +21,21 @@ export {
   commitProject,
   DEFAULT_AUTOSAVE_DELAY_MS,
 } from './autosave/create-autosave'
-export type { AssetCache, ProjectStore, ProjectSummary, ProjectSnapshots } from '../storage'
+export type { SessionPorts } from './ports'
+export type {
+  OpenFailure,
+  SaveStatus,
+  SaveOutcome,
+  HandleNotice,
+  DocumentHandle,
+  OpenResult,
+  OpenRequest,
+} from './handle/handle-types'
+export { openDocumentHandle } from './handle/open-document-handle'
+export type {
+  AssetCache,
+  ProjectLocation,
+  ProjectStore,
+  ProjectSummary,
+  ProjectSnapshots,
+} from '../storage'

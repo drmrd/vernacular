@@ -217,12 +217,6 @@ export const lintExceptions = [
   { file: 'app/app.test.tsx', rule: 'max-lines', issue: 685, max: 434 },
   { file: 'app/use-project-actions.test.ts', rule: 'max-lines', issue: 685, max: 410 },
   {
-    file: 'session/autosave/create-autosave.test.ts',
-    rule: 'max-lines-per-function',
-    issue: 685,
-    max: 223,
-  },
-  {
     file: 'core/commands/handlers/furniture-commands.test.ts',
     rule: 'max-lines',
     issue: 686,
