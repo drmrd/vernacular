@@ -163,8 +163,8 @@ function useWalkSession(
     })
     // Four values are deliberately left out of the dependencies below. floorElevationMm is
     // read only as the session starts, and a mid-walk change to it must not restart the walk
-    // and drop pointer capture; re-seeding the walk pose when the active floor changes
-    // mid-walk is tracked by #608 and lands in a later cycle. savedWalkPoseRef,
+    // and drop pointer capture; the frame step seats the eye on the active floor at every
+    // step, so a change of floor or elevation needs no restart. savedWalkPoseRef,
     // onWalkPoseRef, and onOpenDoorsRef are refs refreshed on every render, so reading them
     // here cannot go stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps

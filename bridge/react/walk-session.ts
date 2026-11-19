@@ -220,12 +220,14 @@ function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
   }
 }
 
-// Advances the walk one timestep: steps the walk state against the collision
-// world and drives the live camera to the new eye and look. The look deltas are
-// consumed so they do not re-apply. The openings swing in their own per-frame tick,
-// which runs in both camera modes.
+// Advances the walk one timestep: seats the walker on the active floor, steps the walk
+// state against the collision world and drives the live camera to the new eye and look.
+// Seating first keeps the eye on the active floor when the floor changes or its elevation
+// is edited mid-walk. The look deltas are consumed so they do not re-apply. The openings
+// swing in their own per-frame tick, which runs in both camera modes.
 export function stepWalkFrame(ctx: WalkFrameContext, delta: number): void {
-  const next = advanceWalk(ctx.state.current, ctx.input.current, delta, frameCollisionWorld(ctx))
+  const seated = walkStateOnFloor(ctx.state.current, ctx.collisionInputs.floorElevationMm)
+  const next = advanceWalk(seated, ctx.input.current, delta, frameCollisionWorld(ctx))
   ctx.input.current.yawDelta = 0
   ctx.input.current.pitchDelta = 0
   ctx.state.current = next
