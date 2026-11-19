@@ -16,7 +16,7 @@ sourceFiles:
   [
     docs/specs/2026-06-15-near-wall-transparency.md,
     docs/plans/2026-06-15-near-wall-transparency.md,
-    core/topology/exterior-walls.ts,
+    core/scene/exterior-walls.ts,
     core/scene/interior-viewpoint.ts,
     core/scene/camera-outside-building.ts,
     engine/scene/near-wall-transparency.ts,
@@ -25,7 +25,6 @@ sourceFiles:
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/near-wall-fade.tsx,
     bridge/react/scene-nav-toolbar.tsx,
-    e2e/tests/scene-near-wall-transparency.spec.ts,
     engine/scene/near-wall-transparency-recompile.test.ts,
     engine/scene/near-wall-transparency-test-support.ts,
     e2e/tests/journeys/walk-view-after-rebuild.spec.ts,
@@ -158,9 +157,14 @@ Turning Surface edges on and off in orbit mode did it, and so did a paint edit. 
 shut door leaf in front of the walker was lit as if it faced the sun. In realistic lighting it also
 lost its ambient occlusion.
 
+A second effect had the same cause and was easier to meet. A wall that was solid at its first draw
+did not visibly fade when the orbit camera later moved outside it. Its program was built for an
+opaque material, and such a program writes an alpha of 1, so the wall stayed solid at any opacity.
+
 The cause. The fade turns a material's `transparent` and `depthWrite` flags on and off. The renderer
 builds a shader program for a material at its first draw. It builds a new one only when the material
-is marked with `needsUpdate`, and the fade never set that mark. Take a scene rebuild made while the
+is marked with `needsUpdate`, or when the scene's lights or environment change, and the fade never set
+that mark. Take a scene rebuild made while the
 orbit camera stands outside a wall with a door. The fade reaches the new door leaf before its first
 draw. The leaf's material is double-sided, and the renderer draws a transparent double-sided
 material as two single-sided passes. So the leaf's program was built for a transparent, single-sided
@@ -183,9 +187,16 @@ takes the walker's view of a shut door, rebuilds the scene in orbit mode, and co
 view afterward with the first one. Both pictures come from the same run; no picture is stored. On the
 development Mac the test failed in three of three runs before the fix. The mean channel difference
 was 24.353 against a limit of 1, and the changed fraction was 0.757 against a limit of 0.01. After the
-fix it passed in three of three runs, with both figures at 0.000. The journey runs in the macOS
-live-view job of CI (`.github/workflows/ci.yml`). There, a runner with no WebGPU adapter fails the
-step instead of skipping it.
+fix it passed in three of three runs, with both figures at 0.000.
+
+A second test in the same file holds the wall effect. It rebuilds the scene from the default camera,
+so that the north wall's first draw is solid, moves the orbit camera to the north, and compares that
+view with the view after one more rebuild, in which the wall is faded at its first draw. Before the
+fix the mean channel difference was 3.077 and the changed fraction was 0.042. After it both are
+0.000.
+
+Both tests run in the macOS live-view job of CI (`.github/workflows/ci.yml`). There, a runner with no
+WebGPU adapter fails the step instead of skipping it.
 
 The unit tests in `engine/scene/near-wall-transparency-recompile.test.ts` pin the mark:
 
@@ -198,4 +209,10 @@ The unit tests in `engine/scene/near-wall-transparency-recompile.test.ts` pin th
 - "raises a dropped faded material by one and leaves a still-enrolled one alone"
 
 Not measured. The cost of one new program when a wall starts or stops fading has not been timed. It
-is a shader lookup or a compile at the next draw of that material.
+is a shader lookup or a compile at the next draw of that material. A review counted the materials
+that one flip marks in the test fixtures: 7 for a wall with a door and 15 for a wall with a window,
+whose two panes are not marked.
+
+One more fault of the fade is known and is not fixed here. A wall of a room that was drawn step by
+step in split view can stay solid from outside until a full rebuild. It has another cause, and issue
+#903 tracks it.
