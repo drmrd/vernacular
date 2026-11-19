@@ -80,6 +80,7 @@ type Reader<Value> = (value: unknown, path: string) => Value
 function describe(value: unknown): string {
   if (value === null) return 'null'
   if (Array.isArray(value)) return 'an array'
+  if (typeof value === 'number') return String(value)
   return typeof value === 'undefined' ? 'missing' : `a ${typeof value}`
 }
 
