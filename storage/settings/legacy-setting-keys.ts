@@ -1,7 +1,7 @@
 import type { SettingsStorage } from './local-storage-settings-port'
 
 /** Each setting that an older build stored under a key of its own. */
-export const LEGACY_SETTING_KEYS: ReadonlyArray<readonly [name: string, oldKey: string]> = [
+const LEGACY_SETTING_KEYS: ReadonlyArray<readonly [name: string, oldKey: string]> = [
   ['snapPreferences', 'vernacular.snap-preferences'],
 ]
 

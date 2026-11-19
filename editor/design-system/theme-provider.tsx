@@ -45,7 +45,7 @@ export interface ThemeProviderProps {
 
 export function ThemeProvider({
   children,
-  defaultChoice = 'system',
+  defaultChoice = THEME_SETTING.defaultValue,
   designLanguage = DEFAULT_DESIGN_LANGUAGE,
 }: ThemeProviderProps) {
   // The service keeps the first value it reads for the name, a default included, so only the
