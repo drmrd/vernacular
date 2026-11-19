@@ -360,8 +360,9 @@ report prints "not measured" in its baseline column. This update holds no timing
 
 ### Deviations and narrowings
 
-The command differs from the specification and from the plan in four points. The owner of the
-project accepted each of them on 18 November 2026.
+The command differs from the specification and from the plan in three points. The owner of the
+project accepted each of them on 18 November 2026. A fourth point, the baseline column, is no
+longer a difference; it is described after the three.
 
 **WebGPU only.** Section 5.6 of the specification says that the command names whether the renderer
 ran on WebGPU or WebGL 2. The command measures only on a hardware WebGPU adapter and refuses to run
@@ -384,8 +385,12 @@ unless it could not measure. When a run was measured but its baseline write was 
 command exits with code 2, so that a caller who asked for a baseline learns that none was written.
 
 **The baseline column.** Section 5.6 says that each time is printed beside the committed baseline.
-The report shows the baseline's median and the change of the medians, not the baseline's 95th
-percentile. Issue #882 adds a column for it.
+The first version of the report showed only the baseline's median. On 18 November 2026 the owner
+chose to land that version as built and to add the baseline's 95th percentile next, in issue #882.
+The report now shows the baseline's median and 95th percentile in one cell of the baseline column,
+headed `Base med/p95`, for example `2.00/4.00`. They share a cell because the rows of
+the table are 100 characters wide at ordinary times and have no room for one more column. The `Change` cell still gives the difference
+and the ratio of the two medians.
 
 The green commits of this work have the type `build:`, as the plan said. The command is developer
 tooling, and it stays out of the release notes.
@@ -437,7 +442,7 @@ tooling, and it stays out of the release notes.
 
 The unit tests run with
 `pnpm exec vitest run tests/performance/timing scripts/performance --project unit`: 21 test files
-and 360 tests at the head of the branch on 2026-11-18, and all of them pass.
+and 365 tests on 2026-11-18, after the change of the baseline cell, and all of them pass.
 
 - `scripts/performance/timing-arguments.test.ts`: 14
 - `scripts/performance/timing-browser-processes.test.ts`: 29
@@ -457,8 +462,8 @@ and 360 tests at the head of the branch on 2026-11-18, and all of them pass.
 - `tests/performance/timing/run-timing-guards.test.ts`: 19
 - `tests/performance/timing/scene-update-timing.test.ts`: 9
 - `tests/performance/timing/timing-record.test.ts`: 28
-- `tests/performance/timing/timing-report.test.ts`: 32
-- `tests/performance/timing/timing-report-details.test.ts`: 18
+- `tests/performance/timing/timing-report.test.ts`: 36
+- `tests/performance/timing/timing-report-details.test.ts`: 19
 - `tests/performance/timing/timing-statistics.test.ts`: 15
 
 The page, the driver, and the browser session need a GPU browser, so no unit test covers them.
