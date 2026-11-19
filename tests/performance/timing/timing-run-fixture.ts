@@ -9,16 +9,19 @@ export const RENDER_VARIANT_NAMES = [
   'building, realistic',
 ] as const
 
+/** The names of the reference project's edits, as the report row labels spell them. */
 export const REFERENCE_EDIT_NAMES: readonly string[] = REFERENCE_EDITS.map((edit) => edit.name)
 
 const SAMPLES = 100
 const MAIN_THREAD_SPREAD_MS = 1.5
 const GPU_SPREAD_MS = 2.25
 
+/** A summary of 100 samples with the given median and 95th percentile, in milliseconds. */
 export function summary(medianMs: number, p95Ms: number): TimingSummary {
   return { samples: SAMPLES, medianMs, p95Ms }
 }
 
+/** The two timings of one frame: until the main thread is done, and until the GPU is done. */
 export function frame(mainThreadMs: number, untilGpuDoneMs: number): FrameTiming {
   return {
     mainThread: summary(mainThreadMs, mainThreadMs + MAIN_THREAD_SPREAD_MS),
