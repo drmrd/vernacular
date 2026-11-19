@@ -31,10 +31,10 @@ export function useViewSceneGraph(
   )
 }
 
-/** The graph the 3D view shows: the raw graph scoped by the active floor and the building view. */
-export function useShownSceneGraph(): SceneGraph {
+/** The graph the 3D view shows, with the building-view state that scoped it: the raw graph scoped by the active floor and the building view. */
+export function useShownSceneGraph(): { graph: SceneGraph; buildingView: BuildingViewState } {
   const rawGraph = useSceneGraph()
   const activeFloorId = useActiveFloorId()
   const buildingView = useBuildingViewState()
-  return useViewSceneGraph(rawGraph, activeFloorId, buildingView)
+  return { graph: useViewSceneGraph(rawGraph, activeFloorId, buildingView), buildingView }
 }

@@ -5,7 +5,7 @@ import type { SceneGraph } from '../../core'
 import type { FramedScene } from './framed-scene'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import { sceneSessionToggle, useSceneSessionStoreOrLocal } from './scene-session-context'
-import { useBuildingViewState, type BuildingViewState } from './use-building-view-state'
+import type { BuildingViewState } from './use-building-view-state'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
 import { useProjectPaint } from './use-project-paint'
 import { useShownSceneGraph } from './use-view-scene-graph'
@@ -47,8 +47,7 @@ export interface FramedSceneState {
  * on it.
  */
 export function useFramedScene(): FramedSceneState {
-  const graph = useShownSceneGraph()
-  const buildingView = useBuildingViewState()
+  const { graph, buildingView } = useShownSceneGraph()
   const paint = useProjectPaint()
   const { edgeOverlay, toggleEdgeOverlay } = useEdgeOverlay()
   // One reconciler per overlay setting; it reuses an unchanged floor's built scene

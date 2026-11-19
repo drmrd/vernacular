@@ -50,7 +50,7 @@ function useActiveFloorOpenings(): OpeningSceneNode[] {
 // graph it builds, so the list always matches the root: the active floor's openings in the floor
 // view, and every visible floor's openings in the whole-building view.
 function useShownOpenings(): OpeningSceneNode[] {
-  return useShownSceneGraph().openings
+  return useShownSceneGraph().graph.openings
 }
 
 // Owns the opening refs and returns them. The open/closed state follows the doors the session
