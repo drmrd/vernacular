@@ -69,6 +69,14 @@ function mountWithStandingRefusal(session: Session, reason: PlacementRefusal = '
     basis: () => current,
     rerenderWith,
     choosePlacementType: (id: string) => act(() => result.current.setPlacementType(id)),
+    // One act, so the basis and the report reach one commit, in the order of a
+    // keydown that selects an entity and drops an opening at once.
+    reportWithBasisChange: (next: RefusalBasis, reason: PlacementRefusal) =>
+      act(() => {
+        rerenderWith(next)
+        result.current.setPlacementRefusal(reason)
+      }),
+    report: (reason: PlacementRefusal) => act(() => result.current.setPlacementRefusal(reason)),
     planChanged: () => {
       const previousGraph = current.sceneGraph
       const nextGraph = session.getSceneGraph()
@@ -189,6 +197,54 @@ describe('a standing refusal when the keyboard candidate is replaced', () => {
     const { refusal, basis, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
 
     rerenderWith({ ...basis(), candidate: { x: ORIGIN.x, y: ORIGIN.y + 1 } })
+
+    expect(refusal()).toBeNull()
+  })
+})
+
+describe('the count of refused attempts', () => {
+  it('rises by one for each reason reported, a repeat of the standing reason included', () => {
+    const { result } = renderHook(() => useOpeningTool(), { wrapper: OpeningToolProvider })
+    expect(result.current.refusalAttempt).toBe(0)
+
+    act(() => result.current.setPlacementRefusal('opening-overlap'))
+    expect(result.current.refusalAttempt).toBe(1)
+
+    act(() => result.current.setPlacementRefusal('opening-overlap'))
+    expect(result.current.refusalAttempt).toBe(2)
+  })
+
+  it('does not rise when the refusal is cleared with null', () => {
+    const { result } = renderHook(() => useOpeningTool(), { wrapper: OpeningToolProvider })
+    act(() => result.current.setPlacementRefusal('no-host-wall'))
+    expect(result.current.refusalAttempt).toBe(1)
+
+    act(() => result.current.setPlacementRefusal(null))
+
+    expect(result.current.refusalAttempt).toBe(1)
+  })
+})
+
+describe('a refusal reported in the same commit as a change of the basis', () => {
+  it('stands after that commit and retires at the next change of the basis', () => {
+    const session = sessionWithOneFloor()
+    const { refusal, basis, reportWithBasisChange, planChanged } = mountWithStandingRefusal(session)
+    expect(refusal()).toBe('opening-overlap')
+
+    reportWithBasisChange({ ...basis(), selectedIds: new Set<string>() }, 'no-host-wall')
+    expect(refusal()).toBe('no-host-wall')
+
+    addWallOnGround(session)
+    planChanged()
+    expect(refusal()).toBeNull()
+  })
+
+  it('retires when the basis changes in a later commit than the report', () => {
+    const { refusal, basis, report, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
+
+    report('no-host-wall')
+    expect(refusal()).toBe('no-host-wall')
+    rerenderWith({ ...basis(), selectedIds: new Set<string>() })
 
     expect(refusal()).toBeNull()
   })
