@@ -3,7 +3,7 @@ import {
   parseObservationInstant,
   type ObservationInstant,
 } from './observation-time'
-import { openingInstant } from './opening-instant'
+import { openingInstant, type OpeningConditions } from './opening-instant'
 import { DEFAULT_CLOUD_COVER } from './sky-model'
 import type { EnvironmentScene } from '../model/environment-scene'
 
@@ -25,6 +25,15 @@ export const DEFAULT_ENVIRONMENT_STATE: EnvironmentState = {
   observedAt: openingInstant({ site: undefined }),
   cloudCover: DEFAULT_CLOUD_COVER,
   colorCheck: false,
+}
+
+/** The state a project's environment session starts from: the opening conditions, with the default mode and color check. */
+export function environmentStateOpenedWith(conditions: OpeningConditions): EnvironmentState {
+  return {
+    ...DEFAULT_ENVIRONMENT_STATE,
+    observedAt: conditions.observedAt,
+    cloudCover: conditions.cloudCover,
+  }
 }
 
 export interface EnvironmentSceneIdentity {

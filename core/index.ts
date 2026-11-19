@@ -646,6 +646,7 @@ export type {
 } from './environment/environment-state'
 export {
   DEFAULT_ENVIRONMENT_STATE,
+  environmentStateOpenedWith,
   captureEnvironmentScene,
   applyEnvironmentScene,
 } from './environment/environment-state'
