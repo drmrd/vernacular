@@ -223,8 +223,15 @@ function reopenClosed(memory: OwnerMemory, closed: ClosedHandle): void {
   )
 }
 
-/** After a set-up, opens again what the owner closed, or shows a failure that came meanwhile. */
+/**
+ * Opens again what the owner closed, or shows a failure that came meanwhile. It runs after a
+ * set-up and after a flow ends. It does nothing while the effects are cleaned up or while a flow
+ * runs, and keeps what was closed, so the flow's own project is not opened next to the closed one.
+ */
 export function resume(memory: OwnerMemory): void {
+  if (!memory.live || memory.flowRunning) {
+    return
+  }
   const closed = memory.closed
   memory.closed = null
   if (closed !== null) {

@@ -95,15 +95,22 @@ function isSwitchFailure(failure: unknown): failure is SwitchFailure {
   )
 }
 
-/** Installs what a flow gave, or closes its handle when the owner's effects are cleaned up. */
+/**
+ * Installs what a flow gave, or closes its handle when the owner's effects are cleaned up. A
+ * project that the flow opened replaces the one that the owner closed meanwhile. When the effects
+ * are cleaned up, the owner's own handle is no longer its handle: the flow closed it, and the
+ * project that the flow opened is the one that the owner records as closed.
+ */
 function settleFlow<Refusal>(memory: OwnerMemory, result: FlowResult<Refusal>): void {
   if (!memory.live) {
     if (result.ok && result.handle !== memory.handle) {
+      memory.handle = null
       dropHandle(memory, result.handle)
     }
     return
   }
   if (result.ok) {
+    memory.closed = null
     show(memory, { handle: result.handle, failure: null })
   } else if (memory.handle === null && isSwitchFailure(result.failure)) {
     show(memory, { handle: null, failure: result.failure })
@@ -137,6 +144,7 @@ async function runOneFlow<Refusal>(
   const result = await callFlow(flow, ports, memory.handle ?? undefined)
   memory.flowRunning = false
   settleFlow(memory, result)
+  resume(memory)
   launchDueStart(memory)
   return result
 }
