@@ -5,17 +5,25 @@ import { SceneHarnessView } from './scene-harness-view'
 
 // The harness's collaborators: the 3D library's state, a renderer with its own animation
 // loop, the lighting readiness the test settles, and a count of drawn frames. The renderer
-// stand-in holds one loop, the way three's renderer does, and runs it once per frame.
+// stand-in holds one loop and resets its per-frame counts as each frame starts, then calls
+// the loop, the way three's renderer does.
 const harness = vi.hoisted(() => {
+  const info = { render: { frameCalls: 0, drawCalls: 0 } }
   let loop: (() => void) | null = null
   const renderer = {
+    info,
     setAnimationLoop: (callback: (() => void) | null) => {
       loop = callback
     },
     getAnimationLoop: () => loop,
   }
   return {
-    runFrame: () => loop?.(),
+    info,
+    runFrame: () => {
+      info.render.frameCalls = 0
+      info.render.drawCalls = 0
+      loop?.()
+    },
     resetLoop: () => {
       loop = null
     },
@@ -55,15 +63,29 @@ vi.mock('./scene-lighting', () => ({
 
 vi.mock('./fit-camera', () => ({ fitCameraToBounds: () => {}, applyCameraPose: () => {} }))
 
+// Each drawn frame counts once and adds the render and draw calls of a five-pass frame.
 vi.mock('../../engine', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../engine')>()),
   renderSceneFrame: () => {
     harness.draws += 1
+    harness.info.render.frameCalls += 5
+    harness.info.render.drawCalls += 127
   },
 }))
 
+const READY_RENDER_CALLS = 5
+const READY_DRAW_CALLS = 127
+
 function readiness(): string | null {
   return screen.getByTestId('scene-harness').getAttribute('data-harness-ready')
+}
+
+function readyFrameCalls(): { renderCalls: string | null; drawCalls: string | null } {
+  const wrapper = screen.getByTestId('scene-harness')
+  return {
+    renderCalls: wrapper.getAttribute('data-harness-ready-render-calls'),
+    drawCalls: wrapper.getAttribute('data-harness-ready-draw-calls'),
+  }
 }
 
 async function settleLighting(): Promise<void> {
@@ -131,8 +153,28 @@ describe('SceneHarnessView ready frame', () => {
 
     rerender(<SceneHarnessView scene="junctions" />)
     expect(readiness()).toBe('false')
+    runFrame()
+    expect(readiness()).toBe('false')
     await settleLighting()
     runFrame()
     expect(readiness()).toBe('true')
+  })
+
+  it('reports the render and draw calls of the ready frame on the harness', async () => {
+    render(<SceneHarnessView />)
+    await settleLighting()
+    runFrame()
+
+    expect(readyFrameCalls()).toEqual({
+      renderCalls: String(READY_RENDER_CALLS),
+      drawCalls: String(READY_DRAW_CALLS),
+    })
+  })
+
+  it('leaves the render and draw call counts empty until the ready frame is drawn', async () => {
+    render(<SceneHarnessView />)
+    await settleLighting()
+
+    expect(readyFrameCalls()).toEqual({ renderCalls: '', drawCalls: '' })
   })
 })
