@@ -7,12 +7,15 @@ export type SwitchResult =
   | { readonly ok: true; readonly handle: DocumentHandle }
   | { readonly ok: false; readonly failure: { readonly kind: 'flush-failed' } | OpenFailure }
 
-const FLUSH_FAILED: SwitchResult = { ok: false, failure: { kind: 'flush-failed' } }
+function flushFailed(): SwitchResult {
+  return { ok: false, failure: { kind: 'flush-failed' } }
+}
 
 /**
  * Flush the current project, open the target, close the current one. On failure the current
  * handle stays open. Asking for the project that is already open returns its handle and calls
- * nothing. The promise never rejects.
+ * nothing. The promise never rejects. The current handle, when it is given, must be open: the
+ * function compares only ids, so a closed handle with the target's id would come back as it is.
  */
 export async function switchProject(
   ports: SessionPorts,
@@ -26,7 +29,7 @@ export async function switchProject(
     return { ok: true, handle: current }
   }
   if (!(await current.flush()).ok) {
-    return FLUSH_FAILED
+    return flushFailed()
   }
   const opened = await openDocumentHandle(ports, target)
   if (!opened.ok) {
@@ -34,8 +37,10 @@ export async function switchProject(
   }
   if (!(await current.close()).ok) {
     // The edit that arrived while the target loaded is not stored, so the current project stays.
+    // The result of closing the target is not checked: nothing was edited in it, so its close
+    // writes nothing and frees its lock.
     await opened.handle.close()
-    return FLUSH_FAILED
+    return flushFailed()
   }
   return opened
 }
