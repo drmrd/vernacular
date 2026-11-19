@@ -7,6 +7,11 @@ import { buildFramedScene } from './framed-scene'
 import { findByEntityId } from '../../engine/testing'
 import { updateNearWallTransparency } from '../../engine'
 import {
+  glassOpacityOf,
+  opacitiesOf,
+  squareRoomWithSouthWindow,
+} from './near-wall-fade-test-support'
+import {
   DEFAULT_CAMERA_POSE,
   builtinFinishes,
   cameraOutsideBuilding,
@@ -16,129 +21,6 @@ import {
   surfaceKey,
 } from '../../core'
 import type { RoomSceneNode, SceneGraph } from '../../core'
-
-// A square room whose south wall hosts a double-hung window. The wall scene-node
-// ids carry the `wall:` prefix; the window's hostWallId is the raw id ('s'), the
-// real convention a derived graph produces.
-function squareRoomWithSouthWindow(ceiling: number): SceneGraph {
-  const span = 4000
-  const thickness = 200
-  return {
-    nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
-    walls: [
-      {
-        id: 'wall:s',
-        kind: 'wall',
-        floorId: 'g',
-        start: { x: 0, y: 0 },
-        end: { x: span, y: 0 },
-        thickness,
-        height: ceiling,
-      },
-      {
-        id: 'wall:e',
-        kind: 'wall',
-        floorId: 'g',
-        start: { x: span, y: 0 },
-        end: { x: span, y: span },
-        thickness,
-        height: ceiling,
-      },
-      {
-        id: 'wall:n',
-        kind: 'wall',
-        floorId: 'g',
-        start: { x: span, y: span },
-        end: { x: 0, y: span },
-        thickness,
-        height: ceiling,
-      },
-      {
-        id: 'wall:w',
-        kind: 'wall',
-        floorId: 'g',
-        start: { x: 0, y: span },
-        end: { x: 0, y: 0 },
-        thickness,
-        height: ceiling,
-      },
-    ],
-    rooms: [
-      {
-        id: 'room:r',
-        kind: 'room',
-        floorId: 'g',
-        polygon: [
-          { x: 0, y: 0 },
-          { x: span, y: 0 },
-          { x: span, y: span },
-          { x: 0, y: span },
-        ],
-        clearPolygon: [
-          { x: 0, y: 0 },
-          { x: span, y: 0 },
-          { x: span, y: span },
-          { x: 0, y: span },
-        ],
-        area: span * span,
-        ceilingHeight: ceiling,
-      },
-    ],
-    underlays: [],
-    openings: [
-      {
-        id: 'opening:window',
-        kind: 'opening',
-        floorId: 'g',
-        type: 'double-hung-window',
-        center: { x: 2000, y: 0 },
-        along: { x: 1, y: 0 },
-        normal: { x: 0, y: 1 },
-        width: 900,
-        height: 1200,
-        sillHeight: 900,
-        hostThickness: thickness,
-        orientation: { hinge: 'start', facing: 'positive' },
-        hostWallId: 's',
-      },
-    ],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
-}
-
-// Reads the opacity of the 'glass' material under a built opening group,
-// structurally so the bridge test does not import three.
-function glassOpacityOf(group: unknown): number | undefined {
-  let opacity: number | undefined
-  ;(group as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
-    const mesh = object as { material?: { name?: string; opacity?: number } }
-    if (
-      mesh.material !== undefined &&
-      !Array.isArray(mesh.material) &&
-      mesh.material.name === 'glass'
-    ) {
-      opacity = mesh.material.opacity
-    }
-  })
-  return opacity
-}
-
-// The distinct material opacities under a built furniture group, structurally so the
-// bridge test does not import three. Covers single- and multi-material meshes.
-function furnitureOpacitiesOf(group: unknown): number[] {
-  const opacities = new Set<number>()
-  ;(group as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
-    const mesh = object as { material?: { opacity?: number } | { opacity?: number }[] }
-    if (mesh.material === undefined) return
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-    for (const material of materials) {
-      if (typeof material.opacity === 'number') opacities.add(material.opacity)
-    }
-  })
-  return [...opacities]
-}
 
 // Reads the roughness of the 'top' material on the painted floor slab. The slab mesh is
 // found by its floor surface ref, so an unrelated 'top'-named material (a wall cap, a
@@ -391,8 +273,8 @@ describe('buildFramedScene', () => {
     const table = findByEntityId(root, 'table')
     expect(wardrobe).not.toBeNull()
     expect(table).not.toBeNull()
-    expect(furnitureOpacitiesOf(wardrobe)).toEqual([fadedOpacity])
-    expect(furnitureOpacitiesOf(table)).not.toContain(fadedOpacity)
+    expect(opacitiesOf(wardrobe)).toEqual([fadedOpacity])
+    expect(opacitiesOf(table)).not.toContain(fadedOpacity)
   })
 
   it('supplies the building top elevation so a camera above the roof still counts as outside', () => {
