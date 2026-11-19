@@ -89,6 +89,24 @@ describe('useEscapeToSelect', () => {
     expect(setTool).not.toHaveBeenCalled()
   })
 
+  // The Escape was pressed for the old tool, so a later tool must not be sent to select by it.
+  it('drops a pending return to select when the tool changes before it is decided', async () => {
+    const setTool = vi.fn()
+    const { rerender } = renderHook(
+      ({ tool }: { tool: ToolId }) => useEscapeToSelect({ tool, setTool }),
+      { initialProps: { tool: 'draw-wall' } },
+    )
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await Promise.resolve()
+      rerender({ tool: 'dimension' })
+      await endOfKeyPressTask()
+    })
+
+    expect(setTool).not.toHaveBeenCalled()
+  })
+
   it('returns to select on the next Escape, once no run is left to cancel', async () => {
     const setTool = vi.fn()
     renderHook(() => useEscapeToSelect({ tool: 'draw-wall', setTool }))
