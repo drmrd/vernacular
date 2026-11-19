@@ -29,6 +29,12 @@ export const UNCOVERED_COMPONENTS: {
     reason:
       'top-level asset provider tree that wires the project, library, and asset-cache contexts together; it is composed from the full editor provider stack rather than rendered in isolation, so it is a permanent allowlist candidate (see ADR-0111).',
   },
+  {
+    component: 'AppSettings',
+    file: 'app/app-settings.tsx',
+    reason:
+      'mount that builds the settings service once, over the given port or over the settings this browser keeps in its local storage, and gives it to the whole application through the settings provider; it renders nothing of its own, so an isolated story would be a wrapper with nothing to show, and the visible effects of the settings (the stored theme, the snap preferences) are shown by the stories and tests of the components that read them, so it is a permanent allowlist candidate (see ADR-0111).',
+  },
 
   // --- bridge / scene (live R3F Canvas or WebGPU context) -----------------
   {
