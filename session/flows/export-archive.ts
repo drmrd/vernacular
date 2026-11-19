@@ -1,5 +1,5 @@
 import { bundleFilename, exportProjectBundle } from '../../storage'
-import { internalsOf } from '../handle/handle-internals'
+import { assetsOf } from '../handle/handle-assets'
 import type { DocumentHandle } from '../handle/handle-types'
 import { messageOf } from '../handle/thrown-failures'
 
@@ -25,10 +25,9 @@ export async function exportArchive(
   options: ExportArchiveOptions = {},
 ): Promise<ExportArchiveResult> {
   try {
-    const { store } = internalsOf(handle)
+    const assets = assetsOf(handle)
     await handle.flush()
     const project = handle.session.getProject()
-    const assets = store.assets(handle.id)
     const bytes = await exportProjectBundle(handle.id, project, {
       assets,
       ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),

@@ -6,7 +6,7 @@ import { type HandleInternals, internalsOf } from '../handle/handle-internals'
 import type { DocumentHandle } from '../handle/handle-types'
 import type { OpenedProject } from '../handle/read-for-open'
 import { storageUnavailable } from '../handle/thrown-failures'
-import type { FlowResult } from './flow-result'
+import { type FlowResult, flushFailed } from './flow-result'
 
 /** Why a recovered copy did not replace the open project, besides a failed flush or storage. */
 export type RestoreRefusal =
@@ -73,8 +73,11 @@ async function prepareRestore(current: DocumentHandle): Promise<Prepared> {
  * Replaces the open project with its newest recovery snapshot. The current handle writes what is
  * unsaved and ends, and its lock passes to a new handle on the same id, location, and store, so the
  * lock is held at every moment and two handles never write at once. The restored document is
- * saved at once; the result holds the new handle whatever that save's outcome. On every failure the
- * current handle stays open. The promise never rejects.
+ * saved at once; the result holds the new handle whatever that save's outcome. A failure leaves the
+ * current handle open, with two exceptions. When the build of the new handle throws after the
+ * hand-over, the current handle is already closed and its lock is freed, so no project is open.
+ * When the restore overlaps a close of the same handle, the result is flush-failed although the
+ * handle is closed. The promise never rejects.
  */
 export async function restoreSnapshot(current: DocumentHandle): Promise<RestoreResult> {
   const prepared = await prepareRestore(current)
@@ -84,13 +87,15 @@ export async function restoreSnapshot(current: DocumentHandle): Promise<RestoreR
   const { opened, session, internals } = prepared
   const handedOver = await internals.handOver()
   if (!handedOver.ok) {
-    return { ok: false, failure: { kind: 'flush-failed' } }
+    return flushFailed()
   }
   const { request, store } = internals
   let handle: DocumentHandle
   try {
     handle = createDocumentHandle({ request, store, hold: handedOver.hold, opened, session })
   } catch (error) {
+    // Real stores cannot reach this: store.snapshots(id) already answered for the same id and nothing
+    // else in the handle builder throws. The branch frees the lock so that it cannot leak.
     await callGuardedAsync(() => handedOver.hold.release())
     return storageUnavailable(error)
   }

@@ -1,15 +1,12 @@
 import type { SessionPorts } from '../ports'
 import type { DocumentHandle, OpenFailure, OpenRequest } from '../handle/handle-types'
 import { openDocumentHandle } from '../handle/open-document-handle'
+import { flushFailed } from './flow-result'
 
 /** A switch that ended: the handle now open, or why the current project stays open. */
 export type SwitchResult =
   | { readonly ok: true; readonly handle: DocumentHandle }
   | { readonly ok: false; readonly failure: { readonly kind: 'flush-failed' } | OpenFailure }
-
-function flushFailed(): SwitchResult {
-  return { ok: false, failure: { kind: 'flush-failed' } }
-}
 
 /**
  * Flush the current project, open the target, close the current one. On failure the current

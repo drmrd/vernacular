@@ -9,8 +9,8 @@ import { switchProject } from './switch-project'
 /** Why a folder did not open, besides the failures of a switch. */
 export type FolderRefusal = { readonly kind: 'cancelled' | 'folder-empty' }
 
-/** The folder that the user picked, with the id it opens under. */
-interface PickedFolder {
+/** The folder that the user chose, with the id it opens under. */
+interface ChosenFolder {
   readonly id: string
   readonly folderName: string
   /** True when this call remembered the folder under a new id. */
@@ -26,7 +26,7 @@ function folderNameOf(handle: { readonly name?: unknown }): string {
  * Asks the user for a folder. A known folder keeps its id; a new folder is remembered under a new
  * id before anything opens. Undefined when the user cancels.
  */
-async function pickFolder(ports: SessionPorts): Promise<PickedFolder | undefined> {
+async function chooseFolder(ports: SessionPorts): Promise<ChosenFolder | undefined> {
   const handle = await ports.folders.pick()
   if (handle === undefined) {
     return undefined
@@ -51,9 +51,9 @@ export async function openFolder(
   ports: SessionPorts,
   current: DocumentHandle | undefined,
 ): Promise<FlowResult<FolderRefusal>> {
-  let picked: PickedFolder | undefined
+  let picked: ChosenFolder | undefined
   try {
-    picked = await pickFolder(ports)
+    picked = await chooseFolder(ports)
   } catch (error) {
     return storageUnavailable(error)
   }

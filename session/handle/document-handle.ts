@@ -81,8 +81,8 @@ interface EndState {
   ending: Promise<SaveOutcome> | undefined
 }
 
-/** Starts the end of a handle; it frees the lock only when asked to. */
-type StartEnding = (releaseLock: boolean) => Promise<SaveOutcome>
+/** Starts the end of a handle, as a close or as a hand-over, and gives that attempt. */
+type StartEnding = () => Promise<SaveOutcome>
 
 function closeWith(state: EndState, startEnding: StartEnding): Promise<SaveOutcome> {
   if (state.ending !== undefined) {
@@ -91,7 +91,7 @@ function closeWith(state: EndState, startEnding: StartEnding): Promise<SaveOutco
   if (state.closed) {
     return Promise.resolve(SAVED)
   }
-  return startEnding(true)
+  return startEnding()
 }
 
 /**
@@ -110,7 +110,7 @@ async function handOverWith(
   if (state.closed) {
     return CLOSED_OUTCOME
   }
-  const outcome = await startEnding(false)
+  const outcome = await startEnding()
   return outcome.ok ? { ok: true, hold } : outcome
 }
 
@@ -132,7 +132,7 @@ function createSavePath(parts: SavePathParts): SavePath {
   const flush = (): Promise<SaveOutcome> =>
     state.closed ? Promise.resolve(CLOSED_OUTCOME) : autosave.flush().then(() => SAVED, failedWith)
 
-  const endOnce = async (releaseLock: boolean): Promise<SaveOutcome> => {
+  const endOnce = async (afterEnd: () => Promise<void>): Promise<SaveOutcome> => {
     let outcome = await flush()
     while (outcome.ok && autosave.hasWorkLeft()) {
       outcome = await flush()
@@ -142,24 +142,24 @@ function createSavePath(parts: SavePathParts): SavePath {
     }
     state.closed = true
     autosave.dispose()
-    if (releaseLock) {
-      await callGuardedAsync(() => hold.release())
-    }
+    await afterEnd()
     return SAVED
   }
 
-  const startEnding: StartEnding = (releaseLock) => {
-    state.ending = endOnce(releaseLock).finally(() => {
+  const startEnding = (afterEnd: () => Promise<void>): Promise<SaveOutcome> => {
+    state.ending = endOnce(afterEnd).finally(() => {
       state.ending = undefined
     })
     return state.ending
   }
+  const releaseLock = (): Promise<void> => callGuardedAsync(() => hold.release())
+  const keepLock = (): Promise<void> => Promise.resolve()
 
   return {
     save,
     flush,
-    close: () => closeWith(state, startEnding),
-    handOver: () => handOverWith(state, startEnding, hold),
+    close: () => closeWith(state, () => startEnding(releaseLock)),
+    handOver: () => handOverWith(state, () => startEnding(keepLock), hold),
   }
 }
 
