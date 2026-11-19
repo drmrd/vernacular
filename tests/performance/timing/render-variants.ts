@@ -10,7 +10,7 @@ export interface RenderVariant {
 
 /**
  * The views that get timed, default view first. The scope and the lighting mode are the
- * product's own types, so a rename there breaks the build here. A later lane extends this
+ * product's own types, so a rename there breaks the build here. Later work extends this
  * one list with styles and quality levels.
  */
 export const RENDER_VARIANTS: readonly RenderVariant[] = [

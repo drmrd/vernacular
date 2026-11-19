@@ -260,7 +260,7 @@ function endRefusals(atEnd: PageDescription): string[] {
 }
 
 /**
- * Runs the phases in the order of 2.5 and builds the record. The page is observed twice: before the
+ * Runs the phases in the order that ADR-0186 gives and builds the record. The page is observed twice: before the
  * first phase, where a refusal stops the run before it measures anything, and after the last phase,
  * where a window that was hidden at any time during the run discards the times. A phase result that
  * is empty, or whose frames are odd, is refused or rejected, never recorded.

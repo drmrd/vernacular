@@ -1,5 +1,8 @@
-import type { FrameTiming, PixelSize, TimingRun, TimingSummary } from './timing-record'
+import type { FrameTiming, TimingRun, TimingSummary } from './timing-record'
+import { comparisonWarnings, sizeText } from './timing-comparison'
 import { roundedToStep } from './timing-statistics'
+
+export { comparisonWarnings }
 
 /** The budget of a 3D scene update, in milliseconds (design specification 6.10). */
 export const SCENE_UPDATE_BUDGET_MS = 8
@@ -11,7 +14,7 @@ export const PLAN_FRAME_MS = 16.7
 /** The longest line the report prints, in characters. */
 const LINE_WIDTH = 100
 /** The width of the label column of the header lines, in characters. */
-const HEADER_LABEL_WIDTH = 11
+const HEADER_LABEL_WIDTH = 13
 /** The width of the Budget column, in characters. */
 const BUDGET_WIDTH = 6
 /** The width of the Median column and of the p95 column, in characters. */
@@ -31,6 +34,9 @@ const NOT_MEASURED = 'not measured'
 const NOT_AVAILABLE = 'n/a'
 const PLAN_ROW_LABEL = 'Plan redraw, endpoint drag, ground floor'
 const PLAN_BUDGET_NOTE = '* one frame at 60 fps; design specification 6.10 states no plan budget.'
+const FRAME_NOTE =
+  'Note: 3D frames are paced, each timed alone; the figure that waits for the GPU is an upper bound; ' +
+  'furniture is drawn as boxes.'
 const UNMEASURED_LINE =
   'Not measured: GPU raster of the plan canvas; React render and commit; the first frame after load.'
 
@@ -156,8 +162,12 @@ function wrapped(prefix: string, text: string): string[] {
   return [...lines, line]
 }
 
-function sizeText(size: PixelSize): string {
-  return `${size.width} x ${size.height}`
+function baseMachineText({ machine }: TimingRun): string {
+  return `${machine.processor}; WebGPU ${machine.webGpuAdapter}; ${machine.operatingSystem}; ${machine.browser}`
+}
+
+function baseMachineField(baseline: TimingRun | undefined): [string, string][] {
+  return baseline === undefined ? [] : [['Base machine', baseMachineText(baseline)]]
 }
 
 function headerLines(run: TimingRun, baseline: TimingRun | undefined): string[] {
@@ -196,77 +206,12 @@ function headerLines(run: TimingRun, baseline: TimingRun | undefined): string[] 
     ],
     ['Baseline', baselineText],
   ]
-  return fields.flatMap(([label, text]) => wrapped(label.padEnd(HEADER_LABEL_WIDTH), text))
+  return [...fields, ...baseMachineField(baseline)].flatMap(([label, text]) =>
+    wrapped(label.padEnd(HEADER_LABEL_WIDTH), text),
+  )
 }
 
-function differenceWarnings(current: TimingRun, baseline: TimingRun | undefined): string[] {
-  if (baseline === undefined) return []
-  const compared = [
-    {
-      what: 'device pixel ratio',
-      now: String(current.conditions.devicePixelRatio),
-      before: String(baseline.conditions.devicePixelRatio),
-    },
-    {
-      what: 'drawing buffer size',
-      now: sizeText(current.conditions.sceneDrawingBufferPx),
-      before: sizeText(baseline.conditions.sceneDrawingBufferPx),
-    },
-    {
-      what: 'plan canvas size',
-      now: sizeText(current.conditions.planCanvasPx),
-      before: sizeText(baseline.conditions.planCanvasPx),
-    },
-    {
-      what: 'CSS size of the 3D canvas',
-      now: sizeText(current.conditions.sceneCanvasCssPx),
-      before: sizeText(baseline.conditions.sceneCanvasCssPx),
-    },
-    { what: 'browser', now: current.machine.browser, before: baseline.machine.browser },
-    {
-      what: 'adapter',
-      now: current.machine.webGpuAdapter,
-      before: baseline.machine.webGpuAdapter,
-    },
-    { what: 'processor', now: current.machine.processor, before: baseline.machine.processor },
-  ]
-  return compared
-    .filter(({ now, before }) => now !== before)
-    .map(
-      ({ what, now, before }) =>
-        `The ${what} differs: this run has ${now}, the baseline ${before}.`,
-    )
-}
-
-function quickWarnings(current: TimingRun, baseline: TimingRun | undefined): string[] {
-  const baselineIsQuick = baseline?.quick === true
-  if (current.quick && baselineIsQuick) {
-    return ['This run and the baseline are quick checks, not measurements.']
-  }
-  if (current.quick) return ['This run is a quick check, not a measurement.']
-  return baselineIsQuick ? ['The baseline is a quick check, not a measurement.'] : []
-}
-
-function conditionWarnings(current: TimingRun): string[] {
-  const { power, focused } = current.conditions
-  const warnings: string[] = []
-  if (power === 'battery') warnings.push('The computer ran on battery power.')
-  if (power === 'unknown') warnings.push('The power source is unknown.')
-  if (current.uncommittedChanges) warnings.push('The run has uncommitted changes.')
-  if (!focused) warnings.push('The window was not focused.')
-  return warnings
-}
-
-/** The warnings of 2.5 that compare the two runs, or that the current run carries alone. */
-export function comparisonWarnings(current: TimingRun, baseline: TimingRun | undefined): string[] {
-  return [
-    ...differenceWarnings(current, baseline),
-    ...quickWarnings(current, baseline),
-    ...conditionWarnings(current),
-  ]
-}
-
-/** The terminal report of 2.6: header, one row per time, footnotes, warnings. */
+/** The terminal report that ADR-0186 describes: header, one row per time, footnotes, warnings. */
 export function formatTimingReport(current: TimingRun, baseline: TimingRun | undefined): string {
   const warnPrefix = 'Warning: '
   const lines = [
@@ -277,6 +222,7 @@ export function formatTimingReport(current: TimingRun, baseline: TimingRun | und
     ...formatTable(current, baseline),
     PLAN_BUDGET_NOTE,
     UNMEASURED_LINE,
+    ...wrapped('', FRAME_NOTE),
     ...comparisonWarnings(current, baseline).flatMap((text) => wrapped(warnPrefix, text)),
   ]
   return `${lines.join('\n')}\n`

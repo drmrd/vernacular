@@ -9,6 +9,7 @@ const DEFAULT_BASELINE_PATH = 'tests/performance/baseline-times.json'
  *   quick: boolean,
  *   out: string | null,
  *   baseline: string,
+ *   baselineGiven: boolean,
  *   help: boolean,
  * }} TimingOptions
  */
@@ -58,6 +59,7 @@ export function parseTimingArguments(argv) {
     quick: false,
     out: null,
     baseline: DEFAULT_BASELINE_PATH,
+    baselineGiven: false,
     help: false,
   }
   for (let index = 0; index < argv.length; index += 1) {
@@ -69,7 +71,10 @@ export function parseTimingArguments(argv) {
       const value = valueAfter(argv, index)
       if (value === null) return missingValue(flag)
       if (flag === '--out') options.out = value
-      else options.baseline = value
+      else {
+        options.baseline = value
+        options.baselineGiven = true
+      }
       index += 1
     } else return unknownFlag(flag)
   }
