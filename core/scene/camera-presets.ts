@@ -67,10 +67,19 @@ function towardInterior(
   return { x: unit.x * sign, z: unit.z * sign }
 }
 
+/** A world-horizontal direction multiplied by `sign`. */
+function scaled(unit: { x: number; z: number }, sign: number): { x: number; z: number } {
+  return { x: unit.x * sign, z: unit.z * sign }
+}
+
+/** The sign of the wall's left-hand normal that points into the room, by room side. */
+const ROOM_SIDE_SIGN = { positive: 1, negative: -1 } as const
+
 /**
  * Derives the camera pose for standing in `opening` and looking into the model.
  * The camera sits at the opening center, at the opening's vertical middle above its
- * own floor, and looks horizontally along the wall normal toward the bounds interior.
+ * own floor, and looks horizontally along the wall normal toward the door's room side
+ * when it has one, else toward the bounds interior.
  * `floorElevationMm` is the world elevation of that floor (the opening's heights are
  * measured on it). An empty (null) or zero-size scene, or an opening with a
  * zero-length wall normal, returns the fixed default pose.
@@ -87,8 +96,11 @@ export function doorwayPose(
   if (length === 0) return DEFAULT_CAMERA_POSE
   const eye = floorElevationMm + opening.sillHeight + opening.height / 2
   const position = planToWorld(opening.center, eye)
-  const unit = { x: opening.normal.x / length, z: opening.normal.y / length }
-  const inward = towardInterior(unit, position, center)
+  const normal = planToWorld({ x: opening.normal.x / length, y: opening.normal.y / length }, 0)
+  const inward =
+    opening.roomSide === undefined
+      ? towardInterior(normal, position, center)
+      : scaled(normal, ROOM_SIDE_SIGN[opening.roomSide])
   return {
     position,
     target: { x: position.x + inward.x, y: position.y, z: position.z + inward.z },
