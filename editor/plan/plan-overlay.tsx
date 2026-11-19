@@ -314,14 +314,18 @@ function ScaleBar({
 interface StatusLayerProps {
   overlay: PlanOverlayProps
   selected: readonly OverlayEntity[]
-  refusal: string
 }
 
 // The status readouts stacked over the plan: the refused-placement notice along the
 // top, the engaged snap in the lower left, and the polite live region carrying
 // whichever sentence assistive technology should hear. The notice is aria-hidden
-// because the live region already speaks it, so a screen reader hears it once.
-function StatusLayer({ overlay, selected, refusal }: StatusLayerProps): ReactElement {
+// because the live region already speaks it, so a screen reader hears it once. The
+// text sits in one carrier element: while a refusal stands its key carries the attempt
+// count, so a repeat of the same sentence replaces the element and is spoken again;
+// otherwise the key is constant and a changed sentence updates the same node.
+function StatusLayer({ overlay, selected }: StatusLayerProps): ReactElement {
+  const { placementRefusal, refusalAttempt } = useOpeningTool()
+  const refusal = refusalText(overlay.tool, placementRefusal)
   const snapStatus = snapStatusLabel(overlay.snap)
   return (
     <>
@@ -332,7 +336,9 @@ function StatusLayer({ overlay, selected, refusal }: StatusLayerProps): ReactEle
       ) : null}
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">
-        {liveAnnouncement(overlay, selected, refusal)}
+        <span key={refusal ? `refusal-${refusalAttempt}` : 'announcement'}>
+          {liveAnnouncement(overlay, selected, refusal)}
+        </span>
       </div>
     </>
   )
@@ -355,7 +361,6 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const [focused, setFocused] = useState(false)
   const focusedEntity = entities[keyboard.focusIndex]
   const selected = entities.filter((entity) => entity.selected)
-  const refusal = refusalText(tool, useOpeningTool().placementRefusal)
 
   return (
     <div className="plan-overlay">
@@ -378,7 +383,7 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
         <Compass northBearing={props.northBearing} />
         <ScaleBar viewport={viewport} preferences={preferences} />
       </div>
-      <StatusLayer overlay={props} selected={selected} refusal={refusal} />
+      <StatusLayer overlay={props} selected={selected} />
     </div>
   )
 }
