@@ -62,6 +62,37 @@ describe('InMemoryProjectLockPort on one shared registry', () => {
   })
 })
 
+describe('InMemoryProjectLockPort release of an old hold', () => {
+  it('leaves a newer hold of another port in place when the old hold releases again', async () => {
+    const registry = new Set<string>()
+    const firstPort = new InMemoryProjectLockPort(registry)
+    const secondPort = new InMemoryProjectLockPort(registry)
+    const thirdPort = new InMemoryProjectLockPort(registry)
+    const oldHold = await firstPort.tryAcquire('a')
+    await oldHold?.release()
+    await secondPort.tryAcquire('a')
+
+    await oldHold?.release()
+
+    await expect(thirdPort.tryAcquire('a')).resolves.toBeUndefined()
+    expect(await thirdPort.heldIds()).toContain('a')
+  })
+
+  it('leaves a newer hold of the same port in place when the old hold releases again', async () => {
+    const registry = new Set<string>()
+    const port = new InMemoryProjectLockPort(registry)
+    const otherPort = new InMemoryProjectLockPort(registry)
+    const oldHold = await port.tryAcquire('a')
+    await oldHold?.release()
+    await port.tryAcquire('a')
+
+    await oldHold?.release()
+
+    expect(await port.heldIds()).toContain('a')
+    await expect(otherPort.tryAcquire('a')).resolves.toBeUndefined()
+  })
+})
+
 describe('WebLocksProjectLockPort without navigator.locks', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
