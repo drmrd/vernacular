@@ -59,9 +59,37 @@ describe('useOpeningMotion in the whole-building view', () => {
   })
 })
 
+describe('useOpeningMotion when the shown list changes and the root stays', () => {
+  it('keeps a door part way through its swing when the shown list changes and the root stays', () => {
+    const env = twoFloorEnvironment('building')
+    const shutPoseA = shutPoseOf(env, env.doorAId)
+    const root = env.buildRoot()
+    const stored = new Set([env.doorAId])
+    const { result, rerender } = renderMotion(env, { root, stored: new Set() })
+    rerender({ root, stored })
+    tickOpeningMotion(root, result.current, FULL_STEP / 10)
+    const midPose = fillGroupPose(root, env.doorAId)
+    const midOpenness = result.current.openness.current.get(env.doorAId)
+    expect(midPose).not.toEqual(shutPoseA)
+    expect(midOpenness).toBeGreaterThan(0)
+    expect(midOpenness).toBeLessThan(1)
+    const shownBefore = result.current.shownOpenings.current
+
+    act(() => env.activeFloor.setActiveFloorId(FLOOR_B_ID))
+    rerender({ root, stored })
+
+    // The change of the active floor gives the hook a new shown list that still holds door A.
+    const shownAfter = result.current.shownOpenings.current
+    expect(shownAfter).not.toBe(shownBefore)
+    expect(shownAfter.map((opening) => opening.id)).toContain(env.doorAId)
+    expect(fillGroupPose(root, env.doorAId)).toEqual(midPose)
+    expect(result.current.openness.current.get(env.doorAId)).toBe(midOpenness)
+  })
+})
+
 // Floor B is active with door B held open and ticked open on root B. The user then shows floor A
 // and either empties the stored set or keeps it, and comes back to floor B with the same root B.
-function leaveAndReturnToFloorB(env: TwoFloorEnvironment, setAwayFromB: ReadonlySet<string>) {
+function leaveAndReturnToFloorB(env: TwoFloorEnvironment, storedWhileAway: ReadonlySet<string>) {
   env.activeFloor.setActiveFloorId(FLOOR_B_ID)
   const rootB = env.buildRoot()
   seatDoorOpenOnRoot(env, rootB, { floorId: FLOOR_B_ID, doorId: env.doorBId })
@@ -73,11 +101,11 @@ function leaveAndReturnToFloorB(env: TwoFloorEnvironment, setAwayFromB: Readonly
   act(() => env.activeFloor.setActiveFloorId(FLOOR_A_ID))
   const rootA = env.buildRoot()
   rerender({ root: rootA, stored: openStored })
-  rerender({ root: rootA, stored: setAwayFromB })
+  rerender({ root: rootA, stored: storedWhileAway })
 
   act(() => env.activeFloor.setActiveFloorId(FLOOR_B_ID))
-  rerender({ root: rootB, stored: setAwayFromB })
-  return { rootB, openPoseB }
+  rerender({ root: rootB, stored: storedWhileAway })
+  return { rootB, openPoseB, result }
 }
 
 describe('useOpeningMotion in the floor view across a return to a floor', () => {
@@ -86,9 +114,11 @@ describe('useOpeningMotion in the floor view across a return to a floor', () => 
     env.activeFloor.setActiveFloorId(FLOOR_B_ID)
     const shutPoseB = shutPoseOf(env, env.doorBId)
 
-    const { rootB, openPoseB } = leaveAndReturnToFloorB(env, new Set())
+    const { rootB, openPoseB, result } = leaveAndReturnToFloorB(env, new Set())
 
     expect(openPoseB).not.toEqual(shutPoseB)
+    expect(fillGroupPose(rootB, env.doorBId)).toEqual(shutPoseB)
+    tickOpeningMotion(rootB, result.current, FULL_STEP)
     expect(fillGroupPose(rootB, env.doorBId)).toEqual(shutPoseB)
   })
 
