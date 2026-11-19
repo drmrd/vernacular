@@ -1,10 +1,12 @@
 import {
   createContext,
   createElement,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -25,8 +27,13 @@ export interface OpeningToolValue {
   setPlacementType: (id: string) => void
   /** Why the last placement put nothing down, or null when it landed. */
   placementRefusal: PlacementRefusal | null
-  /** Report a refused placement, or clear the notice with null. */
+  /**
+   * Report a refused attempt, or clear the notice with null. Each call with a reason is a new
+   * attempt, also when it repeats the reason that already stands. Keeps its identity across renders.
+   */
   setPlacementRefusal: (refusal: PlacementRefusal | null) => void
+  /** Refused attempts so far: rises by one on every call with a reason, and never falls. */
+  refusalAttempt: number
 }
 
 // A missing provider yields the default placement type and no-op setters so a
@@ -37,6 +44,7 @@ const FALLBACK_VALUE: OpeningToolValue = {
   setPlacementType: () => {},
   placementRefusal: null,
   setPlacementRefusal: () => {},
+  refusalAttempt: 0,
 }
 
 const OpeningToolContext = createContext<OpeningToolValue | null>(null)
@@ -82,12 +90,23 @@ export interface RefusalBasis {
  * The same references keep it. Clears on mount. A refusal is about one placement under one
  * situation, so a changed plan, floor, selection, candidate, tool, or placement type ends it
  * rather than leaving a sentence that may no longer be true.
+ *
+ * A refusal reported since the hook last ran stands, even when the basis changed in that same
+ * commit: it describes the attempt that just happened, and it retires at the next change.
  */
 export function useRetireStaleRefusal(basis: RefusalBasis): void {
-  const { placementType, setPlacementRefusal } = useOpeningTool()
+  const { placementType, setPlacementRefusal, refusalAttempt } = useOpeningTool()
   const { tool, sceneGraph, activeFloorId, selectedIds } = basis
   const { x: candidateX, y: candidateY } = basis.candidate
+  // Starts at the count of the first render, so mounting clears. Written only by the effect, and
+  // only to the count the effect just read, so a second run of the same commit (strict mode) finds
+  // the count unchanged on mount, where clearing is idempotent.
+  const lastSeenAttempt = useRef(refusalAttempt)
   useLayoutEffect(() => {
+    if (refusalAttempt !== lastSeenAttempt.current) {
+      lastSeenAttempt.current = refusalAttempt
+      return
+    }
     setPlacementRefusal(null)
   }, [
     tool,
@@ -98,6 +117,7 @@ export function useRetireStaleRefusal(basis: RefusalBasis): void {
     candidateY,
     placementType,
     setPlacementRefusal,
+    refusalAttempt,
   ])
 }
 
@@ -116,10 +136,21 @@ export interface OpeningToolProviderProps {
  */
 export function OpeningToolProvider({ children }: OpeningToolProviderProps) {
   const [placementType, setPlacementType] = useState<string>(DEFAULT_PLACEMENT_TYPE)
-  const [placementRefusal, setPlacementRefusal] = useState<PlacementRefusal | null>(null)
+  const [placementRefusal, setRefusal] = useState<PlacementRefusal | null>(null)
+  const [refusalAttempt, setRefusalAttempt] = useState(0)
+  const setPlacementRefusal = useCallback((refusal: PlacementRefusal | null) => {
+    setRefusal(refusal)
+    if (refusal !== null) setRefusalAttempt((attempts) => attempts + 1)
+  }, [])
   const value = useMemo<OpeningToolValue>(
-    () => ({ placementType, setPlacementType, placementRefusal, setPlacementRefusal }),
-    [placementType, placementRefusal],
+    () => ({
+      placementType,
+      setPlacementType,
+      placementRefusal,
+      setPlacementRefusal,
+      refusalAttempt,
+    }),
+    [placementType, placementRefusal, setPlacementRefusal, refusalAttempt],
   )
   return createElement(OpeningToolContext.Provider, { value }, children)
 }
