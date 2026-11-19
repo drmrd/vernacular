@@ -10,6 +10,7 @@ import type { ToolId } from '../tools/active-tool-context'
 import { EntityProxy } from './entity-proxy'
 import { OpeningToolProvider, useOpeningTool } from './opening-tool-context'
 import { usePlanAuthoring, type PlanAuthoringDeps } from './use-plan-authoring'
+import { useOverlayKeyboard } from './use-overlay-keyboard'
 
 afterEach(cleanup)
 
@@ -24,6 +25,7 @@ const ARMED_FOOTPRINT_MM = 600
 const ARMED_HEIGHT_MM = 900
 const ENTER = 'Enter'
 const SPACE = ' '
+const ESCAPE = 'Escape'
 const NO_REFUSAL = 'none'
 
 // The item type comes from the hook's own options: the editor layer does not
@@ -63,7 +65,8 @@ interface PlanProps {
 }
 
 // The real authoring hook and the real proxy of the wall in one tree, the way
-// the plan mounts them: the hook listens on window, the proxy sits in the page.
+// the plan mounts them: the hook listens on window, and the proxy sits in the
+// listbox whose real key handler prevents the default of Escape.
 function Plan({ session, tool, onSelect }: PlanProps) {
   const [selection] = useState(createSelectionStore)
   const { announcement } = usePlanAuthoring({
@@ -77,20 +80,23 @@ function Plan({ session, tool, onSelect }: PlanProps) {
     rotation: 0,
   })
   const { placementRefusal } = useOpeningTool()
+  const keyboard = useOverlayKeyboard(1, selection)
   return (
     <>
-      <EntityProxy
-        entity={{
-          id: WALL_ID,
-          kind: 'wall',
-          label: WALL_LABEL,
-          anchor: { x: 0, y: 0 },
-          selected: false,
-        }}
-        screen={{ x: 0, y: 0 }}
-        tabIndex={0}
-        onSelect={onSelect}
-      />
+      <div role="listbox" ref={keyboard.containerRef} onKeyDown={keyboard.onKeyDown}>
+        <EntityProxy
+          entity={{
+            id: WALL_ID,
+            kind: 'wall',
+            label: WALL_LABEL,
+            anchor: { x: 0, y: 0 },
+            selected: false,
+          }}
+          screen={{ x: 0, y: 0 }}
+          tabIndex={0}
+          onSelect={onSelect}
+        />
+      </div>
       <output data-testid="announcement">{announcement}</output>
       <output data-testid="refusal">{placementRefusal ?? NO_REFUSAL}</output>
     </>
@@ -109,10 +115,11 @@ function renderPlan(tool: ToolId) {
   return { session, dispatch, onSelect }
 }
 
-function pressOnFocusedProxy(key: string): void {
+// Returns false when a handler prevented the default of the key press.
+function pressOnFocusedProxy(key: string): boolean {
   const proxy = screen.getByRole('option', { name: WALL_LABEL })
   proxy.focus()
-  fireEvent.keyDown(proxy, { key })
+  return fireEvent.keyDown(proxy, { key })
 }
 
 function dispatchWindowKey(key: string): void {
@@ -191,5 +198,31 @@ describe('a key press that a plan entity already handled', () => {
     act(() => dispatchWindowKey(ENTER))
 
     expect(session.getProject().floors[0]!.openings).toHaveLength(1)
+  })
+
+  it('still cancels an open keyboard wall run on Escape that the listbox handled', () => {
+    const { dispatch } = renderPlan('draw-wall')
+    act(() => dispatchWindowKey(ENTER))
+    act(() => dispatchWindowKey('ArrowRight'))
+
+    const defaultLeftAlone = pressOnFocusedProxy(ESCAPE)
+
+    // The listbox prevented the default of this Escape, so the tool saw a key
+    // that an element had already handled and cancelled the run all the same.
+    expect(defaultLeftAlone).toBe(false)
+    expect(announcement()).toMatch(/cancel|abandon/i)
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('still cancels an open dimension measurement on Escape that the listbox handled', () => {
+    const { dispatch } = renderPlan('dimension')
+    act(() => dispatchWindowKey(ENTER))
+    act(() => dispatchWindowKey('ArrowUp'))
+
+    const defaultLeftAlone = pressOnFocusedProxy(ESCAPE)
+
+    expect(defaultLeftAlone).toBe(false)
+    expect(announcement()).toBe('Dimension cancelled')
+    expect(dispatch).not.toHaveBeenCalled()
   })
 })
