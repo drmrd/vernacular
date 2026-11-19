@@ -1,9 +1,13 @@
 import { test, expect, type Page } from '@playwright/test'
 
-import { gotoEditor } from './support'
+import { gotoEditor, webFontsSettled } from './support'
 
 // How long the editor navigation gets to return while a font file is held back.
 const HOLD_CHECK_MS = 1000
+
+// How long the wait gets in the test of the stalled font host. It is short, because the
+// face is held for the whole test.
+const SHORT_WAIT_LIMIT_MS = 300
 
 // A stylesheet with one face for the interface font whose file lives on the font
 // host. The route below holds that file, so the face stays in the loading state.
@@ -65,4 +69,21 @@ test('does not return from the editor navigation while a web font is still loadi
   expect(await anyFaceLoading(page), 'a web font face still loading after the navigation').toBe(
     false,
   )
+})
+
+test('fails with a message naming the font host when a web font stays loading past the limit', async ({
+  page,
+}) => {
+  const release = await holdOneWebFont(page)
+  try {
+    await page.goto('/')
+    await expect(page.getByLabel('Floor plan')).toBeVisible()
+    await expect.poll(() => anyFaceLoading(page), { message: 'a web font face loading' }).toBe(true)
+
+    await expect(webFontsSettled(page, SHORT_WAIT_LIMIT_MS)).rejects.toThrow(
+      /web fonts still loading after \d+ ms: the font host is slow or stalled/,
+    )
+  } finally {
+    release()
+  }
 })

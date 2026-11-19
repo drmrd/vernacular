@@ -23,18 +23,37 @@ export const selectors = {
   drawReadout: (page: Page) => page.locator('.plan-overlay__readout'),
 }
 
+// How long the web fonts get to load before the wait fails. It is shorter than the test
+// time limit, so that a stalled font host is reported as such and not as a bare timeout.
+export const WEB_FONTS_SETTLE_TIMEOUT_MS = 10_000
+
 // Wait for the editor to draw its first text, then until every web font that the page
 // asked for has loaded or failed. The editor loads its fonts with display swap, so a face
 // that arrives late is swapped in after the first paint. Where the fallback face is wider
 // (the linux runner), the header wraps to a second row until the swap, then the plan
 // canvas jumps up under a pointer action. The font loads start only once the editor has
 // drawn text, so the canvas is awaited first. `document.fonts.ready` also resolves when a
-// load fails, so this never hangs offline.
-export async function webFontsSettled(page: Page): Promise<void> {
+// load fails, so a failed load ends the wait. A load that stalls fails the wait with a
+// message that names the font host once the time limit has passed.
+export async function webFontsSettled(
+  page: Page,
+  timeoutMs: number = WEB_FONTS_SETTLE_TIMEOUT_MS,
+): Promise<void> {
   await expect(selectors.planCanvas(page)).toBeVisible()
-  await page.evaluate(async () => {
-    await document.fonts.ready
-  })
+  const outcome = await page.evaluate(async (limitMs) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const stalled = new Promise<'stalled'>((resolve) => {
+      timer = setTimeout(() => resolve('stalled'), limitMs)
+    })
+    const settled = document.fonts.ready.then(() => 'settled' as const)
+    const result = await Promise.race([settled, stalled])
+    clearTimeout(timer)
+    return result
+  }, timeoutMs)
+  expect(
+    outcome,
+    `web fonts still loading after ${timeoutMs} ms: the font host is slow or stalled`,
+  ).toBe('settled')
 }
 
 // Boot the assembled editor at its root and wait for the plan canvas and the web fonts.
