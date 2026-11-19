@@ -1,5 +1,13 @@
-/** How a request for a lock went: got it, found it held, or was refused by the browser. */
+/** How a request for a lock went: got it, found it held, or was refused by the browser with a security error. */
 export type LockOutcome = 'granted' | 'busy' | 'refused'
+
+/**
+ * Whether the browser refused the lock API itself, which it reports as a
+ * DOMException named SecurityError. Any other failure is not a refusal.
+ */
+export function isSecurityRefusal(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'SecurityError'
+}
 
 /** What the manager keeps for one granted lock, from acquire until release. */
 interface LockHold {
@@ -29,12 +37,13 @@ export class WebLocksManager {
   /**
    * Resolve how the request for the exclusive lock named `name` went: granted
    * without waiting, busy because another holder has it (the callback runs with
-   * null), or refused because the browser rejected the request. A rejection
-   * that comes after the grant changes nothing: the answer is already given and
-   * the release still waits for the request to settle.
+   * null), or refused because the browser rejected the request with a security
+   * error. Any other rejection rejects this promise with the same error. A
+   * rejection that comes after the grant changes nothing: the answer is already
+   * given and the release still waits for the request to settle.
    */
   tryAcquire(name: string): Promise<LockOutcome> {
-    return new Promise<LockOutcome>((resolveOuter) => {
+    return new Promise<LockOutcome>((resolveOuter, rejectOuter) => {
       // Assigned below once the request exists; the hold reads it only at release.
       let freed: Promise<void> = Promise.resolve()
       const request = navigator.locks.request(
@@ -56,7 +65,13 @@ export class WebLocksManager {
       )
       freed = request.then(
         () => undefined,
-        () => resolveOuter('refused'),
+        (error: unknown) => {
+          if (isSecurityRefusal(error)) {
+            resolveOuter('refused')
+          } else {
+            rejectOuter(error)
+          }
+        },
       )
     })
   }

@@ -1,4 +1,4 @@
-import { WebLocksManager } from './web-locks-manager'
+import { isSecurityRefusal, WebLocksManager } from './web-locks-manager'
 
 /** A lock that one tab holds on one project until release() is called. */
 export interface ProjectLockHold {
@@ -39,9 +39,12 @@ function holdLockingNothing(): ProjectLockHold {
 /**
  * Project locks over navigator.locks. Where the API is missing, every
  * acquisition succeeds and no id is ever reported as held. A browser that has
- * the API but refuses a request or a query is treated the same way: where the
- * browser refuses the lock API it also refuses the shared storage, so nothing
- * shared needs a lock, and a project in memory must still open.
+ * the API but refuses a request or a query with a security error is treated the
+ * same way: where the browser refuses the lock API it also refuses the shared
+ * storage, so nothing shared needs a lock, and a project in memory must still
+ * open. Any other failure of a request or a query fails it with the same error:
+ * it says nothing about the storage, so a hold that locks nothing could let two
+ * tabs take one project.
  */
 export class WebLocksProjectLockPort implements ProjectLockPort {
   readonly supported: boolean
@@ -70,7 +73,12 @@ export class WebLocksProjectLockPort implements ProjectLockPort {
     if (!this.supported) {
       return new Set()
     }
-    const { held } = await navigator.locks.query().catch(() => ({ held: undefined }))
+    const { held } = await navigator.locks.query().catch((error: unknown) => {
+      if (isSecurityRefusal(error)) {
+        return { held: undefined }
+      }
+      throw error
+    })
     const ids = (held ?? [])
       .map((lock) => lock.name ?? '')
       .filter((name) => name.startsWith(LOCK_NAME_PREFIX))
