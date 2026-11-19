@@ -48,9 +48,9 @@ export function ThemeProvider({
   defaultChoice = 'system',
   designLanguage = DEFAULT_DESIGN_LANGUAGE,
 }: ThemeProviderProps) {
-  // The service keeps the first value it reads for the name, so `defaultChoice` matters only
-  // while nothing valid is stored, and a stored choice wins. The key is memoized because a new
-  // key object on every render would subscribe again on every render.
+  // The service keeps the first value it reads for the name, a default included, so only the
+  // `defaultChoice` of that first read counts, and a valid stored choice wins over it. The key
+  // is memoized because a new key object on every render would subscribe again on every render.
   const key = useMemo(() => ({ ...THEME_SETTING, defaultValue: defaultChoice }), [defaultChoice])
   const [choice, setChoice] = useSetting(key)
   const resolved = resolveTheme(choice, usePrefersDark())
