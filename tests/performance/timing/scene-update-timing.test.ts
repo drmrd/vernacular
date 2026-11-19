@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FramedScene } from '../../../bridge/react/framed-scene'
-import { renameProject, type Command } from '../../../core'
+import { FLOOR_NODE_PREFIX, WALL_NODE_PREFIX, renameProject, type Command } from '../../../core'
 import { REFERENCE_EDITS, createReferenceProject } from '../reference-project'
 import { required } from '../required'
 import { createReferenceSession } from './reference-session'
@@ -49,12 +49,12 @@ const commands = ['warm-up', 'first', 'second'].map((name) => renameProject(name
 function timeWithLoggingBench(readings: readonly number[]) {
   const log: Call[] = []
   const applied: Command[] = []
-  const samples = timeSceneUpdate(
-    loggingBench(log, applied),
+  const samples = timeSceneUpdate({
+    bench: loggingBench(log, applied),
     commands,
-    scriptedClock(log, readings),
-    COUNTS,
-  )
+    counts: COUNTS,
+    now: scriptedClock(log, readings),
+  })
   return { log, applied, samples }
 }
 
@@ -87,12 +87,36 @@ describe('timing the 3D update of an edit', () => {
       expect(applied[index]).toBe(command)
     })
   })
+
+  // The command list holds the warm-up commands first, then the timed ones: the first
+  // `counts.warmup` commands are not timed and read no clock, the next `counts.timed` are timed.
+  // A list shorter than warmup + timed is an error that names both numbers; it is not cycled.
+  it('refuses a list of commands shorter than the warm-up and timed counts together', () => {
+    const counts = { warmup: 2, timed: 3 }
+    const tooShort = commands.concat(commands).slice(0, 4)
+    const log: Call[] = []
+
+    const timeShortList = () =>
+      timeSceneUpdate({
+        bench: loggingBench(log, []),
+        commands: tooShort,
+        counts,
+        now: scriptedClock(log, READINGS),
+      })
+
+    expect(timeShortList).toThrow(/\b5\b/)
+    expect(timeShortList).toThrow(/\b4\b/)
+  })
 })
 
 /** An object of the framed scene, typed through the scene root so this test needs no `three`. */
 type SceneObject = Parameters<Parameters<FramedScene['root']['traverse']>[0]>[0]
 
-/** The first object of the scene for each element id it carries. */
+/**
+ * The first object of the scene for each element id it carries. The scene gives its elements
+ * kind-prefixed ids, as the count gate reads them: a floor is `floor:<floor id>` and a wall mesh is
+ * `wall:<wall id>`. The wall group is the unnamed parent of the wall meshes.
+ */
 function objectsByElementId(bench: SceneUpdateBench): Map<string, SceneObject> {
   const scene = required(bench.lastScene(), 'the scene of the last reconcile')
   const objects = new Map<string, SceneObject>()
@@ -110,6 +134,12 @@ function rebuiltElementIds(before: Map<string, SceneObject>, after: Map<string, 
   return [...before]
     .filter(([id, object]) => after.has(id) && after.get(id) !== object)
     .map(([id]) => id)
+}
+
+/** The wall group holding the mesh of a wall, the group the count gate counts as rebuilt. */
+function wallGroupOf(objects: Map<string, SceneObject>, wallId: string): SceneObject | null {
+  const mesh = required(objects.get(`${WALL_NODE_PREFIX}${wallId}`), `the mesh of wall ${wallId}`)
+  return mesh.parent
 }
 
 function commandOf(editName: string): Command {
@@ -148,7 +178,8 @@ describe('the real bench of the 3D update', () => {
     expect(floorIds).toHaveLength(4)
     const present = objectsByElementId(bench)
     for (const floorId of floorIds) {
-      expect(present.has(floorId), `the scene has the floor ${floorId}`).toBe(true)
+      const elementId = `${FLOOR_NODE_PREFIX}${floorId}`
+      expect(present.has(elementId), `the scene has the element ${elementId}`).toBe(true)
     }
   })
 
@@ -161,7 +192,9 @@ describe('the real bench of the 3D update', () => {
     bench.reconcile()
 
     const wall = required(createReferenceProject().floors[0]?.walls[0], 'the first wall')
-    expect(rebuiltElementIds(before, objectsByElementId(bench))).toContain(wall.id)
+    const groupBefore = wallGroupOf(before, wall.id)
+    expect(groupBefore).not.toBeNull()
+    expect(wallGroupOf(objectsByElementId(bench), wall.id)).not.toBe(groupBefore)
   })
 
   it('rebuilds nothing when the project is renamed, the control of the fixed cost', () => {
