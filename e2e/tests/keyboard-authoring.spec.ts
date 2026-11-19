@@ -219,3 +219,32 @@ test.describe('Keyboard plan authoring announcements', () => {
     await expectWallCount(page, 1)
   })
 })
+
+const GROUND_FLOOR = 'Ground'
+const UPPER_FLOOR = '2nd Floor'
+
+test.describe('Keyboard plan authoring across floors', () => {
+  test('a keyboard wall run does not survive a change of floor', async ({ page }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+
+    // Add an upper floor and come back to Ground, where the run starts.
+    await selectors.addFloorButton(page).click()
+    await selectors.floorButton(page, GROUND_FLOOR).click()
+    await armTool(page, 'Wall')
+    await openKeyboardWallRun(page)
+    await expect(live).toHaveText('Wall vertex dropped')
+
+    // Switch floors by its button, then move focus off it so the authoring keys
+    // reach the window again. The old sentence must not linger.
+    await selectors.floorButton(page, UPPER_FLOOR).click()
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await expect(live).not.toHaveText('Wall vertex dropped')
+
+    // The first Enter on the new floor anchors a new run, so it adds no wall.
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Enter')
+    await expect(live).toHaveText('Wall vertex dropped')
+    await expectWallCount(page, 0)
+  })
+})
