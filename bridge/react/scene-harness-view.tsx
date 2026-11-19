@@ -79,7 +79,7 @@ function StaticFrame({
   const height = useThree((state) => state.size.height)
   // The same render seam the live view uses: when the ambient-occlusion pass is active the
   // frame draws through it, otherwise straight through gl.render, so a state without the
-  // pass renders exactly as before. onAmbientOcclusionSettled bubbles the
+  // pass renders exactly as before. handleAmbientOcclusionSettled bubbles the
   // build's settlement up so the wrapper's ready gate waits for the installed pipeline.
   const renderFrame = useAmbientOcclusion(ambientOcclusionActive, handleAmbientOcclusionSettled)
   // The camera is placed in this layout effect. The draw runs once, in the renderer's next
