@@ -48,14 +48,18 @@ export interface FrameProbe {
    * Puts the original request function, cancel function, and queue submit back, by identity, and
    * ends paced mode. Every callback the probe still holds goes to the host's original request
    * function, so it runs on the next host frame whether the GPU work has finished or not.
+   *
+   * Limit: the released callbacks wait in the host under host ids that the page does not know, so a
+   * later cancel by the page with an id of the probe cannot remove them. The timing page calls
+   * `uninstall` only at the end of a run, when no view unmounts any more.
    */
   uninstall(): void
 }
 
 interface ProbeState {
   paced: boolean
-  /** True from a submit until its done promise settles. */
-  gpuPending: boolean
+  /** The samples whose done promise is still pending; paced mode holds while this is above zero. */
+  pendingGpuWorkCount: number
   /** The frame whose callback is running now, or null between callbacks. */
   running: RunningFrame | null
   complete: FrameSample[]
@@ -74,7 +78,7 @@ interface RunningFrame {
 function finishSample(state: ProbeState, sample: FrameSample, untilGpuDoneMs: number | null): void {
   sample.untilGpuDoneMs = untilGpuDoneMs
   sample.gpuLost = untilGpuDoneMs === null
-  state.gpuPending = false
+  state.pendingGpuWorkCount -= 1
   state.complete.push(sample)
 }
 
@@ -84,7 +88,7 @@ function watchQueueWait(state: ProbeState, frame: RunningFrame, now: () => numbe
     state.complete.push(sample)
     return
   }
-  state.gpuPending = true
+  state.pendingGpuWorkCount += 1
   submittedQueueWait.then(
     () => finishSample(state, sample, now() - sample.startMs),
     () => finishSample(state, sample, null),
@@ -140,7 +144,7 @@ function runWaitingCallbacks(
 ): { error: unknown } | null {
   let failure: { error: unknown } | null = null
   for (const id of [...state.waiting.keys()]) {
-    if (state.paced && state.gpuPending) {
+    if (state.paced && state.pendingGpuWorkCount > 0) {
       break
     }
     const callback = state.waiting.get(id)
@@ -235,9 +239,11 @@ function createSubmitWrapper(
  * the other callbacks of the frame ran, and the `finally` still closes the frame's bookkeeping, so
  * the probe works for the next frame.
  *
- * In paced mode, while the GPU work of a frame is pending, no callback runs, also one that waits
- * in the same host frame as the callback that submitted. The held callbacks run on the next host
- * frame after the work is done. `uninstall` restores the three originals by identity, ends paced
+ * In paced mode, while any GPU work that the probe watches is pending, no callback runs, also one
+ * that waits in the same host frame as the callback that submitted. Each frame that submitted
+ * counts as one pending piece of work until its done promise settles; the hold ends when the last
+ * one has settled, also when it was submitted before paced mode went on. The held callbacks run on
+ * the next host frame after that. `uninstall` restores the three originals by identity, ends paced
  * mode, and hands every held callback to the host's original request function, so it runs on the
  * next host frame whether the GPU work has finished or not. After `uninstall`, a sample that was
  * still waiting for its done promise is completed and stays available to `takeFrames`.
@@ -248,7 +254,7 @@ export function installFrameProbe(
 ): FrameProbe {
   const state: ProbeState = {
     paced: false,
-    gpuPending: false,
+    pendingGpuWorkCount: 0,
     running: null,
     complete: [],
     waiting: new Map(),
