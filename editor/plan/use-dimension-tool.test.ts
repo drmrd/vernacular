@@ -11,6 +11,7 @@ afterEach(cleanup)
 
 const VIEWPORT: Viewport = { scale: 1, offset: { x: 0, y: 0 } }
 const FLOOR_ID = 'ground'
+const OTHER_FLOOR_ID = 'upper'
 
 // Three distinct click positions in canvas pixels. At scale 1 with no offset a
 // click maps to world { x, -y }, which `world` below mirrors.
@@ -57,13 +58,18 @@ async function pressEscape(): Promise<KeyboardEvent> {
   return event
 }
 
+interface MountProps {
+  tool: ToolId
+  activeFloorId?: string
+}
+
 function mountDimensionTool(initialTool: ToolId = 'dimension') {
   const dispatch = vi.fn()
   const session = sessionWithFloor(dispatch)
   const view = renderHook(
-    ({ tool }: { tool: ToolId }) =>
-      useDimensionTool({ session, tool, viewport: VIEWPORT, activeFloorId: FLOOR_ID }),
-    { initialProps: { tool: initialTool } },
+    ({ tool, activeFloorId = FLOOR_ID }: MountProps) =>
+      useDimensionTool({ session, tool, viewport: VIEWPORT, activeFloorId }),
+    { initialProps: { tool: initialTool } as MountProps },
   )
   const click = (at: { x: number; y: number }): void => {
     act(() => {
@@ -155,5 +161,31 @@ describe('useDimensionTool drops a measurement the user walked away from', () =>
     })
 
     expect(view.result.current.preview).toBeUndefined()
+  })
+})
+
+describe('useDimensionTool drops a measurement when the active floor changes', () => {
+  it('starts a fresh measurement after the active floor changes', () => {
+    const { dispatch, view, click } = mountDimensionTool()
+    click(ABANDONED)
+
+    view.rerender({ tool: 'dimension', activeFloorId: OTHER_FLOOR_ID })
+    click(FRESH_START)
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('keeps a half-taken measurement across a re-render with the same tool and floor', () => {
+    const { dispatch, view, click } = mountDimensionTool()
+    click(ABANDONED)
+
+    view.rerender({ tool: 'dimension', activeFloorId: FLOOR_ID })
+    click(FRESH_START)
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(measurementOf(dispatch)).toMatchObject({
+      start: world(ABANDONED),
+      end: world(FRESH_START),
+    })
   })
 })
