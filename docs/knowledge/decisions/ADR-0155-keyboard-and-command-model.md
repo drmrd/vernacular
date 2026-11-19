@@ -30,7 +30,7 @@ sourceFiles:
     e2e/tests/keyboard-authoring.spec.ts,
     editor/plan/use-escape-to-select.ts,
     editor/plan/use-escape-to-select.test.ts,
-    editor/plan/use-plan-authoring-tool-change.test.ts,
+    editor/plan/use-plan-authoring-run-scope.test.ts,
   ]
 status: current
 updated: 2026-11-19
@@ -329,7 +329,7 @@ the tool that started it.
 
 Tests: `editor/plan/use-escape-to-select.test.ts` holds a claim that arrives after a microtask
 checkpoint, and a pending decision that a tool change drops.
-`editor/plan/use-plan-authoring-tool-change.test.ts` holds the discard. Three journeys in
+`editor/plan/use-plan-authoring-run-scope.test.ts` holds the discard. Three journeys in
 `e2e/tests/keyboard-authoring.spec.ts` press real keys.
 
 Two paths stay open. A wall run that was drawn with the pointer survives a change of tool (issue
