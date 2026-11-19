@@ -1,10 +1,13 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { configureGpuChromiumOnMac, guardLiveSceneSupport } from '../live-webgpu'
 import {
+  closeControl,
   enterOrbit,
   enterWalkReady,
   expectSameView,
   liveCanvas,
+  openKeyChangesView,
+  resetWithKey,
   settledLiveFrame,
   walkToDoor,
 } from './close-openings-support'
@@ -15,8 +18,11 @@ import { gotoEditor, selectors } from './support'
 // journey stands the walker at the shut door of the ground floor, makes the upper floor active,
 // and compares the view. Both floors hold the same room and the same door, so a walker who stands
 // on the upper floor at the same plan position and heading sees the same view as before. The
-// journey then goes through an orbit detour and walks again, which resumes the saved pose on the
-// upper floor, and compares once more.
+// journey then presses the open key at the door of the upper floor: the door has to swing in
+// sight, which shows that the walker reaches the doors of the floor that the walker stands on. It
+// shuts the door again, goes through an orbit detour, and walks again, which resumes the saved
+// pose on the upper floor, and compares once more. A second test starts the first walk on the
+// upper floor and presses the open key there.
 //
 // The live view renders through the non-deterministic WebGPU backend (ADR-0045), so this spec
 // commits no pixel baseline. All frames are taken in the same run and compared with each other
@@ -80,7 +86,21 @@ async function frameAfterFloorChange(page: Page, canvas: Locator, floor: string)
   return settledLiveFrame(page, canvas)
 }
 
-test("keeps the walker's view when the upper floor becomes active mid-walk", async ({ page }) => {
+// Presses the open key at the door in front of the walker and expects the door to swing in sight
+// and the control that closes doors and windows to be enabled. Returns the settled frame with the
+// door open.
+async function expectDoorOpensInSight(page: Page, canvas: Locator): Promise<Buffer> {
+  expect(
+    await openKeyChangesView(page, canvas),
+    'the open key changes the view: the door swings in sight',
+  ).toBe(true)
+  await expect(closeControl(page)).toBeEnabled()
+  return settledLiveFrame(page, canvas)
+}
+
+test("keeps the walker's view and reach when the upper floor becomes active mid-walk", async ({
+  page,
+}) => {
   test.setTimeout(TEST_TIMEOUT_MS)
   await gotoEditor(page)
   await guardLiveSceneSupport(page, 'the walk-follows-the-active-floor journey')
@@ -110,6 +130,17 @@ test("keeps the walker's view when the upper floor becomes active mid-walk", asy
     second: onUpperFloor,
   })
 
+  // The open key reaches the door of the upper floor. The door has to open in sight, for two
+  // reasons. The walker reaches the doors of the floor the walker stands on. And the frame above
+  // equals the frame before the switch, so a frame taken before the pane drew the upper floor
+  // would pass that check for a wrong reason: a door that opens in sight proves that the picture
+  // shows the floor on which the key acts.
+  const doorOpen = await expectDoorOpensInSight(page, canvas)
+
+  // The door is shut again, so that the comparison after the detour is between two views of a
+  // shut door, as the comparison above.
+  await resetWithKey(page, canvas, doorOpen)
+
   // An orbit detour and a new walk resume the saved pose, which stands on the upper floor too.
   await enterOrbit(page)
   const resumed = await enterWalkReady(page, canvas)
@@ -117,4 +148,25 @@ test("keeps the walker's view when the upper floor becomes active mid-walk", asy
     first: onGroundFloor,
     second: resumed,
   })
+})
+
+test('opens the door of the upper floor with the open key on a walk that starts there', async ({
+  page,
+}) => {
+  test.setTimeout(TEST_TIMEOUT_MS)
+  await gotoEditor(page)
+  await guardLiveSceneSupport(page, 'the walk-follows-the-active-floor journey')
+
+  // Only the upper floor holds a room with a door, and it is the active floor when the walk starts.
+  await page.getByRole('button', { name: 'Split view' }).click()
+  await selectors.addFloorButton(page).click()
+  await floorButton(page, UPPER_FLOOR).click()
+  await drawRoomWithDoor(page)
+  await page.getByRole('radio', { name: 'Select', exact: true }).click()
+  await page.keyboard.press('Escape')
+  const canvas = liveCanvas(page)
+  await settledLiveFrame(page, canvas)
+
+  await walkToDoor(page, canvas)
+  await expectDoorOpensInSight(page, canvas)
 })
