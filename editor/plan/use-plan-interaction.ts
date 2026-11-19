@@ -180,6 +180,8 @@ function useReresolveOnFreeAngleToggle({
 
 /**
  * Escape abandons the run, Enter ends it, and Backspace undoes the last segment.
+ * An Enter or Space that an entity proxy already handled (it selected the entity
+ * and prevented the default) is not a run key, so it must not finish the run.
  *
  * The handlers are read through a ref that is refreshed every render, so the
  * window listener subscribes once per tool change rather than on every render.

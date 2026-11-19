@@ -8,7 +8,9 @@ export function isActivationKey(event: { key: string }): boolean {
   return ACTIVATION_KEYS.has(event.key)
 }
 
-// An Enter or Space press whose default an element already prevented.
+// An Enter or Space press whose default an element already prevented, such as
+// the entity proxy when it selects its entity. Key listeners skip it, so that
+// one press does not both select and drive a tool.
 export function isActivationPressAlreadyHandled(event: KeyboardEvent): boolean {
   return event.defaultPrevented && isActivationKey(event)
 }
