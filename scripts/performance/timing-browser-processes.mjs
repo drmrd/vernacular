@@ -1,9 +1,10 @@
 /**
  * Pure helpers that find the timing browser's crash handler processes in a
  * process list. The handlers are orphaned from the start (parent id 1) and
- * nothing in their command line links them to their browser, so the driver
- * notes them before and after it launches its browser, and accepts only those
- * inside the folder of the browser it launched.
+ * nothing in their command line links them to their browser, so the browser
+ * session (timing-browser-session.mjs) notes them before and after it launches
+ * its browser, and accepts only those inside the folder of the browser it
+ * launched.
  */
 
 /**
@@ -38,7 +39,7 @@ const BROWSER_PIPE_TOKEN = new RegExp(`(?:^| )${BROWSER_PIPE_ARGUMENT}(?: |$)`)
 const PROCESS_LINE = /^\s*(\d+)\s+(\d+)\s+(.*\S)\s*$/
 
 /**
- * Parses the output of `ps -Ao pid=,ppid=,command=`.
+ * Parses the output of `ps -Aww -o pid=,ppid=,command=`.
  * @param {string} text
  * @returns {ProcessRow[]}
  */

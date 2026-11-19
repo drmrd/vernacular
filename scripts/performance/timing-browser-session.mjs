@@ -26,6 +26,8 @@ const MAIN_EXIT_LIMIT_MS = 10_000
 const MAIN_EXIT_POLL_MS = 50
 // Room for the process list of a busy machine.
 const PROCESS_LIST_MAX_BYTES = 64 * 1024 * 1024
+// Asks a crash handler to end; it is not a forced kill, so the handler can clean up.
+const STOP_SIGNAL = 'SIGTERM'
 
 /**
  * The text of a thrown value.
@@ -131,7 +133,7 @@ async function stopCrashHandlers(noted) {
   const current = readProcesses()
   for (const pid of stillCrashHandlers(noted.crashHandlers, current, noted.installRoot)) {
     try {
-      process.kill(pid, 'SIGTERM')
+      process.kill(pid, STOP_SIGNAL)
     } catch {
       // The handler exited between the process list and the signal: nothing is left to stop.
     }

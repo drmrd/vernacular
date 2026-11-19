@@ -23,10 +23,6 @@ import { closeBrowser, launchTimingBrowser } from './timing-browser-session.mjs'
 /** @typedef {import('../../tests/performance/timing/run-timing.ts').TimingOutcome} TimingOutcome */
 /** @typedef {import('./timing-console.mjs').PageMessage} PageMessage */
 
-// The browser session steps moved to their own module; they stay importable from the driver for
-// the scripts and notes that call the driver's steps one by one.
-export { closeBrowser, launchTimingBrowser }
-
 export const EXIT_MEASURED = 0
 export const EXIT_ERROR = 1
 export const EXIT_NOT_MEASURED = 2
