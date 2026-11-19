@@ -174,4 +174,18 @@ describe('timing the redraw of the plan', () => {
     expect(drawnAlone[0]).not.toEqual(drawnAlone[1])
     expect(recorder.segments).toEqual(drawnAlone.flat())
   })
+
+  it('refuses a redraw with no frame to draw, rather than report no samples', async () => {
+    const recorder = recordingContext()
+
+    await expect(
+      timePlanRedraw({
+        ctx: recorder.ctx,
+        frames: [],
+        counts: COUNTS,
+        now: () => 0,
+        nextFrame: nextFrameAtOnce,
+      }),
+    ).rejects.toThrow(/frame/i)
+  })
 })
