@@ -1,7 +1,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { screen, cleanup, waitFor } from '@testing-library/react'
 import { InMemoryRecentProjectStore } from '../storage'
-import { createTestPorts, failSaves, storedProject } from '../session/handle/handle-test-kit'
+import {
+  createTestPorts,
+  failSaves,
+  recordSaves,
+  recordSnapshots,
+  storedProject,
+} from '../session/handle/handle-test-kit'
 import {
   NEW_PROJECT_NAME,
   START_ID,
@@ -20,6 +26,11 @@ const DRAFT_NAME = 'Drafthouse'
 const HOUSE_ID = 'house'
 const HOUSE_NAME = 'My House'
 const SAVE_FAILED_TOAST = 'Save failed. Your latest changes are not saved yet.'
+const WRITE_OF_THE_START_PROJECT = [
+  `writeSnapshot:${START_ID}`,
+  `save:${START_ID}`,
+  `prune:${START_ID}`,
+]
 
 afterEach(() => {
   cleanup()
@@ -36,12 +47,16 @@ describe('The project menu of the application', () => {
   it('saves the current project through the store when Save is clicked', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
+    const log: string[] = []
+    recordSnapshots(ports.workspace, log)
+    recordSaves(ports.workspace, log)
     const save = vi.spyOn(ports.workspace, 'save')
 
     renderApp(ports)
 
     await findTheShell()
     save.mockClear()
+    log.length = 0
 
     await chooseFromTheProjectMenu(/save/i)
 
@@ -51,6 +66,8 @@ describe('The project menu of the application', () => {
         expect.objectContaining({ floors: expect.any(Array) }),
       ),
     )
+    // The write ahead comes first, and the snapshots are pruned once the save is stored.
+    await waitFor(() => expect(log).toEqual(WRITE_OF_THE_START_PROJECT))
   })
 
   it('lists a recent project and opens it into the session when clicked', async () => {

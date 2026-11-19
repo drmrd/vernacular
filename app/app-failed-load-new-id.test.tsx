@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { cleanup, waitFor } from '@testing-library/react'
 import { InMemoryActiveProjectIdStore } from '../storage'
-import { createTestPorts, type TestPorts } from '../session/handle/handle-test-kit'
+import { createTestPorts, recordSnapshots, type TestPorts } from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
@@ -16,6 +16,15 @@ import {
 
 // The failed project with a backup and a snapshot beside its document, so that every
 // file of it can be compared before and after.
+/** The ids that a write ahead of a save went to, each once, in the order of the first write. */
+function idsOfSnapshotWrites(log: readonly string[]): string[] {
+  const prefix = 'writeSnapshot:'
+  const written = log
+    .filter((entry) => entry.startsWith(prefix))
+    .map((entry) => entry.slice(prefix.length))
+  return [...new Set(written)]
+}
+
 async function seedFailedProject(ports: TestPorts): Promise<void> {
   const bytes = projectFromANewerBuild()
   await ports.root.writeFile(`${FAILED_ID}/vernacular.json`, bytes)
@@ -37,6 +46,8 @@ describe('A project started after a failed load', () => {
     const before = await filesUnder(ports.root, FAILED_ID)
     expect(await storedIds(ports)).toEqual([FAILED_ID])
     const save = vi.spyOn(ports.workspace, 'save')
+    const snapshotLog: string[] = []
+    recordSnapshots(ports.workspace, snapshotLog)
 
     renderApp(ports, { activeProjectIds: new InMemoryActiveProjectIdStore() })
 
@@ -50,5 +61,7 @@ describe('A project started after a failed load', () => {
     const newId = ids.find((id) => id !== FAILED_ID)
     expect(ids).toEqual(expect.arrayContaining([FAILED_ID, newId]))
     expect(ids).toHaveLength(2)
+    // The write ahead of each save went under the new id, and nothing was written for the failed one.
+    expect(idsOfSnapshotWrites(snapshotLog)).toEqual([newId])
   })
 })
