@@ -1,17 +1,23 @@
-/** What the probe records for one frame callback of the page. */
+/**
+ * What the probe records for one host frame: everything the page does in one browser frame. The
+ * real page runs two callbacks in each browser frame (the 3D library keeps an animation loop of its
+ * own beside the render loop of the canvas library) and only one of them submits GPU work, so a
+ * sample covers all callbacks of the frame, not one callback.
+ */
 export interface FrameSample {
-  /** The clock at the start of the callback. */
+  /** The clock at the start of the first callback of the host frame. */
   startMs: number
-  /** The clock at the end of the callback minus the start: the main-thread time of the frame. */
+  /** The clock at the end of the last callback of the host frame minus the start: the main-thread time. */
   mainThreadMs: number
   /**
-   * The clock when the GPU queue reported that the frame's submitted work was done, minus the
-   * start; null when the callback made no queue submit, or when the device was lost.
+   * The clock when the GPU queue reported that the frame's submitted work was done (the last
+   * submit of the host frame), minus the start; null when no callback of the frame submitted, or
+   * when the device was lost.
    */
   untilGpuDoneMs: number | null
   /** True when the done promise of the frame's last submit rejected: the device was lost. */
   gpuLost: boolean
-  /** Whether the page was hidden when the callback ran. */
+  /** Whether the page was hidden when the first callback of the host frame started. */
   hidden: boolean
 }
 
@@ -60,7 +66,7 @@ interface ProbeState {
   paced: boolean
   /** The samples whose done promise is still pending; paced mode holds while this is above zero. */
   pendingGpuWorkCount: number
-  /** The frame whose callback is running now, or null between callbacks. */
+  /** The host frame whose callbacks are running now, or null between host frames. */
   running: RunningFrame | null
   complete: FrameSample[]
   /** The callbacks the page waits for, by the id the probe gave it; insertion order is id order. */
@@ -95,32 +101,33 @@ function watchQueueWait(state: ProbeState, frame: RunningFrame, now: () => numbe
   )
 }
 
-function timeFrame(
-  state: ProbeState,
-  host: FrameProbeHost,
-  callback: FrameRequestCallback,
-): FrameRequestCallback {
-  return (frameTime) => {
-    const startMs = host.now()
-    const frame: RunningFrame = {
-      sample: {
-        startMs,
-        mainThreadMs: 0,
-        untilGpuDoneMs: null,
-        gpuLost: false,
-        hidden: host.isHidden(),
-      },
-      submittedQueueWait: null,
-    }
-    state.running = frame
-    try {
-      callback(frameTime)
-    } finally {
-      frame.sample.mainThreadMs = host.now() - startMs
-      state.running = null
-      watchQueueWait(state, frame, host.now)
-    }
+function startFrame(state: ProbeState, host: FrameProbeHost): RunningFrame {
+  const frame: RunningFrame = {
+    sample: {
+      startMs: host.now(),
+      mainThreadMs: 0,
+      untilGpuDoneMs: null,
+      gpuLost: false,
+      hidden: host.isHidden(),
+    },
+    submittedQueueWait: null,
   }
+  state.running = frame
+  return frame
+}
+
+function endFrame(state: ProbeState, host: FrameProbeHost, frame: RunningFrame): void {
+  frame.sample.mainThreadMs = host.now() - frame.sample.startMs
+  state.running = null
+  watchQueueWait(state, frame, host.now)
+}
+
+/** True while paced mode holds the callbacks: watched GPU work is pending, or this frame submitted. */
+function isHeld(state: ProbeState): boolean {
+  if (!state.paced) {
+    return false
+  }
+  return state.pendingGpuWorkCount > 0 || state.running?.submittedQueueWait != null
 }
 
 function requestHostFrame(state: ProbeState, host: FrameProbeHost): void {
@@ -134,8 +141,10 @@ function requestHostFrame(state: ProbeState, host: FrameProbeHost): void {
 
 /**
  * Runs the callbacks that waited at the start of the frame, in id order, unless paced mode holds
- * them. Callbacks requested during the frame wait for the next one. A callback that throws does
- * not stop the others; the first error is returned so the caller can pass it on to the host.
+ * them. Callbacks requested during the frame wait for the next one. The frame is timed as a whole:
+ * one clock read before the first callback that runs and one after the last, and no read at all
+ * when every callback is held. A callback that throws does not stop the others; the first error is
+ * returned so the caller can pass it on to the host.
  */
 function runWaitingCallbacks(
   state: ProbeState,
@@ -143,8 +152,9 @@ function runWaitingCallbacks(
   frameTime: number,
 ): { error: unknown } | null {
   let failure: { error: unknown } | null = null
+  let frame: RunningFrame | null = null
   for (const id of [...state.waiting.keys()]) {
-    if (state.paced && state.pendingGpuWorkCount > 0) {
+    if (isHeld(state)) {
       break
     }
     const callback = state.waiting.get(id)
@@ -152,11 +162,15 @@ function runWaitingCallbacks(
       continue
     }
     state.waiting.delete(id)
+    frame ??= startFrame(state, host)
     try {
-      timeFrame(state, host, callback)(frameTime)
+      callback(frameTime)
     } catch (error) {
       failure ??= { error }
     }
+  }
+  if (frame !== null) {
+    endFrame(state, host, frame)
   }
   return failure
 }
@@ -218,9 +232,11 @@ function createSubmitWrapper(
 
 /**
  * Wraps `target.requestAnimationFrame` and `target.cancelAnimationFrame` and the `submit` of the
- * queue prototype of the host, and records one {@link FrameSample} per callback. All state lives in
- * the closure of this call. The overhead inside a frame is two clock reads, one visibility read,
- * and a flag; the queue wait of a frame that submitted costs one promise.
+ * queue prototype of the host, and records one {@link FrameSample} for each host frame in which at
+ * least one page callback ran (a host frame without a callback gives no sample). All state lives in
+ * the closure of this call. The overhead for each host frame is two clock reads, one visibility
+ * read, and a flag, however many callbacks the frame runs; the queue wait of a frame that submitted
+ * costs one promise.
  *
  * The probe keeps the page's callbacks in a queue of its own and gives the page ids of its own,
  * unique among the waiting callbacks, so a cancel always finds its callback. It keeps one request
@@ -231,13 +247,13 @@ function createSubmitWrapper(
  * already ran, does nothing.
  *
  * A sample is complete, and so visible to `takeFrames`, once the frame's done promise has settled
- * (at once for a frame without a submit). A frame that submits more than once is timed until the
- * done promise of its last submit; a submit outside a frame callback is passed through and belongs
+ * (at once for a frame without a submit). A host frame that submits more than once, in one callback or
+ * in several, is timed until the done promise of its last submit; a submit outside a host frame is passed through and belongs
  * to no frame. When the done promise rejects, the sample completes with `untilGpuDoneMs: null` and
  * `gpuLost: true`, and the hold ends; every other sample has `gpuLost: false`. A callback that
  * throws is not swallowed: the error propagates to the host as it would without the probe, after
- * the other callbacks of the frame ran, and the `finally` still closes the frame's bookkeeping, so
- * the probe works for the next frame.
+ * the other callbacks of the frame ran, and the frame still gets its one complete sample, timed to
+ * the end of the last callback that ran, so the probe works for the next frame.
  *
  * In paced mode, while any GPU work that the probe watches is pending, no callback runs, also one
  * that waits in the same host frame as the callback that submitted. Each frame that submitted
