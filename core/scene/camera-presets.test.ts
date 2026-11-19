@@ -135,30 +135,31 @@ describe('cameraPresetPose elevations', () => {
   }
 })
 
+const GROUND_FLOOR_ELEVATION_MM = 0
+const UPPER_FLOOR_ELEVATION_MM = 3000
+const STOREY_HEIGHT_MM = 3000
+
+function makeDoor(normal: { x: number; y: number }): OpeningSceneNode {
+  return {
+    id: 'door-north',
+    kind: 'opening',
+    floorId: 'floor-1',
+    type: 'door',
+    center: { x: 2000, y: 0 },
+    along: { x: 1, y: 0 },
+    normal,
+    width: 900,
+    height: 2032,
+    sillHeight: 0,
+    hostThickness: 150,
+    orientation: { hinge: 'start', facing: 'positive' },
+  }
+}
+
 describe('doorwayPose', () => {
   const HORIZONTAL_TOLERANCE = 1e-6
-  const GROUND_FLOOR_ELEVATION_MM = 0
-  const UPPER_FLOOR_ELEVATION_MM = 3000
   const BASEMENT_FLOOR_ELEVATION_MM = -3000
-  const STOREY_HEIGHT_MM = 3000
   const DOOR_EYE_HEIGHT_MM = 1016
-
-  function makeDoor(normal: { x: number; y: number }): OpeningSceneNode {
-    return {
-      id: 'door-north',
-      kind: 'opening',
-      floorId: 'floor-1',
-      type: 'door',
-      center: { x: 2000, y: 0 },
-      along: { x: 1, y: 0 },
-      normal,
-      width: 900,
-      height: 2032,
-      sillHeight: 0,
-      hostThickness: 150,
-      orientation: { hinge: 'start', facing: 'positive' },
-    }
-  }
 
   function lookVector(pose: CameraPose) {
     return {
@@ -256,5 +257,66 @@ describe('doorwayPose', () => {
     const expectedEyeY = BASEMENT_FLOOR_ELEVATION_MM + DOOR_EYE_HEIGHT_MM
     expect(pose.position).toEqual({ x: 2000, y: expectedEyeY, z: 0 })
     expect(pose.target.y).toBe(expectedEyeY)
+  })
+})
+
+describe('doorwayPose: the look side', () => {
+  const LOOK_DIGITS = 9
+
+  function expectLook(pose: CameraPose, expected: { x: number; z: number }): void {
+    expect(pose.target.x - pose.position.x).toBeCloseTo(expected.x, LOOK_DIGITS)
+    expect(pose.target.y - pose.position.y).toBeCloseTo(0, LOOK_DIGITS)
+    expect(pose.target.z - pose.position.z).toBeCloseTo(expected.z, LOOK_DIGITS)
+  }
+
+  const upperRoomDoor: OpeningSceneNode = {
+    ...makeDoor({ x: 1, y: 0 }),
+    center: { x: 8000, y: 1500 },
+    along: { x: 0, y: -1 },
+    roomSide: 'positive',
+    orientation: { hinge: 'start', facing: 'negative' },
+  }
+  const wholeBuildingBounds: Bounds3 = {
+    min: { x: 0, y: 0, z: -STOREY_HEIGHT_MM },
+    max: { x: 10000, y: 5438, z: 0 },
+  }
+  const upperFloorBounds: Bounds3 = {
+    min: { x: 8000, y: UPPER_FLOOR_ELEVATION_MM, z: -STOREY_HEIGHT_MM },
+    max: { x: 10000, y: 5438, z: 0 },
+  }
+
+  it("looks into the room on the door's room side in the whole-building view, where the centre of the shown bounds lies outside that room", () => {
+    const pose = doorwayPose(upperRoomDoor, wholeBuildingBounds, UPPER_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: 1, z: 0 })
+  })
+
+  it('looks plan north, world -Z, when the room side is the side opposite a normal that points plan south', () => {
+    const door: OpeningSceneNode = { ...makeDoor({ x: 0, y: -1 }), roomSide: 'negative' }
+    const pose = doorwayPose(door, houseBounds, GROUND_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: 0, z: -1 })
+  })
+
+  it('looks straight through a door in a wall at 45 degrees to the plan axes', () => {
+    const door: OpeningSceneNode = {
+      ...makeDoor({ x: Math.SQRT1_2, y: -Math.SQRT1_2 }),
+      center: { x: 500, y: 2500 },
+      along: { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
+      roomSide: 'positive',
+    }
+    const bounds: Bounds3 = {
+      min: { x: 0, y: 0, z: -STOREY_HEIGHT_MM },
+      max: { x: 4000, y: 2438, z: 0 },
+    }
+    const pose = doorwayPose(door, bounds, GROUND_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: Math.SQRT1_2, z: Math.SQRT1_2 })
+  })
+
+  it('gives the door of an upper room the same look in the floor view and in the whole-building view', () => {
+    const floorView = doorwayPose(upperRoomDoor, upperFloorBounds, UPPER_FLOOR_ELEVATION_MM)
+    const wholeBuilding = doorwayPose(upperRoomDoor, wholeBuildingBounds, UPPER_FLOOR_ELEVATION_MM)
+    expectLook(wholeBuilding, {
+      x: floorView.target.x - floorView.position.x,
+      z: floorView.target.z - floorView.position.z,
+    })
   })
 })
