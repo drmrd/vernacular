@@ -7,12 +7,15 @@ import {
   useEditorSession,
   useEnvironmentSessionStore,
   usePerceivedColorStore,
+  useSceneSessionStore,
   useSelection,
+  useSurfaceSelection,
   type EditorSession,
   type EnvironmentSessionStore,
   type PerceivedColorStore,
   type SceneSessionStore,
   type SelectionStore,
+  type SurfaceSelectionStore,
 } from '../../../bridge'
 import { useSceneSessionStoreOrLocal } from '../../../bridge/react/scene-session-context'
 import { createReferenceSession } from './reference-session'
@@ -79,6 +82,47 @@ describe('ReferenceSceneProviders', () => {
 
     expect(seen.selection.getSelectedIds().size).toBe(0)
     expect(seen.perceivedColor).not.toBeNull()
+  })
+})
+
+/** Renders the providers around a child that reads one hook and records what it saw. */
+function renderReading<Value>(read: () => Value): Value {
+  const seen: Value[] = []
+  function Reader() {
+    seen.push(read())
+    return null
+  }
+  render(
+    <ReferenceSceneProviders
+      stores={{
+        session: createReferenceSession(),
+        environment: createEnvironmentSessionStore(),
+        sceneSession: givenSceneSession,
+      }}
+    >
+      <Reader />
+    </ReferenceSceneProviders>,
+  )
+  const last = seen.at(-1)
+  if (last === undefined) throw new Error('the reader child never rendered')
+  return last
+}
+
+const givenSceneSession = createSceneSessionStore()
+
+describe('ReferenceSceneProviders surface selection and scene session', () => {
+  it('lets a child call useSurfaceSelection without an error', () => {
+    expect(() => renderReading(() => useSurfaceSelection())).not.toThrow(/SurfaceSelectionProvider/)
+  })
+
+  it('gives a surface selection with no surface selected', () => {
+    const selection: SurfaceSelectionStore = renderReading(() => useSurfaceSelection())
+
+    expect(selection.getActiveSurface()).toBeNull()
+  })
+
+  it('gives the throwing scene session hook the given scene session store', () => {
+    expect(renderReading(() => useSceneSessionStore())).toBe(givenSceneSession)
   })
 })
 
