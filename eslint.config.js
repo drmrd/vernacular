@@ -68,7 +68,7 @@ const storyFileGlobs = ['**/*.stories.{ts,tsx}']
 const sessionTestingUsers = [...testFileGlobs, ...storyFileGlobs, '**/*-test-support.{ts,tsx}']
 
 // Browser storage APIs are used only inside storage/ (ADR-0180), so every layer
-// that sits above it reaches storage through the layer's own ports. The block
+// outside it reaches storage through a port or a store of storage/. The block
 // covers shipped code, tests, stories, and test support alike. storage/, e2e/,
 // tests/, scripts/, and .storybook/ are not listed, so they keep direct access.
 const storageApiNames = [
@@ -80,28 +80,72 @@ const storageApiNames = [
   'showOpenFilePicker',
   'showSaveFilePicker',
 ]
-const storageApiMessage = 'Browser storage APIs are used only inside storage/ (ADR-0180).'
+const globalObjectNames = ['window', 'globalThis', 'self']
+const navigatorStorageMembers = ['storage', 'locks']
+const storageApiMessage =
+  'Browser storage APIs are used only inside storage/ (ADR-0180). Reach them through a port or a store of storage/.'
 const storageGlobals = storageApiNames.map((name) => ({ name, message: storageApiMessage }))
 const storageProperties = [
-  ...['window', 'globalThis', 'self'].flatMap((object) =>
+  ...globalObjectNames.flatMap((object) =>
     storageApiNames.map((property) => ({ object, property, message: storageApiMessage })),
   ),
-  { object: 'navigator', property: 'storage', message: storageApiMessage },
-  { object: 'navigator', property: 'locks', message: storageApiMessage },
+  ...navigatorStorageMembers.map((property) => ({
+    object: 'navigator',
+    property,
+    message: storageApiMessage,
+  })),
 ]
-// Catches navigator reached through another object, as in globalThis.navigator.storage.
-const navigatorThroughAnObject = {
-  selector:
-    "MemberExpression[object.type='MemberExpression'][object.property.name='navigator']" +
-    ':matches([property.name=/^(storage|locks)$/], [property.value=/^(storage|locks)$/])',
-  message: storageApiMessage,
-}
+
+// Pieces of the selectors below. A name list becomes one regular expression.
+const anyOf = (names) => `/^(${names.join('|')})$/`
+const propertyNamed = (names) =>
+  `:matches([property.name=${anyOf(names)}], [property.value=${anyOf(names)}])`
+const keyNamed = (names) => `:matches([key.name=${anyOf(names)}], [key.value=${anyOf(names)}])`
+const typeScriptWrapper = anyOf(['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression'])
+const storageSelector = (selector) => ({ selector, message: storageApiMessage })
+
+// navigator reached through another object: globalThis.navigator.storage
+const navigatorThroughAnObject = storageSelector(
+  "MemberExpression[object.type='MemberExpression'][object.property.name='navigator']" +
+    propertyNamed(navigatorStorageMembers),
+)
+// A global object behind a TypeScript wrapper: (window as Window).localStorage
+const wrappedGlobalObject = storageSelector(
+  `MemberExpression[object.type=${typeScriptWrapper}]` +
+    `[object.expression.name=${anyOf(globalObjectNames)}]` +
+    propertyNamed(storageApiNames),
+)
+// navigator behind a TypeScript wrapper, direct or read from an object:
+// (navigator as Navigator).storage, globalThis.navigator!.locks
+const wrappedNavigator = storageSelector(
+  `MemberExpression[object.type=${typeScriptWrapper}]` +
+    ":matches([object.expression.name='navigator'], [object.expression.property.name='navigator'])" +
+    propertyNamed(navigatorStorageMembers),
+)
+// A destructuring from a navigator read from an object: const { storage } = globalThis.navigator
+const destructuredFromNavigatorThroughAnObject = storageSelector(
+  "VariableDeclarator[init.type='MemberExpression'][init.property.name='navigator']" +
+    ` > ObjectPattern > Property${keyNamed(navigatorStorageMembers)}`,
+)
+// A destructuring of navigator out of a global object: const { navigator: { storage } } = window
+const destructuredNavigatorOfGlobalObject = storageSelector(
+  `VariableDeclarator[init.name=${anyOf(globalObjectNames)}]` +
+    " > ObjectPattern > Property[key.name='navigator']" +
+    ` > ObjectPattern > Property${keyNamed(navigatorStorageMembers)}`,
+)
 const storageApiBlock = {
   files: ['core/**', 'session/**', 'engine/**', 'bridge/**', 'editor/**', 'app/**', 'src/**'],
   rules: {
     'no-restricted-globals': ['error', ...storageGlobals],
     'no-restricted-properties': ['error', ...storageProperties],
-    'no-restricted-syntax': ['error', navigatorThroughAnObject],
+    'no-restricted-syntax': [
+      'error',
+      navigatorThroughAnObject,
+      wrappedGlobalObject,
+      wrappedNavigator,
+      destructuredFromNavigatorThroughAnObject,
+      destructuredNavigatorOfGlobalObject,
+    ],
   },
 }
 
