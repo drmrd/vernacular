@@ -3,8 +3,8 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_REVISION, createEmptyProject } from '../../core'
 import type { Project } from '../../core'
+import { readProject } from '../documents/document-store-test-kit'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
-import { ProjectNotFoundError } from '../project-store'
 import { ZipBundleProjectStore } from './zip-bundle-project-store'
 
 const SAVED_AT = '2026-03-04T05:06:07.000Z'
@@ -33,14 +33,7 @@ describe('ZipBundleProjectStore', () => {
     expect(bytes).toBeInstanceOf(Uint8Array)
 
     const reopened = await ZipBundleProjectStore.fromBundle('house', bytes)
-    expect(await reopened.load('house')).toEqual(withCurrentRevision(project))
-  })
-
-  it('rejects loading a foreign id with ProjectNotFoundError', async () => {
-    const store = new ZipBundleProjectStore('house')
-    await store.save('house', sampleProject())
-
-    await expect(store.load('other')).rejects.toBeInstanceOf(ProjectNotFoundError)
+    expect(await readProject(reopened, 'house')).toEqual(withCurrentRevision(project))
   })
 
   it('lists nothing before a save and its single project, with no name, after', async () => {

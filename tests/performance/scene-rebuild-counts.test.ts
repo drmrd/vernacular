@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { createEditorSession, type EditorSession } from '../../bridge'
+import type { EditorSession } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import type { FramedScene } from '../../bridge/react/framed-scene'
 import { createFramedSceneReconciler } from '../../bridge/react/framed-scene-reconciler'
 import { FURNITURE_NODE_PREFIX, type SceneGraph, type SurfaceTreatment } from '../../core'

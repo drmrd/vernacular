@@ -121,9 +121,27 @@ export class SnapshotStore {
   }
 
   private async pruneOldestRollingSnapshots(): Promise<void> {
-    const ordered = await this.rollingNamesNewestFirst()
-    for (const name of ordered.slice(this.maxSnapshots)) {
-      await this.directory.removeFile(`${AUTOSAVE_DIRECTORY}/${name}`)
+    // The new snapshot is already written, and removing old ones is housekeeping. A fault in the
+    // listing or in a removal must not fail the write: a document save and a close follow every
+    // snapshot write. The pass logs once, with the first error, however many removals fail.
+    let firstError: unknown
+    let failureCount = 0
+    try {
+      const ordered = await this.rollingNamesNewestFirst()
+      for (const name of ordered.slice(this.maxSnapshots)) {
+        try {
+          await this.directory.removeFile(`${AUTOSAVE_DIRECTORY}/${name}`)
+        } catch (error) {
+          failureCount += 1
+          firstError ??= error
+        }
+      }
+    } catch (error) {
+      failureCount += 1
+      firstError ??= error
+    }
+    if (failureCount > 0) {
+      console.error(`${failureCount} step(s) of the old snapshot cleanup failed`, firstError)
     }
   }
 

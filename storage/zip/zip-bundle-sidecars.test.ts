@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, createEmptyProject } from '../../core'
 import type { Project } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
+import { readProject } from '../documents/document-store-test-kit'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
 import { exportProjectBundle } from './export-project-bundle'
@@ -33,14 +34,14 @@ interface OpenedArchive {
 }
 
 /**
- * An archive store over a document at an older schema version, after a load that migrated it
+ * An archive store over a document at an older schema version, after a read that migrated it
  * (so a backup exists), with one asset and one recovery snapshot.
  */
 async function archiveWithBackupAndSnapshot(): Promise<OpenedArchive> {
   const directory = new InMemoryDirectory()
   await directory.writeFile(DOCUMENT_PATH, versionFixtureBytes(OLDER_VERSION))
   const store = new ZipBundleProjectStore(ARCHIVE_ID, directory)
-  await store.load(ARCHIVE_ID)
+  await readProject(store, ARCHIVE_ID)
   await store.assetCache().put(ASSET_HASH, ASSET_BYTES)
   await store.snapshots(ARCHIVE_ID).writeSnapshot(projectNamed('Edited'))
   return { store, directory }

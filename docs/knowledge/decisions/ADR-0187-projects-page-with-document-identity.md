@@ -20,10 +20,11 @@ sourceFiles:
     app/use-project-actions.ts,
     app/use-open-file-action.ts,
     session/editor-session/discard-guard.ts,
+    session/flows/switch-project.ts,
     docs/specs/2026-11-14-architecture-refactor-round.md,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-18
 ---
 
 # ADR-0187: The Projects page lands with document identity
@@ -36,6 +37,16 @@ the same day, with that specification. It supersedes the part of ADR-0104 that p
 prompt in front of New project, Open file, Open folder, and the recent list. The code changes with
 #685. Until then the application has one project slot, no page lists projects, and the discard
 prompt still stands.
+
+> Updated on 2026-11-18. The switch with no prompt is built ahead of the Projects page. New
+> project, Open file, Open folder, a recent project, and a file dropped on the canvas write the
+> open project's pending changes, open the other project, and then close the first, with no
+> question (`session/flows/`). If the write fails, the switch stops and the application says "The
+> changes could not be saved, so the project stays open." If the other project does not open, the
+> current one stays open with its undo history. Each new project and each imported file gets its
+> own id, and Open file already makes a copy in the workspace and leaves the file alone, though the
+> menu entry still reads "Open file". No page lists projects yet, and the prompt for a recovered
+> copy stays.
 
 ## Context
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup, renderHook, type RenderHookResult } from '@testing-library/react'
 import type { PointerEvent } from 'react'
-import { createEditorSession } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { addFloor, addWall, createEmptyProject } from '../../core'
 import { usePlanInteraction, type PlanInteraction } from './use-plan-interaction'
 

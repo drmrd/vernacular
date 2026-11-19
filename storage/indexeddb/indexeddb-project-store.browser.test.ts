@@ -7,7 +7,7 @@ import {
   projectOf,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import type { DocumentStore } from '../documents/document-store'
-import { ProjectNotFoundError } from '../project-store'
+import { readProject } from '../documents/document-store-test-kit'
 import type { ProjectStore } from '../project-store'
 import { IndexedDbDirectory } from './indexeddb-directory'
 import { IndexedDbProjectStore } from './indexeddb-project-store'
@@ -92,7 +92,7 @@ describe('saving and loading with the IndexedDB store', () => {
 
     await store.save('alpha', project)
 
-    expect(await store.load('alpha')).toEqual(withCurrentRevision(project))
+    expect(await readProject(store, 'alpha')).toEqual(withCurrentRevision(project))
   })
 
   it('loads the project again through a new store over the same database', async () => {
@@ -100,7 +100,7 @@ describe('saving and loading with the IndexedDB store', () => {
     const project = projectNamed('Alpha House')
     await new IndexedDbProjectStore(name).save('alpha', project)
 
-    const loaded = await new IndexedDbProjectStore(name).load('alpha')
+    const loaded = await readProject(new IndexedDbProjectStore(name), 'alpha')
 
     expect(loaded).toEqual(withCurrentRevision(project))
   })
@@ -121,13 +121,13 @@ describe('deleting from the IndexedDB store', () => {
 
     expect((await store.list()).map((summary) => summary.id)).toEqual(['beta'])
     expect(await store.storedFiles('beta')).toEqual(betaFiles)
-    expect((await store.load('beta')).meta.name).toBe('Beta House')
+    expect((await readProject(store, 'beta')).meta.name).toBe('Beta House')
   })
 
-  it('rejects the load of a project that does not exist with ProjectNotFoundError', async () => {
+  it('reads a project that does not exist as not found', async () => {
     const store = new IndexedDbProjectStore(freshDatabaseName())
 
-    await expect(store.load('nope')).rejects.toBeInstanceOf(ProjectNotFoundError)
+    expect(await store.read('nope')).toEqual({ ok: false, failure: { kind: 'not-found' } })
   })
 })
 
@@ -142,17 +142,17 @@ describe('the IndexedDB store over the records of an existing user', () => {
     const store = new IndexedDbProjectStore(await seededCurrent())
     const expected = projectOf(bytesOf(fixtureDocument(CURRENT_SCHEMA_VERSION)))
 
-    expect(await store.load('current')).toEqual(expected)
+    expect(await readProject(store, 'current')).toEqual(expected)
     await store.save('current', projectNamed('Renamed House'))
 
-    expect((await store.load('current')).meta.name).toBe('Renamed House')
+    expect((await readProject(store, 'current')).meta.name).toBe('Renamed House')
   })
 
   it('loads the project of a version 1 record through a new store over the same database', async () => {
     const name = await seededCurrent()
     await new IndexedDbProjectStore(name).list()
 
-    const loaded = await new IndexedDbProjectStore(name).load('current')
+    const loaded = await readProject(new IndexedDbProjectStore(name), 'current')
 
     expect(loaded).toEqual(projectOf(bytesOf(fixtureDocument(CURRENT_SCHEMA_VERSION))))
   })
@@ -169,7 +169,7 @@ describe('the IndexedDB store over the records of an existing user', () => {
   it('opens an old document of a version 1 record at the current version, with one backup of its bytes', async () => {
     const store = new IndexedDbProjectStore(await seededCurrent(OLDER_VERSION))
 
-    const project = await store.load('current')
+    const project = await readProject(store, 'current')
 
     expect(project.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
     const files = await store.storedFiles('current')

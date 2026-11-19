@@ -14,6 +14,7 @@ related:
 sourceFiles:
   [
     session/index.ts,
+    session/testing/index.ts,
     session/editor-session/editor-session.ts,
     eslint.config.js,
     tests/architecture/layer-boundaries.test.ts,
@@ -47,6 +48,15 @@ same stage.
 > it. That stage moves the editor session, the document handle, the flows, autosave, dirty
 > tracking, and the settings service. The other tenants listed below move with the stages that
 > rework them.
+
+> Updated on 2026-11-18. The document handle (`session/handle/`) and the flows that open, switch,
+> import, export, and restore projects (`session/flows/`) now live in `session/`, together with
+> the ports they need (`session/ports.ts`). The application builds those ports in one place,
+> `app/create-session-ports.ts`. The handle owns autosave. Dirty tracking and the load helper are
+> gone, and the save status of the handle does their work. The production entry `session/index.ts`
+> no longer exports `createEditorSession`, so production code gets a session only from a handle.
+> `session/testing` gives tests and stories the session constructor, the in-memory store doubles,
+> and the helpers of the handle and save-gate test kits. The settings service is still to come.
 
 ## Context
 

@@ -1,10 +1,11 @@
-import { DEFAULT_PROJECT_ID, resolveSnapshotStore } from '../app'
+import { DEFAULT_PROJECT_ID } from '../app'
 import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, type Project } from '../core'
 import {
   createOpfsProjectStore,
   FileSystemDirectory,
   IndexedDbRecentProjectStore,
-  WebLocksManager,
+  OpfsProjectStore,
+  WebLocksProjectLockPort,
   type DirectoryPort,
 } from '../storage'
 
@@ -62,18 +63,23 @@ function sampleProject(name: string): Project {
   return { ...project, floors: [createFloor('Ground')] }
 }
 
+// The stored project, or a rejection that names why the read gave none.
+async function readStoredProject(store: OpfsProjectStore, id: string): Promise<Project> {
+  const read = await store.read(id)
+  if (!read.ok) {
+    throw new Error(`The project ${id} could not be read: ${read.failure.kind}`)
+  }
+  return read.value.project
+}
+
 async function opfsRoundTrip(): Promise<OpfsRoundTripResult> {
   const store = await createOpfsProjectStore()
   await store.save('e2e-roundtrip', sampleProject('Round Trip House'))
-  const loaded = await store.load('e2e-roundtrip')
+  const loaded = await readStoredProject(store, 'e2e-roundtrip')
   const summaries = await store.list()
   await store.delete('e2e-roundtrip')
-  let deletedGone = false
-  try {
-    await store.load('e2e-roundtrip')
-  } catch {
-    deletedGone = true
-  }
+  const afterDelete = await store.read('e2e-roundtrip')
+  const deletedGone = !afterDelete.ok && afterDelete.failure.kind === 'not-found'
   return {
     loadedName: loaded.meta.name,
     listedId: summaries.some((summary) => summary.id === 'e2e-roundtrip'),
@@ -98,13 +104,17 @@ async function recentRoundTrip(): Promise<RecentRoundTripResult> {
 }
 
 async function lockSequence(): Promise<LockSequenceResult> {
-  const manager = new WebLocksManager()
-  const first = await manager.tryAcquire('e2e-lock')
-  const second = await manager.tryAcquire('e2e-lock')
-  await manager.release('e2e-lock')
-  const reacquired = await manager.tryAcquire('e2e-lock')
-  await manager.release('e2e-lock')
-  return { first, second, reacquired }
+  const locks = new WebLocksProjectLockPort()
+  const firstHold = await locks.tryAcquire('e2e-lock')
+  const secondHold = await locks.tryAcquire('e2e-lock')
+  await firstHold?.release()
+  const thirdHold = await locks.tryAcquire('e2e-lock')
+  await thirdHold?.release()
+  return {
+    first: firstHold !== undefined,
+    second: secondHold !== undefined,
+    reacquired: thirdHold !== undefined,
+  }
 }
 
 async function opfsPersistSave(): Promise<void> {
@@ -114,19 +124,22 @@ async function opfsPersistSave(): Promise<void> {
 
 async function opfsPersistName(): Promise<string> {
   const store = await createOpfsProjectStore()
-  const loaded = await store.load(PERSIST_ID)
+  const loaded = await readStoredProject(store, PERSIST_ID)
   return loaded.meta.name
 }
 
-// Simulates a crash: write a recovery snapshot at the production project's OPFS
-// location and leave it there (no canonical save + prune follows). A subsequent
-// production page load resolves the same snapshot store and should offer recovery.
+// Simulates a crash: write a recovery snapshot of the production project through the durable
+// store and leave it there (no store save and no prune follows). A later production page load
+// opens a handle on the same id, whose snapshots offer the recovery. Gives false when the durable
+// store cannot be built.
 async function plantRecoverySnapshot(): Promise<boolean> {
-  const snapshots = await resolveSnapshotStore(DEFAULT_PROJECT_ID)
-  if (snapshots === undefined) {
+  let store: OpfsProjectStore
+  try {
+    store = await createOpfsProjectStore()
+  } catch {
     return false
   }
-  await snapshots.writeSnapshot(sampleProject('Recovered House'))
+  await store.snapshots(DEFAULT_PROJECT_ID).writeSnapshot(sampleProject('Recovered House'))
   return true
 }
 

@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { SvgPlanExporter } from '../core'
+import { exportArchive } from '../session'
 import {
-  exportProjectBundle,
   bundleFilename,
   downloadBytes,
   downloadText,
@@ -58,23 +58,27 @@ export function runExportWithToast(
   attempt()
 }
 
+// The archive export stores a pending change first, so the archive holds the last edit. It reads
+// the open project of the latest render.
 export function useExportBundleAction(context: ProjectActionsContext): () => void {
-  const { session, projectId, assets, notifications } = context
+  const { handle, notifications } = context
   return useCallback(() => {
-    const project = session.getProject()
-    const name = bundleFilename(project.meta.name)
+    const name = bundleFilename(handle.session.getProject().meta.name)
     runExportWithToast(notifications, name, (onProgress) =>
-      exportProjectBundle(projectId, project, { assets, onProgress }).then((bytes) =>
-        downloadBytes(bytes, name),
-      ),
+      exportArchive(handle, { onProgress }).then((result) => {
+        if (!result.ok) {
+          throw new Error(result.message)
+        }
+        downloadBytes(result.bytes, result.fileName)
+      }),
     )
-  }, [session, projectId, assets, notifications])
+  }, [handle, notifications])
 }
 
 export function useExportPlanAction(context: ProjectActionsContext): () => void {
-  const { session, notifications } = context
+  const { handle, notifications } = context
   return useCallback(() => {
-    const project = session.getProject()
+    const project = handle.session.getProject()
     const name = svgPlanFilename(project.meta.name)
     try {
       const { content } = new SvgPlanExporter().export(project)
@@ -83,25 +87,25 @@ export function useExportPlanAction(context: ProjectActionsContext): () => void 
     } catch (error) {
       notifications.error(failureMessage('Export', error))
     }
-  }, [session, notifications])
+  }, [handle, notifications])
 }
 
 export function useExportImageAction(context: ProjectActionsContext): () => void {
-  const { session, notifications } = context
+  const { handle, notifications } = context
   return useCallback(() => {
-    const project = session.getProject()
+    const project = handle.session.getProject()
     const name = pngPlanFilename(project.meta.name)
     const { content } = new SvgPlanExporter().export(project)
     runExportWithToast(notifications, name, () =>
       rasterizeSvgToPng(content, DEFAULT_RASTER_MAX_EDGE).then((png) => downloadBytes(png, name)),
     )
-  }, [session, notifications])
+  }, [handle, notifications])
 }
 
 export function useExportPdfAction(context: ProjectActionsContext): () => void {
-  const { session, notifications } = context
+  const { handle, notifications } = context
   return useCallback(() => {
-    const project = session.getProject()
+    const project = handle.session.getProject()
     const name = pdfPlanFilename(project.meta.name)
     const { content } = new SvgPlanExporter().export(project)
     runExportWithToast(notifications, name, () =>
@@ -109,5 +113,5 @@ export function useExportPdfAction(context: ProjectActionsContext): () => void {
         (pdf) => downloadBytes(pdf, name),
       ),
     )
-  }, [session, notifications])
+  }, [handle, notifications])
 }

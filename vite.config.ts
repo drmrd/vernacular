@@ -49,7 +49,6 @@ export default defineConfig({
         'engine/renderer/create-renderer.ts',
         'bridge/react/webgpu-scene-view.tsx',
         'bridge/react/use-scene-graph.ts',
-        'bridge/react/use-autosave.ts',
         'editor/plan/plan-view.tsx',
         'editor/plan/plan-overlay.tsx',
         'editor/plan/compose-pointer-handlers.ts',

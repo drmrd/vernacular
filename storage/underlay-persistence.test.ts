@@ -4,6 +4,7 @@ import type { AssetReference } from '../core'
 import { DirectoryAssetCache } from './directory-asset-cache'
 import { InMemoryDirectory } from './fs/in-memory-directory'
 import { DocumentStore } from './documents/document-store'
+import { readProject } from './documents/document-store-test-kit'
 import { FolderFiles } from './project-files/folder-files'
 
 const PROJECT_ID = 'house'
@@ -41,7 +42,7 @@ describe('underlay persistence round-trip', () => {
     const freshStore = storeOver(directory)
     const freshCache = new DirectoryAssetCache(directory)
 
-    const reopened = await freshStore.load(PROJECT_ID)
+    const reopened = await readProject(freshStore, PROJECT_ID)
     expect(reopened.floors[0]?.underlays).toHaveLength(1)
     expect(reopened.floors[0]?.underlays[0]?.source).toEqual({ kind: 'raster', image })
     expect(reopened.floors[0]?.underlays[0]).toEqual(underlay)

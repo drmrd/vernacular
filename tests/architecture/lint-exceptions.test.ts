@@ -22,6 +22,8 @@ const SIZE_RULES = ['max-lines', 'max-lines-per-function', 'max-params', 'max-de
 // Linting every listed file is CPU-bound, so allow far more than Vitest's 5s default.
 const LINT_ALL_FILES_TIMEOUT_MS = 120_000
 const LINT_SAMPLE_TIMEOUT_MS = 30_000
+// Reading about 1,500 source files to scan their imports outlasts the default limit under load.
+const SOURCE_SCAN_TIMEOUT_MS = 30_000
 const RAISED_PARAM_LIMIT = 4
 const ONE_BELOW_CAP = 1
 const STORAGE_LAYER = 'storage'
@@ -164,21 +166,25 @@ describe('lint exception list', () => {
     expect(duplicatedPairs(config.lintExceptions), 'pairs listed more than once').toEqual([])
   })
 
-  it('lists exactly the bridge and editor files that import storage, no more and no fewer', () => {
-    const importers = filesImportingLayer(
-      readLayerSources(repositoryRoot),
-      LAYERS_THROUGH_SESSION,
-      STORAGE_LAYER,
-    )
-    const listed = config.lintExceptions
-      .filter(isImportAllowance)
-      .filter((entry) => entry.allowImportOf === STORAGE_LAYER)
-      .map((entry) => entry.file)
-      .sort()
-    expect(listed, 'allowImportOf storage entries against the files that import storage').toEqual(
-      importers,
-    )
-  })
+  it(
+    'lists exactly the bridge and editor files that import storage, no more and no fewer',
+    { timeout: SOURCE_SCAN_TIMEOUT_MS },
+    () => {
+      const importers = filesImportingLayer(
+        readLayerSources(repositoryRoot),
+        LAYERS_THROUGH_SESSION,
+        STORAGE_LAYER,
+      )
+      const listed = config.lintExceptions
+        .filter(isImportAllowance)
+        .filter((entry) => entry.allowImportOf === STORAGE_LAYER)
+        .map((entry) => entry.file)
+        .sort()
+      expect(listed, 'allowImportOf storage entries against the files that import storage').toEqual(
+        importers,
+      )
+    },
+  )
 
   it(
     'reports the listed rule in its listed file when the cap is one lower, so no cap is loose',

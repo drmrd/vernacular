@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { within, fireEvent, expect, waitFor } from 'storybook/test'
 import { App } from './app'
-import { InMemoryProjectStore } from '../storage'
+import { createTestPorts } from '../session/handle/handle-test-kit'
 
 const meta: Meta<typeof App> = {
   title: 'App/Shell',
@@ -20,11 +20,11 @@ type Story = StoryObj<typeof App>
 
 export const Default: Story = {}
 
-// A fresh in-memory store per mount keeps the demo repeatable and avoids touching
-// the durable IndexedDB store. useState seeds it once so App does not re-boot.
+// Fresh in-memory ports per mount keep the demo repeatable and avoid touching the
+// durable stores of the browser. useState builds them once so App does not boot again.
 function DemoApp() {
-  const [store] = useState(() => new InMemoryProjectStore())
-  return <App store={store} />
+  const [ports] = useState(() => createTestPorts())
+  return <App ports={ports} />
 }
 
 const SLOW_MO_MS = 800

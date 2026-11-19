@@ -1,33 +1,40 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createActiveFloorStore, createSelectionStore } from '../bridge'
 import {
-  createActiveFloorStore,
-  createEditorSession,
-  createSelectionStore,
-  useAutosave,
-  useDirtyTracker,
-  type AutosaveStatus,
-  type EditorSession,
-} from '../bridge'
+  guardDestructive,
+  restoreSnapshot,
+  type DocumentHandle,
+  type FlowResult,
+  type ProjectSnapshots,
+  type RestoreRefusal,
+  type SaveStatus,
+} from '../session'
 import { orderRecentProjects, type RecentProjectStore } from '../storage'
 import { useNotifications } from '../editor/design-system'
-import type { EditorWorkspaceProps, SnapshotsPort } from './app'
+import type { EditorWorkspaceProps } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
-import { useBeforeUnloadGuard } from './use-before-unload-guard'
+import { useSaveStatus, useUnsavedChangesGuard } from './use-before-unload-guard'
 import { useDiscardConfirmation } from './use-discard-confirmation'
-import { guardSessionSwap } from './project-action-helpers'
-import { useProjectActions, type RecentEntry } from './use-project-actions'
+import { useFlushOnHidden } from './use-flush-on-hidden'
+import { useHandleNotices } from './use-handle-notices'
+import { useLatest } from './use-latest'
+import type { RecentEntry } from './project-action-helpers'
+import type { RunFlow } from './use-open-project'
+import { useProjectActions } from './use-project-actions'
+import { useSwitchNotices } from './use-switch-notices'
 
 // The per-render state EditorWorkspace renders from: the context stores, the asset
-// library, autosave/recent/recovery status, the file-menu actions, and the discard
-// dialog's request plus its resolver. Lifted out of the component so the component
-// reads as the provider tree it renders rather than the hook wiring behind it.
+// library, the save status, the recent list and the recovery prompt, the file-menu
+// actions, and the discard dialog's request plus its resolver. Lifted out of the
+// component so the component reads as the provider tree it renders rather than the
+// hook wiring behind it.
 export interface WorkspaceState {
   selection: ReturnType<typeof createSelectionStore>
   activeFloorStore: ReturnType<typeof createActiveFloorStore>
   assetLibrary: ReturnType<typeof createAssetLibrary>
-  saveStatus: AutosaveStatus
-  recentEntries: ReturnType<typeof useRecentProjectsAndRecovery>['recentEntries']
-  recovery: ReturnType<typeof useRecentProjectsAndRecovery>['recovery']
+  saveStatus: SaveStatus
+  recentEntries: RecentEntry[]
+  recovery: Recovery | null
   actions: ReturnType<typeof useProjectActions>
   discardRequest: ReturnType<typeof useDiscardConfirmation>['discardRequest']
   resolveDiscard: ReturnType<typeof useDiscardConfirmation>['resolveDiscard']
@@ -40,261 +47,179 @@ export interface Recovery {
   onDiscard: () => void | Promise<void>
 }
 
-export interface RecentAndRecoveryContext {
-  recentProjects: RecentProjectStore
-  snapshots: SnapshotsPort | undefined
-  onSession: (session: EditorSession) => void
-
-  /** Prompt the user before discarding recovered snapshots, or before a restore
-   *  replaces unsaved work. Returns or resolves true to proceed, false to keep
-   *  what is there. Sync or async, mirroring the ADR-0104
-   *  ProjectActionsContext.confirmDiscard seam. Discard never prunes when omitted. */
-  confirmDiscard?: () => boolean | Promise<boolean>
-
-  /** Whether the live session has unsaved changes. Restore replaces that session
-   *  with the recovered project, so it prompts through the same seam as New and
-   *  Open. Treated as clean (false) when omitted. */
-  isDirty?: boolean
-}
-
-export function useRecentProjectsAndRecovery(context: RecentAndRecoveryContext): {
-  recentEntries: RecentEntry[]
-  recovery: Recovery | null
-} {
-  return {
-    recentEntries: useRecentEntries(context.recentProjects),
-    recovery: useCrashRecovery(context),
-  }
-}
-
-// The most-recently-opened list, read once per store. Independent of crash
-// recovery below: the two only ever shared an effect, never any state.
-function useRecentEntries(recentProjects: RecentProjectStore): RecentEntry[] {
+// The most-recently-opened list, read for each store and again for each open project, since a
+// flow that opened a project records entries.
+function useRecentEntries(
+  recentProjects: RecentProjectStore,
+  handle: DocumentHandle,
+): RecentEntry[] {
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
   useEffect(() => {
     let cancelled = false
-    void recentProjects.list().then((entries) => {
-      if (!cancelled) {
-        setRecentEntries(
-          orderRecentProjects(entries).map(({ id, name, backend }) => ({ id, name, backend })),
-        )
-      }
-    })
+    void recentProjects.list().then(
+      (entries) => {
+        if (!cancelled) {
+          setRecentEntries(
+            orderRecentProjects(entries).map(({ id, name, backend }) => ({ id, name, backend })),
+          )
+        }
+      },
+      (error: unknown) => console.error('reading the recent projects failed', error),
+    )
     return () => {
       cancelled = true
     }
-  }, [recentProjects])
+  }, [recentProjects, handle])
   return recentEntries
 }
 
-// Probes the snapshot store once and, when work is recoverable, publishes the
-// banner's restore/discard handlers. Null means nothing to recover (or the user
-// has already dealt with it).
-function useCrashRecovery(context: RecentAndRecoveryContext): Recovery | null {
-  const { snapshots, onSession, confirmDiscard, isDirty } = context
-  const [recovery, setRecovery] = useState<Recovery | null>(null)
-
-  // The restore handler reads the dirty flag through a ref rather than an effect
-  // dependency: re-running the effect on every edit would re-probe the snapshot
-  // store and could resurrect a banner the user has already dealt with.
-  const isDirtyRef = useRef(false)
-  useEffect(() => {
-    isDirtyRef.current = isDirty ?? false
-  }, [isDirty])
-
-  useEffect(() => {
-    if (!snapshots) {
-      return
-    }
-    let cancelled = false
-    const isLive = () => !cancelled
-    void snapshots.isRecoverable().then((recoverable) => {
-      if (isLive() && recoverable) {
-        const readIsDirty = () => isDirtyRef.current
-        setRecovery(
-          buildRecovery({ snapshots, onSession, setRecovery, isLive, confirmDiscard, readIsDirty }),
-        )
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [snapshots, onSession, confirmDiscard])
-
-  return recovery
+/** The restore of a recovered copy: it needs an open project, and with none has nothing to do. */
+function restoreInto(current: DocumentHandle | undefined): Promise<FlowResult<RestoreRefusal>> {
+  if (current === undefined) {
+    return Promise.resolve({ ok: false, failure: { kind: 'nothing-to-restore' } })
+  }
+  return restoreSnapshot(current)
 }
 
-interface RecoveryHandlersContext {
-  snapshots: SnapshotsPort
-  onSession: (session: EditorSession) => void
-  setRecovery: (recovery: Recovery | null) => void
+interface CrashRecoveryContext {
+  handle: DocumentHandle
+  runFlow: RunFlow
+  confirmDiscard: () => Promise<boolean>
+}
+
+interface RecoveryHandlersContext extends Omit<CrashRecoveryContext, 'handle'> {
+  snapshots: ProjectSnapshots
+  dismiss: () => void
   isLive: () => boolean
-  confirmDiscard: (() => boolean | Promise<boolean>) | undefined
-  readIsDirty: () => boolean
+  readUnsaved: () => boolean
+  notify: ReturnType<typeof useSwitchNotices>
 }
 
-// Builds the restore/discard handlers, each guarded so they never touch React state
+// Builds the restore and discard handlers, each guarded so they never touch React state
 // after the owning effect has been torn down.
 function buildRecovery(context: RecoveryHandlersContext): Recovery {
-  const { snapshots, onSession, setRecovery, isLive, confirmDiscard, readIsDirty } = context
+  const { snapshots, runFlow, confirmDiscard, dismiss, isLive, readUnsaved, notify } = context
   return {
-    // Restoring swaps the recovered project in over the live one, so unsaved work
-    // goes through the same prompt New and Open use before it is replaced.
+    // The restore replaces the open document with the recovered one, so unsaved work
+    // goes through the unsaved-changes prompt first. The owner hands the flow its project.
     onRestore: () =>
-      guardSessionSwap({ isDirty: readIsDirty(), confirmDiscard }, () =>
-        snapshots.restore().then((project) => {
-          if (!isLive()) {
+      guardDestructive({
+        isDirty: readUnsaved(),
+        confirm: confirmDiscard,
+        run: async () => {
+          const result = await runFlow<RestoreRefusal>((_ports, current) => restoreInto(current))
+          if (result === undefined || !isLive()) {
             return
           }
-          if (project) {
-            onSession(createEditorSession(project))
+          if (result.ok || result.failure.kind === 'nothing-to-restore') {
+            dismiss()
+            return
           }
-          setRecovery(null)
-        }),
-      ),
-    // Pruning deletes every autosave file including session-start, so it is
-    // gated behind the ADR-0104 confirm seam: prune (and clear recovery) only
-    // when the user confirms, otherwise leave the recovered snapshots intact.
+          notify(result, { action: 'Restore' })
+        },
+      }),
+    // Pruning deletes every recovered snapshot, so it is gated behind the ADR-0104
+    // confirm seam: prune (and clear recovery) only when the user confirms.
     onDiscard: () =>
-      Promise.resolve(confirmDiscard ? confirmDiscard() : false)
+      confirmDiscard()
         .then((confirmed) => {
           if (!confirmed) {
             return
           }
           return snapshots.prune().then(() => {
             if (isLive()) {
-              setRecovery(null)
+              dismiss()
             }
           })
         })
         // A prune I/O failure (disk full, OPFS error, permission loss) is logged
         // rather than swallowed; the recovered snapshots survive so the user can
-        // retry the discard. Mirrors the reopen-folder failure pattern in
-        // use-project-actions.ts.
+        // retry the discard.
         .catch((error: unknown) => console.error('discard snapshots failed', error)),
   }
 }
 
-interface SaveStatusOptions {
-  session: EditorWorkspaceProps['session']
-  store: EditorWorkspaceProps['store']
-  projectId: EditorWorkspaceProps['projectId']
-  snapshots?: EditorWorkspaceProps['snapshots']
-  revision: ReturnType<typeof useDirtyTracker>['revision']
-  markSavedRevision: ReturnType<typeof useDirtyTracker>['markSavedRevision']
-  onProjectSaved?: EditorWorkspaceProps['onProjectSaved']
+/** The recovery prompt, with the snapshots it was built for. */
+interface RecoveryAnswer {
+  snapshots: ProjectSnapshots
+  recovery: Recovery | null
 }
 
-// Owns the save-status indicator the autosave and the explicit save share. Autosave
-// disarms the guard for exactly the revision it persisted; an explicit save pulses the
-// same status to saved (flush-and-confirm via Cmd+S / menu).
-function useSaveStatus(options: SaveStatusOptions): {
-  saveStatus: AutosaveStatus
-  reportSaved: () => void
-} {
-  const { session, store, projectId, snapshots, revision, markSavedRevision, onProjectSaved } =
-    options
-  const [saveStatus, setSaveStatus] = useState<AutosaveStatus>('idle')
-  const onSaved = useCallback(
-    (savedRevision: number) => {
-      markSavedRevision(savedRevision)
-      onProjectSaved?.()
-    },
-    [markSavedRevision, onProjectSaved],
-  )
-  useAutosave({
-    session,
-    store,
-    projectId,
-    onStatusChange: setSaveStatus,
-    revision,
-    onSaved,
-    // Spread snapshots only when present: under exactOptionalPropertyTypes the optional
-    // option rejects an explicit undefined.
-    ...(snapshots ? { snapshots } : {}),
-  })
-  const reportSaved = useCallback(() => {
-    setSaveStatus('saved')
-    onProjectSaved?.()
-  }, [onProjectSaved])
-  return { saveStatus, reportSaved }
+// Asks the snapshots of the open project once whether a recovered copy exists and, when one
+// does, publishes the prompt's handlers. A project with other snapshots asks again and drops the
+// old answer. A restore keeps the snapshots of its project, so it does not ask again.
+function useCrashRecovery(context: CrashRecoveryContext): Recovery | null {
+  const { handle, runFlow, confirmDiscard } = context
+  const notify = useSwitchNotices()
+  const [answer, setAnswer] = useState<RecoveryAnswer | null>(null)
+  // Set in a layout effect, so a restore before the passive effects reads the committed handle.
+  const latestHandle = useLatest(handle)
+  const snapshots = handle.snapshots
+  useEffect(() => {
+    let cancelled = false
+    const isLive = () => !cancelled
+    const dismiss = () => setAnswer({ snapshots, recovery: null })
+    const readUnsaved = () => isUnsaved(latestHandle.current.saveStatus())
+    const handlers = { snapshots, runFlow, confirmDiscard, dismiss, isLive, readUnsaved, notify }
+    void snapshots.isRecoverable().then(
+      (recoverable) => {
+        if (isLive() && recoverable) setAnswer({ snapshots, recovery: buildRecovery(handlers) })
+      },
+      (error: unknown) => console.error('checking for a recovered copy failed', error),
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [snapshots, latestHandle, runFlow, confirmDiscard, notify])
+  return answer?.snapshots === snapshots ? answer.recovery : null
 }
 
-interface WorkspaceActionsOptions {
-  props: EditorWorkspaceProps
-  recentEntries: WorkspaceState['recentEntries']
-  isDirty: ReturnType<typeof useDirtyTracker>['isDirty']
-  confirmDiscard: ReturnType<typeof useDiscardConfirmation>['confirmDiscard']
-  revision: ReturnType<typeof useDirtyTracker>['revision']
-  markSavedRevision: ReturnType<typeof useDirtyTracker>['markSavedRevision']
-  onProjectSaved?: EditorWorkspaceProps['onProjectSaved']
+function isUnsaved(status: SaveStatus): boolean {
+  return status === 'pending' || status === 'error'
 }
 
-// Owns the save-status indicator plus the file-menu actions that share it: the
-// explicit save reports through the same status the autosave drives, and the actions
-// raise their outcomes through the notification channel. Kept apart so
-// useWorkspaceState reads as the provider-tree wiring rather than the hook plumbing.
-function useWorkspaceActions(options: WorkspaceActionsOptions): {
-  saveStatus: AutosaveStatus
-  actions: ReturnType<typeof useProjectActions>
-} {
-  const { props, recentEntries, isDirty, confirmDiscard, revision, markSavedRevision } = options
-  const { session, store, projectId, snapshots } = props
-  const { saveStatus, reportSaved } = useSaveStatus({
-    session,
-    store,
-    projectId,
-    snapshots,
-    revision,
-    markSavedRevision,
-    onProjectSaved: props.onProjectSaved,
-  })
-  const notifications = useNotifications()
-  const actions = useProjectActions({
-    ...props,
-    recentEntries,
-    isDirty,
-    confirmDiscard,
-    revision,
-    markSavedRevision,
-    reportSaved,
-    notifications,
-  })
-  return { saveStatus, actions }
+// Reports the handle each time its save status becomes saved.
+function useReportSaved(props: EditorWorkspaceProps, saveStatus: SaveStatus): void {
+  const { handle, onProjectSaved } = props
+  useEffect(() => {
+    if (saveStatus === 'saved') {
+      onProjectSaved?.(handle)
+    }
+  }, [saveStatus, handle, onProjectSaved])
 }
 
 export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
-  const { session, assets, recentProjects, snapshots, onSession } = props
+  const { handle, runFlow, libraryAssets, recentProjects, capabilities } = props
+  const session = handle.session
   // A selection names walls and openings inside one project, so the store belongs to
-  // one session: New, Open, and restore all swap in a project those ids mean nothing
-  // in, and a surviving store would leave the inspector describing a phantom object.
+  // one session: New, Open, and restore all bring a new handle with a new session, in
+  // which those ids mean nothing, and a surviving store would describe a phantom object.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the session is this memo's key, not an input the factory reads.
   const selection = useMemo(() => createSelectionStore(), [session])
   const activeFloorStore = useMemo(
     () => createActiveFloorStore(session.getProject().floors[0]?.id ?? null),
     [session],
   )
-  const { isDirty, revision, markSavedRevision } = useDirtyTracker(session)
-  // Arm the browser-native leave warning while the workspace has unsaved changes.
-  useBeforeUnloadGuard(isDirty)
+  // The handle saves; the workspace shows its status and its notices, warns before a leave, and
+  // asks for a write when the page hides.
+  const saveStatus = useSaveStatus(handle)
+  useUnsavedChangesGuard(handle)
+  useFlushOnHidden(handle)
+  useHandleNotices(handle)
+  useReportSaved(props, saveStatus)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
-  const { recentEntries, recovery } = useRecentProjectsAndRecovery({
+  const recentEntries = useRecentEntries(recentProjects, handle)
+  const recovery = useCrashRecovery({ handle, runFlow, confirmDiscard })
+  const notifications = useNotifications()
+  const actions = useProjectActions({
+    handle,
+    runFlow,
     recentProjects,
-    snapshots,
-    onSession,
-    confirmDiscard,
-    isDirty,
+    capabilities,
+    notifications,
   })
-  const { saveStatus, actions } = useWorkspaceActions({
-    props,
-    recentEntries,
-    isDirty,
-    confirmDiscard,
-    revision,
-    markSavedRevision,
-  })
-  // The asset library (starter pack + user imports), assembled once per content cache.
-  const assetLibrary = useMemo(() => createAssetLibrary(assets), [assets])
+  // The asset library (starter pack + user imports), assembled once for the pool of the library.
+  const assetLibrary = useMemo(() => createAssetLibrary(libraryAssets), [libraryAssets])
   return {
     selection,
     activeFloorStore,

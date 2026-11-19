@@ -1,13 +1,15 @@
 import { useCallback } from 'react'
-import { commitProject, createEditorSession } from '../bridge'
-import { importProjectFile } from '../storage'
+import { importFile } from '../session'
 import { failureMessage } from './failure-message'
-import { defaultStoreBackend, guardSessionSwap, recordRecent } from './project-action-helpers'
+import { useSwitchFlow } from './project-action-helpers'
 import type { ProjectActionsContext } from './use-project-actions'
 
-// Reads the file's bytes through a FileReader, which both browsers and the jsdom
-// test File implement (jsdom's Blob exposes no async byte readers).
+// Reads the bytes through the file's own reader, so a file that cannot be read rejects with its
+// own error. A File with no such reader (the test environment's) is read through a FileReader.
 function readFileBytes(file: File): Promise<Uint8Array> {
+  if (typeof file.arrayBuffer === 'function') {
+    return file.arrayBuffer().then((buffer) => new Uint8Array(buffer))
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.addEventListener('load', () => resolve(new Uint8Array(reader.result as ArrayBuffer)))
@@ -32,29 +34,28 @@ function openFilePicker(onFile: (file: File) => void | Promise<void>): void {
   input.click()
 }
 
+// Reads the bytes of the file first, outside the flow, so a file that cannot be read shows why and
+// runs no flow. The import then opens the copy under a new id and stores it. A failure shows
+// "Open failed: " with the reason, with no Retry.
 export function useOpenFileAction(context: ProjectActionsContext): {
   onImportDroppedFile: (file: File) => Promise<void>
   onOpenFile: () => void
 } {
-  const { store, projectId, recentProjects, capabilities, onSession, isDirty } = context
-  const { confirmDiscard, notifications } = context
-  const backend = defaultStoreBackend(capabilities)
+  const { notifications } = context
+  const runSwitch = useSwitchFlow(context)
   const importAndActivate = useCallback(
-    (file: File) =>
-      guardSessionSwap({ isDirty, confirmDiscard }, async () => {
-        try {
-          const bytes = await readFileBytes(file)
-          const project = await importProjectFile(file.name, bytes, projectId)
-          onSession(createEditorSession(project))
-          await commitProject({ store, projectId, project })
-          if (backend !== null) {
-            recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
-          }
-        } catch (error) {
-          notifications.error(failureMessage('Open', error))
-        }
-      }),
-    [store, projectId, recentProjects, backend, onSession, isDirty, confirmDiscard, notifications],
+    async (file: File) => {
+      let bytes: Uint8Array
+      try {
+        bytes = await readFileBytes(file)
+      } catch (error) {
+        notifications.error(failureMessage('Open', error))
+        return
+      }
+      const name = file.name
+      await runSwitch((ports, current) => importFile(ports, current, { name, bytes }))
+    },
+    [runSwitch, notifications],
   )
   return {
     onImportDroppedFile: importAndActivate,

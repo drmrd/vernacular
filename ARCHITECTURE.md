@@ -57,8 +57,9 @@ Hard invariants:
   testable in Node.
 - `engine/` is the only layer that imports Three.js.
 - `session/` imports no React and no Three.js and uses no DOM global.
-  Lint enforces this. The layer holds the editor session, dirty
-  tracking, the discard guard, the load helper, and autosave.
+  Lint enforces this. The layer holds the editor session, the document
+  handle, the flows that open and switch projects, the discard guard,
+  and autosave.
 - `bridge/` is the only place that touches both React state and
   Three.js scene state. All mutations flow through `dispatch(command)`
   at this boundary.
@@ -67,8 +68,19 @@ Hard invariants:
 - `bridge/` and `editor/` reach `storage/` only through `session/`. A
   file that still imports `storage/` is on the lint exception list with
   issue #717, which moves the asset and library ports behind `session/`.
-  `session/testing` is the entry for store doubles in tests, and lint
-  keeps production files from importing it.
+  `session/testing` gives in-memory store doubles, the session
+  constructor, and the helpers of the handle and save gate test kits.
+  Lint lets only tests, stories, and test support modules (files named
+  `*-test-support`) import it.
+
+A project is open through a document handle (`session/handle/`), which
+holds the editor session, the project lock, autosave, and the recovery
+snapshots, and which saves the project. The flows in `session/flows/`
+open, switch, import, export, and restore a project, and a switch writes
+the open project before it opens the next one. In `app/`, one hook,
+`useOpenProject` in `app/use-open-project.ts`, holds the one open
+handle and runs one flow at a time. `app/create-session-ports.ts` is the
+one production file of `app/` that names a store (ADR-0212).
 
 ## Where to find things
 

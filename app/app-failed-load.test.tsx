@@ -1,39 +1,14 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, within } from '@testing-library/react'
-import { App } from './app'
+import { cleanup } from '@testing-library/react'
+import { InMemoryActiveProjectIdStore } from '../storage'
+import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
-  InMemoryActiveProjectIdStore,
-  InMemoryProjectStore,
-  type ActiveProjectIdStore,
-} from '../storage'
-import { createEmptyProject, createFloor, type Project } from '../core'
-
-function stubCapableStorage() {
-  vi.stubGlobal('navigator', { storage: { getDirectory: () => Promise.resolve({}) } })
-  vi.stubGlobal('indexedDB', {})
-}
-
-function namedProject(name: string): Project {
-  const base = createEmptyProject({
-    name,
-    units: 'imperial',
-    period: 'modern',
-    appVersion: '0.0.0-test',
-  })
-  return { ...base, floors: [createFloor('Ground')] }
-}
-
-// The breadcrumb landmark names the open project, so it identifies which one opened.
-async function openProjectName(): Promise<string | null> {
-  const breadcrumb = await screen.findByRole('navigation', { name: /breadcrumb/i })
-  return within(breadcrumb).getByText(/.+/).textContent
-}
-
-async function rememberedId(id: string): Promise<ActiveProjectIdStore> {
-  const port = new InMemoryActiveProjectIdStore()
-  await port.write(id)
-  return port
-}
+  openProjectName,
+  plantProject,
+  rememberedId,
+  renderApp,
+  stubCapableStorage,
+} from './app-test-support'
 
 describe('The application opens the remembered project', () => {
   afterEach(() => {
@@ -44,53 +19,50 @@ describe('The application opens the remembered project', () => {
 
   it('opens the project stored under the remembered id', async () => {
     stubCapableStorage()
-    const store = new InMemoryProjectStore()
-    await store.save('current', namedProject('Old Cottage'))
-    await store.save('project-second', namedProject('Second House'))
+    const ports = createTestPorts()
+    await plantProject(ports, 'current', 'Old Cottage')
+    await plantProject(ports, 'project-second', 'Second House')
 
-    render(<App store={store} activeProjectIds={await rememberedId('project-second')} />)
+    renderApp(ports, { activeProjectIds: await rememberedId('project-second') })
 
     expect(await openProjectName()).toBe('Second House')
   })
 
   it('opens the project stored under current when nothing is remembered', async () => {
     stubCapableStorage()
-    const store = new InMemoryProjectStore()
-    await store.save('current', namedProject('Old Cottage'))
-    await store.save('project-second', namedProject('Second House'))
+    const ports = createTestPorts()
+    await plantProject(ports, 'current', 'Old Cottage')
+    await plantProject(ports, 'project-second', 'Second House')
 
-    render(<App store={store} activeProjectIds={new InMemoryActiveProjectIdStore()} />)
+    renderApp(ports, { activeProjectIds: new InMemoryActiveProjectIdStore() })
 
     expect(await openProjectName()).toBe('Old Cottage')
   })
 
   it('prefers the projectId property over the remembered id', async () => {
     stubCapableStorage()
-    const store = new InMemoryProjectStore()
-    await store.save('project-first', namedProject('First House'))
-    await store.save('project-second', namedProject('Second House'))
+    const ports = createTestPorts()
+    await plantProject(ports, 'project-first', 'First House')
+    await plantProject(ports, 'project-second', 'Second House')
 
-    render(
-      <App
-        store={store}
-        projectId="project-first"
-        activeProjectIds={await rememberedId('project-second')}
-      />,
-    )
+    renderApp(ports, {
+      projectId: 'project-first',
+      activeProjectIds: await rememberedId('project-second'),
+    })
 
     expect(await openProjectName()).toBe('First House')
   })
 
   it('opens a fresh project when the store no longer holds the remembered id', async () => {
     stubCapableStorage()
-    const store = new InMemoryProjectStore()
-    await store.save('current', namedProject('Old Cottage'))
-    const load = vi.spyOn(store, 'load')
+    const ports = createTestPorts()
+    await plantProject(ports, 'current', 'Old Cottage')
+    const read = vi.spyOn(ports.workspace, 'read')
 
-    render(<App store={store} activeProjectIds={await rememberedId('project-gone')} />)
+    renderApp(ports, { activeProjectIds: await rememberedId('project-gone') })
 
     expect(await openProjectName()).toBe('Untitled project')
-    expect(load).toHaveBeenCalledWith('project-gone')
-    expect(load).not.toHaveBeenCalledWith('current')
+    expect(read).toHaveBeenCalledWith('project-gone')
+    expect(read).not.toHaveBeenCalledWith('current')
   })
 })

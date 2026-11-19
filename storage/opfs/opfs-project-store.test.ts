@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Project } from '../../core'
 import { CURRENT_SCHEMA_REVISION, createEmptyProject } from '../../core'
+import { readProject } from '../documents/document-store-test-kit'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { ProjectNotFoundError } from '../project-store'
 import { OpfsProjectStore } from './opfs-project-store'
@@ -31,8 +32,8 @@ describe('OpfsProjectStore', () => {
     await store.save('alpha', projectA)
     await store.save('beta', projectB)
 
-    expect(await store.load('alpha')).toEqual(withCurrentRevision(projectA))
-    expect(await store.load('beta')).toEqual(withCurrentRevision(projectB))
+    expect(await readProject(store, 'alpha')).toEqual(withCurrentRevision(projectA))
+    expect(await readProject(store, 'beta')).toEqual(withCurrentRevision(projectB))
     expect(await root.readFile('alpha/vernacular.json')).toBeDefined()
   })
 
@@ -67,23 +68,23 @@ describe('OpfsProjectStore', () => {
     await store.save('alpha', project)
     project.meta.name = 'Mutated'
 
-    expect((await store.load('alpha')).meta.name).toBe('Alpha House')
+    expect((await readProject(store, 'alpha')).meta.name).toBe('Alpha House')
   })
 
   it('isolates stored state from mutation of a loaded project', async () => {
     const store = new OpfsProjectStore(new InMemoryDirectory())
     await store.save('alpha', projectNamed('Alpha House'))
 
-    const loaded = await store.load('alpha')
+    const loaded = await readProject(store, 'alpha')
     loaded.meta.name = 'Mutated'
 
-    expect((await store.load('alpha')).meta.name).toBe('Alpha House')
+    expect((await readProject(store, 'alpha')).meta.name).toBe('Alpha House')
   })
 
-  it('throws ProjectNotFoundError when loading an unknown id', async () => {
+  it('reads an unknown id as not found', async () => {
     const store = new OpfsProjectStore(new InMemoryDirectory())
 
-    await expect(store.load('nope')).rejects.toBeInstanceOf(ProjectNotFoundError)
+    expect(await store.read('nope')).toEqual({ ok: false, failure: { kind: 'not-found' } })
   })
 
   it('omits id directories that hold no vernacular.json from the listing', async () => {
@@ -128,7 +129,7 @@ describe('OpfsProjectStore', () => {
 
     await store.delete('alpha')
 
-    await expect(store.load('alpha')).rejects.toBeInstanceOf(ProjectNotFoundError)
+    await expect(readProject(store, 'alpha')).rejects.toBeInstanceOf(ProjectNotFoundError)
     expect((await store.list()).map((summary) => summary.id)).not.toContain('alpha')
   })
 })

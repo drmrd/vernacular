@@ -2,8 +2,9 @@ import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
 test.describe('Home page accessibility', () => {
-  test('has no axe-core violations on initial render', async ({ page }) => {
+  test('has no axe-core violations when the shell shows', async ({ page }) => {
     await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1, name: 'Vernacular' })).toBeVisible()
     const results = await new AxeBuilder({ page }).analyze()
     expect(results.violations).toEqual([])
   })

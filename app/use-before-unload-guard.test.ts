@@ -1,6 +1,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { renderHook } from '@testing-library/react'
-import { useBeforeUnloadGuard } from './use-before-unload-guard'
+import { act, renderHook } from '@testing-library/react'
+import {
+  createTestPorts,
+  openOrThrow,
+  rename,
+  workspaceRequest,
+} from '../session/handle/handle-test-kit'
+import { createInitialProject } from './create-initial-project'
+import { useBeforeUnloadGuard, useUnsavedChangesGuard } from './use-before-unload-guard'
 
 // Dispatch a fresh `beforeunload` event on window and report what the guard did
 // to it. jsdom delivers the event to registered listeners, so a spy on the
@@ -69,5 +76,28 @@ describe('useBeforeUnloadGuard', () => {
     const { preventDefault } = dispatchBeforeUnload()
 
     expect(preventDefault).not.toHaveBeenCalled()
+  })
+})
+
+describe('useUnsavedChangesGuard', () => {
+  it('warns before unload while the handle has an unsaved change, and not after it is saved', async () => {
+    const request = { ...workspaceRequest('current'), create: createInitialProject }
+    const handle = await openOrThrow(createTestPorts(), request)
+    const { unmount } = renderHook(() => {
+      useUnsavedChangesGuard(handle)
+    })
+
+    act(() => {
+      rename(handle, 'Edited before the unload')
+    })
+    expect(dispatchBeforeUnload().preventDefault).toHaveBeenCalled()
+
+    await act(async () => {
+      await handle.save()
+    })
+    expect(dispatchBeforeUnload().preventDefault).not.toHaveBeenCalled()
+
+    unmount()
+    await handle.close()
   })
 })

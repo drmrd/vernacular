@@ -1,12 +1,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  ActiveFloorProvider,
-  EditorSessionProvider,
-  createActiveFloorStore,
-  createEditorSession,
-} from '../../bridge'
+import { ActiveFloorProvider, EditorSessionProvider, createActiveFloorStore } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { createEmptyProject, createFloor } from '../../core'
 import type { UnderlayContextValue } from './use-underlay'
 import { UnderlayMenuPanel } from './underlay-menu-panel'

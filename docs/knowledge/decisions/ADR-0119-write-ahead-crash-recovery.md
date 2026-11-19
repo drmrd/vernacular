@@ -14,16 +14,18 @@ related:
 sourceFiles:
   [
     session/autosave/create-autosave.ts,
-    app/resolve-snapshot-store.ts,
+    session/autosave/autosave-write.ts,
+    storage/documents/document-store.ts,
+    session/handle/document-handle.ts,
     app/opfs-probe.ts,
-    app/use-resolved-snapshots.ts,
+    app/use-project-boot.ts,
     app/app.tsx,
     src/main.tsx,
     storage/snapshots/snapshot-store.ts,
     app/use-project-actions.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # ADR-0119: Write-ahead crash recovery
@@ -35,6 +37,24 @@ updated: 2026-11-17
 > rolling snapshots. It leaves any other file in `.house-autosave/` alone. The order of the
 > autosave cycle is unchanged. The code changed on 2026-11-17: `SnapshotStore.prune` removes only
 > those files.
+
+> Updated on 2026-11-18. Recovery snapshots belong to the document handle of the open project, on
+> every store. The handle asks its store for the snapshots of its own id (`DocumentStore.snapshots`
+> in `storage/documents/document-store.ts`) and gives them to its autosave. A project on the
+> IndexedDB fallback now has recovery, and a folder project keeps its snapshots in its own folder,
+> under `.house-autosave/`; that directory stays in the folder after a prune. The resolver
+> (`app/resolve-snapshot-store.ts`, `app/use-resolved-snapshots.ts`) and the `resolveSnapshots`
+> prop are gone. The paragraph below on resolving the snapshot store after the first paint, and
+> the consequence that recovery is OPFS-only, describe the earlier form. The first paint still
+> does not wait for storage: `app/use-project-boot.ts` builds the ports after it. Every write of the
+> handle writes a snapshot first, whichever step asks for it: the timer, Save, a flush when the
+> page hides, a close, or a switch to another project (`session/autosave/autosave-write.ts`). A
+> prune that fails goes to the console and does not fail the write. A failed removal of an old
+> rolling snapshot, when the series passes its cap, does not fail it either. One limit is
+> unchanged: a save that succeeds before the user answers the recovery prompt prunes the
+> snapshot, after an edit or after a Save with no edit, so the recovered copy is gone and Restore
+> finds nothing. A prune that fails at every
+> write leaves the prompt showing at each start, for a state the store already holds.
 
 Accepted, landed. Autosave now writes a recovery snapshot, saves the canonical project, then prunes the
 snapshot, in that order. A plain reload restores the latest edit silently from the canonical store. A

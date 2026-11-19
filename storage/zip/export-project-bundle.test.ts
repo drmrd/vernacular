@@ -9,6 +9,7 @@ import {
   type AssetReference,
   type Project,
 } from '../../core'
+import { readProject } from '../documents/document-store-test-kit'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
 import { collectReferencedAssets } from '../project-files/referenced-assets'
 import { exportProjectBundle } from './export-project-bundle'
@@ -92,7 +93,7 @@ describe('exportProjectBundle', () => {
     const reopened = await ZipBundleProjectStore.fromBundle('current', bytes)
 
     expect(await reopened.assetCache().get(FURNITURE_HASH)).toEqual(GLB_BYTES)
-    const loaded = await reopened.load('current')
+    const loaded = await readProject(reopened, 'current')
     expect(loaded.floors[0]?.furniture[0]?.assetRef.contentHash).toBe(FURNITURE_HASH)
   })
 

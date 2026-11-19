@@ -6,9 +6,9 @@ import {
   EditorSessionProvider,
   SelectionProvider,
   createActiveFloorStore,
-  createEditorSession,
   createSelectionStore,
 } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { addWall, createEmptyProject, createFloor } from '../../core'
 import { CommandPaletteProvider } from './command-context'
 import { CommandBar } from './command-bar'

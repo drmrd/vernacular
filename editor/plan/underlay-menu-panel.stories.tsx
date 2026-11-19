@@ -1,12 +1,8 @@
 import { useMemo, type ReactElement } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { within, expect, userEvent } from 'storybook/test'
-import {
-  EditorSessionProvider,
-  ActiveFloorProvider,
-  createEditorSession,
-  createActiveFloorStore,
-} from '../../bridge'
+import { EditorSessionProvider, ActiveFloorProvider, createActiveFloorStore } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { createEmptyProject, createFloor, createUnderlay, type AssetReference } from '../../core'
 import { UnderlayMenuPanel } from './underlay-menu-panel'
 

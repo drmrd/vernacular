@@ -1,57 +1,88 @@
-import type { LockManagerPort } from './project-lock'
+/** How a request for a lock went: got it, found it held, or was refused by the browser with a security error. */
+export type LockOutcome = 'granted' | 'busy' | 'refused'
 
 /**
- * LockManagerPort over navigator.locks. The Web Locks API only holds a lock for
- * the duration of a callback, so to model hold-until-release we keep the lock
- * callback alive with a promise that never settles until release() resolves its
- * stored resolver. This is the held-promise pattern: the unsettled inner promise
- * is what keeps the exclusive lock in our possession.
+ * Whether the browser refused the lock API itself, which it reports as a
+ * DOMException named SecurityError. Any other failure is not a refusal.
+ */
+export function isSecurityRefusal(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'SecurityError'
+}
+
+/** What the manager keeps for one granted lock, from acquire until release. */
+interface LockHold {
+  /** Settles the held promise so the lock can be freed. */
+  free: () => void
+  /** Settles once the lock has really been freed. */
+  whenFreed: () => Promise<void>
+}
+
+/**
+ * Exclusive named locks over navigator.locks, held until released. The Web
+ * Locks API only holds a lock for the duration of a callback, so to model
+ * hold-until-release we keep the lock callback alive with a promise that never
+ * settles until release() resolves its stored resolver. This is the
+ * held-promise pattern: the unsettled inner promise is what keeps the exclusive
+ * lock in our possession. A record of that resolver is kept for each granted
+ * lock, and only for a granted one.
  *
  * release() also awaits the original request promise, which settles only once the
  * lock has actually been freed. Without that wait, an immediate re-acquire can
  * still observe the lock as held: Firefox frees the lock a task later than
  * Chromium, so resolving the held promise is not enough on its own.
  */
-export class WebLocksManager implements LockManagerPort {
-  private readonly releasers = new Map<string, () => void>()
-  private readonly requests = new Map<string, Promise<void>>()
+export class WebLocksManager {
+  private readonly holds = new Map<string, LockHold>()
 
-  tryAcquire(name: string): Promise<boolean> {
-    return new Promise<boolean>((resolveOuter) => {
+  /**
+   * Resolve how the request for the exclusive lock named `name` went: granted
+   * without waiting, busy because another holder has it (the callback runs with
+   * null), or refused because the browser rejected the request with a security
+   * error. Any other rejection rejects this promise with the same error. A
+   * rejection that comes after the grant changes nothing: the answer is already
+   * given and the release still waits for the request to settle.
+   */
+  tryAcquire(name: string): Promise<LockOutcome> {
+    return new Promise<LockOutcome>((resolveOuter, rejectOuter) => {
+      // Assigned below once the request exists; the hold reads it only at release.
+      let freed: Promise<void> = Promise.resolve()
       const request = navigator.locks.request(
         name,
         { mode: 'exclusive', ifAvailable: true },
         (lock) => {
           if (lock === null) {
-            resolveOuter(false)
+            resolveOuter('busy')
             return undefined
           }
-          resolveOuter(true)
+          resolveOuter('granted')
           // Returning an unsettled promise keeps the lock held; storing its
-          // resolver lets release() free the lock on demand.
-          return new Promise<void>((release) => {
-            this.releasers.set(name, release)
+          // resolver lets release() free the lock on demand. Only a granted
+          // lock is stored, so a failed attempt never replaces the holder.
+          return new Promise<void>((free) => {
+            this.holds.set(name, { free, whenFreed: () => freed })
           })
         },
       )
-      this.requests.set(
-        name,
-        request.then(() => undefined),
+      freed = request.then(
+        () => undefined,
+        (error: unknown) => {
+          if (isSecurityRefusal(error)) {
+            resolveOuter('refused')
+          } else {
+            rejectOuter(error)
+          }
+        },
       )
     })
   }
 
   async release(name: string): Promise<void> {
-    const releaser = this.releasers.get(name)
-    if (releaser === undefined) {
+    const hold = this.holds.get(name)
+    if (hold === undefined) {
       return
     }
-    this.releasers.delete(name)
-    releaser()
-    const request = this.requests.get(name)
-    this.requests.delete(name)
-    if (request !== undefined) {
-      await request
-    }
+    this.holds.delete(name)
+    hold.free()
+    await hold.whenFreed()
   }
 }

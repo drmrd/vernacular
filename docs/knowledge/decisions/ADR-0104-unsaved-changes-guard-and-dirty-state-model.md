@@ -26,11 +26,10 @@ related:
 sourceFiles:
   [
     docs/specs/2026-06-15-open-import-project.md,
-    session/editor-session/create-dirty-tracker.ts,
+    session/handle/document-handle.ts,
     session/editor-session/discard-guard.ts,
     app/app.tsx,
-    bridge/react/use-dirty-state.ts,
-    bridge/react/use-autosave.ts,
+    session/flows/switch-project.ts,
     session/autosave/create-autosave.ts,
     app/use-before-unload-guard.ts,
     app/use-discard-confirmation.ts,
@@ -43,7 +42,7 @@ sourceFiles:
     editor/shell/editor-shell.tsx,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-18
 ---
 
 # ADR-0104: Unsaved-changes guard and dirty-state model
@@ -71,6 +70,19 @@ flight stays dirty.
 > actions no longer replace the open project: a switch writes pending changes and then opens the
 > other project. The dirty-state model, the leave warning, and the prompt for a recovered copy
 > stay. Until that work lands, the guard behaves as described below.
+
+> Updated on 2026-11-18. The switch without a prompt is built. New project, Open file, Open folder,
+> a recent project, and a file dropped on the canvas ask nothing: each writes the open project's
+> pending changes, opens the other project, and then closes the first (`session/flows/`). The dirty
+> tracker, its React hooks, the application autosave hook, and `commitProject` are gone. Unsaved
+> work is now the save status of the document handle (`session/handle/handle-types.ts`): `pending`
+> or `error` counts as unsaved. `useUnsavedChangesGuard(handle)` in `app/use-before-unload-guard.ts`
+> arms the leave warning in those two states, and `useFlushOnHidden(handle)` asks for a write when
+> the page hides. The handle's autosave counts changes itself, so an edit made while a write runs
+> still reads as unsaved, which is what the revision marking below did. The prompt stays for the
+> recovered copy only: Restore asks first when the project has unsaved work
+> (`app/use-workspace-state.ts` calls `guardDestructive` of the session layer), and Discard always
+> asks.
 
 ## Context
 

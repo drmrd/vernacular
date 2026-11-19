@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEditorSession } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { createFramedSceneReconciler } from '../../bridge/react/framed-scene-reconciler'
 import {
   MAX_SHADOW_TEXEL_MM,

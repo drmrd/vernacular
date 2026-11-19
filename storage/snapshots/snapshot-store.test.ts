@@ -188,3 +188,70 @@ describe('SnapshotStore', () => {
     ).toBe(true)
   })
 })
+
+describe('SnapshotStore housekeeping failures', () => {
+  it('a rolling cap that cannot remove a file still writes the snapshot and resolves', async () => {
+    const cap = 2
+    const writes = cap + 2
+    const removalError = new Error('the file cannot be removed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const directory = new InMemoryDirectory()
+    directory.removeFile = () => Promise.reject(removalError)
+    const store = new SnapshotStore(directory, {
+      maxSnapshots: cap,
+      now: clockReturning(1, 2, 3, 4),
+    })
+
+    for (let write = 1; write <= writes; write += 1) {
+      await expect(store.writeSnapshot(projectNamed(`Write ${write}`))).resolves.toBeUndefined()
+    }
+
+    expect(await store.restore()).toEqual(withCurrentRevision(projectNamed(`Write ${writes}`)))
+    expect(consoleError.mock.calls.flat()).toContain(removalError)
+  })
+
+  it('a rolling cap whose listing fails after the write still writes the snapshot and resolves', async () => {
+    const cap = 2
+    const listingError = new Error('the directory cannot be listed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const directory = new InMemoryDirectory()
+    const list = directory.list.bind(directory)
+    const writeFile = directory.writeFile.bind(directory)
+    let listingBroken = false
+    directory.writeFile = async (path, bytes) => {
+      await writeFile(path, bytes)
+      listingBroken = true
+    }
+    directory.list = (path) => (listingBroken ? Promise.reject(listingError) : list(path))
+    const store = new SnapshotStore(directory, { maxSnapshots: cap, now: clockReturning(1) })
+
+    await expect(store.writeSnapshot(projectNamed('Written'))).resolves.toBeUndefined()
+
+    listingBroken = false
+    const soundStore = new SnapshotStore(directory, { maxSnapshots: cap })
+    expect(await soundStore.restore()).toEqual(withCurrentRevision(projectNamed('Written')))
+    expect(consoleError.mock.calls.flat()).toContain(listingError)
+  })
+
+  it('a write logs once when several old snapshots cannot be removed', async () => {
+    const cap = 1
+    const writesBeforeTheLogged = cap + 1
+    const removalError = new Error('the file cannot be removed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const directory = new InMemoryDirectory()
+    directory.removeFile = () => Promise.reject(removalError)
+    const store = new SnapshotStore(directory, {
+      maxSnapshots: cap,
+      now: clockReturning(1, 2, 3),
+    })
+    for (let write = 1; write <= writesBeforeTheLogged; write += 1) {
+      await store.writeSnapshot(projectNamed(`Write ${write}`))
+    }
+    consoleError.mockClear()
+
+    await store.writeSnapshot(projectNamed('Logged write'))
+
+    expect(consoleError).toHaveBeenCalledTimes(1)
+    expect(consoleError.mock.calls[0]).toContain(removalError)
+  })
+})

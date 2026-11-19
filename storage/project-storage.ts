@@ -1,4 +1,4 @@
-import type { ProjectStore } from './project-store'
+import type { WorkspaceDocumentStore } from './documents/document-store'
 import type { AssetCache } from './asset-cache'
 import { OpfsProjectStore } from './opfs/opfs-project-store'
 import { FileSystemDirectory } from './fs/file-system-directory'
@@ -15,7 +15,7 @@ import {
  * assets (underlay rasters) to the same place. See ADR-0042.
  */
 export interface ProjectStorage {
-  store: ProjectStore
+  store: WorkspaceDocumentStore
   assets: AssetCache
 }
 

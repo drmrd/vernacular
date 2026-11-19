@@ -2,6 +2,8 @@
 // ESLint's lintText reads files through Node's fs module, which needs the node environment, not the project-wide jsdom.
 import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
+import * as sessionEntry from '../../session'
+import * as sessionTestingEntry from '../../session/testing'
 
 // One shared instance: building the flat config is the expensive part. Linting is
 // CPU-bound, so allow extra time over Vitest's 5s per-test default.
@@ -37,6 +39,7 @@ const acceptedImports: readonly ImportCase[] = [
   { filePath: 'session/autosave/sample.test.ts', specifier: '../testing' },
   { filePath: 'session/testing/sample.ts', specifier: './in-memory' },
   { filePath: 'editor/sample.tsx', specifier: '../session' },
+  { filePath: 'editor/shell/sample-test-support.tsx', specifier: '../../session/testing' },
 ]
 
 describe('the session testing entry', () => {
@@ -63,4 +66,16 @@ describe('the session testing entry', () => {
       expect(await importRuleReported('editor/sample.stories.tsx', '../engine/testing')).toBe(true)
     },
   )
+})
+
+describe('the names that the session entries export', () => {
+  it('session/index.ts exports no createEditorSession', () => {
+    expect(Object.keys(sessionEntry)).not.toContain('createEditorSession')
+  })
+
+  it('session/testing exports createEditorSession and createTestPorts', () => {
+    expect(Object.keys(sessionTestingEntry)).toEqual(
+      expect.arrayContaining(['createEditorSession', 'createTestPorts']),
+    )
+  })
 })

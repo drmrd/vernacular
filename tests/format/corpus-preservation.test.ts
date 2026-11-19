@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { encodeDocument } from '../../core'
+import { readProject } from '../../storage/documents/document-store-test-kit'
 import { InMemoryDirectory } from '../../storage/fs/in-memory-directory'
 import { DocumentStore, FolderFiles } from '../../storage'
 
@@ -59,7 +60,7 @@ describe('Tier-2 corpus fixture preservation (ADR-0051 forward compatibility)', 
     await directory.writeFile('vernacular.json', originalBytes)
     const store = storeOver(directory)
 
-    const loaded = await store.load(PROJECT_ID)
+    const loaded = await readProject(store, PROJECT_ID)
     await store.save(PROJECT_ID, loaded)
 
     const savedBytes = await directory.readFile('vernacular.json')
@@ -94,7 +95,7 @@ describe('corpus documents survive a folder store round-trip with no edit', () =
       await directory.writeFile('vernacular.json', new Uint8Array(readFileSync(resolve(path))))
       const store = storeOver(directory)
 
-      const loaded = await store.load(PROJECT_ID)
+      const loaded = await readProject(store, PROJECT_ID)
       await store.save(PROJECT_ID, loaded)
 
       const saved = await directory.readFile('vernacular.json')

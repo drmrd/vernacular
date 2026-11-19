@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createEditorCommands } from './editor-commands'
 import type { CommandContext } from './command'
-import { createEditorSession, createSelectionStore } from '../../bridge'
+import { createSelectionStore } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import {
   addFloor,
   addWall,

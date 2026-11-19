@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import { createEmptyProject, encodeDocument } from '../../core'
 import type { Project } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
-import { PassThroughDirectory } from '../documents/document-store-test-kit'
+import { PassThroughDirectory, readProject } from '../documents/document-store-test-kit'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { FileSystemFolderProjectStore } from './file-system-folder-project-store'
@@ -72,7 +72,7 @@ function storeOver(folder: DirectoryPort): FileSystemFolderProjectStore {
 
 /** Calls every method of the store that reads or writes, including a snapshot write and a prune. */
 async function useEveryMethod(store: FileSystemFolderProjectStore): Promise<void> {
-  await store.load(PROJECT_ID)
+  await readProject(store, PROJECT_ID)
   await store.save(PROJECT_ID, projectNamed('Edited'))
   await store.snapshots(PROJECT_ID).writeSnapshot(projectNamed('Snapshotted'))
   await store.snapshots(PROJECT_ID).prune()
@@ -114,7 +114,7 @@ describe('the store of a picked folder', () => {
     await storeOver(folder).save(PROJECT_ID, projectNamed('Saved House'))
 
     expect(await folder.list('')).toEqual([DOCUMENT_PATH])
-    expect((await storeOver(folder).load(PROJECT_ID)).meta.name).toBe('Saved House')
+    expect((await readProject(storeOver(folder), PROJECT_ID)).meta.name).toBe('Saved House')
   })
 
   it('lists its one id with the time of last change when the folder holds a document', async () => {
@@ -135,7 +135,7 @@ describe('the store of a picked folder', () => {
     const stored = versionFixtureBytes(OLDEST_VERSION)
     await folder.writeFile(DOCUMENT_PATH, stored)
 
-    await storeOver(folder).load(PROJECT_ID)
+    await readProject(storeOver(folder), PROJECT_ID)
 
     const backups = await folder.list(BACKUP_DIRECTORY)
     expect(backups).toHaveLength(1)

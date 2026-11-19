@@ -54,7 +54,8 @@ function valueImportSpecifiers(path: string, text: string): string[] {
   })
 }
 
-function resolveSpecifier(
+/** The file of `sources` that a relative `specifier` of `importerPath` names, or `undefined`. */
+export function resolveSpecifier(
   importerPath: string,
   specifier: string,
   sources: ReadonlyMap<string, string>,
@@ -156,7 +157,8 @@ function collectDynamicImportSpecifiers(node: ts.Node, found: string[]): string[
   return found
 }
 
-function anyModuleSpecifiers(path: string, text: string): string[] {
+/** Every module specifier of a file: imports, re-exports, and dynamic `import('<literal>')`. */
+export function anyModuleSpecifiers(path: string, text: string): string[] {
   const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest)
   const fromStatements = sourceFile.statements.flatMap((statement) => {
     const specifier = statementSpecifier(statement)
@@ -193,6 +195,136 @@ export function filesImportingLayer(
     if (reaches) importers.push(path)
   }
   return importers.sort()
+}
+
+const STORE_LAYER = 'storage'
+const MEMBER_OF_PORTS = 'workspace'
+const EVERYTHING = '*'
+const NOT_PRODUCTION_PATTERN = /\.(test|spec|stories)\.tsx?$|-test-support\.tsx?$|(^|\/)__tests__\//
+
+/** Which files `filesImportingNames` scans, and the names it looks for. */
+export interface NamedImportRule {
+  /** The top-level directory whose production files are scanned. */
+  readonly layer: string
+  /** The imported names to report. */
+  readonly names: readonly string[]
+  /** Exact paths of production files of the layer that are not scanned. */
+  readonly exempt: readonly string[]
+}
+
+function isScanned(path: string, rule: NamedImportRule): boolean {
+  return (
+    path.split('/')[0] === rule.layer &&
+    !NOT_PRODUCTION_PATTERN.test(path) &&
+    !rule.exempt.includes(path)
+  )
+}
+
+function namedElements(
+  statement: ts.Statement,
+): readonly (ts.ImportSpecifier | ts.ExportSpecifier)[] {
+  if (ts.isImportDeclaration(statement)) {
+    const bindings = statement.importClause?.namedBindings
+    return bindings !== undefined && ts.isNamedImports(bindings) ? bindings.elements : []
+  }
+  if (ts.isExportDeclaration(statement) && statement.exportClause !== undefined) {
+    return ts.isNamedExports(statement.exportClause) ? statement.exportClause.elements : []
+  }
+  return []
+}
+
+function bringsInEverything(statement: ts.Statement): boolean {
+  if (ts.isImportDeclaration(statement)) {
+    const bindings = statement.importClause?.namedBindings
+    return bindings !== undefined && ts.isNamespaceImport(bindings)
+  }
+  if (!ts.isExportDeclaration(statement)) return false
+  const clause = statement.exportClause
+  return clause === undefined || ts.isNamespaceExport(clause)
+}
+
+function reportedNamesOf(
+  path: string,
+  statement: ts.Statement,
+  names: readonly string[],
+): string[] {
+  const specifier = statementSpecifier(statement)
+  if (specifier === undefined) return []
+  if (bringsInEverything(statement)) {
+    return reachesLayer(path, specifier, STORE_LAYER) ? [EVERYTHING] : []
+  }
+  return namedElements(statement)
+    .map((element) => (element.propertyName ?? element.name).text)
+    .filter((name) => names.includes(name))
+}
+
+function isMemberAccess(node: ts.Node): boolean {
+  return ts.isPropertyAccessExpression(node) && node.name.text === MEMBER_OF_PORTS
+}
+
+function isElementAccess(node: ts.Node): boolean {
+  return (
+    ts.isElementAccessExpression(node) &&
+    ts.isStringLiteralLike(node.argumentExpression) &&
+    node.argumentExpression.text === MEMBER_OF_PORTS
+  )
+}
+
+function boundPropertyName(element: ts.BindingElement): string | undefined {
+  const property = element.propertyName ?? element.name
+  return ts.isIdentifier(property) || ts.isStringLiteralLike(property) ? property.text : undefined
+}
+
+function isDestructuring(node: ts.Node): boolean {
+  return ts.isBindingElement(node) && boundPropertyName(node) === MEMBER_OF_PORTS
+}
+
+function reachesMemberOfPorts(node: ts.Node): boolean {
+  if (isMemberAccess(node) || isElementAccess(node) || isDestructuring(node)) return true
+  return ts.forEachChild(node, reachesMemberOfPorts) ?? false
+}
+
+function reportedNamesOfFile(path: string, text: string, names: readonly string[]): string[] {
+  const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest)
+  const imported = sourceFile.statements.flatMap((statement) =>
+    reportedNamesOf(path, statement, names),
+  )
+  const member = reachesMemberOfPorts(sourceFile) ? [`.${MEMBER_OF_PORTS}`] : []
+  return [...new Set([...imported, ...member])]
+}
+
+/**
+ * `<path>: <name>` for each production file of `rule.layer` that reaches a store directly, sorted.
+ *
+ * - Scanned: each file whose path starts with `rule.layer/`, except a test (`.test.` or `.spec.`,
+ *   or a file under `__tests__/`), a story (`.stories.`), a `-test-support` module, and the
+ *   exact paths in `rule.exempt`.
+ * - A file is reported with a name of `rule.names` when an import or a re-export from any path
+ *   names it as the imported name: type-only or not, and also when it is renamed
+ *   (`import { DocumentStore as Store }` reports `DocumentStore`).
+ * - A file is reported with `*` when a namespace import (`import * as`) or an `export *` (also
+ *   `export * as`) has a relative path that resolves into `storage/`.
+ * - A file is reported with `.workspace` when its code reads the property `workspace` of an object
+ *   in one of three ways: the member access (`ports.workspace`, `ports?.workspace`), an element
+ *   access with a string literal (`ports['workspace']`), or a destructuring that binds the property
+ *   (`const { workspace } = ports`, `const { workspace: store } = ports`, and the same in a
+ *   parameter list). A comment, a string that is not an element access, the indexed type
+ *   `SessionPorts['workspace']`, and a property of an object literal (`{ workspace: store }`, which
+ *   builds ports) do not count. An assignment to a destructuring pattern and a computed key that is
+ *   not a string literal are not seen.
+ *
+ * Each pair of a file and a name is reported once. A dynamic `import()` is not seen.
+ */
+export function filesImportingNames(
+  sources: ReadonlyMap<string, string>,
+  rule: NamedImportRule,
+): string[] {
+  return [...sources]
+    .filter(([path]) => isScanned(path, rule))
+    .flatMap(([path, text]) =>
+      reportedNamesOfFile(path, text, rule.names).map((name) => `${path}: ${name}`),
+    )
+    .sort()
 }
 
 /** Every `.ts` and `.tsx` file under the layer directories. */

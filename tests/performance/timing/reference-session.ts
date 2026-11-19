@@ -1,4 +1,5 @@
-import { createEditorSession, type EditorSession } from '../../../bridge'
+import type { EditorSession } from '../../../bridge'
+import { createEditorSession } from '../../../session/testing'
 import { createReferenceProject } from '../reference-project'
 
 /**

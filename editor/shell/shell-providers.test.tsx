@@ -6,9 +6,9 @@ import {
   EditorSessionProvider,
   SelectionProvider,
   createActiveFloorStore,
-  createEditorSession,
   createSelectionStore,
 } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { addWall, createEmptyProject, createFloor, type Project } from '../../core'
 import { ActiveToolProvider } from '../tools/active-tool-provider'
 import { EditLayerProvider } from '../tools/edit-layer-provider'

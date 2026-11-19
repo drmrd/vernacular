@@ -1,6 +1,14 @@
 import type { Project } from '../../core'
-import type { ProjectStore } from '../../storage'
+import type { ProjectStore, SaveReport } from '../../storage'
 import type { EditorSession } from '../editor-session/editor-session'
+import {
+  createAutosaveWrite,
+  createStatusReporter,
+  createWriteProgress,
+  flushWrites,
+  needsWrite,
+} from './autosave-write'
+import { createTrackedWriteQueue } from './tracked-write-queue'
 
 export type AutosaveStatus = 'idle' | 'pending' | 'saved' | 'error'
 
@@ -28,89 +36,74 @@ export interface AutosaveConfig extends AutosaveOptions {
   store: ProjectStore
   projectId: string
   snapshots?: SnapshotWriter & SnapshotPruner
-  /** Reads the dirty-tracker revision. Captured synchronously at persist time
-   *  (before any await) so onSaved reports the revision of the project actually
-   *  written, never a later edit's. */
-  revision?: () => number
-  /** Called after a successful persist with the revision captured at persist
-   *  start. Not called when the persist fails. */
-  onSaved?: (savedRevision: number) => void
+  /** Called each time a store save resolves, with what the save found. */
+  onReport?: (report: SaveReport) => void
 }
 
 export interface Autosave {
+  /** Cancels the wait and asks for a write now, also when nothing changed. Resolves when a write
+   *  that started after this call has ended, and rejects with that write's error. */
+  save(): Promise<void>
+  /** Cancels the wait. Asks for a write only when a change is unsaved or the last write failed,
+   *  no running write started after the last change, and no write waits. Resolves when the
+   *  writes that run or wait have ended, and rejects with the error of the last of them. With
+   *  nothing unsaved, no failed write, and no write, it resolves at once and calls no store
+   *  method. It rejects after dispose. */
+  flush(): Promise<void>
+  /** True when a write is needed, or when a write of this autosave runs or waits in its queue,
+   *  whoever asked for it. */
+  hasWorkLeft(): boolean
+  /** Ends the session subscription and the wait. A write that waits never starts. */
   dispose(): void
 }
 
+/**
+ * Stores the project of the session a moment after each change. Every write, of the timer, of
+ * `save()`, or of `flush()`, goes through one queue, so two saves never run together and the last
+ * state wins.
+ */
 export function createAutosave(config: AutosaveConfig): Autosave {
-  const { session, store, projectId, snapshots } = config
   const delayMs = config.delayMs ?? DEFAULT_AUTOSAVE_DELAY_MS
-  const report = config.onStatusChange ?? noop
+  const report = createStatusReporter(config)
+  const progress = createWriteProgress()
+  const queue = createTrackedWriteQueue(createAutosaveWrite(config, progress))
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  // Resolve the persistence strategy once: with snapshots configured we write
-  // ahead, otherwise we save canonically. persist() then closes over a single
-  // write function with no per-call branching.
-  const write: (project: Project) => Promise<unknown> = snapshots
-    ? async (project) => {
-        // Write ahead to a snapshot first so a crash mid-save still recovers the
-        // edit, then save canonically, then prune. prune() runs only after the
-        // canonical save resolves, so a failed save leaves the snapshot intact.
-        await snapshots.writeSnapshot(project)
-        await store.save(projectId, project)
-        await snapshots.prune()
-      }
-    : (project) => store.save(projectId, project)
-
-  const persist = (): void => {
-    // getProject() is a live reference; reading it when the debounce fires saves
-    // the latest coalesced edit. ProjectStore.save clones synchronously, so a
-    // dispatch arriving mid-save does not corrupt the written snapshot.
-    //
-    // Capture the revision synchronously here, before the async write begins, so
-    // a dispatch arriving mid-write advances the live revision while
-    // savedRevision stays fixed to the project actually persisted.
-    const project = session.getProject()
-    const savedRevision = config.revision?.()
-    void write(project)
-      .then(() => {
-        report('saved')
-        if (savedRevision !== undefined) {
-          config.onSaved?.(savedRevision)
-        }
-      })
-      .catch(() => report('error'))
+  const cancelWait = (): void => {
+    clearTimeout(timer)
+    timer = undefined
   }
 
-  const unsubscribe = session.subscribe(() => {
-    report('pending')
-    if (timer !== undefined) {
-      clearTimeout(timer)
+  const writeWhenUnwritten = (): void => {
+    timer = undefined
+    if (needsWrite(progress)) {
+      // Nobody awaits this write. A failed write has reported its status, and a write dropped
+      // after dispose is silent on purpose. A callback that throws has gone to console.error.
+      queue.request().catch(noop)
     }
-    timer = setTimeout(persist, delayMs)
+  }
+
+  const unsubscribe = config.session.subscribe(() => {
+    progress.changes += 1
+    report('pending')
+    cancelWait()
+    timer = setTimeout(writeWhenUnwritten, delayMs)
   })
 
   return {
-    dispose() {
-      unsubscribe()
-      if (timer !== undefined) {
-        clearTimeout(timer)
-      }
+    save() {
+      cancelWait()
+      return queue.request()
     },
-  }
-}
-
-export interface CommitProjectOptions {
-  store: ProjectStore
-  projectId: string
-  project: Project
-  snapshots?: SnapshotPruner
-}
-
-/** Explicit save: writes the canonical project, then prunes autosave snapshots. */
-export async function commitProject(options: CommitProjectOptions): Promise<void> {
-  const { store, projectId, project, snapshots } = options
-  await store.save(projectId, project)
-  if (snapshots) {
-    await snapshots.prune()
+    flush() {
+      cancelWait()
+      return flushWrites(queue, progress)
+    },
+    hasWorkLeft: () => needsWrite(progress) || queue.latest() !== undefined,
+    dispose() {
+      progress.disposed = true
+      unsubscribe()
+      cancelWait()
+    },
   }
 }
