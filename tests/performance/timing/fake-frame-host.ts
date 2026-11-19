@@ -27,12 +27,24 @@ function createFrameQueue() {
     waiting = waiting.filter((entry) => entry.id !== id)
     for (const entry of running) if (entry.id === id) entry.cancelled = true
   }
-  /** Runs the callbacks that wait now; those they request wait for the next frame. */
+  /**
+   * Runs the callbacks that wait now; those they request wait for the next frame. A callback that
+   * throws does not stop the others, as in a browser; the first error is rethrown after the frame.
+   */
   const runFrame = (frameTimeMs = 0) => {
     running = waiting
     waiting = []
-    for (const entry of running) if (!entry.cancelled) entry.callback(frameTimeMs)
+    const errors: unknown[] = []
+    for (const entry of running) {
+      if (entry.cancelled) continue
+      try {
+        entry.callback(frameTimeMs)
+      } catch (error) {
+        errors.push(error)
+      }
+    }
     running = []
+    if (errors.length > 0) throw errors[0]
   }
   return {
     request,
