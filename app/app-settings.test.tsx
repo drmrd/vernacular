@@ -1,0 +1,179 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, cleanup, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useSetting } from '../bridge'
+import type { SettingKey } from '../session'
+import { createTestPorts } from '../session/handle/handle-test-kit'
+import { DEFAULT_SNAP_PREFERENCES } from '../editor/plan/snap-preferences'
+import { InMemorySettingsPort, LocalStorageSettingsPort, type SettingsPort } from '../storage'
+import { memoryStorage, refusing } from '../storage/settings/settings-storage-test-kit'
+import { AppSettings } from './app-settings'
+import { findTheShell, renderApp, stubCapableStorage } from './app-test-support'
+
+/** The key under which an older build stored the snap preferences. */
+const OLD_SNAP_KEY = 'vernacular.snap-preferences'
+
+/** The key under which the snap preferences are stored now. */
+const NEW_SNAP_KEY = 'vernacular.settings.snapPreferences'
+
+/** Snap preferences as an older build stored them: grid snapping off, everything else on. */
+const OLD_SNAP_TEXT = '{"enabled":true,"kinds":{"grid":false},"pixelRadius":18}'
+
+/** A setting of the test, with a text value. */
+const NOTE: SettingKey<string> = {
+  name: 'testNote',
+  defaultValue: 'no note',
+  parse: (raw) => (typeof raw === 'string' ? raw : undefined),
+}
+
+/** The key under which the browser keeps the note of the test. */
+const NOTE_BROWSER_KEY = 'vernacular.settings.testNote'
+
+const WRITTEN_NOTE = 'written by the probe'
+
+// The browser storage of the test run answers that it holds nothing and keeps nothing, unless a
+// case imitates it, so that no case passes through what an earlier case left there.
+beforeEach(() => {
+  vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null)
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => undefined)
+  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => undefined)
+})
+
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
+
+/** Shows the note of the settings, and writes a new note on a click. */
+function NoteProbe() {
+  const [note, setNote] = useSetting(NOTE)
+  return (
+    <button type="button" onClick={() => setNote(WRITTEN_NOTE)}>
+      {note}
+    </button>
+  )
+}
+
+/** A browser storage in a map, reached through the storage object of the test run. */
+function imitateBrowserStorage(initial: Readonly<Record<string, string>>): Map<string, string> {
+  const entries = new Map(Object.entries(initial))
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => entries.get(key) ?? null)
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, value) => {
+    entries.set(key, value)
+  })
+  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation((key) => {
+    entries.delete(key)
+  })
+  return entries
+}
+
+/** Starts the application on test ports with `settings`, and opens the snap control of the status bar. */
+async function startAndOpenTheSnapControl(settings?: SettingsPort): Promise<HTMLElement> {
+  stubCapableStorage()
+  renderApp(createTestPorts(), settings === undefined ? {} : { settings })
+  await findTheShell()
+  await userEvent.click(screen.getByRole('button', { name: /snap/i }))
+  return screen.findByRole('dialog', { name: /snapping precision/i })
+}
+
+describe('AppSettings', () => {
+  it('gives the tree a settings service over the given port', async () => {
+    const port = new InMemorySettingsPort()
+    render(
+      <AppSettings port={port}>
+        <NoteProbe />
+      </AppSettings>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'no note' }))
+
+    expect(screen.getByRole('button', { name: WRITTEN_NOTE })).toBeInTheDocument()
+    expect(port.read(NOTE.name)).toBe(WRITTEN_NOTE)
+  })
+
+  it('reads the settings of this browser when no port is given', () => {
+    imitateBrowserStorage({ [NOTE_BROWSER_KEY]: JSON.stringify('kept by the browser') })
+
+    render(
+      <AppSettings>
+        <NoteProbe />
+      </AppSettings>,
+    )
+
+    expect(screen.getByRole('button', { name: 'kept by the browser' })).toBeInTheDocument()
+  })
+
+  it('keeps one service for the life of the mount', async () => {
+    const first = new InMemorySettingsPort()
+    first.write(NOTE.name, 'from the first port')
+    const second = new InMemorySettingsPort()
+    second.write(NOTE.name, 'from the second port')
+    const { rerender } = render(
+      <AppSettings port={first}>
+        <NoteProbe />
+      </AppSettings>,
+    )
+
+    rerender(
+      <AppSettings port={second}>
+        <NoteProbe />
+      </AppSettings>,
+    )
+    expect(screen.getByRole('button', { name: 'from the first port' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'from the first port' }))
+    expect(first.read(NOTE.name)).toBe(WRITTEN_NOTE)
+    expect(second.read(NOTE.name)).toBe('from the second port')
+  })
+})
+
+describe('the snap preferences of the application', () => {
+  it('snap preferences that an older build stored are in effect in the application', async () => {
+    const storage = memoryStorage({ [OLD_SNAP_KEY]: OLD_SNAP_TEXT })
+    const settings = new LocalStorageSettingsPort(storage)
+
+    const control = await startAndOpenTheSnapControl(settings)
+
+    expect(within(control).getByRole('checkbox', { name: /grid/i })).not.toBeChecked()
+    expect(within(control).getByRole('checkbox', { name: /endpoint/i })).toBeChecked()
+    expect(storage.entries.get(NEW_SNAP_KEY)).toBe(OLD_SNAP_TEXT)
+    expect(storage.entries.has(OLD_SNAP_KEY)).toBe(false)
+  })
+
+  it('snap preferences that an older build stored in this browser are in effect at the first start', async () => {
+    const entries = imitateBrowserStorage({ [OLD_SNAP_KEY]: OLD_SNAP_TEXT })
+
+    const control = await startAndOpenTheSnapControl()
+
+    expect(within(control).getByRole('checkbox', { name: /grid/i })).not.toBeChecked()
+    expect(within(control).getByRole('checkbox', { name: /endpoint/i })).toBeChecked()
+    expect(entries.get(NEW_SNAP_KEY)).toBe(OLD_SNAP_TEXT)
+    expect(entries.has(OLD_SNAP_KEY)).toBe(false)
+  })
+
+  it('a snap change in the application reaches the port', async () => {
+    const storage = memoryStorage()
+    const control = await startAndOpenTheSnapControl(new LocalStorageSettingsPort(storage))
+
+    await userEvent.click(within(control).getByRole('checkbox', { name: /grid/i }))
+
+    const stored: unknown = JSON.parse(storage.entries.get(NEW_SNAP_KEY) ?? 'null')
+    expect(stored).toEqual({
+      ...DEFAULT_SNAP_PREFERENCES,
+      kinds: { ...DEFAULT_SNAP_PREFERENCES.kinds, grid: false },
+    })
+    expect(storage.entries.has(OLD_SNAP_KEY)).toBe(false)
+  })
+
+  it('a snap change stays in effect when the browser refuses to store it', async () => {
+    const storage = memoryStorage()
+    const settings = new LocalStorageSettingsPort(refusing(storage, ['setItem', 'removeItem']))
+    const control = await startAndOpenTheSnapControl(settings)
+
+    await userEvent.click(within(control).getByRole('checkbox', { name: /grid/i }))
+
+    expect(within(control).getByRole('checkbox', { name: /grid/i })).not.toBeChecked()
+    expect(storage.entries.size).toBe(0)
+  })
+})
