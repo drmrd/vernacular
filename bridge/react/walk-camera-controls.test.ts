@@ -6,11 +6,15 @@ import {
   type OpeningInteractionState,
   type OpeningSceneNode,
   type WalkState,
+  WALK_EYE_HEIGHT_MM,
 } from '../../core'
 
 import { walkKeyHandlers } from './walk-session'
 
 const DOOR_ID = 'opening:front-door'
+
+const UPPER_FLOOR_ELEVATION_MM = 3000
+const BASEMENT_ELEVATION_MM = -2700
 
 // The KeyR branch touches only `interaction`, `onUserControl`, and `onOpenDoors`, so a
 // minimal stand-in for the WalkSession carries just those three real fields.
@@ -56,6 +60,17 @@ function sessionFacing(door: OpeningSceneNode) {
   }
 }
 
+// A door sits on its own floor: its sill and its centre are measured from that floor, so the
+// floor's elevation shows only in the world height of the walker's eye. The walker stands at the
+// same plan position and heading as FACING_DOOR, with the eye one standing height above the floor.
+function sessionFacingOnFloor(door: OpeningSceneNode, floorElevationMm: number) {
+  const eyeOnFloor: WalkState = {
+    ...FACING_DOOR,
+    position: { ...FACING_DOOR.position, y: floorElevationMm + WALK_EYE_HEIGHT_MM },
+  }
+  return { ...sessionFacing(door), state: { current: eyeOnFloor } }
+}
+
 function handlersFor(session: ReturnType<typeof sessionWith>) {
   return walkKeyHandlers(session as unknown as Parameters<typeof walkKeyHandlers>[0])
 }
@@ -93,6 +108,24 @@ describe('walk camera controls: reset key', () => {
 describe('walk camera controls: interact key', () => {
   it('reports the doors now open when KeyE opens the looked-at door', () => {
     const session = sessionFacing(frontDoor())
+
+    handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyE' }))
+
+    expect(isOpeningOpen(session.interaction.current, DOOR_ID)).toBe(true)
+    expect(session.onOpenDoors).toHaveBeenCalledWith(new Set([DOOR_ID]))
+  })
+
+  it('opens the door the walker faces on a floor 3000 mm above the ground with KeyE', () => {
+    const session = sessionFacingOnFloor(frontDoor(), UPPER_FLOOR_ELEVATION_MM)
+
+    handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyE' }))
+
+    expect(isOpeningOpen(session.interaction.current, DOOR_ID)).toBe(true)
+    expect(session.onOpenDoors).toHaveBeenCalledWith(new Set([DOOR_ID]))
+  })
+
+  it('opens the door the walker faces in a basement 2700 mm below the ground with KeyE', () => {
+    const session = sessionFacingOnFloor(frontDoor(), BASEMENT_ELEVATION_MM)
 
     handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyE' }))
 
