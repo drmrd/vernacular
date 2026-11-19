@@ -90,6 +90,8 @@ describe('useEscapeToSelect', () => {
   })
 
   // The Escape was pressed for the old tool, so a later tool must not be sent to select by it.
+  // The rerender stays outside any act of its own so that the tool change commits, as it does
+  // in the application, before the key press task ends.
   it('drops a pending return to select when the tool changes before it is decided', async () => {
     const setTool = vi.fn()
     const { rerender } = renderHook(
@@ -97,12 +99,12 @@ describe('useEscapeToSelect', () => {
       { initialProps: { tool: 'draw-wall' } },
     )
 
-    await act(async () => {
+    act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-      await Promise.resolve()
-      rerender({ tool: 'dimension' })
-      await endOfKeyPressTask()
     })
+    await Promise.resolve()
+    rerender({ tool: 'dimension' })
+    await endOfKeyPressTask()
 
     expect(setTool).not.toHaveBeenCalled()
   })
