@@ -36,6 +36,7 @@
     "stories:update-snapshots": "PLAYWRIGHT_VERSION=$(node -e \"console.log(require('@playwright/test/package.json').version)\") && docker run --rm -v \"$(pwd)\":/work -v /work/node_modules -w /work -e HOME=/tmp mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble sh -c 'corepack enable && corepack prepare pnpm@10.33.4 --activate && pnpm install --frozen-lockfile && pnpm build-storybook && pnpm exec playwright test --config playwright.stories.config.ts --update-snapshots'",
     "lhci": "lhci autorun --config=./lighthouserc.json",
     "lhci:collect": "lhci collect --config=./lighthouserc.json",
+    "perf:report": "node scripts/performance/report-times.mjs",
     "mutate": "stryker run",
     "mutate:check": "stryker run --dryRun",
     "prepare": "husky"

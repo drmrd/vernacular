@@ -70,5 +70,189 @@ old one. A failed gate prints these steps in its message.
 
 ## Times
 
-Times in a real browser are not part of these tests and no CI job measures them. A separate
-local command reports them, and a later pull request adds it.
+`pnpm perf:report` reports how long the plan redraw, the 3D update, and the 3D frame take for the
+reference project, in a real browser. It reports times and never gates on them. No CI job runs it,
+and a time never changes its exit code. The method is in ADR-0186.
+
+### Running the command
+
+```sh
+pnpm perf:report
+```
+
+The command builds a production copy of a small timing page, then opens a Chromium window on your
+screen and runs every measurement in it. How long a run takes is not known yet. The first visible
+run will tell. For a run that means something:
+
+- keep the window visible and in front from start to finish, not minimized or covered;
+- use mains power, because battery power lowers clock speeds;
+- close other applications;
+- commit or discard changes to tracked files first, so the times belong to a commit.
+
+To check that the command works at all, run `pnpm perf:report --quick`. It takes a tenth of the
+samples, at least 10 in each phase, and marks the report "Quick check, not a measurement." Never
+treat a quick run as a measurement.
+
+### Flags
+
+Paths are relative to the repository root.
+
+| Flag                | Effect                                                                             |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| `--out <path>`      | Write the run file to this path.                                                   |
+| `--baseline <path>` | Compare with this run file instead of `tests/performance/baseline-times.json`.     |
+| `--write-baseline`  | Also write the run as `tests/performance/baseline-times.json`. See "The baseline". |
+| `--quick`           | Take a tenth of the samples. A check, not a measurement.                           |
+| `--help`            | Print the usage and exit.                                                          |
+
+Every run writes a run file and prints its path on a `Run file:` line. Without `--out` it goes to
+`node_modules/.cache/performance-timing/`, which git ignores. A path given with `--baseline` must
+exist. If it does not, the command prints the path and exits with code 1 before it builds anything.
+Only the default baseline file may be missing, and then there is no comparison.
+
+To compare a branch with `main` on one machine, run the command twice, in the same conditions:
+
+1. On `main`, run `pnpm perf:report --out node_modules/.cache/performance-timing/main.json`.
+2. On the branch, run `pnpm perf:report --baseline node_modules/.cache/performance-timing/main.json`.
+
+The second report shows the change beside each time. When `main` and the branch are two worktrees,
+a relative path resolves against the worktree where you run the command, so give `--baseline` the
+absolute path of the file in the `main` worktree.
+
+### Reading the report
+
+The report opens with header lines: `Commit` (with whether tracked files have uncommitted
+changes), `Build`, `Machine`, `Browser`, `Adapter`, `Display` (the device pixel ratio and the time
+between display frames), `Window` (visible throughout, focused, and the power source), `Canvas`
+(the plan canvas, and the 3D canvas with its drawing buffer), and `Baseline` (its commit and date,
+or "not measured"). When a baseline exists, a `Base machine` line follows with its processor,
+adapter, operating system, and browser.
+
+Then comes a table with one row for each time:
+
+| Column      | Meaning                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| Time        | What the row measures.                                                                   |
+| Budget      | The budget for the row, in milliseconds.                                                 |
+| Median      | The median of the timed samples, in milliseconds.                                        |
+| p95         | The 95th percentile, by nearest rank, in milliseconds.                                   |
+| Base median | The median in the baseline, or "not measured" when there is no baseline.                 |
+| Change      | The difference of the two medians and their ratio, such as `+0.42 ms (1.08x)`, or `n/a`. |
+
+The rows come in four groups:
+
+- Plan redraw: one call of `drawPlan` on a visible 800 x 600 canvas, once for each animation frame,
+  while the end of the ground floor's first wall moves on a circle of 500 mm, as a drag does.
+- 3D update, one row for each of the six reference edits: from just before the command is
+  dispatched to just after the scene of the whole building is reconciled.
+- 3D frame, for each of four views (floor or building, schematic or realistic lighting), in two
+  rows: `main thread` is the work of the frame on the main thread, and `until GPU done` runs from
+  the start of the frame until the GPU reports that its work is finished. Each frame starts with an
+  idle GPU, so the figure is the time of one isolated frame.
+- 3D frame after an edit: the first frame after each of the six edits, in the building view with
+  schematic lighting, in the same two rows. The page holds its frame callbacks from just before
+  the edit until the 3D scene has taken it, so the timed frame is the first frame that can draw
+  the edit.
+
+The 3D rows have a budget of 8.0 ms, from section 6.10 of the design specification. The plan row has
+16.7 ms, one frame at 60 a second, marked with an asterisk, because the specification states no plan
+budget. A budget is a reference line. A time over it prints like any other.
+
+Below the table, a notes line says that 3D frames are paced and timed alone, that the figure that
+waits for the GPU is an upper bound, and that furniture is drawn as boxes. Warnings follow. Below
+the report, a `Console` part counts the known harmless messages of the page and lists each
+unexpected warning or error that the page logged, up to ten.
+
+Samples come after a warm-up. The plan redraw takes 60 warm-up and 300 timed samples. Each 3D
+update takes 10 and 100, each view 120 and 300 frames, and each frame after an edit 30 timed samples.
+
+### When the command refuses
+
+When the command cannot measure, it prints `Nothing was measured.` and one reason for each cause,
+writes no file, and exits with code 2. A bad flag, a missing `--baseline` file, or a failed build
+exits with code 1. The reasons, with what to do:
+
+- No WebGPU adapter, a fallback adapter, or a software renderer. Use a machine whose browser uses
+  its hardware GPU.
+- The window was hidden at the start or during the run. Keep it visible and in front.
+- No display frame arrived, or none within 2 seconds during a phase. With a hidden window the
+  message asks you to keep it visible and in front. With a visible window it says that the browser
+  stalled, and then you close other heavy applications and run again.
+- The frames came more than 34 ms apart because the browser is throttling. Keep the window in
+  front, turn off power saving, and close other heavy applications.
+- The live view reported a renderer failure, threw, was not ready within 30 seconds, or a phase
+  returned no frames. Run again. If it repeats, the timing page needs a fix.
+- An edit did not reach the 3D scene within 5 seconds. Run again. If it repeats, the timing page
+  needs a fix.
+- A view changed while it was timed, in its scope, its lighting, or its pipeline state. Run again.
+  If it repeats, report it, because nothing in the timing page should change a view while it is
+  timed.
+- The ambient-occlusion pipeline of the realistic lighting failed to build, so the realistic views
+  would be drawn without the effect and the times are discarded. Run again. If it repeats, report
+  it as a product fault.
+- The scene renderer logged a failure. Run again, and report it if it repeats.
+- The GPU did not finish a frame within 10 seconds, or the graphics device was lost. Run again, and
+  update the graphics driver or the browser if it repeats.
+- The run did not finish within 30 minutes. Close other applications and run again.
+- The frames made no WebGPU work, so the renderer fell back to WebGL 2, or only some frames made
+  any. The command never keeps a fallback figure. Run again on a hardware WebGPU adapter.
+- The baseline file cannot be read or is not a valid timing record. Fix or remove it, or pass
+  another path with `--baseline`.
+
+A run can also carry warnings. They print at the end of the report and do not stop the run:
+
+- a quick check, in this run or in the baseline;
+- battery power, or a power source the browser cannot report;
+- uncommitted changes;
+- a window that was not focused;
+- a difference from the baseline in the device pixel ratio, the drawing buffer size, the plan
+  canvas size, the CSS size of the 3D canvas, the browser, the adapter, the processor, or the
+  operating system.
+
+### The baseline
+
+The baseline is `tests/performance/baseline-times.json`. It does not exist yet, so every comparison
+reads "not measured". The first baseline comes from a run that the owner of the project schedules on
+his machine. Until then this repository holds no timing figures.
+
+`pnpm perf:report --write-baseline` writes the file after a full run. Two refusals come before
+anything is built: `--quick` with `--write-baseline` exits with code 1 as a flag error, and
+uncommitted changes to tracked files exit with code 2. After a measured run, the command refuses to
+write the file when the machine ran on battery power, the window was not visible throughout, or the
+WebGPU adapter is a software renderer. It still prints the report, writes the run file, and exits
+with code 2.
+
+### What is not measured
+
+- The raster of the plan canvas, which the browser does after `drawPlan` returns.
+- React's render and commit of the plan view and of the 3D view.
+- The first frame after load, with its module load and shader builds.
+- Memory.
+- Input latency.
+
+The `main thread` figure is the time of the page's frame callbacks. The browser's own style,
+layout, and paint after them are not in it. The timing page gives the view no camera input, so the
+camera is where the live view's automatic framing puts it. That framing can set the camera again
+after an edit that changes the bounds of the model. The command does not time a camera that orbits
+or walks.
+
+Two facts about the timing page. Furniture is drawn as boxes, because the reference project names a
+model that no catalog holds, so each mount of the 3D view logs one failed model load in the browser
+console. And the command measures only on a hardware WebGPU adapter. It does not time the WebGL 2
+fallback.
+
+### Where the code lives
+
+- `scripts/performance/report-times.mjs` is the driver. It builds and serves the page, runs it in
+  the browser, prints the report, and writes the files. Five modules beside it do one job each:
+  - `timing-arguments.mjs` parses the flags.
+  - `timing-launch.mjs` gives the browser's launch options.
+  - `timing-console.mjs` checks the console of the page.
+  - `timing-browser-session.mjs` launches and closes the browser, so that the close returns.
+  - `timing-browser-processes.mjs` reads a process list to find the browser's crash handler
+    processes for that close. ADR-0186 holds the reason.
+- `tests/performance/timing/page/` is the timing page that runs inside the browser.
+- `tests/performance/timing/*.ts` holds the pure modules: the statistics, the record, the
+  conditions, the report, the frame probe, and the order of a run. Each has its tests beside it.
+
+ADR-0186 describes the method in full.

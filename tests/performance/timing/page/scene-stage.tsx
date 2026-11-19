@@ -1,0 +1,311 @@
+import { createRoot, type Root } from 'react-dom/client'
+import {
+  createEnvironmentSessionStore,
+  createSceneSessionStore,
+  type EditorSession,
+} from '../../../../bridge'
+import {
+  SCENE_READY_ATTRIBUTE,
+  SCENE_RENDERER_FAILED_ATTRIBUTE,
+} from '../../../../bridge/react/scene-readiness'
+import type { Command } from '../../../../core'
+import { REFERENCE_EDITS, createReferenceProject } from '../../reference-project'
+import type { FrameSample } from '../frame-probe'
+import type { ReferenceSceneStores } from '../reference-scene-stage'
+import { createReferenceSession } from '../reference-session'
+import { RENDER_VARIANTS, type RenderVariant } from '../render-variants'
+import type { SampleCounts } from '../timing-record'
+import {
+  collectFrames,
+  frameStartingAfter,
+  nextHostPoll,
+  switchToPaced,
+  type FrameWatch,
+} from './frame-collection'
+import { LiveView } from './live-view'
+import type { PageInstruments } from './page-instruments'
+import {
+  expectedSceneCanvasSizes,
+  measureSceneCanvas,
+  sceneHost,
+  type SceneCanvasSizes,
+} from './page-layout'
+import { collectGarbage, nextTask } from './page-waits'
+import { sceneChildren, waitForSceneCommit } from './scene-commit'
+
+/**
+ * The longest wait for a new live view to draw its first frame after its pipelines settled; the
+ * host frames must still come within the page's frame limit meanwhile.
+ */
+const READY_LIMIT_MS = 30_000
+/**
+ * The longest gap between host frames while a new view gets ready. On a cold first mount the GPU
+ * process builds the render pipelines and shaders, which can stall host frames for seconds; the
+ * readiness limit above still bounds the whole wait.
+ */
+const READY_FRAME_GAP_LIMIT_MS = 10_000
+/** The host frames that pass untimed after each undo, so the next edit starts from a drawn undo. */
+const UNTIMED_FRAMES_AFTER_UNDO = 2
+/** The view in which the first frame after each edit is timed. */
+const AFTER_EDIT_VARIANT_NAME = 'building, schematic'
+
+/** The two render phases of the page: the live view mounted for each variant and edit. */
+export interface SceneStage {
+  renderFrames(counts: SampleCounts): Promise<Record<string, FrameSample[]>>
+  renderAfterEdits(counts: SampleCounts): Promise<Record<string, FrameSample[]>>
+  /**
+   * The sizes of the 3D canvas as last measured on a mounted view, or the expected sizes before
+   * any view mounted. They stay after the view unmounts, for the end observation of the run.
+   */
+  sceneCanvasSizes(): SceneCanvasSizes
+  /** Unmounts the live view. */
+  dispose(): void
+}
+
+interface MountedView {
+  readonly root: Root
+  readonly stores: ReferenceSceneStores
+  readonly watch: FrameWatch
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function healthCheck(host: HTMLElement, thrown: () => unknown, what: string): () => void {
+  return () => {
+    const failed = host.querySelector(`[${SCENE_RENDERER_FAILED_ATTRIBUTE}]`)
+    if (failed !== null) {
+      const kind = failed.getAttribute(SCENE_RENDERER_FAILED_ATTRIBUTE) ?? 'unknown'
+      throw new Error(
+        `The live view of "${what}" reported a renderer failure ("${kind}"), so nothing was measured`,
+      )
+    }
+    const error = thrown()
+    if (error !== undefined) {
+      throw new Error(
+        `The live view of "${what}" threw, so nothing was measured: ${errorText(error)}`,
+      )
+    }
+  }
+}
+
+function variantStores(session: EditorSession, variant: RenderVariant): ReferenceSceneStores {
+  const stores = {
+    session,
+    environment: createEnvironmentSessionStore(),
+    sceneSession: createSceneSessionStore(),
+  }
+  stores.sceneSession.updateSceneSession({ scope: variant.scope })
+  stores.environment.setEnvironment({
+    ...stores.environment.getEnvironment(),
+    mode: variant.lighting,
+  })
+  return stores
+}
+
+function mountView(
+  instruments: PageInstruments,
+  session: EditorSession,
+  variant: RenderVariant,
+): MountedView {
+  const host = sceneHost()
+  let thrown: unknown
+  const root = createRoot(host, {
+    onUncaughtError: (error) => {
+      thrown = error
+    },
+  })
+  const stores = variantStores(session, variant)
+  root.render(<LiveView stores={stores} />)
+  const watch = {
+    probe: instruments.probe,
+    hostFrame: instruments.hostFrame,
+    checkHealth: healthCheck(host, () => thrown, variant.name),
+    what: variant.name,
+  }
+  return { root, stores, watch }
+}
+
+function isReady(view: MountedView): boolean {
+  const readyCanvas = sceneHost().querySelector(`[${SCENE_READY_ATTRIBUTE}="true"]`)
+  return (
+    readyCanvas !== null &&
+    view.stores.sceneSession.getSceneSession().frameDrawnSincePipelineSettled
+  )
+}
+
+/**
+ * Waits for the readiness attribute and the session flag, polling once a host frame; the samples
+ * until then are dropped. Returns the real sizes of the ready view's canvas.
+ */
+async function waitUntilReady(view: MountedView): Promise<SceneCanvasSizes> {
+  const startMs = performance.now()
+  while (!isReady(view)) {
+    if (performance.now() - startMs > READY_LIMIT_MS) {
+      throw new Error(
+        `The live view of "${view.watch.what}" was not ready within ${READY_LIMIT_MS} ms, ` +
+          'so nothing was measured',
+      )
+    }
+    await nextHostPoll(view.watch, READY_FRAME_GAP_LIMIT_MS)
+    view.watch.probe.takeFrames()
+  }
+  return measureSceneCanvas(sceneHost())
+}
+
+/**
+ * Throws when the view no longer is the variant it was mounted as: its scope or lighting mode
+ * changed in the stores, or a pipeline build started again, during the timed frames.
+ */
+function checkViewUnchanged(view: MountedView, variant: RenderVariant): void {
+  const sceneSession = view.stores.sceneSession.getSceneSession()
+  const lighting = view.stores.environment.getEnvironment().mode
+  if (
+    sceneSession.scope !== variant.scope ||
+    lighting !== variant.lighting ||
+    !sceneSession.frameDrawnSincePipelineSettled
+  ) {
+    throw new Error(
+      `The view "${variant.name}" changed while it was timed (scope ${sceneSession.scope}, ` +
+        `lighting ${lighting}, pipeline settled ${sceneSession.frameDrawnSincePipelineSettled}), ` +
+        'so nothing was measured',
+    )
+  }
+}
+
+/**
+ * The warm-up frames unpaced, then the switch to paced mode with its split frames dropped, then the
+ * timed frames paced, each starting with an idle GPU. One sample is one host frame.
+ */
+async function timedFrames(
+  view: MountedView,
+  variant: RenderVariant,
+  counts: SampleCounts,
+): Promise<FrameSample[]> {
+  const { watch } = view
+  await collectFrames(watch, counts.warmup, 0)
+  try {
+    await switchToPaced(watch)
+    const frames = await collectFrames(watch, counts.timed, performance.now())
+    checkViewUnchanged(view, variant)
+    return frames
+  } finally {
+    watch.probe.setPaced(false)
+  }
+}
+
+/** One edit of the after-edit phase: its name and a command built from the pristine project. */
+interface TimedEdit {
+  readonly name: string
+  readonly command: () => Command
+}
+
+/**
+ * Holds the page's frame callbacks, runs the change, waits until the 3D scene has taken it, and
+ * then releases the hold, so no frame of the page runs between the change and the release: the
+ * first frame after the release is the first to draw the change. The scene's commit needs no frame
+ * callback of the page (the canvas library commits in a task of React's scheduler), and the wait
+ * polls on timer tasks, not on frames, so the hold cannot stall it. For an edit that changes nothing
+ * in the scene the short wait of `waitForSceneCommit` runs under the hold too. The hold ends in a
+ * `finally`, also when the change or the wait throws.
+ */
+async function changeAndWaitForScene(
+  view: MountedView,
+  editName: string,
+  change: () => void,
+): Promise<void> {
+  const before = sceneChildren()
+  view.watch.probe.setHeld(true)
+  try {
+    change()
+    await waitForSceneCommit(view.watch, editName, before)
+  } finally {
+    view.watch.probe.setHeld(false)
+  }
+}
+
+/**
+ * Dispatches the edit under a hold of the page's frames until the 3D scene has taken the new scene
+ * root, notes the time after the release, and takes the first frame that starts after it: the frame
+ * that draws the edit. Then it undoes the edit under the same hold, so the scene is settled before
+ * the next sample, and lets frames pass untimed.
+ */
+async function framesAfterEdit(
+  view: MountedView,
+  edit: TimedEdit,
+  timed: number,
+): Promise<FrameSample[]> {
+  const { session } = view.stores
+  const frames: FrameSample[] = []
+  for (let sample = 0; sample < timed; sample += 1) {
+    await nextTask()
+    await changeAndWaitForScene(view, edit.name, () => session.dispatch(edit.command()))
+    frames.push(await frameStartingAfter(view.watch, performance.now()))
+    await changeAndWaitForScene(view, edit.name, () => session.undo())
+    await collectFrames(view.watch, UNTIMED_FRAMES_AFTER_UNDO, performance.now())
+  }
+  return frames
+}
+
+function afterEditVariant(): RenderVariant {
+  const variant = RENDER_VARIANTS.find((each) => each.name === AFTER_EDIT_VARIANT_NAME)
+  if (variant === undefined) {
+    throw new Error(`No render variant is named "${AFTER_EDIT_VARIANT_NAME}"`)
+  }
+  return variant
+}
+
+/** The live view on the page's own reference session, mounted anew for each variant. */
+export function createSceneStage(instruments: PageInstruments): SceneStage {
+  const session = createReferenceSession()
+  let current: MountedView | null = null
+  let measuredSizes: SceneCanvasSizes | null = null
+  const dispose = (): void => {
+    current?.root.unmount()
+    current = null
+  }
+  const mount = async (variant: RenderVariant): Promise<MountedView> => {
+    dispose()
+    collectGarbage()
+    current = mountView(instruments, session, variant)
+    measuredSizes = await waitUntilReady(current)
+    return current
+  }
+  return {
+    renderFrames: async (counts) => {
+      const byVariant: Record<string, FrameSample[]> = {}
+      for (const variant of RENDER_VARIANTS) {
+        byVariant[variant.name] = await timedFrames(await mount(variant), variant, counts)
+      }
+      return byVariant
+    },
+    renderAfterEdits: async (counts) => {
+      const view = await mount(afterEditVariant())
+      return timeEdits(view, counts)
+    },
+    sceneCanvasSizes: () => measuredSizes ?? expectedSceneCanvasSizes(),
+    dispose,
+  }
+}
+
+async function timeEdits(
+  view: MountedView,
+  counts: SampleCounts,
+): Promise<Record<string, FrameSample[]>> {
+  const pristine = createReferenceProject()
+  const byEdit: Record<string, FrameSample[]> = {}
+  try {
+    await switchToPaced(view.watch)
+    for (const edit of REFERENCE_EDITS) {
+      const timedEdit = { name: edit.name, command: () => edit.command(pristine) }
+      byEdit[edit.name] = await framesAfterEdit(view, timedEdit, counts.timed)
+    }
+    return byEdit
+  } finally {
+    // A hold ends in changeAndWaitForScene already; ending it here too keeps the end of the view
+    // free of any hold whatever threw.
+    view.watch.probe.setHeld(false)
+    view.watch.probe.setPaced(false)
+  }
+}

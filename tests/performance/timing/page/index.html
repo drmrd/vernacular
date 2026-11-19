@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vernacular timing page</title>
+    <link rel="icon" href="data:," />
+    <style>
+      body {
+        margin: 0;
+        background: #ffffff;
+      }
+      /* Both stages sit at the top left; the 3D view covers the plan canvas once it mounts. */
+      #plan-canvas,
+      #scene-host {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      #plan-canvas {
+        width: 800px;
+        height: 600px;
+      }
+      #scene-host {
+        width: 960px;
+      }
+      /* The live view's camera pane fills its column in the app; here it gets the fixed 3D size,
+         which the page checks after each mount. */
+      #scene-host .scene-camera-pane {
+        flex: none !important;
+        height: 600px;
+        min-height: 0 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="plan-canvas" width="800" height="600"></canvas>
+    <div id="scene-host"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>
