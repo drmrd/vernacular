@@ -11,6 +11,7 @@ import {
 } from './dimension-tool'
 import type { PreviewSegment } from './draw-plan'
 import { claimKeystroke, ownsKeystroke } from './keyboard-guard'
+import type { RunScope } from './run-scope'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -93,26 +94,23 @@ function useDimensionCancel({ tool, toolState, setToolState }: DimensionCancelDe
   }, [tool, setToolState])
 }
 
-interface DiscardOnLeaveDeps {
-  tool: ToolId
-  setToolState: (state: DimensionToolState) => void
-  setPointer: (point: Point | null) => void
-}
-
 /**
- * A measurement does not outlive the tool that took it. Leaving the dimension tool
- * discards the half-taken start and the cursor it was tracking, so the next arm
- * begins clean instead of pairing a start the user walked away from with the first
- * click of the next measurement. Both setters come from useState, so they are
- * stable and the tool change is the only thing that runs this.
+ * A measurement does not outlive the tool or the floor it began under. A change of
+ * either discards the half-taken start and the cursor it was tracking, so the next
+ * click begins clean instead of pairing a start the user walked away from with a
+ * point on another floor. The setters come from useState, so they are stable and
+ * the effect runs on a change of tool or floor and one time at mount, where it
+ * changes nothing.
  */
-function useDiscardOnLeave({ tool, setToolState, setPointer }: DiscardOnLeaveDeps): void {
+function useDiscardPointerMeasurement(
+  { tool, activeFloorId }: RunScope,
+  setToolState: (state: DimensionToolState) => void,
+  setPointer: (point: Point | null) => void,
+): void {
   useEffect(() => {
-    if (tool !== 'dimension') {
-      setToolState(IDLE_DIMENSION_TOOL)
-      setPointer(null)
-    }
-  }, [tool, setToolState, setPointer])
+    setToolState(IDLE_DIMENSION_TOOL)
+    setPointer(null)
+  }, [tool, activeFloorId, setToolState, setPointer])
 }
 
 export interface DimensionToolDeps {
@@ -141,7 +139,7 @@ export function useDimensionTool({
   const [toolState, setToolState] = useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
   useDimensionCancel({ tool, toolState, setToolState })
-  useDiscardOnLeave({ tool, setToolState, setPointer })
+  useDiscardPointerMeasurement({ tool, activeFloorId }, setToolState, setPointer)
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {

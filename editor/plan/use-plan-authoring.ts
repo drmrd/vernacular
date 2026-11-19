@@ -18,6 +18,7 @@ import {
   type WallKeyContext,
 } from './authoring-tool-handlers'
 import { useOpeningTool } from './opening-tool-context'
+import type { RunScope } from './run-scope'
 
 // The keyboard authoring run seeds its candidate at the world origin when no
 // viewport is supplied, so the candidate is reachable before any pointer move.
@@ -189,21 +190,33 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
   )
 }
 
-// A keyboard wall run or measurement does not outlive the tool it was started
-// under. Without this, a run left open when the tool changed would continue,
-// unseen, when the tool is armed again. Both setters come from useState, so they
-// are stable, so the effect runs on a change of tool, and one time at mount,
-// where it sets idle over idle. `useDiscardOnLeave` in `use-dimension-tool.ts`
-// does the same for the pointer half of the dimension tool.
-function useDiscardKeyboardRunsOnToolChange(
-  tool: ToolId,
+// Keyboard runs and their announcement do not outlive the tool and the floor
+// they began under. The setters and the callback are stable, so each effect runs
+// on a change of tool or floor and one time at mount, where it changes nothing.
+
+// A run left open would continue, unseen, when the tool is armed again or on
+// the other floor. `useDiscardPointerWallRun` and `useDiscardPointerMeasurement`
+// do the same for the pointer runs.
+function useDiscardKeyboardRuns(
+  { tool, activeFloorId }: RunScope,
   setWallState: (state: WallToolState) => void,
   setDimensionState: (state: DimensionToolState) => void,
 ): void {
   useEffect(() => {
     setWallState(IDLE_WALL_TOOL)
     setDimensionState(IDLE_DIMENSION_TOOL)
-  }, [tool, setWallState, setDimensionState])
+  }, [tool, activeFloorId, setWallState, setDimensionState])
+}
+
+// A sentence that stays would make the first vertex of the next run write the
+// same text, and a screen reader does not speak text that did not change.
+function useClearKeyboardAnnouncement(
+  { tool, activeFloorId }: RunScope,
+  clearAnnouncement: () => void,
+): void {
+  useEffect(() => {
+    clearAnnouncement()
+  }, [tool, activeFloorId, clearAnnouncement])
 }
 
 /**
@@ -224,7 +237,8 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [announcement, setAnnouncement] = useState('')
   const clearAnnouncement = useCallback(() => setAnnouncement(''), [])
-  useDiscardKeyboardRunsOnToolChange(tool, setWallToolState, setDimensionToolState)
+  useDiscardKeyboardRuns(deps, setWallToolState, setDimensionToolState)
+  useClearKeyboardAnnouncement(deps, clearAnnouncement)
 
   useEffect(() => {
     if (!isAuthoringTool(tool)) {

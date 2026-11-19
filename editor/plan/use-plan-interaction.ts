@@ -15,6 +15,7 @@ import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
 import { isActivationPressAlreadyHandled } from './activation-keys'
 import { claimKeystroke, ownsKeystroke } from './keyboard-guard'
+import { useDiscardPointerWallRun } from './use-discard-pointer-wall-run'
 import { useHeldAltKey } from './use-held-alt-key'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
@@ -386,6 +387,7 @@ export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
     wallSnappingInputs({ walls, viewport, toolState, tracePoints, freeAngle }),
   )
   const recordRawCursor = useReresolveOnFreeAngleToggle({ tool, freeAngle, snapping, setPointer })
+  useDiscardPointerWallRun(deps, { setToolState, setPointer, clearSnap: snapping.clear })
 
   const gesture = { session, tool, snapping, toolState, setToolState, setPointer }
   const { onDoubleClick, onPointerDown } = useWallGesture({ ...gesture, viewport, activeFloorId })
