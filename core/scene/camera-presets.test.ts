@@ -137,6 +137,11 @@ describe('cameraPresetPose elevations', () => {
 
 describe('doorwayPose', () => {
   const HORIZONTAL_TOLERANCE = 1e-6
+  const GROUND_FLOOR_ELEVATION_MM = 0
+  const UPPER_FLOOR_ELEVATION_MM = 3000
+  const BASEMENT_FLOOR_ELEVATION_MM = -3000
+  const STOREY_HEIGHT_MM = 3000
+  const DOOR_EYE_HEIGHT_MM = 1016
 
   function makeDoor(normal: { x: number; y: number }): OpeningSceneNode {
     return {
@@ -179,50 +184,77 @@ describe('doorwayPose', () => {
   const eye = outwardDoor.sillHeight + outwardDoor.height / 2
 
   it('stands at the opening center raised to the vertical middle of the opening', () => {
-    const pose = doorwayPose(outwardDoor, houseBounds)
+    const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
     expect(pose.position).toEqual(planToWorld(outwardDoor.center, eye))
     expect(pose.position).toEqual({ x: 2000, y: 1016, z: 0 })
   })
 
   it('looks horizontally so the eye holds its height across the opening', () => {
-    const pose = doorwayPose(outwardDoor, houseBounds)
+    const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
     expect(Math.abs(pose.target.y - pose.position.y)).toBeLessThan(HORIZONTAL_TOLERANCE)
   })
 
   it('looks toward the interior even when the raw normal points away from it', () => {
-    const pose = doorwayPose(outwardDoor, houseBounds)
+    const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
     expect(dot(lookVector(pose), towardCenter(pose))).toBeGreaterThan(0)
   })
 
   it('looks toward the interior when the raw normal already points toward it', () => {
     const inwardDoor = makeDoor({ x: 0, y: 1 })
-    const pose = doorwayPose(inwardDoor, houseBounds)
+    const pose = doorwayPose(inwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
     expect(dot(lookVector(pose), towardCenter(pose))).toBeGreaterThan(0)
   })
 
   it('keeps the up vector pointing toward world +Y', () => {
-    const pose = doorwayPose(outwardDoor, houseBounds)
+    const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
     expect(pose.up).toEqual({ x: 0, y: 1, z: 0 })
   })
 
   it('derives near and far from the bounds diagonal, matching the framed view', () => {
-    const pose = doorwayPose(outwardDoor, houseBounds)
+    const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
     const framed = frameSceneCamera(houseBounds)
     expect(pose.near).toBe(framed.near)
     expect(pose.far).toBe(framed.far)
   })
 
   it('returns the fixed default pose for an empty scene (null bounds)', () => {
-    expect(doorwayPose(outwardDoor, null)).toEqual(DEFAULT_CAMERA_POSE)
+    expect(doorwayPose(outwardDoor, null, GROUND_FLOOR_ELEVATION_MM)).toEqual(DEFAULT_CAMERA_POSE)
   })
 
   it('returns the fixed default pose for degenerate (zero-size) bounds', () => {
     const degenerate: Bounds3 = { min: { x: 1, y: 1, z: 1 }, max: { x: 1, y: 1, z: 1 } }
-    expect(doorwayPose(outwardDoor, degenerate)).toEqual(DEFAULT_CAMERA_POSE)
+    expect(doorwayPose(outwardDoor, degenerate, GROUND_FLOOR_ELEVATION_MM)).toEqual(
+      DEFAULT_CAMERA_POSE,
+    )
   })
 
   it('returns the fixed default pose when the wall normal has zero length', () => {
     const facelessDoor = makeDoor({ x: 0, y: 0 })
-    expect(doorwayPose(facelessDoor, houseBounds)).toEqual(DEFAULT_CAMERA_POSE)
+    expect(doorwayPose(facelessDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)).toEqual(
+      DEFAULT_CAMERA_POSE,
+    )
+  })
+
+  function boundsOfOneStoreyAt(elevationMm: number): Bounds3 {
+    return {
+      min: { x: 0, y: elevationMm, z: 0 },
+      max: { x: 4000, y: elevationMm + 2438, z: STOREY_HEIGHT_MM },
+    }
+  }
+
+  it('stands at the vertical middle of the opening above its own floor when that floor sits 3000 mm up', () => {
+    const bounds = boundsOfOneStoreyAt(UPPER_FLOOR_ELEVATION_MM)
+    const pose = doorwayPose(outwardDoor, bounds, UPPER_FLOOR_ELEVATION_MM)
+    const expectedEyeY = UPPER_FLOOR_ELEVATION_MM + DOOR_EYE_HEIGHT_MM
+    expect(pose.position).toEqual({ x: 2000, y: expectedEyeY, z: 0 })
+    expect(pose.target.y).toBe(expectedEyeY)
+  })
+
+  it('stands at the vertical middle of the opening above its own floor in a basement 3000 mm below the ground', () => {
+    const bounds = boundsOfOneStoreyAt(BASEMENT_FLOOR_ELEVATION_MM)
+    const pose = doorwayPose(outwardDoor, bounds, BASEMENT_FLOOR_ELEVATION_MM)
+    const expectedEyeY = BASEMENT_FLOOR_ELEVATION_MM + DOOR_EYE_HEIGHT_MM
+    expect(pose.position).toEqual({ x: 2000, y: expectedEyeY, z: 0 })
+    expect(pose.target.y).toBe(expectedEyeY)
   })
 })
