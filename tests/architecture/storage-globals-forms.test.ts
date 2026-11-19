@@ -50,6 +50,28 @@ const LOOK_ALIKES = [
   'export type Held = typeof window.localStorage',
 ]
 
+const ENV = 'const env = { navigator: { storage: 1 } }'
+
+const NAVIGATOR_MEMBERS_OF_A_PLAIN_OBJECT = [
+  `${ENV}; export const value = env.navigator.storage`,
+  "const env = { navigator: { locks: 1 } }; export const value = env.navigator['locks']",
+  `${ENV}; export const value = env.navigator?.storage`,
+  `${ENV}; const { storage } = env.navigator; export const value = storage`,
+  'export class Host { navigator = { storage: 1 }; read(): number { const { storage } = this.navigator; return storage } }',
+  'export class Host { navigator = { locks: 1 }; read(): number { return this.navigator.locks } }',
+  'export function read(props: { navigator: { locks: number } }): number { return props.navigator.locks }',
+  `${ENV}; export const value = (env.navigator as { storage: number }).storage`,
+  `${ENV}; export const value = env.navigator!.storage`,
+]
+
+const NAVIGATOR_OF_A_GLOBAL_OBJECT_BEHIND_A_WRAPPER = [
+  'export const value = (globalThis as typeof globalThis).navigator.storage',
+  'export const value = (window as Window).navigator.locks',
+  'export const value = window!.navigator.storage',
+  'export const value = (window as Window).navigator!.locks',
+  'const { storage } = (globalThis as typeof globalThis).navigator; export const value = storage',
+]
+
 const PLAIN_SCRIPT_FILES = ['app/sample.js', 'app/sample.mjs']
 const NAVIGATOR_STORAGE = 'export const value = navigator.storage'
 const LOCAL_STORAGE = 'export const value = localStorage'
@@ -110,6 +132,31 @@ describe('storage globals outside storage: forms that hide a use', () => {
 
       await expectAccepted(source, SERVICE_WORKER_PATH)
     },
+  )
+})
+
+describe('storage globals outside storage: a navigator member counts only on a global object', () => {
+  it.each(rows(NAVIGATOR_MEMBERS_OF_A_PLAIN_OBJECT, ['app/sample.tsx']))(
+    'accepts a storage or locks member of a plain object named navigator in %s in %s',
+    { timeout: LINT_TIMEOUT_MS },
+    expectAccepted,
+  )
+
+  it.each(
+    rows(NAVIGATOR_MEMBERS_OF_A_PLAIN_OBJECT.slice(0, 1), [
+      'editor/sample.test.tsx',
+      'core/sample.ts',
+    ]),
+  )(
+    'accepts a navigator member of a plain object in a test file and in a shipped core file in %s in %s',
+    { timeout: LINT_TIMEOUT_MS },
+    expectAccepted,
+  )
+
+  it.each(rows(NAVIGATOR_OF_A_GLOBAL_OBJECT_BEHIND_A_WRAPPER, ['app/sample.tsx']))(
+    'rejects navigator read from a global object behind a cast or non-null mark in %s in %s',
+    { timeout: LINT_TIMEOUT_MS },
+    expectRejected,
   )
 })
 
