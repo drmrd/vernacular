@@ -16,7 +16,10 @@ const FULL_CIRCLE_RADIANS = Math.PI * 2
  * the wall's fixed start to an end that walks a circle of 500 mm around the wall's real end, one
  * step for each frame; the snap is off. The base options are built once and shared, so the
  * walls, the rooms, and every other field are the same objects in every frame, as during a
- * real drag. The list is deterministic.
+ * real drag. The frames set only `preview`, `selectedIds`, and `endpointHandles` because a real
+ * endpoint drag changes only these: it shows no snap indicator through `drawPlan`, and it has no
+ * hovered wall, since a pointer move with a button held clears the hover state
+ * (`editor/plan/use-plan-hover.ts`). The list is deterministic.
  */
 export function referenceDragFrames(
   project: Project,

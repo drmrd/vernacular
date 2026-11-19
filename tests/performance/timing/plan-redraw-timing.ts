@@ -28,9 +28,10 @@ function frameAt(frames: readonly DrawPlanOptions[], drawIndex: number): DrawPla
  *
  * The warm-up draws come first, untimed, with no clock read. Each draw waits for `nextFrame()`,
  * so one draw happens in each animation frame. Draw number i uses frame number i, the warm-up
- * draws included, and the list is cycled when it is shorter than the draws. The timed interval is
- * the one synchronous `drawPlan` call alone: the wait for the frame, the choice of the frame, and
- * the bookkeeping of the sample are outside it, and so is the raster that the browser does later.
+ * draws included, and the list is cycled when it is shorter than the draws. Each figure is the
+ * main-thread time of the draw calls of one `drawPlan`, from just before the call to its return.
+ * The wait for the frame, the choice of the frame, and the bookkeeping of the sample are outside
+ * it, and so is the raster that the browser does later.
  */
 export async function timePlanRedraw(timing: PlanRedrawTiming): Promise<number[]> {
   const { ctx, frames, counts, now, nextFrame } = timing
