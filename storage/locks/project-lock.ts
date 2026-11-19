@@ -16,17 +16,14 @@ export interface ProjectLockPort {
 
 const LOCK_NAME_PREFIX = 'vernacular-project-'
 
-/** A hold whose release does its work once; later calls do nothing. */
+/**
+ * A hold whose release does its work once; every call returns the same
+ * promise, so each caller waits until the lock is really free.
+ */
 function releasingOnce(release: () => Promise<void>): ProjectLockHold {
-  let released = false
+  let releasing: Promise<void> | undefined
   return {
-    release: () => {
-      if (released) {
-        return Promise.resolve()
-      }
-      released = true
-      return release()
-    },
+    release: () => (releasing ??= release()),
   }
 }
 
