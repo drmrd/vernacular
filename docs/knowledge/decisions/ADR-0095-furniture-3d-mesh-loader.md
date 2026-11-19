@@ -30,16 +30,18 @@ sourceFiles:
     docs/plans/2026-06-17-furniture-3d-mesh-loader.md,
     core/scene/scene-graph.ts,
     engine/scene/furniture-model.ts,
+    engine/scene/furniture-model.test.ts,
     engine/loaders/gltf-loader.ts,
     bridge/react/furniture-model-cache.ts,
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/use-furniture-model-cache.ts,
     bridge/react/webgpu-scene-view.tsx,
     bridge/react/furniture-model-signals.tsx,
+    bridge/react/furniture-model-unusable-geometry.test.ts,
     e2e/tests/scene-furniture-model-swap.spec.ts,
   ]
 status: current
-updated: 2026-06-18
+updated: 2026-11-18
 ---
 
 # ADR-0095: Furniture 3D mesh loader
@@ -87,7 +89,8 @@ height against the limiting axis, centers on the footprint center in plan, ancho
 model's base to the elevation, and rotates to the footprint orientation. It maps plan x
 to world x and plan y to world z with world y up, the same axis convention the massing
 box uses, so a model lands where its box stood. It returns null for geometry that is
-empty or has a zero extent, so the caller can fall back. `buildFurnitureModelGroup` wraps
+empty or has a zero extent, so a direct caller can fall back. Since #698 the parse
+rejects such a model first, so the live view never reaches that null. `buildFurnitureModelGroup` wraps
 a normalized model as a sub-group that carries the box's scene name and raw entity id but
 no edge overlay, so it selects in step with the plan and reads as a real mesh rather than
 a massing block. `disposeObject` frees the geometries, materials, and textures of a tree.
@@ -141,11 +144,11 @@ end-to-end test can wait on a real swap without racing the network.
 - A clone shares buffers and is never disposed, so many instances of one model cost one
   parse and one set of GPU buffers. The cache disposes a template only when nothing live
   references it, which keeps a toggled piece from reloading.
-- One limitation follows from marking an entry ready after a successful parse rather than a
-  successful fit: a model that parses but normalizes to a degenerate, zero-extent result
-  builds an empty group, showing neither box nor mesh. Real models are not degenerate, and
-  the engine tests cover the null fit at the boundary, so the case is documented rather than
-  guarded in the cache.
+- Until #698, a model that parsed but had no usable geometry was marked ready, built an
+  empty group, and showed neither box nor mesh. Now `parseFurnitureModel` rejects such a
+  model with `UnusableFurnitureModelError`, so the cache settles the entry to `failed` and
+  every instance shows the failed box. The amendment of 2026-11-18 in ADR-0107 records the
+  rule and why it sits at the parse.
 - The swap is proven end-to-end under the scene-webgl GPU tier. The bundled starter pack
   ships a placeholder stub for its example chair, so the test imports the committed cube GLB
   as a user asset to exercise a real model through the same resolve, parse, and swap path.

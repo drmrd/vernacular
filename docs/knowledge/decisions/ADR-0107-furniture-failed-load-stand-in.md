@@ -27,9 +27,12 @@ sourceFiles:
     engine/scene/furniture-builder.ts,
     engine/scene/floor-subgroups.ts,
     bridge/react/framed-scene-reconciler.ts,
+    engine/scene/furniture-model.ts,
+    engine/scene/furniture-model.test.ts,
+    bridge/react/furniture-model-unusable-geometry.test.ts,
   ]
 status: current
-updated: 2026-06-19
+updated: 2026-11-18
 ---
 
 # ADR-0107: Render a failed furniture-model load as a distinct stand-in box
@@ -133,6 +136,50 @@ spec-change ADR companion.
   appearance only renders after a real load attempt fails, which the harness does not
   trigger.
 
+## Amendment 2026-11-18: a model with no usable geometry
+
+A furniture model can parse and still have nothing to fit. Its scene may hold only
+empty nodes, lights, or cameras, or the model may be flat along one axis. Until #698
+the cache marked such a model `ready`. The build then fit it into an empty group, so
+the placed piece showed nothing in the 3D view, not even a box, and a click there
+selected nothing.
+
+Such a model now settles as `failed` at load and shows the failed box.
+`parseFurnitureModel` in `engine/scene/furniture-model.ts` tests the parsed scene with
+`hasUsableGeometry`. When the test fails, it frees what the parse built and rejects
+with `UnusableFurnitureModelError`. The cache already settles an entry to `failed`
+when the parse rejects, so every instance of the asset draws the `furnitureFailed`
+box, selects like any other box, and the cache warns once.
+
+The check lives at the parse, not in the build of each instance. Whether a model has
+usable geometry does not depend on the instance, because the fit scales the model
+uniformly. So the rule runs once per asset and sits beside the fit that needs it:
+`hasUsableGeometry` and `normalizeModelIntoBox` share one private measure,
+`measureUsableBox`, and cannot disagree. A check in the build would have made
+`furnitureBuildKind` in `bridge/react/floor-build.ts` predict the result of the fit,
+and the reuse key and the build could then drift apart. With the check at the parse,
+a `failed` entry maps to `failedBox` as before, and neither the reuse key nor the
+cache changed.
+
+A flat model, for example a rug or a picture drawn as one plane, also gets the failed
+box for now. Drawing a flat model as a flat piece would be a separate decision.
+
+`normalizeModelIntoBox` keeps its `null` result for a direct caller. The live view no
+longer reaches it, because the parse rejects the model first.
+
+These tests hold the rule:
+
+- `engine/scene/furniture-model.test.ts`: under `hasUsableGeometry`, "is false for an
+  empty group", "is false for a group that holds only a light and a camera", "is false
+  for a mesh that is flat on one axis", "is true for a box mesh", and "is true for a box
+  mesh under a parent with a non-identity transform"; under `parseFurnitureModel`,
+  "rejects with UnusableFurnitureModelError when the scene holds only empty nodes" and
+  "rejects a flat triangle with UnusableFurnitureModelError and disposes its geometry";
+  under `normalizeModelIntoBox`, "returns null when the model has no geometry".
+- `bridge/react/furniture-model-unusable-geometry.test.ts`: "a placed piece whose model
+  has no usable geometry shows the failed box for %s", run once for a scene with only
+  empty nodes and once for a model that is flat along one axis.
+
 ## References
 
 - ADR-0094 (the furniture massing box this failed-load box stands in for).
@@ -143,3 +190,5 @@ spec-change ADR companion.
 - Issue #259 (the unloaded-red box this reads differently from) and issue #261 (the
   loading cue that will slot into the same status-to-role pattern as the sibling
   third state).
+- Issue #698 (a model with no usable geometry now shows the failed box; see the
+  amendment of 2026-11-18).
