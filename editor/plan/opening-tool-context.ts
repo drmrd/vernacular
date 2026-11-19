@@ -57,30 +57,47 @@ export function useForgetRefusalOnToolChange(tool: ToolId): void {
   }, [tool, setPlacementRefusal])
 }
 
-/** What a standing refusal was computed from, and the signs that the person has moved on. */
+/**
+ * What a standing refusal was computed from, and the signs that the person has moved on.
+ * Caller guarantee: pass references that change only when the thing changes. The selection set
+ * and the scene graph (the plan's own graph, not a derived copy) must be the same references
+ * between renders when nothing changed, or every render retires the notice.
+ */
 export interface RefusalBasis {
   tool: ToolId
   /** The plan's scene graph. A new reference means the plan changed: an edit, an undo, a redo. */
   sceneGraph: SceneGraph
   activeFloorId: string | null
-  /** A new set means the selection changed. */
+  /** Compared by reference: the selection store hands out one set until the selection changes. */
   selectedIds: ReadonlySet<string>
-  /** The keyboard authoring candidate. A new point means an arrow key moved it. */
+  /** The keyboard authoring candidate, compared by `x` and `y`: a re-created point with the same
+   *  coordinates keeps the notice. */
   candidate: Point
 }
 
 /**
  * Retires the standing refusal, before paint, when any basis field or the provider's placement
- * type takes a new value or reference. The same references keep it. Clears on mount. A refusal
- * is about one placement under one situation, so a changed plan, floor, selection, candidate,
- * tool, or placement type ends it rather than leaving a sentence that may no longer be true.
+ * type takes a new value or reference, except the candidate, which compares by `x` and `y`.
+ * The same references keep it. Clears on mount. A refusal is about one placement under one
+ * situation, so a changed plan, floor, selection, candidate, tool, or placement type ends it
+ * rather than leaving a sentence that may no longer be true.
  */
 export function useRetireStaleRefusal(basis: RefusalBasis): void {
   const { placementType, setPlacementRefusal } = useOpeningTool()
-  const { tool, sceneGraph, activeFloorId, selectedIds, candidate } = basis
+  const { tool, sceneGraph, activeFloorId, selectedIds } = basis
+  const { x: candidateX, y: candidateY } = basis.candidate
   useLayoutEffect(() => {
     setPlacementRefusal(null)
-  }, [tool, sceneGraph, activeFloorId, selectedIds, candidate, placementType, setPlacementRefusal])
+  }, [
+    tool,
+    sceneGraph,
+    activeFloorId,
+    selectedIds,
+    candidateX,
+    candidateY,
+    placementType,
+    setPlacementRefusal,
+  ])
 }
 
 export interface OpeningToolProviderProps {
