@@ -80,4 +80,15 @@ describe('drawOnNextRendererFrame', () => {
 
     expect(later).toHaveBeenCalledTimes(1)
   })
+
+  it('clears the loop even when the draw throws', () => {
+    const renderer = createStandInRenderer()
+
+    drawOnNextRendererFrame(renderer, () => {
+      throw new Error('the draw failed')
+    })
+
+    expect(() => renderer.runFrame()).toThrow('the draw failed')
+    expect(renderer.getAnimationLoop()).toBeNull()
+  })
 })
