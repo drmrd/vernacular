@@ -1,11 +1,11 @@
-import { test, expect, type Page } from '@playwright/test'
-import { frameReader } from '../frame-pixels'
+import { test } from '@playwright/test'
 import { configureGpuChromiumOnMac, guardLiveSceneSupport } from '../live-webgpu'
-import { logReading, stableFrame } from '../scene-helpers'
+import { stableFrame } from '../scene-helpers'
 import {
   enterOrbit,
   enterWalkReady,
   drawRoomWithOpenings,
+  expectSameView,
   frameAfterChange,
   liveCanvas,
   navButton,
@@ -29,38 +29,9 @@ import { gotoEditor } from './support'
 
 configureGpuChromiumOnMac()
 
-// Two frames of one view are equal when the mean channel difference (0..255) stays below the
-// first bar and the share of strongly changed pixels stays below the second.
-const EQUAL_MEAN_LIMIT = 1.0
-const EQUAL_CHANGED_FRACTION_LIMIT = 0.01
-
 // Walking to the door and settling frames takes up to about half a minute on the development
 // Mac. The budget leaves a wide margin for a slower runner.
 const TEST_TIMEOUT_MS = 120_000
-
-const READING_DIGITS = 3
-
-// Reads the two frames over the whole canvas, prints the reading, and expects them to be equal.
-async function expectSameView(
-  page: Page,
-  label: string,
-  frames: { first: Buffer; second: Buffer },
-): Promise<void> {
-  const reader = frameReader(page)
-  const { mean, changedFraction } = await reader.difference(
-    frames.first,
-    frames.second,
-    await reader.whole(frames.first),
-  )
-  logReading(
-    label,
-    `mean ${mean.toFixed(READING_DIGITS)} (limit ${EQUAL_MEAN_LIMIT}), changed ${changedFraction.toFixed(READING_DIGITS)} (limit ${EQUAL_CHANGED_FRACTION_LIMIT})`,
-  )
-  expect(mean, 'mean channel difference over the whole canvas').toBeLessThan(EQUAL_MEAN_LIMIT)
-  expect(changedFraction, 'fraction of changed pixels over the whole canvas').toBeLessThan(
-    EQUAL_CHANGED_FRACTION_LIMIT,
-  )
-}
 
 test('shows the walker the same view of the shut door after a scene rebuild', async ({ page }) => {
   test.setTimeout(TEST_TIMEOUT_MS)

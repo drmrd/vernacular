@@ -303,7 +303,7 @@ jobs:
     # The image is pinned by number so that a move to a newer one is a deliberate change.
     # macOS minutes bill at 10x linux, so the job shares the e2e gate: it runs only when the
     # PR touches a path that can move the live frame (ADR-0171).
-    # The same adapter also runs three journeys under the chromium project. The perceived-color
+    # The same adapter also runs four journeys under the chromium project. The perceived-color
     # journey clicks a painted wall face in the live pane and checks that the inspector shows the
     # sampled color for that face. The close-openings journey opens doors and windows in walk
     # mode, closes them from the 3D toolbar, and reads the opening's region of the live canvas on
@@ -312,7 +312,9 @@ jobs:
     # no part-open frame. It shows that no frame it read has an opening in the wrong state, not
     # that it read every frame the page drew (issue #778 tracks a possible flash). The walk-view
     # journey takes the walker's view of a shut door, rebuilds the scene in orbit mode, and
-    # checks that the walker's view afterward matches the first one. All three
+    # checks that the walker's view afterward matches the first one. The journey of the walker
+    # and the active floor makes another floor active during a walk, and checks that the walker's
+    # view stays the same and that E opens the door of the upper floor in sight. All four
     # self-skip on the linux e2e runner, so this job is where they actually run, and each step
     # sets E2E_REQUIRE_WEBGPU so that a runner with no adapter fails it instead of skipping it.
     # The specs take the scene-webgl project's browser channel and GPU flags themselves, so they
@@ -372,6 +374,12 @@ jobs:
         env:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=chromium e2e/tests/journeys/walk-view-after-rebuild.spec.ts --reporter=list
+      - name: Walker follows the active floor journey (chromium project)
+        # Two tests, each with a limit of two minutes and up to two retries.
+        timeout-minutes: 13
+        env:
+          E2E_REQUIRE_WEBGPU: '1'
+        run: pnpm exec playwright test --project=chromium e2e/tests/journeys/walk-follows-the-active-floor.spec.ts --reporter=list
       - name: Live-view start-up spec (scene-webgl project)
         # The run takes about eight seconds on the development Mac. The visual-regression step
         # and the perceived-color journey step take 10 to 21 seconds on this runner. Each test

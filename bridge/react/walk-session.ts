@@ -8,7 +8,15 @@ import type { RefObject } from 'react'
 import {
   emptyOpeningInteraction,
   WALK_EYE_HEIGHT_MM,
+  advanceWalk,
+  passableDoorIds,
+  walkLookTarget,
+  wallSegmentsForWalk,
+  type OpeningSceneNode,
   type SceneGraph,
+  type WallSceneNode,
+  type WallSegment,
+  type WalkCollisionWorld,
   type WalkInput,
   type WalkState,
 } from '../../core'
@@ -27,6 +35,9 @@ const MOVEMENT_KEYS = new Map<string, 'forward' | 'back' | 'left' | 'right'>([
 // The "use" key, the conventional first-person interact verb. It is read as a general
 // interact action so other interactables (lights, drawers) can hook in here later.
 const INTERACT_KEY = 'KeyE'
+
+// A floor's own frame measures height from its datum, which is 0 there.
+const FLOOR_DATUM_MM = 0
 
 // The reset key: clears every opened opening so they animate shut.
 const RESET_KEY = 'KeyR'
@@ -66,16 +77,28 @@ export function seedWalkState(camera: WalkCamera, floorElevationMm: number): Wal
   }
 }
 
+// The same pose with the eye on the given floor: its elevation plus the walk eye height.
+// The plan position, yaw and pitch stay; the input pose is never changed.
+export function walkStateOnFloor(state: WalkState, floorElevationMm: number): WalkState {
+  return {
+    ...state,
+    position: { ...state.position, y: floorElevationMm + WALK_EYE_HEIGHT_MM },
+  }
+}
+
 // Resumes the pose the last walk session left behind, so a view-mode switch or a
 // detour through orbit puts the walker back where they stood instead of wherever the
-// camera happens to sit now (ADR-0170). With no pose to resume, the camera seeds the
-// walk the way it always has.
+// camera happens to sit now (ADR-0170). The pose is seated on the active floor, which
+// may differ from the floor it was left on. With no pose to resume, the camera seeds
+// the walk the way it always has.
 export function resumedWalkState(
   saved: WalkState | null,
   camera: WalkCamera,
   floorElevationMm: number,
 ): WalkState {
-  return saved ?? seedWalkState(camera, floorElevationMm)
+  return saved === null
+    ? seedWalkState(camera, floorElevationMm)
+    : walkStateOnFloor(saved, floorElevationMm)
 }
 
 // The active floor's elevation, read from its scene-graph node; 0 when no floor
@@ -137,9 +160,11 @@ export function walkKeyHandlers(session: WalkSession): {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.code === INTERACT_KEY) {
       // Pass the live openness so the ray reaches an opening at its swung or slid
-      // position, letting the walker close a door that is already open.
+      // position, letting the walker close a door that is already open. The openings
+      // are the active floor's and sit in that floor's own frame, so the eye goes in at
+      // eye height above its floor, where the walker always stands.
       interaction.current = interactFromWalk(
-        state.current,
+        walkStateOnFloor(state.current, FLOOR_DATUM_MM),
         openings.current,
         interaction.current,
         openness.current,
@@ -165,4 +190,53 @@ export function walkKeyHandlers(session: WalkSession): {
     if (flag !== undefined) input.current[flag] = false
   }
   return { onKeyDown, onKeyUp }
+}
+
+// The static collision inputs for the active floor: its walls and openings, the
+// precomputed furniture perimeter segments, and the walker's radius. The per-frame
+// step combines these with the live open-door set to build the collision world, so
+// these need rebuild only when the scene graph or active floor changes.
+export interface WalkCollisionInputs {
+  walls: readonly WallSceneNode[]
+  openings: readonly OpeningSceneNode[]
+  furnitureSegments: WallSegment[]
+  radius: number
+  /** The active floor's elevation, in millimeters; 0 when no floor is active. */
+  floorElevationMm: number
+}
+
+// The live inputs the per-frame walk step reads: the camera it drives, the collision
+// inputs, the walk refs it advances, and the open set collision reads.
+export interface WalkFrameContext extends WalkRefs {
+  camera: WalkCamera
+  collisionInputs: WalkCollisionInputs
+}
+
+// Builds this frame's collision world from the static inputs and the live open-door
+// set: passable openings cut gaps in their host walls and furniture footprints always
+// block. passableDoorIds decides what counts as passable, which is open doors plus
+// leafless doorways that have nothing to open; shut doors and windows stay solid.
+function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
+  const { walls, openings, furnitureSegments, radius } = ctx.collisionInputs
+  const passable = passableDoorIds(openings, ctx.interaction.current.openIds)
+  return {
+    segments: [...wallSegmentsForWalk(walls, openings, passable), ...furnitureSegments],
+    radius,
+  }
+}
+
+// Advances the walk one timestep: seats the walker on the active floor, steps the walk
+// state against the collision world and drives the live camera to the new eye and look.
+// Seating first keeps the eye on the active floor when the floor changes or its elevation
+// is edited mid-walk. The look deltas are consumed so they do not re-apply. The openings
+// swing in their own per-frame tick, which runs in both camera modes.
+export function stepWalkFrame(ctx: WalkFrameContext, delta: number): void {
+  const seated = walkStateOnFloor(ctx.state.current, ctx.collisionInputs.floorElevationMm)
+  const next = advanceWalk(seated, ctx.input.current, delta, frameCollisionWorld(ctx))
+  ctx.input.current.yawDelta = 0
+  ctx.input.current.pitchDelta = 0
+  ctx.state.current = next
+  ctx.camera.position.set(next.position.x, next.position.y, next.position.z)
+  const look = walkLookTarget(next)
+  ctx.camera.lookAt(look.x, look.y, look.z)
 }

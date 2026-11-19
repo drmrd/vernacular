@@ -32,6 +32,9 @@ related:
     decisions/ADR-0044-mvp-delivery-tracks-and-parallel-resequencing,
     decisions/ADR-0020-bridge-owned-selection-outside-undo,
     decisions/ADR-0004-three-js-r3f-webgpu,
+    decisions/ADR-0170-scene-session-state-in-a-bridge-provider,
+    decisions/ADR-0127-whole-building-3d-view,
+    decisions/ADR-0135-walk-collision-swept-movement-and-thickness-standoff,
   ]
 sourceFiles:
   [
@@ -44,9 +47,17 @@ sourceFiles:
     bridge/react/scene-nav-toolbar.tsx,
     bridge/react/webgpu-scene-view.tsx,
     e2e/tests/scene-navigation.spec.ts,
+    bridge/react/walk-session.ts,
+    bridge/react/walk-session.test.ts,
+    bridge/react/walk-camera-controls.test.ts,
+    bridge/react/walk-interaction.ts,
+    core/scene/opening-reach.ts,
+    core/scene/walk-collision.ts,
+    core/scene/camera-presets.ts,
+    e2e/tests/journeys/walk-follows-the-active-floor.spec.ts,
   ]
 status: current
-updated: 2026-06-12
+updated: 2026-11-19
 ---
 
 # ADR-0064: Camera navigation for the three-dimensional preview: orbit, walk, and reset as per-view state
@@ -255,3 +266,51 @@ and no migration.
   state the per-view camera state is contrasted against.
 - [[ADR-0004-three-js-r3f-webgpu]]: the renderer stack and the React Three Fiber
   canvas the navigation attaches to.
+
+## Amendment 2026-11-19: the walker stands on the active floor
+
+The eye height is measured from the active floor, not from the ground datum. A
+first walk was already seeded at the active floor's elevation plus 1700 mm, but
+nothing updated the pose after that. When the active floor changed during a
+walk, the eye stayed at the old floor's height while collision and the E key
+moved to the new floor. A pose kept in the scene session
+([[ADR-0170-scene-session-state-in-a-bridge-provider]]) came back at the old
+height too.
+
+Each walk step seats the pose at the active floor's elevation plus the eye
+height before it moves the walker, and a resumed pose is seated the same way.
+The plan position, the heading, and the pitch stay, and the walk session does
+not restart. If the new floor has a wall where the walker stands, collision
+pushes the walker out on the next step. If no room of the new floor is under the
+walker, the walker stands outside that floor's rooms, at that floor's height.
+The rule holds in the floor view and in the whole-building view, because the
+walk follows the active floor in both.
+
+Three of these choices are working assumptions that the project owner has not
+decided: the plan position stays, the walk goes on across a change of floor, and
+the whole-building view follows the active floor.
+
+The E key had a related fault. An opening's height is measured on its own floor,
+and the reach test compared it with the walker's eye in world space. With the
+eye on an upper floor or in a basement, the ray could pass above or below that
+floor's doors and windows, and E would miss them. Before this change it worked
+upstairs only by accident, for a walker who was left at the ground floor's
+height under an upper floor. The E key casts from the walker's eye as measured
+on the floor that the walker stands on: the plan position at eye height above
+that floor. The reach math in `core/scene/opening-reach.ts` did not change,
+because it already works in the floor's own frame. Issue #608 tracked both
+faults.
+
+Both rules assume that the walker does not move vertically. Stair walking will
+have to replace them with the floor under the walker and the eye's height above
+it.
+
+`bridge/react/walk-session.test.ts` holds the tests for the seat of a resumed
+pose and of each walk step. `bridge/react/walk-camera-controls.test.ts` holds
+the tests for the E key on a floor above and below the ground. The live journey
+`e2e/tests/journeys/walk-follows-the-active-floor.spec.ts` compares the walker's
+view before and after the floor changes, and it opens the door of the upper
+floor in sight.
+
+One reader of an opening's height still ignores the floor: the Doorway camera
+preset (issue #922).
