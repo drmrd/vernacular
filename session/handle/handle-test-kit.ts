@@ -132,14 +132,55 @@ export async function storedName(store: DocumentStore, id: string): Promise<stri
   return (await storedProject(store, id)).meta.name
 }
 
-/** Puts `save:<id>` and `read:<id>` in the log for each call, then runs the real method. */
-function recordStoreCalls(store: DocumentStore, log: string[]): void {
+/** From now on each save of the store puts `save:<id>` in the log, then runs the real save. */
+export function recordSaves(store: DocumentStore, log: string[]): void {
   const realSave = store.save.bind(store)
-  const realRead = store.read.bind(store)
   store.save = (id, project) => {
     log.push(`save:${id}`)
     return realSave(id, project)
   }
+}
+
+/** A step of the snapshots of a project that a test can make fail. */
+export type SnapshotStep = 'writeSnapshot' | 'prune'
+
+/** The step of the snapshots that rejects, and the error it rejects with. */
+export interface SnapshotFailure {
+  readonly step: SnapshotStep
+  readonly error: Error
+}
+
+/**
+ * From now on each `snapshots(id)` of the store gives the real snapshots of `id`, whose
+ * `writeSnapshot` and `prune` put `writeSnapshot:<id>` and `prune:<id>` in the log when called.
+ * The step of `failure`, when one is given, rejects with its error instead of running. A handle
+ * asks the store for its snapshots when it opens, so call this before the open.
+ */
+export function recordSnapshots(
+  store: DocumentStore,
+  log: string[],
+  failure?: SnapshotFailure,
+): void {
+  const realSnapshots = store.snapshots.bind(store)
+  store.snapshots = (id) => {
+    const real = realSnapshots(id)
+    const step = (name: SnapshotStep, run: () => Promise<void>): Promise<void> => {
+      log.push(`${name}:${id}`)
+      return failure?.step === name ? Promise.reject(failure.error) : run()
+    }
+    return {
+      writeSnapshot: (project) => step('writeSnapshot', () => real.writeSnapshot(project)),
+      prune: () => step('prune', () => real.prune()),
+      isRecoverable: () => real.isRecoverable(),
+      restore: () => real.restore(),
+    }
+  }
+}
+
+/** Puts `save:<id>` and `read:<id>` in the log for each call, then runs the real method. */
+function recordStoreCalls(store: DocumentStore, log: string[]): void {
+  const realRead = store.read.bind(store)
+  recordSaves(store, log)
   store.read = (id) => {
     log.push(`read:${id}`)
     return realRead(id)

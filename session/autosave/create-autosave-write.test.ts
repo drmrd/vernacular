@@ -206,6 +206,39 @@ describe('createAutosave writing a project', () => {
   })
 })
 
+describe('createAutosave and a prune that rejects', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it('a prune that rejects leaves the write succeeded and is logged once', async () => {
+    const failure = new Error('the prune failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const snapshots = {
+      writeSnapshot: vi.fn().mockResolvedValue(undefined),
+      prune: vi.fn().mockRejectedValue(failure),
+    }
+    const statuses: string[] = []
+    const { session, autosave } = setUp({
+      snapshots,
+      onStatusChange: (status) => statuses.push(status),
+    })
+    session.dispatch(addFloor('Ground'))
+
+    await expect(autosave.save()).resolves.toBeUndefined()
+
+    expect(statuses).toEqual(['pending', 'saved'])
+    expect(consoleError).toHaveBeenCalledTimes(1)
+    expect(consoleError.mock.calls.flat()).toContain(failure)
+
+    autosave.dispose()
+  })
+})
+
 describe('createAutosave writing through one queue', () => {
   beforeEach(() => {
     vi.useFakeTimers()
