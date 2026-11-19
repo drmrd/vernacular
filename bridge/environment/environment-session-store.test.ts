@@ -17,12 +17,10 @@ const earlySummerMorning: EnvironmentState = {
 }
 
 describe('createEnvironmentSessionStore', () => {
-  it('starts from the state it is given, and from the default state when given none', () => {
+  it('starts from the state it is given', () => {
     const seeded = createEnvironmentSessionStore(earlySummerMorning)
-    const unseeded = createEnvironmentSessionStore()
 
     expect(seeded.getEnvironment()).toEqual(earlySummerMorning)
-    expect(unseeded.getEnvironment()).toEqual(DEFAULT_ENVIRONMENT_STATE)
   })
 
   it('starts at the default environment state', () => {
