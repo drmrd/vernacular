@@ -71,12 +71,15 @@ function overlayTree(selectedIds: ReadonlySet<string>) {
   )
 }
 
-// The text of the live region is carried by one element inside the status region. The
-// contract leaves no selector for it, so a test finds it as the first element child. While
-// the region still holds a bare string, the region itself is the node that carries it.
+// The text of the live region is carried by one element inside the status region. It has no
+// selector of its own, so a test finds it as the first element child. The element is required:
+// a region that holds a bare string cannot replace what it speaks.
 function carrier(): Element {
-  const region = screen.getByRole('status')
-  return region.firstElementChild ?? region
+  const child = screen.getByRole('status').firstElementChild
+  if (child === null) {
+    throw new Error('the status region holds a bare string, not a carrier element')
+  }
+  return child
 }
 
 afterEach(cleanup)
