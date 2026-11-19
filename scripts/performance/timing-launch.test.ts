@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
@@ -17,8 +17,7 @@ const MINIMUM_MACOS_FLAGS = 3
  * SCENE_WEBGL_LAUNCH_ARGS.
  */
 function sceneWebglMacOsFlags(): string[] {
-  const configPath = fileURLToPath(new URL('../../playwright.config.ts', import.meta.url))
-  const text = readFileSync(configPath, 'utf8')
+  const text = readFileSync(resolve('playwright.config.ts'), 'utf8')
   const declaration = text.slice(text.indexOf('const SCENE_WEBGL_LAUNCH_ARGS'))
   const macOsArray = /process\.platform === 'darwin'\s*\?\s*\[([^\]]*)\]/.exec(declaration)
   const arrayBody = macOsArray?.[1] ?? ''
