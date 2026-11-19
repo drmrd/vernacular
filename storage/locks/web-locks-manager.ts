@@ -11,13 +11,20 @@
  * still observe the lock as held: Firefox frees the lock a task later than
  * Chromium, so resolving the held promise is not enough on its own.
  */
+interface LockHold {
+  /** Settles the held promise so the lock can be freed. */
+  free: () => void
+  /** Settles once the lock has really been freed. */
+  whenFreed: () => Promise<void>
+}
+
 export class WebLocksManager {
-  private readonly releasers = new Map<string, () => void>()
-  private readonly requests = new Map<string, Promise<void>>()
+  private readonly holds = new Map<string, LockHold>()
 
   /** Resolve true if the exclusive lock named `name` was acquired without waiting. */
   tryAcquire(name: string): Promise<boolean> {
     return new Promise<boolean>((resolveOuter) => {
+      let freed: Promise<void> = Promise.resolve()
       const request = navigator.locks.request(
         name,
         { mode: 'exclusive', ifAvailable: true },
@@ -28,30 +35,24 @@ export class WebLocksManager {
           }
           resolveOuter(true)
           // Returning an unsettled promise keeps the lock held; storing its
-          // resolver lets release() free the lock on demand.
-          return new Promise<void>((release) => {
-            this.releasers.set(name, release)
+          // resolver lets release() free the lock on demand. Only a granted
+          // lock is stored, so a failed attempt never replaces the holder.
+          return new Promise<void>((free) => {
+            this.holds.set(name, { free, whenFreed: () => freed })
           })
         },
       )
-      this.requests.set(
-        name,
-        request.then(() => undefined),
-      )
+      freed = request.then(() => undefined)
     })
   }
 
   async release(name: string): Promise<void> {
-    const releaser = this.releasers.get(name)
-    if (releaser === undefined) {
+    const hold = this.holds.get(name)
+    if (hold === undefined) {
       return
     }
-    this.releasers.delete(name)
-    releaser()
-    const request = this.requests.get(name)
-    this.requests.delete(name)
-    if (request !== undefined) {
-      await request
-    }
+    this.holds.delete(name)
+    hold.free()
+    await hold.whenFreed()
   }
 }

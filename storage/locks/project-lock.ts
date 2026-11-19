@@ -16,6 +16,20 @@ export interface ProjectLockPort {
 
 const LOCK_NAME_PREFIX = 'vernacular-project-'
 
+/** A hold whose release does its work once; later calls do nothing. */
+function releasingOnce(release: () => Promise<void>): ProjectLockHold {
+  let released = false
+  return {
+    release: () => {
+      if (released) {
+        return Promise.resolve()
+      }
+      released = true
+      return release()
+    },
+  }
+}
+
 function lockNameFor(projectId: string): string {
   return `${LOCK_NAME_PREFIX}${projectId}`
 }
@@ -40,7 +54,7 @@ export class WebLocksProjectLockPort implements ProjectLockPort {
     if (!(await this.manager.tryAcquire(name))) {
       return undefined
     }
-    return { release: () => this.manager.release(name) }
+    return releasingOnce(() => this.manager.release(name))
   }
 
   async heldIds(): Promise<ReadonlySet<string>> {
@@ -70,12 +84,12 @@ export class InMemoryProjectLockPort implements ProjectLockPort {
       return Promise.resolve(undefined)
     }
     this.registry.add(projectId)
-    return Promise.resolve({
-      release: () => {
+    return Promise.resolve(
+      releasingOnce(() => {
         this.registry.delete(projectId)
         return Promise.resolve()
-      },
-    })
+      }),
+    )
   }
 
   heldIds(): Promise<ReadonlySet<string>> {
