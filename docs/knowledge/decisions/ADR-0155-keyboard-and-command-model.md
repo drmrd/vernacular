@@ -21,9 +21,16 @@ sourceFiles:
     editor/shell/project-menu-composing.test.tsx,
     editor/shell/floor-switcher-composing.test.tsx,
     editor/environment/environment-scenes-composing.test.tsx,
+    editor/plan/activation-keys.ts,
+    editor/plan/entity-proxy.tsx,
+    editor/plan/use-plan-authoring.ts,
+    editor/plan/use-plan-interaction.ts,
+    editor/plan/use-plan-authoring-handled-keys.test.tsx,
+    editor/plan/use-plan-interaction-handled-keys.test.tsx,
+    e2e/tests/keyboard-authoring.spec.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0155: Adopt the keyboard and command model as a target
@@ -268,3 +275,30 @@ No run with a real input method in a browser was made. The tests fire `keydown` 
   without a commit.
 
 That makes 49 tests in six files.
+
+## Update (2026-11-19): an entity proxy owns its Enter and Space
+
+Issue #906 found that one Enter on a focused entity proxy did two things under an authoring tool. The
+proxy selected the entity, and the authoring key listener dropped at the keyboard candidate. Under
+the Door tool that placed a door that the user did not ask for. With a pointer wall run open, the
+same Enter also ended the run.
+
+The proxy now owns the key. `EntityProxy` prevents the default when it selects. Two listeners skip an
+Enter or Space press whose default an element already prevented: the key listener of the keyboard
+tools (`listenForAuthoringKeys` in `editor/plan/use-plan-authoring.ts`) and the key listener of the
+pointer wall run (`useWallKeyboard` in `editor/plan/use-plan-interaction.ts`). The proxy and both
+listeners read the rule from `editor/plan/activation-keys.ts`.
+
+The rule covers only Enter and Space. The list of the proxies prevents the default of every Escape,
+and the `deselect` command does so while something is selected. Escape must still cancel an open wall
+run or measurement, so a handled Escape still reaches the tool. A handled arrow key still reaches it
+too. Issue #910 asks what it should do.
+
+One path of the same kind stays open. A focused button other than the chip of the armed tool does not
+own Enter. Under an authoring tool its Enter drops at the keyboard candidate, and the button does not
+activate. Issue #911 tracks it. Enter on the chip of the armed tool drops at the candidate by design.
+
+Tests: `editor/plan/use-plan-authoring-handled-keys.test.tsx` and
+`editor/plan/use-plan-interaction-handled-keys.test.tsx` go through the real listeners, the real
+proxy, and the real key handler of the list. Two journeys in `e2e/tests/keyboard-authoring.spec.ts`
+hold the Door tool case and the pointer wall run.
