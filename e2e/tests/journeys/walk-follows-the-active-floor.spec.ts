@@ -139,7 +139,14 @@ test("keeps the walker's view and reach when the upper floor becomes active mid-
 
   // The door is shut again, so that the comparison after the detour is between two views of a
   // shut door, as the comparison above.
-  await resetWithKey(page, canvas, doorOpen)
+  const shutAgain = await resetWithKey(page, canvas, doorOpen)
+  // This frame follows two changes of the view that the test saw (the door opened, the door shut),
+  // so it cannot be a frame from before the floor switch. It compares the walker's height on the
+  // upper floor with the ground floor view directly.
+  await expectSameView(page, 'same, the walker at the shut door after E and R on the upper floor', {
+    first: onGroundFloor,
+    second: shutAgain,
+  })
 
   // An orbit detour and a new walk resume the saved pose, which stands on the upper floor too.
   await enterOrbit(page)
