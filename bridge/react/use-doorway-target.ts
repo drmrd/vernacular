@@ -1,6 +1,14 @@
 import { useMemo } from 'react'
 
-import { openingKindOfType, type OpeningSceneNode } from '../../core'
+import {
+  FLOOR_NODE_PREFIX,
+  openingKindOfType,
+  type OpeningSceneNode,
+  type SceneGraph,
+} from '../../core'
+
+/** The part of the shown scene graph the doorway preset reads. */
+type ShownGraph = Pick<SceneGraph, 'openings' | 'nodes'>
 
 /**
  * The door the doorway camera preset frames, with what to call it in the interface.
@@ -15,6 +23,11 @@ export interface DoorwayTarget {
   name: string
   /** True when the user's own selection picked this door. */
   selected: boolean
+  /**
+   * The elevation of the door's own floor, read from the shown graph, so that the pose can
+   * lift the door's floor-local heights into the world. 0 when that floor is not listed.
+   */
+  floorElevationMm: number
 }
 
 /** An element type id as display text: 'single-swing-door' reads 'single swing door'. */
@@ -26,6 +39,12 @@ function isDoor(opening: OpeningSceneNode): boolean {
   return openingKindOfType(opening.type) === 'door'
 }
 
+/** The elevation of the opening's own floor in the shown graph; 0 when that floor is absent. */
+function floorElevationOf(shown: ShownGraph, opening: OpeningSceneNode): number {
+  const floorNodeId = `${FLOOR_NODE_PREFIX}${opening.floorId}`
+  return shown.nodes.find((node) => node.id === floorNodeId)?.elevation ?? 0
+}
+
 /**
  * The door the doorway preset frames: the one the user selected when that selection is a
  * door, and otherwise the first door in view order. Windows are excluded outright, a
@@ -33,16 +52,22 @@ function isDoor(opening: OpeningSceneNode): boolean {
  * which only reads as a doorway for a door, and the whole-building view stacks every floor
  * into one opening list, so taking the first opening unfiltered could plant the camera in
  * an upstairs window. A view with no door returns null, which is what disables the control.
+ * The target also carries the elevation of the chosen door's own floor, read from `shown`.
  */
 export function chooseDoorwayTarget(
-  openings: readonly OpeningSceneNode[],
+  shown: ShownGraph,
   selectedIds: ReadonlySet<string>,
 ): DoorwayTarget | null {
-  const doors = openings.filter(isDoor)
+  const doors = shown.openings.filter(isDoor)
   const selectedDoor = doors.find((door) => selectedIds.has(door.id))
   const opening = selectedDoor ?? doors[0]
   if (opening === undefined) return null
-  return { opening, name: humanizeType(opening.type), selected: selectedDoor !== undefined }
+  return {
+    opening,
+    name: humanizeType(opening.type),
+    selected: selectedDoor !== undefined,
+    floorElevationMm: floorElevationOf(shown, opening),
+  }
 }
 
 /**
@@ -50,8 +75,8 @@ export function chooseDoorwayTarget(
  * the plan is edited or the selection moves, and not on every unrelated render.
  */
 export function useDoorwayTarget(
-  openings: readonly OpeningSceneNode[],
+  shown: ShownGraph,
   selectedIds: ReadonlySet<string>,
 ): DoorwayTarget | null {
-  return useMemo(() => chooseDoorwayTarget(openings, selectedIds), [openings, selectedIds])
+  return useMemo(() => chooseDoorwayTarget(shown, selectedIds), [shown, selectedIds])
 }
