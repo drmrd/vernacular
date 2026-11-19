@@ -41,7 +41,7 @@ const WALK_RADIUS_MM = 250
 // Resumes the walk state (or seeds it from the camera the first time), takes control of the
 // camera, and wires the keyboard, click-to-capture, and pointer-look listeners. Starting a
 // walk poses no door: the opening motion hook poses each new scene root, and its per-frame
-// tick keeps the active floor's openings on the open set. An opening on a floor that was not
+// tick keeps every opening the view shows on the open set. An opening on a floor that was not
 // active when its scene was rebuilt is not posed when the user returns to that floor; a later
 // rebuild while that floor is active poses it, and the floor-scope follow-up work closes the
 // gap (recorded in ADR-0198). Movement keys act independently of pointer capture;
@@ -196,12 +196,7 @@ function useWalkSession(
   const { camera, domElement, floorElevationMm } = host
   const stateRef = useRef<WalkState>(initialWalkState(floorElevationMm))
   const inputRef = useRef<WalkInput>(emptyWalkInput())
-  const {
-    openings: openingsRef,
-    shownOpenings: shownOpeningsRef,
-    interaction: interactionRef,
-    openness: opennessRef,
-  } = openingRefs
+  const { openings: openingsRef, interaction: interactionRef, openness: opennessRef } = openingRefs
   const { savedWalkPoseRef, onWalkPoseRef } = useWalkPoseHandoff(savedWalkPose, onWalkPose)
   const onOpenDoorsRef = useRef(onOpenDoors)
   onOpenDoorsRef.current = onOpenDoors
@@ -214,7 +209,6 @@ function useWalkSession(
       state: stateRef,
       input: inputRef,
       openings: openingsRef,
-      shownOpenings: shownOpeningsRef,
       interaction: interactionRef,
       openness: opennessRef,
       onUserControl,
@@ -247,7 +241,7 @@ function useWalkSession(
  * reports the pose back, so the walk survives a view switch and a detour through orbit
  * (ADR-0170). The openings stay live in orbit mode too: useOpeningMotion has them follow
  * the doors the session store holds open and poses each new scene root, and the
- * per-frame tick swings the active floor's openings toward that set in either mode. A
+ * per-frame tick swings every opening the view shows toward that set in either mode. A
  * walk start poses nothing itself. An opening on a floor that was not active when its
  * scene was rebuilt is not posed when the user returns to that floor; a later rebuild
  * while that floor is active poses it, and the floor-scope follow-up work closes the gap

@@ -7,9 +7,8 @@ import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { sceneGraphForFloor, type OpeningInteractionState, type OpeningSceneNode } from '../../core'
 import type { SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
-import { useBuildingViewState } from './use-building-view-state'
 import { useSceneGraph } from './use-scene-graph'
-import { useViewSceneGraph } from './use-view-scene-graph'
+import { useShownSceneGraph } from './use-view-scene-graph'
 import { followStoredOpenings, restoreOpenings, tickOpenings } from './walk-interaction'
 
 /**
@@ -44,10 +43,7 @@ function useActiveFloorOpenings(): OpeningSceneNode[] {
 // graph it builds, so the list always matches the root: the active floor's openings in the floor
 // view, and every visible floor's openings in the whole-building view.
 function useShownOpenings(): OpeningSceneNode[] {
-  const rawGraph = useSceneGraph()
-  const activeFloorId = useActiveFloorId()
-  const buildingView = useBuildingViewState()
-  return useViewSceneGraph(rawGraph, activeFloorId, buildingView).openings
+  return useShownSceneGraph().openings
 }
 
 // Holds the opening refs. The open/closed state follows the doors the session store holds
@@ -59,8 +55,9 @@ function useFollowedOpenings(storedOpenDoorIds: ReadonlySet<string>): OpeningMot
   const openings = useActiveFloorOpenings()
   const openingsRef = useRef<OpeningSceneNode[]>(openings)
   openingsRef.current = openings
-  const shownOpeningsRef = useRef<OpeningSceneNode[]>([])
-  shownOpeningsRef.current = useShownOpenings()
+  const shownOpenings = useShownOpenings()
+  const shownOpeningsRef = useRef<OpeningSceneNode[]>(shownOpenings)
+  shownOpeningsRef.current = shownOpenings
   const interactionRef = useRef<OpeningInteractionState>({ openIds: new Set(storedOpenDoorIds) })
   const opennessRef = useRef<Map<string, number>>(new Map())
   useEffect(() => {

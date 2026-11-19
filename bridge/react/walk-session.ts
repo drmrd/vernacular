@@ -98,8 +98,9 @@ export function initialWalkState(floorElevationMm: number): WalkState {
 }
 
 // The refs a walk advances: the walker's pose and held input, plus the opening refs
-// useOpeningMotion owns. A session starts them and the frame loop steps the same refs.
-export interface WalkRefs extends OpeningMotionRefs {
+// useOpeningMotion owns. A session starts them and the frame loop steps the same refs. The
+// list of shown openings stays with the frame tick, so a session does not take it.
+export interface WalkRefs extends Omit<OpeningMotionRefs, 'shownOpenings'> {
   state: RefObject<WalkState>
   input: RefObject<WalkInput>
 }
