@@ -30,8 +30,10 @@ import {
 import type { TestPorts } from '../handle/handle-test-kit'
 import { importFile } from './import-file'
 import type { ImportedFile } from './import-file'
+import { switchProject } from './switch-project'
 
 const CURRENT_ID = 'a'
+const OTHER_ID = 'b'
 const IMPORTED_NAME = 'Imported house'
 
 /** The bytes of a .building archive of the project, as an export of it writes them. */
@@ -234,5 +236,38 @@ describe('an import whose saves fail', () => {
 
     expect(handle.saveStatus()).toBe('error')
     expect((await ports.workspace.storedFiles(handle.id)).size).toBe(0)
+  })
+})
+
+describe('an import whose copy was not stored', () => {
+  async function importWithFailingSave() {
+    const ports = createTestPorts()
+    await placeDocument(ports, OTHER_ID, currentBytes())
+    const realSave = ports.workspace.save.bind(ports.workspace)
+    failSaves(ports.workspace)
+    const copy = handleOf(await importFile(ports, undefined, jsonFile()))
+    const storeWorksAgain = () => {
+      ports.workspace.save = realSave
+    }
+    return { ports, copy, storeWorksAgain }
+  }
+
+  it('blocks the next switch with flush-failed, and the copy stays open', async () => {
+    const { ports, copy } = await importWithFailingSave()
+
+    const result = await switchProject(ports, copy, workspaceRequest(OTHER_ID))
+
+    expect(result).toEqual({ ok: false, failure: { kind: 'flush-failed' } })
+    expect(await ports.locks.heldIds()).toEqual(new Set([copy.id]))
+    expect(copy.saveStatus()).toBe('error')
+  })
+
+  it('stores the copy at the next switch once the store works again', async () => {
+    const { ports, copy, storeWorksAgain } = await importWithFailingSave()
+    storeWorksAgain()
+
+    handleOf(await switchProject(ports, copy, workspaceRequest(OTHER_ID)))
+
+    expect(await storedName(ports.workspace, copy.id)).toBe(IMPORTED_NAME)
   })
 })

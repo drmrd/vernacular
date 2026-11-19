@@ -38,17 +38,6 @@ afterEach(() => {
 })
 
 describe('a new project with no project open', () => {
-  it('a new project gets a new id from newProjectId, and two calls give two ids', async () => {
-    const ports = createTestPorts()
-
-    const first = handleOf(await createNewProject(ports, undefined, soundProject))
-    const second = handleOf(await createNewProject(ports, first, soundProject))
-
-    expect(isValidProjectId(first.id)).toBe(true)
-    expect(isValidProjectId(second.id)).toBe(true)
-    expect(second.id).not.toBe(first.id)
-  })
-
   it('nothing is stored before the first save', async () => {
     const ports = createTestPorts()
 
@@ -82,6 +71,17 @@ describe('a new project with no project open', () => {
 })
 
 describe('a new project with a project open', () => {
+  it('a new project gets a new id from newProjectId, and two calls give two ids', async () => {
+    const ports = createTestPorts()
+
+    const first = handleOf(await createNewProject(ports, undefined, soundProject))
+    const second = handleOf(await createNewProject(ports, first, soundProject))
+
+    expect(isValidProjectId(first.id)).toBe(true)
+    expect(isValidProjectId(second.id)).toBe(true)
+    expect(second.id).not.toBe(first.id)
+  })
+
   it('a project with an unsaved edit is switched with no question, and the edit is stored', async () => {
     const ports = createTestPorts()
     const current = await openCurrent(ports)

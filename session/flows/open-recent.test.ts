@@ -89,6 +89,16 @@ describe('a recent project of the workspace', () => {
     expect(await storedName(ports.workspace, CURRENT_ID)).toBe(storedBefore)
   })
 
+  it('the current id asks the folder access for no permission', async () => {
+    const ports = createTestPorts()
+    const current = await openCurrent(ports)
+    const permission = vi.spyOn(ports.folders, 'permission')
+
+    await openRecent(ports, current, CURRENT_ID)
+
+    expect(permission).not.toHaveBeenCalled()
+  })
+
   it('a folder access that rejects its permission counts as no folder', async () => {
     const ports = createTestPorts()
     await placeDocument(ports, CURRENT_ID, currentBytes())
@@ -132,6 +142,20 @@ describe('a recent project in a folder', () => {
 
     expect(handle.session.getProject().meta.name).toBe(FOLDER_PROJECT_NAME)
     expect(reopen).toHaveBeenCalledWith(FOLDER_ID)
+  })
+
+  it('a request for access that rejects gives storage-unavailable with the message', async () => {
+    const ports = createTestPorts()
+    await rememberProjectFolder(ports)
+    ports.folders.setPermission(FOLDER_ID, 'prompt')
+    vi.spyOn(ports.folders, 'reopen').mockRejectedValue(new Error('The prompt failed'))
+
+    const result = await openRecent(ports, undefined, FOLDER_ID)
+
+    expect(result).toEqual({
+      ok: false,
+      failure: { kind: 'storage-unavailable', message: 'The prompt failed' },
+    })
   })
 
   it('a folder whose access is denied gives folder-permission', async () => {

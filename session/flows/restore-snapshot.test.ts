@@ -163,6 +163,25 @@ describe('a restore and the writes of the current handle', () => {
     expect(await saving).toEqual({ ok: true })
     expect(handleOf(await restoring).id).toBe(PROJECT_ID)
   })
+
+  it('the saves of a restore during a running save are stored in order, the restored document last', async () => {
+    const { ports, handle: current } = await openStored()
+    await snapshotRecovered(current)
+    const names = savedNames(ports)
+    const gate = gateSaves(ports.workspace)
+    rename(current, 'Saved while the restore starts')
+    const saving = current.save()
+
+    const restoring = restoreSnapshot(current)
+    await settle()
+    gate.endOldestSave()
+    await settle()
+    gate.endOldestSave()
+    await settle()
+    await Promise.all([saving, restoring])
+
+    expect(names).toEqual(['Saved while the restore starts', RECOVERED_NAME])
+  })
 })
 
 describe('a restore that is refused', () => {

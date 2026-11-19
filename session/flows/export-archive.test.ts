@@ -156,6 +156,18 @@ describe('an export of the open project', () => {
   })
 })
 
+describe('an export of a closed handle', () => {
+  it('still exports the project of its session', async () => {
+    const { handle } = await openStored()
+    rename(handle, 'Named before the close')
+    await handle.close()
+
+    const archive = exportedBytes(await exportArchive(handle))
+
+    expect((await documentIn(archive)).meta.name).toBe('Named before the close')
+  })
+})
+
 describe('the assets of an export', () => {
   it('an asset of the pool that the project refers to is in the archive', async () => {
     const { handle } = await openWithAssets()

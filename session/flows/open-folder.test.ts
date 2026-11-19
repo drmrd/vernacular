@@ -5,6 +5,7 @@ import { currentBytes } from '../../tests/storage/conformance/conformance-docume
 import {
   DOCUMENT_FILE,
   createTestPorts,
+  failSaves,
   handleOf,
   openOrThrow,
   pickFolder,
@@ -175,5 +176,74 @@ describe('a folder that does not open', () => {
       ok: false,
       failure: { kind: 'storage-unavailable', message: 'The picker failed' },
     })
+  })
+})
+
+describe('a folder flow whose folder access fails', () => {
+  it('a remember that rejects gives storage-unavailable', async () => {
+    const ports = createTestPorts()
+    pickFolder(ports, await folderWithDocument())
+    vi.spyOn(ports.folders, 'remember').mockRejectedValue(new Error('The handle store failed'))
+
+    const result = await openFolder(ports, undefined)
+
+    expect(result).toEqual({
+      ok: false,
+      failure: { kind: 'storage-unavailable', message: 'The handle store failed' },
+    })
+  })
+
+  it('a forget that rejects after folder-empty still gives folder-empty', async () => {
+    const ports = createTestPorts()
+    pickFolder(ports, new InMemoryDirectory())
+    vi.spyOn(ports.folders, 'forget').mockRejectedValue(new Error('The handle store failed'))
+
+    const result = await openFolder(ports, undefined)
+
+    expect(result).toEqual(FOLDER_EMPTY)
+  })
+
+  it('a forget that rejects after folder-empty is logged once', async () => {
+    const ports = createTestPorts()
+    pickFolder(ports, new InMemoryDirectory())
+    vi.spyOn(ports.folders, 'forget').mockRejectedValue(new Error('The handle store failed'))
+
+    await openFolder(ports, undefined)
+
+    expect(console.error).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('a folder opened over a current project whose flush fails', () => {
+  async function openFolderOverFailingFlush() {
+    const ports = createTestPorts()
+    const current = await openCurrent(ports)
+    const realSave = ports.workspace.save.bind(ports.workspace)
+    failSaves(ports.workspace)
+    rename(current, 'Edited before the failed Open folder')
+    const picked = pickFolder(ports, await folderWithDocument())
+    const result = await openFolder(ports, current)
+    const storeWorksAgain = () => {
+      ports.workspace.save = realSave
+    }
+    return { ports, current, picked, result, storeWorksAgain }
+  }
+
+  it('gives flush-failed and keeps the folder remembered', async () => {
+    const { ports, picked, result } = await openFolderOverFailingFlush()
+
+    expect(result).toEqual({ ok: false, failure: { kind: 'flush-failed' } })
+    expect(await ports.folders.findKnown(picked)).toEqual(expect.any(String))
+  })
+
+  it('a retry once the store works again opens the same id', async () => {
+    const { ports, current, picked, storeWorksAgain } = await openFolderOverFailingFlush()
+    const rememberedId = await ports.folders.findKnown(picked)
+    storeWorksAgain()
+    ports.folders.pickNext(picked)
+
+    const handle = handleOf(await openFolder(ports, current))
+
+    expect(handle.id).toBe(rememberedId)
   })
 })
