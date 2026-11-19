@@ -130,3 +130,52 @@ describe('useOpeningMotion in the floor view across a return to a floor', () => 
     expect(fillGroupPose(rootB, env.doorBId)).toEqual(openPoseB)
   })
 })
+
+describe('useOpeningMotion when the scope or the shown floors change', () => {
+  it('shows a door reset in the floor view as shut when the view switches to the whole building', () => {
+    const env = twoFloorEnvironment('floor')
+    act(() => env.activeFloor.setActiveFloorId(FLOOR_B_ID))
+    const shutPoseB = shutPoseOf(env, env.doorBId)
+    const rootB = env.buildRoot()
+    const openStored = new Set([env.doorBId])
+    const { result, rerender } = renderMotion(env, { root: rootB, stored: openStored })
+    tickOpeningMotion(rootB, result.current, FULL_STEP)
+    act(() => env.activeFloor.setActiveFloorId(FLOOR_A_ID))
+    const rootA = env.buildRoot()
+    rerender({ root: rootA, stored: openStored })
+    rerender({ root: rootA, stored: new Set() })
+    act(() => env.sceneSession.updateSceneSession({ scope: 'building' }))
+
+    // The new shown list can reach the hook before the new root does, as across the canvas boundary.
+    rerender({ root: rootA, stored: new Set() })
+    expect(() => tickOpeningMotion(rootA, result.current, FULL_STEP / 10)).not.toThrow()
+    const building = env.buildRoot()
+    rerender({ root: building, stored: new Set() })
+
+    expect(fillGroupPose(building, env.doorBId)).toEqual(shutPoseB)
+  })
+
+  it('seats a door that leaves the view part way through its swing at its target, so it shows there with no swing when its floor returns', () => {
+    const env = twoFloorEnvironment('floor')
+    env.activeFloor.setActiveFloorId(FLOOR_B_ID)
+    const openRoot = env.buildRoot()
+    seatDoorOpenOnRoot(env, openRoot, { floorId: FLOOR_B_ID, doorId: env.doorBId })
+    const openPoseB = fillGroupPose(openRoot, env.doorBId)
+    const rootB = env.buildRoot()
+    const stored = new Set([env.doorBId])
+    const { result, rerender } = renderMotion(env, { root: rootB, stored: new Set() })
+    rerender({ root: rootB, stored })
+    tickOpeningMotion(rootB, result.current, FULL_STEP / 10)
+    const midOpenness = result.current.openness.current.get(env.doorBId)
+    expect(midOpenness).toBeGreaterThan(0)
+    expect(midOpenness).toBeLessThan(1)
+
+    act(() => env.activeFloor.setActiveFloorId(FLOOR_A_ID))
+    rerender({ root: env.buildRoot(), stored })
+    act(() => env.activeFloor.setActiveFloorId(FLOOR_B_ID))
+    rerender({ root: rootB, stored })
+
+    expect(fillGroupPose(rootB, env.doorBId)).toEqual(openPoseB)
+    expect(result.current.openness.current.get(env.doorBId)).toBe(1)
+  })
+})
