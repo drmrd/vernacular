@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { drawnSceneCanvas, stableFrame } from './scene-helpers'
 
 // Exercises the live three-dimensional pane's navigation (orbit drag and walk keys).
@@ -14,6 +15,7 @@ import { drawnSceneCanvas, stableFrame } from './scene-helpers'
 test.describe('Live three-dimensional navigation', () => {
   test('orbit drag changes the settled frame', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
@@ -35,6 +37,7 @@ test.describe('Live three-dimensional navigation', () => {
 
   test('a walk movement key changes the settled frame', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 

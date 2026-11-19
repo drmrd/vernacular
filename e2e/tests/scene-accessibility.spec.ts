@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { drawnRoomCanvas, stableFrame } from './scene-helpers'
 
 // Exercises the live three-dimensional pane's keyboard and screen-reader proxy layer. Runs
@@ -13,6 +14,7 @@ import { drawnRoomCanvas, stableFrame } from './scene-helpers'
 test.describe('Live three-dimensional accessibility', () => {
   test('selecting an entity through a keyboard proxy outlines it', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 

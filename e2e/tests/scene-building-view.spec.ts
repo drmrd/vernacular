@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 
 import { drawnRoomCanvas } from './scene-helpers'
 
@@ -15,6 +16,7 @@ test.describe('Whole-building 3D view controls', () => {
     page,
   }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 

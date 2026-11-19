@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { drawnSceneCanvas, stableFrame } from './scene-helpers'
 
 // Exercises the live three-dimensional pane's color-temperature slider. Runs only in
@@ -14,6 +15,7 @@ import { drawnSceneCanvas, stableFrame } from './scene-helpers'
 test.describe('Live three-dimensional color temperature', () => {
   test('the color-temperature slider changes the settled frame', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 

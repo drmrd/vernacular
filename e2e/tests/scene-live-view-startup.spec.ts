@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { guardLiveSceneSupport } from './live-webgpu'
 
 // Issue #733: the live three-dimensional pane shows a drawn wall, also when the scene view
@@ -230,6 +231,7 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
   }) => {
     const startUp = await holdRendererStartUp(page)
     await page.goto('/')
+    await webFontsSettled(page)
     await skipWithoutNavigatorGpu(page)
 
     const canvas = await openSplitViewDuringHeldStartUp(page, startUp, () =>
@@ -243,6 +245,7 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
   }) => {
     const startUp = await holdRendererStartUp(page)
     await page.goto('/')
+    await webFontsSettled(page)
     await skipWithoutNavigatorGpu(page)
 
     const canvas = await openSplitViewDuringHeldStartUp(page, startUp, async () => {})
@@ -254,6 +257,7 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
   }) => {
     await holdAdapterRequests(page)
     await page.goto('/')
+    await webFontsSettled(page)
     await skipWithoutNavigatorGpu(page)
 
     const canvas = await openSplitViewDuringHeldStartUp(page, heldAdapterRequests(page), () =>

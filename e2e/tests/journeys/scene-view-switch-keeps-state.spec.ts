@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { webFontsSettled } from './support'
 import {
   captureLiveFrame,
   liveSceneCanvas,
@@ -123,6 +124,7 @@ async function expectKeptFrame(
 // the room. That frame differs from the empty floor, so the pane has drawn the room.
 async function openDrawnRoom(page: Page): Promise<NamedFrame> {
   await page.goto('/')
+  await webFontsSettled(page)
   const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
   test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
