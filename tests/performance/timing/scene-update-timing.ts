@@ -18,12 +18,15 @@ export interface SceneUpdateBench {
   lastScene(): FramedScene | undefined
 }
 
+// The building scope does not use the active floor; the scoping function still needs the argument.
 const ACTIVE_FLOOR_ID = 'floor-1'
 
 /**
  * A bench on the given session (a new reference session by default). It keeps the session and
  * one reconciler for its whole life, so the reconciler cache stays warm between samples. The
- * reconcile scopes the scene graph to the whole building, as the live view does.
+ * reconcile covers the whole building with the underground shown, not the live view's default
+ * floor scope, because the budget of the design specification covers the whole project and the
+ * count gate reconciles the building too.
  */
 export function createSceneUpdateBench(
   session: EditorSession = createReferenceSession(),
@@ -70,6 +73,9 @@ export interface SceneUpdateTiming {
  * the scoping to the building, and the reconciler's rebuild of the changed groups. Outside it:
  * React's render and commit of the live view, the attach of a new root, the GPU upload of new
  * buffers, and the undo with its reconcile that resets the document for the next sample.
+ *
+ * The bench gives the reconciler no furniture model lookup, so furniture is built as boxes, as
+ * the count gate does; a project with loaded furniture models would do more work there.
  */
 export function timeSceneUpdate(timing: SceneUpdateTiming): number[] {
   const { bench, commands, counts, now } = timing
