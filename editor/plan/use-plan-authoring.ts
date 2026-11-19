@@ -190,30 +190,33 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
   )
 }
 
-// Keyboard runs and their announcement do not outlive the tool they began under.
-// The setters and the callback are stable, so each effect runs on a change of
-// tool and one time at mount, where it changes nothing.
+// Keyboard runs and their announcement do not outlive the tool and the floor
+// they began under. The setters and the callback are stable, so each effect runs
+// on a change of tool or floor and one time at mount, where it changes nothing.
 
 // A run left open would continue, unseen, when the tool is armed again.
 // `useDiscardOnLeave` in `use-dimension-tool.ts` does the same for the pointer
 // half of the dimension tool.
 function useDiscardKeyboardRuns(
-  { tool }: RunScope,
+  { tool, activeFloorId }: RunScope,
   setWallState: (state: WallToolState) => void,
   setDimensionState: (state: DimensionToolState) => void,
 ): void {
   useEffect(() => {
     setWallState(IDLE_WALL_TOOL)
     setDimensionState(IDLE_DIMENSION_TOOL)
-  }, [tool, setWallState, setDimensionState])
+  }, [tool, activeFloorId, setWallState, setDimensionState])
 }
 
 // A sentence that stays would make the first vertex of the next run write the
 // same text, and a screen reader does not speak text that did not change.
-function useClearKeyboardAnnouncement({ tool }: RunScope, clearAnnouncement: () => void): void {
+function useClearKeyboardAnnouncement(
+  { tool, activeFloorId }: RunScope,
+  clearAnnouncement: () => void,
+): void {
   useEffect(() => {
     clearAnnouncement()
-  }, [tool, clearAnnouncement])
+  }, [tool, activeFloorId, clearAnnouncement])
 }
 
 /**
