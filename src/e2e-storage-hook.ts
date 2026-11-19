@@ -6,6 +6,7 @@ import {
   IndexedDbRecentProjectStore,
   OpfsProjectStore,
   WebLocksProjectLockPort,
+  originPrivateRoot,
   type DirectoryPort,
 } from '../storage'
 
@@ -145,7 +146,7 @@ async function plantRecoverySnapshot(): Promise<boolean> {
 
 // The OPFS root the durable project store keeps each project's folder in.
 async function opfsRoot(): Promise<DirectoryPort> {
-  return new FileSystemDirectory(await navigator.storage.getDirectory())
+  return new FileSystemDirectory(await originPrivateRoot())
 }
 
 // Plants a project written by a newer build at the production project's OPFS

@@ -29,6 +29,8 @@ export type { StorageCapabilities, StorageProbeHost } from './storage-capabiliti
 export type { SettingsPort } from './settings/settings-port'
 export { InMemorySettingsPort } from './settings/in-memory-settings-port'
 export { LocalStorageSettingsPort } from './settings/local-storage-settings-port'
+export { originPrivateRoot } from './opfs/origin-private-root'
+export { opfsUsable } from './opfs/opfs-probe'
 export { registerServiceWorker } from './service-worker/register-service-worker'
 export type {
   ServiceWorkerContainerLike,

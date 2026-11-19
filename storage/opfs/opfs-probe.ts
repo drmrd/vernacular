@@ -1,3 +1,5 @@
+import { originPrivateRoot } from './origin-private-root'
+
 /**
  * Capability probing only feature-detects the OPFS API surface, but some hosts
  * expose `getDirectory` as a function while rejecting at call time (notably some
@@ -7,7 +9,7 @@
  */
 export async function opfsUsable(): Promise<boolean> {
   try {
-    await navigator.storage.getDirectory()
+    await originPrivateRoot()
     return true
   } catch {
     return false

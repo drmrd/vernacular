@@ -1,11 +1,11 @@
 import {
   createDefaultProjectStorage,
   createOpfsProjectStorage,
+  opfsUsable,
   probeStorageCapabilities,
   selectProjectStoreBackend,
   type ProjectStorage,
 } from '../storage'
-import { opfsUsable } from './opfs-probe'
 
 /**
  * Probe storage capabilities once and construct the durable {store, assets} pair
