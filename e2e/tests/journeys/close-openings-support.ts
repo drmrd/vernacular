@@ -45,7 +45,7 @@ export function liveCanvas(page: Page): Locator {
 }
 
 // Draws the closed room in the plan, then puts a door and a window on the north wall.
-async function drawRoomWithOpenings(page: Page): Promise<void> {
+export async function drawRoomWithOpenings(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Split view' }).click()
   const plan = page.getByLabel('Floor plan')
   await expect(plan).toBeVisible()
