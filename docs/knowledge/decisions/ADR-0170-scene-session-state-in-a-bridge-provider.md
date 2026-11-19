@@ -38,7 +38,7 @@ sourceFiles:
     e2e/tests/journeys/scene-view-switch-keeps-state.spec.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0170: Scene session state moves into a bridge-owned provider

@@ -279,12 +279,12 @@ height too.
 
 Each walk step seats the pose at the active floor's elevation plus the eye
 height before it moves the walker, and a resumed pose is seated the same way.
-The plan position, the heading, and the pitch stay, and the walk keeps running
-with its pointer capture. If the new floor has a wall where the walker stands,
-collision pushes the walker out on the next step. If no room is under the
-walker, the walker stands beside the building, as a walker on the ground floor
-can. The rule holds in the floor view and in the whole-building view, because
-the walk follows the active floor in both.
+The plan position, the heading, and the pitch stay, and the walk session does
+not restart. If the new floor has a wall where the walker stands, collision
+pushes the walker out on the next step. If no room of the new floor is under the
+walker, the walker stands outside that floor's rooms, at that floor's height.
+The rule holds in the floor view and in the whole-building view, because the
+walk follows the active floor in both.
 
 Three of these choices are working assumptions that the project owner has not
 decided: the plan position stays, the walk goes on across a change of floor, and
