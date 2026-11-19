@@ -1,5 +1,6 @@
 import type { Project } from '../../core'
 import { callGuarded } from '../guarded-call'
+import { createWriteQueue, type WriteQueue } from '../handle/write-queue'
 import type { AutosaveConfig, AutosaveStatus } from './create-autosave'
 
 const noop = (): void => {}
@@ -32,17 +33,65 @@ export function hasUnwrittenChange(progress: WriteProgress): boolean {
   return progress.changes !== progress.storedChanges
 }
 
+/** Saves the project, then gives what the save found to the report callback, guarded. */
+async function saveAndReport(config: AutosaveConfig, project: Project): Promise<void> {
+  const report = await config.store.save(config.projectId, project)
+  const { onReport } = config
+  callGuarded(() => onReport?.(report))
+}
+
+/** The write queue of an autosave, which also knows the promise of the last write asked for. */
+export interface TrackedWriteQueue extends WriteQueue {
+  /** The promise of the last write asked for, while it has not settled; otherwise undefined. */
+  latest(): Promise<void> | undefined
+}
+
+/** A write queue around `write` that remembers the last write asked for until it settles. */
+export function createTrackedWriteQueue(write: () => Promise<void>): TrackedWriteQueue {
+  const queue = createWriteQueue(write)
+  let latest: Promise<void> | undefined
+  return {
+    request() {
+      const requested = queue.request()
+      latest = requested
+      const forget = (): void => {
+        if (latest === requested) {
+          latest = undefined
+        }
+      }
+      requested.then(forget, forget)
+      return requested
+    },
+    latest: () => latest,
+  }
+}
+
+/**
+ * Writes an unsaved change now, or waits for the writes that run or wait. It asks for a write only
+ * when a change is unsaved and no running write started after it; a write that already waits is
+ * the one the queue gives. It rejects with the error of the last write, and at once after dispose.
+ */
+export function flushWrites(queue: TrackedWriteQueue, progress: WriteProgress): Promise<void> {
+  if (progress.disposed) {
+    return Promise.reject(new Error(AUTOSAVE_DISPOSED_MESSAGE))
+  }
+  if (hasUnwrittenChange(progress)) {
+    return queue.request()
+  }
+  return queue.latest() ?? Promise.resolve()
+}
+
 /** Writes ahead to a snapshot when snapshots are set, saves, then prunes. */
 async function storeProject(config: AutosaveConfig, project: Project): Promise<void> {
-  const { store, projectId, snapshots } = config
+  const { snapshots } = config
   if (snapshots === undefined) {
-    await store.save(projectId, project)
+    await saveAndReport(config, project)
     return
   }
   // A crash during the save still finds the edit in the snapshot. The prune runs only after the
   // save resolved, so a failed save leaves the snapshot.
   await snapshots.writeSnapshot(project)
-  await store.save(projectId, project)
+  await saveAndReport(config, project)
   await snapshots.prune()
 }
 

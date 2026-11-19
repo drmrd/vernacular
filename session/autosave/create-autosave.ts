@@ -1,11 +1,12 @@
 import type { Project } from '../../core'
-import type { ProjectStore } from '../../storage'
+import type { ProjectStore, SaveReport } from '../../storage'
 import type { EditorSession } from '../editor-session/editor-session'
-import { createWriteQueue } from '../handle/write-queue'
 import {
   createAutosaveWrite,
   createStatusReporter,
+  createTrackedWriteQueue,
   createWriteProgress,
+  flushWrites,
   hasUnwrittenChange,
 } from './autosave-write'
 
@@ -41,25 +42,32 @@ export interface AutosaveConfig extends AutosaveOptions {
   /** Called after a write that succeeded, with the revision read when that write started. Not
    *  called when the write fails. */
   onSaved?: (savedRevision: number) => void
+  /** Called each time a store save resolves, with what the save found. */
+  onReport?: (report: SaveReport) => void
 }
 
 export interface Autosave {
   /** Cancels the wait and asks for a write now, also when nothing changed. Resolves when a write
    *  that started after this call has ended, and rejects with that write's error. */
   save(): Promise<void>
+  /** Cancels the wait. Asks for a write only when a change is unsaved, no running write started
+   *  after it, and no write waits. Resolves when the writes that run or wait have ended, and
+   *  rejects with the error of the last of them. With nothing unsaved and no write, it resolves at
+   *  once and calls no store method. It rejects after dispose. */
+  flush(): Promise<void>
   /** Ends the session subscription and the wait. A write that waits never starts. */
   dispose(): void
 }
 
 /**
- * Stores the project of the session a moment after each change. Every write, of the timer or of
- * `save()`, goes through one queue, so two saves never run together and the last state wins.
+ * Stores the project of the session a moment after each change. Every write, of the timer, of
+ * `save()`, or of `flush()`, goes through one queue, so two saves never run together and the last state wins.
  */
 export function createAutosave(config: AutosaveConfig): Autosave {
   const delayMs = config.delayMs ?? DEFAULT_AUTOSAVE_DELAY_MS
   const report = createStatusReporter(config)
   const progress = createWriteProgress()
-  const queue = createWriteQueue(createAutosaveWrite(config, progress))
+  const queue = createTrackedWriteQueue(createAutosaveWrite(config, progress))
   let timer: ReturnType<typeof setTimeout> | undefined
 
   const cancelWait = (): void => {
@@ -89,6 +97,10 @@ export function createAutosave(config: AutosaveConfig): Autosave {
     save() {
       cancelWait()
       return queue.request()
+    },
+    flush() {
+      cancelWait()
+      return flushWrites(queue, progress)
     },
     dispose() {
       progress.disposed = true

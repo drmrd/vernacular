@@ -1,4 +1,5 @@
 import type { ProjectLockHold } from '../../storage'
+import { callGuardedAsync } from '../guarded-call'
 import type { SessionPorts } from '../ports'
 import { createDocumentHandle, type DocumentHandleParts } from './document-handle'
 import { findDocumentStore } from './find-document-store'
@@ -18,15 +19,6 @@ async function takeLock(ports: SessionPorts, id: string): Promise<TakenLock> {
     return { ok: true, hold }
   } catch (error) {
     return storageUnavailable(error)
-  }
-}
-
-/** Frees a lock that an open took and did not use. A release that fails goes to the console. */
-async function releaseUnused(hold: ProjectLockHold): Promise<void> {
-  try {
-    await hold.release()
-  } catch (error) {
-    console.error(error)
   }
 }
 
@@ -62,7 +54,8 @@ export async function openDocumentHandle(
   }
   const result = await openUnderLock({ request, store: found.store, hold: lock.hold })
   if (!result.ok) {
-    await releaseUnused(lock.hold)
+    // A release that fails goes to the console; the open still reports its own failure.
+    await callGuardedAsync(() => lock.hold.release())
   }
   return result
 }
