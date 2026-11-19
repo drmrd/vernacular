@@ -1,6 +1,6 @@
 import { useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
-import { drawOnNextRendererFrame, type AnimationLoopRenderer } from '../../engine'
+import { drawOnNextRendererFrame } from '../../engine'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   frontDirection,
@@ -15,8 +15,12 @@ import { ADJACENT_ROOMS_CAMERA_POSE } from './adjacent-rooms-fixture'
 import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
+import {
+  harnessReadyProps,
+  type HarnessReadyFrame,
+  type HarnessRenderer,
+} from './scene-harness-ready-frame'
 import { harnessStateKey } from './scene-harness-state-key'
-import { SCENE_READY_ATTRIBUTE } from './scene-readiness'
 import { SceneLighting } from './scene-lighting'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
@@ -55,10 +59,10 @@ interface HarnessFraming {
 // ready frame; drawnReadyFrame: that frame was drawn in the renderer's animation loop.
 interface HarnessReadiness {
   harnessReady: boolean
-  drawnReadyFrame: boolean
+  drawnReadyFrame: HarnessReadyFrame | null
   handleLightingReady: () => void
   handleAmbientOcclusionSettled: () => void
-  handleReadyFrameDrawn: () => void
+  handleReadyFrameDrawn: (frame: HarnessReadyFrame) => void
 }
 
 function StaticFrame({
@@ -87,9 +91,12 @@ function StaticFrame({
     else applyCameraPose(camera, cameraOverride)
     // gl is typed as the scene library's own renderer, which does not declare the
     // animation-loop accessors the WebGPU renderer has, hence the double cast.
-    return drawOnNextRendererFrame(gl as unknown as AnimationLoopRenderer, () => {
+    const renderer = gl as unknown as HarnessRenderer
+    return drawOnNextRendererFrame(renderer, () => {
       renderFrame(gl, scene, camera)
-      if (harnessReady) handleReadyFrameDrawn()
+      // The renderer reset both counts at the start of this callback, so they are this frame's.
+      const { frameCalls, drawCalls } = renderer.info.render
+      if (harnessReady) handleReadyFrameDrawn({ renderCalls: frameCalls, drawCalls })
     })
   }, [
     renderFrame,
@@ -233,8 +240,11 @@ function useHarnessReadiness(ambientOcclusionActive: boolean): HarnessReadiness 
   const { lightingReady, handleLightingReady } = useHarnessLightingReadiness()
   const { ambientOcclusionSettled, handleAmbientOcclusionSettled } =
     useHarnessAmbientOcclusionReadiness()
-  const [drawnReadyFrame, setDrawnReadyFrame] = useState(false)
-  const handleReadyFrameDrawn = useCallback(() => setDrawnReadyFrame(true), [])
+  const [drawnReadyFrame, setDrawnReadyFrame] = useState<HarnessReadyFrame | null>(null)
+  const handleReadyFrameDrawn = useCallback(
+    (frame: HarnessReadyFrame) => setDrawnReadyFrame(frame),
+    [],
+  )
   const harnessReady = lightingReady && (!ambientOcclusionActive || ambientOcclusionSettled)
   return {
     harnessReady,
@@ -285,7 +295,7 @@ function HarnessStage({
   return (
     <div
       data-testid="scene-harness"
-      {...{ [SCENE_READY_ATTRIBUTE]: readiness.drawnReadyFrame ? 'true' : 'false' }}
+      {...harnessReadyProps(readiness.drawnReadyFrame)}
       style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}
     >
       <SceneRendererCanvas
