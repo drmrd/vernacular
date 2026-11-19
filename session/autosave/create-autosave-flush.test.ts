@@ -32,6 +32,14 @@ async function storedFloorCount(store: InMemoryProjectStore): Promise<number> {
   return read.value.project.floors.length
 }
 
+/** Whether `promise` resolved or rejected, once it has settled. */
+function settledAs(promise: Promise<void>): Promise<'resolved' | 'rejected'> {
+  return promise.then(
+    () => 'resolved',
+    () => 'rejected',
+  )
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
 })
@@ -84,6 +92,50 @@ describe('flush() of createAutosave', () => {
     await settle()
     expect(flushed).toBe(true)
     expect(gate.started()).toBe(1)
+    autosave.dispose()
+  })
+
+  it('flush() after dispose() rejects', async () => {
+    const { autosave } = setUp()
+    autosave.dispose()
+
+    expect(await settledAs(autosave.flush())).toBe('rejected')
+  })
+})
+
+describe('flush() of createAutosave after a write that failed', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  })
+
+  it('flush() after a failed save() with no change asks for a write again', async () => {
+    const { store, autosave } = setUp()
+    const save = vi.spyOn(store, 'save').mockRejectedValueOnce(new Error('disk full'))
+    expect(await settledAs(autosave.save())).toBe('rejected')
+
+    const flushed = settledAs(autosave.flush())
+    await settle()
+
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(await flushed).toBe('resolved')
+    autosave.dispose()
+  })
+
+  it('flush() resolves when an earlier write fails and the later write it waits for succeeds', async () => {
+    const { session, store, autosave } = setUp()
+    const gate = gateSaves(store)
+    session.dispatch(addFloor('Ground'))
+    await vi.advanceTimersByTimeAsync(DELAY_MS)
+    session.dispatch(addFloor('Upper'))
+    const flushed = settledAs(autosave.flush())
+
+    await settle()
+    gate.endOldestSave(new Error('disk full'))
+    await settle()
+    gate.endOldestSave()
+
+    expect(await flushed).toBe('resolved')
+    expect(await storedFloorCount(store)).toBe(2)
     autosave.dispose()
   })
 })

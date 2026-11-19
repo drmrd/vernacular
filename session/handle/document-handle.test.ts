@@ -5,9 +5,10 @@ import { currentBytes, soundProject } from '../../tests/storage/conformance/conf
 import { DEFAULT_AUTOSAVE_DELAY_MS } from '../autosave/create-autosave'
 import { gateSaves, settle } from '../autosave/save-gate-test-kit'
 import { openDocumentHandle } from './open-document-handle'
-import type { DocumentHandle, SaveOutcome } from './handle-types'
+import type { DocumentHandle } from './handle-types'
 import {
   createTestPorts,
+  follow,
   openOrThrow,
   placeDocument,
   storedProject,
@@ -44,25 +45,6 @@ async function storedName(ports: TestPorts): Promise<string> {
 /** Ports of a second tab: the same stored files and the same lock registry. */
 function secondTab(ports: TestPorts): TestPorts {
   return createTestPorts({ root: ports.root, lockRegistry: ports.lockRegistry })
-}
-
-type Followed =
-  | { status: 'pending' }
-  | { status: 'resolved'; outcome: SaveOutcome }
-  | { status: 'rejected'; error: unknown }
-
-/** Follows a promise so that a test can ask, without timers, whether it has settled yet. */
-function follow(promise: Promise<SaveOutcome>): () => Followed {
-  let followed: Followed = { status: 'pending' }
-  promise.then(
-    (outcome) => {
-      followed = { status: 'resolved', outcome }
-    },
-    (error: unknown) => {
-      followed = { status: 'rejected', error }
-    },
-  )
-  return () => followed
 }
 
 beforeEach(() => {

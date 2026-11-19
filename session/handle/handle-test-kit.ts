@@ -5,9 +5,9 @@ import {
   InMemoryProjectLockPort,
   InMemoryProjectStore,
 } from '../../storage'
-import type { DocumentStore } from '../../storage'
+import type { DocumentStore, ProjectLockPort } from '../../storage'
 import type { SessionPorts } from '../ports'
-import type { DocumentHandle, OpenFailure, OpenRequest } from './handle-types'
+import type { DocumentHandle, OpenFailure, OpenRequest, SaveOutcome } from './handle-types'
 import { openDocumentHandle } from './open-document-handle'
 
 /** Test support: in-memory ports and the helpers that the handle tests share. */
@@ -93,4 +93,62 @@ export async function failureOf(ports: SessionPorts, request: OpenRequest): Prom
   const result = await openDocumentHandle(ports, request)
   if (result.ok) throw new Error(`Expected the open of ${request.id} to fail`)
   return result.failure
+}
+
+export type Followed =
+  | { status: 'pending' }
+  | { status: 'resolved'; outcome: SaveOutcome }
+  | { status: 'rejected'; error: unknown }
+
+/** Follows a promise so that a test can ask, without timers, whether it has settled yet. */
+export function follow(promise: Promise<SaveOutcome>): () => Followed {
+  let followed: Followed = { status: 'pending' }
+  promise.then(
+    (outcome) => {
+      followed = { status: 'resolved', outcome }
+    },
+    (error: unknown) => {
+      followed = { status: 'rejected', error }
+    },
+  )
+  return () => followed
+}
+
+export interface ControlledLocks {
+  readonly port: ProjectLockPort
+  /** How many times `release()` was called on a hold of this port. */
+  releases(): number
+  /**
+   * Lets every release end, now and later. A release frees its lock only when it has been called
+   * and this has been called, in either order.
+   */
+  endRelease(): void
+}
+
+/** A lock port for one tab whose releases stay pending until the test ends them. */
+export function createControlledLocks(): ControlledLocks {
+  const held = new Set<string>()
+  let releaseCalls = 0
+  let allow: () => void = () => undefined
+  const allowed = new Promise<void>((resolve) => {
+    allow = resolve
+  })
+  const holdOf = (id: string) => ({
+    release: () => {
+      releaseCalls += 1
+      return allowed.then(() => {
+        held.delete(id)
+      })
+    },
+  })
+  const port: ProjectLockPort = {
+    supported: true,
+    tryAcquire: (id) => {
+      if (held.has(id)) return Promise.resolve(undefined)
+      held.add(id)
+      return Promise.resolve(holdOf(id))
+    },
+    heldIds: () => Promise.resolve(new Set(held)),
+  }
+  return { port, releases: () => releaseCalls, endRelease: () => allow() }
 }

@@ -6,6 +6,7 @@ import {
   faultyProject,
 } from '../../tests/storage/conformance/conformance-documents'
 import { DEFAULT_AUTOSAVE_DELAY_MS } from '../autosave/create-autosave'
+import { settle } from '../autosave/save-gate-test-kit'
 import type { DocumentHandle, HandleNotice } from './handle-types'
 import {
   createTestPorts,
@@ -34,6 +35,12 @@ function noticesOf(handle: DocumentHandle): HandleNotice[] {
   const notices: HandleNotice[] = []
   handle.onNotice((notice) => notices.push(notice))
   return notices
+}
+
+/** Lets the autosave delay end, and every write it started settle. */
+async function timerWrite(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(DEFAULT_AUTOSAVE_DELAY_MS)
+  await settle()
 }
 
 beforeEach(() => {
@@ -96,6 +103,29 @@ describe('the saved-with-faults notice', () => {
     expect(await handle.save()).toEqual({ ok: true })
 
     expect(notices).toEqual([])
+  })
+
+  it('saved-with-faults has reached a listener by the time the save that caused it resolves', async () => {
+    const handle = await openFaulty()
+    const notices = noticesOf(handle)
+
+    const seenWhenResolved = await handle.save().then(() => [...notices])
+
+    expect(seenWhenResolved).toEqual(['saved-with-faults'])
+  })
+
+  it.each([
+    ['the end of the autosave delay', timerWrite],
+    ['a flush', (handle: DocumentHandle) => handle.flush()],
+    ['a close', (handle: DocumentHandle) => handle.close()],
+  ])('saved-with-faults is raised by a write of %s after an edit', async (_name, write) => {
+    const handle = await openFaulty()
+    const notices = noticesOf(handle)
+    handle.session.dispatch(renameProject('Edited'))
+
+    const seenWhenResolved = await write(handle).then(() => [...notices])
+
+    expect(seenWhenResolved).toEqual(['saved-with-faults'])
   })
 
   it('a notice listener that throws does not change the outcome of the save, and it was called once', async () => {
