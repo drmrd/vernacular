@@ -92,6 +92,18 @@ describe('WebLocksProjectLockPort over a browser lock manager', () => {
     await expect(secondTab.tryAcquire('a')).resolves.toBeDefined()
   })
 
+  it('frees the lock by the time a second release of the same hold resolves', async () => {
+    const [firstTab, secondTab] = twoTabs()
+    const hold = await firstTab.tryAcquire('a')
+
+    const first = hold?.release()
+    const second = hold?.release()
+    await second
+
+    await expect(secondTab.tryAcquire('a')).resolves.toBeDefined()
+    await first
+  })
+
   it('leaves a newer hold of the same port in place when the old hold releases again', async () => {
     const [port, otherTab] = twoTabs()
     const oldHold = await port.tryAcquire('a')
