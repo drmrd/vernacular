@@ -89,8 +89,8 @@ For the second case:
 - The scan tries 20 March 2026 first. If no minute of that date qualifies, it tries the summer
   solstice of the site's hemisphere: 21 June 2026 at latitude 0 or more, 21 December 2026 below 0.
   If no minute of that date qualifies either, the fixed instant applies.
-- For each date it resolves `daylightSiteFor(site, front, date)` once. That gives the place, the
-  north bearing, and the UTC offset in force on that date.
+- The scan resolves `daylightSiteFor(site, front, date)` once for each date, not once for each
+  minute. That gives the place, the north bearing, and the UTC offset in force on that date.
 - A minute qualifies when the sun is at least 25 degrees up and the unit vector toward the sun has
   a dot product of at least 0.5 with the front's outward normal laid in the ground plane. The
   vector toward the sun is `sunWorldDirection(solarPosition(...), northBearing)`. The normal in the
@@ -182,6 +182,8 @@ the edited call leaves it out. The pull request of the opening light adds it.
 - A project with a site location, or with a stored north bearing, opens at the time chosen for its
   house, and the Environment panel shows that time. A project with no site opens at 20 March, 10:30,
   as before.
+- This holds for a project saved before this change too. One with a location or a stored bearing
+  now opens at another time than 10:30. Nothing in its document changes.
 - In the default schematic style nothing else changes on screen, because the sun update does
   nothing there. In realistic mode the front of such a house opens in sun where the rule finds a
   minute.
@@ -193,8 +195,8 @@ the edited call leaves it out. The pull request of the opening light adds it.
 - `openingInstant` keeps its signature and its three callers: `DEFAULT_ENVIRONMENT_STATE` in
   `core/environment/environment-state.ts`, the `sample-daylight` state in
   `app/harness-environment.ts`, and the parameter default of `SceneLighting` in
-  `bridge/react/scene-lighting.tsx`. `openingConditions` reads it too, for the fallback. The architecture test
-  `tests/architecture/opening-instant-seam.test.ts` keeps its list of owners.
+  `bridge/react/scene-lighting.tsx`. `openingConditions` reads it too, for the fallback. The
+  architecture test `tests/architecture/opening-instant-seam.test.ts` keeps its list of owners.
 - No scene baseline moves. Every scene harness state pins its own `observedAt` or calls
   `openingInstant`, which stays fixed, and no harness code changed. The only live-view baseline,
   `live-view-top-down-webgpu`, draws a project with no site. Its north is implied, so it opens at

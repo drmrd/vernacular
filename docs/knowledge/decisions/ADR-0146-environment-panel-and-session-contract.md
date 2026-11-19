@@ -198,4 +198,5 @@ check. The shell remounts for each new session, so each opened project starts fr
 
 The contract of this record holds. The state stays window state and never touches the document or
 undo. The panel still owns it. A later edit of the site does not move the light on screen; only the
-controls do.
+controls do. That is the recommended answer to open question 2 of the first-view specification,
+which the owner has not taken yet ([[ADR-0205-opening-time-chosen-for-the-house]]).
