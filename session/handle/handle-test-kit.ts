@@ -5,6 +5,8 @@ import {
   InMemoryFolderAccess,
   InMemoryProjectLockPort,
   InMemoryProjectStore,
+  WorkspaceDocumentStore,
+  WorkspaceFiles,
 } from '../../storage'
 import type { DocumentStore, ProjectLockHold, ProjectLockPort } from '../../storage'
 import type { SessionPorts } from '../ports'
@@ -23,7 +25,7 @@ export const IN_WORKSPACE = { kind: 'workspace' } as const
 export const IN_FOLDER = { kind: 'folder', folderName: 'Old house' } as const
 
 export interface TestPorts extends SessionPorts {
-  readonly workspace: InMemoryProjectStore
+  readonly workspace: WorkspaceDocumentStore
   readonly locks: InMemoryProjectLockPort
   readonly folders: InMemoryFolderAccess
   /** The directory under the workspace: a document is at `<id>/vernacular.json`. */
@@ -31,14 +33,27 @@ export interface TestPorts extends SessionPorts {
   readonly lockRegistry: Set<string>
 }
 
+export interface TestPortsOptions {
+  /** The directory of another call: a second tab, or a reload of the same browser. */
+  readonly root?: InMemoryDirectory
+  /** The lock registry of another call: a second tab of the same browser. */
+  readonly lockRegistry?: Set<string>
+  /** True for a workspace over durable files, as the stores of a browser are. Default false. */
+  readonly durable?: boolean
+}
+
+/** The workspace over `root`: durable files when asked, otherwise the in-memory store. */
+function workspaceOver(root: InMemoryDirectory, durable: boolean): WorkspaceDocumentStore {
+  if (!durable) return new InMemoryProjectStore(root)
+  return new WorkspaceDocumentStore(new WorkspaceFiles(root, { durable: true }))
+}
+
 /** In-memory ports. Give the `root` and `lockRegistry` of another call to act as a second tab. */
-export function createTestPorts(
-  shared: { root?: InMemoryDirectory; lockRegistry?: Set<string> } = {},
-): TestPorts {
-  const root = shared.root ?? new InMemoryDirectory()
-  const lockRegistry = shared.lockRegistry ?? new Set<string>()
+export function createTestPorts(options: TestPortsOptions = {}): TestPorts {
+  const root = options.root ?? new InMemoryDirectory()
+  const lockRegistry = options.lockRegistry ?? new Set<string>()
   return {
-    workspace: new InMemoryProjectStore(root),
+    workspace: workspaceOver(root, options.durable ?? false),
     locks: new InMemoryProjectLockPort(lockRegistry),
     folders: new InMemoryFolderAccess(),
     root,

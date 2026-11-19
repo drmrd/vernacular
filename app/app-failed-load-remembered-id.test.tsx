@@ -1,69 +1,46 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, cleanup, waitFor } from '@testing-library/react'
 import { App } from './app'
 import {
   InMemoryActiveProjectIdStore,
   InMemoryDirectory,
-  OpfsProjectStore,
-  SnapshotStore,
-  SubdirectoryPort,
-  type ActiveProjectIdStore,
+  InMemoryRecentProjectStore,
 } from '../storage'
-import { CURRENT_SCHEMA_VERSION, createEmptyProject } from '../core'
+import {
+  DOCUMENT_FILE,
+  createTestPorts,
+  pickFolder,
+  type TestPorts,
+} from '../session/handle/handle-test-kit'
+import {
+  AUTOSAVE_TIMEOUT_MS,
+  FAILED_ID,
+  NEW_PROJECT_NAME,
+  RecordingActiveProjectIdStore,
+  chooseFromTheProjectMenu,
+  documentBytes,
+  editTheProject,
+  expectOpenProject,
+  failedOpenSentence,
+  namedProject,
+  openProjectName,
+  plantFailedProject,
+  plantProject,
+  reloadOf,
+  rememberedId,
+  renderApp,
+  settleForAWhile,
+  startNewProjectFromTheFailureView,
+  stubCapableStorage,
+} from './app-test-support'
 
-const FAILED_ID = 'current'
-// Autosave debounces its writes, so the wait for each one is generous.
-const AUTOSAVE_TIMEOUT_MS = 3000
+const SECOND_ID = 'project-second'
 
-function stubCapableStorage() {
-  vi.stubGlobal('navigator', { storage: { getDirectory: () => Promise.resolve({}) } })
-  vi.stubGlobal('indexedDB', {})
-}
-
-// A project written by a newer build: it lists by name but this build cannot open it.
-function projectFromANewerBuild(): Uint8Array {
-  const project = createEmptyProject({
-    name: 'Broken House',
-    units: 'imperial',
-    period: 'modern',
-    appVersion: '0.0.0-test',
-  })
-  const newer = { ...project, meta: { ...project.meta, schemaVersion: CURRENT_SCHEMA_VERSION + 1 } }
-  return new TextEncoder().encode(JSON.stringify(newer))
-}
-
-interface FailedStorage {
-  root: InMemoryDirectory
-  store: OpfsProjectStore
-}
-
-async function storageWithAFailedProject(): Promise<FailedStorage> {
-  const root = new InMemoryDirectory()
-  await root.writeFile(`${FAILED_ID}/vernacular.json`, projectFromANewerBuild())
-  return { root, store: new OpfsProjectStore(root) }
-}
-
-// One boot of the application, as a reload would start it: the same store and the same port.
-function boot(storage: FailedStorage, activeProjectIds: ActiveProjectIdStore): void {
-  const resolveSnapshots = (id: string) =>
-    Promise.resolve(new SnapshotStore(new SubdirectoryPort(storage.root, id)))
-  render(
-    <App
-      store={storage.store}
-      activeProjectIds={activeProjectIds}
-      resolveSnapshots={resolveSnapshots}
-    />,
-  )
-}
-
-async function startNewProjectFromTheFailureDialog(): Promise<void> {
-  await screen.findByRole('alert')
-  await userEvent.click(screen.getByRole('button', { name: /start a new project/i }))
-}
-
-async function editTheProject(): Promise<void> {
-  await userEvent.click(await screen.findByRole('button', { name: /add floor/i }))
+// Durable ports whose workspace holds a project that this build cannot open.
+async function durablePortsWithAFailedProject(): Promise<TestPorts> {
+  const ports = createTestPorts({ durable: true })
+  await plantFailedProject(ports)
+  return ports
 }
 
 // The save-status label of the shell is how the user learns that a save went through.
@@ -73,65 +50,39 @@ async function expectTheSaveReportedSaved(): Promise<void> {
   ).toBeInTheDocument()
 }
 
-// The breadcrumb landmark names the open project, so it identifies which one opened.
-async function openProjectName(): Promise<string | null> {
-  const breadcrumb = await screen.findByRole('navigation', { name: /breadcrumb/i })
-  return within(breadcrumb).getByText(/.+/).textContent
+async function documentText(directory: InMemoryDirectory): Promise<string> {
+  const bytes = await directory.readFile(DOCUMENT_FILE)
+  return new TextDecoder().decode(bytes)
 }
 
-// A port that records every write, and whose first `failures` writes reject.
-class RecordingActiveProjectIdStore implements ActiveProjectIdStore {
-  readonly writes: string[] = []
-  private remembered: string | undefined
-  private failuresLeft: number
-
-  constructor(failures = 0) {
-    this.failuresLeft = failures
-  }
-
-  read(): Promise<string | undefined> {
-    return Promise.resolve(this.remembered)
-  }
-
-  write(id: string): Promise<void> {
-    this.writes.push(id)
-    if (this.failuresLeft > 0) {
-      this.failuresLeft -= 1
-      return Promise.reject(new Error('storage is full'))
-    }
-    this.remembered = id
-    return Promise.resolve()
-  }
-}
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 describe('The remembered id after a project started from a failed load', () => {
-  afterEach(() => {
-    cleanup()
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
-
   it('still shows the failure dialog on the next boot when the new project was never saved', async () => {
     stubCapableStorage()
-    const storage = await storageWithAFailedProject()
+    const ports = await durablePortsWithAFailedProject()
     const port = new InMemoryActiveProjectIdStore()
-    boot(storage, port)
-    await startNewProjectFromTheFailureDialog()
+    renderApp(ports, { activeProjectIds: port })
+    await startNewProjectFromTheFailureView()
     await screen.findByRole('button', { name: /add floor/i })
     cleanup()
 
-    boot(storage, port)
+    renderApp(reloadOf(ports), { activeProjectIds: port })
 
-    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(await failedOpenSentence(ports))
     expect(await port.read()).toBeUndefined()
   })
 
   it('opens the new project on the next boot once its first save went through', async () => {
     stubCapableStorage()
-    const storage = await storageWithAFailedProject()
+    const ports = await durablePortsWithAFailedProject()
     const port = new InMemoryActiveProjectIdStore()
-    boot(storage, port)
-    await startNewProjectFromTheFailureDialog()
+    renderApp(ports, { activeProjectIds: port })
+    await startNewProjectFromTheFailureView()
     await editTheProject()
     await expectTheSaveReportedSaved()
     await waitFor(async () => expect(await port.read()).toBeDefined(), {
@@ -139,9 +90,9 @@ describe('The remembered id after a project started from a failed load', () => {
     })
     cleanup()
 
-    boot(storage, port)
+    renderApp(reloadOf(ports), { activeProjectIds: port })
 
-    expect(await openProjectName()).toBe('Untitled project')
+    expect(await openProjectName()).toBe(NEW_PROJECT_NAME)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(await port.read()).not.toBe(FAILED_ID)
   })
@@ -149,22 +100,23 @@ describe('The remembered id after a project started from a failed load', () => {
   it('never writes the port when the session runs on the in-memory fallback', async () => {
     stubCapableStorage()
     const port = new RecordingActiveProjectIdStore()
-    const resolveStore = () => Promise.reject(new Error('no storage backend'))
-    render(<App resolveStore={resolveStore} activeProjectIds={port} />)
-    await startNewProjectFromTheFailureDialog()
+    const resolvePorts = vi.fn(() => Promise.reject(new Error('no storage backend')))
+    render(<App resolvePorts={resolvePorts} activeProjectIds={port} />)
+    await startNewProjectFromTheFailureView()
     await editTheProject()
 
     await expectTheSaveReportedSaved()
 
+    expect(resolvePorts).toHaveBeenCalledTimes(1)
     expect(port.writes).toEqual([])
   })
 
   it('reports the save as saved when the id write rejects and writes the id at the next save', async () => {
     stubCapableStorage()
-    const storage = await storageWithAFailedProject()
+    const ports = await durablePortsWithAFailedProject()
     const port = new RecordingActiveProjectIdStore(1)
-    boot(storage, port)
-    await startNewProjectFromTheFailureDialog()
+    renderApp(ports, { activeProjectIds: port })
+    await startNewProjectFromTheFailureView()
     await editTheProject()
     await waitFor(() => expect(port.writes).toHaveLength(1), { timeout: AUTOSAVE_TIMEOUT_MS })
     await expectTheSaveReportedSaved()
@@ -176,5 +128,69 @@ describe('The remembered id after a project started from a failed load', () => {
     expect(retriedWrite).toBe(failedWrite)
     expect(retriedWrite).not.toBe(FAILED_ID)
     expect(await port.read()).toBe(retriedWrite)
+  })
+})
+
+describe('The remembered id after a switch between projects', () => {
+  it('remembers the first project again when it is saved after a return to it', async () => {
+    stubCapableStorage()
+    const ports = createTestPorts({ durable: true })
+    await plantProject(ports, FAILED_ID, 'First House')
+    await plantProject(ports, SECOND_ID, 'Second House')
+    const recentProjects = new InMemoryRecentProjectStore()
+    await recentProjects.record({
+      id: SECOND_ID,
+      name: 'Second House',
+      backend: 'opfs',
+      lastOpened: 1,
+    })
+    await recentProjects.record({
+      id: FAILED_ID,
+      name: 'First House',
+      backend: 'opfs',
+      lastOpened: 2,
+    })
+    const port = await rememberedId(FAILED_ID)
+    const write = vi.spyOn(port, 'write')
+    renderApp(ports, { activeProjectIds: port, recentProjects })
+    await expectOpenProject('First House')
+
+    await chooseFromTheProjectMenu('Second House')
+    await expectOpenProject('Second House')
+    await editTheProject()
+    await waitFor(() => expect(write).toHaveBeenCalledWith(SECOND_ID), {
+      timeout: AUTOSAVE_TIMEOUT_MS,
+    })
+    await chooseFromTheProjectMenu('First House')
+    await expectOpenProject('First House')
+    await editTheProject()
+
+    await waitFor(async () => expect(await port.read()).toBe(FAILED_ID), {
+      timeout: AUTOSAVE_TIMEOUT_MS,
+    })
+    expect(write.mock.calls).toEqual([[SECOND_ID], [FAILED_ID]])
+  })
+
+  it('does not remember a project that was opened from a folder', async () => {
+    stubCapableStorage()
+    vi.stubGlobal('showDirectoryPicker', () => Promise.reject(new Error('not used')))
+    const ports = createTestPorts({ durable: true })
+    const folder = new InMemoryDirectory()
+    await folder.writeFile(DOCUMENT_FILE, await documentBytes(namedProject('Folder House')))
+    const before = await documentText(folder)
+    pickFolder(ports, folder, 'Old house')
+    const port = new RecordingActiveProjectIdStore()
+    renderApp(ports, { activeProjectIds: port })
+    await expectOpenProject(NEW_PROJECT_NAME)
+
+    await chooseFromTheProjectMenu('Open folder')
+    await expectOpenProject('Folder House')
+    await editTheProject()
+    await waitFor(async () => expect(await documentText(folder)).not.toBe(before), {
+      timeout: AUTOSAVE_TIMEOUT_MS,
+    })
+    await settleForAWhile()
+
+    expect(port.writes).toEqual([])
   })
 })
