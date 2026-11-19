@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { webFontsSettled } from './journeys/support'
 
 test.describe('Home page accessibility', () => {
   test('has no axe-core violations when the shell shows', async ({ page }) => {
@@ -13,6 +14,7 @@ test.describe('Home page accessibility', () => {
     await page.goto('/')
     const canvas = page.getByLabel('Floor plan')
     await expect(canvas).toBeVisible()
+    await webFontsSettled(page)
 
     // Draw a wall so the overlay exposes a selectable entity.
     await page.getByRole('radio', { name: 'Wall', exact: true }).click()

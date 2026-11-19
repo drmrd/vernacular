@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test'
-import { drawWall, expectWallCount, selectors } from './journeys/support'
+import { drawWall, expectWallCount, gotoEditor, selectors } from './journeys/support'
 
 // A project is open in one tab at a time. This spec opens the editor in one tab and
 // then in a second tab of the same browser context, so both share storage and locks.
@@ -15,8 +15,7 @@ interface Tabs {
 
 async function openFirstTabThenSecondTab(context: BrowserContext): Promise<Tabs> {
   const first = await context.newPage()
-  await first.goto('/')
-  await expect(selectors.planCanvas(first)).toBeVisible()
+  await gotoEditor(first)
 
   const second = await context.newPage()
   await second.goto('/')

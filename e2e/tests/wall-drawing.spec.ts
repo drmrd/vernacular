@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 
 test.describe('Wall-drawing proof of life', () => {
   test('draws a wall, autosaves it, and restores it after reload', async ({ page }) => {
@@ -6,6 +7,7 @@ test.describe('Wall-drawing proof of life', () => {
 
     const canvas = page.getByLabel('Floor plan')
     await expect(canvas).toBeVisible()
+    await webFontsSettled(page)
 
     await page.getByRole('radio', { name: 'Wall', exact: true }).click()
     await canvas.click({ position: { x: 120, y: 200 } })
@@ -19,6 +21,7 @@ test.describe('Wall-drawing proof of life', () => {
     await page.reload()
 
     await expect(page.getByLabel('Floor plan')).toBeVisible()
+    await webFontsSettled(page)
     await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(1)
 
     await page.getByRole('radio', { name: 'Select' }).click()

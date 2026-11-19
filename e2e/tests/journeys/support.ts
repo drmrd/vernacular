@@ -23,12 +23,15 @@ export const selectors = {
   drawReadout: (page: Page) => page.locator('.plan-overlay__readout'),
 }
 
-// Wait until every web font that the page asked for has loaded or failed. The editor
-// loads its fonts with display swap, so a face that arrives late is swapped in after
-// the first paint. Where the fallback face is wider (the linux runner), the header wraps
-// to a second row until the swap, then the plan canvas jumps up under a pointer action.
-// `document.fonts.ready` also resolves when a load fails, so this never hangs offline.
+// Wait for the editor to draw its first text, then until every web font that the page
+// asked for has loaded or failed. The editor loads its fonts with display swap, so a face
+// that arrives late is swapped in after the first paint. Where the fallback face is wider
+// (the linux runner), the header wraps to a second row until the swap, then the plan
+// canvas jumps up under a pointer action. The font loads start only once the editor has
+// drawn text, so the canvas is awaited first. `document.fonts.ready` also resolves when a
+// load fails, so this never hangs offline.
 export async function webFontsSettled(page: Page): Promise<void> {
+  await expect(selectors.planCanvas(page)).toBeVisible()
   await page.evaluate(async () => {
     await document.fonts.ready
   })
@@ -37,7 +40,6 @@ export async function webFontsSettled(page: Page): Promise<void> {
 // Boot the assembled editor at its root and wait for the plan canvas and the web fonts.
 export async function gotoEditor(page: Page): Promise<void> {
   await page.goto('/')
-  await expect(selectors.planCanvas(page)).toBeVisible()
   await webFontsSettled(page)
 }
 

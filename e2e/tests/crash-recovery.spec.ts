@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 
 // Crash recovery is wired into the production app through the write-ahead autosave
 // model: each autosave writes a recovery snapshot, saves the canonical store, then
@@ -12,6 +13,7 @@ test.describe('Crash recovery', () => {
 
     const canvas = page.getByLabel('Floor plan')
     await expect(canvas).toBeVisible()
+    await webFontsSettled(page)
 
     await page.getByRole('radio', { name: 'Wall', exact: true }).click()
     await canvas.click({ position: { x: 120, y: 200 } })
