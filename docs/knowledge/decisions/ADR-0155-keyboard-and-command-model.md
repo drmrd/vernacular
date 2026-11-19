@@ -28,6 +28,9 @@ sourceFiles:
     editor/plan/use-plan-authoring-handled-keys.test.tsx,
     editor/plan/use-plan-interaction-handled-keys.test.tsx,
     e2e/tests/keyboard-authoring.spec.ts,
+    editor/plan/use-escape-to-select.ts,
+    editor/plan/use-escape-to-select.test.ts,
+    editor/plan/use-plan-authoring-tool-change.test.ts,
   ]
 status: current
 updated: 2026-11-19
@@ -302,3 +305,33 @@ Tests: `editor/plan/use-plan-authoring-handled-keys.test.tsx` and
 `editor/plan/use-plan-interaction-handled-keys.test.tsx` go through the real listeners, the real
 proxy, and the real key handler of the list. Two journeys in `e2e/tests/keyboard-authoring.spec.ts`
 hold the Door tool case and the pointer wall run.
+
+## Update (2026-11-19): Escape decides after the key press, not between its listeners
+
+Issue #909 found a fault in the ladder. Under the Wall tool, with a run open from the keyboard, the
+first Escape returned to the select tool, spoke nothing, and left the run open. After the tool was
+armed again, the next Enter drew a wall that the user did not ask for. The keyboard measurement of
+the Dimension tool failed in the same way, and so did the first Escape of the calibration tool after
+its first click.
+
+The cause was the moment of the decision. The return to select was queued as a microtask. For a real
+key press, a browser runs microtasks between the listeners of the event, so the decision ran before
+the tool that cancels had claimed the key. The tool change then removed that tool's listener before
+it ran. Tests that send the key from script did not see the fault, because there the microtasks wait
+for the whole dispatch. The `chromium` and `webkit` test projects showed the fault. The `firefox`
+project did not.
+
+The ladder now guarantees this. Every claim happens inside a listener of the key press. The return to
+select runs as a task that the press queues, after every listener ran, in whatever order the
+listeners were added. A decision that is still pending when the tool changes is dropped. As a second
+guard, a change of tool discards a run or a measurement that the keyboard left open, so none outlives
+the tool that started it.
+
+Tests: `editor/plan/use-escape-to-select.test.ts` holds a claim that arrives after a microtask
+checkpoint, and a pending decision that a tool change drops.
+`editor/plan/use-plan-authoring-tool-change.test.ts` holds the discard. Three journeys in
+`e2e/tests/keyboard-authoring.spec.ts` press real keys.
+
+Two paths stay open. A wall run that was drawn with the pointer survives a change of tool (issue
+#914). After a placement that selects what it placed, one Escape clears the selection and also
+returns to select (issue #915).

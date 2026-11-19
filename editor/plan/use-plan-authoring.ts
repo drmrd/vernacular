@@ -189,6 +189,23 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
   )
 }
 
+// A keyboard wall run or measurement does not outlive the tool it was started
+// under. Without this, a run left open when the tool changed would continue,
+// unseen, when the tool is armed again. Both setters come from useState, so they
+// are stable, so the effect runs on a change of tool, and one time at mount,
+// where it sets idle over idle. `useDiscardOnLeave` in `use-dimension-tool.ts`
+// does the same for the pointer half of the dimension tool.
+function useDiscardKeyboardRunsOnToolChange(
+  tool: ToolId,
+  setWallState: (state: WallToolState) => void,
+  setDimensionState: (state: DimensionToolState) => void,
+): void {
+  useEffect(() => {
+    setWallState(IDLE_WALL_TOOL)
+    setDimensionState(IDLE_DIMENSION_TOOL)
+  }, [tool, setWallState, setDimensionState])
+}
+
 /**
  * Binds the creative-tool authoring keystrokes to the window. While the
  * draw-wall, dimension, place-opening, or place-furniture tool is active, arrow
@@ -207,6 +224,7 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [announcement, setAnnouncement] = useState('')
   const clearAnnouncement = useCallback(() => setAnnouncement(''), [])
+  useDiscardKeyboardRunsOnToolChange(tool, setWallToolState, setDimensionToolState)
 
   useEffect(() => {
     if (!isAuthoringTool(tool)) {

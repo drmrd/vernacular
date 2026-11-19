@@ -1,5 +1,29 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { expectWallCount, gotoEditor, selectWallTool, selectors } from './journeys/support'
+
+const WALL_RUN_STEPS = 3
+
+// Arm a tool from its chip, then move focus off the chip: a focused radio owns the
+// arrow keys, so the window-level authoring keys would never see them.
+async function armTool(page: Page, name: string): Promise<void> {
+  await page.getByRole('radio', { name, exact: true }).click()
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+}
+
+async function pressRepeatedly(page: Page, key: string, times: number): Promise<void> {
+  for (let press = 0; press < times; press += 1) {
+    await page.keyboard.press(key)
+  }
+}
+
+// Anchor a keyboard wall run, drop one vertex three grid steps along, and leave the
+// run open for the next vertex.
+async function openKeyboardWallRun(page: Page): Promise<void> {
+  await page.keyboard.press('Enter')
+  await pressRepeatedly(page, 'ArrowRight', WALL_RUN_STEPS)
+  await page.keyboard.press('Enter')
+  await expectWallCount(page, 1)
+}
 
 test.describe('Keyboard plan authoring', () => {
   test('authors a wall using only the keyboard', async ({ page }) => {
@@ -90,5 +114,85 @@ test.describe('Keyboard plan authoring', () => {
     await canvas.click({ position: { x: 520, y: 400 } })
 
     await expectWallCount(page, 2)
+  })
+
+  test('Escape cancels an open keyboard wall run and keeps the Wall tool armed', async ({
+    page,
+  }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+    const wallTool = page.getByRole('radio', { name: 'Wall', exact: true })
+    await armTool(page, 'Wall')
+    await openKeyboardWallRun(page)
+
+    // A real Escape cancels the open run, says so, and leaves the Wall tool armed.
+    await page.keyboard.press('Escape')
+    await expect(live).toHaveText('Wall run cancelled')
+    await expect(wallTool).toHaveAttribute('aria-checked', 'true')
+
+    // The cancelled run is gone: the next Enter anchors a new one instead of
+    // adding a wall from the old vertex.
+    await page.keyboard.press('ArrowRight')
+    await expect(live).toHaveText(/^Candidate at /)
+    await page.keyboard.press('Enter')
+    await expect(live).toHaveText('Wall vertex dropped')
+    await expectWallCount(page, 1)
+
+    // That run cancels the same way, and only the Escape after it leaves the tool.
+    await page.keyboard.press('Escape')
+    await expect(live).toHaveText('Wall run cancelled')
+    await expect(wallTool).toHaveAttribute('aria-checked', 'true')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('radio', { name: 'Select', exact: true })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await expect(wallTool).toHaveAttribute('aria-checked', 'false')
+  })
+
+  test('Escape cancels an open keyboard measurement and keeps the Dimension tool armed', async ({
+    page,
+  }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+    await armTool(page, 'Dimension')
+
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('ArrowRight')
+    await expect(live).toHaveText('Candidate at 100, 0')
+
+    await page.keyboard.press('Escape')
+    await expect(live).toHaveText('Dimension cancelled')
+    await expect(page.getByRole('radio', { name: 'Dimension', exact: true })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+
+    // The new measurement starts where the candidate now is (200, 0), so one more
+    // step measures 100 mm. A stale start at the origin would measure 200 or 300.
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Enter')
+    await expect(live).toHaveText('Dimension measured 100 mm')
+    await expect(selectors.dimensionProxies(page)).toHaveCount(1)
+  })
+
+  test('a keyboard wall run does not survive a change of tool', async ({ page }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+    await armTool(page, 'Wall')
+    await openKeyboardWallRun(page)
+
+    // Leave the Wall tool by its chip and come back.
+    await armTool(page, 'Select')
+    await armTool(page, 'Wall')
+
+    // The first Enter anchors a new run, so it adds no wall from the old vertex.
+    await page.keyboard.press('ArrowRight')
+    await expect(live).toHaveText(/^Candidate at /)
+    await page.keyboard.press('Enter')
+    await expect(live).toHaveText('Wall vertex dropped')
+    await expectWallCount(page, 1)
   })
 })
