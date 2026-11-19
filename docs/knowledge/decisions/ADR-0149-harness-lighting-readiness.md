@@ -15,10 +15,14 @@ sourceFiles:
     engine/lighting/solar-lighting-provider.ts,
     bridge/react/scene-lighting.tsx,
     bridge/react/scene-harness-view.tsx,
+    bridge/react/scene-harness-ready-frame.ts,
+    bridge/react/scene-harness-state-key.ts,
+    engine/renderer/draw-on-next-renderer-frame.ts,
     e2e/tests/scene-solar.spec.ts,
+    e2e/tests/scene-harness-ready-frame.spec.ts,
   ]
 status: current
-updated: 2026-07-04
+updated: 2026-11-19
 ---
 
 # ADR-0149: Harness lighting readiness and where scene baselines render
@@ -97,3 +101,38 @@ someone does, a scene-baseline change means a local regeneration with
   paths, so a checkout or worktree whose directory name contains `scene-` routes every spec
   into the `scene-webgl` project. A worktree named for this branch hit exactly that; name
   worktrees accordingly.
+
+## Update (2026-11-19): the ready frame is drawn on a fresh frame of the renderer
+
+The harness drew each frame in a React layout effect, so it drew whenever a commit changed what
+the frame depends on. The renderer of `three` resets its render counts, and advances the frame
+counter that its once-per-frame work is keyed on, at the start of each frame of its own animation
+loop, and a draw does neither. When two harness draws fell inside one animation frame, the second
+one skipped that work. On the ambient occlusion path the passes of the pipeline did not run again,
+so the frame only composited the textures of the earlier draw. On every path the light colors and
+the shadow map were the ones that the earlier draw had computed. A change of readiness made two
+commits, so this was common. The captured pictures were still correct, because nothing changed
+between the two draws. But a change that takes effect at readiness through that work could be
+missing from a capture.
+
+The harness hands each draw to the renderer's own animation loop through `drawOnNextRendererFrame`
+(`engine/renderer/draw-on-next-renderer-frame.ts`). The renderer calls that loop right after it
+starts a new frame. Requests made before that frame replace one another, so a frame draws one
+time. `data-harness-ready` turns true in the commit after the ready frame was drawn. The wrapper
+reports the render calls and the draw calls of that frame in `data-harness-ready-render-calls` and
+`data-harness-ready-draw-calls`, and `e2e/tests/scene-harness-ready-frame.spec.ts` expects the
+full number of render calls for a state with ambient occlusion and for a plain one. No baseline
+moved.
+
+Two related faults went with it. The default of the `paint` prop was a new object on each render,
+which rebuilt the whole fixture on each change of readiness in every state with no paint
+parameter; a constant replaced it. The readiness flags were never reset, so a harness that got
+another state without a remount would have stayed ready before its new scene was drawn. The
+harness view renders its stage with a key made from its props (`harnessStateKey`), so a change of
+state remounts the stage and every flag starts again. Only a full page load changes the state
+today, so no capture was wrong.
+
+One limit follows from the change. The harness depends on the browser's animation frames. On a
+hidden page the renderer's loop does not run, so the harness never draws and never turns ready,
+and a run there ends at its time limit and does not capture a wrong frame. Issue #759 tracked the
+change.
