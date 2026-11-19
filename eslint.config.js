@@ -67,15 +67,58 @@ const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contrac
 const storyFileGlobs = ['**/*.stories.{ts,tsx}']
 const sessionTestingUsers = [...testFileGlobs, ...storyFileGlobs, '**/*-test-support.{ts,tsx}']
 
+// Browser storage APIs are used only inside storage/ (ADR-0180), so every layer
+// that sits above it reaches storage through the layer's own ports. The block
+// covers shipped code, tests, stories, and test support alike. storage/, e2e/,
+// tests/, scripts/, and .storybook/ are not listed, so they keep direct access.
+const storageApiNames = [
+  'localStorage',
+  'sessionStorage',
+  'indexedDB',
+  'caches',
+  'showDirectoryPicker',
+  'showOpenFilePicker',
+  'showSaveFilePicker',
+]
+const storageApiMessage = 'Browser storage APIs are used only inside storage/ (ADR-0180).'
+const storageGlobals = storageApiNames.map((name) => ({ name, message: storageApiMessage }))
+const storageProperties = [
+  ...['window', 'globalThis', 'self'].flatMap((object) =>
+    storageApiNames.map((property) => ({ object, property, message: storageApiMessage })),
+  ),
+  { object: 'navigator', property: 'storage', message: storageApiMessage },
+  { object: 'navigator', property: 'locks', message: storageApiMessage },
+]
+// Catches navigator reached through another object, as in globalThis.navigator.storage.
+const navigatorThroughAnObject = {
+  selector:
+    "MemberExpression[object.type='MemberExpression'][object.property.name='navigator']" +
+    ':matches([property.name=/^(storage|locks)$/], [property.value=/^(storage|locks)$/])',
+  message: storageApiMessage,
+}
+const storageApiBlock = {
+  files: ['core/**', 'session/**', 'engine/**', 'bridge/**', 'editor/**', 'app/**', 'src/**'],
+  rules: {
+    'no-restricted-globals': ['error', ...storageGlobals],
+    'no-restricted-properties': ['error', ...storageProperties],
+    'no-restricted-syntax': ['error', navigatorThroughAnObject],
+  },
+}
+
 const nodeGlobalNames = new Set(Object.keys(globals.node))
+const storageApiNameSet = new Set(storageApiNames)
 const browserOnlyGlobalNames = Object.keys(globals.browser).filter(
-  (name) => !nodeGlobalNames.has(name),
+  (name) => !nodeGlobalNames.has(name) && !storageApiNameSet.has(name),
 )
-const browserOnlyGlobalsFor = (layerName) =>
-  browserOnlyGlobalNames.map((name) => ({
+// The purity blocks below replace the options of the storage block for shipped
+// core/ and session/ files, so their list carries the storage names too.
+const browserOnlyGlobalsFor = (layerName) => [
+  ...browserOnlyGlobalNames.map((name) => ({
     name,
     message: `${layerName}/ uses no global that exists only in a browser.`,
-  }))
+  })),
+  ...storageGlobals,
+]
 
 const layerPurityBlocks = [
   {
@@ -532,6 +575,7 @@ export function buildConfig(exceptions = lintExceptions) {
         'no-magic-numbers': 'off',
       },
     },
+    storageApiBlock,
     ...layerPurityBlocks,
     ...exceptions.map(exceptionBlock),
   )
