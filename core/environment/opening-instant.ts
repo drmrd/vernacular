@@ -32,8 +32,12 @@ export type OpeningConditions = {
   readonly cloudCover: number
 }
 
-/** The date a scan for the time chosen for the house tries first: the March equinox. */
+/** The date the opening scan tries first: the March equinox. */
 const EQUINOX_DATE = DAYLIGHT_REFERENCE_INSTANT.date
+/** The date tried second at a latitude of 0 or more: the June solstice. */
+const JUNE_SOLSTICE_DATE = '2026-06-21'
+/** The date tried second below latitude 0: the December solstice. */
+const DECEMBER_SOLSTICE_DATE = '2026-12-21'
 /** The minute of the day the scan is nearest to: 10:30. */
 const PREFERRED_MINUTE = DAYLIGHT_REFERENCE_INSTANT.minutesSinceMidnight
 /** The lowest sun height at which a minute qualifies, in degrees above the horizon. */
@@ -93,15 +97,11 @@ function northIsImplied(daylightSite: DaylightSite): boolean {
   return daylightSite.sample === 'location-and-north'
 }
 
-/** The date tried second at a site in the northern hemisphere, or on the equator: the June solstice. */
-const NORTHERN_SOLSTICE_DATE = '2026-06-21'
-/** The date tried second at a site in the southern hemisphere: the December solstice. */
-const SOUTHERN_SOLSTICE_DATE = '2026-12-21'
-
 /** The dates a scan tries, in order: the March equinox, then the solstice of the hemisphere. */
 function datesToTry(daylightSite: DaylightSite): readonly string[] {
+  // Latitude 0 counts as north.
   const solsticeDate =
-    daylightSite.latLong.latitude >= 0 ? NORTHERN_SOLSTICE_DATE : SOUTHERN_SOLSTICE_DATE
+    daylightSite.latLong.latitude >= 0 ? JUNE_SOLSTICE_DATE : DECEMBER_SOLSTICE_DATE
   return [EQUINOX_DATE, solsticeDate]
 }
 
@@ -131,8 +131,8 @@ function firstQualifyingInstant(
 export function openingConditions(input: OpeningConditionsInput): OpeningConditions {
   const fixedInstant = openingInstant({ site: input.site })
   const equinoxSite = daylightSiteFor(input.site, input.front, EQUINOX_DATE)
-  const observedAt = northIsImplied(equinoxSite)
-    ? fixedInstant
-    : (firstQualifyingInstant(input, datesToTry(equinoxSite)) ?? fixedInstant)
+  if (northIsImplied(equinoxSite))
+    return { observedAt: fixedInstant, cloudCover: DEFAULT_CLOUD_COVER }
+  const observedAt = firstQualifyingInstant(input, datesToTry(equinoxSite)) ?? fixedInstant
   return { observedAt, cloudCover: DEFAULT_CLOUD_COVER }
 }
