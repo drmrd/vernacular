@@ -1,68 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseTimingRun, serializeTimingRun } from './timing-record'
-import type { FrameTiming, TimingRun, TimingSummary } from './timing-record'
-
-function summary(medianMs: number, p95Ms: number): TimingSummary {
-  return { samples: 100, medianMs, p95Ms }
-}
-
-function frame(mainThreadMs: number, untilGpuDoneMs: number): FrameTiming {
-  return {
-    mainThread: summary(mainThreadMs, mainThreadMs + 1.5),
-    untilGpuDone: summary(untilGpuDoneMs, untilGpuDoneMs + 2.25),
-  }
-}
-
-function aRun(): TimingRun {
-  return {
-    format: 1,
-    quick: false,
-    commit: '4e51b3c9',
-    uncommittedChanges: false,
-    takenAt: '2026-11-21T10:02:11-05:00',
-    build: { mode: 'production', timerResolutionMs: 0.005 },
-    machine: {
-      processor: 'Apple M5 Pro',
-      logicalCores: 18,
-      memoryGiB: 48,
-      operatingSystem: 'macOS 26.1',
-      browser: 'Chromium 142.0.7444.0',
-      webGpuAdapter: 'apple / metal-3 / Apple M5 Pro',
-      webGlRenderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)',
-      renderer: 'webgpu',
-    },
-    conditions: {
-      visibleThroughout: true,
-      focused: true,
-      power: 'mains',
-      devicePixelRatio: 2,
-      displayFrameMs: 8.33,
-      planCanvasPx: { width: 800, height: 600 },
-      sceneCanvasCssPx: { width: 960, height: 600 },
-      sceneDrawingBufferPx: { width: 1920, height: 1200 },
-    },
-    method: {
-      planRedraw: { warmup: 20, timed: 200 },
-      sceneUpdate: { warmup: 20, timed: 100 },
-      renderFrame: { warmup: 30, timed: 100 },
-      renderAfterEdit: { warmup: 30, timed: 100 },
-    },
-    times: {
-      planRedraw: summary(3.21, 5.4),
-      sceneUpdate: {
-        moveWallEndpoint: summary(1.5, 2.75),
-        addRoom: summary(2.1, 3.9),
-      },
-      renderFrame: {
-        floorSchematic: frame(1.2, 4.1),
-        buildingRealistic: frame(2.8, 7.6),
-      },
-      renderAfterEdit: {
-        moveWallEndpoint: frame(1.9, 5.3),
-      },
-    },
-  }
-}
+import type { TimingRun } from './timing-record'
+import { aTimingRun, summary } from './timing-run-fixture'
 
 /**
  * The serialized run as plain JSON, changed by the given edit, ready to be parsed. The edit may
@@ -70,7 +9,7 @@ function aRun(): TimingRun {
  * Reflect keeps the test free of casts.
  */
 function recordAfter(edit: (record: TimingRun) => void): unknown {
-  const record: TimingRun = JSON.parse(serializeTimingRun(aRun()))
+  const record: TimingRun = JSON.parse(serializeTimingRun(aTimingRun()))
   edit(record)
   return record
 }
@@ -91,9 +30,9 @@ function withKeysReversed<T extends object>(value: T): T {
   return Object.fromEntries(Object.entries(value).reverse()) as unknown as T
 }
 
-/** A run equal to aRun() whose top-level, machine and summary keys come in the opposite order. */
+/** A run equal to aTimingRun() whose top-level, machine and summary keys come in the opposite order. */
 function aRunWithKeysReversed(): TimingRun {
-  const run = aRun()
+  const run = aTimingRun()
   return withKeysReversed({
     ...run,
     machine: withKeysReversed(run.machine),
@@ -111,26 +50,26 @@ function aRunWithLaterFields(): unknown {
 
 describe('writing and reading a timing run', () => {
   it('reads back the run it wrote', () => {
-    const run = aRun()
+    const run = aTimingRun()
 
     expect(parseTimingRun(JSON.parse(serializeTimingRun(run)))).toEqual(run)
   })
 
   it('ends the written text with exactly one newline', () => {
-    const text = serializeTimingRun(aRun())
+    const text = serializeTimingRun(aTimingRun())
 
     expect(text).toMatch(/\}\n$/)
     expect(text).not.toMatch(/\n\n$/)
   })
 
   it('indents the written text by two spaces, with the record format first', () => {
-    const text = serializeTimingRun(aRun())
+    const text = serializeTimingRun(aTimingRun())
 
     expect(text.startsWith('{\n  "format": 1,\n  "quick": false,\n')).toBe(true)
   })
 
   it('reads a run whose reference edits are an empty list', () => {
-    const run = aRun()
+    const run = aTimingRun()
     run.times.sceneUpdate = {}
 
     expect(parseTimingRun(JSON.parse(serializeTimingRun(run)))).toEqual(run)
@@ -167,11 +106,11 @@ describe('rejecting a record that is not a timing run', () => {
 
 describe('writing the keys of a timing run in a fixed order', () => {
   it('writes the same text whatever the insertion order of the keys', () => {
-    expect(serializeTimingRun(aRunWithKeysReversed())).toBe(serializeTimingRun(aRun()))
+    expect(serializeTimingRun(aRunWithKeysReversed())).toBe(serializeTimingRun(aTimingRun()))
   })
 
   it('keeps the order of the entries of a free-keyed record', () => {
-    const run = aRun()
+    const run = aTimingRun()
     run.times.sceneUpdate = { addRoom: summary(2.1, 3.9), moveWallEndpoint: summary(1.5, 2.75) }
 
     const text = serializeTimingRun(run)
@@ -220,7 +159,7 @@ describe('rejecting a time or a size that cannot be real', () => {
 
 describe('reading a record with fields a later version added', () => {
   it('ignores a field that the type does not have', () => {
-    expect(parseTimingRun(aRunWithLaterFields())).toEqual(aRun())
+    expect(parseTimingRun(aRunWithLaterFields())).toEqual(aTimingRun())
   })
 })
 

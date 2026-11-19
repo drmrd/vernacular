@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { baselineWriteRefusals, isSoftwareRenderer, runRefusals } from './run-conditions'
 import type { ObservedConditions } from './run-conditions'
-import type { FrameTiming, TimingRun, TimingSummary } from './timing-record'
-
-function summary(medianMs: number, p95Ms: number): TimingSummary {
-  return { samples: 100, medianMs, p95Ms }
-}
-
-function frame(mainThreadMs: number, untilGpuDoneMs: number): FrameTiming {
-  return {
-    mainThread: summary(mainThreadMs, mainThreadMs + 1.5),
-    untilGpuDone: summary(untilGpuDoneMs, untilGpuDoneMs + 2.25),
-  }
-}
+import { aTimingRun } from './timing-run-fixture'
 
 /** Conditions that allow a measurement: a production build, a hardware adapter, a visible window. */
 function goodConditions(): ObservedConditions {
@@ -21,50 +10,6 @@ function goodConditions(): ObservedConditions {
     webGpuAdapter: { name: 'apple / metal-3 / Apple M5 Pro', isFallback: false },
     visible: true,
     displayFrameMs: 8.33,
-  }
-}
-
-/** A finished run that may become the baseline. */
-function aCleanRun(): TimingRun {
-  return {
-    format: 1,
-    quick: false,
-    commit: '4e51b3c9',
-    uncommittedChanges: false,
-    takenAt: '2026-11-21T10:02:11-05:00',
-    build: { mode: 'production', timerResolutionMs: 0.005 },
-    machine: {
-      processor: 'Apple M5 Pro',
-      logicalCores: 18,
-      memoryGiB: 48,
-      operatingSystem: 'macOS 26.1',
-      browser: 'Chromium 142.0.7444.0',
-      webGpuAdapter: 'apple / metal-3 / Apple M5 Pro',
-      webGlRenderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)',
-      renderer: 'webgpu',
-    },
-    conditions: {
-      visibleThroughout: true,
-      focused: true,
-      power: 'mains',
-      devicePixelRatio: 2,
-      displayFrameMs: 8.33,
-      planCanvasPx: { width: 800, height: 600 },
-      sceneCanvasCssPx: { width: 960, height: 600 },
-      sceneDrawingBufferPx: { width: 1920, height: 1200 },
-    },
-    method: {
-      planRedraw: { warmup: 20, timed: 200 },
-      sceneUpdate: { warmup: 20, timed: 100 },
-      renderFrame: { warmup: 30, timed: 100 },
-      renderAfterEdit: { warmup: 30, timed: 100 },
-    },
-    times: {
-      planRedraw: summary(3.21, 5.4),
-      sceneUpdate: { moveWallEndpoint: summary(1.5, 2.75) },
-      renderFrame: { floorSchematic: frame(1.2, 4.1) },
-      renderAfterEdit: { moveWallEndpoint: frame(1.9, 5.3) },
-    },
   }
 }
 
@@ -186,18 +131,18 @@ describe('refusing a run whose conditions cannot measure', () => {
 
 describe('refusing to write a baseline from a run that is not a clean reference', () => {
   it('has no reason to refuse a clean run', () => {
-    expect(baselineWriteRefusals(aCleanRun())).toEqual([])
+    expect(baselineWriteRefusals(aTimingRun())).toEqual([])
   })
 
   it('gives one reason for a quick run', () => {
-    const reasons = baselineWriteRefusals({ ...aCleanRun(), quick: true })
+    const reasons = baselineWriteRefusals({ ...aTimingRun(), quick: true })
 
     expect(reasons).toHaveLength(1)
     expect(reasons[0]).toContain('quick')
   })
 
   it('gives one reason for a run on battery power', () => {
-    const run = aCleanRun()
+    const run = aTimingRun()
     run.conditions.power = 'battery'
 
     const reasons = baselineWriteRefusals(run)
@@ -207,21 +152,21 @@ describe('refusing to write a baseline from a run that is not a clean reference'
   })
 
   it('accepts a run whose power source is unknown', () => {
-    const run = aCleanRun()
+    const run = aTimingRun()
     run.conditions.power = 'unknown'
 
     expect(baselineWriteRefusals(run)).toEqual([])
   })
 
   it('gives one reason for a run with uncommitted changes', () => {
-    const reasons = baselineWriteRefusals({ ...aCleanRun(), uncommittedChanges: true })
+    const reasons = baselineWriteRefusals({ ...aTimingRun(), uncommittedChanges: true })
 
     expect(reasons).toHaveLength(1)
     expect(reasons[0]).toContain('uncommitted')
   })
 
   it('gives one reason for a window that was not visible throughout', () => {
-    const run = aCleanRun()
+    const run = aTimingRun()
     run.conditions.visibleThroughout = false
 
     const reasons = baselineWriteRefusals(run)
@@ -231,7 +176,7 @@ describe('refusing to write a baseline from a run that is not a clean reference'
   })
 
   it('gives one reason for an adapter with a software name', () => {
-    const run = aCleanRun()
+    const run = aTimingRun()
     run.machine.webGpuAdapter = 'Google SwiftShader'
 
     const reasons = baselineWriteRefusals(run)

@@ -1,21 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { SUBMIT_RESULT, createFakeFrameHost, settle } from './fake-frame-host'
-import { installFrameProbe } from './frame-probe'
-
-const CLOCK_START_MS = 100
-
-function installed() {
-  const fake = createFakeFrameHost(CLOCK_START_MS)
-  const probe = installFrameProbe(fake.host, fake.target)
-  const requestFrame = (callback: FrameRequestCallback) =>
-    fake.target.requestAnimationFrame(callback)
-  const cancelFrame = (id: number) => fake.target.cancelAnimationFrame(id)
-  return { fake, probe, requestFrame, cancelFrame }
-}
+import { SUBMIT_RESULT, settle } from './fake-frame-host'
+import { expectSampleOnceBothGpuWorksAreDone, installedProbe } from './frame-probe-test-setup'
 
 /** Paced probe with a first callback that submits and then requests `next` for the next frame. */
 function pacedAfterSubmit(next: FrameRequestCallback) {
-  const setup = installed()
+  const setup = installedProbe()
   setup.probe.setPaced(true)
   let nextId = -1
   setup.requestFrame(() => {
@@ -27,7 +16,7 @@ function pacedAfterSubmit(next: FrameRequestCallback) {
 
 describe('cancelling a frame callback', () => {
   it('stops a callback from running when not paced', () => {
-    const { fake, requestFrame, cancelFrame } = installed()
+    const { fake, requestFrame, cancelFrame } = installedProbe()
     const ran: string[] = []
     const first = requestFrame(() => ran.push('first'))
     requestFrame(() => ran.push('second'))
@@ -39,7 +28,7 @@ describe('cancelling a frame callback', () => {
   })
 
   it('stops a callback that an earlier callback of the same host frame cancels', () => {
-    const { fake, requestFrame, cancelFrame } = installed()
+    const { fake, requestFrame, cancelFrame } = installedProbe()
     const ran: string[] = []
     let second = -1
     requestFrame(() => {
@@ -73,7 +62,7 @@ describe('cancelling a frame callback', () => {
   })
 
   it('does nothing and does not throw for an id that was never handed out', () => {
-    const { fake, requestFrame, cancelFrame } = installed()
+    const { fake, requestFrame, cancelFrame } = installedProbe()
     const ran: string[] = []
     requestFrame(() => ran.push('waiting'))
 
@@ -88,7 +77,7 @@ describe('cancelling a frame callback', () => {
   })
 
   it('does nothing and does not throw for a callback that already ran', () => {
-    const { fake, requestFrame, cancelFrame } = installed()
+    const { fake, requestFrame, cancelFrame } = installedProbe()
     const ran: string[] = []
     const first = requestFrame(() => ran.push('first'))
     fake.runFrame()
@@ -103,7 +92,7 @@ describe('cancelling a frame callback', () => {
 
 describe('the ids of frame requests', () => {
   it('are unique for callbacks that wait at the same time', () => {
-    const { requestFrame } = installed()
+    const { requestFrame } = installedProbe()
 
     const ids = [requestFrame(() => undefined), requestFrame(() => undefined)]
     ids.push(requestFrame(() => undefined))
@@ -130,7 +119,7 @@ describe('the ids of frame requests', () => {
 
 describe('paced mode with several callbacks', () => {
   it('holds every other callback of the frame, also one requested before the submit', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     probe.setPaced(true)
     const ran: string[] = []
     requestFrame(() => {
@@ -152,7 +141,7 @@ describe('paced mode with several callbacks', () => {
   })
 
   it('runs the held callbacks in the order in which the page requested them', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     probe.setPaced(true)
     const ran: string[] = []
     requestFrame(() => {
@@ -177,29 +166,21 @@ describe('paced mode with several callbacks', () => {
 
 describe('a frame callback that submits more than once', () => {
   it('completes its sample when the done promise of the last submit resolves', async () => {
-    const { fake, probe, requestFrame } = installed()
-    requestFrame(() => {
+    const setup = installedProbe()
+    const { fake } = setup
+    setup.requestFrame(() => {
       fake.advance(2)
       fake.queue.submit([])
       fake.queue.submit([])
     })
-    fake.runFrame()
 
-    fake.advance(3)
-    fake.finishGpuWork()
-    await settle()
-    expect(probe.takeFrames()).toEqual([])
-
-    fake.advance(4)
-    fake.finishGpuWork()
-    await settle()
-    expect(probe.takeFrames()).toMatchObject([{ mainThreadMs: 2, untilGpuDoneMs: 9 }])
+    await expectSampleOnceBothGpuWorksAreDone(setup)
   })
 })
 
 describe('a submit outside a frame callback', () => {
   it('is passed through and creates no sample', async () => {
-    const { fake, probe } = installed()
+    const { fake, probe } = installedProbe()
     const commandBuffers = ['outside']
 
     const returned = fake.queue.submit(commandBuffers)
@@ -212,7 +193,7 @@ describe('a submit outside a frame callback', () => {
   })
 
   it('does not change the sample of a frame that ran before it', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => undefined)
     fake.runFrame()
 
@@ -226,7 +207,7 @@ describe('a submit outside a frame callback', () => {
 
 describe('a lost device', () => {
   it('completes the sample with no GPU time and a lost mark when the done promise rejects', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => fake.queue.submit([]))
     fake.runFrame()
 
@@ -251,7 +232,7 @@ describe('a lost device', () => {
   })
 
   it('does not mark a frame whose done promise resolves or a frame with no submit', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => fake.queue.submit([]))
     fake.runFrame()
     fake.finishGpuWork()

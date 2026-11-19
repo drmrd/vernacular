@@ -1,22 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { createFakeFrameHost, settle } from './fake-frame-host'
-import { installFrameProbe } from './frame-probe'
+import { settle } from './fake-frame-host'
+import { installedProbe, type InstalledProbe } from './frame-probe-test-setup'
 
-const CLOCK_START_MS = 100
 const LOOP_FRAMES = 10
-
-function installed() {
-  const fake = createFakeFrameHost(CLOCK_START_MS)
-  const probe = installFrameProbe(fake.host, fake.target)
-  const requestFrame = (callback: FrameRequestCallback) =>
-    fake.target.requestAnimationFrame(callback)
-  const cancelFrame = (id: number) => fake.target.cancelAnimationFrame(id)
-  return { fake, probe, requestFrame, cancelFrame }
-}
 
 /** Paced probe holding the callbacks that a first, submitting callback requested for the next frame. */
 function pacedWithHeld(heldCallbacks: FrameRequestCallback[]) {
-  const setup = installed()
+  const setup = installedProbe()
   setup.probe.setPaced(true)
   setup.requestFrame(() => {
     setup.fake.queue.submit([])
@@ -27,58 +17,54 @@ function pacedWithHeld(heldCallbacks: FrameRequestCallback[]) {
   return setup
 }
 
+/**
+ * Paces the probe, requests a callback, and checks that it stays held until the GPU work of the
+ * two submits that are still open is done, one after the other.
+ */
+async function expectNextHeldUntilTwoGpuWorksDone(setup: InstalledProbe) {
+  const { fake, probe, requestFrame } = setup
+  probe.setPaced(true)
+  const ran: string[] = []
+  requestFrame(() => ran.push('next'))
+
+  fake.runFrame()
+  expect(ran).toEqual([])
+
+  fake.finishGpuWork()
+  await settle()
+  fake.runFrame()
+  expect(ran).toEqual([])
+
+  fake.finishGpuWork()
+  await settle()
+  fake.runFrame()
+  expect(ran).toEqual(['next'])
+}
+
 describe('a frame with GPU work of several earlier frames pending', () => {
   it('holds the next callback until the GPU work of both earlier frames is done', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const setup = installedProbe()
+    const { fake, requestFrame } = setup
     requestFrame(() => fake.queue.submit([]))
     fake.runFrame()
     requestFrame(() => fake.queue.submit([]))
     fake.runFrame()
-    probe.setPaced(true)
-    const ran: string[] = []
-    requestFrame(() => ran.push('next'))
-
-    fake.runFrame()
-    expect(ran).toEqual([])
-
-    fake.finishGpuWork()
-    await settle()
-    fake.runFrame()
-    expect(ran).toEqual([])
-
-    fake.finishGpuWork()
-    await settle()
-    fake.runFrame()
-    expect(ran).toEqual(['next'])
+    await expectNextHeldUntilTwoGpuWorksDone(setup)
   })
 
   it('holds the next callback until the GPU work of both submits of one host frame is done', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const setup = installedProbe()
+    const { fake, requestFrame } = setup
     requestFrame(() => fake.queue.submit([]))
     requestFrame(() => fake.queue.submit([]))
     fake.runFrame()
-    probe.setPaced(true)
-    const ran: string[] = []
-    requestFrame(() => ran.push('next'))
-
-    fake.runFrame()
-    expect(ran).toEqual([])
-
-    fake.finishGpuWork()
-    await settle()
-    fake.runFrame()
-    expect(ran).toEqual([])
-
-    fake.finishGpuWork()
-    await settle()
-    fake.runFrame()
-    expect(ran).toEqual(['next'])
+    await expectNextHeldUntilTwoGpuWorksDone(setup)
   })
 })
 
 describe('a frame callback that throws', () => {
   it('lets the other callbacks of the host frame run, reaches the host, and keeps one sample for the frame', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     const ran: string[] = []
     requestFrame(() => ran.push('first'))
     requestFrame(() => {
@@ -94,7 +80,7 @@ describe('a frame callback that throws', () => {
   })
 
   it('leaves the next host frame serving a callback that is requested afterwards', () => {
-    const { fake, requestFrame } = installed()
+    const { fake, requestFrame } = installedProbe()
     requestFrame(() => {
       throw new Error('page error')
     })
@@ -110,7 +96,7 @@ describe('a frame callback that throws', () => {
 
 describe('cancelling from inside a callback', () => {
   it('does not throw when a callback cancels its own id, and the other callbacks still run', () => {
-    const { fake, requestFrame, cancelFrame } = installed()
+    const { fake, requestFrame, cancelFrame } = installedProbe()
     const ran: string[] = []
     let ownId = -1
     ownId = requestFrame(() => {
@@ -141,7 +127,7 @@ describe('leaving paced mode while callbacks are held', () => {
 
 describe('the host frame requests of the probe', () => {
   it('asks the host for a frame when a callback is requested after the queue was empty', () => {
-    const { fake, requestFrame } = installed()
+    const { fake, requestFrame } = installedProbe()
     const ran: string[] = []
     requestFrame(() => ran.push('first'))
     fake.runFrame()
@@ -155,7 +141,7 @@ describe('the host frame requests of the probe', () => {
   })
 
   it('cancels the host request when a cancel empties the queue, and asks again for a later request', () => {
-    const { fake, requestFrame, cancelFrame } = installed()
+    const { fake, requestFrame, cancelFrame } = installedProbe()
     const ran: string[] = []
     const id = requestFrame(() => ran.push('cancelled'))
     expect(fake.waitingFrameCount()).toBe(1)
@@ -173,7 +159,7 @@ describe('the host frame requests of the probe', () => {
 
 describe('a callback that requests itself every frame', () => {
   it('runs once in each of ten host frames when not paced', () => {
-    const { fake, requestFrame } = installed()
+    const { fake, requestFrame } = installedProbe()
     let runs = 0
     const loop = () => {
       runs += 1
@@ -191,7 +177,7 @@ describe('a callback that requests itself every frame', () => {
   })
 
   it('runs once in each host frame that follows a resolved GPU work when paced', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     probe.setPaced(true)
     let runs = 0
     const loop = () => {

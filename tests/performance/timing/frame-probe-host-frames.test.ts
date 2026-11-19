@@ -1,20 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { createFakeFrameHost, settle } from './fake-frame-host'
-import { installFrameProbe } from './frame-probe'
-
-const CLOCK_START_MS = 100
-
-function installed() {
-  const fake = createFakeFrameHost(CLOCK_START_MS)
-  const probe = installFrameProbe(fake.host, fake.target)
-  const requestFrame = (callback: FrameRequestCallback) =>
-    fake.target.requestAnimationFrame(callback)
-  return { fake, probe, requestFrame }
-}
+import { settle } from './fake-frame-host'
+import {
+  CLOCK_START_MS,
+  expectSampleOnceBothGpuWorksAreDone,
+  installedProbe,
+  requestSubmitAfter,
+} from './frame-probe-test-setup'
 
 describe('a host frame with two page callbacks, one of which submits', () => {
   it('makes one sample, timed over both callbacks, when the first one submits', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => {
       fake.advance(3)
       fake.queue.submit([])
@@ -40,7 +35,7 @@ describe('a host frame with two page callbacks, one of which submits', () => {
   })
 
   it('makes one sample, timed over both callbacks, when the second one submits', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => fake.advance(2))
     requestFrame(() => {
       fake.advance(3)
@@ -66,32 +61,17 @@ describe('a host frame with two page callbacks, one of which submits', () => {
   })
 
   it('completes the sample when the done promise of the later of two submits settles', async () => {
-    const { fake, probe, requestFrame } = installed()
-    requestFrame(() => {
-      fake.advance(1)
-      fake.queue.submit([])
-    })
-    requestFrame(() => {
-      fake.advance(1)
-      fake.queue.submit([])
-    })
-    fake.runFrame()
+    const setup = installedProbe()
+    requestSubmitAfter(setup, 1)
+    requestSubmitAfter(setup, 1)
 
-    fake.advance(3)
-    fake.finishGpuWork()
-    await settle()
-    expect(probe.takeFrames()).toEqual([])
-
-    fake.advance(4)
-    fake.finishGpuWork()
-    await settle()
-    expect(probe.takeFrames()).toMatchObject([{ mainThreadMs: 2, untilGpuDoneMs: 9 }])
+    await expectSampleOnceBothGpuWorksAreDone(setup)
   })
 })
 
 describe('a host frame with two page callbacks that submit nothing', () => {
   it('makes one sample with no GPU time at once', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => fake.advance(1))
     requestFrame(() => fake.advance(2))
 
@@ -111,7 +91,7 @@ describe('a host frame with two page callbacks that submit nothing', () => {
 
 describe('the main-thread time of a host frame', () => {
   it('runs from the start of the first callback to the end of the last, with what lies between', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => fake.advance(3))
     requestFrame(() => fake.advance(2))
 
@@ -125,7 +105,7 @@ describe('the main-thread time of a host frame', () => {
 
 describe('several host frames with two page callbacks each', () => {
   it('make one sample for each host frame', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => fake.advance(1))
     requestFrame(() => fake.advance(2))
     fake.runFrame()
@@ -143,7 +123,7 @@ describe('several host frames with two page callbacks each', () => {
 
 describe('a host frame in which paced mode holds every callback', () => {
   it('makes no sample, and the next frame after the work is done makes one', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     probe.setPaced(true)
     requestFrame(() => {
       fake.queue.submit([])
@@ -170,7 +150,7 @@ describe('a host frame in which paced mode holds every callback', () => {
 
 describe('the hidden mark of a host frame', () => {
   it('comes from the start of the first callback when the page is hidden then', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     fake.setHidden(true)
     requestFrame(() => fake.setHidden(false))
     requestFrame(() => undefined)
@@ -181,7 +161,7 @@ describe('the hidden mark of a host frame', () => {
   })
 
   it('is false when the page is visible then, although it is hidden before the frame ends', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => undefined)
     requestFrame(() => fake.setHidden(true))
 
@@ -193,7 +173,7 @@ describe('the hidden mark of a host frame', () => {
 
 describe('a host frame whose first callback throws', () => {
   it('still makes one complete sample, and the error reaches the host', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     const ran: string[] = []
     requestFrame(() => {
       ran.push('thrower')

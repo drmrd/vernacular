@@ -1,20 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { SUBMIT_RESULT, createFakeFrameHost, settle } from './fake-frame-host'
-import { firstFrameAfter, installFrameProbe, type FrameSample } from './frame-probe'
-
-const CLOCK_START_MS = 100
-
-function installed() {
-  const fake = createFakeFrameHost(CLOCK_START_MS)
-  const probe = installFrameProbe(fake.host, fake.target)
-  const requestFrame = (callback: FrameRequestCallback) =>
-    fake.target.requestAnimationFrame(callback)
-  return { fake, probe, requestFrame }
-}
+import { SUBMIT_RESULT, settle } from './fake-frame-host'
+import { firstFrameAfter, type FrameSample } from './frame-probe'
+import { CLOCK_START_MS, installedProbe, requestFirstThenSecond } from './frame-probe-test-setup'
 
 describe('the frame probe', () => {
   it('times the main thread of a frame callback from the clock at its start', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => fake.advance(3))
 
     fake.runFrame()
@@ -23,7 +14,7 @@ describe('the frame probe', () => {
   })
 
   it('reports the time until the GPU is done once the done promise resolves', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => {
       fake.advance(2)
       fake.queue.submit([])
@@ -40,7 +31,7 @@ describe('the frame probe', () => {
   })
 
   it('reports no GPU time for a frame callback that submitted nothing', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => fake.advance(1))
 
     fake.runFrame()
@@ -49,7 +40,7 @@ describe('the frame probe', () => {
   })
 
   it('marks a frame that ran while the page was hidden and not one that ran visible', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => undefined)
     fake.setHidden(true)
     fake.runFrame()
@@ -61,7 +52,7 @@ describe('the frame probe', () => {
   })
 
   it('returns the samples once and starts a new list after taking them', () => {
-    const { fake, probe, requestFrame } = installed()
+    const { fake, probe, requestFrame } = installedProbe()
     requestFrame(() => undefined)
     fake.runFrame()
 
@@ -70,14 +61,11 @@ describe('the frame probe', () => {
   })
 
   it('holds the next frame callback until the GPU work of the previous frame is done when paced', async () => {
-    const { fake, probe, requestFrame } = installed()
+    const setup = installedProbe()
+    const { fake, probe } = setup
     probe.setPaced(true)
     const ran: string[] = []
-    requestFrame(() => {
-      ran.push('first')
-      fake.queue.submit([])
-      requestFrame(() => ran.push('second'))
-    })
+    requestFirstThenSecond(setup, ran)
 
     fake.runFrame()
     fake.runFrame()
@@ -92,14 +80,11 @@ describe('the frame probe', () => {
   })
 
   it('runs the next frame callback on the next frame when not paced, done or not', () => {
-    const { fake, probe, requestFrame } = installed()
+    const setup = installedProbe()
+    const { fake, probe } = setup
     probe.setPaced(false)
     const ran: string[] = []
-    requestFrame(() => {
-      ran.push('first')
-      fake.queue.submit([])
-      requestFrame(() => ran.push('second'))
-    })
+    requestFirstThenSecond(setup, ran)
 
     fake.runFrame()
     fake.runFrame()
@@ -108,7 +93,7 @@ describe('the frame probe', () => {
   })
 
   it('still calls the original submit with the same arguments and returns its result', () => {
-    const { fake, requestFrame } = installed()
+    const { fake, requestFrame } = installedProbe()
     const commandBuffers = ['pass-1', 'pass-2']
     let returned: string | undefined
     requestFrame(() => {
@@ -122,7 +107,7 @@ describe('the frame probe', () => {
   })
 
   it('hands the frame time of the host to the frame callbacks of the page', () => {
-    const { fake, requestFrame } = installed()
+    const { fake, requestFrame } = installedProbe()
     const received: number[] = []
     requestFrame((frameTimeMs) => received.push(frameTimeMs))
 
@@ -132,7 +117,7 @@ describe('the frame probe', () => {
   })
 
   it('restores the original frame request and the original submit on uninstall', () => {
-    const { fake, probe } = installed()
+    const { fake, probe } = installedProbe()
     expect(fake.target.requestAnimationFrame).not.toBe(fake.originalRequestFrame)
     expect(fake.queuePrototype.submit).not.toBe(fake.originalSubmit)
 
