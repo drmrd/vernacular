@@ -1,4 +1,4 @@
-import { DEFAULT_PROJECT_ID, resolveSnapshotStore } from '../app'
+import { DEFAULT_PROJECT_ID } from '../app'
 import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, type Project } from '../core'
 import {
   createOpfsProjectStore,
@@ -128,15 +128,18 @@ async function opfsPersistName(): Promise<string> {
   return loaded.meta.name
 }
 
-// Simulates a crash: write a recovery snapshot at the production project's OPFS
-// location and leave it there (no canonical save + prune follows). A subsequent
-// production page load resolves the same snapshot store and should offer recovery.
+// Simulates a crash: write a recovery snapshot of the production project through the durable
+// store and leave it there (no store save and no prune follows). A later production page load
+// opens a handle on the same id, whose snapshots offer the recovery. Gives false when the durable
+// store cannot be built.
 async function plantRecoverySnapshot(): Promise<boolean> {
-  const snapshots = await resolveSnapshotStore(DEFAULT_PROJECT_ID)
-  if (snapshots === undefined) {
+  let store: OpfsProjectStore
+  try {
+    store = await createOpfsProjectStore()
+  } catch {
     return false
   }
-  await snapshots.writeSnapshot(sampleProject('Recovered House'))
+  await store.snapshots(DEFAULT_PROJECT_ID).writeSnapshot(sampleProject('Recovered House'))
   return true
 }
 

@@ -14,6 +14,8 @@ import type { EditorWorkspaceProps } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
 import { useSaveStatus, useUnsavedChangesGuard } from './use-before-unload-guard'
 import { useDiscardConfirmation } from './use-discard-confirmation'
+import { useFlushOnHidden } from './use-flush-on-hidden'
+import { useHandleNotices } from './use-handle-notices'
 import { useLatest } from './use-latest'
 import { guardSessionSwap } from './project-action-helpers'
 import type { RunFlow } from './use-open-project'
@@ -193,9 +195,12 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
     () => createActiveFloorStore(session.getProject().floors[0]?.id ?? null),
     [session],
   )
-  // The handle saves; the workspace only shows its status and warns before a leave.
+  // The handle saves; the workspace shows its status and its notices, warns before a leave, and
+  // asks for a write when the page hides.
   const saveStatus = useSaveStatus(handle)
   useUnsavedChangesGuard(handle)
+  useFlushOnHidden(handle)
+  useHandleNotices(handle)
   useReportSaved(props, saveStatus)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
   const recentEntries = useRecentEntries(recentProjects, handle)

@@ -1,5 +1,5 @@
 import type { Project } from '../../core'
-import { callGuarded } from '../guarded-call'
+import { callGuarded, callGuardedAsync } from '../guarded-call'
 import type { AutosaveConfig, AutosaveStatus } from './create-autosave'
 import type { TrackedWriteQueue } from './tracked-write-queue'
 
@@ -68,7 +68,11 @@ export function flushWrites(queue: TrackedWriteQueue, progress: WriteProgress): 
   return queue.latest() ?? Promise.resolve()
 }
 
-/** Writes ahead to a snapshot when snapshots are set, saves, then prunes. */
+/**
+ * Writes ahead to a snapshot when snapshots are set, saves, then prunes. A prune that rejects goes
+ * to console.error and does not fail the write, because the project is stored by then; the next
+ * write that succeeds prunes again.
+ */
 async function storeProject(config: AutosaveConfig, project: Project): Promise<void> {
   const { snapshots } = config
   if (snapshots === undefined) {
@@ -79,7 +83,7 @@ async function storeProject(config: AutosaveConfig, project: Project): Promise<v
   // save resolved, so a failed save leaves the snapshot.
   await snapshots.writeSnapshot(project)
   await saveAndReport(config, project)
-  await snapshots.prune()
+  await callGuardedAsync(() => snapshots.prune())
 }
 
 /**

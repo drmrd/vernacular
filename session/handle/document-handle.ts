@@ -197,10 +197,12 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
   if (opened.savedByNewerBuild) {
     notices.raise('saved-by-newer-build')
   }
+  const snapshots = parts.snapshots ?? store.snapshots(request.id)
   const autosave = createAutosave({
     session,
     store,
     projectId: request.id,
+    snapshots,
     onStatusChange: status.set,
     onReport: reportFaultsTo(notices, opened),
   })
@@ -210,7 +212,7 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     location: request.location,
     durable: store.durable,
     session,
-    snapshots: parts.snapshots ?? store.snapshots(request.id),
+    snapshots,
     saveStatus: status.get,
     subscribe: status.subscribe,
     onNotice: notices.onNotice,

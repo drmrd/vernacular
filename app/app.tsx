@@ -30,7 +30,7 @@ import {
   type StorageCapabilities,
 } from '../storage'
 import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
-import { type Project, type SurfaceTreatment } from '../core'
+import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
 import { OPEN_ELSEWHERE, openFailureReason } from './open-failure-text'
@@ -82,17 +82,6 @@ function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
 // eslint-disable-next-line react-refresh/only-export-components -- every URL seam in this app reads through the one searchParam helper here, so the reader belongs beside its siblings rather than in a module of its own; it is exported only so the seam itself is unit-testable.
 export function requestedDesignLanguage(): DesignLanguage {
   return resolveDesignLanguage(searchParam(DESIGN_LANGUAGE_PREVIEW_PARAM))
-}
-
-/**
- * The subset of SnapshotStore that the snapshot resolver gives. The resolver and its hook still
- * name this type; the application itself reads the snapshots of the open handle.
- */
-export interface SnapshotsPort {
-  writeSnapshot(project: Project): Promise<void>
-  prune(): Promise<void>
-  isRecoverable(): Promise<boolean>
-  restore(): Promise<Project | undefined>
 }
 
 export interface AppProps {
