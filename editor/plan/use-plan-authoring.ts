@@ -194,9 +194,9 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
 // they began under. The setters and the callback are stable, so each effect runs
 // on a change of tool or floor and one time at mount, where it changes nothing.
 
-// A run left open would continue, unseen, when the tool is armed again.
-// `useDiscardPointerMeasurement` in `use-dimension-tool.ts` does the same for the pointer
-// half of the dimension tool.
+// A run left open would continue, unseen, when the tool is armed again or on
+// the other floor. `useDiscardPointerWallRun` and `useDiscardPointerMeasurement`
+// do the same for the pointer runs.
 function useDiscardKeyboardRuns(
   { tool, activeFloorId }: RunScope,
   setWallState: (state: WallToolState) => void,
