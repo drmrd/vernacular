@@ -20,7 +20,6 @@ import {
   WALL_MIDPOINT_X,
 } from './authoring-tool-handlers-test-fixtures'
 import { advanceDimensionTool, IDLE_DIMENSION_TOOL } from './dimension-tool'
-import { placementRefusalMessage } from './overlay-announce'
 import { advanceWallTool, IDLE_WALL_TOOL } from './wall-tool'
 import { wasKeystrokeClaimed } from './keyboard-guard'
 
@@ -185,7 +184,7 @@ describe('handleOpeningKey selects what it drops', () => {
     expect(run.selection.getSelectedIds()).toEqual(new Set())
   })
 
-  it('refuses a drop on top of a door already in the wall and says why', () => {
+  it('refuses a drop on top of a door already in the wall and leaves the saying to the notice', () => {
     const dispatch = vi.fn()
     const existingDoor = createOpening({
       id: 'existing',
@@ -209,7 +208,7 @@ describe('handleOpeningKey selects what it drops', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
     expect(run.selection.getSelectedIds()).toEqual(new Set())
-    expect(run.setAnnouncement).toHaveBeenCalledWith(placementRefusalMessage('opening-overlap'))
+    expect(run.setAnnouncement).toHaveBeenCalledWith('')
   })
 })
 

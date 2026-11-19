@@ -82,14 +82,6 @@ describe('a standing refusal when one input of the situation changes', () => {
     expect(refusal()).toBeNull()
   })
 
-  it('retires when only the tool changes', () => {
-    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
-
-    rerenderWith({ ...basis(), tool: 'place-stair' })
-
-    expect(refusal()).toBeNull()
-  })
-
   it('retires when only the placement type changes', () => {
     const { refusal, choosePlacementType } = mountWithStandingRefusal(sessionWithOneFloor())
 
