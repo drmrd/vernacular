@@ -97,16 +97,22 @@ const storageProperties = [
 ]
 
 // Pieces of the selectors below. A name list becomes one regular expression.
+// The name lists hold plain identifiers, with no character that is special in a pattern.
 const anyOf = (names) => `/^(${names.join('|')})$/`
 const propertyNamed = (names) =>
   `:matches([property.name=${anyOf(names)}], [property.value=${anyOf(names)}])`
 const keyNamed = (names) => `:matches([key.name=${anyOf(names)}], [key.value=${anyOf(names)}])`
 const typeScriptWrapper = anyOf(['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression'])
+// True when the node at the path is a global object, plain or behind one TypeScript wrapper.
+const isGlobalObject = (path) =>
+  `:matches([${path}.name=${anyOf(globalObjectNames)}], ` +
+  `[${path}.type=${typeScriptWrapper}][${path}.expression.name=${anyOf(globalObjectNames)}])`
 const storageSelector = (selector) => ({ selector, message: storageApiMessage })
 
-// navigator reached through another object: globalThis.navigator.storage
+// navigator reached through a global object: globalThis.navigator.storage
 const navigatorThroughAnObject = storageSelector(
   "MemberExpression[object.type='MemberExpression'][object.property.name='navigator']" +
+    isGlobalObject('object.object') +
     propertyNamed(navigatorStorageMembers),
 )
 // A global object behind a TypeScript wrapper: (window as Window).localStorage
@@ -115,16 +121,18 @@ const wrappedGlobalObject = storageSelector(
     `[object.expression.name=${anyOf(globalObjectNames)}]` +
     propertyNamed(storageApiNames),
 )
-// navigator behind a TypeScript wrapper, direct or read from an object:
+// navigator behind a TypeScript wrapper, direct or read from a global object:
 // (navigator as Navigator).storage, globalThis.navigator!.locks
 const wrappedNavigator = storageSelector(
   `MemberExpression[object.type=${typeScriptWrapper}]` +
-    ":matches([object.expression.name='navigator'], [object.expression.property.name='navigator'])" +
+    ":matches([object.expression.name='navigator'], " +
+    `[object.expression.property.name='navigator']${isGlobalObject('object.expression.object')})` +
     propertyNamed(navigatorStorageMembers),
 )
-// A destructuring from a navigator read from an object: const { storage } = globalThis.navigator
+// A destructuring from a navigator read from a global object: const { storage } = globalThis.navigator
 const destructuredFromNavigatorThroughAnObject = storageSelector(
   "VariableDeclarator[init.type='MemberExpression'][init.property.name='navigator']" +
+    isGlobalObject('init.object') +
     ` > ObjectPattern > Property${keyNamed(navigatorStorageMembers)}`,
 )
 // A destructuring of navigator out of a global object: const { navigator: { storage } } = window
