@@ -3,6 +3,7 @@ import { comparisonWarnings, formatTimingReport } from './timing-report'
 import { aTimingRun, summary } from './timing-run-fixture'
 import type { TimingRun } from './timing-record'
 
+const MAX_LINE_LENGTH = 100
 const MOVED_WALL = 'move-wall-endpoint'
 const UPDATE_ROW = `3D update, ${MOVED_WALL}`
 
@@ -157,5 +158,89 @@ describe('the warnings that compare the canvas sizes of a run with its baseline'
     expect(warnings).toHaveLength(1)
     expect(warnings[0]).toContain('960 x 600')
     expect(warnings[0]).toContain('1280 x 720')
+  })
+})
+
+const OTHER_MACHINE = {
+  processor: 'Apple M4 Max',
+  operatingSystem: 'macOS 25.4',
+  browser: 'Chromium 140.0.7300.0',
+  webGpuAdapter: 'apple / metal-3 / Apple M4 Max',
+} as const
+
+function onOtherMachine(): TimingRun {
+  return withEdit((run) => void Object.assign(run.machine, OTHER_MACHINE))
+}
+
+/** The lines of the header from the one that starts with "Base machine" to the end of the header. */
+function baseMachineLines(report: string): string[] {
+  const lines = headerOf(report).split('\n')
+  const start = lines.findIndex((line) => line.startsWith('Base machine'))
+  return start < 0 ? [] : lines.slice(start)
+}
+
+describe('the machine of the baseline in the header of the timing report', () => {
+  it('has a line that starts with "Base machine" and holds the processor, adapter, system, and browser', () => {
+    const lines = baseMachineLines(formatTimingReport(aTimingRun(), onOtherMachine()))
+    const text = lines.join('\n')
+
+    expect(lines.length).toBeGreaterThan(0)
+    Object.values(OTHER_MACHINE).forEach((value) => expect(text).toContain(value))
+  })
+
+  it('has no such line when there is no baseline', () => {
+    expect(baseMachineLines(formatTimingReport(aTimingRun(), undefined))).toEqual([])
+  })
+
+  it('keeps every line of the report at 100 characters or fewer, wrapping the line if it must', () => {
+    const report = formatTimingReport(aTimingRun(), onOtherMachine())
+
+    report.split('\n').forEach((line) => expect(line.length).toBeLessThanOrEqual(MAX_LINE_LENGTH))
+  })
+})
+
+describe('the warning that compares the operating system of a run with its baseline', () => {
+  it('gives one warning naming both systems when they differ', () => {
+    const current = withEdit((run) => void (run.machine.operatingSystem = 'macOS 26.1'))
+    const baseline = withEdit((run) => void (run.machine.operatingSystem = 'macOS 25.4'))
+
+    const warnings = comparisonWarnings(current, baseline)
+
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('macOS 26.1')
+    expect(warnings[0]).toContain('macOS 25.4')
+  })
+})
+
+describe('the note on a 3D frame figure at the end of the timing report', () => {
+  // The note is the line that holds "paced", with the line after it when the note wraps.
+  function frameNote(report: string): string[] {
+    const lines = report.split('\n')
+    const last = lines.map((line) => line.startsWith('3D frame after ')).lastIndexOf(true)
+    const tail = lines.slice(last + 1)
+    const start = tail.findIndex((line) => line.includes('paced'))
+    return start < 0 ? [] : tail.slice(start, start + 2)
+  }
+
+  it.each([
+    ['with no baseline', formatTimingReport(aTimingRun(), undefined)],
+    ['with a baseline', formatTimingReport(aTimingRun(), aTimingRun())],
+  ])(
+    'says that a frame is paced, an upper bound, and drawn with furniture boxes %s',
+    (_n, report) => {
+      const note = frameNote(report).join(' ')
+
+      expect(note).toContain('paced')
+      expect(note).toContain('upper bound')
+      expect(note).toContain('furniture')
+      expect(note).toContain('boxes')
+    },
+  )
+
+  it('is on lines of at most 100 characters', () => {
+    const lines = frameNote(formatTimingReport(aTimingRun(), undefined))
+
+    expect(lines.length).toBeGreaterThan(0)
+    lines.forEach((line) => expect(line.length).toBeLessThanOrEqual(MAX_LINE_LENGTH))
   })
 })

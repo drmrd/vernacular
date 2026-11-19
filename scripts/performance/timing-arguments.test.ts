@@ -27,6 +27,7 @@ describe('the arguments of the timing command', () => {
   it('give the defaults when there are none', () => {
     expect(optionsOf([])).toEqual({
       baseline: DEFAULT_BASELINE,
+      baselineGiven: false,
       out: null,
       quick: false,
       writeBaseline: false,
@@ -40,6 +41,23 @@ describe('the arguments of the timing command', () => {
 
   it('set the path of the baseline to compare against with --baseline', () => {
     expect(optionsOf(['--baseline', 'b.json']).baseline).toBe('b.json')
+  })
+
+  // A baseline path that the user named and that does not exist is an error; the missing default
+  // file only means that there is no baseline yet. The driver tells the two apart by this field.
+  it('say that no baseline path was given when --baseline is absent', () => {
+    expect(optionsOf([]).baselineGiven).toBe(false)
+  })
+
+  it('say that a baseline path was given with --baseline', () => {
+    expect(optionsOf(['--baseline', 'b.json']).baselineGiven).toBe(true)
+  })
+
+  it('say that a baseline path was given when it equals the default path', () => {
+    const options = optionsOf(['--baseline', DEFAULT_BASELINE])
+
+    expect(options.baseline).toBe(DEFAULT_BASELINE)
+    expect(options.baselineGiven).toBe(true)
   })
 
   it('ask for a quick check with --quick', () => {
@@ -57,6 +75,7 @@ describe('the arguments of the timing command', () => {
   it('leave the other fields at their defaults when one flag is given', () => {
     expect(optionsOf(['--quick'])).toEqual({
       baseline: DEFAULT_BASELINE,
+      baselineGiven: false,
       out: null,
       quick: true,
       writeBaseline: false,
