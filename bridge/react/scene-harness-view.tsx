@@ -37,15 +37,6 @@ const HARNESS_BACKGROUND = 0x1b2a3a
 // identity across re-renders instead of rebuilding the scene for a fresh empty object.
 const NO_PAINT: Record<string, SurfaceTreatment> = {}
 
-// Fits the camera to the bounds for the pinned canvas size, then draws a frame on the
-// renderer's next animation frame, on mount and again when the lighting reports ready, so
-// the screenshot is deterministic and every draw is the first draw of its renderer frame
-// (the Canvas runs in `frameloop="never"`, so the renderer's own loop is the only clock).
-// The mount frame keeps the canvas from sitting blank while asynchronous lighting (the solar
-// provider's lazily loaded sky) attaches; the ready frame is the one the baselines
-// capture, awaited through the wrapper's SCENE_READY_ATTRIBUTE. Fitting here
-// (rather than only at scene build) frames the model to the harness aspect ratio and
-// field of view, matching the live preview (ADR-0075).
 /**
  * How to place the harness camera before rendering: fit the scene `bounds` to the
  * pinned canvas, unless a state supplies its own `cameraOverride` pose (the
@@ -59,8 +50,15 @@ interface HarnessFraming {
   ambientOcclusionActive: boolean
 }
 
-// The readiness gate and its handlers, handed to the static frame as one prop.
-type HarnessReadiness = ReturnType<typeof useHarnessReadiness>
+// harnessReady: the lighting and the ambient occlusion are settled, so the next draw is the
+// ready frame; drawnReadyFrame: that frame was drawn in the renderer's animation loop.
+interface HarnessReadiness {
+  harnessReady: boolean
+  drawnReadyFrame: boolean
+  handleLightingReady: () => void
+  handleAmbientOcclusionSettled: () => void
+  handleReadyFrameDrawn: () => void
+}
 
 function StaticFrame({
   framing,
@@ -79,15 +77,15 @@ function StaticFrame({
   // pass renders exactly as before. onAmbientOcclusionSettled bubbles the
   // build's settlement up so the wrapper's ready gate waits for the installed pipeline.
   const renderFrame = useAmbientOcclusion(ambientOcclusionActive, handleAmbientOcclusionSettled)
-  // Places the camera now and draws on the renderer's next animation frame, after the renderer
-  // has advanced its frame, so the drawn frame runs every pass. Requests made before that frame
-  // replace each other, so the frame draws once. The mount frame is followed by the ready frame
-  // once harnessReady flips: the lazy sky has attached and, when active, the ambient-occlusion
-  // pipeline has settled, so the captured frame carries both. Only a frame requested with
-  // harnessReady true reports itself as the ready frame.
+  // The camera is placed in this layout effect. The draw runs once, in the renderer's next
+  // animation-loop callback, because the renderer resets its counts and does its
+  // once-in-a-frame work only there; the cleanup cancels a pending draw. A frame requested
+  // with harnessReady true reports itself as the ready frame.
   useLayoutEffect(() => {
     if (cameraOverride === undefined) fitCameraToBounds(camera, bounds, { width, height })
     else applyCameraPose(camera, cameraOverride)
+    // gl is typed as the scene library's own renderer, which does not declare the
+    // animation-loop accessors the WebGPU renderer has, hence the double cast.
     return drawOnNextRendererFrame(gl as unknown as AnimationLoopRenderer, () => {
       renderFrame(gl, scene, camera)
       if (harnessReady) handleReadyFrameDrawn()
@@ -230,7 +228,7 @@ function useHarnessAmbientOcclusionReadiness() {
 // readiness alone, so schematic states keep their existing single-signal
 // contract unchanged. The wrapper reads ready only from drawnReadyFrame, which the draw
 // sets from inside the animation loop once a frame requested with that gate open has drawn.
-function useHarnessReadiness(ambientOcclusionActive: boolean) {
+function useHarnessReadiness(ambientOcclusionActive: boolean): HarnessReadiness {
   const { lightingReady, handleLightingReady } = useHarnessLightingReadiness()
   const { ambientOcclusionSettled, handleAmbientOcclusionSettled } =
     useHarnessAmbientOcclusionReadiness()
