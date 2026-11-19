@@ -101,28 +101,46 @@ describe('a restore of a handle that no open built', () => {
   })
 })
 
-describe('a restore whose new handle cannot be built', () => {
-  async function restoreWithFailingBuild() {
+describe('a restore on a store whose snapshots method throws', () => {
+  async function restoreWithThrowingSnapshots() {
     const opened = await openStored()
     await snapshotRecovered(opened.handle)
-    vi.spyOn(opened.ports.workspace, 'snapshots').mockImplementation(() => {
+    const snapshots = vi.spyOn(opened.ports.workspace, 'snapshots')
+    snapshots.mockClear()
+    snapshots.mockImplementation(() => {
       throw new Error(SNAPSHOT_FAILURE)
     })
     return { ...opened, result: await restoreSnapshot(opened.handle) }
   }
 
-  it('gives storage-unavailable with the message', async () => {
-    const { result } = await restoreWithFailingBuild()
+  it('does not stop a restore: the result is ok, and the new handle holds the lock', async () => {
+    const { ports, result } = await restoreWithThrowingSnapshots()
 
-    expect(result).toEqual({
-      ok: false,
-      failure: { kind: 'storage-unavailable', message: SNAPSHOT_FAILURE },
-    })
+    expect(result).toEqual({ ok: true, handle: expect.anything() })
+    expect(await ports.locks.heldIds()).toEqual(new Set([PROJECT_ID]))
+  })
+})
+
+describe('the snapshots of a restored handle', () => {
+  it('are the snapshots object of the old handle, and the store is not asked for them', async () => {
+    const opened = await openStored()
+    await snapshotRecovered(opened.handle)
+    const snapshots = vi.spyOn(opened.ports.workspace, 'snapshots')
+    snapshots.mockClear()
+
+    const restored = handleOf(await restoreSnapshot(opened.handle))
+
+    expect(snapshots).not.toHaveBeenCalled()
+    expect(restored.snapshots).toBe(opened.handle.snapshots)
   })
 
-  it('frees the lock, because no handle holds it', async () => {
-    const { ports } = await restoreWithFailingBuild()
+  it('still belong to the id: a snapshot written through the new handle is recoverable from the store', async () => {
+    const opened = await openStored()
+    await snapshotRecovered(opened.handle)
+    const restored = handleOf(await restoreSnapshot(opened.handle))
 
-    expect(await ports.locks.heldIds()).toEqual(new Set())
+    await snapshotRecovered(restored)
+
+    expect(await opened.ports.workspace.snapshots(PROJECT_ID).isRecoverable()).toBe(true)
   })
 })
