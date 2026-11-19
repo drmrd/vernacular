@@ -291,10 +291,11 @@ function printRefusals(heading, reasons) {
 }
 
 /**
- * Closes the browser, or goes on with a note when it has not reported its close in time.
- * @param {import('@playwright/test').Browser} browser
+ * Closes the browser, or goes on with a note when it has not reported its close in time or its
+ * close failed: the outcome of the run is already known and is kept either way.
+ * @param {Pick<import('@playwright/test').Browser, 'close'>} browser
  */
-async function closeBrowser(browser) {
+export async function closeBrowser(browser) {
   let timer
   const late = new Promise((resolve) => {
     timer = setTimeout(() => resolve('late'), BROWSER_CLOSE_LIMIT_MS)
@@ -302,6 +303,8 @@ async function closeBrowser(browser) {
   let result
   try {
     result = await Promise.race([browser.close().then(() => 'closed'), late])
+  } catch (error) {
+    console.error(`The browser failed to close (${errorMessage(error)}); going on.`)
   } finally {
     clearTimeout(timer)
   }
@@ -388,6 +391,8 @@ if (invokedDirectly) {
     (error) => {
       console.error(error instanceof Error ? (error.stack ?? error.message) : error)
       process.exitCode = EXIT_ERROR
+      // As after a run: a leftover handle must not keep the command alive after an error.
+      setTimeout(() => process.exit(EXIT_ERROR), EXIT_DELAY_MS).unref()
     },
   )
 }

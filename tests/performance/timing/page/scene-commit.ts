@@ -44,10 +44,12 @@ export function hasNewSceneRoot(before: readonly Object3D[]): boolean {
 }
 
 /**
- * Waits, polling on tasks, until the 3D scene has taken a new scene root after the edit, so the
- * next frame draws the edited scene. For an edit that changes nothing in the scene the wait ends
- * after {@link NO_SCENE_CHANGE_WAIT_MS}. Throws when an edit that changes the scene has not reached
- * it within {@link SCENE_COMMIT_LIMIT_MS}.
+ * Waits, polling on timer tasks and never on frames, until the 3D scene has taken a new scene root
+ * after the edit, so the next frame draws the edited scene. The caller holds the page's frame
+ * callbacks meanwhile; the commit does not need them, because the canvas library commits its scene
+ * in a task of React's scheduler. For an edit that changes nothing in the scene the wait ends after
+ * {@link NO_SCENE_CHANGE_WAIT_MS}. Throws when an edit that changes the scene has not reached it
+ * within {@link SCENE_COMMIT_LIMIT_MS}.
  */
 export async function waitForSceneCommit(
   watch: FrameWatch,

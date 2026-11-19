@@ -201,21 +201,35 @@ interface TimedEdit {
   readonly command: () => Command
 }
 
-/** Runs the change and waits until the 3D scene has taken it, so a frame after it draws it. */
+/**
+ * Holds the page's frame callbacks, runs the change, waits until the 3D scene has taken it, and
+ * then releases the hold, so no frame of the page runs between the change and the release: the
+ * first frame after the release is the first to draw the change. The scene's commit needs no frame
+ * callback of the page (the canvas library commits in a task of React's scheduler), and the wait
+ * polls on timer tasks, not on frames, so the hold cannot stall it. For an edit that changes nothing
+ * in the scene the short wait of `waitForSceneCommit` runs under the hold too. The hold ends in a
+ * `finally`, also when the change or the wait throws.
+ */
 async function changeAndWaitForScene(
   view: MountedView,
   editName: string,
   change: () => void,
 ): Promise<void> {
   const before = sceneChildren()
-  change()
-  await waitForSceneCommit(view.watch, editName, before)
+  view.watch.probe.setHeld(true)
+  try {
+    change()
+    await waitForSceneCommit(view.watch, editName, before)
+  } finally {
+    view.watch.probe.setHeld(false)
+  }
 }
 
 /**
- * Dispatches the edit and waits until the 3D scene has taken the new scene root, then takes the
- * first frame that starts after that: the frame that draws the edit. Then it undoes the edit, waits
- * for the scene to take that too, and lets frames pass untimed.
+ * Dispatches the edit under a hold of the page's frames until the 3D scene has taken the new scene
+ * root, notes the time after the release, and takes the first frame that starts after it: the frame
+ * that draws the edit. Then it undoes the edit under the same hold, so the scene is settled before
+ * the next sample, and lets frames pass untimed.
  */
 async function framesAfterEdit(
   view: MountedView,
@@ -289,6 +303,9 @@ async function timeEdits(
     }
     return byEdit
   } finally {
+    // A hold ends in changeAndWaitForScene already; ending it here too keeps the end of the view
+    // free of any hold whatever threw.
+    view.watch.probe.setHeld(false)
     view.watch.probe.setPaced(false)
   }
 }
