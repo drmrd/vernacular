@@ -1,4 +1,4 @@
-import { callGuarded } from './guarded-call'
+import { callGuarded } from '../guarded-call'
 import type { HandleNotice } from './handle-types'
 
 /** The notices of one handle: each kind is raised once and delivered once. */

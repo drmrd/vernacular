@@ -1,7 +1,7 @@
 import type { DocumentStore, ProjectLockHold } from '../../storage'
 import { createAutosave } from '../autosave/create-autosave'
 import { createEditorSession } from '../editor-session/editor-session'
-import { callGuarded } from './guarded-call'
+import { callGuarded } from '../guarded-call'
 import { createHandleNotices } from './handle-notices'
 import type { DocumentHandle, OpenRequest, SaveOutcome, SaveStatus } from './handle-types'
 import type { OpenedProject } from './read-for-open'

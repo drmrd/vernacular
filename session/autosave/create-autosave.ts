@@ -2,7 +2,12 @@ import type { Project } from '../../core'
 import type { ProjectStore } from '../../storage'
 import type { EditorSession } from '../editor-session/editor-session'
 import { createWriteQueue } from '../handle/write-queue'
-import { createAutosaveWrite, createWriteProgress, hasUnwrittenChange } from './autosave-write'
+import {
+  createAutosaveWrite,
+  createStatusReporter,
+  createWriteProgress,
+  hasUnwrittenChange,
+} from './autosave-write'
 
 export type AutosaveStatus = 'idle' | 'pending' | 'saved' | 'error'
 
@@ -52,7 +57,7 @@ export interface Autosave {
  */
 export function createAutosave(config: AutosaveConfig): Autosave {
   const delayMs = config.delayMs ?? DEFAULT_AUTOSAVE_DELAY_MS
-  const report = config.onStatusChange ?? noop
+  const report = createStatusReporter(config)
   const progress = createWriteProgress()
   const queue = createWriteQueue(createAutosaveWrite(config, progress))
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -67,8 +72,8 @@ export function createAutosave(config: AutosaveConfig): Autosave {
   const writeWhenUnwritten = (): void => {
     timer = undefined
     if (hasUnwrittenChange(progress)) {
-      // Nobody awaits this write. A failed write has reported its status, a write dropped after
-      // dispose is silent on purpose, and a callback that throws is left unreported here.
+      // Nobody awaits this write. A failed write has reported its status, and a write dropped
+      // after dispose is silent on purpose. A callback that throws has gone to console.error.
       queue.request().catch(noop)
     }
   }
