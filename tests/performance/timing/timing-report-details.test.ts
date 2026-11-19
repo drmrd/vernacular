@@ -127,6 +127,16 @@ describe('a large value in the timing report', () => {
 
     expect(report).toContain('1234.56')
   })
+
+  it('is printed in full in the baseline cell, even when it is wider than its column', () => {
+    const baseline = withEdit((run) => {
+      run.times.planRedraw = summary(123.45, 234.56)
+    })
+
+    const report = formatTimingReport(aTimingRun(), baseline)
+
+    expect(report).toContain('123.45/234.56')
+  })
 })
 
 describe('the warnings that compare the canvas sizes of a run with its baseline', () => {

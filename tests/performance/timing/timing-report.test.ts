@@ -171,6 +171,29 @@ describe('the change of a time against the baseline', () => {
   })
 })
 
+describe('the change of a time that the baseline lacks', () => {
+  const MISSING_EDIT = 'move-furniture'
+
+  function baselineLackingOneUpdate(): TimingRun {
+    return withEdit((run) => {
+      run.times.sceneUpdate = Object.fromEntries(
+        Object.entries(run.times.sceneUpdate).filter(([name]) => name !== MISSING_EDIT),
+      )
+      run.times.sceneUpdate[MOVED_WALL] = summary(2, 4)
+    })
+  }
+
+  it('shows not measured and n/a on its row, and keeps the baseline cell of the other rows', () => {
+    const report = formatTimingReport(aTimingRun(), baselineLackingOneUpdate())
+    const [missingRow] = rowsStartingWith(report, `3D update, ${MISSING_EDIT}`)
+    const [otherRow] = rowsStartingWith(report, UPDATE_ROW)
+
+    expect(missingRow).toContain('not measured')
+    expect(missingRow?.endsWith('n/a')).toBe(true)
+    expect(otherRow).toContain('2.00/4.00')
+  })
+})
+
 describe('the heading of the baseline column of the timing report', () => {
   const report = formatTimingReport(aTimingRun(), aTimingRun())
 
