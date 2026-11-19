@@ -7,6 +7,7 @@ import { furnitureFootprintCorners } from '../../core'
 import {
   buildFurnitureModelGroup,
   disposeObject,
+  hasUsableGeometry,
   normalizeModelIntoBox,
   parseFurnitureModel,
 } from './furniture-model'
@@ -62,6 +63,35 @@ describe('normalizeModelIntoBox', () => {
     expect(
       normalizeModelIntoBox(empty, nodeFor({ width: 1000, depth: 1000, height: 1000 })),
     ).toBeNull()
+  })
+})
+
+describe('hasUsableGeometry', () => {
+  it('is false for an empty group', () => {
+    expect(hasUsableGeometry(new THREE.Group())).toBe(false)
+  })
+
+  it('is false for a group that holds only a light and a camera', () => {
+    const group = new THREE.Group()
+    group.add(new THREE.PointLight(), new THREE.PerspectiveCamera())
+    expect(hasUsableGeometry(group)).toBe(false)
+  })
+
+  it('is false for a mesh that is flat on one axis', () => {
+    const flat = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000)) // no extent along z
+    expect(hasUsableGeometry(flat)).toBe(false)
+  })
+
+  it('is true for a box mesh', () => {
+    expect(hasUsableGeometry(new THREE.Mesh(new THREE.BoxGeometry(1000, 1000, 1000)))).toBe(true)
+  })
+
+  it('is true for a box mesh under a parent with a non-identity transform', () => {
+    const parent = new THREE.Group()
+    parent.position.set(50, 50, 50)
+    parent.scale.set(2, 2, 2)
+    parent.add(new THREE.Mesh(new THREE.BoxGeometry(1000, 1000, 1000)))
+    expect(hasUsableGeometry(parent)).toBe(true)
   })
 })
 
