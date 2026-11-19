@@ -6,11 +6,18 @@ import { useEscapeToSelect } from './use-escape-to-select'
 
 afterEach(cleanup)
 
+// The end of the key press task: a task queued during the press runs only after
+// every listener of that press has run.
+function endOfKeyPressTask(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve))
+}
+
 // Escape is settled once every listener on the keystroke has had its say, so the
-// press is flushed before the tool is read.
+// press is flushed, and the task that ends it has passed, before the tool is read.
 async function pressEscape(target: EventTarget = window): Promise<void> {
   await act(async () => {
     target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await endOfKeyPressTask()
   })
 }
 
@@ -58,6 +65,25 @@ describe('useEscapeToSelect', () => {
 
     await withRunCancelled(async () => {
       await pressEscape()
+    })
+
+    expect(setTool).not.toHaveBeenCalled()
+  })
+
+  // A browser runs a microtask checkpoint between the listeners of a real key
+  // press, so `await Promise.resolve()` stands for the gap between the hook's
+  // listener and a later listener that claims the key. The timer stands for the
+  // end of the key press task, the first moment after every listener has run.
+  it('keeps the tool armed when a tool claims the Escape after a microtask checkpoint, before the key press task ends', async () => {
+    const setTool = vi.fn()
+    renderHook(() => useEscapeToSelect({ tool: 'draw-wall', setTool }))
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+
+    await act(async () => {
+      window.dispatchEvent(event)
+      await Promise.resolve()
+      claimKeystroke(event)
+      await endOfKeyPressTask()
     })
 
     expect(setTool).not.toHaveBeenCalled()
