@@ -128,7 +128,7 @@ export async function readBaseline(baselinePath, given = false) {
   try {
     parseTimingRun(JSON.parse(text))
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error)
+    const detail = errorMessage(error)
     const reason = `The baseline file ${baselinePath} is not a valid timing record: ${detail}`
     return { ok: false, reason, exitCode: EXIT_NOT_MEASURED }
   }
@@ -221,7 +221,7 @@ export async function runTimingPage(page, input, limitMs = RUN_LIMIT_MS) {
   const run = page
     .evaluate((pageInput) => window.vernacularTiming(pageInput), input)
     .catch((error) => {
-      const detail = error instanceof Error ? error.message : String(error)
+      const detail = errorMessage(error)
       return { kind: 'refused', reasons: [`The timing page could not measure: ${detail}`] }
     })
   try {
@@ -299,6 +299,14 @@ export async function keepMeasuredRun(outcome, options, consoleLines = []) {
   return EXIT_MEASURED
 }
 
+/**
+ * The text of a thrown value.
+ * @param {unknown} error
+ */
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error)
+}
+
 /** @param {string} heading @param {string[]} reasons */
 function printRefusals(heading, reasons) {
   console.error(heading)
@@ -315,8 +323,12 @@ async function closeBrowser(browser) {
   const late = new Promise((resolve) => {
     timer = setTimeout(() => resolve('late'), BROWSER_CLOSE_LIMIT_MS)
   })
-  const result = await Promise.race([browser.close().then(() => 'closed'), late])
-  clearTimeout(timer)
+  let result
+  try {
+    result = await Promise.race([browser.close().then(() => 'closed'), late])
+  } finally {
+    clearTimeout(timer)
+  }
   if (result === 'late') console.error('The browser did not report its close in time; going on.')
 }
 

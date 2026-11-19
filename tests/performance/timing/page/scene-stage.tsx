@@ -185,8 +185,8 @@ async function timedFrames(
 ): Promise<FrameSample[]> {
   const { watch } = view
   await collectFrames(watch, counts.warmup, 0)
-  await switchToPaced(watch)
   try {
+    await switchToPaced(watch)
     const frames = await collectFrames(watch, counts.timed, performance.now())
     checkViewUnchanged(view, variant)
     return frames
@@ -236,8 +236,9 @@ async function framesAfterEdit(
 
 function afterEditVariant(): RenderVariant {
   const variant = RENDER_VARIANTS.find((each) => each.name === AFTER_EDIT_VARIANT_NAME)
-  if (variant === undefined)
+  if (variant === undefined) {
     throw new Error(`No render variant is named "${AFTER_EDIT_VARIANT_NAME}"`)
+  }
   return variant
 }
 

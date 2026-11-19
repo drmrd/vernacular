@@ -1,5 +1,5 @@
 import { firstFrameAfter, type FrameProbe, type FrameSample } from '../frame-probe'
-import { NO_FRAME_LIMIT_MS, frameWithinLimit } from './page-waits'
+import { MILLISECONDS_PER_SECOND, NO_FRAME_LIMIT_MS, frameWithinLimit } from './page-waits'
 
 /**
  * The longest wait for one finished frame sample. In paced mode the probe rightly holds the page's
@@ -8,8 +8,6 @@ import { NO_FRAME_LIMIT_MS, frameWithinLimit } from './page-waits'
  * slow frame.
  */
 export const SAMPLE_LIMIT_MS = 10_000
-
-const MILLISECONDS_PER_SECOND = 1000
 
 /**
  * The samples dropped right after the switch to paced mode. At the switch one host frame can run

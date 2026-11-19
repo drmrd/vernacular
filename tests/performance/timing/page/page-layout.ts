@@ -1,5 +1,5 @@
 import { LIVE_SCENE_CANVAS_TEST_ID } from '../../../../bridge/react/scene-readiness'
-import type { PixelSize } from '../timing-record'
+import { sizeText, type PixelSize } from '../timing-record'
 
 /** The id of the plan canvas in index.html: 800 x 600 canvas pixels, the size the app uses. */
 const PLAN_CANVAS_ID = 'plan-canvas'
@@ -50,10 +50,6 @@ export function expectedSceneCanvasSizes(): SceneCanvasSizes {
       height: Math.floor(SCENE_CANVAS_CSS_PX.height * ratio),
     },
   }
-}
-
-function sizeText(size: PixelSize): string {
-  return `${size.width} x ${size.height}`
 }
 
 /**

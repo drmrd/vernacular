@@ -17,6 +17,11 @@ export interface PixelSize {
   height: number
 }
 
+/** A size as the report prints it, such as "960 x 600". */
+export function sizeText(size: PixelSize): string {
+  return `${size.width} x ${size.height}`
+}
+
 /** One frame of the 3D view timed two ways. */
 export interface FrameTiming {
   /** Start to end of the frame callback: the main-thread work of the frame. */

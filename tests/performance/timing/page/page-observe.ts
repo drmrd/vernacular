@@ -24,6 +24,7 @@ async function displayFrameMs(hostFrame: () => Promise<number>): Promise<number 
       times.push(await frameWithinLimit(hostFrame, 'the display frame check'))
     }
   } catch {
+    // The caller turns null into the refusal "No display frame arrived", so the run still fails clearly.
     return null
   }
   const intervals = times.slice(1).map((time, index) => time - (times[index] ?? time))

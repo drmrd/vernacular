@@ -9,7 +9,7 @@ declare global {
     /**
      * Runs every phase of a timing run once and resolves with its outcome. The timing command's
      * driver calls it with one `page.evaluate`; nothing polls the page while it runs. It rejects
-     * when a phase cannot measure (no frame within 2 s, a failed live view), with the reason.
+     * when a phase cannot measure (no host frame within the frame limit, a failed live view), with the reason.
      */
     vernacularTiming?: (input: TimingInput) => Promise<TimingOutcome>
   }

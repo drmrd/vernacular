@@ -6,7 +6,8 @@
  */
 export const NO_FRAME_LIMIT_MS = 2000
 
-const MILLISECONDS_PER_SECOND = 1000
+/** The number of milliseconds in a second, for the seconds the messages state. */
+export const MILLISECONDS_PER_SECOND = 1000
 
 /**
  * The error of a wait for a host frame that never came. A hidden page stops host frames, so the

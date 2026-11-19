@@ -1,9 +1,4 @@
-import type { PixelSize, TimingRun } from './timing-record'
-
-/** A size as the report prints it. */
-export function sizeText(size: PixelSize): string {
-  return `${size.width} x ${size.height}`
-}
+import { sizeText, type TimingRun } from './timing-record'
 
 interface Comparison {
   what: string

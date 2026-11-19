@@ -1,5 +1,5 @@
-import type { FrameTiming, TimingRun, TimingSummary } from './timing-record'
-import { comparisonWarnings, sizeText } from './timing-comparison'
+import { sizeText, type FrameTiming, type TimingRun, type TimingSummary } from './timing-record'
+import { comparisonWarnings } from './timing-comparison'
 import { roundedToStep } from './timing-statistics'
 
 export { comparisonWarnings }
@@ -170,13 +170,14 @@ function baseMachineField(baseline: TimingRun | undefined): [string, string][] {
   return baseline === undefined ? [] : [['Base machine', baseMachineText(baseline)]]
 }
 
-function headerLines(run: TimingRun, baseline: TimingRun | undefined): string[] {
+/** The labelled fields of the report header, in print order, before the base machine. */
+function headerFields(run: TimingRun, baseline: TimingRun | undefined): [string, string][] {
   const { machine, conditions } = run
   const baselineText =
     baseline === undefined
       ? `${NOT_MEASURED} (no baseline yet)`
       : `commit ${baseline.commit.slice(0, COMMIT_LENGTH)}, taken ${baseline.takenAt}`
-  const fields: [string, string][] = [
+  return [
     [
       'Commit',
       `${run.commit.slice(0, COMMIT_LENGTH)}, uncommitted changes: ` +
@@ -206,7 +207,10 @@ function headerLines(run: TimingRun, baseline: TimingRun | undefined): string[] 
     ],
     ['Baseline', baselineText],
   ]
-  return [...fields, ...baseMachineField(baseline)].flatMap(([label, text]) =>
+}
+
+function headerLines(run: TimingRun, baseline: TimingRun | undefined): string[] {
+  return [...headerFields(run, baseline), ...baseMachineField(baseline)].flatMap(([label, text]) =>
     wrapped(label.padEnd(HEADER_LABEL_WIDTH), text),
   )
 }
