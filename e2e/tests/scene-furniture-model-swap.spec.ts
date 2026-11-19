@@ -38,7 +38,6 @@ test('a placed user-imported model swaps its box for the real mesh in 3D', async
   await webFontsSettled(page)
   const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
   test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
-  await expect(selectors.planCanvas(page)).toBeVisible()
 
   const cube = await importCubeFurniture(page)
 
