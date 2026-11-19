@@ -1,3 +1,4 @@
+import { renameProject } from '../../core'
 import type { Project } from '../../core'
 import {
   InMemoryDirectory,
@@ -5,7 +6,7 @@ import {
   InMemoryProjectLockPort,
   InMemoryProjectStore,
 } from '../../storage'
-import type { DocumentStore, ProjectLockPort } from '../../storage'
+import type { DocumentStore, ProjectLockHold, ProjectLockPort } from '../../storage'
 import type { SessionPorts } from '../ports'
 import type { DocumentHandle, OpenFailure, OpenRequest, SaveOutcome } from './handle-types'
 import { openDocumentHandle } from './open-document-handle'
@@ -93,6 +94,111 @@ export async function failureOf(ports: SessionPorts, request: OpenRequest): Prom
   const result = await openDocumentHandle(ports, request)
   if (result.ok) throw new Error(`Expected the open of ${request.id} to fail`)
   return result.failure
+}
+
+/** What a switch or a flow gives: the handle now open, or why none opened. */
+export type OpenedOrNot =
+  | { readonly ok: true; readonly handle: DocumentHandle }
+  | { readonly ok: false; readonly failure: unknown }
+
+/** The handle of a switch or a flow that must open a project. Throws, naming the failure, otherwise. */
+export function handleOf(result: OpenedOrNot): DocumentHandle {
+  if (!result.ok) throw new Error(`Expected a project to open: ${JSON.stringify(result.failure)}`)
+  return result.handle
+}
+
+/** Renames the open project through its session, as an edit of the user does. */
+export function rename(handle: DocumentHandle, name: string): void {
+  handle.session.dispatch(renameProject(name))
+}
+
+/** The name of the project that `store` holds under `id`. */
+export async function storedName(store: DocumentStore, id: string): Promise<string> {
+  return (await storedProject(store, id)).meta.name
+}
+
+/** Puts `save:<id>` and `read:<id>` in the log for each call, then runs the real method. */
+function recordStoreCalls(store: DocumentStore, log: string[]): void {
+  const realSave = store.save.bind(store)
+  const realRead = store.read.bind(store)
+  store.save = (id, project) => {
+    log.push(`save:${id}`)
+    return realSave(id, project)
+  }
+  store.read = (id) => {
+    log.push(`read:${id}`)
+    return realRead(id)
+  }
+}
+
+/** An in-memory lock port that puts `lock:<id>` and `unlock:<id>` in the log. */
+class RecordingLocks extends InMemoryProjectLockPort {
+  constructor(
+    registry: Set<string>,
+    private readonly log: string[],
+  ) {
+    super(registry)
+  }
+
+  override async tryAcquire(id: string): Promise<ProjectLockHold | undefined> {
+    this.log.push(`lock:${id}`)
+    const hold = await super.tryAcquire(id)
+    if (hold === undefined) return undefined
+    return {
+      release: () => {
+        this.log.push(`unlock:${id}`)
+        return hold.release()
+      },
+    }
+  }
+}
+
+/** Ports whose store and locks report each call to `log`, in the order of the calls. */
+export function recordingPorts(log: string[]): TestPorts {
+  const ports = createTestPorts()
+  recordStoreCalls(ports.workspace, log)
+  return { ...ports, locks: new RecordingLocks(ports.lockRegistry, log) }
+}
+
+/** The next `read` of the store stays pending until the returned function is called. */
+export function holdNextRead(store: DocumentStore): () => void {
+  const realRead = store.read.bind(store)
+  let letGo: () => void = () => undefined
+  const gate = new Promise<void>((resolve) => {
+    letGo = resolve
+  })
+  store.read = async (id) => {
+    store.read = realRead
+    await gate
+    return realRead(id)
+  }
+  return () => letGo()
+}
+
+/** From now on every save of the store rejects, after it has been put in the log. */
+export function failSaves(store: DocumentStore, log: string[] = []): void {
+  store.save = (id) => {
+    log.push(`save:${id}`)
+    return Promise.reject(new Error('disk full'))
+  }
+}
+
+/** The stand-in handle that `addFolder` gives, the type the folder picker answers with. */
+export type PickedFolder = ReturnType<InMemoryFolderAccess['addFolder']>
+
+/**
+ * Makes the next pick of the folder access give a stand-in handle for `directory`, named `name`
+ * when a name is given. Returns that handle.
+ */
+export function pickFolder(
+  ports: TestPorts,
+  directory: InMemoryDirectory,
+  name?: string,
+): PickedFolder {
+  const picked = ports.folders.addFolder(directory)
+  if (name !== undefined) Object.defineProperty(picked, 'name', { value: name })
+  ports.folders.pickNext(picked)
+  return picked
 }
 
 export type Followed =
