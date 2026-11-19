@@ -1,7 +1,3 @@
-/* eslint-disable max-lines --
- * A behavior-organized suite whose cases each own a self-contained SceneGraph
- * literal (now seeding the required `furniture` array). The file length tracks
- * the number of framed-scene cases, not any single hard-to-read unit. */
 import { describe, it, expect } from 'vitest'
 import { buildFramedScene } from './framed-scene'
 import { findByEntityId } from '../../engine/testing'
@@ -141,73 +137,7 @@ describe('buildFramedScene', () => {
   })
 
   it('prepares the exterior walls of a room for near-wall transparency', () => {
-    const roomGraph: SceneGraph = {
-      nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
-      walls: [
-        {
-          id: 'wall:s',
-          kind: 'wall',
-          floorId: 'g',
-          start: { x: 0, y: 0 },
-          end: { x: 4000, y: 0 },
-          thickness: 200,
-          height,
-        },
-        {
-          id: 'wall:e',
-          kind: 'wall',
-          floorId: 'g',
-          start: { x: 4000, y: 0 },
-          end: { x: 4000, y: 4000 },
-          thickness: 200,
-          height,
-        },
-        {
-          id: 'wall:n',
-          kind: 'wall',
-          floorId: 'g',
-          start: { x: 4000, y: 4000 },
-          end: { x: 0, y: 4000 },
-          thickness: 200,
-          height,
-        },
-        {
-          id: 'wall:w',
-          kind: 'wall',
-          floorId: 'g',
-          start: { x: 0, y: 4000 },
-          end: { x: 0, y: 0 },
-          thickness: 200,
-          height,
-        },
-      ],
-      rooms: [
-        {
-          id: 'room:r',
-          kind: 'room',
-          floorId: 'g',
-          polygon: [
-            { x: 0, y: 0 },
-            { x: 4000, y: 0 },
-            { x: 4000, y: 4000 },
-            { x: 0, y: 4000 },
-          ],
-          clearPolygon: [
-            { x: 0, y: 0 },
-            { x: 4000, y: 0 },
-            { x: 4000, y: 4000 },
-            { x: 0, y: 4000 },
-          ],
-          area: 4000 * 4000,
-          ceilingHeight: height,
-        },
-      ],
-      underlays: [],
-      openings: [],
-      dimensions: [],
-      stairs: [],
-      furniture: [],
-    }
+    const roomGraph: SceneGraph = { ...squareRoomWithSouthWindow(height), openings: [] }
 
     // All four walls of the single room are exterior, so the build prepares one
     // near-wall-transparency target per wall.

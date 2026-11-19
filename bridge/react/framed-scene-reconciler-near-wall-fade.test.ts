@@ -19,16 +19,16 @@ import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import {
   glassOpacityOf,
   opacitiesOf,
+  SQUARE_ROOM_CEILING_MM,
+  SQUARE_ROOM_SPAN_MM,
   squareRoomWithSouthWindow,
 } from './near-wall-fade-test-support'
 
 const FADED_OPACITY = 0.1
-const SPAN_MM = 4000
-const CEILING_MM = 2400
 
 // Outside the south wall: plan y maps to world -z, so the room sits at negative z and a
 // camera at positive z looks at the south wall from its outside face.
-const CAMERA_OUTSIDE_SOUTH = { x: 2000, z: 3000 }
+const CAMERA_OUTSIDE_SOUTH = { x: SQUARE_ROOM_SPAN_MM / 2, z: 3000 }
 
 // A furniture node whose axis-aligned footprint spans the given plan extents. The node id
 // carries the `furniture:` prefix while the built group carries the raw instance id, the
@@ -68,9 +68,9 @@ function renamedFloor(graph: SceneGraph): SceneGraph {
 // build on its node and would otherwise hand the previous build back untouched.
 function roomAddedOutsideSouthWall(graph: SceneGraph): SceneGraph {
   const corners = [
-    { x: 0, y: -SPAN_MM },
-    { x: SPAN_MM, y: -SPAN_MM },
-    { x: SPAN_MM, y: 0 },
+    { x: 0, y: -SQUARE_ROOM_SPAN_MM },
+    { x: SQUARE_ROOM_SPAN_MM, y: -SQUARE_ROOM_SPAN_MM },
+    { x: SQUARE_ROOM_SPAN_MM, y: 0 },
     { x: 0, y: 0 },
   ]
   return renamedFloor({
@@ -83,8 +83,8 @@ function roomAddedOutsideSouthWall(graph: SceneGraph): SceneGraph {
         floorId: 'g',
         polygon: corners,
         clearPolygon: corners,
-        area: SPAN_MM * SPAN_MM,
-        ceilingHeight: CEILING_MM,
+        area: SQUARE_ROOM_SPAN_MM * SQUARE_ROOM_SPAN_MM,
+        ceilingHeight: SQUARE_ROOM_CEILING_MM,
       },
     ],
   })

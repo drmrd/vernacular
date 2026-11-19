@@ -1,27 +1,28 @@
 import type { SceneGraph } from '../../core'
 
-const SPAN_MM = 4000
+export const SQUARE_ROOM_SPAN_MM = 4000
 const WALL_THICKNESS_MM = 200
-const DEFAULT_CEILING_MM = 2400
+export const SQUARE_ROOM_CEILING_MM = 2400
 
 type Point = { x: number; y: number }
 
 const corners = (): Point[] => [
   { x: 0, y: 0 },
-  { x: SPAN_MM, y: 0 },
-  { x: SPAN_MM, y: SPAN_MM },
-  { x: 0, y: SPAN_MM },
+  { x: SQUARE_ROOM_SPAN_MM, y: 0 },
+  { x: SQUARE_ROOM_SPAN_MM, y: SQUARE_ROOM_SPAN_MM },
+  { x: 0, y: SQUARE_ROOM_SPAN_MM },
 ]
 
-// Walls run south, east, north, west around the corners, each from one corner to the next.
+// The id order follows the corner order, so wall:s runs along plan y = 0 and each wall ends
+// where the next begins.
 function perimeterWalls(ceiling: number): SceneGraph['walls'] {
   const around = corners()
   return ['wall:s', 'wall:e', 'wall:n', 'wall:w'].map((id, index) => ({
     id,
     kind: 'wall',
     floorId: 'g',
-    start: around[index]!,
-    end: around[(index + 1) % around.length]!,
+    start: { ...around[index]! },
+    end: { ...around[(index + 1) % around.length]! },
     thickness: WALL_THICKNESS_MM,
     height: ceiling,
   }))
@@ -46,8 +47,7 @@ const southWindow = (): SceneGraph['openings'][number] => ({
 // A square room whose four walls are all exterior, with a double-hung window in the south
 // wall. The wall scene-node ids carry the `wall:` prefix while the window's hostWallId is
 // the raw id, the convention a derived graph produces.
-export function squareRoomWithSouthWindow(ceiling: number = DEFAULT_CEILING_MM): SceneGraph {
-  const roomCorners = corners()
+export function squareRoomWithSouthWindow(ceiling: number = SQUARE_ROOM_CEILING_MM): SceneGraph {
   return {
     nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
     walls: perimeterWalls(ceiling),
@@ -56,9 +56,9 @@ export function squareRoomWithSouthWindow(ceiling: number = DEFAULT_CEILING_MM):
         id: 'room:r',
         kind: 'room',
         floorId: 'g',
-        polygon: roomCorners,
-        clearPolygon: roomCorners,
-        area: SPAN_MM * SPAN_MM,
+        polygon: corners(),
+        clearPolygon: corners(),
+        area: SQUARE_ROOM_SPAN_MM * SQUARE_ROOM_SPAN_MM,
         ceilingHeight: ceiling,
       },
     ],
@@ -71,7 +71,7 @@ export function squareRoomWithSouthWindow(ceiling: number = DEFAULT_CEILING_MM):
 }
 
 // Reads the opacity of the 'glass' material under a built opening group, structurally so
-// the bridge test does not import three.
+// the bridge tests do not import three.
 export function glassOpacityOf(group: unknown): number | undefined {
   let opacity: number | undefined
   ;(group as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
@@ -87,8 +87,8 @@ export function glassOpacityOf(group: unknown): number | undefined {
   return opacity
 }
 
-// The distinct material opacities under a built group, structurally so the bridge test
-// does not import three. Covers single- and multi-material meshes.
+// The distinct material opacities under a built group, structurally so the bridge tests
+// do not import three. Covers single- and multi-material meshes.
 export function opacitiesOf(group: unknown): number[] {
   const opacities = new Set<number>()
   ;(group as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
