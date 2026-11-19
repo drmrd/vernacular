@@ -335,7 +335,7 @@ function StatusLayer({ overlay, selected }: StatusLayerProps): ReactElement {
         </div>
       ) : null}
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
-      <div className="plan-overlay__live" role="status" aria-live="polite">
+      <div className="plan-overlay__live" role="status" aria-live="polite" aria-atomic="true">
         <span key={refusal ? `refusal-${refusalAttempt}` : 'announcement'}>
           {liveAnnouncement(overlay, selected, refusal)}
         </span>
