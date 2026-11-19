@@ -30,10 +30,12 @@ export interface EscapeToSelectDeps {
  *
  * The first rung belongs to the tools themselves, which cancel a run in progress
  * and claim the keystroke, so one Escape abandons the run and keeps the tool armed
- * and the next one comes back here. The decision waits until the keystroke has
- * finished reaching every listener, because the tools that cancel are spread across
- * sibling hooks and some of them subscribe after this one; deciding inside the
- * listener would make the ladder depend on the order those hooks happen to mount.
+ * and the next one comes back here. The decision waits until the key press task has
+ * ended, because the tools that cancel are spread across sibling hooks and some of
+ * them subscribe after this one. A real key press runs microtasks between two
+ * listeners of the same event, so a microtask can still run before a later listener
+ * has claimed the key; only a task is sure to run after every listener of that press.
+ * Deciding earlier would make the ladder depend on the order those hooks mount.
  *
  * Inert under any non-placement tool, mirroring use-furniture-keyboard. A tool chip
  * left holding focus by the click that armed the tool does not swallow the key,
@@ -49,11 +51,11 @@ export function useEscapeToSelect(deps: EscapeToSelectDeps): void {
       if (ownsKeystroke(event.target, event.key) || event.key !== ESCAPE_KEY) {
         return
       }
-      queueMicrotask(() => {
+      setTimeout(() => {
         if (!wasKeystrokeClaimed(event)) {
           setTool('select')
         }
-      })
+      }, 0)
     }
     window.addEventListener('keydown', listener)
     return () => {
