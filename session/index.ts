@@ -32,6 +32,8 @@ export type {
   OpenRequest,
 } from './handle/handle-types'
 export { openDocumentHandle } from './handle/open-document-handle'
+export type { SwitchResult } from './flows/switch-project'
+export { switchProject } from './flows/switch-project'
 export type {
   AssetCache,
   ProjectLocation,
