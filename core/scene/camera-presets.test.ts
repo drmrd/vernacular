@@ -161,26 +161,6 @@ describe('doorwayPose', () => {
   const BASEMENT_FLOOR_ELEVATION_MM = -3000
   const DOOR_EYE_HEIGHT_MM = 1016
 
-  function lookVector(pose: CameraPose) {
-    return {
-      x: pose.target.x - pose.position.x,
-      y: pose.target.y - pose.position.y,
-      z: pose.target.z - pose.position.z,
-    }
-  }
-
-  function towardCenter(pose: CameraPose) {
-    return {
-      x: CENTER.x - pose.position.x,
-      y: CENTER.y - pose.position.y,
-      z: CENTER.z - pose.position.z,
-    }
-  }
-
-  function dot(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) {
-    return a.x * b.x + a.y * b.y + a.z * b.z
-  }
-
   const outwardDoor = makeDoor({ x: 0, y: -1 })
   const eye = outwardDoor.sillHeight + outwardDoor.height / 2
 
@@ -193,17 +173,6 @@ describe('doorwayPose', () => {
   it('looks horizontally so the eye holds its height across the opening', () => {
     const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
     expect(Math.abs(pose.target.y - pose.position.y)).toBeLessThan(HORIZONTAL_TOLERANCE)
-  })
-
-  it('looks toward the interior even when the raw normal points away from it', () => {
-    const pose = doorwayPose(outwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
-    expect(dot(lookVector(pose), towardCenter(pose))).toBeGreaterThan(0)
-  })
-
-  it('looks toward the interior when the raw normal already points toward it', () => {
-    const inwardDoor = makeDoor({ x: 0, y: 1 })
-    const pose = doorwayPose(inwardDoor, houseBounds, GROUND_FLOOR_ELEVATION_MM)
-    expect(dot(lookVector(pose), towardCenter(pose))).toBeGreaterThan(0)
   })
 
   it('keeps the up vector pointing toward world +Y', () => {
@@ -318,5 +287,30 @@ describe('doorwayPose: the look side', () => {
       x: floorView.target.x - floorView.position.x,
       z: floorView.target.z - floorView.position.z,
     })
+  })
+
+  const interiorDoor = (facing: 'positive' | 'negative'): OpeningSceneNode => ({
+    ...makeDoor({ x: -1, y: 0 }),
+    center: { x: 4000, y: 1500 },
+    along: { x: 0, y: 1 },
+    orientation: { hinge: 'start', facing },
+  })
+
+  it('looks toward the side its leaf opens to when the door has no room side, whatever the centre of the shown bounds', () => {
+    const bounds: Bounds3 = {
+      min: { x: 0, y: 0, z: -STOREY_HEIGHT_MM },
+      max: { x: 10000, y: 2438, z: 0 },
+    }
+    const pose = doorwayPose(interiorDoor('positive'), bounds, GROUND_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: -1, z: 0 })
+  })
+
+  it('looks against the normal when the door has no room side and its leaf opens to the negative side', () => {
+    const bounds: Bounds3 = {
+      min: { x: 0, y: 0, z: -STOREY_HEIGHT_MM },
+      max: { x: 6000, y: 2438, z: 0 },
+    }
+    const pose = doorwayPose(interiorDoor('negative'), bounds, GROUND_FLOOR_ELEVATION_MM)
+    expectLook(pose, { x: 1, z: 0 })
   })
 })
