@@ -16,21 +16,33 @@ export interface WriteProgress {
   storedChanges: number
   /** The count of changes when the running write started; undefined when none runs. */
   runningFrom: number | undefined
+  /** True when the last write that ended failed; false once a later write succeeds. */
+  lastWriteFailed: boolean
   /** True once autosave is disposed. */
   disposed: boolean
 }
 
 /** Progress with no change and no write. */
 export function createWriteProgress(): WriteProgress {
-  return { changes: 0, storedChanges: 0, runningFrom: undefined, disposed: false }
+  return {
+    changes: 0,
+    storedChanges: 0,
+    runningFrom: undefined,
+    lastWriteFailed: false,
+    disposed: false,
+  }
 }
 
-/** True when a change is not stored and no running write started after it. */
+/**
+ * True when no running write started after the last change, and either a change is not stored or
+ * the last write that ended failed: after a failed write something may be unsaved, also when no
+ * change was made.
+ */
 export function hasUnwrittenChange(progress: WriteProgress): boolean {
   if (progress.runningFrom === progress.changes) {
     return false
   }
-  return progress.changes !== progress.storedChanges
+  return progress.changes !== progress.storedChanges || progress.lastWriteFailed
 }
 
 /** Saves the project, then gives what the save found to the report callback, guarded. */
@@ -42,8 +54,9 @@ async function saveAndReport(config: AutosaveConfig, project: Project): Promise<
 
 /**
  * Writes an unsaved change now, or waits for the writes that run or wait. It asks for a write only
- * when a change is unsaved and no running write started after it; a write that already waits is
- * the one the queue gives. It rejects with the error of the last write, and at once after dispose.
+ * when a change is unsaved or the last write failed, and no running write started after the last
+ * change; a write that already waits is the one the queue gives. It rejects with the error of the
+ * last write, and at once after dispose.
  */
 export function flushWrites(queue: TrackedWriteQueue, progress: WriteProgress): Promise<void> {
   if (progress.disposed) {
@@ -105,9 +118,10 @@ async function startAndStore(
 /**
  * The write that the queue of an autosave runs. It reads the project, the revision, and the count
  * of changes when it starts, before it yields, so a write that waited stores the later state and
- * reports the revision of its own start. A write that fails for any reason reports error and
- * rejects with its own error. After dispose it saves nothing and reports nothing. A callback that
- * throws goes to console.error and never changes the outcome of the write.
+ * reports the revision of its own start. A write that fails for any reason marks the last write as
+ * failed, reports error, and rejects with its own error; a write that succeeds clears that mark.
+ * After dispose it saves nothing and reports nothing. A callback that throws goes to console.error
+ * and never changes the outcome of the write.
  */
 export function createAutosaveWrite(
   config: AutosaveConfig,
@@ -122,11 +136,13 @@ export function createAutosaveWrite(
     try {
       started = await startAndStore(config, progress)
     } catch (error) {
+      progress.lastWriteFailed = true
       report('error')
       throw error
     }
     const { startedFrom, revision } = started
     progress.storedChanges = startedFrom
+    progress.lastWriteFailed = false
     if (progress.changes === startedFrom) {
       report('saved')
     }

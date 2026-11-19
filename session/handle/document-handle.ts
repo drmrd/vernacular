@@ -71,10 +71,12 @@ interface SavePath {
 }
 
 /**
- * The save, the flush, and the close of a handle. A close flushes until no change that arrived
- * during its write is unsaved, then marks the handle closed and stops autosave with no wait in
- * between, then frees the lock. A flush that fails leaves the handle open, the lock held, and
- * autosave armed. Closes that overlap share one attempt, so the lock is freed once.
+ * The save, the flush, and the close of a handle. A close flushes again while a change that
+ * arrived during its write is unsaved or a write of the handle runs or waits, whoever asked for
+ * it, so no store save runs after the lock is freed. Then it marks the handle closed and stops
+ * autosave with no wait in between, then frees the lock. A flush that fails leaves the handle
+ * open, the lock held, and autosave armed. A close called while another close runs, also while
+ * that close frees the lock, gets the same attempt, so the lock is freed once.
  */
 function createSavePath(parts: SavePathParts): SavePath {
   const { autosave, status, hold } = parts
@@ -88,7 +90,7 @@ function createSavePath(parts: SavePathParts): SavePath {
 
   const closeOnce = async (): Promise<SaveOutcome> => {
     let outcome = await flush()
-    while (outcome.ok && status.get() === 'pending') {
+    while (outcome.ok && (status.get() === 'pending' || autosave.isWriting())) {
       outcome = await flush()
     }
     if (!outcome.ok) {
@@ -101,10 +103,13 @@ function createSavePath(parts: SavePathParts): SavePath {
   }
 
   const close = (): Promise<SaveOutcome> => {
+    if (closing !== undefined) {
+      return closing
+    }
     if (closed) {
       return Promise.resolve(SAVED)
     }
-    closing ??= closeOnce().finally(() => {
+    closing = closeOnce().finally(() => {
       closing = undefined
     })
     return closing
