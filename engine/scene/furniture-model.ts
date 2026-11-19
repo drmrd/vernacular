@@ -34,6 +34,19 @@ export function disposeObject(object: THREE.Object3D): void {
 }
 
 /**
+ * Whether a parsed model can be fitted into a furniture box: its world-space bounding box is
+ * not empty and has a size above zero on all three axes. A model with only empty nodes, lights,
+ * or cameras has none; a model flat along one axis has a zero size.
+ */
+export function hasUsableGeometry(model: THREE.Object3D): boolean {
+  model.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(model)
+  if (box.isEmpty()) return false
+  const size = box.getSize(new THREE.Vector3())
+  return size.x !== 0 && size.y !== 0 && size.z !== 0
+}
+
+/**
  * Fits a parsed model into a furniture node's footprint and height. Scales uniformly to fit
  * inside the box, centers on the footprint center in plan, anchors the model's bottom to the
  * elevation, and rotates to the footprint orientation. Returns null when the model has no usable
@@ -43,11 +56,9 @@ export function normalizeModelIntoBox(
   model: THREE.Object3D,
   node: FurnitureSceneNode,
 ): THREE.Group | null {
-  model.updateMatrixWorld(true)
+  if (!hasUsableGeometry(model)) return null
   const box = new THREE.Box3().setFromObject(model)
-  if (box.isEmpty()) return null
   const size = box.getSize(new THREE.Vector3())
-  if (size.x === 0 || size.y === 0 || size.z === 0) return null
 
   const [tl, tr, br, bl] = node.footprintCorners
   const targetWidth = edgeLength(tl, tr)
