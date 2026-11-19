@@ -22,10 +22,11 @@ sourceFiles:
     bridge/react/fit-camera.ts,
     bridge/react/scene-nav-toolbar.tsx,
     bridge/react/webgpu-scene-view.tsx,
+    bridge/react/use-view-scene-graph.ts,
     e2e/tests/scene-camera-presets.spec.ts,
   ]
 status: current
-updated: 2026-08-17
+updated: 2026-11-19
 ---
 
 # ADR-0083: Camera viewpoint presets for the three-dimensional preview
@@ -137,3 +138,25 @@ standing point. The axis-aligned presets already pivoted on the bounds center,
 which is unchanged. The Consequences follow-up about the doorway pivot is
 resolved; the top-down pole note still stands. The camera-presets spec drops the
 matching bullet from its deferred list under this update.
+
+## Update (2026-11-19): the doorway view stands on its door's own floor
+
+An opening's sill height and height are measured from its own floor, and the doorway
+pose used them as world heights. On a floor above or below the ground the camera stood
+at the height of a ground floor door: under an upper floor, or above a basement.
+`doorwayPose` takes the elevation of the door's floor as a third argument and adds it
+to the eye height. The door chooser (`chooseDoorwayTarget` in
+`bridge/react/use-doorway-target.ts`) reads that elevation from the floor nodes of the
+graph that the view shows, and it travels with the chosen door down to the pose. The
+same holds in the whole-building view, where the chosen door can be on any floor. The
+other presets were not affected, because they work from the world bounds of the shown
+scene.
+
+The choice rule has changed since this record was written. The preset takes the
+selected door, or else the first door in view. It never takes a window. In the
+whole-building view the first door in view can be on any shown floor, also on a floor
+that is not the active one. Issue #922 tracked the floor elevation.
+
+Two new tests in `e2e/tests/scene-camera-presets.spec.ts` compare the doorway view of an
+upper floor and of a basement with the view of the same room and door on the ground
+floor.

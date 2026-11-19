@@ -65,16 +65,18 @@ frame rather than leaving the camera rolled.
 The doorway preset frames a chosen opening. The scene graph already carries each
 opening's center, its host wall's normal, its width, its height, and its sill height,
 so the pose is derived without new model data. The camera stands at the opening's
-center, raised to the opening's vertical middle (sill height plus half the opening
-height), and looks horizontally along the wall normal toward the interior. The
-interior direction is the side of the wall the model's center lies on: of the two
-normal directions, the preset takes the one pointing toward the center of the bounds.
+center, raised to the opening's vertical middle above its own floor (the floor's
+elevation plus the sill height plus half the opening height), and looks horizontally
+along the wall normal toward the interior. The interior direction is the side of the
+wall the model's center lies on: of the two normal directions, the preset takes the
+one pointing toward the center of the bounds.
 
-The toolbar chooses which opening to frame. If the current selection is an opening,
-that opening is used, which lets someone pick a specific door in the three-dimensional
-view (openings became selectable there in the opening-fill slice) or in the plan and
-then step into it. Otherwise the first opening on the active floor is used. When the
-floor has no openings the doorway button is disabled.
+The toolbar chooses which opening to frame. If the current selection is a door, that
+door is used, which lets someone pick a specific door in the three-dimensional view
+(openings became selectable there in the opening-fill slice) or in the plan and then
+step into it. Otherwise the first door in view is used; a window is never used. When
+no door is in view the doorway button is disabled. The updates of ADR-0083 record
+these changes.
 
 ## Scope
 
