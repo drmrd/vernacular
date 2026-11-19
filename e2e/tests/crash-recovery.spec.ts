@@ -48,8 +48,9 @@ test.describe('Crash recovery', () => {
     const planted = await page.evaluate(() => window.vernacularE2eStorage!.plantRecoverySnapshot())
     expect(planted).toBe(true)
 
-    // Boot the production app: it resolves the same snapshot store and finds the
-    // planted snapshot, so it offers to recover the unsaved work.
+    // Boot the production app: it opens the project through a document handle, and the
+    // handle asks the store for the snapshots of its own project. It finds the planted
+    // snapshot, so it offers to recover the unsaved work.
     await page.goto('/')
     await expect(page.getByLabel('Floor plan')).toBeVisible()
     await expect(page.getByText(/Unsaved changes were recovered/i)).toBeVisible()
