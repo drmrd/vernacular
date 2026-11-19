@@ -84,7 +84,8 @@ export interface SwitchOptions extends FlowNoticeOptions {
   /**
    * Whether the project that the flow opened gets a recent entry. Default true. A flow that opens
    * a project which is not stored yet sets it to false: an entry for that project could not be
-   * opened. The first save of the project, or a later switch that leaves it, records it.
+   * opened. The first save of the project, or a later switch that leaves it, records it. Only the
+   * New project action sets it, because its opened project is not stored yet.
    */
   readonly recordOpened?: boolean
 }

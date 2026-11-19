@@ -2,7 +2,11 @@ import type { DocumentStore, ProjectSummary } from './documents/document-store'
 
 export type { ProjectSummary }
 
-/** Thrown by ProjectStore.load when no project exists under the given id. */
+/**
+ * Thrown when a project that should hold a document has none under the given id: by the import of
+ * an archive that holds no document for the id, and by `openDespiteFormatFaults` when the stored
+ * file is gone.
+ */
 export class ProjectNotFoundError extends Error {
   constructor(public readonly projectId: string) {
     super(`No project stored under id "${projectId}"`)

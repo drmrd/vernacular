@@ -4,6 +4,7 @@ import {
   createOpfsProjectStore,
   FileSystemDirectory,
   IndexedDbRecentProjectStore,
+  OpfsProjectStore,
   WebLocksProjectLockPort,
   type DirectoryPort,
 } from '../storage'
@@ -63,10 +64,7 @@ function sampleProject(name: string): Project {
 }
 
 // The stored project, or a rejection that names why the read gave none.
-async function readStoredProject(
-  store: Awaited<ReturnType<typeof createOpfsProjectStore>>,
-  id: string,
-): Promise<Project> {
+async function readStoredProject(store: OpfsProjectStore, id: string): Promise<Project> {
   const read = await store.read(id)
   if (!read.ok) {
     throw new Error(`The project ${id} could not be read: ${read.failure.kind}`)
