@@ -196,3 +196,26 @@ test.describe('Keyboard plan authoring', () => {
     await expectWallCount(page, 1)
   })
 })
+
+test.describe('Keyboard plan authoring announcements', () => {
+  test('speaks the first vertex of a new keyboard wall run after a change of tool', async ({
+    page,
+  }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+    await armTool(page, 'Wall')
+    await openKeyboardWallRun(page)
+    await expect(live).toHaveText('Wall vertex dropped')
+
+    // The change of tool ends the run, so its last sentence must not linger: a live
+    // region that keeps the same text on the next vertex is not read out.
+    await armTool(page, 'Select')
+    await expect(live).not.toHaveText('Wall vertex dropped')
+
+    // The first vertex of the new run writes the sentence again, as a change.
+    await armTool(page, 'Wall')
+    await page.keyboard.press('Enter')
+    await expect(live).toHaveText('Wall vertex dropped')
+    await expectWallCount(page, 1)
+  })
+})
