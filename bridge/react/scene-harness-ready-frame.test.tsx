@@ -8,6 +8,8 @@ import { SceneHarnessView } from './scene-harness-view'
 // stand-in holds one loop and resets its per-frame counts as each frame starts, then calls
 // the loop, the way three's renderer does.
 const harness = vi.hoisted(() => {
+  const CANVAS_WIDTH = 320
+  const CANVAS_HEIGHT = 240
   const info = { render: { frameCalls: 0, drawCalls: 0 } }
   let loop: (() => void) | null = null
   const renderer = {
@@ -27,7 +29,15 @@ const harness = vi.hoisted(() => {
     resetLoop: () => {
       loop = null
     },
-    state: { gl: renderer, scene: {}, camera: {}, size: { width: 320, height: 240 } },
+    state: {
+      gl: renderer,
+      scene: {},
+      camera: {},
+      // The real library replaces `size` with a new, equal object on each parent render.
+      get size() {
+        return { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }
+      },
+    },
     draws: 0,
     settleLighting: undefined as (() => void) | undefined,
   }
@@ -74,6 +84,7 @@ vi.mock('../../engine', async (importOriginal) => ({
 }))
 
 const READY_RENDER_CALLS = 5
+const FRAMES_AFTER_READY = 3
 const READY_DRAW_CALLS = 127
 
 function readiness(): string | null {
@@ -121,6 +132,18 @@ describe('SceneHarnessView ready frame', () => {
     runFrame()
 
     expect(harness.draws).toBe(1)
+  })
+
+  it('draws no further frame once its ready frame is drawn', async () => {
+    render(<SceneHarnessView />)
+    await settleLighting()
+    runFrame()
+    const drawsAtReady = harness.draws
+
+    for (let frame = 0; frame < FRAMES_AFTER_READY; frame += 1) runFrame()
+
+    expect(harness.draws).toBe(drawsAtReady)
+    expect(readiness()).toBe('true')
   })
 
   it('keeps data-harness-ready false until the ready frame has been drawn in the animation loop', async () => {
