@@ -31,7 +31,7 @@ The presets are:
   the center of the model along a cardinal axis, framing one facade flat on. Each
   elevation is named for the facade it shows.
 - **From a doorway.** The camera stands in a chosen door, at the height of the door's
-  middle above its own floor, and looks horizontally into the building.
+  middle above its own floor, and looks horizontally into the room the door serves.
 
 The pose math is pure and lives in core, beside the existing `frameSceneCamera`. The
 preset poses reuse the same bounding-sphere fit and the same near and far derivation
@@ -67,9 +67,8 @@ opening's center, its host wall's normal, its width, its height, and its sill he
 so the pose is derived without new model data. The camera stands at the opening's
 center, raised to the opening's vertical middle above its own floor (the floor's
 elevation plus the sill height plus half the opening height), and looks horizontally
-along the wall normal toward the interior. The interior direction is the side of the
-wall the model's center lies on: of the two normal directions, the preset takes the
-one pointing toward the center of the bounds.
+along the wall normal into the room the door serves: toward the door's room side when
+it has one, and otherwise toward the side its leaf opens to.
 
 The toolbar chooses which opening to frame. If the current selection is a door, that
 door is used, which lets someone pick a specific door in the three-dimensional view
@@ -115,9 +114,9 @@ In scope:
 - Pure unit tests on the preset pose functions: the top-down camera sits above the
   center looking down with the -Z up vector; each elevation sits on the named side at
   the center height looking at the center; the doorway camera stands at the opening
-  center, raised to the opening middle, looking along the inward normal; the near and
-  far planes track the bounds diagonal; a viewport fits the bounding sphere to the
-  frame.
+  center, raised to the opening middle, looking along the wall normal into the room
+  the door serves; the near and far planes track the bounds diagonal; a viewport fits
+  the bounding sphere to the frame.
 - A component test on the toolbar: the preset buttons render and call back with the
   right preset, and the doorway button is disabled when no door is in view.
 - An end-to-end check in the hardware-GPU project: clicking a preset moves the camera,
