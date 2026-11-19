@@ -30,6 +30,16 @@
       "status": "required"
     },
     {
+      "id": "theme-survives-reload",
+      "title": "keeps the chosen theme after a reload",
+      "status": "required"
+    },
+    {
+      "id": "carried-snap-preferences",
+      "title": "keeps the snap preferences that an older build stored",
+      "status": "required"
+    },
+    {
       "id": "opening-host-guard",
       "title": "a wall cannot host on an opening",
       "status": "required"
