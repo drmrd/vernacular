@@ -117,3 +117,33 @@ test('fades a wall that was solid at its first draw when the camera moves outsid
     { first: frameA, second: frameB },
   )
 })
+
+// Issue #903: a wall of a room drawn step by step stayed solid from outside until a full rebuild.
+// This journey differs from the one above in that it makes no rebuild before the North preset, so
+// the wall's materials are the ones that the step-by-step builds made. A wall that fades when the
+// camera moves outside it looks the same before and after the rebuild that follows.
+test('fades the north wall of a room drawn step by step when the camera moves outside it', async ({
+  page,
+}) => {
+  test.setTimeout(TEST_TIMEOUT_MS)
+  await gotoEditor(page)
+  await guardLiveSceneSupport(page, 'the walk-view-after-rebuild journey')
+  const canvas = await openRoomIn3d(page)
+
+  // The default south-east camera, with no rebuild of the scene yet.
+  const fromSouthEast = await stableFrame(canvas)
+
+  // The camera moves outside the north wall, which is where the wall must fade.
+  await navButton(page, 'North').click()
+  const frameA = await frameAfterChange(canvas, fromSouthEast)
+
+  // A rebuild from the north draws the wall faded at its first draw.
+  const northWithEdges = await toggleEdges(page, canvas, frameA)
+  const frameB = await toggleEdges(page, canvas, northWithEdges)
+
+  await expectSameView(
+    page,
+    'same, the north wall of a room drawn step by step seen from the north before and after a scene rebuild',
+    { first: frameA, second: frameB },
+  )
+})
