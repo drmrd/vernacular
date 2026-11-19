@@ -37,4 +37,23 @@ describe('useOpeningMotion in the whole-building view', () => {
     // The interact key stays on the active floor.
     expect(result.current.openings.current.map((opening) => opening.id)).toEqual([env.doorAId])
   })
+
+  it('poses an open door of another shown floor on a newly built root before any tick', () => {
+    const env = twoFloorEnvironment('building')
+    const firstRoot = env.buildRoot()
+    seatDoorOpenOnRoot(env, firstRoot, { floorId: FLOOR_A_ID, doorId: env.doorAId })
+    seatDoorOpenOnRoot(env, firstRoot, { floorId: FLOOR_B_ID, doorId: env.doorBId })
+    const openStored = new Set([env.doorAId, env.doorBId])
+    const { result, rerender } = renderMotion(env, { root: firstRoot, stored: openStored })
+    tickOpeningMotion(firstRoot, result.current, FULL_STEP)
+    const openPoseA = fillGroupPose(firstRoot, env.doorAId)
+    const openPoseB = fillGroupPose(firstRoot, env.doorBId)
+
+    const rebuiltRoot = env.buildRoot()
+    rerender({ root: rebuiltRoot, stored: openStored })
+
+    // Floor A is active, so its door is the control: a new root already poses it open.
+    expect(fillGroupPose(rebuiltRoot, env.doorAId)).toEqual(openPoseA)
+    expect(fillGroupPose(rebuiltRoot, env.doorBId)).toEqual(openPoseB)
+  })
 })
