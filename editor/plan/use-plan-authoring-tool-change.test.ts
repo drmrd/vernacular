@@ -3,16 +3,15 @@ import { renderHook, act, cleanup } from '@testing-library/react'
 import { ADD_DIMENSION, ADD_WALL } from '../../core'
 import { createSelectionStore } from '../../bridge'
 import type { EditorSession } from '../../bridge'
+import type { ToolId } from '../tools/active-tool-context'
 import { usePlanAuthoring } from './use-plan-authoring'
 
 afterEach(cleanup)
 
-type AuthoringTool = Parameters<typeof usePlanAuthoring>[0]['tool']
-
 const FLOOR_ID = 'g'
-const WALL_TOOL: AuthoringTool = 'draw-wall'
-const DIMENSION_TOOL: AuthoringTool = 'dimension'
-const SELECT_TOOL: AuthoringTool = 'select'
+const WALL_TOOL: ToolId = 'draw-wall'
+const DIMENSION_TOOL: ToolId = 'dimension'
+const SELECT_TOOL: ToolId = 'select'
 const SINGLE_DISPATCH = 1
 const NO_DISPATCH = 0
 
@@ -30,11 +29,11 @@ function fakeSession(dispatch: ReturnType<typeof vi.fn>): EditorSession {
   } as unknown as EditorSession
 }
 
-function renderAuthoring(dispatch: ReturnType<typeof vi.fn>, tool: AuthoringTool) {
+function renderAuthoring(dispatch: ReturnType<typeof vi.fn>, tool: ToolId) {
   const session = fakeSession(dispatch)
   const selection = createSelectionStore()
   return renderHook(
-    ({ tool: activeTool }: { tool: AuthoringTool }) =>
+    ({ tool: activeTool }: { tool: ToolId }) =>
       usePlanAuthoring({ session, selection, tool: activeTool, activeFloorId: FLOOR_ID }),
     { initialProps: { tool } },
   )
