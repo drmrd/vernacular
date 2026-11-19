@@ -4,11 +4,29 @@ import { FURNITURE_NODE_PREFIX } from '../../core'
 import { parseGltfBytes } from '../loaders/gltf-loader'
 import { markShadowCasters } from './shadow-casters'
 
-/** Parses GLB bytes into a Three.js object, rejecting on any loader error. */
-export function parseFurnitureModel(bytes: Uint8Array): Promise<THREE.Object3D> {
+/** The error a furniture model parse rejects with when the model has no usable geometry. */
+export class UnusableFurnitureModelError extends Error {
+  constructor() {
+    super('The furniture model has no usable geometry')
+    this.name = 'UnusableFurnitureModelError'
+  }
+}
+
+/**
+ * Parses GLB or glTF bytes into a Three.js object. Rejects on any loader error, and rejects
+ * with UnusableFurnitureModelError when the parsed model has no usable geometry, after it
+ * frees what the parse built. The model cache then settles the entry to `failed`, so every
+ * instance of the asset shows the failed box.
+ */
+export async function parseFurnitureModel(bytes: Uint8Array): Promise<THREE.Object3D> {
   const buffer = new ArrayBuffer(bytes.byteLength)
   new Uint8Array(buffer).set(bytes)
-  return parseGltfBytes(buffer)
+  const model = await parseGltfBytes(buffer)
+  if (!hasUsableGeometry(model)) {
+    disposeObject(model)
+    throw new UnusableFurnitureModelError()
+  }
+  return model
 }
 
 function edgeLength(a: Point, b: Point): number {
