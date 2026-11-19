@@ -243,8 +243,14 @@ fallback.
 
 ### Where the code lives
 
-- `scripts/performance/report-times.mjs` is the driver. It builds and serves the page, opens the
-  browser, prints the report, and writes the files. `timing-arguments.mjs` parses the flags.
+- `scripts/performance/report-times.mjs` is the driver. It builds and serves the page, runs it in
+  the browser, prints the report, and writes the files. Five modules beside it do one job each:
+  - `timing-arguments.mjs` parses the flags.
+  - `timing-launch.mjs` gives the browser's launch options.
+  - `timing-console.mjs` checks the console of the page.
+  - `timing-browser-session.mjs` launches and closes the browser, so that the close returns.
+  - `timing-browser-processes.mjs` reads a process list to find the browser's crash handler
+    processes for that close. ADR-0186 holds the reason.
 - `tests/performance/timing/page/` is the timing page that runs inside the browser.
 - `tests/performance/timing/*.ts` holds the pure modules: the statistics, the record, the
   conditions, the report, the frame probe, and the order of a run. Each has its tests beside it.
