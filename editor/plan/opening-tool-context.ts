@@ -3,7 +3,6 @@ import {
   createElement,
   useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -51,18 +50,6 @@ const OpeningToolContext = createContext<OpeningToolValue | null>(null)
 
 export function useOpeningTool(): OpeningToolValue {
   return useContext(OpeningToolContext) ?? FALLBACK_VALUE
-}
-
-/**
- * Retires the standing refusal whenever the active tool changes. A refusal is about
- * one placement under one tool, so putting that tool down ends it rather than parking it
- * for the next time the tool comes back.
- */
-export function useForgetRefusalOnToolChange(tool: ToolId): void {
-  const { setPlacementRefusal } = useOpeningTool()
-  useEffect(() => {
-    setPlacementRefusal(null)
-  }, [tool, setPlacementRefusal])
 }
 
 /**

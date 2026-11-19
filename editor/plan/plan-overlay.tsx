@@ -10,7 +10,7 @@ import type { PreviewSegment } from './draw-plan'
 import { formatReadout, segmentReadout } from './draw-readout'
 import { scopeSceneToLayer } from './edit-layer-scope'
 import { EntityProxy } from './entity-proxy'
-import { useForgetRefusalOnToolChange, useOpeningTool } from './opening-tool-context'
+import { useOpeningTool } from './opening-tool-context'
 import { overlayEntities, type OverlayEntity } from './overlay-entities'
 import {
   angleLockAnnouncement,
@@ -356,7 +356,6 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const focusedEntity = entities[keyboard.focusIndex]
   const selected = entities.filter((entity) => entity.selected)
   const refusal = refusalText(tool, useOpeningTool().placementRefusal)
-  useForgetRefusalOnToolChange(tool)
 
   return (
     <div className="plan-overlay">
