@@ -85,12 +85,24 @@ describe('recognizing a software renderer by its name', () => {
     },
   )
 
-  it.each(['ANGLE Metal Renderer: Apple M2', 'apple / metal-3'])(
-    'takes "%s" for a hardware renderer',
-    (name) => {
-      expect(isSoftwareRenderer(name)).toBe(false)
-    },
-  )
+  it.each([
+    'ANGLE Metal Renderer: Apple M2',
+    'apple / metal-3',
+    'Apple M5 Pro',
+    'NVIDIA GeForce RTX 4070',
+    'ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)',
+  ])('takes "%s" for a hardware renderer', (name) => {
+    expect(isSoftwareRenderer(name)).toBe(false)
+  })
+})
+
+describe('recognizing a software renderer in a full renderer string', () => {
+  it.each([
+    'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 16.0.0)), SwiftShader driver)',
+    'Mesa llvmpipe',
+  ])('takes "%s" for a software renderer', (name) => {
+    expect(isSoftwareRenderer(name)).toBe(true)
+  })
 })
 
 describe('refusing a run whose conditions cannot measure', () => {
@@ -99,7 +111,10 @@ describe('refusing a run whose conditions cannot measure', () => {
   })
 
   it('gives one reason for a development build', () => {
-    expect(runRefusals({ ...goodConditions(), productionBuild: false })).toHaveLength(1)
+    const reasons = runRefusals({ ...goodConditions(), productionBuild: false })
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('development build')
   })
 
   it('gives one reason, naming WebGPU and that nothing was measured, for a missing adapter', () => {
@@ -112,26 +127,54 @@ describe('refusing a run whose conditions cannot measure', () => {
 
   it('gives one reason for a fallback adapter', () => {
     const webGpuAdapter = { name: 'apple / metal-3', isFallback: true }
+    const reasons = runRefusals({ ...goodConditions(), webGpuAdapter })
 
-    expect(runRefusals({ ...goodConditions(), webGpuAdapter })).toHaveLength(1)
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('fallback')
   })
 
   it('gives one reason for an adapter with a software name', () => {
     const webGpuAdapter = { name: 'Google SwiftShader', isFallback: false }
+    const reasons = runRefusals({ ...goodConditions(), webGpuAdapter })
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('software renderer')
+  })
+
+  it('gives one reason, not two, for an adapter that is a fallback and has a software name', () => {
+    const webGpuAdapter = { name: 'Google SwiftShader', isFallback: true }
 
     expect(runRefusals({ ...goodConditions(), webGpuAdapter })).toHaveLength(1)
   })
 
   it('gives one reason for a window that is not visible', () => {
-    expect(runRefusals({ ...goodConditions(), visible: false })).toHaveLength(1)
+    const reasons = runRefusals({ ...goodConditions(), visible: false })
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('hidden')
   })
 
   it('gives one reason when no display frame was measured', () => {
-    expect(runRefusals({ ...goodConditions(), displayFrameMs: null })).toHaveLength(1)
+    const reasons = runRefusals({ ...goodConditions(), displayFrameMs: null })
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('No display frame')
   })
 
   it('gives one reason for a display frame of 40 ms', () => {
-    expect(runRefusals({ ...goodConditions(), displayFrameMs: 40 })).toHaveLength(1)
+    const reasons = runRefusals({ ...goodConditions(), displayFrameMs: 40 })
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('throttling')
+    expect(reasons[0]).toContain('34 ms')
+  })
+
+  it('accepts a display frame of exactly 34 ms', () => {
+    expect(runRefusals({ ...goodConditions(), displayFrameMs: 34 })).toEqual([])
+  })
+
+  it('refuses a display frame of 34.1 ms', () => {
+    expect(runRefusals({ ...goodConditions(), displayFrameMs: 34.1 })).toHaveLength(1)
   })
 
   it('gives one reason for each of two faults at once', () => {
@@ -147,31 +190,53 @@ describe('refusing to write a baseline from a run that is not a clean reference'
   })
 
   it('gives one reason for a quick run', () => {
-    expect(baselineWriteRefusals({ ...aCleanRun(), quick: true })).toHaveLength(1)
+    const reasons = baselineWriteRefusals({ ...aCleanRun(), quick: true })
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('quick')
   })
 
   it('gives one reason for a run on battery power', () => {
     const run = aCleanRun()
     run.conditions.power = 'battery'
 
-    expect(baselineWriteRefusals(run)).toHaveLength(1)
+    const reasons = baselineWriteRefusals(run)
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('battery')
+  })
+
+  it('accepts a run whose power source is unknown', () => {
+    const run = aCleanRun()
+    run.conditions.power = 'unknown'
+
+    expect(baselineWriteRefusals(run)).toEqual([])
   })
 
   it('gives one reason for a run with uncommitted changes', () => {
-    expect(baselineWriteRefusals({ ...aCleanRun(), uncommittedChanges: true })).toHaveLength(1)
+    const reasons = baselineWriteRefusals({ ...aCleanRun(), uncommittedChanges: true })
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('uncommitted')
   })
 
   it('gives one reason for a window that was not visible throughout', () => {
     const run = aCleanRun()
     run.conditions.visibleThroughout = false
 
-    expect(baselineWriteRefusals(run)).toHaveLength(1)
+    const reasons = baselineWriteRefusals(run)
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('visible')
   })
 
   it('gives one reason for an adapter with a software name', () => {
     const run = aCleanRun()
     run.machine.webGpuAdapter = 'Google SwiftShader'
 
-    expect(baselineWriteRefusals(run)).toHaveLength(1)
+    const reasons = baselineWriteRefusals(run)
+
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toContain('software renderer')
   })
 })
