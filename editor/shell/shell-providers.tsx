@@ -15,12 +15,7 @@ import {
   useSelection,
   useSettingsService,
 } from '../../bridge'
-import {
-  environmentStateOpenedWith,
-  frontDirection,
-  openingConditions,
-  sceneGraphForFloor,
-} from '../../core'
+import { openingEnvironmentFor, sceneGraphForFloor } from '../../core'
 import {
   CommandPalette,
   CommandPaletteProvider,
@@ -95,12 +90,7 @@ function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
   // Created one time for each opened project: a later edit of the site must not move the light.
   const [environmentSession] = useState(() =>
     createEnvironmentSessionStore(
-      environmentStateOpenedWith(
-        openingConditions({
-          site: session.getProject().site,
-          front: frontDirection(session.getSceneGraph()),
-        }),
-      ),
+      openingEnvironmentFor(session.getProject().site, session.getSceneGraph()),
     ),
   )
   const perceivedColor = useMemo(() => createPerceivedColorStore(), [])

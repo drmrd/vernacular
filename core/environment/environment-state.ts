@@ -3,9 +3,11 @@ import {
   parseObservationInstant,
   type ObservationInstant,
 } from './observation-time'
-import { openingInstant, type OpeningConditions } from './opening-instant'
+import { openingConditions, openingInstant, type OpeningConditions } from './opening-instant'
 import { DEFAULT_CLOUD_COVER } from './sky-model'
 import type { EnvironmentScene } from '../model/environment-scene'
+import type { Site } from '../model/site'
+import { frontDirection, type FrontDirectionInput } from '../scene/front-direction'
 
 export type LightingMode = 'schematic' | 'realistic'
 
@@ -34,6 +36,14 @@ export function environmentStateOpenedWith(conditions: OpeningConditions): Envir
     observedAt: conditions.observedAt,
     cloudCover: conditions.cloudCover,
   }
+}
+
+/** The environment a project opens with: the light chosen from its site and its front, in the default mode. */
+export function openingEnvironmentFor(
+  site: Site | undefined,
+  graph: FrontDirectionInput,
+): EnvironmentState {
+  return environmentStateOpenedWith(openingConditions({ site, front: frontDirection(graph) }))
 }
 
 export interface EnvironmentSceneIdentity {
