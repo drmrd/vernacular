@@ -15,8 +15,8 @@ import { ADJACENT_ROOMS_CAMERA_POSE } from './adjacent-rooms-fixture'
 import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
-import { SCENE_READY_ATTRIBUTE } from './scene-readiness'
 import { harnessStateKey } from './scene-harness-state-key'
+import { SCENE_READY_ATTRIBUTE } from './scene-readiness'
 import { SceneLighting } from './scene-lighting'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
@@ -252,7 +252,7 @@ function harnessAmbientOcclusionActive(environment: HarnessEnvironment | undefin
 }
 
 // Builds and frames the selected fixture, memoized on the scene key and paint so the static
-// frame reuses one derived scene graph across re-renders. Pulled out of SceneHarnessView so
+// frame reuses one derived scene graph across re-renders. Pulled out of HarnessStage so
 // the component stays within the length limit.
 function useFramedHarnessScene(scene: HarnessScene, paint: Record<string, SurfaceTreatment>) {
   return useMemo(() => {

@@ -17,7 +17,8 @@ function withSortedEntries(_name: string, value: unknown): unknown {
  * The text that names one harness state: every prop of the harness view, each object with its
  * entries in a fixed order. The readiness flags of the stage must start again for each state,
  * so the view remounts the stage whenever this text changes. A function or an undefined prop
- * has no text form and drops out, so a callback never counts as part of the state.
+ * has no text form and drops out, so a callback never counts as part of the state. NaN and an
+ * infinite number become null; the harness props hold plain finite data, so no two states collide.
  */
 export function harnessStateKey(props: object): string {
   return JSON.stringify(props, withSortedEntries)
