@@ -37,11 +37,22 @@ function adapterRefusal(adapter: ObservedConditions['webGpuAdapter']): string | 
   }
   if (adapter.isFallback || isSoftwareRenderer(adapter.name)) {
     return (
-      `The WebGPU adapter is a software renderer ("${adapter.name}"), so nothing was measured. ` +
+      `${adapterFault(adapter)}, so nothing was measured. ` +
       'Run on a machine whose browser uses the hardware GPU.'
     )
   }
   return undefined
+}
+
+function adapterFault(adapter: { name: string; isFallback: boolean }): string {
+  const software = isSoftwareRenderer(adapter.name)
+  if (adapter.isFallback && software) {
+    return `The browser gave a fallback WebGPU adapter that is a software renderer ("${adapter.name}")`
+  }
+  if (adapter.isFallback) {
+    return `The browser gave a fallback WebGPU adapter ("${adapter.name}")`
+  }
+  return `The WebGPU adapter is a software renderer ("${adapter.name}")`
 }
 
 function displayFrameRefusal(displayFrameMs: number | null): string | undefined {
