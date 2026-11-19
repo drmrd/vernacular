@@ -1,10 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  DID_NOT_SETTLE,
+  rejectingLockManager,
+  securityRefusal,
+  settledWithinBound,
+} from './lock-test-support'
 import { WebLocksProjectLockPort } from './project-lock'
 import type { ProjectLockHold } from './project-lock'
 
 const NEXT_MACROTASK_DELAY_MS = 0
-/** How long a case waits for a request that may never settle, before it calls it unsettled. */
-const SETTLE_WAIT_MS = 50
 
 /**
  * A small model of the browser lock manager. Every port built while it is
@@ -130,53 +134,30 @@ describe('WebLocksProjectLockPort over a browser lock manager', () => {
   })
 })
 
-/**
- * A browser that has the Web Locks API and refuses every call, as where site data is blocked or
- * the origin is opaque: request and query both reject with a SecurityError.
- */
-class RefusingLockManager {
-  request(): Promise<never> {
-    return Promise.reject(refusal())
-  }
-
-  query(): Promise<never> {
-    return Promise.reject(refusal())
-  }
-}
-
-function refusal(): DOMException {
-  return new DOMException('Access to the Locks API is denied in this context.', 'SecurityError')
-}
-
-const DID_NOT_SETTLE = Symbol('did not settle')
-
-/** The value of `promise`, or `DID_NOT_SETTLE` when it is still pending after the bounded wait. */
-async function settledWithinBound<T>(promise: Promise<T>): Promise<T | typeof DID_NOT_SETTLE> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const bound = new Promise<typeof DID_NOT_SETTLE>((resolve) => {
-    timer = setTimeout(() => resolve(DID_NOT_SETTLE), SETTLE_WAIT_MS)
-  })
-  try {
-    return await Promise.race([promise, bound])
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
-describe('WebLocksProjectLockPort when the browser refuses the lock calls', () => {
+/** Records every unhandled rejection of the process while a case runs. */
+function recordUnhandledRejections(): unknown[] {
   const unhandled: unknown[] = []
   const recordUnhandled = (reason: unknown): void => {
     unhandled.push(reason)
   }
-
   beforeEach(() => {
     unhandled.length = 0
     process.on('unhandledRejection', recordUnhandled)
-    vi.stubGlobal('navigator', { locks: new RefusingLockManager() })
+  })
+  afterEach(() => {
+    process.off('unhandledRejection', recordUnhandled)
+  })
+  return unhandled
+}
+
+describe('WebLocksProjectLockPort when the browser refuses the lock calls', () => {
+  const unhandled = recordUnhandledRejections()
+
+  beforeEach(() => {
+    vi.stubGlobal('navigator', { locks: rejectingLockManager(securityRefusal()) })
   })
 
   afterEach(() => {
-    process.off('unhandledRejection', recordUnhandled)
     vi.unstubAllGlobals()
   })
 
@@ -203,5 +184,56 @@ describe('WebLocksProjectLockPort when the browser refuses the lock calls', () =
 
   it('lists no held ids when the browser refuses the query', async () => {
     await expect(new WebLocksProjectLockPort().heldIds()).resolves.toEqual(new Set())
+  })
+})
+
+const INVALID_STATE_ERROR = new DOMException(
+  'The document is not fully active.',
+  'InvalidStateError',
+)
+
+const OTHER_REASONS: readonly { reason: string; error: Error }[] = [
+  { reason: 'an InvalidStateError', error: INVALID_STATE_ERROR },
+  { reason: 'a plain Error', error: new Error('the lock manager broke') },
+]
+
+describe('WebLocksProjectLockPort when the browser rejects the lock calls for another reason', () => {
+  const unhandled = recordUnhandledRejections()
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function installRejecting(error: Error): void {
+    vi.stubGlobal('navigator', { locks: rejectingLockManager(error) })
+  }
+
+  it.each(OTHER_REASONS)(
+    'fails the request when the browser rejects it for another reason than a refusal of the lock API, as $reason',
+    async ({ error }) => {
+      installRejecting(error)
+
+      await expect(settledWithinBound(new WebLocksProjectLockPort().tryAcquire('a'))).rejects.toBe(
+        error,
+      )
+    },
+  )
+
+  it.each(OTHER_REASONS)(
+    'fails the query when the browser rejects it for another reason than a refusal of the lock API, as $reason',
+    async ({ error }) => {
+      installRejecting(error)
+
+      await expect(settledWithinBound(new WebLocksProjectLockPort().heldIds())).rejects.toBe(error)
+    },
+  )
+
+  it('leaves no unhandled rejection when the request rejects for another reason', async () => {
+    installRejecting(INVALID_STATE_ERROR)
+
+    await settledWithinBound(new WebLocksProjectLockPort().tryAcquire('a')).catch(() => undefined)
+    await new Promise((turn) => setTimeout(turn, NEXT_MACROTASK_DELAY_MS))
+
+    expect(unhandled).toEqual([])
   })
 })

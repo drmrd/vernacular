@@ -1,42 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WebLocksProjectLockPort } from '../../storage'
+import {
+  DID_NOT_SETTLE,
+  rejectingLockManager,
+  securityRefusal,
+  settledWithinBound,
+} from '../../storage/locks/lock-test-support'
 import { renamed, soundProject } from '../../tests/storage/conformance/conformance-documents'
 import type { SessionPorts } from '../ports'
 import { createTestPorts, rename, workspaceRequest } from './handle-test-kit'
 import { openDocumentHandle } from './open-document-handle'
 
-/** How long a case waits for an open that may never settle, before it calls it unsettled. */
-const SETTLE_WAIT_MS = 50
 const PROJECT_ID = 'a'
 const CREATED_NAME = 'Started here'
 const EDITED_NAME = 'Edited here'
 
-/** A browser that has the Web Locks API and refuses every call with a SecurityError. */
-const refusingLocks = {
-  request: (): Promise<never> => Promise.reject(refusal()),
-  query: (): Promise<never> => Promise.reject(refusal()),
-}
-
-function refusal(): DOMException {
-  return new DOMException('Access to the Locks API is denied in this context.', 'SecurityError')
-}
-
-const DID_NOT_SETTLE = Symbol('did not settle')
-
-/** The value of `promise`, or `DID_NOT_SETTLE` when it is still pending after the bounded wait. */
-async function settledWithinBound<T>(promise: Promise<T>): Promise<T | typeof DID_NOT_SETTLE> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const bound = new Promise<typeof DID_NOT_SETTLE>((resolve) => {
-    timer = setTimeout(() => resolve(DID_NOT_SETTLE), SETTLE_WAIT_MS)
-  })
-  try {
-    return await Promise.race([promise, bound])
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
-/** Test ports whose locks are the Web Locks port of a browser that refuses every lock call. */
+/** Test ports whose locks are the Web Locks port over the browser lock manager of the case. */
 function portsWithRefusedLocks(): SessionPorts {
   return { ...createTestPorts(), locks: new WebLocksProjectLockPort() }
 }
@@ -48,7 +27,7 @@ describe('opening a project when the browser refuses the lock request', () => {
 
   beforeEach(() => {
     process.on('unhandledRejection', ignoreUnhandled)
-    vi.stubGlobal('navigator', { locks: refusingLocks })
+    vi.stubGlobal('navigator', { locks: rejectingLockManager(securityRefusal()) })
   })
 
   afterEach(() => {
@@ -72,5 +51,34 @@ describe('opening a project when the browser refuses the lock request', () => {
     rename(handle, EDITED_NAME)
     expect(await handle.save()).toEqual({ ok: true })
     expect(await handle.close()).toEqual({ ok: true })
+  })
+})
+
+describe('opening a project when the lock request rejects for another reason', () => {
+  const ignoreUnhandled = (): void => undefined
+  const rejection = new DOMException('The document is not fully active.', 'InvalidStateError')
+
+  beforeEach(() => {
+    process.on('unhandledRejection', ignoreUnhandled)
+    vi.stubGlobal('navigator', { locks: rejectingLockManager(rejection) })
+  })
+
+  afterEach(() => {
+    process.off('unhandledRejection', ignoreUnhandled)
+    vi.unstubAllGlobals()
+  })
+
+  it('fails the open as storage-unavailable when the lock request rejects for another reason', async () => {
+    const create = (): ReturnType<typeof soundProject> => renamed(soundProject(), CREATED_NAME)
+
+    const opened = await settledWithinBound(
+      openDocumentHandle(portsWithRefusedLocks(), { ...workspaceRequest(PROJECT_ID), create }),
+    )
+
+    expect(opened, 'the open did not settle').not.toBe(DID_NOT_SETTLE)
+    expect(opened).toEqual({
+      ok: false,
+      failure: { kind: 'storage-unavailable', message: rejection.message },
+    })
   })
 })
