@@ -126,9 +126,10 @@ export async function openHarnessScene(
 }
 
 // Opens the harness as `openHarnessScene` does, then WAITS for the lit frame, so a sample reads
-// the sky-lit frame. The harness draws a second frame once the lazily loaded lighting reports
-// ready and marks data-harness-ready in the same commit pass. The subject defaults to the text
-// the specs without a subject of their own have always got.
+// the sky-lit frame. The harness draws its ready frame in the renderer's own animation loop, on
+// a frame of its own, and data-harness-ready turns true in the commit after that frame was
+// drawn, so a capture taken once the attribute is true holds the ready frame. The subject
+// defaults to the text the specs without a subject of their own have always got.
 export async function settledHarnessCanvas(
   page: Page,
   query: string,

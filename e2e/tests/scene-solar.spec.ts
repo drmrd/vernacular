@@ -107,9 +107,9 @@ async function captureShell(page: Page, capture: ShellCapture): Promise<void> {
     .toBeGreaterThan(0)
 
   // The visible sky arrives through a lazily loaded chunk, so the mount frame renders
-  // without it. The harness draws a second frame once the lighting reports ready and
-  // marks data-harness-ready in the same commit pass, so awaiting the attribute
-  // guarantees the screenshot captures the sky-lit frame, not the placeholder background.
+  // without it. The harness draws its ready frame in the renderer's own animation loop, on a
+  // frame of its own, and data-harness-ready turns true in the commit after that frame was
+  // drawn, so awaiting the attribute guarantees the screenshot captures the sky-lit frame.
   await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
 
   await expect(canvas).toHaveScreenshot(capture.snapshot, {
