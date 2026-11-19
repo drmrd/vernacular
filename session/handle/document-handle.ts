@@ -24,7 +24,7 @@ interface SaveStatusCell {
 const SAVED: SaveOutcome = { ok: true }
 
 /** The message of a save or a flush asked of a handle that has closed. */
-const HANDLE_CLOSED: SaveOutcome = {
+const CLOSED_OUTCOME: SaveOutcome = {
   ok: false,
   message: 'The project is closed, so nothing was saved.',
 }
@@ -82,9 +82,9 @@ function createSavePath(parts: SavePathParts): SavePath {
   let closing: Promise<SaveOutcome> | undefined
 
   const save = (): Promise<SaveOutcome> =>
-    closed ? Promise.resolve(HANDLE_CLOSED) : autosave.save().then(() => SAVED, failedWith)
+    closed ? Promise.resolve(CLOSED_OUTCOME) : autosave.save().then(() => SAVED, failedWith)
   const flush = (): Promise<SaveOutcome> =>
-    closed ? Promise.resolve(HANDLE_CLOSED) : autosave.flush().then(() => SAVED, failedWith)
+    closed ? Promise.resolve(CLOSED_OUTCOME) : autosave.flush().then(() => SAVED, failedWith)
 
   const closeOnce = async (): Promise<SaveOutcome> => {
     let outcome = await flush()

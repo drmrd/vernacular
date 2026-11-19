@@ -1,7 +1,7 @@
 import type { Project } from '../../core'
 import { callGuarded } from '../guarded-call'
-import { createWriteQueue, type WriteQueue } from '../handle/write-queue'
 import type { AutosaveConfig, AutosaveStatus } from './create-autosave'
+import type { TrackedWriteQueue } from './tracked-write-queue'
 
 const noop = (): void => {}
 
@@ -38,32 +38,6 @@ async function saveAndReport(config: AutosaveConfig, project: Project): Promise<
   const report = await config.store.save(config.projectId, project)
   const { onReport } = config
   callGuarded(() => onReport?.(report))
-}
-
-/** The write queue of an autosave, which also knows the promise of the last write asked for. */
-export interface TrackedWriteQueue extends WriteQueue {
-  /** The promise of the last write asked for, while it has not settled; otherwise undefined. */
-  latest(): Promise<void> | undefined
-}
-
-/** A write queue around `write` that remembers the last write asked for until it settles. */
-export function createTrackedWriteQueue(write: () => Promise<void>): TrackedWriteQueue {
-  const queue = createWriteQueue(write)
-  let latest: Promise<void> | undefined
-  return {
-    request() {
-      const requested = queue.request()
-      latest = requested
-      const forget = (): void => {
-        if (latest === requested) {
-          latest = undefined
-        }
-      }
-      requested.then(forget, forget)
-      return requested
-    },
-    latest: () => latest,
-  }
 }
 
 /**

@@ -4,11 +4,11 @@ import type { EditorSession } from '../editor-session/editor-session'
 import {
   createAutosaveWrite,
   createStatusReporter,
-  createTrackedWriteQueue,
   createWriteProgress,
   flushWrites,
   hasUnwrittenChange,
 } from './autosave-write'
+import { createTrackedWriteQueue } from './tracked-write-queue'
 
 export type AutosaveStatus = 'idle' | 'pending' | 'saved' | 'error'
 
@@ -61,7 +61,8 @@ export interface Autosave {
 
 /**
  * Stores the project of the session a moment after each change. Every write, of the timer, of
- * `save()`, or of `flush()`, goes through one queue, so two saves never run together and the last state wins.
+ * `save()`, or of `flush()`, goes through one queue, so two saves never run together and the last
+ * state wins.
  */
 export function createAutosave(config: AutosaveConfig): Autosave {
   const delayMs = config.delayMs ?? DEFAULT_AUTOSAVE_DELAY_MS

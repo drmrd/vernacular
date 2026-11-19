@@ -7,7 +7,9 @@ export function callGuarded(call: () => void): void {
   }
 }
 
-/** Awaits the call; an error it throws or a promise it rejects goes to the console. Never rejects. */
+/**
+ * Awaits the call; an error it throws or a promise it rejects goes to the console. Never rejects.
+ */
 export async function callGuardedAsync(call: () => Promise<unknown>): Promise<void> {
   try {
     await call()
