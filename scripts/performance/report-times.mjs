@@ -16,6 +16,7 @@ import { baselineWriteRefusals } from '../../tests/performance/timing/run-condit
 import { parseTimingRun, serializeTimingRun } from '../../tests/performance/timing/timing-record.ts'
 import { parseTimingArguments } from './timing-arguments.mjs'
 import {
+  browserInstallRoot,
   browserMainPid,
   crashHandlerPids,
   newPids,
@@ -191,7 +192,7 @@ export async function serveTimingPage() {
 function readProcesses() {
   if (process.platform === 'win32') return []
   try {
-    const text = execFileSync('ps', ['-Ao', 'pid=,ppid=,command='], {
+    const text = execFileSync('ps', ['-Aww', '-o', 'pid=,ppid=,command='], {
       encoding: 'utf8',
       maxBuffer: PROCESS_LIST_MAX_BYTES,
     })
@@ -202,9 +203,14 @@ function readProcesses() {
 }
 
 /**
- * The processes that each launched browser leaves behind on its own: its main process and the
- * crash handler helpers it started, which `closeBrowser` stops.
- * @type {WeakMap<object, { mainPid: number | undefined, crashHandlers: number[] }>}
+ * @typedef {{ mainPid: number | undefined, installRoot: string | undefined, crashHandlers: number[] }} NotedProcesses
+ */
+
+/**
+ * The processes that each launched browser leaves behind on its own: its main process, the folder
+ * it runs from, and the crash handler helpers it started from that folder, which `closeBrowser`
+ * stops.
+ * @type {WeakMap<object, NotedProcesses>}
  */
 const launchedProcesses = new WeakMap()
 
@@ -214,20 +220,27 @@ const launchedProcesses = new WeakMap()
  * @param {boolean} [headless] false (the default) opens a visible window, as a timing run needs
  */
 export async function launchTimingBrowser(headless = false) {
-  const handlersBefore = crashHandlerPids(readProcesses())
+  const before = readProcesses()
   const browser = await chromium.launch({
     channel: 'chromium',
     headless,
     args: timingLaunchArgs(process.platform),
   })
   const after = readProcesses()
+  const mainPid = browserMainPid(after, process.pid)
+  const installRoot = browserInstallRoot(after, mainPid)
   // The helpers have parent 1 from the start and nothing in them names their browser, so they
-  // are found by time: the helpers that appeared during this launch. Known limit: a second test
-  // browser that starts in the same instant could have its helpers counted as this one's;
-  // stopping them costs that browser only its crash reports.
+  // are found by time and by folder: the helpers that appeared during this launch and run from
+  // this browser's own install folder. Known limit: another test browser of the same install
+  // that starts during this launch could have its helpers counted as this one's; stopping them
+  // costs that browser only its crash reports.
   launchedProcesses.set(browser, {
-    mainPid: browserMainPid(after, process.pid),
-    crashHandlers: newPids(handlersBefore, crashHandlerPids(after)),
+    mainPid,
+    installRoot,
+    crashHandlers: newPids(
+      crashHandlerPids(before, installRoot),
+      crashHandlerPids(after, installRoot),
+    ),
   })
   return browser
 }
@@ -369,11 +382,12 @@ async function waitForExit(pid) {
  * are still crash handlers now. A handler that outlives its browser holds the browser's error
  * output open, and the close does not report until that output closes. Does nothing when the
  * main process is not known or does not exit in time.
- * @param {{ mainPid: number | undefined, crashHandlers: number[] } | undefined} noted
+ * @param {NotedProcesses | undefined} noted
  */
 async function stopCrashHandlers(noted) {
   if (noted?.mainPid === undefined || !(await waitForExit(noted.mainPid))) return
-  for (const pid of stillCrashHandlers(noted.crashHandlers, readProcesses())) {
+  const current = readProcesses()
+  for (const pid of stillCrashHandlers(noted.crashHandlers, current, noted.installRoot)) {
     try {
       process.kill(pid, 'SIGTERM')
     } catch {
