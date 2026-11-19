@@ -31,11 +31,16 @@ export interface DocumentHandle {
   subscribe(listener: () => void): () => void
   /** Delivers each notice once. Returns a function that removes the listener. */
   onNotice(listener: (notice: HandleNotice) => void): () => void
-  /** Stores the present project now. */
+  /** Stores the present project now, also when nothing changed. Resolves not ok when that write
+   *  fails or when the handle is closed. Never rejects. */
   save(): Promise<SaveOutcome>
-  /** Stores the changes that are not stored yet. */
+  /** Stores what may be unsaved: a change not stored yet, or the state after a write that failed.
+   *  Then waits for the writes that run or wait and resolves with the outcome of the last of them,
+   *  or not ok when the handle is closed. Never rejects. */
   flush(): Promise<SaveOutcome>
-  /** Stores the changes, then ends autosave and frees the lock. */
+  /** Writes until nothing is unsaved and no write runs or waits, then ends autosave and frees the
+   *  lock. When a write fails it resolves not ok, and the handle stays open with the lock. Calls
+   *  that overlap share one attempt; on a closed handle it resolves ok and does nothing. */
   close(): Promise<SaveOutcome>
 }
 

@@ -38,7 +38,7 @@ export function createWriteProgress(): WriteProgress {
  * the last write that ended failed: after a failed write something may be unsaved, also when no
  * change was made.
  */
-export function hasUnwrittenChange(progress: WriteProgress): boolean {
+export function needsWrite(progress: WriteProgress): boolean {
   if (progress.runningFrom === progress.changes) {
     return false
   }
@@ -62,7 +62,7 @@ export function flushWrites(queue: TrackedWriteQueue, progress: WriteProgress): 
   if (progress.disposed) {
     return Promise.reject(new Error(AUTOSAVE_DISPOSED_MESSAGE))
   }
-  if (hasUnwrittenChange(progress)) {
+  if (needsWrite(progress)) {
     return queue.request()
   }
   return queue.latest() ?? Promise.resolve()

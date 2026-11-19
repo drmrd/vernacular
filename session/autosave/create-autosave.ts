@@ -6,7 +6,7 @@ import {
   createStatusReporter,
   createWriteProgress,
   flushWrites,
-  hasUnwrittenChange,
+  needsWrite,
 } from './autosave-write'
 import { createTrackedWriteQueue } from './tracked-write-queue'
 
@@ -56,8 +56,9 @@ export interface Autosave {
    *  nothing unsaved, no failed write, and no write, it resolves at once and calls no store
    *  method. It rejects after dispose. */
   flush(): Promise<void>
-  /** True while a write of this autosave runs or waits in its queue, whoever asked for it. */
-  isWriting(): boolean
+  /** True when a write is needed, or when a write of this autosave runs or waits in its queue,
+   *  whoever asked for it. */
+  hasWorkLeft(): boolean
   /** Ends the session subscription and the wait. A write that waits never starts. */
   dispose(): void
 }
@@ -81,7 +82,7 @@ export function createAutosave(config: AutosaveConfig): Autosave {
 
   const writeWhenUnwritten = (): void => {
     timer = undefined
-    if (hasUnwrittenChange(progress)) {
+    if (needsWrite(progress)) {
       // Nobody awaits this write. A failed write has reported its status, and a write dropped
       // after dispose is silent on purpose. A callback that throws has gone to console.error.
       queue.request().catch(noop)
@@ -104,7 +105,7 @@ export function createAutosave(config: AutosaveConfig): Autosave {
       cancelWait()
       return flushWrites(queue, progress)
     },
-    isWriting: () => queue.latest() !== undefined,
+    hasWorkLeft: () => needsWrite(progress) || queue.latest() !== undefined,
     dispose() {
       progress.disposed = true
       unsubscribe()
