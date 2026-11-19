@@ -1,11 +1,4 @@
-/**
- * Declared here until the record module takes it over: the summary of one list of samples.
- */
-export interface TimingSummary {
-  samples: number
-  medianMs: number
-  p95Ms: number
-}
+import type { TimingSummary } from './timing-record'
 
 const PERCENTILE_RANK = 0.95
 const STEPS_PER_MS = 100 // rounds to 0.01 ms
