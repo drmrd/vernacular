@@ -51,17 +51,22 @@ export function disposeObject(object: THREE.Object3D): void {
   })
 }
 
+/** The world-space box of a model, or null when it is empty or flat along any axis. */
+function measureUsableBox(model: THREE.Object3D): THREE.Box3 | null {
+  model.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(model)
+  if (box.isEmpty()) return null
+  const size = box.getSize(new THREE.Vector3())
+  return size.x !== 0 && size.y !== 0 && size.z !== 0 ? box : null
+}
+
 /**
  * Whether a parsed model can be fitted into a furniture box: its world-space bounding box is
  * not empty and has a size above zero on all three axes. A model with only empty nodes, lights,
  * or cameras has none; a model flat along one axis has a zero size.
  */
 export function hasUsableGeometry(model: THREE.Object3D): boolean {
-  model.updateMatrixWorld(true)
-  const box = new THREE.Box3().setFromObject(model)
-  if (box.isEmpty()) return false
-  const size = box.getSize(new THREE.Vector3())
-  return size.x !== 0 && size.y !== 0 && size.z !== 0
+  return measureUsableBox(model) !== null
 }
 
 /**
@@ -74,8 +79,8 @@ export function normalizeModelIntoBox(
   model: THREE.Object3D,
   node: FurnitureSceneNode,
 ): THREE.Group | null {
-  if (!hasUsableGeometry(model)) return null
-  const box = new THREE.Box3().setFromObject(model)
+  const box = measureUsableBox(model)
+  if (!box) return null
   const size = box.getSize(new THREE.Vector3())
 
   const [tl, tr, br, bl] = node.footprintCorners
