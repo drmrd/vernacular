@@ -124,4 +124,11 @@ describe('PlanOverlay live region carrier', () => {
     expect(container.querySelector('.plan-overlay__refusal')).toBeNull()
     expect(screen.getByRole('status')).toHaveTextContent(/^Selected Wall,/)
   })
+
+  it('states that the status region is atomic, so the whole sentence is read when its element is replaced', () => {
+    render(overlayTree(NOTHING_SELECTED))
+
+    // The status role implies this value, but not every browser and reader pair honors the implied one.
+    expect(screen.getByRole('status')).toHaveAttribute('aria-atomic', 'true')
+  })
 })
