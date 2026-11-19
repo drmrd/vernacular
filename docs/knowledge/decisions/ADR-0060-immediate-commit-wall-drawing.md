@@ -10,9 +10,16 @@ related:
     decisions/ADR-0033-drawing-snap-model,
     decisions/ADR-0005-command-pattern-framework-captured-inverse,
   ]
-sourceFiles: [editor/plan/wall-tool.ts, editor/plan/use-plan-interaction.ts, editor/plan/snap.ts]
+sourceFiles:
+  [
+    editor/plan/wall-tool.ts,
+    editor/plan/use-plan-interaction.ts,
+    editor/plan/snap.ts,
+    editor/plan/run-scope.ts,
+    editor/plan/use-discard-pointer-wall-run.ts,
+  ]
 status: current
-updated: 2026-06-12
+updated: 2026-11-19
 ---
 
 # ADR-0060: Immediate-commit wall drawing with active-vertex snapping
@@ -107,3 +114,10 @@ counts; the Enter now ends an already-built run.
 - ADR-0026 (room derivation; the committed segments are what it enumerates).
 - ADR-0033 (drawing snap model; the active-vertex candidates extend the snap chain).
 - ADR-0005 (command pattern; each segment is one undoable `addWall`).
+
+## Update (2026-11-19): another tool or another floor ends the chain
+
+Issue #914 found that a run drawn with the pointer did not end when the tool changed, and that no run
+ended when the active floor changed. The next click then drew a wall from the old corner, under the
+tool that was armed again or on the new floor. A change of tool or of the active floor now ends the
+chain, as Escape does. The walls that the run already placed stay, and undo removes them.

@@ -31,6 +31,13 @@ sourceFiles:
     editor/plan/use-escape-to-select.ts,
     editor/plan/use-escape-to-select.test.ts,
     editor/plan/use-plan-authoring-run-scope.test.ts,
+    editor/plan/run-scope.ts,
+    editor/plan/use-discard-pointer-wall-run.ts,
+    editor/plan/use-dimension-tool.ts,
+    editor/plan/use-plan-interaction-run-scope.test.ts,
+    editor/plan/use-dimension-tool.test.ts,
+    e2e/tests/journeys/cancel-wall.spec.ts,
+    e2e/tests/journeys/switch-floor.spec.ts,
   ]
 status: current
 updated: 2026-11-19
@@ -335,3 +342,24 @@ checkpoint, and a pending decision that a tool change drops.
 Two paths stay open. A wall run that was drawn with the pointer survives a change of tool (issue
 #914). After a placement that selects what it placed, one Escape clears the selection and also
 returns to select (issue #915).
+
+## Update (2026-11-19): a change of tool or floor ends every open run
+
+Issue #914 closed the first of the two paths that the section above left open, and it found a second
+trigger. A wall run that was drawn with the pointer now ends when the tool changes. Both wall runs
+and both halves of the Dimension tool also end when the active floor changes. Before, the next click
+or Enter drew a wall or a dimension on the new floor from a point on the old one. The walls already
+placed stay, and undo removes them. The keyboard candidate stays where it was, because the floors
+share one plan frame.
+
+A change of tool or floor also clears the sentence of the last keyboard step. Before, the live region
+kept a line such as "Wall vertex dropped". The first vertex of the next run wrote the same line, the
+region did not change, and a screen reader said nothing. Now the region falls back to the selection
+or the snap, and the next keyboard step is heard. The cleared sentence and the kept candidate are
+defaults. The project owner has not decided them.
+
+Tests: `editor/plan/use-plan-interaction-run-scope.test.ts`,
+`editor/plan/use-plan-authoring-run-scope.test.ts`, and `editor/plan/use-dimension-tool.test.ts` hold
+the discards, the guard against a discard on a plain re-render, and the cleared sentence. Journeys in
+`e2e/tests/journeys/cancel-wall.spec.ts`, `e2e/tests/journeys/switch-floor.spec.ts`, and
+`e2e/tests/keyboard-authoring.spec.ts` click and type through the cases.
