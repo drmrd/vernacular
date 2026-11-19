@@ -127,6 +127,11 @@ write also keeps the walk pose across an orbit round trip within a single mount,
 a remount: entering walk mode used to reseed from the live camera every time, even when the
 controller itself never unmounted.
 
+> Updated on 2026-11-19 (issue #608). A resumed walk pose keeps its plan position, yaw, and
+> pitch, but its eye is seated at the active floor's elevation plus the eye height, so a pose
+> left on another floor comes back on the active one. See the amendment of 2026-11-19 in
+> [[ADR-0064-three-dimensional-camera-navigation]].
+
 Proxy positions, the on-screen accessibility targets that track each entity, are named in the
 issue but excluded here on purpose. They are a per-frame projection recomputed continuously from
 the live camera and scene root, so restoring a stale array on remount would show proxy targets at
