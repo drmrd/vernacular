@@ -355,7 +355,8 @@ share one plan frame.
 A change of tool or floor also clears the sentence of the last keyboard step. Before, the live region
 kept a line such as "Wall vertex dropped". The first vertex of the next run wrote the same line, the
 region did not change, and a screen reader said nothing. Now the region falls back to the selection
-or the snap, and the next keyboard step is heard. The cleared sentence and the kept candidate are
+or the snap, and the next keyboard step is heard. With nothing selected, that fallback is "Selection
+cleared", which is not true either (issue #907). The cleared sentence and the kept candidate are
 defaults. The project owner has not decided them.
 
 Tests: `editor/plan/use-plan-interaction-run-scope.test.ts`,
