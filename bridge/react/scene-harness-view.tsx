@@ -16,6 +16,7 @@ import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
 import { SCENE_READY_ATTRIBUTE } from './scene-readiness'
+import { harnessStateKey } from './scene-harness-state-key'
 import { SceneLighting } from './scene-lighting'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
@@ -260,12 +261,18 @@ function useFramedHarnessScene(scene: HarnessScene, paint: Record<string, Surfac
   }, [scene, paint])
 }
 
-export function SceneHarnessView({
+// The stage owns the readiness flags, so the view gives it a key made from the whole harness
+// state: another state mounts a new stage and the flags start again.
+export function SceneHarnessView(props: SceneHarnessViewProps = {}) {
+  return <HarnessStage key={harnessStateKey(props)} {...props} />
+}
+
+function HarnessStage({
   colorTemperatureK = DEFAULT_COLOR_TEMPERATURE_K,
   paint = NO_PAINT,
   scene = 'shell',
   environment,
-}: SceneHarnessViewProps = {}) {
+}: SceneHarnessViewProps) {
   const { root, pose, bounds, front } = useFramedHarnessScene(scene, paint)
   const cameraOverride = resolveHarnessCameraPose(scene, environment)
   const ambientOcclusionActive = harnessAmbientOcclusionActive(environment)
