@@ -1,7 +1,8 @@
 import type { DocumentStore, ProjectLockHold, SaveReport } from '../../storage'
 import { type Autosave, createAutosave } from '../autosave/create-autosave'
-import { createEditorSession } from '../editor-session/editor-session'
+import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuarded, callGuardedAsync } from '../guarded-call'
+import { type HandOver, registerHandle } from './handle-internals'
 import { createHandleNotices, type HandleNotices } from './handle-notices'
 import type { DocumentHandle, OpenRequest, SaveOutcome, SaveStatus } from './handle-types'
 import type { OpenedProject } from './read-for-open'
@@ -13,6 +14,8 @@ export interface DocumentHandleParts {
   readonly store: DocumentStore
   readonly hold: ProjectLockHold
   readonly opened: OpenedProject
+  /** A session built ahead on the opened project; when absent, the handle builds its own. */
+  readonly session?: EditorSession
 }
 
 interface SaveStatusCell {
@@ -23,8 +26,10 @@ interface SaveStatusCell {
 
 const SAVED: SaveOutcome = { ok: true }
 
+type SaveFailed = Extract<SaveOutcome, { readonly ok: false }>
+
 /** The message of a save or a flush asked of a handle that has closed. */
-const CLOSED_OUTCOME: SaveOutcome = {
+const CLOSED_OUTCOME: SaveFailed = {
   ok: false,
   message: 'The project is closed, so nothing was saved.',
 }
@@ -67,27 +72,67 @@ interface SavePath {
   save(): Promise<SaveOutcome>
   flush(): Promise<SaveOutcome>
   close(): Promise<SaveOutcome>
+  handOver(): Promise<HandOver>
+}
+
+/** Whether the handle is closed, and the close or the hand-over that runs. */
+interface EndState {
+  closed: boolean
+  ending: Promise<SaveOutcome> | undefined
+}
+
+/** Starts the end of a handle; it frees the lock only when asked to. */
+type StartEnding = (releaseLock: boolean) => Promise<SaveOutcome>
+
+function closeWith(state: EndState, startEnding: StartEnding): Promise<SaveOutcome> {
+  if (state.ending !== undefined) {
+    return state.ending
+  }
+  if (state.closed) {
+    return Promise.resolve(SAVED)
+  }
+  return startEnding(true)
 }
 
 /**
- * The save, the flush, and the close of a handle. A close flushes again while autosave has work
- * left: a write is needed, or a write of the handle runs or waits, whoever asked for it, so no
- * store save runs after the lock is freed. Then it marks the handle closed and stops autosave with
- * no wait in between, then frees the lock. A flush that fails leaves the handle open, the lock
- * held, and autosave armed. A close called while another close runs, also while that close frees
- * the lock, gets the same attempt, so the lock is freed once.
+ * Ends the handle as a close does and gives its lock to the caller. A call that overlaps a close or
+ * another hand-over shares that attempt and gets no lock, so the lock has one owner at a time.
+ */
+async function handOverWith(
+  state: EndState,
+  startEnding: StartEnding,
+  hold: ProjectLockHold,
+): Promise<HandOver> {
+  if (state.ending !== undefined) {
+    const shared = await state.ending
+    return shared.ok ? CLOSED_OUTCOME : shared
+  }
+  if (state.closed) {
+    return CLOSED_OUTCOME
+  }
+  const outcome = await startEnding(false)
+  return outcome.ok ? { ok: true, hold } : outcome
+}
+
+/**
+ * The save, the flush, the close, and the hand-over of a handle. A close flushes again while
+ * autosave has work left: a write is needed, or a write of the handle runs or waits, whoever asked
+ * for it, so no store save runs after the lock is freed. Then it marks the handle closed and stops
+ * autosave with no wait in between, then frees the lock. A hand-over does the same and keeps the
+ * lock for its caller. A flush that fails leaves the handle open, the lock held, and autosave
+ * armed. A close called while another close runs, also while that close frees the lock, gets the
+ * same attempt, so the lock is freed once.
  */
 function createSavePath(parts: SavePathParts): SavePath {
   const { autosave, hold } = parts
-  let closed = false
-  let closing: Promise<SaveOutcome> | undefined
+  const state: EndState = { closed: false, ending: undefined }
 
   const save = (): Promise<SaveOutcome> =>
-    closed ? Promise.resolve(CLOSED_OUTCOME) : autosave.save().then(() => SAVED, failedWith)
+    state.closed ? Promise.resolve(CLOSED_OUTCOME) : autosave.save().then(() => SAVED, failedWith)
   const flush = (): Promise<SaveOutcome> =>
-    closed ? Promise.resolve(CLOSED_OUTCOME) : autosave.flush().then(() => SAVED, failedWith)
+    state.closed ? Promise.resolve(CLOSED_OUTCOME) : autosave.flush().then(() => SAVED, failedWith)
 
-  const closeOnce = async (): Promise<SaveOutcome> => {
+  const endOnce = async (releaseLock: boolean): Promise<SaveOutcome> => {
     let outcome = await flush()
     while (outcome.ok && autosave.hasWorkLeft()) {
       outcome = await flush()
@@ -95,26 +140,27 @@ function createSavePath(parts: SavePathParts): SavePath {
     if (!outcome.ok) {
       return outcome
     }
-    closed = true
+    state.closed = true
     autosave.dispose()
-    await callGuardedAsync(() => hold.release())
+    if (releaseLock) {
+      await callGuardedAsync(() => hold.release())
+    }
     return SAVED
   }
 
-  const close = (): Promise<SaveOutcome> => {
-    if (closing !== undefined) {
-      return closing
-    }
-    if (closed) {
-      return Promise.resolve(SAVED)
-    }
-    closing = closeOnce().finally(() => {
-      closing = undefined
+  const startEnding: StartEnding = (releaseLock) => {
+    state.ending = endOnce(releaseLock).finally(() => {
+      state.ending = undefined
     })
-    return closing
+    return state.ending
   }
 
-  return { save, flush, close }
+  return {
+    save,
+    flush,
+    close: () => closeWith(state, startEnding),
+    handOver: () => handOverWith(state, startEnding, hold),
+  }
 }
 
 /**
@@ -134,11 +180,12 @@ function reportFaultsTo(
 
 /**
  * Builds the handle of an opened project: its session, its autosave, its status, its notices, and
- * its save, flush, and close.
+ * its save, flush, and close. It records the store and the hand-over of the handle in the internal
+ * lookup of the session layer, so that the handle keeps only its public members.
  */
 export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle {
   const { request, store, hold, opened } = parts
-  const session = createEditorSession(opened.project)
+  const session = parts.session ?? createEditorSession(opened.project)
   const status = createSaveStatusCell()
   const notices = createHandleNotices()
   if (opened.savedByNewerBuild) {
@@ -152,7 +199,7 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     onReport: reportFaultsTo(notices, opened),
   })
   const savePath = createSavePath({ autosave, hold })
-  return {
+  const handle: DocumentHandle = {
     id: request.id,
     location: request.location,
     durable: store.durable,
@@ -165,4 +212,6 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     flush: savePath.flush,
     close: savePath.close,
   }
+  registerHandle(handle, { request, store, handOver: savePath.handOver })
+  return handle
 }
