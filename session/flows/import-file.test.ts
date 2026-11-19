@@ -18,6 +18,7 @@ import {
 } from '../../tests/storage/conformance/conformance-documents'
 import {
   createTestPorts,
+  DOCUMENT_FILE,
   failSaves,
   handleOf,
   openOrThrow,
@@ -228,14 +229,15 @@ describe('an import whose saves fail', () => {
     expect(await storedIds(ports)).toEqual([CURRENT_ID])
   })
 
-  it('a save of the copy that fails still gives the handle, with the status error', async () => {
+  it('a save of the copy that fails still gives the handle, with the status error and a snapshot to recover', async () => {
     const ports = createTestPorts()
     failSaves(ports.workspace)
 
     const handle = handleOf(await importFile(ports, undefined, jsonFile()))
 
     expect(handle.saveStatus()).toBe('error')
-    expect((await ports.workspace.storedFiles(handle.id)).size).toBe(0)
+    expect((await ports.workspace.storedFiles(handle.id)).has(DOCUMENT_FILE)).toBe(false)
+    expect(await ports.workspace.snapshots(handle.id).isRecoverable()).toBe(true)
   })
 })
 

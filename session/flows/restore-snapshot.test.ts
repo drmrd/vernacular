@@ -166,11 +166,13 @@ describe('a restore and the writes of the current handle', () => {
 
   it('the saves of a restore during a running save are stored in order, the restored document last', async () => {
     const { ports, handle: current } = await openStored()
-    await snapshotRecovered(current)
     const names = savedNames(ports)
     const gate = gateSaves(ports.workspace)
     rename(current, 'Saved while the restore starts')
     const saving = current.save()
+    await settle()
+    // A save writes its own snapshot first, so the crash copy is planted after it to stay the newest.
+    await snapshotRecovered(current)
 
     const restoring = restoreSnapshot(current)
     await settle()
