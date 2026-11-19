@@ -31,9 +31,17 @@ function lockNameFor(projectId: string): string {
   return `${LOCK_NAME_PREFIX}${projectId}`
 }
 
+/** A hold that locks nothing, for a browser with no lock API or one that refuses it. */
+function holdLockingNothing(): ProjectLockHold {
+  return releasingOnce(() => Promise.resolve())
+}
+
 /**
  * Project locks over navigator.locks. Where the API is missing, every
- * acquisition succeeds and no id is ever reported as held.
+ * acquisition succeeds and no id is ever reported as held. A browser that has
+ * the API but refuses a request or a query is treated the same way: where the
+ * browser refuses the lock API it also refuses the shared storage, so nothing
+ * shared needs a lock, and a project in memory must still open.
  */
 export class WebLocksProjectLockPort implements ProjectLockPort {
   readonly supported: boolean
@@ -45,11 +53,15 @@ export class WebLocksProjectLockPort implements ProjectLockPort {
 
   async tryAcquire(projectId: string): Promise<ProjectLockHold | undefined> {
     if (!this.supported) {
-      return { release: () => Promise.resolve() }
+      return holdLockingNothing()
     }
     const name = lockNameFor(projectId)
-    if (!(await this.manager.tryAcquire(name))) {
+    const outcome = await this.manager.tryAcquire(name)
+    if (outcome === 'busy') {
       return undefined
+    }
+    if (outcome === 'refused') {
+      return holdLockingNothing()
     }
     return releasingOnce(() => this.manager.release(name))
   }
@@ -58,7 +70,7 @@ export class WebLocksProjectLockPort implements ProjectLockPort {
     if (!this.supported) {
       return new Set()
     }
-    const { held } = await navigator.locks.query()
+    const { held } = await navigator.locks.query().catch(() => ({ held: undefined }))
     const ids = (held ?? [])
       .map((lock) => lock.name ?? '')
       .filter((name) => name.startsWith(LOCK_NAME_PREFIX))

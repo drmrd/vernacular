@@ -1,3 +1,6 @@
+/** How a request for a lock went: got it, found it held, or was refused by the browser. */
+export type LockOutcome = 'granted' | 'busy' | 'refused'
+
 /** What the manager keeps for one granted lock, from acquire until release. */
 interface LockHold {
   /** Settles the held promise so the lock can be freed. */
@@ -23,9 +26,15 @@ interface LockHold {
 export class WebLocksManager {
   private readonly holds = new Map<string, LockHold>()
 
-  /** Resolve true if the exclusive lock named `name` was acquired without waiting. */
-  tryAcquire(name: string): Promise<boolean> {
-    return new Promise<boolean>((resolveOuter) => {
+  /**
+   * Resolve how the request for the exclusive lock named `name` went: granted
+   * without waiting, busy because another holder has it (the callback runs with
+   * null), or refused because the browser rejected the request. A rejection
+   * that comes after the grant changes nothing: the answer is already given and
+   * the release still waits for the request to settle.
+   */
+  tryAcquire(name: string): Promise<LockOutcome> {
+    return new Promise<LockOutcome>((resolveOuter) => {
       // Assigned below once the request exists; the hold reads it only at release.
       let freed: Promise<void> = Promise.resolve()
       const request = navigator.locks.request(
@@ -33,10 +42,10 @@ export class WebLocksManager {
         { mode: 'exclusive', ifAvailable: true },
         (lock) => {
           if (lock === null) {
-            resolveOuter(false)
+            resolveOuter('busy')
             return undefined
           }
-          resolveOuter(true)
+          resolveOuter('granted')
           // Returning an unsettled promise keeps the lock held; storing its
           // resolver lets release() free the lock on demand. Only a granted
           // lock is stored, so a failed attempt never replaces the holder.
@@ -45,7 +54,10 @@ export class WebLocksManager {
           })
         },
       )
-      freed = request.then(() => undefined)
+      freed = request.then(
+        () => undefined,
+        () => resolveOuter('refused'),
+      )
     })
   }
 
