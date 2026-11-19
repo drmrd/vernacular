@@ -97,23 +97,25 @@ function expectSchematicAt(environment: EnvironmentState | undefined, observedAt
 }
 
 describe('ShellProviders opening light', () => {
-  it('seeds the light on screen from the project that opened, once, and leaves it when the site changes', () => {
-    let first: EnvironmentState | undefined
+  it('seeds the light on screen from the project that opened, and leaves it when the site changes', () => {
+    let latestEnvironment: EnvironmentState | undefined
     const session = sessionWithClosedRoom(NORTH_UP)
-    const { rerender, unmount } = render(shellAround(session, (value) => (first = value)))
+    const { rerender } = render(shellAround(session, (value) => (latestEnvironment = value)))
 
-    expectSchematicAt(first, SOUTH_FRONT_OPENING)
+    expectSchematicAt(latestEnvironment, SOUTH_FRONT_OPENING)
 
     session.dispatch(setSiteNorthBearing(QUARTER_TURN))
-    rerender(shellAround(session, (value) => (first = value)))
+    rerender(shellAround(session, (value) => (latestEnvironment = value)))
 
-    expectSchematicAt(first, SOUTH_FRONT_OPENING)
-    unmount()
+    expectSchematicAt(latestEnvironment, SOUTH_FRONT_OPENING)
+  })
 
-    let second: EnvironmentState | undefined
+  it('gives a second project its own opening light from its own site', () => {
+    let latestEnvironment: EnvironmentState | undefined
     const turnedSession = sessionWithClosedRoom(NORTH_TURNED_A_QUARTER)
-    render(shellAround(turnedSession, (value) => (second = value)))
 
-    expectSchematicAt(second, WEST_FRONT_OPENING)
+    render(shellAround(turnedSession, (value) => (latestEnvironment = value)))
+
+    expectSchematicAt(latestEnvironment, WEST_FRONT_OPENING)
   })
 })
