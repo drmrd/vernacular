@@ -1,5 +1,7 @@
+import { createElement, type ReactNode } from 'react'
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { act, cleanup, renderHook } from '@testing-library/react'
+import { NotificationProvider, useNotifications } from '../editor/design-system'
 import { gateSaves, settle } from '../session/autosave/save-gate-test-kit'
 import {
   createTestPorts,
@@ -39,6 +41,10 @@ function unloadIsPrevented(): boolean {
   const event = new Event('beforeunload', { cancelable: true })
   window.dispatchEvent(event)
   return event.defaultPrevented
+}
+
+function WithNotifications({ children }: { children: ReactNode }) {
+  return createElement(NotificationProvider, null, children)
 }
 
 beforeEach(() => {
@@ -86,6 +92,45 @@ describe('useFlushOnHidden', () => {
       gate.endOldestSave()
       await settle()
     })
+  })
+
+  it('the prompt before unload stays quiet after the write of a hidden page ended well', async () => {
+    const handle = await openNewProject(createTestPorts(), 'a')
+    renderHook(() => {
+      useUnsavedChangesGuard(handle)
+      useFlushOnHidden(handle)
+    })
+    act(() => {
+      rename(handle, 'Edited before the page hid')
+    })
+    const preventedBeforeHiding = unloadIsPrevented()
+
+    hidePage()
+    await act(settle)
+
+    expect({ preventedBeforeHiding, preventedAfterTheWrite: unloadIsPrevented() }).toEqual({
+      preventedBeforeHiding: true,
+      preventedAfterTheWrite: false,
+    })
+  })
+
+  it('a page that hides shows no notification', async () => {
+    const handle = await openNewProject(createTestPorts(), 'a')
+    const { result } = renderHook(
+      () => {
+        useFlushOnHidden(handle)
+        return useNotifications().notifications
+      },
+      { wrapper: WithNotifications },
+    )
+    act(() => {
+      rename(handle, 'Edited before the page hid')
+    })
+
+    hidePage()
+    await act(settle)
+
+    expect(result.current).toEqual([])
   })
 
   it('a visibilitychange to visible calls nothing', async () => {

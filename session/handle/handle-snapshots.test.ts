@@ -14,6 +14,7 @@ import { snapshotRecovered } from '../flows/restore-snapshot-test-kit'
 import type { DocumentHandle } from './handle-types'
 import {
   createTestPorts,
+  failFileRemovals,
   failSaves,
   handleOf,
   openOrThrow,
@@ -30,6 +31,10 @@ const OTHER_ID = 'b'
 const SNAPSHOT_DIRECTORY = `${PROJECT_ID}/.house-autosave`
 const OLDER_VERSION = 8
 const WRITE_OF_THE_ID = [`writeSnapshot:${PROJECT_ID}`, `save:${PROJECT_ID}`, `prune:${PROJECT_ID}`]
+/** More writes than the five rolling snapshots that the store keeps, so the oldest must go. */
+const WRITES_BEYOND_THE_CAP = 8
+/** A pause long enough that each snapshot gets a file name of its own (the name is the time). */
+const CLOCK_STEP_MS = 5
 
 let consoleError: ReturnType<typeof vi.spyOn>
 
@@ -47,6 +52,25 @@ async function openRecorded(log: string[], failure?: Parameters<typeof recordSna
   const opened = await openStored(ports)
   recordSaves(ports.workspace, log)
   return opened
+}
+
+/** From now on the first prune of each snapshots object rejects with `error`; later ones run. */
+function failFirstPrune(ports: TestPorts, error: Error): void {
+  const realSnapshots = ports.workspace.snapshots.bind(ports.workspace)
+  let failed = false
+  ports.workspace.snapshots = (id) => {
+    const real = realSnapshots(id)
+    return {
+      writeSnapshot: (project) => real.writeSnapshot(project),
+      prune: () => {
+        if (failed) return real.prune()
+        failed = true
+        return Promise.reject(error)
+      },
+      isRecoverable: () => real.isRecoverable(),
+      restore: () => real.restore(),
+    }
+  }
 }
 
 /** New ports on the same directory with a new lock registry: what a reload of the page gives. */
@@ -77,6 +101,33 @@ describe('the snapshots of a handle belong to its id', () => {
     await settle()
 
     expect(recoverable).toBe(true)
+  })
+
+  it('an open asks the store for the snapshots of its id once', async () => {
+    const ports = createTestPorts()
+    await placeDocument(ports, PROJECT_ID, currentBytes())
+    const snapshotsOf = vi.spyOn(ports.workspace, 'snapshots')
+
+    await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+
+    expect(snapshotsOf.mock.calls).toEqual([[PROJECT_ID]])
+  })
+
+  it('an autosave write of one id leaves nothing to recover for another', async () => {
+    const { ports, handle } = await openStored()
+    const gate = gateSaves(ports.workspace)
+    rename(handle, 'Written ahead of the save')
+    await vi.advanceTimersByTimeAsync(DEFAULT_AUTOSAVE_DELAY_MS)
+    await settle()
+
+    const recoverable = {
+      written: await ports.workspace.snapshots(PROJECT_ID).isRecoverable(),
+      other: await ports.workspace.snapshots(OTHER_ID).isRecoverable(),
+    }
+    gate.endOldestSave()
+    await settle()
+
+    expect(recoverable).toEqual({ written: true, other: false })
   })
 
   it('a handle on another id sees no recovery', async () => {
@@ -157,6 +208,48 @@ describe('a write of a handle whose step fails', () => {
       closed: { ok: true },
     })
     expect(consoleError.mock.calls.flat()).toContain(error)
+  })
+
+  it('a prune that fails once leaves nothing to recover after the next write that succeeds', async () => {
+    const ports = createTestPorts()
+    failFirstPrune(ports, new Error('the prune failed once'))
+    const { handle } = await openStored(ports)
+    rename(handle, 'Stored before the failed prune')
+    await handle.save()
+    const afterTheFailedPrune = await reloadOf(ports)
+      .workspace.snapshots(PROJECT_ID)
+      .isRecoverable()
+    rename(handle, 'Stored before the prune that runs')
+
+    await handle.save()
+
+    const afterTheNextWrite = await reloadOf(ports).workspace.snapshots(PROJECT_ID).isRecoverable()
+    expect({ afterTheFailedPrune, afterTheNextWrite }).toEqual({
+      afterTheFailedPrune: true,
+      afterTheNextWrite: false,
+    })
+  })
+
+  it('a save and a close stay ok when an old snapshot cannot be removed', async () => {
+    const { ports, handle } = await openStored()
+    failFileRemovals(ports)
+    const saves: boolean[] = []
+    for (let write = 1; write <= WRITES_BEYOND_THE_CAP; write += 1) {
+      rename(handle, `Edit ${write}`)
+      await vi.advanceTimersByTimeAsync(CLOCK_STEP_MS)
+      saves.push((await handle.save()).ok)
+    }
+    const status = handle.saveStatus()
+    rename(handle, 'Stored by the close')
+    await vi.advanceTimersByTimeAsync(CLOCK_STEP_MS)
+
+    const closed = await handle.close()
+
+    expect({ saves, status, closed }).toEqual({
+      saves: Array.from({ length: WRITES_BEYOND_THE_CAP }, () => true),
+      status: 'saved',
+      closed: { ok: true },
+    })
   })
 
   it('a snapshot write that fails stops the write before the store save', async () => {

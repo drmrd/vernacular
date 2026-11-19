@@ -229,7 +229,7 @@ describe('an import whose saves fail', () => {
     expect(await storedIds(ports)).toEqual([CURRENT_ID])
   })
 
-  it('a save of the copy that fails still gives the handle, with the status error and a snapshot to recover', async () => {
+  it('a save of the copy that fails still gives the handle, with the status error and its snapshot kept', async () => {
     const ports = createTestPorts()
     failSaves(ports.workspace)
 

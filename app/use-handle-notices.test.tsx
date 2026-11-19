@@ -117,6 +117,17 @@ describe('useHandleNotices', () => {
     expect(shown(result.current)).toEqual([FAULTS_NOTIFICATION])
   })
 
+  it('shows the held notice of a new handle after a rerender', async () => {
+    const ports = createTestPorts()
+    const first = await openSound(ports)
+    const second = await openSavedByNewerBuild(ports)
+    const { result, rerender } = renderNotices(first)
+
+    rerender({ current: second })
+
+    expect(shown(result.current)).toEqual([NEWER_BUILD_NOTIFICATION])
+  })
+
   it('does not show a notice of a handle that was replaced for the new one', async () => {
     const ports = createTestPorts()
     const replaced = await openFaulty(ports)

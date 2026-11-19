@@ -14,8 +14,6 @@ import {
   stubCapableStorage,
 } from './app-test-support'
 
-// The failed project with a backup and a snapshot beside its document, so that every
-// file of it can be compared before and after.
 /** The ids that a write ahead of a save went to, each once, in the order of the first write. */
 function idsOfSnapshotWrites(log: readonly string[]): string[] {
   const prefix = 'writeSnapshot:'
@@ -25,6 +23,8 @@ function idsOfSnapshotWrites(log: readonly string[]): string[] {
   return [...new Set(written)]
 }
 
+// The failed project with a backup and a snapshot beside its document, so that every
+// file of it can be compared before and after.
 async function seedFailedProject(ports: TestPorts): Promise<void> {
   const bytes = projectFromANewerBuild()
   await ports.root.writeFile(`${FAILED_ID}/vernacular.json`, bytes)

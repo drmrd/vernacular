@@ -177,6 +177,17 @@ export function recordSnapshots(
   }
 }
 
+/**
+ * From now on the directory of `ports` cannot remove a file: each removal rejects with the error
+ * that this gives back. Writes and reads work as before. The snapshots of the workspace remove
+ * their old files through this directory, and so does a prune.
+ */
+export function failFileRemovals(ports: TestPorts): Error {
+  const error = new Error('the file cannot be removed')
+  ports.root.removeFile = () => Promise.reject(error)
+  return error
+}
+
 /** Puts `save:<id>` and `read:<id>` in the log for each call, then runs the real method. */
 function recordStoreCalls(store: DocumentStore, log: string[]): void {
   const realRead = store.read.bind(store)
