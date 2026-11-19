@@ -92,6 +92,9 @@ function useOpeningMotionRefs(
 // every change of the shown list, in orbit mode as well as walk mode. A rebuilt scene never shows
 // a door shut that the session holds open, and a reused root that comes back to view (the same
 // root object after a return to its floor) is posed at the openness settled while it was away.
+// It first settles every opening the new list does not show, because no tick reaches those: an
+// opening that left the view part way through its swing is seated at its target and shows there,
+// with no swing, when it returns. A shown opening keeps its openness, so the tick still swings it.
 // The ref objects never change, so only a new root or a new shown list re-runs this; the state
 // and openness refs are read as it arrives.
 function useRestoreOpenings(
@@ -101,6 +104,11 @@ function useRestoreOpenings(
 ): void {
   const { interaction, openness } = refs
   useEffect(() => {
+    settleUnshownOpenings({
+      openings: shownOpenings,
+      interaction: interaction.current,
+      openness: openness.current,
+    })
     restoreOpenings({
       root,
       openings: shownOpenings,
