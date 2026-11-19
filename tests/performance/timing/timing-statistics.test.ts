@@ -40,19 +40,32 @@ describe('summarizing timing samples', () => {
     expect(samples).toEqual([9, 2, 7, 4])
   })
 
+  it('reports the 95th percentile of unsorted samples as the 20th smallest of 21', () => {
+    const shuffled = [8, 21, 3, 15, 1, 12, 19, 6, 10, 17, 2, 14, 20, 5, 9, 18, 4, 13, 7, 16, 11]
+    expect(summarizeSamples(shuffled).p95Ms).toBe(20)
+  })
+
+  it('reports tied samples by their value, with the rank of the largest at the 95th percentile', () => {
+    expect(summarizeSamples([2, 2, 2, 9])).toEqual({ samples: 4, medianMs: 2, p95Ms: 9 })
+  })
+
+  it('rounds a reported time up when the third decimal reaches 5 or more', () => {
+    expect(summarizeSamples([1.236])).toEqual({ samples: 1, medianMs: 1.24, p95Ms: 1.24 })
+  })
+
   it('rejects an empty list of samples', () => {
-    expect(() => summarizeSamples([])).toThrow()
+    expect(() => summarizeSamples([])).toThrow(/empty/)
   })
 
   it('rejects a sample that is not a number', () => {
-    expect(() => summarizeSamples([1, Number.NaN, 3])).toThrow()
+    expect(() => summarizeSamples([1, Number.NaN, 3])).toThrow(/finite/)
   })
 
   it('rejects an infinite sample', () => {
-    expect(() => summarizeSamples([1, Number.POSITIVE_INFINITY, 3])).toThrow()
+    expect(() => summarizeSamples([1, Number.POSITIVE_INFINITY, 3])).toThrow(/finite/)
   })
 
   it('rejects a negative sample', () => {
-    expect(() => summarizeSamples([1, -0.5, 3])).toThrow()
+    expect(() => summarizeSamples([1, -0.5, 3])).toThrow(/zero or more/)
   })
 })
