@@ -7,16 +7,24 @@ import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { sceneGraphForFloor, type OpeningInteractionState, type OpeningSceneNode } from '../../core'
 import type { SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
+import { useBuildingViewState } from './use-building-view-state'
 import { useSceneGraph } from './use-scene-graph'
+import { useViewSceneGraph } from './use-view-scene-graph'
 import { followStoredOpenings, restoreOpenings, tickOpenings } from './walk-interaction'
 
 /**
  * The refs the interact key, the frame loop, and a newly built root read: the live openings
- * (kept current for the keydown closure), the open/closed view-state, and each opening's
- * in-flight openness. They are view-state, never persisted edits.
+ * (kept current for the keydown closure), the openings the view shows, the open/closed
+ * view-state, and each opening's in-flight openness. They are view-state, never persisted edits.
  */
 export interface OpeningMotionRefs {
+  /** The active floor's openings: the candidates of the interact key, kept current for the keydown closure. */
   openings: RefObject<OpeningSceneNode[]>
+  /**
+   * Every opening the 3D view shows: the active floor's in the floor view, and every visible
+   * floor's in the whole-building view. The per-frame tick reads these.
+   */
+  shownOpenings: RefObject<OpeningSceneNode[]>
   interaction: RefObject<OpeningInteractionState>
   openness: RefObject<Map<string, number>>
 }
@@ -32,6 +40,16 @@ function useActiveFloorOpenings(): OpeningSceneNode[] {
   )
 }
 
+// Every opening the 3D view shows, derived from the same inputs the framed scene uses for the
+// graph it builds, so the list always matches the root: the active floor's openings in the floor
+// view, and every visible floor's openings in the whole-building view.
+function useShownOpenings(): OpeningSceneNode[] {
+  const rawGraph = useSceneGraph()
+  const activeFloorId = useActiveFloorId()
+  const buildingView = useBuildingViewState()
+  return useViewSceneGraph(rawGraph, activeFloorId, buildingView).openings
+}
+
 // Holds the opening refs. The open/closed state follows the doors the session store holds
 // open, copied so the walk keys never reach back into the store's set (ADR-0170). It takes
 // the store's set whenever that set changes, so a reset made in orbit mode reaches the live
@@ -41,12 +59,19 @@ function useFollowedOpenings(storedOpenDoorIds: ReadonlySet<string>): OpeningMot
   const openings = useActiveFloorOpenings()
   const openingsRef = useRef<OpeningSceneNode[]>(openings)
   openingsRef.current = openings
+  const shownOpeningsRef = useRef<OpeningSceneNode[]>([])
+  shownOpeningsRef.current = useShownOpenings()
   const interactionRef = useRef<OpeningInteractionState>({ openIds: new Set(storedOpenDoorIds) })
   const opennessRef = useRef<Map<string, number>>(new Map())
   useEffect(() => {
     interactionRef.current = followStoredOpenings(interactionRef.current, storedOpenDoorIds)
   }, [storedOpenDoorIds])
-  return { openings: openingsRef, interaction: interactionRef, openness: opennessRef }
+  return {
+    openings: openingsRef,
+    shownOpenings: shownOpeningsRef,
+    interaction: interactionRef,
+    openness: opennessRef,
+  }
 }
 
 // Poses the openings on every newly built scene root where the session left them, in orbit
@@ -88,7 +113,7 @@ export function tickOpeningMotion(root: SceneRoot, refs: OpeningMotionRefs, delt
   tickOpenings(
     {
       root,
-      openings: refs.openings.current,
+      openings: refs.shownOpenings.current,
       interaction: refs.interaction.current,
       openness: refs.openness.current,
     },

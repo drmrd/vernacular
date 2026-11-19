@@ -196,7 +196,12 @@ function useWalkSession(
   const { camera, domElement, floorElevationMm } = host
   const stateRef = useRef<WalkState>(initialWalkState(floorElevationMm))
   const inputRef = useRef<WalkInput>(emptyWalkInput())
-  const { openings: openingsRef, interaction: interactionRef, openness: opennessRef } = openingRefs
+  const {
+    openings: openingsRef,
+    shownOpenings: shownOpeningsRef,
+    interaction: interactionRef,
+    openness: opennessRef,
+  } = openingRefs
   const { savedWalkPoseRef, onWalkPoseRef } = useWalkPoseHandoff(savedWalkPose, onWalkPose)
   const onOpenDoorsRef = useRef(onOpenDoors)
   onOpenDoorsRef.current = onOpenDoors
@@ -209,6 +214,7 @@ function useWalkSession(
       state: stateRef,
       input: inputRef,
       openings: openingsRef,
+      shownOpenings: shownOpeningsRef,
       interaction: interactionRef,
       openness: opennessRef,
       onUserControl,
