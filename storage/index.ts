@@ -61,8 +61,8 @@ export type {
   ProjectBackend,
 } from './recent/recent-project-store'
 export { IndexedDbRecentProjectStore } from './recent/indexeddb-recent-project-store'
-export { createProjectLock } from './locks/project-lock'
-export type { ProjectLock, LockManagerPort, LockOutcome } from './locks/project-lock'
+export { InMemoryProjectLockPort, WebLocksProjectLockPort } from './locks/project-lock'
+export type { ProjectLockPort } from './locks/project-lock'
 export { WebLocksManager } from './locks/web-locks-manager'
 export { selectProjectStoreBackend } from './select-project-store'
 export type { ProjectStoreBackend, SelectProjectStoreOptions } from './select-project-store'

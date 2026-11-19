@@ -1,21 +1,21 @@
-import type { LockManagerPort } from './project-lock'
-
 /**
- * LockManagerPort over navigator.locks. The Web Locks API only holds a lock for
- * the duration of a callback, so to model hold-until-release we keep the lock
- * callback alive with a promise that never settles until release() resolves its
- * stored resolver. This is the held-promise pattern: the unsettled inner promise
- * is what keeps the exclusive lock in our possession.
+ * Exclusive named locks over navigator.locks, held until released. The Web
+ * Locks API only holds a lock for the duration of a callback, so to model
+ * hold-until-release we keep the lock callback alive with a promise that never
+ * settles until release() resolves its stored resolver. This is the
+ * held-promise pattern: the unsettled inner promise is what keeps the exclusive
+ * lock in our possession.
  *
  * release() also awaits the original request promise, which settles only once the
  * lock has actually been freed. Without that wait, an immediate re-acquire can
  * still observe the lock as held: Firefox frees the lock a task later than
  * Chromium, so resolving the held promise is not enough on its own.
  */
-export class WebLocksManager implements LockManagerPort {
+export class WebLocksManager {
   private readonly releasers = new Map<string, () => void>()
   private readonly requests = new Map<string, Promise<void>>()
 
+  /** Resolve true if the exclusive lock named `name` was acquired without waiting. */
   tryAcquire(name: string): Promise<boolean> {
     return new Promise<boolean>((resolveOuter) => {
       const request = navigator.locks.request(
