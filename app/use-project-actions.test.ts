@@ -110,6 +110,7 @@ describe('useProjectActions New project and Open folder', () => {
     })
 
     const opened = await waitForOtherProject(result, handle)
+    // The entry of the project that was left proves that the recording ran, so its absence below means something.
     await waitForRecentEntry(recentProjects, CURRENT_ID)
     await settleTheAction()
     const listed = (await recentProjects.list()).map((entry) => entry.id)

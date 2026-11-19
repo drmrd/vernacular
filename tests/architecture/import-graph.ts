@@ -256,8 +256,29 @@ function reportedNamesOf(
     .filter((name) => names.includes(name))
 }
 
+function isMemberAccess(node: ts.Node): boolean {
+  return ts.isPropertyAccessExpression(node) && node.name.text === MEMBER_OF_PORTS
+}
+
+function isElementAccess(node: ts.Node): boolean {
+  return (
+    ts.isElementAccessExpression(node) &&
+    ts.isStringLiteralLike(node.argumentExpression) &&
+    node.argumentExpression.text === MEMBER_OF_PORTS
+  )
+}
+
+function boundPropertyName(element: ts.BindingElement): string | undefined {
+  const property = element.propertyName ?? element.name
+  return ts.isIdentifier(property) || ts.isStringLiteralLike(property) ? property.text : undefined
+}
+
+function isDestructuring(node: ts.Node): boolean {
+  return ts.isBindingElement(node) && boundPropertyName(node) === MEMBER_OF_PORTS
+}
+
 function reachesMemberOfPorts(node: ts.Node): boolean {
-  if (ts.isPropertyAccessExpression(node) && node.name.text === MEMBER_OF_PORTS) return true
+  if (isMemberAccess(node) || isElementAccess(node) || isDestructuring(node)) return true
   return ts.forEachChild(node, reachesMemberOfPorts) ?? false
 }
 
@@ -281,9 +302,14 @@ function reportedNamesOfFile(path: string, text: string, names: readonly string[
  *   (`import { DocumentStore as Store }` reports `DocumentStore`).
  * - A file is reported with `*` when a namespace import (`import * as`) or an `export *` (also
  *   `export * as`) has a relative path that resolves into `storage/`.
- * - A file is reported with `.workspace` when its code has the member access `.workspace`
- *   (`ports.workspace` or `ports?.workspace`). A comment, a string, or a destructuring
- *   `{ workspace }` does not count.
+ * - A file is reported with `.workspace` when its code reads the property `workspace` of an object
+ *   in one of three ways: the member access (`ports.workspace`, `ports?.workspace`), an element
+ *   access with a string literal (`ports['workspace']`), or a destructuring that binds the property
+ *   (`const { workspace } = ports`, `const { workspace: store } = ports`, and the same in a
+ *   parameter list). A comment, a string that is not an element access, the indexed type
+ *   `SessionPorts['workspace']`, and a property of an object literal (`{ workspace: store }`, which
+ *   builds ports) do not count. An assignment to a destructuring pattern and a computed key that is
+ *   not a string literal are not seen.
  *
  * Each pair of a file and a name is reported once. A dynamic `import()` is not seen.
  */

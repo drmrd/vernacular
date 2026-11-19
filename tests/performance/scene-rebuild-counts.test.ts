@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { type EditorSession } from '../../bridge'
+import type { EditorSession } from '../../bridge'
 import { createEditorSession } from '../../session/testing'
 import type { FramedScene } from '../../bridge/react/framed-scene'
 import { createFramedSceneReconciler } from '../../bridge/react/framed-scene-reconciler'

@@ -24,8 +24,8 @@ import {
   waitForFailure,
   waitForHandle,
   waitForHandleOtherThan,
-} from './use-open-project-test-kit'
-import type { OwnerInActivity } from './use-open-project-test-kit'
+} from './use-open-project-test-support'
+import type { OwnerInActivity } from './use-open-project-test-support'
 
 /** How many microtasks pass between the end of a flow and a hide of the owner. */
 const MICROTASK_COUNTS = [0, 1, 2, 3, 4, 5] as const

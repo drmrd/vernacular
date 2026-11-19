@@ -85,6 +85,30 @@ describe('finding the production files of app that reach a store directly', () =
   })
 
   it.each([
+    ['a destructuring', 'const { workspace } = ports\nexport const read = workspace\n'],
+    [
+      'a destructuring that renames it',
+      'const { workspace: store } = ports\nexport const s = store\n',
+    ],
+    ['a destructuring in a parameter', 'export const read = ({ workspace }: Ports) => workspace\n'],
+    ['an element access with a string literal', "export const s = ports['workspace']\n"],
+  ])('names a planted file that reaches the workspace of the ports by %s', (_label, text) => {
+    expect(reportedFor(PLANTED_FILE, text)).toEqual(['app/sample.ts: .workspace'])
+  })
+
+  it('does not name an object literal with a workspace property or an indexed type', () => {
+    const text = [
+      "import type { SessionPorts } from '../session'",
+      "export type Store = SessionPorts['workspace']",
+      'export const build = (store: Store) => ({ workspace: store })',
+      'export const buildShort = (workspace: Store) => ({ workspace })',
+      '',
+    ].join('\n')
+
+    expect(reportedFor(PLANTED_FILE, text)).toEqual([])
+  })
+
+  it.each([
     'app/sample.test.ts',
     'app/sample.test.tsx',
     'app/sample.stories.tsx',

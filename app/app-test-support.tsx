@@ -38,7 +38,7 @@ import {
 import { openFailureReason } from './open-failure-text'
 import type { RunFlow } from './use-open-project'
 
-export { lockCalls } from './use-open-project-test-kit'
+export { lockCalls } from './use-open-project-test-support'
 
 /** Test support: the shared set-up of the tests that render the whole application. */
 

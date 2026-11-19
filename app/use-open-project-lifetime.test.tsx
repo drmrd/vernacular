@@ -27,7 +27,7 @@ import {
   waitForHandle,
   waitForHandleOtherThan,
   waitForStartEnd,
-} from './use-open-project-test-kit'
+} from './use-open-project-test-support'
 
 const RENAMED = 'Renamed in this tab'
 

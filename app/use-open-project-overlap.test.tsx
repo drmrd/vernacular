@@ -26,8 +26,8 @@ import {
   unmountAndSettle,
   waitForFailure,
   waitForHandle,
-} from './use-open-project-test-kit'
-import type { OwnerResult } from './use-open-project-test-kit'
+} from './use-open-project-test-support'
+import type { OwnerResult } from './use-open-project-test-support'
 
 const FLOW_END = 'flow-end'
 const DISK_GONE = 'The disk is gone.'
