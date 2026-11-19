@@ -13,6 +13,7 @@ import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
+import { isActivationPressAlreadyHandled } from './activation-keys'
 import { claimKeystroke, ownsKeystroke } from './keyboard-guard'
 import { useHeldAltKey } from './use-held-alt-key'
 import { useSnapping, type Snapping } from './use-snapping'
@@ -179,6 +180,8 @@ function useReresolveOnFreeAngleToggle({
 
 /**
  * Escape abandons the run, Enter ends it, and Backspace undoes the last segment.
+ * An Enter or Space that an entity proxy already handled (it selected the entity
+ * and prevented the default) is not a run key, so it must not finish the run.
  *
  * The handlers are read through a ref that is refreshed every render, so the
  * window listener subscribes once per tool change rather than on every render.
@@ -196,7 +199,7 @@ function useWallKeyboard({ tool, finish, backspace, cancel }: WallKeyboardDeps):
       return
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (ownsKeystroke(event.target, event.key)) {
+      if (ownsKeystroke(event.target, event.key) || isActivationPressAlreadyHandled(event)) {
         return
       }
       const handlers = handlersRef.current

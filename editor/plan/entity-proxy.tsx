@@ -1,5 +1,6 @@
 import './plan-overlay.css'
 import type { KeyboardEvent, ReactElement } from 'react'
+import { isActivationKey } from './activation-keys'
 import type { OverlayEntity } from './overlay-entities'
 import type { ScreenPoint } from './viewport'
 
@@ -17,7 +18,7 @@ export function EntityProxy({
   onSelect,
 }: EntityProxyProps): ReactElement {
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (isActivationKey(event)) {
       event.preventDefault()
       onSelect(entity.id, event.shiftKey)
     }
