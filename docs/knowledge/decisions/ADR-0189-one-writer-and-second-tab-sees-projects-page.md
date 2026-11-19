@@ -37,8 +37,9 @@ takes a lock when it opens a project, and two tabs can write the same document.
 > Updated on 2026-11-18. The document handle takes the lock when it opens a project and frees it
 > when it closes, through `ProjectLockPort` (`tryAcquire`, `heldIds`, `supported`) in
 > `storage/locks/project-lock.ts`. The application builds the port once, in
-> `app/create-session-ports.ts`. Where the browser has the lock API, two tabs no longer write the
-> same document. The second tab does not show the Projects page yet. Its open fails with
+> `app/create-session-ports.ts`. Where the browser has the lock API and grants its requests, two
+> tabs no longer write the same document. Where it has none, or refuses a request, a second tab is
+> not noticed. The second tab does not show the Projects page yet. Its open fails with
 > `open-elsewhere`, and the application shows the failed-open view with one sentence, "This
 > project is open in another tab." When the Projects page lands, the second tab shows the page
 > instead. A switch frees the lock of the project it leaves. The restore of a recovered copy hands

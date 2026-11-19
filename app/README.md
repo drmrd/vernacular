@@ -21,7 +21,10 @@ Where things happen:
   the recent list, the recovery prompt, and the menu actions. It mounts three small hooks on the
   handle. `useUnsavedChangesGuard` (in `use-before-unload-guard.ts`) arms the browser's leave
   warning while a change is not stored, `useFlushOnHidden` asks for a write when the page hides,
-  and `useHandleNotices` shows each notice of the handle once.
+  and `useHandleNotices` shows each notice of the handle once. The content cache of the editor is
+  the open project's own, from `assetsOf(handle)` in `asset-providers.tsx`, so a folder project
+  reads its assets from its folder first, while the library keeps the shared pool that the ports
+  builder returns beside the ports.
 - The action adapters `use-project-actions.ts`, `use-open-file-action.ts`, and
   `use-export-actions.ts` back the project menu. New project, Open file, Open folder, and a recent
   project run their flow through the owner; Save and the exports work on the open handle.

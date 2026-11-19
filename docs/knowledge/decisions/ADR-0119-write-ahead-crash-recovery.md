@@ -51,8 +51,9 @@ updated: 2026-11-18
 > page hides, a close, or a switch to another project (`session/autosave/autosave-write.ts`). A
 > prune that fails goes to the console and does not fail the write. A failed removal of an old
 > rolling snapshot, when the series passes its cap, does not fail it either. One limit is
-> unchanged: an edit that is saved before the user answers the recovery prompt prunes the
-> snapshot, so the recovered copy is gone and Restore finds nothing. A prune that fails at every
+> unchanged: a save that succeeds before the user answers the recovery prompt prunes the
+> snapshot, after an edit or after a Save with no edit, so the recovered copy is gone and Restore
+> finds nothing. A prune that fails at every
 > write leaves the prompt showing at each start, for a state the store already holds.
 
 Accepted, landed. Autosave now writes a recovery snapshot, saves the canonical project, then prunes the

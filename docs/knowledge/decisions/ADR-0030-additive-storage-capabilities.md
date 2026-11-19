@@ -65,7 +65,9 @@ routing) is recorded in the "Project save, open, and recent wiring" section belo
 
 > Updated on 2026-11-18. The document handle now takes the lock when it opens a project, through
 > `ProjectLockPort` (`tryAcquire`, `heldIds`, `supported`) in `storage/locks/project-lock.ts`, which
-> has a Web Locks form and an in-memory form. `ProjectLock`, `LockManagerPort`, and
+> has a Web Locks form and an in-memory form. Where the browser has no lock API, or has it and
+> refuses a request (for example where site data is blocked), the port gives a hold that locks
+> nothing and lists no held ids, so a project still opens. `ProjectLock`, `LockManagerPort`, and
 > `createProjectLock` are gone. `WebLocksManager` is no longer exported: it is the private part of
 > the Web Locks form and keeps the held-promise release described below. Until the Projects page
 > lands, a second tab that asks for an open project shows the failed-open view with "This project
