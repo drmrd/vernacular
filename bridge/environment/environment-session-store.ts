@@ -6,8 +6,10 @@ export interface EnvironmentSessionStore {
   setEnvironment(next: EnvironmentState): void
 }
 
-export function createEnvironmentSessionStore(): EnvironmentSessionStore {
-  let environment: EnvironmentState = DEFAULT_ENVIRONMENT_STATE
+export function createEnvironmentSessionStore(
+  startState: EnvironmentState = DEFAULT_ENVIRONMENT_STATE,
+): EnvironmentSessionStore {
+  let environment: EnvironmentState = startState
   const listeners = new Set<() => void>()
 
   const notify = (): void => {
