@@ -33,7 +33,7 @@ vi.mock('@react-three/fiber', () => ({
 
 // Renders the canvas children without a canvas, leaving out the 3D library's own elements.
 vi.mock('./scene-renderer-canvas', () => ({
-  // eslint-disable-next-line @typescript-eslint/naming-convention
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mock key must equal the name of the component export
   SceneRendererCanvas: ({ children }: { children: ReactNode }) => (
     <>
       {Children.toArray(children).filter(
@@ -44,7 +44,7 @@ vi.mock('./scene-renderer-canvas', () => ({
 }))
 
 vi.mock('./scene-lighting', () => ({
-  // eslint-disable-next-line @typescript-eslint/naming-convention
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mock key must equal the name of the component export
   SceneLighting: ({ onReady }: { onReady: () => void }) => {
     useEffect(() => {
       harness.settleLighting = onReady
@@ -106,6 +106,32 @@ describe('SceneHarnessView ready frame', () => {
     await settleLighting()
 
     expect(readiness()).toBe('false')
+    runFrame()
+    expect(readiness()).toBe('true')
+  })
+
+  it('stays not ready when a frame is drawn before the lighting settles', async () => {
+    render(<SceneHarnessView />)
+    runFrame()
+
+    expect(readiness()).toBe('false')
+    await settleLighting()
+    expect(readiness()).toBe('false')
+    runFrame()
+    expect(readiness()).toBe('true')
+  })
+
+  // The junctions scene, like the default shell, is schematic (no environment, so no
+  // ambient-occlusion pipeline is built), and its walls-only geometry differs from the shell.
+  it("reports not ready again when the scene changes, until the new scene's ready frame is drawn", async () => {
+    const { rerender } = render(<SceneHarnessView />)
+    await settleLighting()
+    runFrame()
+    expect(readiness()).toBe('true')
+
+    rerender(<SceneHarnessView scene="junctions" />)
+    expect(readiness()).toBe('false')
+    await settleLighting()
     runFrame()
     expect(readiness()).toBe('true')
   })
