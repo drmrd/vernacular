@@ -22,8 +22,11 @@ export function SettingsProvider({ service, children }: SettingsProviderProps): 
 }
 
 /**
- * The service of the nearest provider. With no provider, a memory service that belongs to the
- * calling component and lives as long as it stays mounted.
+ * The service of the nearest provider. With no provider, a memory service that belongs to this one
+ * call of the hook: the same object on every render of that mounted component, and another object
+ * for another call or another component. Two readers that must share a setting need a
+ * `SettingsProvider` above them. Under a provider, each call still makes one small unused memory
+ * service.
  */
 export function useSettingsService(): SettingsService {
   const provided = useContext(SettingsContext)
