@@ -202,15 +202,8 @@ function overlayTree(tool: PlanOverlayProps['tool'], refusal: PlacementRefusal) 
   )
 }
 
-// Re-rendering the same tree with another tool keeps the provider mounted, so the
-// refusal state survives the switch exactly as it does when the user picks another
-// chip in the running editor.
 function renderOverlayUnderTool(tool: PlanOverlayProps['tool'], refusal: PlacementRefusal) {
-  const view = render(overlayTree(tool, refusal))
-  return {
-    ...view,
-    takeUpTool: (next: PlanOverlayProps['tool']) => view.rerender(overlayTree(next, refusal)),
-  }
+  return render(overlayTree(tool, refusal))
 }
 
 async function armRefusal() {

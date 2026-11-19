@@ -33,7 +33,7 @@ export function addWallOnGround(session: Session): void {
   session.dispatch(addWall(floorId, { x: 0, y: 0 }, { x: WALL_END_MM, y: 0 }))
 }
 
-export function basisOf(session: Session): RefusalBasis {
+function basisOf(session: Session): RefusalBasis {
   return {
     tool: 'place-opening',
     sceneGraph: session.getSceneGraph(),
