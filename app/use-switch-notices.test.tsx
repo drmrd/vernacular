@@ -196,4 +196,11 @@ describe('useSwitchNotices for a failure with a reason', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
+
+  it('a sentence failure ignores the action option', async () => {
+    await showResults([failed({ kind: 'open-elsewhere' })], { action: 'Import' })
+
+    expectOneError(OPEN_ELSEWHERE_SENTENCE)
+    expect(screen.queryByText(/Import failed/)).not.toBeInTheDocument()
+  })
 })
