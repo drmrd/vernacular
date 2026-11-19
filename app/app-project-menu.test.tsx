@@ -1,10 +1,10 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { screen, cleanup, waitFor } from '@testing-library/react'
 import { InMemoryRecentProjectStore } from '../storage'
-import { createTestPorts, storedProject } from '../session/handle/handle-test-kit'
+import { createTestPorts, failSaves, storedProject } from '../session/handle/handle-test-kit'
 import {
-  FAILED_ID as START_ID,
   NEW_PROJECT_NAME,
+  START_ID,
   chooseFromTheProjectMenu,
   editTheProject,
   expectOpenProject,
@@ -12,12 +12,14 @@ import {
   plantProject,
   projectWithWalls,
   renderApp,
+  settleForAWhile,
   stubCapableStorage,
 } from './app-test-support'
 
 const DRAFT_NAME = 'Drafthouse'
 const HOUSE_ID = 'house'
 const HOUSE_NAME = 'My House'
+const SAVE_FAILED_TOAST = 'Save failed. Your latest changes are not saved yet.'
 
 afterEach(() => {
   cleanup()
@@ -102,5 +104,22 @@ describe('A new project from the project menu', () => {
     const left = await storedProject(ports.workspace, START_ID)
     expect(left.meta.name).toBe(DRAFT_NAME)
     expect(left.floors).toHaveLength(2)
+  })
+})
+
+describe('A failed Save from the project menu', () => {
+  it('shows exactly one toast that says the latest changes are not saved yet', async () => {
+    stubCapableStorage()
+    const ports = createTestPorts()
+    await plantProject(ports, START_ID, DRAFT_NAME)
+    renderApp(ports)
+    await expectOpenProject(DRAFT_NAME)
+    failSaves(ports.workspace)
+
+    await chooseFromTheProjectMenu(/save/i)
+
+    await screen.findByText(SAVE_FAILED_TOAST)
+    await settleForAWhile()
+    expect(screen.getAllByText(SAVE_FAILED_TOAST)).toHaveLength(1)
   })
 })

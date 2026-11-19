@@ -76,6 +76,9 @@ async function settleTheExport(notifications: NotificationApi): Promise<void> {
 describe('the export actions on an open project', () => {
   // jsdom does not implement URL.createObjectURL/revokeObjectURL. The download helpers
   // call them, so stub both; otherwise the export throws and lands in its error branch.
+  const originalCreateObjectUrl = URL.createObjectURL
+  const originalRevokeObjectUrl = URL.revokeObjectURL
+
   beforeEach(() => {
     URL.createObjectURL = vi.fn(() => 'blob:test')
     URL.revokeObjectURL = vi.fn()
@@ -85,6 +88,8 @@ describe('the export actions on an open project', () => {
     cleanup()
     await closeOpenedHandles()
     vi.restoreAllMocks()
+    URL.createObjectURL = originalCreateObjectUrl
+    URL.revokeObjectURL = originalRevokeObjectUrl
   })
 
   it('shows a promise toast for a bundle export', async () => {

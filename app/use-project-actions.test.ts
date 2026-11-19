@@ -24,6 +24,7 @@ import {
   documentBytes,
   namedProject,
   plantProject,
+  storedIds,
 } from './app-test-support'
 import { NOT_STORED } from './open-failure-text'
 import { useProjectActions } from './use-project-actions'
@@ -97,6 +98,23 @@ describe('useProjectActions New project and Open folder', () => {
     expect(opened.id).not.toBe(CURRENT_ID)
     expect(opened.session.getProject().meta.name).toBe(NEW_PROJECT_NAME)
     expect(confirm).not.toHaveBeenCalled()
+  })
+
+  it('New project lists no entry for the project it opened, which is not stored', async () => {
+    const { ports, handle } = await openDrafthouse()
+    const recentProjects = new InMemoryRecentProjectStore()
+    const { result } = renderActions({ ports, handle, recentProjects }, useProjectActions)
+
+    await act(async () => {
+      await result.current.actions.onNewProject()
+    })
+
+    const opened = await waitForOtherProject(result, handle)
+    await waitForRecentEntry(recentProjects, CURRENT_ID)
+    await settleTheAction()
+    const listed = (await recentProjects.list()).map((entry) => entry.id)
+    expect(listed).not.toContain(opened.id)
+    expect(await storedIds(ports)).not.toContain(opened.id)
   })
 
   it('Open folder opens the picked folder and records it as a folder project', async () => {
@@ -199,6 +217,7 @@ describe('useProjectActions while a flow runs and after it', () => {
   it('a recent entry store that rejects leaves the action resolved and logs nothing unhandled', async () => {
     const unhandled = recordUnhandledRejections()
     const { ports, handle } = await openDrafthouse()
+    await plantProject(ports, OTHER_ID, OTHER_NAME)
     const recentProjects = new InMemoryRecentProjectStore()
     const record = vi.spyOn(recentProjects, 'record').mockRejectedValue(new Error(RECENT_FAILURE))
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -207,7 +226,7 @@ describe('useProjectActions while a flow runs and after it', () => {
 
     try {
       await act(async () => {
-        await result.current.actions.onNewProject()
+        result.current.actions.onOpenRecent(OTHER_ID)
       })
       await waitForOtherProject(result, handle)
       await waitFor(() => expect(record).toHaveBeenCalled())

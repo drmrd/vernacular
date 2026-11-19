@@ -1,10 +1,11 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { screen, cleanup, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createTestPorts, type TestPorts } from '../session/handle/handle-test-kit'
+import { createTestPorts, storedProject, type TestPorts } from '../session/handle/handle-test-kit'
 import {
-  FAILED_ID as START_ID,
+  START_ID,
   expectOpenProject,
+  lockedIds,
   plantProject,
   projectWithWalls,
   renderApp,
@@ -63,6 +64,41 @@ describe('The recovery prompt of the application', () => {
       expect(await ports.workspace.snapshots(START_ID).isRecoverable()).toBe(false),
     )
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+})
+
+/** Restores the recovered copy through the prompt, and lets the work that follows settle. */
+async function restoreAndSettle(ports: TestPorts): Promise<void> {
+  stubCapableStorage()
+  renderApp(ports)
+  const alert = await screen.findByRole('alert')
+  await userEvent.click(within(alert).getByRole('button', { name: /restore/i }))
+  await expectOpenProject(RECOVERED_NAME)
+  await settleForAWhile()
+}
+
+describe('The application after the recovered copy was restored', () => {
+  it('shows no recovery prompt, now or later', async () => {
+    await restoreAndSettle(await portsWithRecoveredWork())
+
+    expect(screen.queryByRole('button', { name: /restore/i })).not.toBeInTheDocument()
+  })
+
+  it('keeps the lock on the project that was restored', async () => {
+    const ports = await portsWithRecoveredWork()
+
+    await restoreAndSettle(ports)
+
+    expect(lockedIds(ports)).toEqual([START_ID])
+  })
+
+  it('stores the restored document', async () => {
+    const ports = await portsWithRecoveredWork()
+
+    await restoreAndSettle(ports)
+
+    const stored = await storedProject(ports.workspace, START_ID)
+    expect(stored.meta.name).toBe(RECOVERED_NAME)
   })
 })
 

@@ -43,6 +43,9 @@ export { lockCalls } from './use-open-project-test-kit'
 /** Test support: the shared set-up of the tests that render the whole application. */
 
 /** The id that the start opens when nothing is remembered. */
+export const START_ID = 'current'
+
+/** The id of the project that fails to open, in the cases where the start fails. It is the start id. */
 export const FAILED_ID = 'current'
 
 /** Autosave waits before it writes, so a wait for a save is generous. */
