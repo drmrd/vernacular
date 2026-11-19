@@ -69,9 +69,9 @@ function sceneUpdate(counts: SampleCounts): Record<string, number[]> {
  * browser exposes `gc`. No phase logs or writes to the page other than through its canvases.
  */
 export function createPagePhases(instruments: PageInstruments): PagePhases {
-  const stage = createSceneStage(instruments.probe)
+  const stage = createSceneStage(instruments)
   const phases: TimingPhases = {
-    observe: () => observePage(instruments),
+    observe: () => observePage(instruments, stage.sceneCanvasSizes),
     planRedraw: (counts) => {
       collectGarbage()
       return planRedraw(instruments, counts)

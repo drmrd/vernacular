@@ -10,19 +10,34 @@ import {
 } from '../../../../bridge/react/scene-readiness'
 import type { Command } from '../../../../core'
 import { REFERENCE_EDITS, createReferenceProject } from '../../reference-project'
-import type { FrameProbe, FrameSample } from '../frame-probe'
+import type { FrameSample } from '../frame-probe'
 import type { ReferenceSceneStores } from '../reference-scene-stage'
 import { createReferenceSession } from '../reference-session'
 import { RENDER_VARIANTS, type RenderVariant } from '../render-variants'
 import type { SampleCounts } from '../timing-record'
-import { collectFrames, frameStartingAfter, type FrameWatch } from './frame-collection'
+import {
+  collectFrames,
+  frameStartingAfter,
+  nextHostPoll,
+  switchToPaced,
+  type FrameWatch,
+} from './frame-collection'
 import { LiveView } from './live-view'
-import { checkSceneCanvasSize, sceneHost } from './page-layout'
-import { collectGarbage, nextPoll, nextTask } from './page-waits'
+import type { PageInstruments } from './page-instruments'
+import {
+  expectedSceneCanvasSizes,
+  measureSceneCanvas,
+  sceneHost,
+  type SceneCanvasSizes,
+} from './page-layout'
+import { collectGarbage, nextTask } from './page-waits'
 
-/** The longest wait for a new live view to draw its first frame after its pipelines settled. */
+/**
+ * The longest wait for a new live view to draw its first frame after its pipelines settled; the
+ * host frames must still come within the page's frame limit meanwhile.
+ */
 const READY_LIMIT_MS = 30_000
-/** The frames that pass untimed after each undo, and before the first edit. */
+/** The host frames that pass untimed after each undo, so the next edit starts from a drawn undo. */
 const UNTIMED_FRAMES_AFTER_UNDO = 2
 /** The view in which the first frame after each edit is timed. */
 const AFTER_EDIT_VARIANT_NAME = 'building, schematic'
@@ -31,6 +46,11 @@ const AFTER_EDIT_VARIANT_NAME = 'building, schematic'
 export interface SceneStage {
   renderFrames(counts: SampleCounts): Promise<Record<string, FrameSample[]>>
   renderAfterEdits(counts: SampleCounts): Promise<Record<string, FrameSample[]>>
+  /**
+   * The sizes of the 3D canvas as last measured on a mounted view, or the expected sizes before
+   * any view mounted. They stay after the view unmounts, for the end observation of the run.
+   */
+  sceneCanvasSizes(): SceneCanvasSizes
   /** Unmounts the live view. */
   dispose(): void
 }
@@ -77,7 +97,11 @@ function variantStores(session: EditorSession, variant: RenderVariant): Referenc
   return stores
 }
 
-function mountView(probe: FrameProbe, session: EditorSession, variant: RenderVariant): MountedView {
+function mountView(
+  instruments: PageInstruments,
+  session: EditorSession,
+  variant: RenderVariant,
+): MountedView {
   const host = sceneHost()
   let thrown: unknown
   const root = createRoot(host, {
@@ -88,7 +112,8 @@ function mountView(probe: FrameProbe, session: EditorSession, variant: RenderVar
   const stores = variantStores(session, variant)
   root.render(<LiveView stores={stores} />)
   const watch = {
-    probe,
+    probe: instruments.probe,
+    hostFrame: instruments.hostFrame,
     checkHealth: healthCheck(host, () => thrown, variant.name),
     what: variant.name,
   }
@@ -103,8 +128,11 @@ function isReady(view: MountedView): boolean {
   )
 }
 
-/** Waits for the readiness attribute and the session flag; the frames until then are dropped. */
-async function waitUntilReady(view: MountedView): Promise<void> {
+/**
+ * Waits for the readiness attribute and the session flag, polling once a host frame; the samples
+ * until then are dropped. Returns the real sizes of the ready view's canvas.
+ */
+async function waitUntilReady(view: MountedView): Promise<SceneCanvasSizes> {
   const startMs = performance.now()
   while (!isReady(view)) {
     if (performance.now() - startMs > READY_LIMIT_MS) {
@@ -113,17 +141,19 @@ async function waitUntilReady(view: MountedView): Promise<void> {
           'so nothing was measured',
       )
     }
-    await nextPoll()
-    view.watch.checkHealth()
+    await nextHostPoll(view.watch)
     view.watch.probe.takeFrames()
   }
-  checkSceneCanvasSize(sceneHost())
+  return measureSceneCanvas(sceneHost())
 }
 
-/** The warm-up frames unpaced, then the timed frames paced, each starting with an idle GPU. */
+/**
+ * The warm-up frames unpaced, then the switch to paced mode with its split frames dropped, then the
+ * timed frames paced, each starting with an idle GPU. One sample is one host frame.
+ */
 async function timedFrames(watch: FrameWatch, counts: SampleCounts): Promise<FrameSample[]> {
   await collectFrames(watch, counts.warmup, 0)
-  watch.probe.setPaced(true)
+  await switchToPaced(watch)
   try {
     return await collectFrames(watch, counts.timed, performance.now())
   } finally {
@@ -157,9 +187,10 @@ function afterEditVariant(): RenderVariant {
 }
 
 /** The live view on the page's own reference session, mounted anew for each variant. */
-export function createSceneStage(probe: FrameProbe): SceneStage {
+export function createSceneStage(instruments: PageInstruments): SceneStage {
   const session = createReferenceSession()
   let current: MountedView | null = null
+  let measuredSizes: SceneCanvasSizes | null = null
   const dispose = (): void => {
     current?.root.unmount()
     current = null
@@ -167,8 +198,8 @@ export function createSceneStage(probe: FrameProbe): SceneStage {
   const mount = async (variant: RenderVariant): Promise<MountedView> => {
     dispose()
     collectGarbage()
-    current = mountView(probe, session, variant)
-    await waitUntilReady(current)
+    current = mountView(instruments, session, variant)
+    measuredSizes = await waitUntilReady(current)
     return current
   }
   return {
@@ -183,6 +214,7 @@ export function createSceneStage(probe: FrameProbe): SceneStage {
       const view = await mount(afterEditVariant())
       return timeEdits(view, counts)
     },
+    sceneCanvasSizes: () => measuredSizes ?? expectedSceneCanvasSizes(),
     dispose,
   }
 }
@@ -193,9 +225,8 @@ async function timeEdits(
 ): Promise<Record<string, FrameSample[]>> {
   const pristine = createReferenceProject()
   const byEdit: Record<string, FrameSample[]> = {}
-  view.watch.probe.setPaced(true)
   try {
-    await collectFrames(view.watch, UNTIMED_FRAMES_AFTER_UNDO, performance.now())
+    await switchToPaced(view.watch)
     for (const edit of REFERENCE_EDITS) {
       byEdit[edit.name] = await framesAfterEdit(view, () => edit.command(pristine), counts.timed)
     }

@@ -31,12 +31,24 @@ export function sceneHost(): HTMLElement {
   return elementById(SCENE_HOST_ID, HTMLElement)
 }
 
-/** The size of the drawing buffer that the live view's canvas gets at this device pixel ratio. */
-export function expectedDrawingBufferPx(): PixelSize {
+/** The two sizes of the live view's canvas: its CSS box and its drawing buffer. */
+export interface SceneCanvasSizes {
+  readonly cssPx: PixelSize
+  readonly drawingBufferPx: PixelSize
+}
+
+/**
+ * The sizes the live view's canvas gets at this device pixel ratio, before any view has mounted:
+ * what the start observation of a run states.
+ */
+export function expectedSceneCanvasSizes(): SceneCanvasSizes {
   const ratio = Math.min(Math.max(1, window.devicePixelRatio), MAXIMUM_PIXEL_RATIO)
   return {
-    width: Math.floor(SCENE_CANVAS_CSS_PX.width * ratio),
-    height: Math.floor(SCENE_CANVAS_CSS_PX.height * ratio),
+    cssPx: SCENE_CANVAS_CSS_PX,
+    drawingBufferPx: {
+      width: Math.floor(SCENE_CANVAS_CSS_PX.width * ratio),
+      height: Math.floor(SCENE_CANVAS_CSS_PX.height * ratio),
+    },
   }
 }
 
@@ -44,27 +56,25 @@ function sizeText(size: PixelSize): string {
   return `${size.width} x ${size.height}`
 }
 
-function sameSize(left: PixelSize, right: PixelSize): boolean {
-  return left.width === right.width && left.height === right.height
-}
-
 /**
- * Throws when the live view's canvas does not have the CSS size and the drawing buffer that the
- * record states, so a layout change in the live view cannot pass into a record unnoticed.
+ * The real sizes of the mounted live view's canvas: the CSS box of its container (the element with
+ * the readiness attribute, which the canvas fills) and the canvas's drawing buffer. Throws when no
+ * canvas is drawn, or when the container is not the CSS size of the page's layout, so a layout
+ * change in the live view cannot pass into a record unnoticed.
  */
-export function checkSceneCanvasSize(host: HTMLElement): void {
-  const canvas = host.querySelector(`[data-testid="${LIVE_SCENE_CANVAS_TEST_ID}"] canvas`)
-  if (!(canvas instanceof HTMLCanvasElement)) {
+export function measureSceneCanvas(host: HTMLElement): SceneCanvasSizes {
+  const container = host.querySelector(`[data-testid="${LIVE_SCENE_CANVAS_TEST_ID}"]`)
+  const canvas = container?.querySelector('canvas')
+  if (container == null || !(canvas instanceof HTMLCanvasElement)) {
     throw new Error('The live view drew no canvas, so nothing was measured')
   }
-  const box = canvas.getBoundingClientRect()
+  const box = container.getBoundingClientRect()
   const cssPx = { width: Math.round(box.width), height: Math.round(box.height) }
-  const bufferPx = { width: canvas.width, height: canvas.height }
-  if (!sameSize(cssPx, SCENE_CANVAS_CSS_PX) || !sameSize(bufferPx, expectedDrawingBufferPx())) {
+  if (cssPx.width !== SCENE_CANVAS_CSS_PX.width || cssPx.height !== SCENE_CANVAS_CSS_PX.height) {
     throw new Error(
-      `The 3D canvas is ${sizeText(cssPx)} CSS px with a ${sizeText(bufferPx)} drawing buffer, ` +
-        `not ${sizeText(SCENE_CANVAS_CSS_PX)} with ${sizeText(expectedDrawingBufferPx())}, ` +
+      `The 3D canvas is ${sizeText(cssPx)} CSS px, not ${sizeText(SCENE_CANVAS_CSS_PX)}, ` +
         'so the timing page no longer fits the live view and needs a fix',
     )
   }
+  return { cssPx, drawingBufferPx: { width: canvas.width, height: canvas.height } }
 }

@@ -1,38 +1,27 @@
 /**
- * The longest wait for a frame. A hidden or minimized window stops frames; a phase that sees no
- * frame for this long throws, so the run is rejected and never hangs.
+ * The longest wait for a host frame, the browser's own animation frame. A hidden or minimized
+ * window stops host frames; a wait that sees none for this long throws, so the run is rejected and
+ * never hangs. It watches host frames and not frame samples, because paced mode rightly holds the
+ * page's callbacks for longer while GPU work is pending.
  */
 export const NO_FRAME_LIMIT_MS = 2000
 
 const MILLISECONDS_PER_SECOND = 1000
 
-/** How often the page looks for finished frame samples while it waits, through a timer. */
-const POLL_INTERVAL_MS = 20
-
-/** The error of a wait for a frame that never came. */
-export function noFrameError(what: string): Error {
+/** The error of a wait for a host frame that never came. */
+function noFrameError(what: string): Error {
   return new Error(
     `No frame arrived within ${NO_FRAME_LIMIT_MS / MILLISECONDS_PER_SECOND} s during ${what}, so nothing was measured. ` +
       'Keep the browser window visible and in front, not minimized, for the whole run.',
   )
 }
 
-/** Resolves after the given time, through a timer task. */
-export function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds))
-}
-
 /** Resolves on the next task, after the microtasks of the current one (React's sync commit). */
 export function nextTask(): Promise<void> {
-  return delay(0)
+  return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-/** Resolves after one poll interval: the pace of the page's waits for frame samples. */
-export function nextPoll(): Promise<void> {
-  return delay(POLL_INTERVAL_MS)
-}
-
-/** The next frame, or a rejection after {@link NO_FRAME_LIMIT_MS}. */
+/** The next host frame, or a rejection after {@link NO_FRAME_LIMIT_MS}. */
 export async function frameWithinLimit(
   hostFrame: () => Promise<number>,
   what: string,

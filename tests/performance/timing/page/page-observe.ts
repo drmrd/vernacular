@@ -2,7 +2,7 @@ import type { PageDescription } from '../run-timing'
 import type { TimingRun } from '../timing-record'
 import { summarizeSamples } from '../timing-statistics'
 import type { PageInstruments } from './page-instruments'
-import { SCENE_CANVAS_CSS_PX, expectedDrawingBufferPx, planCanvas } from './page-layout'
+import { planCanvas, type SceneCanvasSizes } from './page-layout'
 import { frameWithinLimit } from './page-waits'
 
 /** The frames whose intervals give the display frame interval: 30 intervals, half a second at 60 Hz. */
@@ -97,9 +97,17 @@ async function powerSource(): Promise<TimingRun['conditions']['power']> {
   }
 }
 
-/** What the page sees of itself and of its run conditions; the run calls this first and last. */
-export async function observePage(instruments: PageInstruments): Promise<PageDescription> {
+/**
+ * What the page sees of itself and of its run conditions; the run calls this first and last. The
+ * sizes of the 3D canvas are the ones the page last measured on a mounted view, or the expected
+ * ones before any view mounted; the plan canvas and the pixel ratio are read now.
+ */
+export async function observePage(
+  instruments: PageInstruments,
+  sceneSizes: () => SceneCanvasSizes,
+): Promise<PageDescription> {
   const plan = planCanvas()
+  const scene = sceneSizes()
   return {
     productionBuild: import.meta.env.PROD,
     webGpuAdapter: await webGpuAdapter(),
@@ -113,7 +121,7 @@ export async function observePage(instruments: PageInstruments): Promise<PageDes
     power: await powerSource(),
     devicePixelRatio: window.devicePixelRatio,
     planCanvasPx: { width: plan.width, height: plan.height },
-    sceneCanvasCssPx: SCENE_CANVAS_CSS_PX,
-    sceneDrawingBufferPx: expectedDrawingBufferPx(),
+    sceneCanvasCssPx: scene.cssPx,
+    sceneDrawingBufferPx: scene.drawingBufferPx,
   }
 }
