@@ -66,6 +66,10 @@ const PARTITION_DOOR_AT = { x: 180, y: 190 }
 const DIFFERENT_VIEW_MEAN_FLOOR = 10
 const READING_DIGITS = 3
 
+// The tests that draw several rooms or floors take several settled frames of the live view. A
+// software renderer draws each frame slowly, and the default time limit is too short there.
+const SLOW_RENDERER_TIMEOUT_MS = 120_000
+
 // The floor buttons of the switcher. `exact` matters: "Ground" also matches "Underground levels".
 function floorButton(page: Page, name: string): Locator {
   return page.getByRole('navigation', { name: 'Floors' }).getByRole('button', { name, exact: true })
@@ -188,6 +192,7 @@ async function doorwayFramesOfTwoFloors(
 }
 
 test.describe('Live three-dimensional camera presets', () => {
+  test.beforeEach(() => test.setTimeout(SLOW_RENDERER_TIMEOUT_MS))
   test('the top-down preset moves the live camera', async ({ page }) => {
     await page.goto('/')
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
