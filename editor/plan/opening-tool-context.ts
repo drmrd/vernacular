@@ -60,8 +60,9 @@ export function useForgetRefusalOnToolChange(tool: ToolId): void {
 /**
  * What a standing refusal was computed from, and the signs that the person has moved on.
  * Caller guarantee: pass references that change only when the thing changes. The selection set
- * and the scene graph (the plan's own graph, not a derived copy) must be the same references
- * between renders when nothing changed, or every render retires the notice.
+ * must be the store's own set, and the scene graph must be the memoized graph of the active
+ * floor, not one rebuilt on each render (the overlay graph is such a rebuild). Otherwise every
+ * render retires the notice.
  */
 export interface RefusalBasis {
   tool: ToolId
