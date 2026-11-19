@@ -115,11 +115,11 @@ function renderPlan(tool: ToolId) {
   return { session, dispatch, onSelect }
 }
 
-// Returns false when a handler prevented the default of the key press.
+// Returns true when a handler prevented the default of the key press.
 function pressOnFocusedProxy(key: string): boolean {
   const proxy = screen.getByRole('option', { name: WALL_LABEL })
   proxy.focus()
-  return fireEvent.keyDown(proxy, { key })
+  return !fireEvent.keyDown(proxy, { key })
 }
 
 function dispatchWindowKey(key: string): void {
@@ -205,11 +205,11 @@ describe('a key press that a plan entity already handled', () => {
     act(() => dispatchWindowKey(ENTER))
     act(() => dispatchWindowKey('ArrowRight'))
 
-    const defaultWasNotPrevented = pressOnFocusedProxy(ESCAPE)
+    const defaultWasPrevented = pressOnFocusedProxy(ESCAPE)
 
     // The listbox prevented the default of this Escape, so the tool saw a key
     // that an element had already handled and cancelled the run all the same.
-    expect(defaultWasNotPrevented).toBe(false)
+    expect(defaultWasPrevented).toBe(true)
     expect(announcement()).toMatch(/cancel|abandon/i)
     expect(dispatch).not.toHaveBeenCalled()
   })
@@ -219,9 +219,9 @@ describe('a key press that a plan entity already handled', () => {
     act(() => dispatchWindowKey(ENTER))
     act(() => dispatchWindowKey('ArrowUp'))
 
-    const defaultWasNotPrevented = pressOnFocusedProxy(ESCAPE)
+    const defaultWasPrevented = pressOnFocusedProxy(ESCAPE)
 
-    expect(defaultWasNotPrevented).toBe(false)
+    expect(defaultWasPrevented).toBe(true)
     expect(announcement()).toBe('Dimension cancelled')
     expect(dispatch).not.toHaveBeenCalled()
   })
