@@ -10,6 +10,7 @@ related:
     decisions/ADR-0147-per-mode-tone-mapping,
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
     decisions/ADR-0193-sample-daylight-for-a-project-with-no-site-location,
+    decisions/ADR-0205-opening-time-chosen-for-the-house,
   ]
 sourceFiles:
   [
@@ -17,14 +18,17 @@ sourceFiles:
     core/environment/color-check.ts,
     core/environment/timezone-offset.ts,
     bridge/environment/environment-session-store.ts,
+    bridge/environment/environment-session-store.test.ts,
     bridge/react/environment-session-context.ts,
     editor/environment/environment-panel.tsx,
     bridge/react/environment-controls.tsx,
     editor/environment/environment-scenes.tsx,
     editor/shell/tool-rail.tsx,
+    editor/shell/shell-providers.tsx,
+    editor/shell/shell-providers-opening-light.test.tsx,
   ]
 status: current
-updated: 2026-11-16
+updated: 2026-11-19
 ---
 
 # ADR-0146: Environment panel and the session-state contract behind it
@@ -181,3 +185,17 @@ longer passes it through: `colorCheckLighting` sets `sunLevel` to `COLOR_CHECK_S
 while the sun is above the horizon and to 0 below it
 ([[ADR-0156-luminance-calibration-convention]]). The check still keeps the sun's direction, so
 shadows read as before.
+
+## Amendment (2026-11-19): the session light is seeded for each project
+
+The environment store no longer starts from one constant for every project
+([[ADR-0205-opening-time-chosen-for-the-house]]). `createEnvironmentSessionStore` takes an optional
+start state, and with none it starts from `DEFAULT_ENVIRONMENT_STATE` as before.
+`SessionStateProviders` in `editor/shell/shell-providers.tsx` creates the store once, in a state
+initializer, from `openingEnvironmentFor(site, sceneGraph)`. That is the instant and the cloud
+cover of `openingConditions` for the project's site and front, with the default mode and color
+check. The shell remounts for each new session, so each opened project starts from its own light.
+
+The contract of this record holds. The state stays window state and never touches the document or
+undo. The panel still owns it. A later edit of the site does not move the light on screen; only the
+controls do.
