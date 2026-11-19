@@ -3,12 +3,13 @@ import { REFERENCE_EDITS } from '../reference-project'
 import {
   changingFrames,
   fakeEditFrames,
+  fakeObservation,
   fakeSceneUpdateMs,
   fakeTimingPhases,
   fakeVariantFrames,
   timingInput,
 } from './fake-timing-phases'
-import type { PhaseName } from './fake-timing-phases'
+import type { Observation, PhaseName } from './fake-timing-phases'
 import type { FrameSample } from './frame-probe'
 import { RENDER_VARIANTS } from './render-variants'
 import { runTiming } from './run-timing'
@@ -91,6 +92,58 @@ describe('a timing run observes the page at its start and at its end', () => {
       expect(outcome.run.conditions.visibleThroughout).toBe(true)
     },
   )
+})
+
+describe('the record of a timing run takes its sizes from the end observation', () => {
+  async function recordOf(observedAtEnd: Partial<Observation>) {
+    const outcome = await runTiming(fakeTimingPhases({ observedAtEnd }).phases, timingInput())
+    if (outcome.kind !== 'measured') throw new Error('Expected a measured run')
+    return outcome.run
+  }
+
+  it('holds the pixel ratio and the three canvas sizes that the page states at its end', async () => {
+    const atEnd = {
+      devicePixelRatio: 3,
+      planCanvasPx: { width: 640, height: 480 },
+      sceneCanvasCssPx: { width: 1024, height: 700 },
+      sceneDrawingBufferPx: { width: 3072, height: 2100 },
+    }
+
+    const { conditions } = await recordOf(atEnd)
+
+    expect({
+      devicePixelRatio: conditions.devicePixelRatio,
+      planCanvasPx: conditions.planCanvasPx,
+      sceneCanvasCssPx: conditions.sceneCanvasCssPx,
+      sceneDrawingBufferPx: conditions.sceneDrawingBufferPx,
+    }).toEqual(atEnd)
+  })
+
+  it('keeps the display frame, the time, and the machine facts of the start observation', async () => {
+    const atStart = fakeObservation()
+
+    const run = await recordOf({
+      displayFrameMs: 16.67,
+      takenAt: '2026-11-21T23:59:59-05:00',
+      webGlRenderer: 'a renderer that the page names only at its end',
+      webGpuAdapter: { name: 'another / adapter / name', isFallback: false },
+      timerResolutionMs: 0.1,
+    })
+
+    expect({
+      displayFrameMs: run.conditions.displayFrameMs,
+      takenAt: run.takenAt,
+      webGlRenderer: run.machine.webGlRenderer,
+      webGpuAdapter: run.machine.webGpuAdapter,
+      timerResolutionMs: run.build.timerResolutionMs,
+    }).toEqual({
+      displayFrameMs: atStart.displayFrameMs,
+      takenAt: atStart.takenAt,
+      webGlRenderer: atStart.webGlRenderer,
+      webGpuAdapter: atStart.webGpuAdapter?.name,
+      timerResolutionMs: atStart.timerResolutionMs,
+    })
+  })
 })
 
 describe('a timing run with odd frame results', () => {
