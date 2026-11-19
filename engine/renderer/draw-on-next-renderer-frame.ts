@@ -11,7 +11,9 @@ export interface AnimationLoopRenderer {
  * Runs `draw` one time, inside the renderer's next animation-loop callback, and returns a cancel
  * function. The renderer resets its counts and advances its frame only right before it calls that
  * callback, so a draw made there is the first draw of its frame; a draw made in a React effect can
- * share a frame with an earlier draw and skip the work that is scoped to a frame.
+ * share a frame with an earlier draw and skip the work that is scoped to a frame. The renderer
+ * resets its render counts and updates its once-in-a-frame state (for example light values and
+ * shadow maps) only at the start of a frame of its own animation loop.
  *
  * A later request on the same renderer replaces a pending one, because a renderer keeps one loop.
  * A cancel clears the loop only while this request is still the pending one.

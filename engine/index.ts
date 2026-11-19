@@ -56,10 +56,8 @@ export { detectRenderBackend } from './renderer/detect-backend'
 export type { SceneRendererFactory, SceneRendererOptions } from './renderer/create-renderer'
 export { loadSceneRendererFactory } from './renderer/create-renderer'
 export { releaseSceneRenderer } from './renderer/release-renderer'
-export {
-  drawOnNextRendererFrame,
-  type AnimationLoopRenderer,
-} from './renderer/draw-on-next-renderer-frame'
+export type { AnimationLoopRenderer } from './renderer/draw-on-next-renderer-frame'
+export { drawOnNextRendererFrame } from './renderer/draw-on-next-renderer-frame'
 export { applyToneMappingOperator } from './renderer/tone-mapping'
 export type { RenderedPixelReader } from './renderer/sample-rendered-color'
 export {
