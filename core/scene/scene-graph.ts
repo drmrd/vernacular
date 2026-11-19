@@ -1,9 +1,10 @@
 import { dimensionLength } from '../geometry/dimension'
 import type { AssetReference } from '../model/asset-reference'
 import { furnitureFootprintCorners } from '../model/furniture-footprint'
-import { resolveGradeElevation } from '../model/site'
 import { effectiveWallThickness } from './construction-profile'
 import { withRoomSide } from './opening-room-side'
+import { assembleSceneGraph } from './scene-graph-assembly'
+import type { SceneNodeDerivations } from './scene-graph-assembly'
 import type {
   Dimension,
   Floor,
@@ -297,10 +298,6 @@ export function deriveFurnitureNode(floor: Floor, item: FurnitureInstance): Furn
   }
 }
 
-export function deriveFurnitureNodesForFloor(floor: Floor): FurnitureSceneNode[] {
-  return floor.furniture.map((item) => deriveFurnitureNode(floor, item))
-}
-
 export function deriveRoomNodesForFloor(
   floor: Floor,
   overrides?: Readonly<Record<string, RoomOverride>>,
@@ -340,24 +337,23 @@ export function deriveStairNodes(project: Project): StairSceneNode[] {
   }))
 }
 
+/**
+ * The pure derivation of each kind of node. The memoized deriver spreads this set
+ * and replaces the members it caches, so a new member falls back to the pure
+ * function until it opts into a cache.
+ */
+export const PURE_NODE_DERIVATIONS: SceneNodeDerivations = {
+  floorNode: deriveFloorNode,
+  wallNode: deriveWallNode,
+  roomNodes: deriveRoomNodesForFloor,
+  underlayNodes: deriveUnderlayNodesForFloor,
+  openingNodes: deriveOpeningNodesForFloor,
+  dimensionNodes: deriveDimensionNodesForFloor,
+  stairNodes: deriveStairNodes,
+  furnitureNode: deriveFurnitureNode,
+}
+
 /** Pure projection of the project model into a normalized scene graph. */
 export function deriveSceneGraph(project: Project): SceneGraph {
-  const roomsByFloor = project.floors.map((floor) =>
-    deriveRoomNodesForFloor(floor, project.roomOverrides),
-  )
-  return {
-    nodes: project.floors.map(deriveFloorNode),
-    walls: project.floors.flatMap((floor) =>
-      floor.walls.map((wall) => deriveWallNode(floor, wall)),
-    ),
-    rooms: roomsByFloor.flat(),
-    underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
-    openings: project.floors.flatMap((floor, index) =>
-      deriveOpeningNodesForFloor(floor, roomsByFloor[index] ?? []),
-    ),
-    dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
-    stairs: deriveStairNodes(project),
-    furniture: project.floors.flatMap(deriveFurnitureNodesForFloor),
-    gradeElevation: resolveGradeElevation(project.site),
-  }
+  return assembleSceneGraph(project, PURE_NODE_DERIVATIONS)
 }

@@ -369,7 +369,6 @@ export {
   deriveDimensionNodesForFloor,
   deriveFloorNode,
   deriveFurnitureNode,
-  deriveFurnitureNodesForFloor,
   deriveOpeningNode,
   deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,

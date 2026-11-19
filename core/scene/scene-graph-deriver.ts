@@ -1,15 +1,15 @@
 import { openingRoomSide, withRoomSide } from './opening-room-side'
 import {
-  deriveDimensionNodesForFloor,
+  PURE_NODE_DERIVATIONS,
   deriveFloorNode,
   deriveFurnitureNode,
   deriveOpeningNode,
   deriveRoomNodesForFloor,
   deriveStairNodes,
-  deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene-graph'
-import { resolveGradeElevation } from '../model/site'
+import { assembleSceneGraph } from './scene-graph-assembly'
+import type { SceneNodeDerivations } from './scene-graph-assembly'
 import type {
   Floor,
   FurnitureInstance,
@@ -35,13 +35,16 @@ type RoomOverrides = Readonly<Record<string, RoomOverride>> | undefined
  * Cached room nodes plus the inputs they were built from. The room cache is
  * keyed on `floor.walls`, not the floor, so an edit that yields a new `Floor`
  * but keeps the same walls array (such as an opening edit) reuses the rooms.
- * Two inputs are not captured by the walls key and so are compared explicitly:
+ * Three inputs are not captured by the walls key and so are compared explicitly:
  * the `roomOverrides` reference (a name or custom polygon changes the nodes
- * without changing the walls) and `defaultCeilingHeight` (the ceiling-height
+ * without changing the walls), `defaultCeilingHeight` (the ceiling-height
  * command spreads the floor and keeps the same walls array, so the ceiling
- * fallback must be compared to avoid serving stale heights).
+ * fallback must be compared to avoid serving stale heights), and the floor's
+ * id (each room node copies it, and the same walls array can sit under a floor
+ * with another id).
  */
 interface CachedRoomNodes {
+  floorId: string
   overrides: RoomOverrides
   defaultCeilingHeight: number
   nodes: RoomSceneNode[]
@@ -61,8 +64,13 @@ function memoizeByRef<K extends object, V>(cache: WeakMap<K, V>, key: K, derive:
   return value
 }
 
-/** The opening node plus the host-wall reference and the room nodes it was derived against. */
+/**
+ * The opening node plus the inputs it was derived against: the id of the floor that held it, the
+ * host-wall reference, and the room nodes. The cache is keyed on the `Opening` alone, but the node
+ * copies the floor's id, so that id is compared explicitly.
+ */
 interface CachedOpeningNode {
+  floorId: string
   hostWall: Wall
   rooms: readonly RoomSceneNode[]
   node: OpeningSceneNode
@@ -85,13 +93,14 @@ function roomSideHolds(cached: CachedOpeningNode, rooms: readonly RoomSceneNode[
 
 /**
  * Derives a floor's opening nodes. Reuses a cached node only while the Opening and its host Wall
- * references are unchanged AND the opening's room side is unchanged: the floor's room-node array is
- * the same reference as when the node was cached, or openingRoomSide(cachedNode, rooms) still
- * equals cachedNode.roomSide (then the new array is remembered). Otherwise it derives a new node,
- * so a view that reuses a 3D group by node reference rebuilds a window exactly when its side
- * changes. A replaced host wall changes the opening geometry without changing the opening
- * reference, so the cache compares the host wall too. Module-scope so the deriver closure stays
- * under its line cap, like `memoizeByRef`.
+ * references and the floor's id are unchanged AND the opening's room side is unchanged: the floor's
+ * room-node array is the same reference as when the node was cached, or
+ * openingRoomSide(cachedNode, rooms) still equals cachedNode.roomSide (then the new array is
+ * remembered). Otherwise it derives a new node, so a view that reuses a 3D group by node reference
+ * rebuilds a window exactly when its side changes. A replaced host wall changes the opening
+ * geometry without changing the opening reference, so the cache compares the host wall too, and the
+ * node copies the floor's id, so that id is compared before the room side is read. Module-scope so
+ * the deriver closure stays under its line cap, like `memoizeByRef`.
  */
 function openingNodesFor(
   openingCache: WeakMap<Opening, CachedOpeningNode>,
@@ -104,22 +113,27 @@ function openingNodesFor(
       return []
     }
     const cached = openingCache.get(opening)
-    if (cached !== undefined && cached.hostWall === hostWall && roomSideHolds(cached, rooms)) {
+    if (
+      cached !== undefined &&
+      cached.floorId === floor.id &&
+      cached.hostWall === hostWall &&
+      roomSideHolds(cached, rooms)
+    ) {
       return [cached.node]
     }
     const node = withRoomSide(deriveOpeningNode(floor, opening, hostWall), rooms)
-    openingCache.set(opening, { hostWall, rooms, node })
+    openingCache.set(opening, { floorId: floor.id, hostWall, rooms, node })
     return [node]
   })
 }
 
 /**
  * Derives a floor's room nodes, reusing the cached nodes while the floor's walls
- * array, the `overrides` reference, and `defaultCeilingHeight` are all unchanged.
- * Keying on `floor.walls` lets an edit that yields a new floor with the same
- * walls (an opening edit) reuse the rooms, while an override edit or a ceiling
- * height change still rebuilds them. Module-scope so the deriver closure stays
- * under its line cap, like `openingNodesFor`.
+ * array, the `overrides` reference, `defaultCeilingHeight`, and the floor's id
+ * are all unchanged. Keying on `floor.walls` lets an edit that yields a new
+ * floor with the same walls (an opening edit) reuse the rooms, while an
+ * override edit or a ceiling height change still rebuilds them. Module-scope so
+ * the deriver closure stays under its line cap, like `openingNodesFor`.
  */
 function roomNodesFor(
   roomCache: WeakMap<readonly Wall[], CachedRoomNodes>,
@@ -130,12 +144,18 @@ function roomNodesFor(
   if (
     cached !== undefined &&
     cached.overrides === overrides &&
-    cached.defaultCeilingHeight === floor.defaultCeilingHeight
+    cached.defaultCeilingHeight === floor.defaultCeilingHeight &&
+    cached.floorId === floor.id
   ) {
     return cached.nodes
   }
   const nodes = deriveRoomNodesForFloor(floor, overrides)
-  roomCache.set(floor.walls, { overrides, defaultCeilingHeight: floor.defaultCeilingHeight, nodes })
+  roomCache.set(floor.walls, {
+    floorId: floor.id,
+    overrides,
+    defaultCeilingHeight: floor.defaultCeilingHeight,
+    nodes,
+  })
   return nodes
 }
 
@@ -177,14 +197,53 @@ function wallNodeFor(
 }
 
 /**
- * Builds a stateful deriver that memoizes each floor's and wall's scene node by
- * the source object's reference. This is the entity-keyed dirty tracking from
+ * A cached furniture node plus the id of the floor that held the piece. The
+ * furniture cache is keyed on the `FurnitureInstance` alone, but the node copies
+ * the floor's id, and the same piece can move under another floor, so the id is
+ * compared explicitly. The id is compared, never the floor object: a new floor
+ * object with the same id reuses the node.
+ */
+interface CachedFurnitureNode {
+  floorId: string
+  node: FurnitureSceneNode
+}
+
+/**
+ * Derives a piece's scene node, reusing the cached node while the piece
+ * reference and the floor's id are unchanged. Otherwise it derives a new node
+ * and caches it. Module-scope so the deriver closure stays under its line cap,
+ * like `wallNodeFor`.
+ */
+function furnitureNodeFor(
+  furnitureCache: WeakMap<FurnitureInstance, CachedFurnitureNode>,
+  floor: Floor,
+  item: FurnitureInstance,
+): FurnitureSceneNode {
+  const cached = furnitureCache.get(item)
+  if (cached !== undefined && cached.floorId === floor.id) {
+    return cached.node
+  }
+  const node = deriveFurnitureNode(floor, item)
+  furnitureCache.set(item, { floorId: floor.id, node })
+  return node
+}
+
+/**
+ * Builds a stateful deriver that memoizes each floor's, wall's, room's,
+ * opening's, stair's, and furniture's scene nodes by the source object's
+ * reference. This is the entity-keyed dirty tracking from
  * the design specification, sections 6.1 and 6.10: re-deriving reuses cached
  * nodes for entities whose reference is unchanged and rebuilds only replaced
  * ones. It pairs with the immutable-update handler convention, where an edited
  * floor or wall becomes a new object while untouched ones keep their reference.
- * A wall node is also rebuilt when the id or the `defaultCeilingHeight` of its
- * floor changes, because the node copies both from the floor.
+ * The floor cache and the stair cache are keyed on the whole source (the `Floor`
+ * object, the `project.stairs` array), so they store the node alone and compare
+ * nothing. The other four entries each store every value that their node reads
+ * and that their key does not capture, and compare it on a hit: the wall entry
+ * compares the floor's id and `defaultCeilingHeight`; the room entry, the floor's
+ * id, `defaultCeilingHeight`, and the `roomOverrides` reference; the opening
+ * entry, the floor's id, the host wall reference, and the room side; the
+ * furniture entry, the floor's id.
  * The WeakMaps are keyed by the source object so dropped entities do not leak.
  */
 export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
@@ -193,35 +252,18 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const roomCache = new WeakMap<readonly Wall[], CachedRoomNodes>()
   const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
-  const furnitureCache = new WeakMap<FurnitureInstance, FurnitureSceneNode>()
+  const furnitureCache = new WeakMap<FurnitureInstance, CachedFurnitureNode>()
 
-  const floorNodeFor = (floor: Floor) =>
-    memoizeByRef(floorCache, floor, () => deriveFloorNode(floor))
-  const stairNodesFor = (project: Project) =>
-    memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project))
-  const furnitureNodesFor = (floor: Floor): FurnitureSceneNode[] =>
-    floor.furniture.map((item) =>
-      memoizeByRef(furnitureCache, item, () => deriveFurnitureNode(floor, item)),
-    )
-
-  return (project) => {
-    const roomsByFloor = project.floors.map((floor) =>
-      roomNodesFor(roomCache, floor, project.roomOverrides),
-    )
-    return {
-      nodes: project.floors.map(floorNodeFor),
-      walls: project.floors.flatMap((floor) =>
-        floor.walls.map((wall) => wallNodeFor(wallCache, floor, wall)),
-      ),
-      rooms: roomsByFloor.flat(),
-      underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
-      openings: project.floors.flatMap((floor, index) =>
-        openingNodesFor(openingCache, floor, roomsByFloor[index] ?? []),
-      ),
-      dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
-      stairs: stairNodesFor(project),
-      furniture: project.floors.flatMap(furnitureNodesFor),
-      gradeElevation: resolveGradeElevation(project.site),
-    }
+  const derivations: SceneNodeDerivations = {
+    ...PURE_NODE_DERIVATIONS,
+    floorNode: (floor) => memoizeByRef(floorCache, floor, () => deriveFloorNode(floor)),
+    wallNode: (floor, wall) => wallNodeFor(wallCache, floor, wall),
+    roomNodes: (floor, overrides) => roomNodesFor(roomCache, floor, overrides),
+    openingNodes: (floor, rooms) => openingNodesFor(openingCache, floor, rooms),
+    stairNodes: (project) =>
+      memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project)),
+    furnitureNode: (floor, item) => furnitureNodeFor(furnitureCache, floor, item),
   }
+
+  return (project) => assembleSceneGraph(project, derivations)
 }
