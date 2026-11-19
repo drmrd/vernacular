@@ -8,12 +8,18 @@ import {
   useRetireStaleRefusal,
   type RefusalBasis,
 } from './opening-tool-context'
+import type { PlacementRefusal } from './overlay-announce'
 
 afterEach(cleanup)
 
 type Session = ReturnType<typeof createEditorSession>
 
 const WALL_END_MM = 500
+
+// Shared by every basis, so a rerender changes only what a test changes.
+const NO_SELECTION: ReadonlySet<string> = new Set<string>()
+const ORIGIN = { x: 0, y: 0 }
+const GROUND_FLOOR_ID = 'ground-floor'
 
 function sessionWithOneFloor(): Session {
   const session = createEditorSession(
@@ -30,31 +36,45 @@ function addWallOnGround(session: Session): void {
 
 function basisOf(session: Session): RefusalBasis {
   return {
-    tool: 'place-door',
+    tool: 'place-opening',
     sceneGraph: session.getSceneGraph(),
-    activeFloorId: session.getProject().floors[0]!.id,
-    selectedIds: new Set(),
-    candidate: { x: 0, y: 0 },
+    activeFloorId: GROUND_FLOOR_ID,
+    selectedIds: NO_SELECTION,
+    candidate: ORIGIN,
   }
 }
 
 // Mounts the provider with the retirement hook over a real session and leaves
-// an opening-overlap refusal standing. `planChanged` hands the hook the
-// session's scene graph as it is now, as the plan does after a change.
-function mountWithStandingRefusal(session: Session) {
+// a refusal standing. `rerenderWith` hands the hook a new basis; `planChanged`
+// copies the basis it last had and replaces only the scene graph, as the plan
+// does after an edit, an undo, or a redo.
+function mountWithStandingRefusal(session: Session, reason: PlacementRefusal = 'opening-overlap') {
+  let current = basisOf(session)
   const { result, rerender } = renderHook(
     (basis: RefusalBasis) => {
       useRetireStaleRefusal(basis)
       return useOpeningTool()
     },
-    { wrapper: OpeningToolProvider, initialProps: basisOf(session) },
+    { wrapper: OpeningToolProvider, initialProps: current },
   )
   act(() => {
-    result.current.setPlacementRefusal('opening-overlap')
+    result.current.setPlacementRefusal(reason)
   })
+  const rerenderWith = (next: RefusalBasis) => {
+    current = next
+    rerender(next)
+  }
   return {
     refusal: () => result.current.placementRefusal,
-    planChanged: () => rerender(basisOf(session)),
+    basis: () => current,
+    rerenderWith,
+    choosePlacementType: (id: string) => act(() => result.current.setPlacementType(id)),
+    planChanged: () => {
+      const previousGraph = current.sceneGraph
+      const nextGraph = session.getSceneGraph()
+      expect(nextGraph).not.toBe(previousGraph)
+      rerenderWith({ ...current, sceneGraph: nextGraph })
+    },
   }
 }
 
@@ -91,6 +111,84 @@ describe('a standing refusal when the plan changes', () => {
 
     session.redo()
     planChanged()
+
+    expect(refusal()).toBeNull()
+  })
+})
+
+describe('a standing refusal when the situation stays the same', () => {
+  it('stays when the hook renders again with the same basis references', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
+
+    rerenderWith({ ...basis() })
+
+    expect(refusal()).toBe('opening-overlap')
+  })
+})
+
+describe('a standing refusal when one input of the situation changes', () => {
+  it('retires when only the active floor changes', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(
+      sessionWithOneFloor(),
+      'no-floor-above',
+    )
+    expect(refusal()).toBe('no-floor-above')
+
+    rerenderWith({ ...basis(), activeFloorId: 'upper-floor' })
+
+    expect(refusal()).toBeNull()
+  })
+
+  it('retires when only the selection changes to a new set', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
+    const otherSelection = new Set<string>()
+    expect(otherSelection).not.toBe(basis().selectedIds)
+
+    rerenderWith({ ...basis(), selectedIds: otherSelection })
+
+    expect(refusal()).toBeNull()
+  })
+
+  it('retires when only the tool changes', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
+
+    rerenderWith({ ...basis(), tool: 'place-stair' })
+
+    expect(refusal()).toBeNull()
+  })
+
+  it('retires when only the placement type changes', () => {
+    const { refusal, choosePlacementType } = mountWithStandingRefusal(sessionWithOneFloor())
+
+    choosePlacementType('double-swing-door')
+
+    expect(refusal()).toBeNull()
+  })
+})
+
+describe('a standing refusal when the keyboard candidate is replaced', () => {
+  it('stays when the new candidate has the same x and y', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
+    const sameSpot = { x: ORIGIN.x, y: ORIGIN.y }
+    expect(sameSpot).not.toBe(basis().candidate)
+
+    rerenderWith({ ...basis(), candidate: sameSpot })
+
+    expect(refusal()).toBe('opening-overlap')
+  })
+
+  it('retires when the candidate has a different x', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
+
+    rerenderWith({ ...basis(), candidate: { x: ORIGIN.x + 1, y: ORIGIN.y } })
+
+    expect(refusal()).toBeNull()
+  })
+
+  it('retires when the candidate has a different y', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
+
+    rerenderWith({ ...basis(), candidate: { x: ORIGIN.x, y: ORIGIN.y + 1 } })
 
     expect(refusal()).toBeNull()
   })
