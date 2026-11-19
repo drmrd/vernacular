@@ -30,7 +30,6 @@ sourceFiles:
     session/editor-session/discard-guard.ts,
     app/app.tsx,
     session/flows/switch-project.ts,
-    app/project-action-helpers.ts,
     session/autosave/create-autosave.ts,
     app/use-before-unload-guard.ts,
     app/use-discard-confirmation.ts,
@@ -81,8 +80,9 @@ flight stays dirty.
 > arms the leave warning in those two states, and `useFlushOnHidden(handle)` asks for a write when
 > the page hides. The handle's autosave counts changes itself, so an edit made while a write runs
 > still reads as unsaved, which is what the revision marking below did. The prompt stays for the
-> recovered copy only: Restore asks first when the project has unsaved work, and Discard always
-> asks, through `guardSessionSwap` in `app/project-action-helpers.ts`.
+> recovered copy only: Restore asks first when the project has unsaved work
+> (`app/use-workspace-state.ts` calls `guardDestructive` of the session layer), and Discard always
+> asks.
 
 ## Context
 
