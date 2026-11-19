@@ -372,6 +372,12 @@ jobs:
         env:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=chromium e2e/tests/journeys/walk-view-after-rebuild.spec.ts --reporter=list
+      - name: Walker follows the active floor journey (chromium project)
+        # Two tests, each with a limit of two minutes and up to two retries.
+        timeout-minutes: 13
+        env:
+          E2E_REQUIRE_WEBGPU: '1'
+        run: pnpm exec playwright test --project=chromium e2e/tests/journeys/walk-follows-the-active-floor.spec.ts --reporter=list
       - name: Live-view start-up spec (scene-webgl project)
         # The run takes about eight seconds on the development Mac. The visual-regression step
         # and the perceived-color journey step take 10 to 21 seconds on this runner. Each test
