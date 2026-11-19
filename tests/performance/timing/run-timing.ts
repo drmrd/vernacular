@@ -1,4 +1,5 @@
 import { REFERENCE_EDITS } from '../reference-project'
+import { frameRefusals } from './frame-result-checks'
 import type { FrameSample } from './frame-probe'
 import { RENDER_VARIANTS } from './render-variants'
 import { runRefusals } from './run-conditions'
@@ -46,8 +47,17 @@ export type HostDescription = Pick<TimingRun, 'commit' | 'uncommittedChanges'> &
     'processor' | 'logicalCores' | 'memoryGiB' | 'operatingSystem' | 'browser'
   >
 
-/** What the page knows beyond the conditions of the run: clock, renderer, sizes, power. */
+/**
+ * What the page knows beyond the conditions of the run: clock, renderer, sizes, power. The page
+ * describes itself twice, before the first phase and after the last one.
+ */
 export interface PageDescription extends ObservedConditions {
+  /**
+   * True when the document was hidden at any time since the page was first observed. The page sets
+   * it from a visibility listener, so a window that was hidden and shown again between two
+   * observations still counts.
+   */
+  everHidden: boolean
   takenAt: string
   timerResolutionMs: number
   webGlRenderer: string
@@ -113,37 +123,6 @@ function parseBaseline(baselineText: string | null): TimingRun | undefined | str
   }
 }
 
-function hiddenRefusal(samples: readonly FrameSample[]): string | undefined {
-  return samples.some((sample) => sample.hidden)
-    ? 'The window was hidden during the run, so the times were discarded. ' +
-        'Keep the browser window visible and in front for the whole run.'
-    : undefined
-}
-
-function gpuLostRefusal(samples: readonly FrameSample[]): string | undefined {
-  return samples.some((sample) => sample.gpuLost)
-    ? 'The GPU device was lost during the run, so the times were discarded. ' +
-        'Run again; if it repeats, update the graphics driver or the browser.'
-    : undefined
-}
-
-function fallbackRefusal(name: string, samples: readonly FrameSample[]): string | undefined {
-  const allWithoutGpuWork = samples.every((sample) => sample.untilGpuDoneMs === null)
-  return allWithoutGpuWork
-    ? `The frames of "${name}" made no WebGPU work, so the renderer fell back to WebGL 2 ` +
-        'and the times were discarded. A fallback figure is never kept.'
-    : undefined
-}
-
-function frameRefusals(frames: Record<string, FrameSample[]>): string[] {
-  const all = Object.values(frames).flat()
-  const reasons = [hiddenRefusal(all), gpuLostRefusal(all)]
-  for (const [name, samples] of Object.entries(frames)) {
-    reasons.push(fallbackRefusal(name, samples))
-  }
-  return reasons.filter((reason): reason is string => reason !== undefined)
-}
-
 function summarizedFrames(samples: readonly FrameSample[]): FrameTiming {
   return {
     mainThread: summarizeSamples(samples.map((sample) => sample.mainThreadMs)),
@@ -162,9 +141,17 @@ function samplesNamed<Samples>(byName: Record<string, Samples>, name: string): S
 function summarizedByName<Samples, Summary>(
   names: readonly string[],
   byName: Record<string, Samples>,
-  summarize: (samples: Samples) => Summary,
+  summarize: (samples: Samples, name: string) => Summary,
 ): Record<string, Summary> {
-  return Object.fromEntries(names.map((name) => [name, summarize(samplesNamed(byName, name))]))
+  return Object.fromEntries(
+    names.map((name) => [name, summarize(samplesNamed(byName, name), name)]),
+  )
+}
+
+function summarizedPlainSamples(samples: readonly number[], what: string): TimingSummary {
+  if (samples.length === 0)
+    throw new Error(`The ${what} returned no samples, so nothing can be timed`)
+  return summarizeSamples(samples)
 }
 
 interface PhaseSamples {
@@ -178,11 +165,9 @@ function timesFrom(samples: PhaseSamples): TimingRun['times'] {
   const variantNames = RENDER_VARIANTS.map((variant) => variant.name)
   const editNames = REFERENCE_EDITS.map((edit) => edit.name)
   return {
-    planRedraw: summarizeSamples(samples.planRedraw),
-    sceneUpdate: summarizedByName(
-      editNames,
-      samples.sceneUpdate,
-      (each): TimingSummary => summarizeSamples(each),
+    planRedraw: summarizedPlainSamples(samples.planRedraw, 'plan redraw'),
+    sceneUpdate: summarizedByName(editNames, samples.sceneUpdate, (each, name) =>
+      summarizedPlainSamples(each, `3D update of "${name}"`),
     ),
     renderFrame: summarizedByName(variantNames, samples.renderFrame, summarizedFrames),
     renderAfterEdit: summarizedByName(editNames, samples.renderAfterEdit, summarizedFrames),
@@ -202,10 +187,12 @@ function machineFrom(host: HostDescription, page: PageDescription): TimingRun['m
   }
 }
 
-function conditionsFrom(page: PageDescription): TimingRun['conditions'] {
+function conditionsFrom(page: PageDescription, atEnd: PageDescription): TimingRun['conditions'] {
   return {
-    visibleThroughout: true, // a run with a hidden frame is refused before the record
-    focused: page.focused,
+    // True by construction: a run is refused before the record when either observation shows a
+    // hidden window, when the page was ever hidden, or when any frame was hidden.
+    visibleThroughout: true,
+    focused: page.focused && atEnd.focused,
     power: page.power,
     devicePixelRatio: page.devicePixelRatio,
     displayFrameMs: page.displayFrameMs ?? 0,
@@ -218,7 +205,7 @@ function conditionsFrom(page: PageDescription): TimingRun['conditions'] {
 function recordFrom(
   input: TimingInput,
   page: PageDescription,
-  measured: { method: Method; samples: PhaseSamples },
+  measured: { method: Method; samples: PhaseSamples; atEnd: PageDescription },
 ): TimingRun {
   const { host, quick } = input
   return {
@@ -229,7 +216,7 @@ function recordFrom(
     takenAt: page.takenAt,
     build: { mode: 'production', timerResolutionMs: page.timerResolutionMs },
     machine: machineFrom(host, page),
-    conditions: conditionsFrom(page),
+    conditions: conditionsFrom(page, measured.atEnd),
     method: measured.method,
     times: timesFrom(measured.samples),
   }
@@ -243,18 +230,47 @@ async function measure(phases: TimingPhases, method: Method): Promise<PhaseSampl
   return { planRedraw, sceneUpdate, renderFrame, renderAfterEdit }
 }
 
-/** Runs the phases in the order of 2.5 and builds the record; refuses before measuring when it must. */
+function startRefusals(page: PageDescription): string[] {
+  const hiddenBefore = page.everHidden
+    ? [
+        'The window was hidden before the run started, so nothing was measured. ' +
+          'Keep the browser window visible and in front, then run again.',
+      ]
+    : []
+  return [...runRefusals(page), ...hiddenBefore]
+}
+
+function endRefusals(atEnd: PageDescription): string[] {
+  return atEnd.visible && !atEnd.everHidden
+    ? []
+    : [
+        'The window was hidden during the run, so the times were discarded. ' +
+          'Keep the browser window visible and in front for the whole run.',
+      ]
+}
+
+/**
+ * Runs the phases in the order of 2.5 and builds the record. The page is observed twice: before the
+ * first phase, where a refusal stops the run before it measures anything, and after the last phase,
+ * where a window that was hidden at any time during the run discards the times. A phase result that
+ * is empty, or whose frames are odd, is refused or rejected, never recorded.
+ */
 export async function runTiming(phases: TimingPhases, input: TimingInput): Promise<TimingOutcome> {
   const baseline = parseBaseline(input.baselineText)
   if (typeof baseline === 'string') return { kind: 'refused', reasons: [baseline] }
   const page = await phases.observe()
-  const conditionRefusals = runRefusals(page)
+  const conditionRefusals = startRefusals(page)
   if (conditionRefusals.length > 0) return { kind: 'refused', reasons: conditionRefusals }
   const method = methodFor(input.quick)
   const samples = await measure(phases, method)
-  const reasons = [...frameRefusals(samples.renderFrame), ...frameRefusals(samples.renderAfterEdit)]
-  if (reasons.length > 0) return { kind: 'refused', reasons }
-  const run = recordFrom(input, page, { method, samples })
+  const atEnd = await phases.observe()
+  const reasons = [
+    ...endRefusals(atEnd),
+    ...frameRefusals(samples.renderFrame),
+    ...frameRefusals(samples.renderAfterEdit),
+  ]
+  if (reasons.length > 0) return { kind: 'refused', reasons: [...new Set(reasons)] }
+  const run = recordFrom(input, page, { method, samples, atEnd })
   return {
     kind: 'measured',
     run,
