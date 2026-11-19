@@ -1,90 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup, renderHook } from '@testing-library/react'
-import { addFloor, addWall, createEmptyProject } from '../../core'
-import { createEditorSession } from '../../session/testing'
+import { OpeningToolProvider, useOpeningTool } from './opening-tool-context'
 import {
-  OpeningToolProvider,
-  useOpeningTool,
-  useRetireStaleRefusal,
-  type RefusalBasis,
-} from './opening-tool-context'
-import type { PlacementRefusal } from './overlay-announce'
+  ORIGIN,
+  addWallOnGround,
+  mountHookAfterRefusal,
+  mountWithStandingRefusal,
+  sessionWithOneFloor,
+} from './opening-tool-context-test-support'
 
 afterEach(cleanup)
-
-type Session = ReturnType<typeof createEditorSession>
-
-const WALL_END_MM = 500
-
-// Shared by every basis, so a rerender changes only what a test changes.
-const NO_SELECTION: ReadonlySet<string> = new Set<string>()
-const ORIGIN = { x: 0, y: 0 }
-const GROUND_FLOOR_ID = 'ground-floor'
-
-function sessionWithOneFloor(): Session {
-  const session = createEditorSession(
-    createEmptyProject({ name: 'Test', units: 'metric', period: 'modern', appVersion: '0.0.0' }),
-  )
-  session.dispatch(addFloor('Ground'))
-  return session
-}
-
-function addWallOnGround(session: Session): void {
-  const floorId = session.getProject().floors[0]!.id
-  session.dispatch(addWall(floorId, { x: 0, y: 0 }, { x: WALL_END_MM, y: 0 }))
-}
-
-function basisOf(session: Session): RefusalBasis {
-  return {
-    tool: 'place-opening',
-    sceneGraph: session.getSceneGraph(),
-    activeFloorId: GROUND_FLOOR_ID,
-    selectedIds: NO_SELECTION,
-    candidate: ORIGIN,
-  }
-}
-
-// Mounts the provider with the retirement hook over a real session and leaves
-// a refusal standing. `rerenderWith` hands the hook a new basis; `planChanged`
-// copies the basis it last had and replaces only the scene graph, as the plan
-// does after an edit, an undo, or a redo.
-function mountWithStandingRefusal(session: Session, reason: PlacementRefusal = 'opening-overlap') {
-  let current = basisOf(session)
-  const { result, rerender } = renderHook(
-    (basis: RefusalBasis) => {
-      useRetireStaleRefusal(basis)
-      return useOpeningTool()
-    },
-    { wrapper: OpeningToolProvider, initialProps: current },
-  )
-  act(() => {
-    result.current.setPlacementRefusal(reason)
-  })
-  const rerenderWith = (next: RefusalBasis) => {
-    current = next
-    rerender(next)
-  }
-  return {
-    refusal: () => result.current.placementRefusal,
-    basis: () => current,
-    rerenderWith,
-    choosePlacementType: (id: string) => act(() => result.current.setPlacementType(id)),
-    // One act, so the basis and the report reach one commit, in the order of a
-    // keydown that selects an entity and drops an opening at once.
-    reportWithBasisChange: (next: RefusalBasis, reason: PlacementRefusal) =>
-      act(() => {
-        rerenderWith(next)
-        result.current.setPlacementRefusal(reason)
-      }),
-    report: (reason: PlacementRefusal) => act(() => result.current.setPlacementRefusal(reason)),
-    planChanged: () => {
-      const previousGraph = current.sceneGraph
-      const nextGraph = session.getSceneGraph()
-      expect(nextGraph).not.toBe(previousGraph)
-      rerenderWith({ ...current, sceneGraph: nextGraph })
-    },
-  }
-}
 
 describe('a standing refusal when the plan changes', () => {
   it('retires after an edit is dispatched', () => {
@@ -239,12 +164,60 @@ describe('a refusal reported in the same commit as a change of the basis', () =>
     expect(refusal()).toBeNull()
   })
 
+  it('stands when the report repeats the standing reason, then retires at the next change', () => {
+    const { refusal, basis, reportWithBasisChange, rerenderWith } = mountWithStandingRefusal(
+      sessionWithOneFloor(),
+      'opening-overlap',
+    )
+
+    reportWithBasisChange({ ...basis(), selectedIds: new Set<string>() }, 'opening-overlap')
+    expect(refusal()).toBe('opening-overlap')
+
+    rerenderWith({ ...basis(), selectedIds: new Set<string>() })
+    expect(refusal()).toBeNull()
+  })
+
   it('retires when the basis changes in a later commit than the report', () => {
     const { refusal, basis, report, rerenderWith } = mountWithStandingRefusal(sessionWithOneFloor())
 
     report('no-host-wall')
     expect(refusal()).toBe('no-host-wall')
     rerenderWith({ ...basis(), selectedIds: new Set<string>() })
+
+    expect(refusal()).toBeNull()
+  })
+})
+
+describe('a refusal reported before the hook mounted', () => {
+  it('is cleared when the hook mounts', () => {
+    const { refusal, mountHook } = mountHookAfterRefusal(sessionWithOneFloor(), 'no-host-wall')
+
+    mountHook()
+
+    expect(refusal()).toBeNull()
+  })
+})
+
+describe('a refusal of one placement tool when the tool changes', () => {
+  it('does not show under another placement tool', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(
+      sessionWithOneFloor(),
+      'no-host-wall',
+    )
+
+    rerenderWith({ ...basis(), tool: 'place-stair' })
+
+    expect(refusal()).toBeNull()
+  })
+
+  it('does not come back when the first tool is taken up again', () => {
+    const { refusal, basis, rerenderWith } = mountWithStandingRefusal(
+      sessionWithOneFloor(),
+      'no-host-wall',
+    )
+
+    rerenderWith({ ...basis(), tool: 'select' })
+    rerenderWith({ ...basis(), tool: 'place-opening' })
 
     expect(refusal()).toBeNull()
   })

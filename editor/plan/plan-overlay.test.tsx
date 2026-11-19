@@ -252,25 +252,4 @@ describe('PlanOverlay placement refusals', () => {
 
     expect(container.querySelector('.plan-overlay__refusal')).toBeNull()
   })
-
-  it('keeps one tool’s refusal off the canvas under another placement tool', async () => {
-    const { container, takeUpTool } = renderOverlayUnderTool('place-opening', 'no-host-wall')
-    await armRefusal()
-
-    takeUpTool('place-stair')
-
-    expect(container.querySelector('.plan-overlay__refusal')).toBeNull()
-    expect(screen.getByRole('status')).not.toHaveTextContent('No wall here to host the opening')
-  })
-
-  it('does not resurrect a refusal when its tool is taken up again', async () => {
-    const { container, takeUpTool } = renderOverlayUnderTool('place-opening', 'no-host-wall')
-    await armRefusal()
-
-    takeUpTool('select')
-    takeUpTool('place-opening')
-
-    expect(container.querySelector('.plan-overlay__refusal')).toBeNull()
-    expect(screen.getByRole('status')).not.toHaveTextContent('No wall here to host the opening')
-  })
 })

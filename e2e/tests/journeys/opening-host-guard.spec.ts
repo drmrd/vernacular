@@ -33,3 +33,26 @@ test('a wall cannot host on an opening', async ({ page }) => {
   await expect(placementRefusal(page)).toHaveText('No wall here to host the opening')
   await expect(selectors.liveRegion(page)).toHaveText('No wall here to host the opening')
 })
+
+test('an undo retires the notice that a second door would overlap the first', async ({ page }) => {
+  const overlapSentence = 'That would overlap an opening already in this wall'
+  await gotoEditor(page)
+  await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
+  await expectWallCount(page, 1)
+
+  await page.getByRole('radio', { name: 'Door', exact: true }).click()
+  await selectors.planCanvas(page).click({ position: { x: 320, y: 200 } })
+  await expect(openingProxies(page)).toHaveCount(1)
+
+  // A second door on the same spot is refused, on the canvas and in the live region.
+  await selectors.planCanvas(page).click({ position: { x: 320, y: 200 } })
+  await expect(placementRefusal(page)).toHaveText(overlapSentence)
+  await expect(selectors.liveRegion(page)).toHaveText(overlapSentence)
+
+  // Undoing the first door removes the very thing the notice describes, so the
+  // notice has to go from the canvas and from the live region.
+  await selectors.undoButton(page).click()
+  await expect(openingProxies(page)).toHaveCount(0)
+  await expect(placementRefusal(page)).toHaveCount(0)
+  await expect(selectors.liveRegion(page)).not.toHaveText(overlapSentence)
+})
