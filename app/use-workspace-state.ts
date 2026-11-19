@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createActiveFloorStore, createSelectionStore } from '../bridge'
 import {
   restoreSnapshot,
@@ -14,6 +14,7 @@ import type { EditorWorkspaceProps } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
 import { useSaveStatus, useUnsavedChangesGuard } from './use-before-unload-guard'
 import { useDiscardConfirmation } from './use-discard-confirmation'
+import { useLatest } from './use-latest'
 import { guardSessionSwap } from './project-action-helpers'
 import type { RunFlow } from './use-open-project'
 import { useProjectActions, type RecentEntry } from './use-project-actions'
@@ -69,7 +70,7 @@ function useRecentEntries(
   return recentEntries
 }
 
-/** The restore of a recovered copy, which needs an open project and has nothing to do without one. */
+/** The restore of a recovered copy: it needs an open project, and with none has nothing to do. */
 function restoreInto(current: DocumentHandle | undefined): Promise<FlowResult<RestoreRefusal>> {
   if (current === undefined) {
     return Promise.resolve({ ok: false, failure: { kind: 'nothing-to-restore' } })
@@ -144,10 +145,8 @@ function useCrashRecovery(context: CrashRecoveryContext): Recovery | null {
   const { handle, runFlow, confirmDiscard } = context
   const notify = useSwitchNotices()
   const [answer, setAnswer] = useState<RecoveryAnswer | null>(null)
-  const latestHandle = useRef(handle)
-  useEffect(() => {
-    latestHandle.current = handle
-  }, [handle])
+  // Set in a layout effect, so a restore before the passive effects reads the committed handle.
+  const latestHandle = useLatest(handle)
   const snapshots = handle.snapshots
   useEffect(() => {
     let cancelled = false
@@ -164,7 +163,7 @@ function useCrashRecovery(context: CrashRecoveryContext): Recovery | null {
     return () => {
       cancelled = true
     }
-  }, [snapshots, runFlow, confirmDiscard, notify])
+  }, [snapshots, latestHandle, runFlow, confirmDiscard, notify])
   return answer?.snapshots === snapshots ? answer.recovery : null
 }
 

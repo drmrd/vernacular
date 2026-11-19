@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 import { guardDestructive } from '../bridge'
 import type { DocumentHandle, FolderRefusal, ImportFailure, RestoreRefusal } from '../session'
 import {
@@ -8,6 +8,7 @@ import {
   type StorageCapabilities,
 } from '../storage'
 import type { Flow, RunFlow } from './use-open-project'
+import { useLatest } from './use-latest'
 import { useSwitchNotices, type FlowNoticeOptions } from './use-switch-notices'
 
 /**
@@ -17,7 +18,7 @@ import { useSwitchNotices, type FlowNoticeOptions } from './use-switch-notices'
  * and records nothing on boot. The clean mapping is finalized when the create-time
  * backend chooser lands (see the plan's Open questions on backend memory).
  */
-export function defaultStoreBackend(capabilities: StorageCapabilities): ProjectBackend | null {
+function defaultStoreBackend(capabilities: StorageCapabilities): ProjectBackend | null {
   return capabilities.opfs ? 'opfs' : null
 }
 
@@ -29,7 +30,7 @@ export interface RecentInput {
 }
 
 /** Record an opened-or-saved project under the given backend, ignoring failures. */
-export function recordRecent(recentProjects: RecentProjectStore, input: RecentInput): void {
+function recordRecent(recentProjects: RecentProjectStore, input: RecentInput): void {
   void Promise.resolve()
     .then(() =>
       recentProjects.record(
@@ -93,10 +94,8 @@ export type RunSwitch = <Refusal extends SwitchRefusal = never>(
 export function useSwitchFlow(context: SwitchFlowContext): RunSwitch {
   const { handle, runFlow, recentProjects, capabilities } = context
   const notify = useSwitchNotices()
-  const latestHandle = useRef(handle)
-  useEffect(() => {
-    latestHandle.current = handle
-  }, [handle])
+  // Set in a layout effect, so a Retry before the passive effects reads the committed handle.
+  const latestHandle = useLatest(handle)
   return useCallback(
     async <Refusal extends SwitchRefusal = never>(
       flow: Flow<Refusal>,
@@ -110,7 +109,7 @@ export function useSwitchFlow(context: SwitchFlowContext): RunSwitch {
       }
       notify(result, options)
     },
-    [runFlow, recentProjects, capabilities, notify],
+    [latestHandle, runFlow, recentProjects, capabilities, notify],
   )
 }
 

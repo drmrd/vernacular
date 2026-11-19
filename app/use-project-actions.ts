@@ -3,7 +3,12 @@ import { createNewProject, openFolder, openRecent, type DocumentHandle } from '.
 import type { ProjectBackend, RecentProjectStore, StorageCapabilities } from '../storage'
 import { type NotificationApi } from '../editor/design-system'
 import { createInitialProject } from './create-initial-project'
-import { recentInputOf, recordProject, useSwitchFlow } from './project-action-helpers'
+import {
+  recentInputOf,
+  recordProject,
+  useSwitchFlow,
+  type RunSwitch,
+} from './project-action-helpers'
 import {
   useExportBundleAction,
   useExportImageAction,
@@ -43,15 +48,16 @@ export interface ProjectActions {
 }
 
 export function useProjectActions(context: ProjectActionsContext): ProjectActions {
+  const runSwitch = useSwitchFlow(context)
   return {
     onSave: useSaveAction(context),
-    onOpenRecent: useOpenRecentAction(context),
-    onNewProject: useNewProjectAction(context),
+    onOpenRecent: useOpenRecentAction(runSwitch),
+    onNewProject: useNewProjectAction(runSwitch),
     onExportBundle: useExportBundleAction(context),
     onExportPlan: useExportPlanAction(context),
     onExportImage: useExportImageAction(context),
     onExportPdf: useExportPdfAction(context),
-    ...useOpenFolderAction(context),
+    ...useOpenFolderAction(context, runSwitch),
     ...useOpenFileAction(context),
   }
 }
@@ -71,8 +77,7 @@ function useSaveAction(context: ProjectActionsContext): () => void {
 }
 
 // New project asks nothing: the switch stores an unsaved change of the open project first.
-function useNewProjectAction(context: ProjectActionsContext): () => Promise<void> {
-  const runSwitch = useSwitchFlow(context)
+function useNewProjectAction(runSwitch: RunSwitch): () => Promise<void> {
   return useCallback(
     () => runSwitch((ports, current) => createNewProject(ports, current, createInitialProject)),
     [runSwitch],
@@ -81,8 +86,10 @@ function useNewProjectAction(context: ProjectActionsContext): () => Promise<void
 
 // Open folder is gated on the native picker capability; without it the shell
 // renders no control, so the handler is omitted rather than rendered inert.
-function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: () => void } {
-  const runSwitch = useSwitchFlow(context)
+function useOpenFolderAction(
+  context: ProjectActionsContext,
+  runSwitch: RunSwitch,
+): { onOpenFolder?: () => void } {
   const onOpenFolder = useCallback(() => {
     const attempt = (): void => {
       void runSwitch((ports, current) => openFolder(ports, current), { onRetry: attempt })
@@ -93,8 +100,7 @@ function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: (
 }
 
 // The flow finds where the project is kept: a remembered folder, or the workspace.
-function useOpenRecentAction(context: ProjectActionsContext): (id: string) => void {
-  const runSwitch = useSwitchFlow(context)
+function useOpenRecentAction(runSwitch: RunSwitch): (id: string) => void {
   return useCallback(
     (id: string) => {
       const attempt = (): void => {
