@@ -113,19 +113,3 @@ export function createAutosave(config: AutosaveConfig): Autosave {
     },
   }
 }
-
-export interface CommitProjectOptions {
-  store: ProjectStore
-  projectId: string
-  project: Project
-  snapshots?: SnapshotPruner
-}
-
-/** Explicit save: writes the canonical project, then prunes autosave snapshots. */
-export async function commitProject(options: CommitProjectOptions): Promise<void> {
-  const { store, projectId, project, snapshots } = options
-  await store.save(projectId, project)
-  if (snapshots) {
-    await snapshots.prune()
-  }
-}

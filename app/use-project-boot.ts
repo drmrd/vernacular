@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '../session'
-import {
-  BrowserFolderAccess,
-  InMemoryAssetCache,
-  InMemoryProjectStore,
-  WebLocksProjectLockPort,
-  newProjectId,
-  type AssetCache,
-} from '../storage'
-import type { AppProps, BuiltSessionPorts } from './app'
+import type { DocumentHandle, OpenRequest, SwitchFailure } from '../session'
+import { InMemoryAssetCache, newProjectId, type AssetCache } from '../storage'
+import type { AppProps } from './app'
 import { createInitialProject } from './create-initial-project'
-import { resolveProjectStorage } from './resolve-project-store'
+import {
+  createSessionPorts,
+  createTemporarySessionPorts,
+  type BuiltSessionPorts,
+} from './create-session-ports'
 import { useActiveProjectId } from './use-active-project-id'
 import { useOpenProject, type RunFlow } from './use-open-project'
 import { useRememberSavedProject } from './use-remember-saved-project'
@@ -35,30 +32,6 @@ export type ProjectBootInputs = Pick<
   AppProps,
   'ports' | 'resolvePorts' | 'libraryAssets' | 'projectId' | 'activeProjectIds'
 >
-
-/** The ports over the durable storage of this browser, with the pool of the library. */
-async function buildDefaultPorts(): Promise<BuiltSessionPorts> {
-  const { store, assets } = await resolveProjectStorage()
-  const ports: SessionPorts = {
-    workspace: store,
-    locks: new WebLocksProjectLockPort(),
-    folders: new BrowserFolderAccess(undefined, { shared: assets }),
-    now: () => new Date(),
-  }
-  return { ports, libraryAssets: assets }
-}
-
-/** Ports that keep every project in memory, for a project started after the storage failed. */
-function buildTemporaryPorts(): BuiltSessionPorts {
-  const assets = new InMemoryAssetCache()
-  const ports: SessionPorts = {
-    workspace: new InMemoryProjectStore(),
-    locks: new WebLocksProjectLockPort(),
-    folders: new BrowserFolderAccess(undefined, { shared: assets }),
-    now: () => new Date(),
-  }
-  return { ports, libraryAssets: assets }
-}
 
 function startRequest(id: string): OpenRequest {
   return { id, location: { kind: 'workspace' }, create: createInitialProject }
@@ -91,7 +64,7 @@ function useBootPorts(inputs: ProjectBootInputs): BootPorts {
   useEffect(() => {
     if (provided !== undefined || startedAttempt.current === attempt) return
     startedAttempt.current = attempt
-    const build = resolvePorts ?? buildDefaultPorts
+    const build = resolvePorts ?? createSessionPorts
     void Promise.resolve()
       .then(build)
       .then(setBuilt, (error: unknown) => setFailure(builderFailure(error)))
@@ -102,7 +75,7 @@ function useBootPorts(inputs: ProjectBootInputs): BootPorts {
   }
   const fallBackToMemory = () => {
     setFailure(null)
-    setBuilt(buildTemporaryPorts())
+    setBuilt(createTemporarySessionPorts())
   }
   return { built, failure, rebuild, fallBackToMemory }
 }

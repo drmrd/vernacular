@@ -13,6 +13,7 @@ import {
   initialToolForProject,
 } from '../editor'
 import { AssetProviders } from './asset-providers'
+import type { BuiltSessionPorts } from './create-session-ports'
 import {
   DESIGN_LANGUAGE_PREVIEW_PARAM,
   NotificationProvider,
@@ -41,6 +42,7 @@ import type { RunFlow } from './use-open-project'
 import { useWorkspaceState } from './use-workspace-state'
 
 export { DEFAULT_PROJECT_ID } from './use-active-project-id'
+export type { BuiltSessionPorts } from './create-session-ports'
 
 // Test-only render-harness seam. When `?fixture=scene-harness` is present the app
 // mounts the deterministic three-dimensional render harness instead of the editor, so
@@ -91,12 +93,6 @@ export interface SnapshotsPort {
   prune(): Promise<void>
   isRecoverable(): Promise<boolean>
   restore(): Promise<Project | undefined>
-}
-
-/** The ports of the session layer, with the pool of the user's library beside them. */
-export interface BuiltSessionPorts {
-  readonly ports: SessionPorts
-  readonly libraryAssets: AssetCache
 }
 
 export interface AppProps {

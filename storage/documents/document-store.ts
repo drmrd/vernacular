@@ -219,22 +219,6 @@ export class DocumentStore {
     return this.backUpAndOpen(id, failure, bytes)
   }
 
-  /** Interim: `read` with the interim policy, throwing on failure. */
-  async load(id: string): Promise<Project> {
-    const stored = await this.readStored(id)
-    if (stored === undefined) {
-      throw new ProjectNotFoundError(id)
-    }
-    if (!('failure' in stored)) {
-      return stored.decoded.value.project
-    }
-    const { failure, bytes } = stored
-    if (!mayOpenDespiteFaults(failure)) {
-      throw new DocumentDecodeError(failure)
-    }
-    return this.backUpAndOpen(id, failure, bytes)
-  }
-
   /** The migration backup of the given bytes, when the file was migrated, then the interim open. */
   private async backUpAndOpen(
     id: string,

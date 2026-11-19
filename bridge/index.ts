@@ -1,12 +1,6 @@
 export type { EditorSession } from '../session'
-export { createEditorSession } from '../session'
-export { loadOrCreateProject } from '../session'
 export type { GuardDestructiveOptions } from '../session'
 export { guardDestructive, needsDiscardConfirmation } from '../session'
-export type { DirtyTracker } from '../session'
-export { createDirtyTracker } from '../session'
-export { useDirtyState, useDirtyTracker } from './react/use-dirty-state'
-export type { SessionDirtyState } from './react/use-dirty-state'
 export type { SelectionStore } from './selection/selection-store'
 export { createSelectionStore } from './selection/selection-store'
 export type { ActiveFloorStore } from './active-floor/active-floor-store'
@@ -14,16 +8,7 @@ export { createActiveFloorStore } from './active-floor/active-floor-store'
 export type { ClipboardStore } from './clipboard/clipboard-store'
 export { createClipboardStore } from './clipboard/clipboard-store'
 export { readSystemClipboard, writeSystemClipboard } from './clipboard/system-clipboard'
-export type {
-  AutosaveStatus,
-  AutosaveOptions,
-  AutosaveConfig,
-  Autosave,
-  SnapshotWriter,
-  SnapshotPruner,
-  CommitProjectOptions,
-} from '../session'
-export { createAutosave, commitProject, DEFAULT_AUTOSAVE_DELAY_MS } from '../session'
+export type { AutosaveStatus } from '../session'
 export { useEditorSession } from './react/editor-session-context'
 export type { EditorSessionProviderProps } from './react/editor-session-provider'
 export { EditorSessionProvider } from './react/editor-session-provider'
@@ -45,8 +30,6 @@ export {
 export type { ActiveFloorProviderProps } from './react/active-floor-provider'
 export { ActiveFloorProvider } from './react/active-floor-provider'
 export { useSceneGraph } from './react/use-scene-graph'
-export type { UseAutosaveOptions } from './react/use-autosave'
-export { useAutosave } from './react/use-autosave'
 export { SceneCanvas } from './react/scene-canvas'
 export { detectLivePreviewBackend } from './react/live-preview-backend'
 export type { LivePreviewBackend } from './react/live-preview-backend'

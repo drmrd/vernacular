@@ -4,7 +4,7 @@ import {
   createOpfsProjectStore,
   FileSystemDirectory,
   IndexedDbRecentProjectStore,
-  WebLocksManager,
+  WebLocksProjectLockPort,
   type DirectoryPort,
 } from '../storage'
 
@@ -62,18 +62,26 @@ function sampleProject(name: string): Project {
   return { ...project, floors: [createFloor('Ground')] }
 }
 
+// The stored project, or a rejection that names why the read gave none.
+async function readStoredProject(
+  store: Awaited<ReturnType<typeof createOpfsProjectStore>>,
+  id: string,
+): Promise<Project> {
+  const read = await store.read(id)
+  if (!read.ok) {
+    throw new Error(`The project ${id} could not be read: ${read.failure.kind}`)
+  }
+  return read.value.project
+}
+
 async function opfsRoundTrip(): Promise<OpfsRoundTripResult> {
   const store = await createOpfsProjectStore()
   await store.save('e2e-roundtrip', sampleProject('Round Trip House'))
-  const loaded = await store.load('e2e-roundtrip')
+  const loaded = await readStoredProject(store, 'e2e-roundtrip')
   const summaries = await store.list()
   await store.delete('e2e-roundtrip')
-  let deletedGone = false
-  try {
-    await store.load('e2e-roundtrip')
-  } catch {
-    deletedGone = true
-  }
+  const afterDelete = await store.read('e2e-roundtrip')
+  const deletedGone = !afterDelete.ok && afterDelete.failure.kind === 'not-found'
   return {
     loadedName: loaded.meta.name,
     listedId: summaries.some((summary) => summary.id === 'e2e-roundtrip'),
@@ -98,13 +106,17 @@ async function recentRoundTrip(): Promise<RecentRoundTripResult> {
 }
 
 async function lockSequence(): Promise<LockSequenceResult> {
-  const manager = new WebLocksManager()
-  const first = await manager.tryAcquire('e2e-lock')
-  const second = await manager.tryAcquire('e2e-lock')
-  await manager.release('e2e-lock')
-  const reacquired = await manager.tryAcquire('e2e-lock')
-  await manager.release('e2e-lock')
-  return { first, second, reacquired }
+  const locks = new WebLocksProjectLockPort()
+  const firstHold = await locks.tryAcquire('e2e-lock')
+  const secondHold = await locks.tryAcquire('e2e-lock')
+  await firstHold?.release()
+  const thirdHold = await locks.tryAcquire('e2e-lock')
+  await thirdHold?.release()
+  return {
+    first: firstHold !== undefined,
+    second: secondHold !== undefined,
+    reacquired: thirdHold !== undefined,
+  }
 }
 
 async function opfsPersistSave(): Promise<void> {
@@ -114,7 +126,7 @@ async function opfsPersistSave(): Promise<void> {
 
 async function opfsPersistName(): Promise<string> {
   const store = await createOpfsProjectStore()
-  const loaded = await store.load(PERSIST_ID)
+  const loaded = await readStoredProject(store, PERSIST_ID)
   return loaded.meta.name
 }
 

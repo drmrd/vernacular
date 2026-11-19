@@ -1,4 +1,5 @@
-import type { DecodeFailure, DecodeResult, Project } from '../../core'
+import type { DecodeFailure, DecodeResult } from '../../core'
+import { openDespiteFaults } from '../../storage'
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuardedAsync } from '../guarded-call'
 import { createDocumentHandle } from '../handle/document-handle'
@@ -31,8 +32,9 @@ function refused(failure: RestoreRefusal): Refused {
 }
 
 /**
- * The document of the recovered copy. A copy that only breaks the format rules restores anyway,
- * with a warning, under the interim rule; it counts as opened despite faults.
+ * The document of the recovered copy. A copy that only breaks the format rules restores anyway
+ * under the interim rule of the storage layer, which warns with its faults; it counts as opened
+ * despite faults.
  */
 function decideDocument(restored: DecodeResult): OpenedProject | Refused {
   if (restored.ok) {
@@ -42,10 +44,11 @@ function decideDocument(restored: DecodeResult): OpenedProject | Refused {
   if (failure.kind !== 'format-rules') {
     return refused({ kind: 'did-not-restore', decode: failure })
   }
-  console.warn('The recovered copy breaks the format rules; restoring it anyway.', failure.faults)
-  // The interim rule opens the failed document as a project, as every other read path does.
-  const project = failure.document as Project
-  return { project, savedByNewerBuild: false, openedDespiteFaults: true }
+  return {
+    project: openDespiteFaults(failure),
+    savedByNewerBuild: false,
+    openedDespiteFaults: true,
+  }
 }
 
 /**
