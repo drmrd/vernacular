@@ -123,7 +123,13 @@ export class SnapshotStore {
   private async pruneOldestRollingSnapshots(): Promise<void> {
     const ordered = await this.rollingNamesNewestFirst()
     for (const name of ordered.slice(this.maxSnapshots)) {
-      await this.directory.removeFile(`${AUTOSAVE_DIRECTORY}/${name}`)
+      try {
+        await this.directory.removeFile(`${AUTOSAVE_DIRECTORY}/${name}`)
+      } catch (error) {
+        // The new snapshot is already written, and removing an old one is housekeeping. A fault
+        // here must not fail the write: a document save and a close follow every snapshot write.
+        console.error(error)
+      }
     }
   }
 
