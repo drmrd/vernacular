@@ -79,6 +79,19 @@ export function followStoredOpenings(
 }
 
 /**
+ * Seats at its target every opening that carries an openness but that the scene does not show,
+ * because no tick reaches it: a later root that shows it is then posed at the session's state,
+ * with no swing. An opening in `openings` keeps its openness, so the tick still swings it.
+ */
+export function settleUnshownOpenings(settle: Omit<OpeningTick, 'root'>): void {
+  const shownIds = new Set(settle.openings.map((node) => node.id))
+  for (const id of settle.openness.keys()) {
+    if (shownIds.has(id)) continue
+    settle.openness.set(id, isOpeningOpen(settle.interaction, id) ? OPEN : SHUT)
+  }
+}
+
+/**
  * Poses every opening on the given root where the session left it, so a newly built or rebuilt
  * root never shows a door out of place: an opening that carries an openness is posed at that
  * openness, an opening held open with none is seated fully open and recorded so, and every other

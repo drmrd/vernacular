@@ -2,7 +2,9 @@ import { useMemo } from 'react'
 
 import type { SceneGraph } from '../../core'
 
-import type { BuildingViewState } from './use-building-view-state'
+import { useActiveFloorId } from './active-floor-context'
+import { useBuildingViewState, type BuildingViewState } from './use-building-view-state'
+import { useSceneGraph } from './use-scene-graph'
 import { viewSceneGraph } from './view-scene-graph'
 
 /**
@@ -27,4 +29,12 @@ export function useViewSceneGraph(
       }),
     [rawGraph, activeFloorId, view.scope, view.showUnderground],
   )
+}
+
+/** The graph the 3D view shows, with the building-view state that scoped it: the raw graph scoped by the active floor and the building view. */
+export function useShownSceneGraph(): { graph: SceneGraph; buildingView: BuildingViewState } {
+  const rawGraph = useSceneGraph()
+  const activeFloorId = useActiveFloorId()
+  const buildingView = useBuildingViewState()
+  return { graph: useViewSceneGraph(rawGraph, activeFloorId, buildingView), buildingView }
 }

@@ -2,15 +2,13 @@ import { useMemo, useSyncExternalStore } from 'react'
 
 import type { SceneGraph } from '../../core'
 
-import { useActiveFloorId } from './active-floor-context'
 import type { FramedScene } from './framed-scene'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import { sceneSessionToggle, useSceneSessionStoreOrLocal } from './scene-session-context'
-import { useBuildingViewState, type BuildingViewState } from './use-building-view-state'
+import type { BuildingViewState } from './use-building-view-state'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
 import { useProjectPaint } from './use-project-paint'
-import { useSceneGraph } from './use-scene-graph'
-import { useViewSceneGraph } from './use-view-scene-graph'
+import { useShownSceneGraph } from './use-view-scene-graph'
 
 /** The surface-edge overlay setting together with the toggle that flips it. */
 export interface EdgeOverlayState {
@@ -49,12 +47,7 @@ export interface FramedSceneState {
  * on it.
  */
 export function useFramedScene(): FramedSceneState {
-  const rawGraph = useSceneGraph()
-  const activeFloorId = useActiveFloorId()
-  const buildingView = useBuildingViewState()
-  // Scope to the active floor or the whole building stacked at its elevations (issue
-  // #206); the scoped graph is memoized so the scene rebuilds only when it changes.
-  const graph = useViewSceneGraph(rawGraph, activeFloorId, buildingView)
+  const { graph, buildingView } = useShownSceneGraph()
   const paint = useProjectPaint()
   const { edgeOverlay, toggleEdgeOverlay } = useEdgeOverlay()
   // One reconciler per overlay setting; it reuses an unchanged floor's built scene
