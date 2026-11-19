@@ -30,8 +30,8 @@ The presets are:
 - **Four elevations (North, South, East, West).** The camera looks horizontally at
   the center of the model along a cardinal axis, framing one facade flat on. Each
   elevation is named for the facade it shows.
-- **From a doorway.** The camera stands in a chosen door or window at the height of
-  the opening's middle and looks horizontally into the building.
+- **From a doorway.** The camera stands in a chosen door, at the height of the door's
+  middle above its own floor, and looks horizontally into the building.
 
 The pose math is pure and lives in core, beside the existing `frameSceneCamera`. The
 preset poses reuse the same bounding-sphere fit and the same near and far derivation
@@ -88,7 +88,7 @@ In scope:
   the world bounds, fully unit tested.
 - The optional `up` on `CameraPose` and the apply path setting the camera up.
 - Preset buttons in the navigation toolbar, with the doorway button disabled when no
-  opening is available, covered by a component test.
+  door is in view, covered by a component test.
 - The bridge wiring that resolves the doorway opening, computes the pose against the
   live viewport, and snaps the live camera, with the model still filling the pane.
 - An end-to-end check in the hardware-GPU project that a preset moves the camera.
