@@ -1,6 +1,7 @@
 import type { FrameProbeHost } from './frame-probe'
 
 export type FrameRequest = (callback: FrameRequestCallback) => number
+export type FrameCancel = (id: number) => void
 
 interface FakeQueue {
   submit: (commands: string[]) => string
@@ -12,25 +13,39 @@ const SETTLE_ROUNDS = 8
 /** The frame queue of a page: frames run only when `runFrame` says so. */
 function createFrameQueue() {
   let nextId = 1
-  let waiting: { id: number; callback: FrameRequestCallback }[] = []
+  let waiting: { id: number; callback: FrameRequestCallback; cancelled: boolean }[] = []
+  let running: typeof waiting = []
   const request: FrameRequest = (callback) => {
     const id = nextId
     nextId += 1
-    waiting.push({ id, callback })
+    waiting.push({ id, callback, cancelled: false })
     return id
+  }
+  /** Removes the waiting callback with that host id, also from a frame that is running now. */
+  const cancel: FrameCancel = (id) => {
+    for (const entry of waiting) if (entry.id === id) entry.cancelled = true
+    waiting = waiting.filter((entry) => entry.id !== id)
+    for (const entry of running) if (entry.id === id) entry.cancelled = true
   }
   /** Runs the callbacks that wait now; those they request wait for the next frame. */
   const runFrame = (frameTimeMs = 0) => {
-    const running = waiting
+    running = waiting
     waiting = []
-    for (const entry of running) entry.callback(frameTimeMs)
+    for (const entry of running) if (!entry.cancelled) entry.callback(frameTimeMs)
+    running = []
   }
-  return { request, runFrame, waitingFrameCount: () => waiting.length }
+  return {
+    request,
+    cancel,
+    runFrame,
+    waitingFrameCount: () => waiting.length,
+    waitingFrameIds: () => waiting.map((entry) => entry.id),
+  }
 }
 
 /** A queue prototype whose done promises resolve only when `finishGpuWork` says so. */
 function createQueuePrototype() {
-  const doneResolvers: (() => void)[] = []
+  const doneControls: { resolve: () => void; reject: (reason: unknown) => void }[] = []
   const submitCalls: { receiver: unknown; args: unknown[] }[] = []
   const originalSubmit = function (this: unknown, ...args: unknown[]): string {
     submitCalls.push({ receiver: this, args })
@@ -39,20 +54,22 @@ function createQueuePrototype() {
   const prototype = {
     submit: originalSubmit,
     onSubmittedWorkDone: (): Promise<void> =>
-      new Promise<void>((resolve) => {
-        doneResolvers.push(resolve)
+      new Promise<void>((resolve, reject) => {
+        doneControls.push({ resolve, reject })
       }),
   }
   const queue = Object.create(prototype) as FakeQueue
   /** Resolves the done promise that was asked for first and is still open. */
-  const finishGpuWork = () => doneResolvers.shift()?.()
-  return { prototype, queue, originalSubmit, submitCalls, finishGpuWork }
+  const finishGpuWork = () => doneControls.shift()?.resolve()
+  /** Rejects the done promise that was asked for first and is still open: a lost device. */
+  const failGpuWork = () => doneControls.shift()?.reject(new Error('device lost'))
+  return { prototype, queue, originalSubmit, submitCalls, finishGpuWork, failGpuWork }
 }
 
 /**
  * A page that the test drives by hand: frames run only when `runFrame` says so, the clock moves
  * only when `advance` says so, and the GPU work of the fake queue is done only when `finishGpuWork`
- * says so.
+ * says so. A GPU work that is not finished can also be failed with `failGpuWork`.
  */
 export function createFakeFrameHost(startClockMs = 0) {
   let clockMs = startClockMs
@@ -62,12 +79,14 @@ export function createFakeFrameHost(startClockMs = 0) {
 
   const host: FrameProbeHost = {
     requestAnimationFrame: frames.request,
+    cancelAnimationFrame: frames.cancel,
     now: () => clockMs,
     isHidden: () => hidden,
     queuePrototype: gpu.prototype,
   }
-  const target: { requestAnimationFrame: FrameRequest } = {
+  const target: { requestAnimationFrame: FrameRequest; cancelAnimationFrame: FrameCancel } = {
     requestAnimationFrame: frames.request,
+    cancelAnimationFrame: frames.cancel,
   }
 
   return {
@@ -76,6 +95,7 @@ export function createFakeFrameHost(startClockMs = 0) {
     queue: gpu.queue,
     queuePrototype: gpu.prototype,
     originalRequestFrame: frames.request,
+    originalCancelFrame: frames.cancel,
     originalSubmit: gpu.originalSubmit,
     submitCalls: gpu.submitCalls,
     advance: (ms: number) => {
@@ -86,7 +106,9 @@ export function createFakeFrameHost(startClockMs = 0) {
     },
     runFrame: frames.runFrame,
     waitingFrameCount: frames.waitingFrameCount,
+    waitingFrameIds: frames.waitingFrameIds,
     finishGpuWork: gpu.finishGpuWork,
+    failGpuWork: gpu.failGpuWork,
   }
 }
 

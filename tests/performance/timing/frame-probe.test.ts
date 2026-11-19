@@ -149,6 +149,7 @@ describe('the first frame after a time', () => {
     mainThreadMs: 1,
     untilGpuDoneMs: null,
     hidden: false,
+    gpuLost: false,
   })
   const frames = [sample(10), sample(20), sample(30)]
 
