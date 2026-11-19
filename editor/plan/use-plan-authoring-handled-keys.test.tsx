@@ -205,11 +205,11 @@ describe('a key press that a plan entity already handled', () => {
     act(() => dispatchWindowKey(ENTER))
     act(() => dispatchWindowKey('ArrowRight'))
 
-    const defaultLeftAlone = pressOnFocusedProxy(ESCAPE)
+    const defaultWasNotPrevented = pressOnFocusedProxy(ESCAPE)
 
     // The listbox prevented the default of this Escape, so the tool saw a key
     // that an element had already handled and cancelled the run all the same.
-    expect(defaultLeftAlone).toBe(false)
+    expect(defaultWasNotPrevented).toBe(false)
     expect(announcement()).toMatch(/cancel|abandon/i)
     expect(dispatch).not.toHaveBeenCalled()
   })
@@ -219,9 +219,9 @@ describe('a key press that a plan entity already handled', () => {
     act(() => dispatchWindowKey(ENTER))
     act(() => dispatchWindowKey('ArrowUp'))
 
-    const defaultLeftAlone = pressOnFocusedProxy(ESCAPE)
+    const defaultWasNotPrevented = pressOnFocusedProxy(ESCAPE)
 
-    expect(defaultLeftAlone).toBe(false)
+    expect(defaultWasNotPrevented).toBe(false)
     expect(announcement()).toBe('Dimension cancelled')
     expect(dispatch).not.toHaveBeenCalled()
   })
