@@ -3,7 +3,7 @@ import { type Point, type SceneGraph } from '../../core'
 import type { LibraryItem } from '../../storage'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
-import { isActivationKey } from './activation-keys'
+import { isActivationPressAlreadyHandled } from './activation-keys'
 import { isTextEntry } from './keyboard-guard'
 import { IDLE_WALL_TOOL, type WallToolState } from './wall-tool'
 import { IDLE_DIMENSION_TOOL, type DimensionToolState } from './dimension-tool'
@@ -119,11 +119,6 @@ function buildAuthoringTools(
     rotation: toolState.placement.rotation,
     setPlacementRefusal: toolState.placement.setPlacementRefusal,
   }
-}
-
-// An Enter or Space press whose default an element already prevented.
-function isActivationPressAlreadyHandled(event: KeyboardEvent): boolean {
-  return event.defaultPrevented && isActivationKey(event)
 }
 
 // Install the window keydown listener that routes a keystroke to the active

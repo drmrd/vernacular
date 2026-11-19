@@ -13,6 +13,7 @@ import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
+import { isActivationPressAlreadyHandled } from './activation-keys'
 import { claimKeystroke, ownsKeystroke } from './keyboard-guard'
 import { useHeldAltKey } from './use-held-alt-key'
 import { useSnapping, type Snapping } from './use-snapping'
@@ -196,7 +197,7 @@ function useWallKeyboard({ tool, finish, backspace, cancel }: WallKeyboardDeps):
       return
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (ownsKeystroke(event.target, event.key)) {
+      if (ownsKeystroke(event.target, event.key) || isActivationPressAlreadyHandled(event)) {
         return
       }
       const handlers = handlersRef.current
