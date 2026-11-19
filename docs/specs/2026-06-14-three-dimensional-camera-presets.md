@@ -119,7 +119,7 @@ In scope:
   far planes track the bounds diagonal; a viewport fits the bounding sphere to the
   frame.
 - A component test on the toolbar: the preset buttons render and call back with the
-  right preset, and the doorway button is disabled when no opening is available.
+  right preset, and the doorway button is disabled when no door is in view.
 - An end-to-end check in the hardware-GPU project: clicking a preset moves the camera,
   observed through the projected accessibility proxies shifting from the framed view.
 
