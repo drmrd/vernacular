@@ -13,6 +13,7 @@ import {
   setProjectStyle,
 } from '../../core'
 import type { Command, Project } from '../../core'
+import { readProject } from '../../storage/documents/document-store-test-kit'
 import { InMemoryDirectory } from '../../storage/fs/in-memory-directory'
 import { DocumentStore, FolderFiles } from '../../storage'
 
@@ -83,7 +84,7 @@ async function storeHoldingFullDocument(): Promise<{
 
 async function clearSaveAndReload(command: Command<unknown>): Promise<StoredDocument> {
   const { store, directory } = await storeHoldingFullDocument()
-  const loaded = await store.load(PROJECT_ID)
+  const loaded = await readProject(store, PROJECT_ID)
   dispatcherFor(loaded).dispatch(command)
   await store.save(PROJECT_ID, loaded)
   return decode(await directory.readFile('vernacular.json'))

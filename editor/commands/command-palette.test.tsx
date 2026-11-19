@@ -6,13 +6,13 @@ import {
   EditorSessionProvider,
   SelectionProvider,
   createActiveFloorStore,
-  createEditorSession,
   createSelectionStore,
   useActiveFloorId,
   useEditorSession,
   useSceneGraph,
   useSelection,
 } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { createEmptyProject, createFloor } from '../../core'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'

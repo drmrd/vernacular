@@ -10,9 +10,9 @@ import {
   SceneSessionProvider,
   SelectionProvider,
   createActiveFloorStore,
-  createEditorSession,
   createSelectionStore,
 } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { createEmptyProject, createFloor, type Project } from '../../core'
 import { ThemeProvider } from '../design-system'
 import { NotificationProvider } from '../design-system/notifications/use-notifications'

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createAutosave, commitProject } from './create-autosave'
+import { createAutosave } from './create-autosave'
 import type { AutosaveConfig } from './create-autosave'
 import { gateSaves, settle } from './save-gate-test-kit'
 import { createEditorSession } from '../editor-session/editor-session'
@@ -329,33 +329,5 @@ describe('createAutosave writing through one queue', () => {
     expect(await storedFloorCount(store)).toBe(1)
 
     autosave.dispose()
-  })
-})
-
-describe('commitProject', () => {
-  it('saves the canonical project and then prunes snapshots in order', async () => {
-    const project = emptyProject()
-    const store = new InMemoryProjectStore()
-    const order: string[] = []
-    const saveSpy = vi.spyOn(store, 'save').mockImplementation(savedAfter(() => order.push('save')))
-    const prune = vi.fn().mockImplementation(async () => {
-      order.push('prune')
-    })
-
-    await commitProject({ store, projectId: PROJECT_ID, project, snapshots: { prune } })
-
-    expect(saveSpy).toHaveBeenCalledWith(PROJECT_ID, project)
-    expect(prune).toHaveBeenCalledTimes(1)
-    expect(order).toEqual(['save', 'prune'])
-  })
-
-  it('saves without pruning when no snapshots are provided', async () => {
-    const project = emptyProject()
-    const store = new InMemoryProjectStore()
-    const saveSpy = vi.spyOn(store, 'save')
-
-    await expect(commitProject({ store, projectId: PROJECT_ID, project })).resolves.toBeUndefined()
-
-    expect(saveSpy).toHaveBeenCalledWith(PROJECT_ID, project)
   })
 })

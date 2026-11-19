@@ -6,11 +6,11 @@ import {
   SelectionProvider,
   ActiveFloorProvider,
   SurfaceSelectionProvider,
-  createEditorSession,
   createSelectionStore,
   createActiveFloorStore,
   createSurfaceSelectionStore,
 } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { createEmptyProject, createFloor, createWall, type Wall } from '../../core'
 import { Inspector } from './inspector'
 

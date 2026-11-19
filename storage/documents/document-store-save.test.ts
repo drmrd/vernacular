@@ -17,6 +17,7 @@ import {
   BACKUP_DIRECTORY,
   DOCUMENT_PATH,
   backupsOf,
+  readProject,
   rootHolding,
   storeOver,
 } from './document-store-test-kit'
@@ -162,20 +163,20 @@ describe('the state a store keeps', () => {
 
     growAndRename(project)
 
-    const loaded = await store.load('a')
+    const loaded = await readProject(store, 'a')
     expect(loaded.meta.name).toBe(savedName)
     expect(loaded.floors[0]!.walls).toHaveLength(savedWalls)
   })
 
   it('is isolated from a change to a project that was loaded', async () => {
     const store = storeOver(await rootHolding(currentBytes()))
-    const firstLoad = await store.load('a')
+    const firstLoad = await readProject(store, 'a')
     const loadedName = firstLoad.meta.name
     const loadedWalls = firstLoad.floors[0]!.walls.length
 
     growAndRename(firstLoad)
 
-    const secondLoad = await store.load('a')
+    const secondLoad = await readProject(store, 'a')
     expect(secondLoad.meta.name).toBe(loadedName)
     expect(secondLoad.floors[0]!.walls).toHaveLength(loadedWalls)
   })

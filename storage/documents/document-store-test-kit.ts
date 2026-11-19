@@ -1,8 +1,10 @@
-import type { CodecOptions } from '../../core'
+import type { CodecOptions, Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
+import { ProjectNotFoundError } from '../project-store'
 import { WorkspaceFiles } from '../project-files/workspace-files'
 import { WorkspaceDocumentStore } from './document-store'
+import type { DocumentStore } from './document-store'
 
 /** Shared set-up of the tests that cover a document store over the project `a` of a workspace. */
 
@@ -61,6 +63,20 @@ export function storeOver(
   durable = true,
 ): WorkspaceDocumentStore {
   return new WorkspaceDocumentStore(new WorkspaceFiles(root, { durable }), options)
+}
+
+/**
+ * Test support: the project that the store holds under `id`, read back. An ok read gives the
+ * project. A project that the store does not hold throws `ProjectNotFoundError`. A document that
+ * fails to decode goes through `store.openDespiteFormatFaults`, which opens one that breaks only
+ * the format rules (after its migration backup, with a warning that names the faults) and throws
+ * `DocumentDecodeError` for any other failure.
+ */
+export async function readProject(store: DocumentStore, id: string): Promise<Project> {
+  const read = await store.read(id)
+  if (read.ok) return read.value.project
+  if (read.failure.kind === 'not-found') throw new ProjectNotFoundError(id)
+  return store.openDespiteFormatFaults(id, read.failure.decode)
 }
 
 /** A root that holds the document of the project `a`, when there are bytes, and nothing else. */

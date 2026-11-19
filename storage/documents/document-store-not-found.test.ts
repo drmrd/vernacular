@@ -8,11 +8,10 @@ import { projectOf } from '../../tests/fixtures/projects/versions/fixture-docume
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { FileSystemFolderProjectStore } from '../filesystem/file-system-folder-project-store'
-import { ProjectNotFoundError } from '../project-store'
 import { ZipBundleProjectStore } from '../zip/zip-bundle-project-store'
 import { WorkspaceDocumentStore } from './document-store'
 import type { DocumentStore } from './document-store'
-import { PassThroughDirectory, storeOver } from './document-store-test-kit'
+import { PassThroughDirectory, readProject, storeOver } from './document-store-test-kit'
 
 const OWN_ID = 'house'
 const OTHER_ID = 'cottage'
@@ -74,15 +73,6 @@ describe.each(storesBoundToOneProject)('$name, asked for an id that is not its o
     expect(await store.read(OTHER_ID)).toEqual({ ok: false, failure: { kind: 'not-found' } })
   })
 
-  it('rejects a load with a not-found error that names the id', async () => {
-    const store = over(await folderHoldingADocument())
-
-    const failure = await store.load(OTHER_ID).catch((error: unknown) => error)
-
-    expect(failure).toBeInstanceOf(ProjectNotFoundError)
-    expect((failure as ProjectNotFoundError).projectId).toBe(OTHER_ID)
-  })
-
   it('still lists only its own id', async () => {
     const store = over(await folderHoldingADocument())
 
@@ -107,12 +97,11 @@ describe.each(storesBoundToOneProject)('$name, asked for an id that is not its o
     expect([...(await store.storedFiles(OTHER_ID))]).toEqual([])
   })
 
-  it('reads no file of the folder for a read or a load', async () => {
+  it('reads no file of the folder for a read', async () => {
     const folder = await folderHoldingADocument()
     const store = over(folder)
 
     await store.read(OTHER_ID)
-    await store.load(OTHER_ID).catch(() => undefined)
 
     expect(folder.reads).toEqual([])
   })
@@ -140,7 +129,7 @@ describe('reading a project whose time of last change cannot be read', () => {
   it('still loads the project', async () => {
     const store = await storeWithUnreadableTime()
 
-    const loaded = await store.load('a')
+    const loaded = await readProject(store, 'a')
 
     expect(loaded).toEqual(projectOf(versionFixtureBytes(CURRENT_SCHEMA_VERSION)))
   })

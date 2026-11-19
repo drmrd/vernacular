@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, renderHook } from '@testing-library/react'
-import { createClipboardStore, createEditorSession, createSelectionStore } from '../../bridge'
+import { createClipboardStore, createSelectionStore } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { addFloor, addWall, createEmptyProject } from '../../core'
 import type { ToolId } from '../tools/active-tool-context'
 import type { CommandContext } from '../commands/command'

@@ -8,12 +8,12 @@ import {
   EditorSessionProvider,
   SelectionProvider,
   createActiveFloorStore,
-  createEditorSession,
   createPerceivedColorStore,
   createSelectionStore,
   useSurfaceSelection,
   type SurfaceSelectionStore,
 } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import {
   createEmptyProject,
   createFloor,

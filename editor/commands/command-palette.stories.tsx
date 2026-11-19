@@ -6,9 +6,9 @@ import {
   EditorSessionProvider,
   SelectionProvider,
   createActiveFloorStore,
-  createEditorSession,
   createSelectionStore,
 } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { createEmptyProject, createFloor } from '../../core'
 import { ViewModeProvider } from '../viewport/view-mode'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'

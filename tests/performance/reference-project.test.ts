@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { createEditorSession } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { createDocumentValidator } from '../../core'
 import { SCHEMA_VERSION } from '../../scripts/schema/build-schema.mjs'
 import recordedSizes from './baseline-sizes.json'

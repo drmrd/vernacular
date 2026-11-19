@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readProject } from '../../../storage/documents/document-store-test-kit'
 import type { DirectoryPort } from '../../../storage/fs/directory-port'
 import { OTHER_PROJECT_ID, PROJECT_ID } from './conformance-run'
 import type { BeginRun } from './conformance-run'
@@ -97,7 +98,7 @@ export function describeSingleProject(begin: BeginRun): void {
       await store.save(PROJECT_ID, soundProject())
       await store.snapshots(PROJECT_ID).writeSnapshot(soundProject())
       await store.snapshots(PROJECT_ID).prune()
-      await store.load(PROJECT_ID)
+      await readProject(store, PROJECT_ID)
 
       expect(await run.root.readFile(NOTES_PATH)).toEqual(NOTES)
       expect(await run.root.readFile(DRAWING_PATH)).toEqual(DRAWING)

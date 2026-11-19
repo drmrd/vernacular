@@ -8,9 +8,9 @@ import {
   EditorSessionProvider,
   SelectionProvider,
   createActiveFloorStore,
-  createEditorSession,
   createSelectionStore,
 } from '../../bridge'
+import { createEditorSession } from '../../session/testing'
 import { addWall, createEmptyProject, createFloor, type Project } from '../../core'
 
 function projectWithFloor(): Project {

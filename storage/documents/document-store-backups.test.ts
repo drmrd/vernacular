@@ -105,19 +105,16 @@ describe('the migration backups of a store', () => {
 })
 
 describe('a backup that cannot be written', () => {
-  it.each(['read', 'load'] as const)(
-    'keeps the document from the caller on %s and leaves the stored file as it was',
-    async (method) => {
-      const original = versionFixtureBytes(OLDEST_VERSION)
-      const root = await rootHolding(original)
-      const store = storeOver(new BackupRefusingDirectory(root))
+  it('keeps the document from the caller on read and leaves the stored file as it was', async () => {
+    const original = versionFixtureBytes(OLDEST_VERSION)
+    const root = await rootHolding(original)
+    const store = storeOver(new BackupRefusingDirectory(root))
 
-      const error = await refusal(() => store[method]('a'))
+    const error = await refusal(() => store.read('a'))
 
-      expect(error).toBeInstanceOf(Error)
-      expect(await root.readFile(DOCUMENT_PATH)).toEqual(original)
-    },
-  )
+    expect(error).toBeInstanceOf(Error)
+    expect(await root.readFile(DOCUMENT_PATH)).toEqual(original)
+  })
 })
 
 describe('a backup and the autosave cycle', () => {
