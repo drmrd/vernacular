@@ -33,4 +33,36 @@ test.describe('Keyboard plan authoring', () => {
     // Each authoring step was announced through the shared live region.
     await expect(page.locator('.plan-overlay__live')).toHaveText(/wall|vertex|finish/i)
   })
+
+  test('selects a focused wall on Enter and places no door under the Door tool', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.getByLabel('Floor plan')).toBeVisible()
+
+    // Author a wall from the keyboard, as the journey above does.
+    await page.getByRole('radio', { name: 'Wall', exact: true }).click()
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    const wall = page.getByRole('option', { name: /^Wall,/ })
+    await expect(wall).toHaveCount(1)
+
+    // Arm the Door tool, then move focus onto the wall's proxy.
+    await page.getByRole('radio', { name: 'Door', exact: true }).click()
+    await wall.focus()
+    await expect(wall).toBeFocused()
+
+    // One Enter on the proxy only selects the wall: the keyboard drop of the Door
+    // tool does not run, so no door lands and no refusal notice appears.
+    await page.keyboard.press('Enter')
+
+    await expect(page.getByRole('option', { name: / wide$/ })).toHaveCount(0)
+    await expect(page.locator('.plan-overlay__refusal')).toHaveCount(0)
+    await expect(wall).toHaveAttribute('aria-selected', 'true')
+  })
 })
