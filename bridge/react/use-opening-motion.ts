@@ -21,7 +21,7 @@ export interface OpeningMotionRefs {
   openings: RefObject<OpeningSceneNode[]>
   /**
    * Every opening the 3D view shows: the active floor's in the floor view, and every visible
-   * floor's in the whole-building view. The per-frame tick reads these.
+   * floor's in the whole-building view. The per-frame tick and the pose of a new root read these.
    */
   shownOpenings: RefObject<OpeningSceneNode[]>
   interaction: RefObject<OpeningInteractionState>
@@ -76,15 +76,15 @@ function useFollowedOpenings(storedOpenDoorIds: ReadonlySet<string>): OpeningMot
 // holds open. The ref objects never change, so only a new root re-runs this; their current
 // values are read as it arrives.
 function useRestoreOpeningsOnNewRoot(root: SceneRoot, refs: OpeningMotionRefs): void {
-  const { openings, interaction, openness } = refs
+  const { shownOpenings, interaction, openness } = refs
   useEffect(() => {
     restoreOpenings({
       root,
-      openings: openings.current,
+      openings: shownOpenings.current,
       interaction: interaction.current,
       openness: openness.current,
     })
-  }, [root, openings, interaction, openness])
+  }, [root, shownOpenings, interaction, openness])
 }
 
 /**
