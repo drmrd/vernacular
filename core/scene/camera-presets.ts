@@ -69,18 +69,23 @@ function towardInterior(
 
 /**
  * Derives the camera pose for standing in `opening` and looking into the model.
- * The camera sits at the opening center raised to its vertical middle and looks
- * horizontally along the wall normal toward the bounds interior. An empty (null)
- * or zero-size scene, or an opening with a zero-length wall normal, returns the
- * fixed default pose.
+ * The camera sits at the opening center, at the opening's vertical middle above its
+ * own floor, and looks horizontally along the wall normal toward the bounds interior.
+ * `floorElevationMm` is the world elevation of that floor (the opening's heights are
+ * measured on it). An empty (null) or zero-size scene, or an opening with a
+ * zero-length wall normal, returns the fixed default pose.
  */
-export function doorwayPose(opening: OpeningSceneNode, bounds: Bounds3 | null): CameraPose {
+export function doorwayPose(
+  opening: OpeningSceneNode,
+  bounds: Bounds3 | null,
+  floorElevationMm: number,
+): CameraPose {
   if (bounds === null) return DEFAULT_CAMERA_POSE
   const { center, diagonal } = centerAndDiagonal(bounds)
   if (diagonal === 0) return DEFAULT_CAMERA_POSE
   const length = Math.hypot(opening.normal.x, opening.normal.y)
   if (length === 0) return DEFAULT_CAMERA_POSE
-  const eye = opening.sillHeight + opening.height / 2
+  const eye = floorElevationMm + opening.sillHeight + opening.height / 2
   const position = planToWorld(opening.center, eye)
   const unit = { x: opening.normal.x / length, z: opening.normal.y / length }
   const inward = towardInterior(unit, position, center)

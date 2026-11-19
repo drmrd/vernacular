@@ -30,8 +30,8 @@ The presets are:
 - **Four elevations (North, South, East, West).** The camera looks horizontally at
   the center of the model along a cardinal axis, framing one facade flat on. Each
   elevation is named for the facade it shows.
-- **From a doorway.** The camera stands in a chosen door or window at the height of
-  the opening's middle and looks horizontally into the building.
+- **From a doorway.** The camera stands in a chosen door, at the height of the door's
+  middle above its own floor, and looks horizontally into the building.
 
 The pose math is pure and lives in core, beside the existing `frameSceneCamera`. The
 preset poses reuse the same bounding-sphere fit and the same near and far derivation
@@ -65,16 +65,18 @@ frame rather than leaving the camera rolled.
 The doorway preset frames a chosen opening. The scene graph already carries each
 opening's center, its host wall's normal, its width, its height, and its sill height,
 so the pose is derived without new model data. The camera stands at the opening's
-center, raised to the opening's vertical middle (sill height plus half the opening
-height), and looks horizontally along the wall normal toward the interior. The
-interior direction is the side of the wall the model's center lies on: of the two
-normal directions, the preset takes the one pointing toward the center of the bounds.
+center, raised to the opening's vertical middle above its own floor (the floor's
+elevation plus the sill height plus half the opening height), and looks horizontally
+along the wall normal toward the interior. The interior direction is the side of the
+wall the model's center lies on: of the two normal directions, the preset takes the
+one pointing toward the center of the bounds.
 
-The toolbar chooses which opening to frame. If the current selection is an opening,
-that opening is used, which lets someone pick a specific door in the three-dimensional
-view (openings became selectable there in the opening-fill slice) or in the plan and
-then step into it. Otherwise the first opening on the active floor is used. When the
-floor has no openings the doorway button is disabled.
+The toolbar chooses which opening to frame. If the current selection is a door, that
+door is used, which lets someone pick a specific door in the three-dimensional view
+(openings became selectable there in the opening-fill slice) or in the plan and then
+step into it. Otherwise the first door in view is used; a window is never used. When
+no door is in view the doorway button is disabled. The updates of ADR-0083 record
+these changes.
 
 ## Scope
 
@@ -86,7 +88,7 @@ In scope:
   the world bounds, fully unit tested.
 - The optional `up` on `CameraPose` and the apply path setting the camera up.
 - Preset buttons in the navigation toolbar, with the doorway button disabled when no
-  opening is available, covered by a component test.
+  door is in view, covered by a component test.
 - The bridge wiring that resolves the doorway opening, computes the pose against the
   live viewport, and snaps the live camera, with the model still filling the pane.
 - An end-to-end check in the hardware-GPU project that a preset moves the camera.
@@ -117,7 +119,7 @@ In scope:
   far planes track the bounds diagonal; a viewport fits the bounding sphere to the
   frame.
 - A component test on the toolbar: the preset buttons render and call back with the
-  right preset, and the doorway button is disabled when no opening is available.
+  right preset, and the doorway button is disabled when no door is in view.
 - An end-to-end check in the hardware-GPU project: clicking a preset moves the camera,
   observed through the projected accessibility proxies shifting from the framed view.
 
