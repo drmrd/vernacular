@@ -11,13 +11,17 @@ related:
   ]
 sourceFiles:
   [
-    app/opfs-probe.ts,
+    storage/settings/,
+    session/settings/settings-service.ts,
+    bridge/react/settings-context.ts,
+    storage/opfs/opfs-probe.ts,
+    storage/opfs/origin-private-root.ts,
     editor/design-system/theme-provider.tsx,
     editor/plan/snap-preferences-store.ts,
     storage/library-store.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-19
 ---
 
 # ADR-0180: User settings go through one settings port in storage
@@ -26,9 +30,11 @@ updated: 2026-11-15
 
 Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
 specification the same day. It supersedes the part of ADR-0059 that persists snap preferences from
-`editor/`. The snapping behavior ADR-0059 describes stays. The settings port arrives with the
-persistence stage of that round, and until then the snap preference store still writes
-`localStorage` from `editor/`.
+`editor/`. The snapping behavior ADR-0059 describes stays. The settings port, the settings service,
+the adapter in `bridge/`, and the lint rule have landed. The snap preference store keeps its
+preferences through the service, and a value that an older build stored under
+`vernacular.snap-preferences` is carried once to `vernacular.settings.snapPreferences`, after which
+the old key is removed.
 
 > Amended on 2026-11-15 by section 5.11 of
 > `docs/specs/2026-11-15-session-layer-and-document-identity.md`, which answers the question this
@@ -41,8 +47,8 @@ persistence stage of that round, and until then the snap preference store still 
 
 `.claude/rules.md` allows browser storage APIs only in `storage/`. ADR-0059 made an exception: the
 snap preferences are written to `localStorage` from `editor/plan/snap-preferences-store.ts`. A
-second file outside `storage/` touches a storage API as well (`app/opfs-probe.ts`), and no lint rule
-checks either.
+second file outside `storage/` touches a storage API as well (`app/opfs-probe.ts`, which has since
+moved into `storage/opfs/`), and no lint rule checks either.
 
 Other settings have no saved home at all. The theme is held in memory
 (`editor/design-system/theme-provider.tsx`), unit precision is a set of constants, and the design
@@ -69,6 +75,10 @@ persistence specification.
 - The rule in `.claude/rules.md` holds without an exception, and lint enforces it.
 - A new setting is a typed key. It does not need a storage decision of its own.
 - Settings stay per browser profile, as now. Carrying them between machines is a separate question.
+- A setting that one browser tab changes reaches another tab when that tab reloads, and the later
+  change wins.
+- The lint rule sees a storage API behind a TypeScript cast and in a destructuring. It does not see
+  an alias: `const w = window; w.localStorage` passes.
 
 ## References
 

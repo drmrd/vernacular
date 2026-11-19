@@ -632,7 +632,7 @@ Architecturally covered in §4.8. Cross-cutting commitments:
 
 ### 7.7 Settings and theming
 
-User settings persisted in `LibraryStore`:
+User settings are stored through the settings port of `storage/`, an interface of its own with a browser implementation and one in memory. The session layer owns a settings service with typed keys, defaults, a check of each stored value, and change notification, and the editor reads it through an adapter in `bridge/`. Two settings exist today, the snap preferences and the theme choice. The other entries below get keys when they get controls:
 
 - Default units (per category)
 - Locale override

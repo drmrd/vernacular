@@ -17,7 +17,7 @@ sourceFiles:
     session/autosave/autosave-write.ts,
     storage/documents/document-store.ts,
     session/handle/document-handle.ts,
-    app/opfs-probe.ts,
+    storage/opfs/opfs-probe.ts,
     app/use-project-boot.ts,
     app/app.tsx,
     src/main.tsx,
