@@ -1,14 +1,9 @@
 import { useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
-import {
-  cameraPresetPose,
-  doorwayPose,
-  type Bounds3,
-  type CameraPose,
-  type OpeningSceneNode,
-} from '../../core'
+import { cameraPresetPose, doorwayPose, type Bounds3, type CameraPose } from '../../core'
 import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import type { PresetChoice } from './scene-nav-toolbar'
+import type { DoorwayTarget } from './use-doorway-target'
 
 // The R3F camera-effect helpers (framing and preset snapping) extracted from the scene
 // view so that file stays within its size budget. Each helper is an in-canvas component
@@ -39,21 +34,26 @@ export interface PresetRequest {
   nonce: number
 }
 
+// The door the doorway view stands in, with the elevation of that door's own floor.
+export type DoorwayStand = Pick<DoorwayTarget, 'opening' | 'floorElevationMm'>
+
 // The live inputs a preset pose needs, captured in a ref so PresetCamera reads the
 // latest without the effect re-firing on every change.
 interface PresetView {
   bounds: Bounds3 | null
-  opening: OpeningSceneNode | null
+  doorway: DoorwayStand | null
   size: { width: number; height: number }
   camera: FittableCamera
 }
 
-// Derives the pose for a preset request: the doorway view needs the resolved opening
-// (none means no pose), and the axis-aligned views fit the live viewport.
+// Derives the pose for a preset request: the doorway view needs the resolved door and the
+// elevation of its floor (none means no pose), and the axis-aligned views fit the live viewport.
 function poseForRequest(request: PresetRequest, view: PresetView): CameraPose | null {
   if (view.bounds === null) return null
   if (request.preset === 'doorway') {
-    return view.opening === null ? null : doorwayPose(view.opening, view.bounds)
+    return view.doorway === null
+      ? null
+      : doorwayPose(view.doorway.opening, view.bounds, view.doorway.floorElevationMm)
   }
   const aspect = view.size.width / view.size.height
   const fovRadians = fovToRadians(view.camera)
@@ -61,23 +61,23 @@ function poseForRequest(request: PresetRequest, view: PresetView): CameraPose | 
 }
 
 // Snaps the live camera to a preset whenever a new request arrives. It reads the
-// latest bounds, opening, size, and camera from a ref so the effect fires only on a
+// latest bounds, doorway, size, and camera from a ref so the effect fires only on a
 // new request, not on a resize (a resize must not yank the camera onto a preset).
 export function PresetCamera({
   request,
   bounds,
-  opening,
+  doorway,
   onApplied,
 }: {
   request: PresetRequest | null
   bounds: Bounds3 | null
-  opening: OpeningSceneNode | null
+  doorway: DoorwayStand | null
   onApplied: (pose: CameraPose) => void
 }) {
   const camera = useThree((state) => state.camera)
   const size = useThree((state) => state.size)
-  const latest = useRef<PresetView>({ camera, size, bounds, opening })
-  latest.current = { camera, size, bounds, opening }
+  const latest = useRef<PresetView>({ camera, size, bounds, doorway })
+  latest.current = { camera, size, bounds, doorway }
   // Held in a ref alongside the view inputs so reporting the applied pose cannot become a
   // reason the effect re-fires; only a new request may move the camera.
   const report = useRef(onApplied)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { type LightingMode, type OpeningSceneNode, type SceneGraph, type Site } from '../../core'
+import { type LightingMode, type SceneGraph, type Site } from '../../core'
 import { type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
@@ -13,7 +13,7 @@ import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { usePerceivedColorStore } from './perceived-color-context'
 import { PerceivedColorSampler } from './perceived-color-sampler'
-import { FrameCamera, PresetCamera } from './scene-camera-effects'
+import { FrameCamera, PresetCamera, type DoorwayStand } from './scene-camera-effects'
 import { initialCamera } from './scene-camera-seed'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SceneLighting } from './scene-lighting'
@@ -59,14 +59,14 @@ export function useSceneProxies(graph: SceneGraph) {
 interface SceneCameraRigProps {
   nav: SceneNavigationState
   framed: FramedScene
-  opening: OpeningSceneNode | null
+  doorway: DoorwayStand | null
 }
 
 // The camera behaviors of the live canvas, grouped because they all steer the one
 // default camera: the automatic model framing, the preset applier, and the orbit and
 // walk controls. The navigation state decides which control is active and whether the
 // user has taken over from the automatic framing.
-function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
+function SceneCameraRig({ nav, framed, doorway }: SceneCameraRigProps) {
   const { root, pose, bounds } = framed
   return (
     <>
@@ -74,7 +74,7 @@ function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
       <PresetCamera
         request={nav.presetRequest}
         bounds={bounds}
-        opening={opening}
+        doorway={doorway}
         onApplied={nav.notePresetApplied}
       />
       {/* An applied preset owns the pivot until the view is reset, so the first drag after
@@ -131,7 +131,7 @@ interface LiveSceneCanvasProps {
   viewEnvironment: SceneEnvironmentState
   site: Site | undefined
   onProxyPositions: (positions: EntityScreenPosition[]) => void
-  opening: OpeningSceneNode | null
+  doorway: DoorwayStand | null
 }
 
 // The wrapper carries the shared readiness props (scene-readiness.ts) so the editor
@@ -152,7 +152,7 @@ function SceneReadinessBoundary({ ready, children }: { ready: boolean; children:
 // own setup and its two render-order-sensitive post-processing hooks, the same way
 // SceneCameraRig and ViewSceneLighting group their own slice of the scene.
 function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewReadinessNotes }) {
-  const { framed, nav, viewEnvironment, site, onProxyPositions, opening, readiness } = props
+  const { framed, nav, viewEnvironment, site, onProxyPositions, doorway, readiness } = props
   const { root, bounds, nearWallTargets, roomPolygons, buildingTopWorld } = framed
   return (
     <>
@@ -172,7 +172,7 @@ function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewRe
         roomPolygons={roomPolygons}
         buildingTopWorld={buildingTopWorld}
       />
-      <SceneCameraRig nav={nav} framed={framed} opening={opening} />
+      <SceneCameraRig nav={nav} framed={framed} doorway={doorway} />
       <AmbientOcclusionRenderTakeover
         realistic={viewEnvironment.environment.mode === 'realistic'}
         onPipelineBuildStarted={readiness.notePipelineBuildStarted}
@@ -358,7 +358,7 @@ export function WebGPUSceneView() {
           viewEnvironment={viewEnvironment}
           site={site}
           onProxyPositions={setPositions}
-          opening={doorway?.opening ?? null}
+          doorway={doorway}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
