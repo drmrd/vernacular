@@ -26,7 +26,7 @@ sourceFiles:
     editor/shell/editor-shell.tsx,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-19
 ---
 
 # ADR-0059: Precision snapping preferences, running-snap toggles, and the snap panel

@@ -11,9 +11,14 @@ related:
   ]
 sourceFiles:
   [
-    storage/settings/,
+    storage/settings/settings-port.ts,
+    storage/settings/local-storage-settings-port.ts,
+    storage/settings/in-memory-settings-port.ts,
+    storage/settings/legacy-setting-keys.ts,
     session/settings/settings-service.ts,
     bridge/react/settings-context.ts,
+    app/app-settings.tsx,
+    eslint.config.js,
     storage/opfs/opfs-probe.ts,
     storage/opfs/origin-private-root.ts,
     editor/design-system/theme-provider.tsx,
@@ -68,17 +73,28 @@ language choice the Arris migration introduces will need one. The design specifi
   their preferences.
 
 Whether the port is the library store's settings methods or a separate interface is left to the
-persistence specification.
+persistence specification. That was settled on 2026-11-15: the port is a separate interface, as the
+amendment under Status records.
 
 ## Consequences
 
 - The rule in `.claude/rules.md` holds without an exception, and lint enforces it.
 - A new setting is a typed key. It does not need a storage decision of its own.
 - Settings stay per browser profile, as now. Carrying them between machines is a separate question.
+- The browser port keeps each setting as JSON text in local storage under
+  `vernacular.settings.<name>`. Local storage reads synchronously, so the theme is known at the
+  first render of the shell. Where the browser refuses storage, the port keeps the values in memory
+  for the tab.
+- The theme choice is stored now, one choice for the browser, and it survives a reload.
+- The application builds the settings service once, when it mounts (`app/app-settings.tsx`). The
+  service is not a member of the session ports.
 - A setting that one browser tab changes reaches another tab when that tab reloads, and the later
   change wins.
-- The lint rule sees a storage API behind a TypeScript cast and in a destructuring. It does not see
-  an alias: `const w = window; w.localStorage` passes.
+- The lint rule sees a storage API behind one TypeScript cast and in the common destructurings
+  (`const { localStorage } = window`, `const { storage } = globalThis.navigator`). It does not see
+  an alias (`const w = window; w.localStorage`), nor a few rarer forms such as `top.localStorage` or
+  a destructuring behind a cast. It does not see `src/service-worker.ts` either, which reaches the
+  cache storage through a typed copy of `self` and hands it to `storage/`.
 
 ## References
 

@@ -5,6 +5,7 @@ Application state and logic that needs no React. The editor session lives here:
 `core/commands/` that dispatches. The layer also holds the document handle, the flows that open
 and switch projects, the discard guard, and autosave. `createSettingsService` (`session/settings/`)
 keeps the user settings over a `SettingsPort`, with typed keys, defaults, a check of each stored
-value, and change notification. It imports no React and no Three.js and uses no DOM global. Depends on `core/` and `storage/`. The `session/testing` entry gives
-in-memory store doubles, the session constructor, and the helpers of the handle and save gate
-kits to test and story files, and lint rejects it in production files. See ADR-0175 and ADR-0180.
+value, and change notification. The layer imports no React and no Three.js and uses no DOM global.
+Depends on `core/` and `storage/`. The `session/testing` entry gives in-memory store doubles, the
+session constructor, and the helpers of the handle and save gate kits to test and story files, and
+lint rejects it in production files. See ADR-0175 and ADR-0180.

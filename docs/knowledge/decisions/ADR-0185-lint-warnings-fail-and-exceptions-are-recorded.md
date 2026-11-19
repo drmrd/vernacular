@@ -20,7 +20,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0185: Lint warnings fail CI, and exceptions are one recorded list
