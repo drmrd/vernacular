@@ -1,0 +1,266 @@
+import type { FrameTiming, PixelSize, TimingRun, TimingSummary } from './timing-record'
+
+/** The budget of a 3D scene update, in milliseconds (design specification 6.10). */
+export const SCENE_UPDATE_BUDGET_MS = 8
+/** The budget of one 3D frame, in milliseconds (design specification 6.10). */
+export const RENDER_BUDGET_MS = 8
+/** One frame at 60 a second, in milliseconds: the specification states no plan budget. */
+export const PLAN_FRAME_MS = 16.7
+
+/** The longest line the report prints, in characters. */
+const LINE_WIDTH = 100
+/** The width of the label column of the header lines, in characters. */
+const HEADER_LABEL_WIDTH = 11
+/** The width of the Budget column, in characters. */
+const BUDGET_WIDTH = 6
+/** The width of the Median column and of the p95 column, in characters. */
+const TIME_WIDTH = 6
+/** The width of the Base median column, in characters; wide enough for "not measured". */
+const BASE_WIDTH = 12
+/** The space between two columns of the table. */
+const COLUMN_GAP = ' '
+/** Decimals of a measured time. */
+const TIME_DECIMALS = 2
+/** Decimals of a budget. */
+const BUDGET_DECIMALS = 1
+/** How many characters of the commit the report prints. */
+const COMMIT_LENGTH = 8
+
+const NOT_MEASURED = 'not measured'
+const NOT_AVAILABLE = 'n/a'
+const PLAN_ROW_LABEL = 'Plan redraw, endpoint drag, ground floor'
+const PLAN_BUDGET_NOTE = '* one frame at 60 fps; design specification 6.10 states no plan budget.'
+const UNMEASURED_LINE =
+  'Not measured: GPU raster of the plan canvas; React render and commit; the first frame after load.'
+
+interface TimingRow {
+  label: string
+  budget: string
+  current: TimingSummary
+  baseline: TimingSummary | undefined
+}
+
+function lookup<Value>(record: Record<string, Value> | undefined, key: string): Value | undefined {
+  return record === undefined
+    ? undefined
+    : Object.entries(record).find(([name]) => name === key)?.[1]
+}
+
+function budgetCell(budgetMs: number): string {
+  return budgetMs.toFixed(BUDGET_DECIMALS)
+}
+
+function frameRows(prefix: string, frame: FrameTiming, baseline?: FrameTiming): TimingRow[] {
+  const budget = budgetCell(RENDER_BUDGET_MS)
+  return [
+    {
+      label: `${prefix}, main thread`,
+      budget,
+      current: frame.mainThread,
+      baseline: baseline?.mainThread,
+    },
+    {
+      label: `${prefix}, until GPU done`,
+      budget,
+      current: frame.untilGpuDone,
+      baseline: baseline?.untilGpuDone,
+    },
+  ]
+}
+
+function timingRows(run: TimingRun, baseline: TimingRun | undefined): TimingRow[] {
+  const before = baseline?.times
+  return [
+    {
+      label: PLAN_ROW_LABEL,
+      budget: `${budgetCell(PLAN_FRAME_MS)}*`,
+      current: run.times.planRedraw,
+      baseline: before?.planRedraw,
+    },
+    ...Object.entries(run.times.sceneUpdate).map(([name, current]) => ({
+      label: `3D update, ${name}`,
+      budget: budgetCell(SCENE_UPDATE_BUDGET_MS),
+      current,
+      baseline: lookup(before?.sceneUpdate, name),
+    })),
+    ...Object.entries(run.times.renderFrame).flatMap(([name, frame]) =>
+      frameRows(`3D frame, ${name}`, frame, lookup(before?.renderFrame, name)),
+    ),
+    ...Object.entries(run.times.renderAfterEdit).flatMap(([name, frame]) =>
+      frameRows(`3D frame after ${name}`, frame, lookup(before?.renderAfterEdit, name)),
+    ),
+  ]
+}
+
+function milliseconds(value: number): string {
+  return value.toFixed(TIME_DECIMALS)
+}
+
+function changeCell(current: TimingSummary, baseline: TimingSummary | undefined): string {
+  if (baseline === undefined || baseline.medianMs === 0) return NOT_AVAILABLE
+  const difference = current.medianMs - baseline.medianMs
+  const sign = difference < 0 ? '-' : '+'
+  const ratio = current.medianMs / baseline.medianMs
+  return `${sign}${milliseconds(Math.abs(difference))} ms (${milliseconds(ratio)}x)`
+}
+
+function formatRow(row: TimingRow, labelWidth: number): string {
+  const baseMedian = row.baseline === undefined ? NOT_MEASURED : milliseconds(row.baseline.medianMs)
+  return [
+    row.label.padEnd(labelWidth),
+    row.budget.padStart(BUDGET_WIDTH),
+    milliseconds(row.current.medianMs).padStart(TIME_WIDTH),
+    milliseconds(row.current.p95Ms).padStart(TIME_WIDTH),
+    baseMedian.padStart(BASE_WIDTH),
+    changeCell(row.current, row.baseline),
+  ].join(COLUMN_GAP)
+}
+
+function formatTable(run: TimingRun, baseline: TimingRun | undefined): string[] {
+  const rows = timingRows(run, baseline)
+  const labelWidth = Math.max('Time'.length, ...rows.map((row) => row.label.length))
+  const heading = [
+    'Time'.padEnd(labelWidth),
+    'Budget'.padStart(BUDGET_WIDTH),
+    'Median'.padStart(TIME_WIDTH),
+    'p95'.padStart(TIME_WIDTH),
+    'Base median'.padStart(BASE_WIDTH),
+    'Change',
+  ].join(COLUMN_GAP)
+  return [heading, ...rows.map((row) => formatRow(row, labelWidth))]
+}
+
+/** Breaks the text over lines of at most the line width; later lines are indented like the prefix. */
+function wrapped(prefix: string, text: string): string[] {
+  const indent = ' '.repeat(prefix.length)
+  const lines: string[] = []
+  let line = prefix
+  let hasWord = false
+  for (const word of text.split(' ')) {
+    const candidate = hasWord ? `${line} ${word}` : `${line}${word}`
+    if (hasWord && candidate.length > LINE_WIDTH) {
+      lines.push(line)
+      line = `${indent}${word}`
+    } else {
+      line = candidate
+    }
+    hasWord = true
+  }
+  return [...lines, line]
+}
+
+function sizeText(size: PixelSize): string {
+  return `${size.width} x ${size.height}`
+}
+
+function headerLines(run: TimingRun, baseline: TimingRun | undefined): string[] {
+  const { machine, conditions } = run
+  const baselineText =
+    baseline === undefined
+      ? `${NOT_MEASURED} (no baseline yet)`
+      : `commit ${baseline.commit.slice(0, COMMIT_LENGTH)}, taken ${baseline.takenAt}`
+  const fields: [string, string][] = [
+    [
+      'Commit',
+      `${run.commit.slice(0, COMMIT_LENGTH)}, uncommitted changes: ` +
+        `${run.uncommittedChanges ? 'yes' : 'no'}.  Taken ${run.takenAt}`,
+    ],
+    ['Build', `${run.build.mode}, timer resolution ${run.build.timerResolutionMs} ms`],
+    [
+      'Machine',
+      `${machine.processor}, ${machine.logicalCores} logical cores, ${machine.memoryGiB} GiB, ` +
+        machine.operatingSystem,
+    ],
+    ['Browser', `${machine.browser}, headed`],
+    ['Adapter', `WebGPU ${machine.webGpuAdapter}; WebGL ${machine.webGlRenderer}`],
+    [
+      'Display',
+      `device pixel ratio ${conditions.devicePixelRatio}, a frame every ${conditions.displayFrameMs} ms`,
+    ],
+    [
+      'Window',
+      `visible throughout: ${conditions.visibleThroughout ? 'yes' : 'no'}, ` +
+        `focused: ${conditions.focused ? 'yes' : 'no'}, power: ${conditions.power}`,
+    ],
+    [
+      'Canvas',
+      `plan ${sizeText(conditions.planCanvasPx)}; 3D ${sizeText(conditions.sceneCanvasCssPx)} ` +
+        `CSS px, drawing buffer ${sizeText(conditions.sceneDrawingBufferPx)}`,
+    ],
+    ['Baseline', baselineText],
+  ]
+  return fields.flatMap(([label, text]) => wrapped(label.padEnd(HEADER_LABEL_WIDTH), text))
+}
+
+function differenceWarnings(current: TimingRun, baseline: TimingRun | undefined): string[] {
+  if (baseline === undefined) return []
+  const compared = [
+    {
+      what: 'device pixel ratio',
+      now: String(current.conditions.devicePixelRatio),
+      before: String(baseline.conditions.devicePixelRatio),
+    },
+    {
+      what: 'drawing buffer size',
+      now: sizeText(current.conditions.sceneDrawingBufferPx),
+      before: sizeText(baseline.conditions.sceneDrawingBufferPx),
+    },
+    { what: 'browser', now: current.machine.browser, before: baseline.machine.browser },
+    {
+      what: 'adapter',
+      now: current.machine.webGpuAdapter,
+      before: baseline.machine.webGpuAdapter,
+    },
+    { what: 'processor', now: current.machine.processor, before: baseline.machine.processor },
+  ]
+  return compared
+    .filter(({ now, before }) => now !== before)
+    .map(
+      ({ what, now, before }) =>
+        `The ${what} differs: this run has ${now}, the baseline ${before}.`,
+    )
+}
+
+function quickWarnings(current: TimingRun, baseline: TimingRun | undefined): string[] {
+  const baselineIsQuick = baseline?.quick === true
+  if (current.quick && baselineIsQuick) {
+    return ['This run and the baseline are quick checks, not measurements.']
+  }
+  if (current.quick) return ['This run is a quick check, not a measurement.']
+  return baselineIsQuick ? ['The baseline is a quick check, not a measurement.'] : []
+}
+
+function conditionWarnings(current: TimingRun): string[] {
+  const { power, focused } = current.conditions
+  const warnings: string[] = []
+  if (power === 'battery') warnings.push('The computer ran on battery power.')
+  if (power === 'unknown') warnings.push('The power source is unknown.')
+  if (current.uncommittedChanges) warnings.push('The run has uncommitted changes.')
+  if (!focused) warnings.push('The window was not focused.')
+  return warnings
+}
+
+/** The warnings of 2.5 that compare the two runs, or that the current run carries alone. */
+export function comparisonWarnings(current: TimingRun, baseline: TimingRun | undefined): string[] {
+  return [
+    ...differenceWarnings(current, baseline),
+    ...quickWarnings(current, baseline),
+    ...conditionWarnings(current),
+  ]
+}
+
+/** The terminal report of 2.6: header, one row per time, footnotes, warnings. */
+export function formatTimingReport(current: TimingRun, baseline: TimingRun | undefined): string {
+  const warnPrefix = 'Warning: '
+  const lines = [
+    'Vernacular timing report. Times are reported, never gated (ADR-0186).',
+    ...(current.quick ? ['Quick check, not a measurement.'] : []),
+    ...headerLines(current, baseline),
+    '',
+    ...formatTable(current, baseline),
+    PLAN_BUDGET_NOTE,
+    UNMEASURED_LINE,
+    ...comparisonWarnings(current, baseline).flatMap((text) => wrapped(warnPrefix, text)),
+  ]
+  return `${lines.join('\n')}\n`
+}
