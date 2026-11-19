@@ -8,7 +8,15 @@ import type { RefObject } from 'react'
 import {
   emptyOpeningInteraction,
   WALK_EYE_HEIGHT_MM,
+  advanceWalk,
+  passableDoorIds,
+  walkLookTarget,
+  wallSegmentsForWalk,
+  type OpeningSceneNode,
   type SceneGraph,
+  type WallSceneNode,
+  type WallSegment,
+  type WalkCollisionWorld,
   type WalkInput,
   type WalkState,
 } from '../../core'
@@ -177,4 +185,51 @@ export function walkKeyHandlers(session: WalkSession): {
     if (flag !== undefined) input.current[flag] = false
   }
   return { onKeyDown, onKeyUp }
+}
+
+// The static collision inputs for the active floor: its walls and openings, the
+// precomputed furniture perimeter segments, and the walker's radius. The per-frame
+// step combines these with the live open-door set to build the collision world, so
+// these need rebuild only when the scene graph or active floor changes.
+export interface WalkCollisionInputs {
+  walls: readonly WallSceneNode[]
+  openings: readonly OpeningSceneNode[]
+  furnitureSegments: WallSegment[]
+  radius: number
+  /** The active floor's elevation, in millimeters; 0 when no floor is active. */
+  floorElevationMm: number
+}
+
+// The live inputs the per-frame walk step reads: the camera it drives, the collision
+// inputs, the walk refs it advances, and the open set collision reads.
+export interface WalkFrameContext extends WalkRefs {
+  camera: WalkCamera
+  collisionInputs: WalkCollisionInputs
+}
+
+// Builds this frame's collision world from the static inputs and the live open-door
+// set: passable openings cut gaps in their host walls and furniture footprints always
+// block. passableDoorIds decides what counts as passable, which is open doors plus
+// leafless doorways that have nothing to open; shut doors and windows stay solid.
+function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
+  const { walls, openings, furnitureSegments, radius } = ctx.collisionInputs
+  const passable = passableDoorIds(openings, ctx.interaction.current.openIds)
+  return {
+    segments: [...wallSegmentsForWalk(walls, openings, passable), ...furnitureSegments],
+    radius,
+  }
+}
+
+// Advances the walk one timestep: steps the walk state against the collision
+// world and drives the live camera to the new eye and look. The look deltas are
+// consumed so they do not re-apply. The openings swing in their own per-frame tick,
+// which runs in both camera modes.
+export function stepWalkFrame(ctx: WalkFrameContext, delta: number): void {
+  const next = advanceWalk(ctx.state.current, ctx.input.current, delta, frameCollisionWorld(ctx))
+  ctx.input.current.yawDelta = 0
+  ctx.input.current.pitchDelta = 0
+  ctx.state.current = next
+  ctx.camera.position.set(next.position.x, next.position.y, next.position.z)
+  const look = walkLookTarget(next)
+  ctx.camera.lookAt(look.x, look.y, look.z)
 }
