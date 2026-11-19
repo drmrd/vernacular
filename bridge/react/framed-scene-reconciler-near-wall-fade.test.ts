@@ -143,12 +143,15 @@ describe('createFramedSceneReconciler near-wall fade enrollment', () => {
       emptyPaint(),
     )
 
+    const window = findByEntityId(root, 'opening:window')
+    expect(window).not.toBeNull()
+    // The glass starts solid, so the fade below is what changes it.
+    expect(glassOpacityOf(window)).not.toBe(FADED_OPACITY)
+
     updateNearWallTransparency(nearWallTargets, CAMERA_OUTSIDE_SOUTH)
 
     // The host wall fades in both scene-assembly paths; its window must fade with it.
     expect(opacitiesOf(findByEntityId(root, 'wall:s'))).toEqual([FADED_OPACITY])
-    const window = findByEntityId(root, 'opening:window')
-    expect(window).not.toBeNull()
     expect(glassOpacityOf(window)).toBe(FADED_OPACITY)
   })
 

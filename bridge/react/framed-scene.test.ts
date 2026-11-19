@@ -148,12 +148,15 @@ describe('buildFramedScene', () => {
     const fadedOpacity = 0.1
     const { root, nearWallTargets } = buildFramedScene(squareRoomWithSouthWindow(height))
 
+    const group = findByEntityId(root, 'opening:window')
+    expect(group).not.toBeNull()
+    // The glass starts solid, so the fade below is what changes it.
+    expect(glassOpacityOf(group)).not.toBe(fadedOpacity)
+
     // Camera outside the south wall (world z > 0, since plan y maps to world -z): it
     // fades, and its window with it.
     updateNearWallTransparency(nearWallTargets, { x: 2000, z: 3000 })
 
-    const group = findByEntityId(root, 'opening:window')
-    expect(group).not.toBeNull()
     expect(glassOpacityOf(group)).toBe(fadedOpacity)
   })
 
