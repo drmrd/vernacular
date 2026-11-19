@@ -195,8 +195,8 @@ view with the view after one more rebuild, in which the wall is faded at its fir
 fix the mean channel difference was 3.077 and the changed fraction was 0.042. After it both are
 0.000.
 
-Both tests run in the macOS live-view job of CI (`.github/workflows/ci.yml`). There, a runner with no
-WebGPU adapter fails the step instead of skipping it.
+The tests of that file run in the macOS live-view job of CI (`.github/workflows/ci.yml`). There, a
+runner with no WebGPU adapter fails the step instead of skipping it.
 
 The unit tests in `engine/scene/near-wall-transparency-recompile.test.ts` pin the mark:
 
@@ -213,6 +213,22 @@ is a shader lookup or a compile at the next draw of that material. A review coun
 that one flip marks in the test fixtures: 7 for a wall with a door and 15 for a wall with a window,
 whose two panes are not marked.
 
-One more fault of the fade is known and is not fixed here. A wall of a room that was drawn step by
-step in split view can stay solid from outside until a full rebuild. It has another cause, and issue
-#903 tracks it.
+Issue #903 reported what looked like a second fault: a wall of a room that was drawn step by step in
+split view stayed solid from outside until a full rebuild. A later check found the same cause. With
+the mark in `setDrawFlags`, the steps of the issue give a mean channel difference of 0.000 and a
+changed fraction of 0.000. With the mark taken out, they give 3.077 and 0.042, the figures in the
+issue. The north wall is solid at its first draw, from the default camera, and the North preset then
+fades it. The step-by-step drawing and the openings play no part: with the mark taken out, a room
+drawn with the 3D pane closed and with no openings fails in the same way.
+
+The fade does follow each incremental build. After every build of those steps, each drawn material
+of the north wall and its openings belongs to the wall's fade target, with a solid baseline. Opening
+the full 3D view mounts the scene view again, and its new reconciler builds the whole scene once from
+the finished plan. So in the steps of the issue the North preset never meets the materials of the
+step-by-step builds.
+
+Two more tests in `walk-view-after-rebuild.spec.ts` hold this. The third follows the steps of the
+issue, with no rebuild before the North preset. The fourth presses North in the split pane, where the
+materials are the ones that the step-by-step builds made. With the mark taken out, that case gives a
+mean channel difference of 5.348 and a changed fraction of 0.076. With the mark it gives 0.000 and
+0.000.

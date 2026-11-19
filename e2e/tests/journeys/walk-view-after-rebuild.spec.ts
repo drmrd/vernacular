@@ -5,9 +5,12 @@ import { logReading, stableFrame } from '../scene-helpers'
 import {
   enterOrbit,
   enterWalkReady,
+  drawRoomWithOpenings,
   frameAfterChange,
+  liveCanvas,
   navButton,
   openRoomIn3d,
+  settledLiveFrame,
   toggleEdges,
   walkToDoor,
 } from './close-openings-support'
@@ -115,5 +118,66 @@ test('fades a wall that was solid at its first draw when the camera moves outsid
     page,
     'same, the north wall seen from the north before and after a scene rebuild',
     { first: frameA, second: frameB },
+  )
+})
+
+// Issue #903: a wall of a room drawn step by step stayed solid from outside until a full rebuild.
+// This journey follows the steps of the issue, with no rebuild before the North preset. Opening
+// the full 3D view mounts the scene view again, and the new view builds the scene once from the
+// finished plan, so the materials here come from that one build. The next journey presses North
+// in the split pane, where the materials are the ones that the step-by-step builds made.
+test('fades the north wall of a room drawn step by step when the camera moves outside it', async ({
+  page,
+}) => {
+  test.setTimeout(TEST_TIMEOUT_MS)
+  await gotoEditor(page)
+  await guardLiveSceneSupport(page, 'the walk-view-after-rebuild journey')
+  const canvas = await openRoomIn3d(page)
+
+  // The default south-east camera, with no rebuild of the scene yet.
+  const fromSouthEast = await stableFrame(canvas)
+
+  // The camera moves outside the north wall, which is where the wall must fade.
+  await navButton(page, 'North').click()
+  const frameA = await frameAfterChange(canvas, fromSouthEast)
+
+  // A rebuild from the north draws the wall faded at its first draw.
+  const northWithEdges = await toggleEdges(page, canvas, frameA)
+  const frameB = await toggleEdges(page, canvas, northWithEdges)
+
+  await expectSameView(
+    page,
+    'same, the north wall of a room drawn step by step seen from the north before and after a scene rebuild',
+    { first: frameA, second: frameB },
+  )
+})
+
+// The split pane keeps the scene view that built the room step by step, so this journey holds the
+// incremental path.
+test('fades the north wall in the split pane, where the step-by-step builds made its materials', async ({
+  page,
+}) => {
+  test.setTimeout(TEST_TIMEOUT_MS)
+  await gotoEditor(page)
+  await guardLiveSceneSupport(page, 'the walk-view-after-rebuild journey')
+  await drawRoomWithOpenings(page)
+  await page.getByRole('radio', { name: 'Select', exact: true }).click()
+  await page.keyboard.press('Escape')
+  const canvas = liveCanvas(page)
+  const fromSouthEast = await settledLiveFrame(page, canvas)
+
+  await navButton(page, 'North').click()
+  const frameA = await frameAfterChange(canvas, fromSouthEast)
+
+  const northWithEdges = await toggleEdges(page, canvas, frameA)
+  const frameB = await toggleEdges(page, canvas, northWithEdges)
+
+  await expectSameView(
+    page,
+    'same, the north wall in the split pane before and after a scene rebuild',
+    {
+      first: frameA,
+      second: frameB,
+    },
   )
 })
