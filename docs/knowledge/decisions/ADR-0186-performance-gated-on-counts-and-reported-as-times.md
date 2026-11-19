@@ -361,8 +361,8 @@ report prints "not measured" in its baseline column. This update holds no timing
 ### Deviations and narrowings
 
 The command differs from the specification and from the plan in three points. The owner of the
-project accepted each of them as a lasting difference on 18 November 2026. A fourth point, the
-baseline column, is no longer a difference; it is described after the three.
+project accepted each of them on 18 November 2026. A fourth point, the baseline column, is no
+longer a difference; it is described after the three.
 
 **WebGPU only.** Section 5.6 of the specification says that the command names whether the renderer
 ran on WebGPU or WebGL 2. The command measures only on a hardware WebGPU adapter and refuses to run
@@ -388,8 +388,8 @@ command exits with code 2, so that a caller who asked for a baseline learns that
 The first version of the report showed only the baseline's median. On 18 November 2026 the owner
 chose to land that version as built and to add the baseline's 95th percentile next, in issue #882.
 The report now shows the baseline's median and 95th percentile in one cell of the baseline column,
-headed `Base med/p95`, for example `2.00/4.00`. They share a cell because the table is 100
-characters wide and has no room for one more column. The `Change` cell still gives the difference
+headed `Base med/p95`, for example `2.00/4.00`. They share a cell because the rows of
+the table are 100 characters wide at ordinary times and have no room for one more column. The `Change` cell still gives the difference
 and the ratio of the two medians.
 
 The green commits of this work have the type `build:`, as the plan said. The command is developer
