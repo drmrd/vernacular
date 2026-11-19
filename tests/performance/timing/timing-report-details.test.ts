@@ -61,6 +61,15 @@ describe('the change of a time whose baseline median is zero', () => {
   })
 })
 
+describe('the change of a time whose run median is zero', () => {
+  it('reads -0.40 ms (0.00x) against a baseline median of 0.40, with no negative zero', () => {
+    const row = updateRowWithMedians(0, 0.4)
+
+    expect(row).toContain('-0.40 ms (0.00x)')
+    expect(row).not.toContain('-0.00')
+  })
+})
+
 describe('the change of a time against the two medians beside it', () => {
   it('is computed from the medians as printed, so 2.004 against 1.996 reads 2.00, 2.00 and +0.00 ms (1.00x)', () => {
     const row = updateRowWithMedians(2.004, 1.996)
