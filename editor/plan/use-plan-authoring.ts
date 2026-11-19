@@ -195,7 +195,7 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
 // on a change of tool or floor and one time at mount, where it changes nothing.
 
 // A run left open would continue, unseen, when the tool is armed again.
-// `useDiscardOnLeave` in `use-dimension-tool.ts` does the same for the pointer
+// `useDiscardPointerMeasurement` in `use-dimension-tool.ts` does the same for the pointer
 // half of the dimension tool.
 function useDiscardKeyboardRuns(
   { tool, activeFloorId }: RunScope,
