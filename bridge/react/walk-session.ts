@@ -36,6 +36,9 @@ const MOVEMENT_KEYS = new Map<string, 'forward' | 'back' | 'left' | 'right'>([
 // interact action so other interactables (lights, drawers) can hook in here later.
 const INTERACT_KEY = 'KeyE'
 
+// A floor's own frame measures height from its datum, which is 0 there.
+const FLOOR_DATUM_MM = 0
+
 // The reset key: clears every opened opening so they animate shut.
 const RESET_KEY = 'KeyR'
 
@@ -157,9 +160,11 @@ export function walkKeyHandlers(session: WalkSession): {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.code === INTERACT_KEY) {
       // Pass the live openness so the ray reaches an opening at its swung or slid
-      // position, letting the walker close a door that is already open.
+      // position, letting the walker close a door that is already open. The openings
+      // are the active floor's and sit in that floor's own frame, so the eye goes in at
+      // eye height above its floor, where the walker always stands.
       interaction.current = interactFromWalk(
-        state.current,
+        walkStateOnFloor(state.current, FLOOR_DATUM_MM),
         openings.current,
         interaction.current,
         openness.current,

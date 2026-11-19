@@ -52,13 +52,16 @@ function rotateAboutAxis(v: Vector3, axis: Vector3, angle: number): Vector3 {
   return add(turned, scale(axis, dot(axis, v) * (1 - cos)))
 }
 
-/** A short look ray from the eye along a unit direction, in world space. */
+/** A short look ray from the eye along a unit direction, in the frame of the opening's own floor. */
 interface ReachRay {
   origin: Vector3
   direction: Vector3
 }
 
-/** The opening's rectangle in world space: its center and the three local axes. */
+/**
+ * The opening's rectangle in the frame of its own floor (plan position, height above that
+ * floor's datum): its center and the three local axes.
+ */
 interface OpeningFrame {
   center: Vector3
   along: Vector3
@@ -147,7 +150,8 @@ function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit)
  * tested as the rectangle its leaf or sash fills (spec section 3.2), and the
  * nearest one the ray crosses within `reachMm` wins. The direction need not be
  * normalized; it is normalized here so the reach is measured in millimeters. A hung
- * window keeps its shut rectangle at every openness (see `slidesInsideFrame`).
+ * window keeps its shut rectangle at every openness (see `slidesInsideFrame`). The eye
+ * is in the frame of the openings' own floor, with its height above that floor's datum.
  */
 // eslint-disable-next-line max-params -- the eye and the look direction are independent ray inputs, the openings are the world being tested, and the options bundle the per-opening openness and the reach limit; none collapse into another.
 export function openingUnderReach(
