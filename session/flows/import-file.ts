@@ -6,6 +6,7 @@ import {
   newProjectId,
 } from '../../storage'
 import type {
+  ArchiveFailure,
   ArchiveLimitName,
   ArchiveLimits,
   AssetCache,
@@ -51,17 +52,24 @@ export type ImportResult =
  * an archive with no document both mean the file holds no project.
  */
 function importFailureOf(failure: ProjectFileFailure): ImportFailure {
-  if (failure.kind === 'unsupported-file') {
-    return failure
+  switch (failure.kind) {
+    case 'unsupported-file':
+      return failure
+    case 'decode':
+      return { kind: 'did-not-import', decode: failure.decode }
+    case 'archive':
+      return archiveFailureOf(failure.archive)
   }
-  if (failure.kind === 'decode') {
-    return { kind: 'did-not-import', decode: failure.decode }
+}
+
+function archiveFailureOf(archive: ArchiveFailure): ImportFailure {
+  switch (archive.kind) {
+    case 'too-large':
+      return { kind: 'archive-too-large', limit: archive.limit, allowed: archive.allowed }
+    case 'not-an-archive':
+    case 'no-document':
+      return { kind: 'did-not-import', decode: { kind: 'not-a-project' } }
   }
-  const { archive } = failure
-  if (archive.kind === 'too-large') {
-    return { kind: 'archive-too-large', limit: archive.limit, allowed: archive.allowed }
-  }
-  return { kind: 'did-not-import', decode: { kind: 'not-a-project' } }
 }
 
 /**
@@ -72,7 +80,10 @@ function poolOf(ports: SessionPorts, id: string): AssetCache | undefined {
   try {
     return ports.workspace.assets(id)
   } catch (error) {
-    console.error(error)
+    console.error(
+      'The asset pool of the imported project cannot be reached; no asset is copied.',
+      error,
+    )
     return undefined
   }
 }
@@ -86,7 +97,10 @@ function neededOf(project: Project, packSupplies: PackSupplies | undefined): str
   try {
     return neededAssetHashes(project, packSupplies)
   } catch (error) {
-    console.error(error)
+    console.error(
+      'The assets that the imported document needs cannot be listed; no asset is copied.',
+      error,
+    )
     return []
   }
 }
