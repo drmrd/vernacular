@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
-import type { ActiveProjectIdStore } from '../storage'
+import { InMemoryProjectIndex } from '../storage'
 import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
   FAILED_ID,
@@ -12,7 +12,18 @@ import {
 
 const KEPT_NAME = 'Kept House'
 
-describe('A port whose read throws', () => {
+/** An in-memory index whose reads throw before they return a promise. */
+function indexWhoseReadsThrow(): InMemoryProjectIndex {
+  const index = new InMemoryProjectIndex()
+  const refuse = () => {
+    throw new Error('storage is unavailable')
+  }
+  vi.spyOn(index, 'all').mockImplementation(refuse)
+  vi.spyOn(index, 'get').mockImplementation(refuse)
+  return index
+}
+
+describe('An index whose read throws', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
@@ -21,17 +32,12 @@ describe('A port whose read throws', () => {
 
   it('opens the project stored under current and reports no error', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const ports = createTestPorts({ index: indexWhoseReadsThrow() })
     await plantProject(ports, FAILED_ID, KEPT_NAME)
     const error = vi.spyOn(console, 'error')
-    const port: ActiveProjectIdStore = {
-      read: () => {
-        throw new Error('storage is unavailable')
-      },
-      write: () => Promise.resolve(),
-    }
 
-    renderApp(ports, { activeProjectIds: port })
+    renderApp(ports)
 
     expect(await openProjectName()).toBe(KEPT_NAME)
     expect(error).not.toHaveBeenCalled()

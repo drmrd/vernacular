@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { screen, cleanup, waitFor } from '@testing-library/react'
+import { reconcileIndex } from '../session'
 import { InMemoryRecentProjectStore } from '../storage'
 import {
   createTestPorts,
@@ -20,6 +21,7 @@ import {
   renderApp,
   settleForAWhile,
   stubCapableStorage,
+  usedLast,
 } from './app-test-support'
 
 const DRAFT_NAME = 'Drafthouse'
@@ -75,6 +77,8 @@ describe('The project menu of the application', () => {
     const ports = createTestPorts()
     await plantProject(ports, START_ID, 'Current')
     await plantProject(ports, HOUSE_ID, HOUSE_NAME)
+    await reconcileIndex(ports)
+    await usedLast(ports, START_ID)
     const recentProjects = new InMemoryRecentProjectStore()
     await recentProjects.record({ id: HOUSE_ID, name: HOUSE_NAME, backend: 'opfs', lastOpened: 1 })
 

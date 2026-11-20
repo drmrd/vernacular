@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { cleanup, waitFor } from '@testing-library/react'
-import { InMemoryActiveProjectIdStore } from '../storage'
 import { createTestPorts, recordSnapshots, type TestPorts } from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
@@ -49,7 +48,7 @@ describe('A project started after a failed load', () => {
     const snapshotLog: string[] = []
     recordSnapshots(ports.workspace, snapshotLog)
 
-    renderApp(ports, { activeProjectIds: new InMemoryActiveProjectIdStore() })
+    renderApp(ports)
 
     await startNewProjectFromTheFailureView()
     await editTheProject()

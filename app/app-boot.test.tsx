@@ -9,7 +9,6 @@ import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
   LOADING_TEXT,
-  RecordingActiveProjectIdStore,
   builtPorts,
   editTheProject,
   expectOpenProject,
@@ -257,8 +256,7 @@ describe('The application that resolves its ports', () => {
   it('starts a new project that is not durable when the ports do not resolve, and builds no ports again', async () => {
     stubCapableStorage()
     const resolvePorts = vi.fn(() => Promise.reject(new Error('no storage backend')))
-    const remembered = new RecordingActiveProjectIdStore()
-    render(<App resolvePorts={resolvePorts} activeProjectIds={remembered} />)
+    render(<App resolvePorts={resolvePorts} />)
 
     await startNewProjectFromTheFailureView()
     await editTheProject()
@@ -267,7 +265,6 @@ describe('The application that resolves its ports', () => {
       await screen.findByText(/all changes saved/i, {}, { timeout: AUTOSAVE_TIMEOUT_MS }),
     ).toBeInTheDocument()
     expect(resolvePorts).toHaveBeenCalledTimes(1)
-    expect(remembered.writes).toEqual([])
   })
 
   it('a Retry after the ports did not resolve builds them again and opens the project', async () => {

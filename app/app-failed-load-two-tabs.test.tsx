@@ -1,19 +1,18 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { cleanup, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { InMemoryActiveProjectIdStore, type ActiveProjectIdStore } from '../storage'
-import { createTestPorts, type TestPorts } from '../session/handle/handle-test-kit'
+import { createTestPorts, recordOf, type TestPorts } from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
   KEPT_PROJECT_TEXT,
-  RecordingActiveProjectIdStore,
   chooseFromTheProjectMenu,
   editTheProject,
   failedOpenSentence,
   filesUnder,
   logSaves,
   plantFailedProject,
+  recordIds,
   renderApp,
   secondTab,
   settleForAWhile,
@@ -30,8 +29,8 @@ async function durablePortsWithAFailedProject(): Promise<TestPorts> {
 
 // One boot of the application, as one browser tab would start it. Two calls on two
 // ports of one root and one lock registry are two tabs.
-function boot(ports: TestPorts, activeProjectIds: ActiveProjectIdStore): HTMLElement {
-  return renderApp(ports, { activeProjectIds }).container
+function boot(ports: TestPorts): HTMLElement {
+  return renderApp(ports).container
 }
 
 async function startNewProject(tab: HTMLElement): Promise<void> {
@@ -79,10 +78,9 @@ describe('Two tabs that start a new project after a failed load', () => {
     const firstPorts = await durablePortsWithAFailedProject()
     const secondPorts = secondTab(firstPorts)
     const saves = logSaves(firstPorts.workspace, secondPorts.workspace)
-    const port = new InMemoryActiveProjectIdStore()
     const failedBefore = await filesUnder(firstPorts.root, FAILED_ID)
-    const first = boot(firstPorts, port)
-    const second = boot(secondPorts, port)
+    const first = boot(firstPorts)
+    const second = boot(secondPorts)
     await within(first).findByRole('alert')
     await within(second).findByRole('alert')
 
@@ -101,6 +99,10 @@ describe('Two tabs that start a new project after a failed load', () => {
     expect(secondId).not.toBe(firstId)
     expect(await filesUnder(firstPorts.root, FAILED_ID)).toEqual(failedBefore)
     expect(await storedIds(firstPorts)).toHaveLength(3)
+    await waitFor(async () => {
+      expect(await recordOf(firstPorts, firstId)).toMatchObject({ id: firstId })
+      expect(await recordOf(secondPorts, secondId)).toMatchObject({ id: secondId })
+    })
   })
 })
 
@@ -108,7 +110,7 @@ describe('The failure dialog after a failed load', () => {
   it('says that the saved project is kept and the new one is stored separately', async () => {
     stubCapableStorage()
     const ports = await durablePortsWithAFailedProject()
-    const tab = boot(ports, new InMemoryActiveProjectIdStore())
+    const tab = boot(ports)
 
     const alert = await within(tab).findByRole('alert')
 
@@ -118,12 +120,11 @@ describe('The failure dialog after a failed load', () => {
 })
 
 describe('A second fresh start while the first new project is still saving', () => {
-  it('never remembers the id of a project that was not saved', async () => {
+  it('keeps no record of a project that was not saved', async () => {
     stubCapableStorage()
     const ports = await durablePortsWithAFailedProject()
     const saves = logSaves(ports.workspace)
-    const port = new RecordingActiveProjectIdStore()
-    const tab = boot(ports, port)
+    const tab = boot(ports)
     await startNewProject(tab)
     const letTheSavesGo = saves.hold()
     await editTheProject()
@@ -133,11 +134,12 @@ describe('A second fresh start while the first new project is still saving', () 
 
     await chooseFromTheProjectMenu(/new project/i)
     letTheSavesGo()
-    await nextSavedIdOutside(saves, [FAILED_ID])
+    const firstId = await nextSavedIdOutside(saves, [FAILED_ID])
     await settleForAWhile()
 
-    for (const id of port.writes) {
-      expect(saves.saved).toContain(id)
+    expect(await recordIds(ports)).toContain(firstId)
+    for (const id of await recordIds(ports)) {
+      expect([FAILED_ID, ...saves.saved]).toContain(id)
     }
   })
 })

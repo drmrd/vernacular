@@ -1,68 +1,150 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup } from '@testing-library/react'
-import { InMemoryActiveProjectIdStore } from '../storage'
-import { createTestPorts } from '../session/handle/handle-test-kit'
+import { cleanup, waitFor } from '@testing-library/react'
+import { reconcileIndex } from '../session'
+import { createTestPorts, recordOf, type TestPorts } from '../session/handle/handle-test-kit'
+import { folderRecord } from '../session/projects/rebuild-test-kit'
 import {
+  clearLegacyActiveProjectId,
+  legacyActiveProjectIdIsStored,
+  plantLegacyActiveProjectId,
+} from '../storage/active-project/legacy-active-project-id-test-kit'
+import {
+  START_ID,
+  expectOpenProject,
+  lockedIds,
   openProjectName,
   plantProject,
-  rememberedId,
+  reloadOf,
   renderApp,
+  settleForAWhile,
   stubCapableStorage,
+  usedLast,
 } from './app-test-support'
 
-describe('The application opens the remembered project', () => {
-  afterEach(() => {
-    cleanup()
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
+const SECOND_ID = 'project-second'
+const FOLDER_ID = 'project-folder'
 
-  it('opens the project stored under the remembered id', async () => {
+/** Ports whose store holds "Old Cottage" under current and "Second House" under the second id. */
+async function portsWithTwoProjects(durable = false): Promise<TestPorts> {
+  const ports = createTestPorts({ durable })
+  await plantProject(ports, START_ID, 'Old Cottage')
+  await plantProject(ports, SECOND_ID, 'Second House')
+  return ports
+}
+
+/** The same ports, with an index that holds a record of every stored project. */
+async function indexedPortsWithTwoProjects(): Promise<TestPorts> {
+  const ports = await portsWithTwoProjects()
+  await reconcileIndex(ports)
+  return ports
+}
+
+afterEach(() => {
+  cleanup()
+  clearLegacyActiveProjectId()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
+
+describe('The application opens the project that was used last', () => {
+  it('opens the workspace project that was used last', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
-    await plantProject(ports, 'current', 'Old Cottage')
-    await plantProject(ports, 'project-second', 'Second House')
+    const ports = await indexedPortsWithTwoProjects()
+    await usedLast(ports, SECOND_ID)
 
-    renderApp(ports, { activeProjectIds: await rememberedId('project-second') })
+    renderApp(ports)
 
     expect(await openProjectName()).toBe('Second House')
   })
 
-  it('opens the project stored under current when nothing is remembered', async () => {
+  it('opens the project stored under current when the index holds no record', async () => {
     stubCapableStorage()
+    // The second project is stored first, so that it is not the one changed last.
     const ports = createTestPorts()
-    await plantProject(ports, 'current', 'Old Cottage')
-    await plantProject(ports, 'project-second', 'Second House')
+    await plantProject(ports, SECOND_ID, 'Second House')
+    await plantProject(ports, START_ID, 'Old Cottage')
 
-    renderApp(ports, { activeProjectIds: new InMemoryActiveProjectIdStore() })
+    renderApp(ports)
 
     expect(await openProjectName()).toBe('Old Cottage')
   })
 
-  it('prefers the projectId property over the remembered id', async () => {
+  it('prefers the projectId property over the index', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
-    await plantProject(ports, 'project-first', 'First House')
-    await plantProject(ports, 'project-second', 'Second House')
+    const ports = await indexedPortsWithTwoProjects()
+    await usedLast(ports, SECOND_ID)
 
-    renderApp(ports, {
-      projectId: 'project-first',
-      activeProjectIds: await rememberedId('project-second'),
-    })
+    renderApp(ports, { projectId: START_ID })
 
-    expect(await openProjectName()).toBe('First House')
+    expect(await openProjectName()).toBe('Old Cottage')
   })
 
-  it('opens a fresh project when the store no longer holds the remembered id', async () => {
+  it('opens a fresh project when the store no longer holds the project of the latest record', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
-    await plantProject(ports, 'current', 'Old Cottage')
-    const read = vi.spyOn(ports.workspace, 'read')
+    const ports = await indexedPortsWithTwoProjects()
+    await usedLast(ports, START_ID)
+    const realRead = ports.workspace.read.bind(ports.workspace)
+    const read = vi
+      .spyOn(ports.workspace, 'read')
+      .mockImplementation((id) =>
+        id === START_ID
+          ? Promise.resolve({ ok: false, failure: { kind: 'not-found' } })
+          : realRead(id),
+      )
 
-    renderApp(ports, { activeProjectIds: await rememberedId('project-gone') })
+    renderApp(ports)
 
     expect(await openProjectName()).toBe('Untitled project')
-    expect(read).toHaveBeenCalledWith('project-gone')
-    expect(read).not.toHaveBeenCalledWith('current')
+    expect(read).toHaveBeenCalledWith(START_ID)
+    expect(read).not.toHaveBeenCalledWith(SECOND_ID)
+  })
+})
+
+describe('The application that starts from the records of the index', () => {
+  it('does not start in a folder project, also when it was used last', async () => {
+    stubCapableStorage()
+    const ports = await indexedPortsWithTwoProjects()
+    await usedLast(ports, START_ID)
+    await ports.index.put(folderRecord(FOLDER_ID))
+    await usedLast(ports, FOLDER_ID)
+    const read = vi.spyOn(ports.workspace, 'read')
+
+    renderApp(ports)
+
+    expect(await openProjectName()).toBe('Old Cottage')
+    expect(read).not.toHaveBeenCalledWith(FOLDER_ID)
+    expect(lockedIds(ports)).not.toContain(FOLDER_ID)
+  })
+
+  it('a store with only current and no index starts in that project and then has its record', async () => {
+    stubCapableStorage()
+    const ports = createTestPorts()
+    await plantProject(ports, START_ID, 'Old Cottage')
+
+    renderApp(ports)
+
+    expect(await openProjectName()).toBe('Old Cottage')
+    await waitFor(async () =>
+      expect(await recordOf(ports, START_ID)).toMatchObject({
+        name: 'Old Cottage',
+        location: { kind: 'workspace' },
+      }),
+    )
+  })
+
+  it('starts once in the project that an older build remembered', async () => {
+    stubCapableStorage()
+    const ports = await portsWithTwoProjects(true)
+    plantLegacyActiveProjectId(SECOND_ID)
+    renderApp(ports)
+    await expectOpenProject('Second House')
+    expect(legacyActiveProjectIdIsStored()).toBe(false)
+    cleanup()
+    await settleForAWhile()
+    await usedLast(ports, START_ID)
+
+    renderApp(reloadOf(ports))
+
+    await expectOpenProject('Old Cottage')
   })
 })
