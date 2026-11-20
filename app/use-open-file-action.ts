@@ -45,7 +45,7 @@ function refuseLargeFile(file: File, notifications: NotificationApi): boolean {
     return false
   }
   const reason = archiveTooLargeText('archiveBytes', ARCHIVE_LIMITS.archiveBytes)
-  notifications.error(`Open failed: ${reason}`)
+  notifications.error(failureMessage('Open', reason))
   return true
 }
 
@@ -78,7 +78,7 @@ export function useOpenFileAction(context: ProjectActionsContext): {
         imported = await importFile(ports, current, {
           name,
           bytes,
-          ...(packSupplies && { packSupplies }),
+          ...(packSupplies === undefined ? {} : { packSupplies }),
         })
         return imported
       })
