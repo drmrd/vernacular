@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { InMemorySettingsPort } from './in-memory-settings-port'
 import { LocalStorageSettingsPort } from './local-storage-settings-port'
 import {
-  asOutsideChangePort,
   browserStorage,
   portListeningTo,
   storageEventOf,
@@ -32,7 +31,7 @@ function portWithSource() {
 
 describe('telling a listener about a setting that another tab changed', () => {
   it('is offered by the browser port', () => {
-    expect(asOutsideChangePort(new LocalStorageSettingsPort(browserStorage()))).toBeDefined()
+    expect(new LocalStorageSettingsPort(browserStorage()).onOutsideChange).toBeTypeOf('function')
   })
 
   it('is not offered by the memory port', () => {
@@ -154,7 +153,7 @@ describe('listening to the browser for storage events', () => {
 
 describe('the default source of storage events', () => {
   it('is the global object, so a storage event of the browser reaches a listener', () => {
-    const port = asOutsideChangePort(new LocalStorageSettingsPort())
+    const port = new LocalStorageSettingsPort()
     const listener = vi.fn()
     const removeListener = port.onOutsideChange(listener)
 
