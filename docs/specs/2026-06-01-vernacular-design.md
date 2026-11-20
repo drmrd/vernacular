@@ -1178,7 +1178,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 - Trim system: room-owned runs that follow wall edits, and hand-placed runs (path-based, multi-segment) for special cases (ADR-0223)
 - `TrimProfileRegistry` starter set: crown (3), baseboard (3), chair rail (2), picture rail (1), plate rail (1), wainscoting cap (1), beadboard panel (1), cornice (2)
 - Wall features (archways, half-walls, columns, alcoves, built-in shelving; atomic in MVP)
-- Wall feature band between two heights along a room's wall faces (wainscot, beadboard, full-height paneling); a rectangle on one face comes after the beta as the same kind of object (ADR-0223)
+- Wall feature band between two heights along a room's wall faces (wainscot, beadboard, full-height paneling); a rectangle on one face comes after the beta as the same kind of object (ADR-0223, issue #973)
 - 3D builders for baseboard, door and window casing, wainscot, and ceiling beams (ADR-0223)
 - Ceiling features: a room ceiling treatment that lays out beams or coffers by rule, and placed pieces (medallions x3, single beams, coved ceiling zones, tin ceiling zones) (ADR-0223)
 - Wall construction profiles (plaster 6", lath-plaster 5", drywall 4.5", brick variants, stone)
@@ -1205,11 +1205,11 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 **Deliverables:**
 
 - Multiple floors (add/remove/reorder/name, elevation entry, default ceiling height per floor)
-- Stair entities: the straight run. The L-turn, U-turn, winder, and spiral runs come after the beta (ADR-0222)
+- Stair entities: the straight run. The L-turn, U-turn, winder, and spiral runs come after the beta (ADR-0222, issue #976)
 - Stair geometry (treads, risers, stringers, handrail, balusters, newels; plain forms; parametric). The balustrade also guards the stair well. Landings and period balustrade and newel types come after the beta (ADR-0222)
 - Stair placement (connect two floors, position on each plan)
 - Floor-by-floor view in 2D and 3D. The 3D floor view draws the active floor and the floors below it, and hides the floors above (ADR-0222)
-- Cutaway preview as a level cut: the view hides everything above a height that a slider sets, and a change of floor moves that height. The cut is one general clip plane with caps, level in the beta; standing the same plane upright on a line drawn in the plan is a later mode (ADR-0222)
+- Cutaway preview as a level cut: the view hides everything above a height that a slider sets, and a change of floor moves that height. The cut is one general clip plane with caps, level in the beta; standing the same plane upright on a line drawn in the plan is a later mode (ADR-0222, issue #974)
 - Vertical relationships (a stair cuts its stair well in the floor above over its footprint, and the user can change the outline; ADR-0222)
 - Per-room ceiling height override
 - Complete underlay layer (image, PDF via pdf.js, glTF/glb scene; all calibrated)

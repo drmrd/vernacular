@@ -75,7 +75,7 @@ same band.
 
 After the beta, the user can also place a wall feature as a rectangle on one wall face, with a
 start, an end, and two heights, for a panel on part of a wall. The rectangle comes beside the band.
-It does not replace it.
+It does not replace it (issue #973).
 
 The band and the rectangle are two ways to make one kind of wall feature object in the data
 model. The beta model has to take that shape now, so that a later rectangle produces the same kind
@@ -128,7 +128,7 @@ model, so it needs a change to the finishes specification and a record of its ow
   described.
 - Phase 4, "Trim system": room-owned runs that follow wall edits, and hand-placed runs.
 - Phase 4, "Ceiling features": a room ceiling treatment for beams and coffers, and placed pieces.
-- Phase 4, after "Wall features": the wall feature band between two heights along a room's wall faces, with a rectangle on one face after the beta as the same kind of object, and the 3D builders for baseboard, door and window casing, wainscot, and ceiling beams.
+- Phase 4, after "Wall features": the wall feature band between two heights along a room's wall faces, with a rectangle on one face after the beta as the same kind of object (issue #973), and the 3D builders for baseboard, door and window casing, wainscot, and ceiling beams.
 
 Section 3.1's `wallFeatures[]` line and the Phase 4 "Wall features" line still name built-ins,
 columns, arches, half-walls, and alcoves. This record does not say whether the wall feature object
@@ -158,7 +158,7 @@ These were not decided and stay open for the design round on #364:
 - Room-owned trim is blocked by the fix that keeps a room's stored data across a wall split.
 - A crown molding under a sloped ceiling, a full-height band under a sloped ceiling, and a beam
   layout on a slope wait for the design rounds on roofs and sloped ceilings.
-- The rectangle wall feature needs its own issue in the 1.0 milestone.
+- The rectangle wall feature needs its own issue in the 1.0 milestone (issue #973).
 
 ## Alternatives considered
 

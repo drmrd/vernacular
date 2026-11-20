@@ -74,7 +74,7 @@ the beta that plane is always level.
 After the beta, the user can stand the same plane upright on a line drawn in the plan, to see
 stairs, headroom, and floor heights in section. This is a new mode of the one plane, not a second
 tool. Since the beta clip is already a general plane with caps, the upright mode adds a control in
-the plan and should not need the clip rebuilt.
+the plan and should not need the clip rebuilt (issue #974).
 
 The beta has no adjustable transparency on the floors above.
 
@@ -85,7 +85,8 @@ are hidden, so a stair that arrives from below is in view. Today "This floor" dr
 alone.
 
 Which floors the camera frames in the floor view is not decided here. The first view of a project
-frames what the view shows, so drawing the floors below may change what it frames. That stays open.
+frames what the view shows, so drawing the floors below may change what it frames. That stays
+open (issue #978).
 
 ### The first stair is a straight run with a plain balustrade and newels
 
@@ -94,9 +95,10 @@ newels, all in plain forms, and the balustrade also guards the open edge of the 
 
 These come after the beta:
 
-- period balustrade and newel types, such as turned balusters and box newels, as registry data;
-- landings;
-- the L-turn, U-turn, winder, and spiral runs.
+- period balustrade and newel types, such as turned balusters and box newels, as registry data
+  (issue #975);
+- landings (issue #976);
+- the L-turn, U-turn, winder, and spiral runs (issue #976).
 
 New stair fields are optional in the stored format (ADR-0178), so a later run type or a landing
 adds data and does not change what the beta stores.
@@ -118,13 +120,13 @@ the same entity.
 The Phase 5 lines change as follows. Each now cites ADR-0222.
 
 - "Stair entities": the straight run is in the beta. The L-turn, U-turn, winder, and spiral runs
-  come after the beta.
+  come after the beta (issue #976).
 - "Stair geometry": treads, risers, stringers, a handrail, balusters, and newels in plain forms.
   Landings and the period balustrade and newel types come after the beta.
 - "Floor-by-floor view in 2D and 3D": the 3D floor view shows the floors below and hides the floors
   above.
-- "Cutaway preview": the level cut on one general plane, with the upright mode after the beta. This
-  replaces adjustable transparency on the floors above.
+- "Cutaway preview": the level cut on one general plane, with the upright mode after the beta
+  (issue #974). This replaces adjustable transparency on the floors above.
 - "Vertical relationships": the stair cuts its stair well over its footprint, and the user can
   change the outline.
 - The acceptance line for the 4-story old house now asks for straight-run stairs between all
@@ -138,7 +140,8 @@ These were not decided and stay open for the design round on #169:
 - The shadow rules for the cut plane and its caps.
 - The stair well rule under a sloped ceiling, such as a stair into an attic. This waits for the
   design round on roofs and sloped ceilings.
-- Which floors the camera frames in the floor view, now that the floors below are drawn.
+- Which floors the camera frames in the floor view, now that the floors below are drawn
+  (issue #978).
 
 ## Consequences
 
