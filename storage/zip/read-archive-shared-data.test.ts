@@ -8,9 +8,11 @@ import { readArchive, type ArchiveRead } from './read-archive'
 import {
   buildSharedZip,
   centralEntryOffsets,
+  expectRead,
   recordPushedChunks,
   storedBlock,
   withUint32,
+  type HashedAsset,
 } from './zip-edges-test-kit'
 import {
   assetEntry,
@@ -50,16 +52,13 @@ const ALL_FIELDS = ['declaredBytes', 'compressedBytes', 'localOffset'] as const
 
 const NOT_AN_ARCHIVE = 'not-an-archive'
 
-/** A content hash and the bytes it names. */
-type HashedAsset = readonly [string, Uint8Array]
-
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
-/** A name `assets/<64 hex digits>` that names no bytes of these tests. */
-function otherAssetName(index: number): string {
-  return assetEntryName((index + 1).toString(HEX_RADIX).padStart(HASH_DIGITS, '0'))
+/** The hexadecimal digits of a hash that names no bytes of these tests. */
+function otherHash(index: number): string {
+  return (index + 1).toString(HEX_RADIX).padStart(HASH_DIGITS, '0')
 }
 
 /** `count` copies of `owner`, each under another asset name, with `overrides`. */
@@ -70,7 +69,7 @@ function sharersOf(
 ): TestZipEntry[] {
   return Array.from({ length: count }, (_, index) => ({
     ...owner,
-    name: otherAssetName(index),
+    name: assetEntryName(otherHash(index)),
     ...overrides,
   }))
 }
@@ -102,13 +101,6 @@ async function documentSharedByAnAsset(
  */
 function outcome(read: ArchiveRead): string | readonly string[] {
   return read.ok ? [...read.assets.keys()] : read.failure.kind
-}
-
-/** The read is ok with `document`, and `assets` holds exactly these, in this order. */
-function expectAssets(read: ArchiveRead, document: Uint8Array, assets: readonly HashedAsset[]) {
-  expect(outcome(read)).toEqual(assets.map(([hash]) => hash))
-  expect(read.ok && read.document).toEqual(document)
-  expect(read.ok && read.assets).toEqual(new Map(assets))
 }
 
 async function hashed(bytes: Uint8Array): Promise<HashedAsset> {
@@ -185,7 +177,11 @@ describe('readArchive still reads entries whose data fits the archive', () => {
     const bytes = await documentSharedByAnAsset(DOCUMENT, data)
 
     expect(2 * data.length).toBeLessThanOrEqual(bytes.length)
-    expectAssets(await readArchive(bytes), DOCUMENT, [await hashed(DOCUMENT)])
+    expectRead(await readArchive(bytes), {
+      document: DOCUMENT,
+      assets: [await hashed(DOCUMENT)],
+      rejectedAssets: [],
+    })
   })
 
   it.each<[string, (bytes: Uint8Array) => Uint8Array, Partial<TestZipEntry>]>([
@@ -199,7 +195,7 @@ describe('readArchive still reads entries whose data fits the archive', () => {
     ],
     ['a classic compressed size that runs past the end', runPastTheEnd, {}],
   ])(
-    'leaves out an asset whose data lies outside the file, with %s, and reads the sound assets',
+    'rejects an asset whose data lies outside the file, with %s, and reads the sound assets',
     async (_case, patch, overrides) => {
       const lost = await assetEntry(LOST, overrides)
       const entries = [
@@ -210,12 +206,15 @@ describe('readArchive still reads entries whose data fits the archive', () => {
       ]
       const bytes = patch(buildZip(entries))
 
-      const assets = [await hashed(PICTURE), await hashed(SWATCH)]
-      expectAssets(await readArchive(bytes), DOCUMENT, assets)
+      expectRead(await readArchive(bytes), {
+        document: DOCUMENT,
+        assets: [await hashed(PICTURE), await hashed(SWATCH)],
+        rejectedAssets: [await contentHashOf(LOST)],
+      })
     },
   )
 
-  it('leaves out encrypted asset entries that share one local entry and reads the sound asset', async () => {
+  it('rejects encrypted asset entries that share one local entry and reads the sound asset', async () => {
     const owner = await assetEntry(BLOB, { data: BLOB_DATA, flags: ENCRYPTED })
     const sound = await assetEntry(PICTURE)
     const bytes = buildSharedZip(
@@ -225,7 +224,14 @@ describe('readArchive still reads entries whose data fits the archive', () => {
     )
 
     expect((SHARERS + 1) * BLOB_DATA.length).toBeGreaterThan(bytes.length)
-    expectAssets(await readArchive(bytes), DOCUMENT, [await hashed(PICTURE)])
+    expectRead(await readArchive(bytes), {
+      document: DOCUMENT,
+      assets: [await hashed(PICTURE)],
+      rejectedAssets: [
+        await contentHashOf(BLOB),
+        ...Array.from({ length: SHARERS }, (_, index) => otherHash(index)),
+      ],
+    })
   })
 
   it('reads one asset when the same asset name stands many times over one local entry', async () => {
@@ -234,7 +240,11 @@ describe('readArchive still reads entries whose data fits the archive', () => {
     const bytes = buildSharedZip([documentEntry(DOCUMENT), owner], sameName, 1)
 
     expect((SHARERS + 1) * BLOB_DATA.length).toBeGreaterThan(bytes.length)
-    expectAssets(await readArchive(bytes), DOCUMENT, [await hashed(BLOB)])
+    expectRead(await readArchive(bytes), {
+      document: DOCUMENT,
+      assets: [await hashed(BLOB)],
+      rejectedAssets: [],
+    })
   })
 
   it('reads the document when many entries outside the layout share one local entry', async () => {
@@ -244,7 +254,7 @@ describe('readArchive still reads entries whose data fits the archive', () => {
     const bytes = buildSharedZip([documentEntry(DOCUMENT), owner], sharers, 1)
 
     expect(NAMES_OUTSIDE_THE_LAYOUT.length * BLOB_DATA.length).toBeGreaterThan(bytes.length)
-    expectAssets(await readArchive(bytes), DOCUMENT, [])
+    expectRead(await readArchive(bytes), { document: DOCUMENT, assets: [], rejectedAssets: [] })
   })
 
   it('reads an honest archive with deflated, stored, and ZIP64 assets', async () => {
@@ -258,7 +268,7 @@ describe('readArchive still reads entries whose data fits the archive', () => {
 
     expect(QUIET.length).toBeGreaterThan(bytes.length)
     const assets = [await hashed(QUIET), await hashed(PICTURE), await hashed(SWATCH)]
-    expectAssets(await readArchive(bytes), DOCUMENT, assets)
+    expectRead(await readArchive(bytes), { document: DOCUMENT, assets, rejectedAssets: [] })
   })
 })
 
@@ -268,7 +278,11 @@ describe('readArchive allows shared data up to the length of the archive', () =>
     const bytes = await documentSharedByAnAsset(exact, exact, STORED)
 
     expect(2 * exact.length).toBe(bytes.length)
-    expectAssets(await readArchive(bytes), exact, [await hashed(exact)])
+    expectRead(await readArchive(bytes), {
+      document: exact,
+      assets: [await hashed(exact)],
+      rejectedAssets: [],
+    })
   })
 
   it('refuses a stored document shared by an asset when twice its data is one byte more than the archive', async () => {

@@ -46,9 +46,6 @@ const LOCAL_NAME_LENGTH_AT = 26
 const CENTRAL_COMPRESSED_AT = 20
 const CENTRAL_LOCAL_OFFSET_AT = 42
 
-/** A content hash and the bytes it names. */
-type HashedAsset = readonly [string, Uint8Array]
-
 afterEach(() => {
   vi.restoreAllMocks()
 })
@@ -69,13 +66,6 @@ function sharersOf(owner: TestZipEntry, count: number): TestZipEntry[] {
 /** The kind of a failed read, or the hashes of the assets of an ok read in their order. */
 function outcome(read: ArchiveRead): string | readonly string[] {
   return read.ok ? [...read.assets.keys()] : read.failure.kind
-}
-
-/** The read is ok with the document, and `assets` holds exactly these, in this order. */
-function expectAssets(read: ArchiveRead, assets: readonly HashedAsset[]) {
-  expect(outcome(read)).toEqual(assets.map(([hash]) => hash))
-  expect(read.ok && read.document).toEqual(DOCUMENT)
-  expect(read.ok && read.assets).toEqual(new Map(assets))
 }
 
 function sharedDocument(): TestZipEntry {
@@ -179,12 +169,16 @@ describe('readArchive bounds shared data at its edges', () => {
 })
 
 describe('readArchive reads around shared data that it does not take', () => {
-  it('reads no asset when an encrypted first entry of a name shares its data with a sound one', async () => {
+  it('rejects an encrypted first entry of a name that shares its data with a sound one, and reads no asset', async () => {
     const owner = await assetEntry(PICTURE, { flags: ENCRYPTED })
     const bytes = buildSharedZip([sharedDocument(), owner], [{ ...owner, flags: 0 }], 1)
     const pushed = recordPushedChunks()
 
-    expectAssets(await readArchive(bytes), [])
+    expectRead(await readArchive(bytes), {
+      document: DOCUMENT,
+      assets: [],
+      rejectedAssets: [await contentHashOf(PICTURE)],
+    })
     expect(pushed().bytes).toBeLessThanOrEqual(DOCUMENT_DATA.length)
   })
 
@@ -192,24 +186,33 @@ describe('readArchive reads around shared data that it does not take', () => {
     ['are encrypted', { flags: ENCRYPTED }, (bytes) => bytes],
     ['have data that runs past the end of the file', {}, withDataPastTheEnd],
   ])(
-    'inflates only the document when 9,999 asset entries over one local entry %s',
+    'inflates only the document and rejects every name when 9,999 asset entries over one local entry %s',
     async (_case, overrides, patch) => {
       const bytes = patch(await manySharers(PICTURE, overrides))
+      const names = [
+        await contentHashOf(PICTURE),
+        ...Array.from({ length: MANY_SHARERS }, (_, index) => otherHash(index)),
+      ]
       const pushed = recordPushedChunks()
 
-      expectAssets(await readArchive(bytes), [])
+      expectRead(await readArchive(bytes), {
+        document: DOCUMENT,
+        assets: [],
+        rejectedAssets: names,
+      })
       expect(pushed().calls).toBe(1)
     },
     MANY_ENTRIES_TIMEOUT_MS,
   )
 
-  it('reads four asset entries over the data of the document when five times that data fits, and keeps the one named by its hash', async () => {
+  it('inflates four asset entries over the data of the document when five times that data fits, and keeps the one named by its hash', async () => {
     const documentHash = await contentHashOf(DOCUMENT)
     const sharers = [
       { ...sharedDocument(), name: assetEntryName(documentHash) },
       ...sharersOf(sharedDocument(), DOCUMENT_SHARERS - 1),
     ]
     const bytes = buildSharedZip([sharedDocument()], sharers, 0)
+    const pushed = recordPushedChunks()
 
     expect((DOCUMENT_SHARERS + 1) * DOCUMENT_DATA.length).toBeLessThanOrEqual(bytes.length)
     expectRead(await readArchive(bytes), {
@@ -217,6 +220,8 @@ describe('readArchive reads around shared data that it does not take', () => {
       assets: [[documentHash, DOCUMENT]],
       rejectedAssets: Array.from({ length: DOCUMENT_SHARERS - 1 }, (_, index) => otherHash(index)),
     })
+    // The document and each of the four sharers go to the inflater, one push each.
+    expect(pushed().calls).toBe(DOCUMENT_SHARERS + 1)
   })
 })
 
