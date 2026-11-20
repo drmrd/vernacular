@@ -4,7 +4,7 @@ import { createEditorSession, type EditorSession } from '../editor-session/edito
 import { callGuarded, callGuardedAsync } from '../guarded-call'
 import { type HandOver, registerHandle } from './handle-internals'
 import { createHandleNotices, type HandleNotices } from './handle-notices'
-import type { RecordKeeper } from './handle-record'
+import { markSession, type RecordKeeper } from './handle-record'
 import type { DocumentHandle, OpenRequest, SaveOutcome, SaveStatus } from './handle-types'
 import type { OpenedProject } from './read-for-open'
 import { messageOf } from './thrown-failures'
@@ -128,8 +128,8 @@ async function handOverWith(
  * The save, the flush, the close, and the hand-over of a handle. A close flushes again while
  * autosave has work left: a write is needed, or a write of the handle runs or waits, whoever asked
  * for it, so no store save runs after the lock is freed. Then it marks the handle closed and stops
- * autosave with no wait in between, then waits for the record writes of the handle, then frees the
- * lock. A hand-over does the same and keeps the lock for its caller. A flush that fails leaves the
+ * autosave with no wait in between, then waits for the record writes of the handle, at most
+ * `RECORD_WAIT_MS`, then frees the lock. A hand-over does the same and keeps the lock for its caller. A flush that fails leaves the
  * handle open, the lock held, and autosave armed. A close called while another close runs, also
  * while that close frees the lock, gets the same attempt, so the lock is freed once.
  */
@@ -205,8 +205,9 @@ interface WriteListenerParts {
 
 /**
  * Sets each status, and once a write reported saved, asks for the record of the session's project:
- * no change arrived since that write started, so it is the stored project. A store save always
- * reports before its write reports saved, so the last report is that of the write.
+ * no change arrived since that write started, so it is the stored project. The session is marked,
+ * so the keeper makes no record once a later change arrives. A store save always reports before
+ * its write reports saved, so the last report is that of the write.
  */
 function listenToWrites(parts: WriteListenerParts): WriteListeners {
   const { session, status, reportFaults, records } = parts
@@ -217,7 +218,9 @@ function listenToWrites(parts: WriteListenerParts): WriteListeners {
       reportFaults(report)
     },
     onStatusChange(next) {
-      const stored = next === 'saved' ? session.getProject() : undefined
+      // The mark is taken before the status listeners run, so an edit that one of them makes
+      // keeps the record from being made.
+      const stored = next === 'saved' ? markSession(session) : undefined
       status.set(next)
       if (stored !== undefined && lastReport !== undefined) {
         records.saved(stored, lastReport)

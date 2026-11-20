@@ -3,8 +3,8 @@ import { callGuardedAsync } from '../guarded-call'
 import type { SessionPorts } from '../ports'
 import { createDocumentHandle, type DocumentHandleParts } from './document-handle'
 import { findDocumentStore } from './find-document-store'
-import { createRecordKeeper, recordFailedOpen } from './handle-record'
-import type { OpenFailed, OpenRequest, OpenResult } from './handle-types'
+import { createRecordKeeper, markSession, recordFailedOpen } from './handle-record'
+import type { DocumentHandle, OpenFailed, OpenRequest, OpenResult } from './handle-types'
 import { readForOpen } from './read-for-open'
 import { storageUnavailable } from './thrown-failures'
 
@@ -32,23 +32,23 @@ async function openUnderLock(parts: Omit<DocumentHandleParts, 'opened'>): Promis
   if (!read.ok) {
     return read
   }
-  let result: OpenResult
+  let handle: DocumentHandle
   try {
-    result = { ok: true, handle: createDocumentHandle({ ...parts, opened: read.opened }) }
+    handle = createDocumentHandle({ ...parts, opened: read.opened })
   } catch (error) {
     return storageUnavailable(error)
   }
   if (read.stored) {
-    parts.records.opened(read.opened, read.lastChangedAt)
+    parts.records.opened(markSession(handle.session), read.opened, read.lastChangedAt)
   }
-  return result
+  return { ok: true, handle }
 }
 
 /**
  * Opens a project: finds its store, takes its lock, reads it, and builds its session and
  * autosave. Each failure is typed, a failure frees the lock it took, and the promise never
  * rejects. A stored project that did not open has that noted in its record, if it has one, before
- * the lock is freed.
+ * the lock is freed; the open waits for that note at most `RECORD_WAIT_MS`.
  */
 export async function openDocumentHandle(
   ports: SessionPorts,
