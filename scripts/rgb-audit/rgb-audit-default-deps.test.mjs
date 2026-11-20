@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process'
 import { describe, expect, it, vi } from 'vitest'
-// The implementer adds this export: the real dependencies the CLI runs with.
 import { defaultDeps } from './rgb-audit.mjs'
 
 vi.mock('node:child_process', () => {

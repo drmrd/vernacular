@@ -45,6 +45,53 @@ describe('exemptTestFiles comment-only changes', () => {
     expect(exempt.has('core/a.test.ts')).toBe(false)
   })
 
+  it('exempts a block comment that opens and closes on one line', () => {
+    const exempt = exemptTestFiles(modifiedSection('core/a.test.ts', ['-/* old */', '+/* new */']))
+    expect(exempt.has('core/a.test.ts')).toBe(true)
+  })
+
+  it('exempts block comment lines without a star prefix', () => {
+    const changed = ['-/*', '-old wording', '-*/', '+/*', '+new wording', '+*/']
+    const exempt = exemptTestFiles(modifiedSection('core/a.test.ts', changed))
+    expect(exempt.has('core/a.test.ts')).toBe(true)
+  })
+
+  it.each([
+    [
+      'code after a one-line block comment',
+      ['-/* c */ expect(x).toBe(1)', '+/* c */ expect(x).toBe(2)'],
+    ],
+    [
+      'code after a closing star-slash with no open block',
+      ['-*/ expect(x).toBe(1)', '+*/ expect(x).toBe(2)'],
+    ],
+    ['a generator method', ['-*entries() { yield 1 }', '+*entries() { yield 2 }']],
+    ['a lone star line with no open block comment', ['-* old bullet', '+* new bullet']],
+    [
+      'a vitest environment directive',
+      ['-// @vitest-environment node', '+// @vitest-environment jsdom'],
+    ],
+    ['an eslint directive', ['-// eslint-disable-next-line a', '+// eslint-disable-next-line b']],
+    ['a ts directive', ['-// @ts-expect-error old', '+// @ts-expect-error new']],
+    ['a prettier directive', ['-// prettier-ignore', '+// prettier-ignore-start']],
+  ])('does not exempt %s', (_name, changed) => {
+    const exempt = exemptTestFiles(modifiedSection('core/a.test.ts', changed))
+    expect(exempt.has('core/a.test.ts')).toBe(false)
+  })
+
+  it('does not exempt code that follows a closing star-slash inside an open block', () => {
+    const changed = [
+      '-/*',
+      '- * old',
+      '-*/ expect(x).toBe(1)',
+      '+/*',
+      '+ * new',
+      '+*/ expect(x).toBe(2)',
+    ]
+    const exempt = exemptTestFiles(modifiedSection('core/a.test.ts', changed))
+    expect(exempt.has('core/a.test.ts')).toBe(false)
+  })
+
   it('judges each file section on its own', () => {
     const diff =
       modifiedSection('core/a.test.ts', COMMENT_CHANGE) +

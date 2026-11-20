@@ -162,6 +162,16 @@ describe('runPolicyCheck', () => {
     expect(linesFor(lines, 'fork-author-identity')).toHaveLength(0)
   })
 
+  it('keeps failing every other rule on a fork pull request', async () => {
+    const trailer = 'feat: add x\n\nCo-authored-by: X <x@y>'
+    const { runGit } = fakeGit({ commits: [commitBy(CLEAN_SHA, 'dan@example.com', trailer)] })
+    const { deps, lines } = collectingDeps(runGit)
+    const code = await runPolicyCheck([...ARGV, '--fork-pr'], deps)
+    expect(code).toBe(1)
+    expect(lines.join('\n')).toContain('[warn] [fork-author-identity] aaaaaaaa: ')
+    expect(lines.join('\n')).toContain('[fail] [forbidden-trailer] aaaaaaaa: ')
+  })
+
   it('exits 0 when only warning rules fire', async () => {
     const { runGit } = fakeGit(EM_DASH_ANSWERS)
     const { deps, lines } = collectingDeps(runGit)
