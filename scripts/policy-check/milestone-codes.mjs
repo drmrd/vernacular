@@ -35,6 +35,9 @@ export function milestoneCodeFindings(commits, branch) {
   return findings
 }
 
+// A phase word, its separator, and its label: three tokens of the split.
+const BRANCH_PHASE_TOKEN_SPAN = 3
+
 /**
  * @param {string} branch
  * @returns {string | undefined} the offending text, if any
@@ -54,7 +57,7 @@ function findBranchCode(branch) {
       label !== undefined &&
       BRANCH_PHASE_LABEL.test(label)
     ) {
-      return partsWithSeparators.slice(index, index + 3).join('')
+      return partsWithSeparators.slice(index, index + BRANCH_PHASE_TOKEN_SPAN).join('')
     }
   }
   return undefined

@@ -30,7 +30,7 @@ const DETACHED_HEAD = 'HEAD'
 const DETACHED_HEAD_NOTE = 'policy:check: detached HEAD, branch rules skipped; pass --branch <name>'
 const TYPE_ENUM_VALUES_INDEX = 2
 // Node's default 1 MiB output limit is below the largest pull request diff in this repository.
-const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024
+const GIT_OUTPUT_LIMIT_BYTES = 67_108_864 // 64 MiB
 
 /**
  * @typedef {object} PolicyCheckDeps
@@ -48,9 +48,7 @@ const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024
 export async function runPolicyCheck(argv, { runGit, runCommitlint, log, githubActions }) {
   const base = flagValue(argv, '--base') ?? DEFAULT_BASE
   const head = flagValue(argv, '--head') ?? DEFAULT_HEAD
-  const resolvedBranch =
-    flagValue(argv, '--branch') ?? runGit(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-  const branch = resolvedBranch === DETACHED_HEAD ? '' : resolvedBranch
+  const branch = resolveBranch(argv, runGit)
   if (branch === '') log(DETACHED_HEAD_NOTE)
   const rangeOnBranch = branch === '' ? `${base}..${head}` : `${base}..${head} on ${branch}`
   const commitlint = runCommitlint({ base, head })
@@ -58,6 +56,31 @@ export async function runPolicyCheck(argv, { runGit, runCommitlint, log, githubA
     ...ruleFindings(readRange({ runGit, base, head }), branch),
     ...commitlintFindings(commitlint, `${base}..${head}`),
   ]
+  return reportFindings({ findings, commitlint, rangeOnBranch, log, githubActions })
+}
+
+/**
+ * @param {readonly string[]} argv
+ * @param {(args: readonly string[]) => string} runGit
+ * @returns {string} the branch name, or '' when HEAD is detached
+ */
+function resolveBranch(argv, runGit) {
+  const resolvedBranch =
+    flagValue(argv, '--branch') ?? runGit(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
+  return resolvedBranch === DETACHED_HEAD ? '' : resolvedBranch
+}
+
+/**
+ * @param {{
+ *   findings: Finding[],
+ *   commitlint: { status: number, output: string },
+ *   rangeOnBranch: string,
+ *   log: (line: string) => void,
+ *   githubActions: boolean,
+ * }} input
+ * @returns {number} the process exit code
+ */
+function reportFindings({ findings, commitlint, rangeOnBranch, log, githubActions }) {
   const failing = findings.filter((finding) => severityOf(finding.rule) === 'fail')
   const warnings = findings.filter((finding) => severityOf(finding.rule) === 'warn')
   if (findings.length === 0) {
