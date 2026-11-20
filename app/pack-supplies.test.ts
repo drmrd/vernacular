@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AssetReference } from '../core'
 import type { LibraryItem } from '../storage'
 import { loadPackSupplies } from './pack-supplies'
@@ -25,6 +25,10 @@ function itemOf(reference: AssetReference): LibraryItem {
 function libraryListing(...items: LibraryItem[]) {
   return { list: () => Promise.resolve(items) }
 }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('loadPackSupplies', () => {
   it('gives no pack supplies when the application has no library', async () => {
@@ -61,5 +65,36 @@ describe('loadPackSupplies', () => {
     })
 
     expect(supplies?.({ scope: INSTALLED_PACK, contentHash: OTHER_HASH })).toBe(true)
+  })
+
+  it('logs one warning with the error when the listing of the library fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const failure = new Error(LISTING_FAILURE)
+
+    const supplies = await loadPackSupplies({ list: () => Promise.reject(failure) })
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    const [sentence, logged] = warn.mock.calls[0] ?? []
+    expect(typeof sentence === 'string' && sentence.length > 0).toBe(true)
+    expect(logged).toBe(failure)
+    expect(supplies?.({ scope: INSTALLED_PACK, contentHash: OTHER_HASH })).toBe(true)
+  })
+
+  it('logs no warning when the listing of the library answers', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await loadPackSupplies(
+      libraryListing(itemOf({ scope: INSTALLED_PACK, contentHash: PACK_HASH })),
+    )
+
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('logs no warning when the application has no library', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await loadPackSupplies(undefined)
+
+    expect(warn).not.toHaveBeenCalled()
   })
 })
