@@ -7,7 +7,7 @@ import { cameraPositionOf } from './scene-camera-seed'
 
 interface OrbitCameraControlsProps {
   enabled: boolean
-  /** The pivot the controller starts on. Read once, when the controller is built. */
+  /** The pivot the first controller starts on. Later builds in one mount start where the last one stopped. */
   initialTarget: Vector3
   /** A pivot to move to when it changes; null keeps the controller's own pivot. */
   target: Vector3 | null
@@ -53,7 +53,8 @@ export function OrbitCameraControls({
   const callbacksRef = useRef({ onLeave, onUserControl })
   callbacksRef.current = { onLeave, onUserControl }
   const notifyUserControl = () => callbacksRef.current.onUserControl()
-  const initialTargetRef = useRef(initialTarget)
+  // The next controller starts here; each cleanup stores the pivot it held.
+  const startTargetRef = useRef(initialTarget)
   // The last pivot handed to the controller. It starts as the first target because the
   // construction already placed the pivot, and strict mode runs each effect twice on
   // mount, so comparing identity is what keeps the second run from moving the pivot.
@@ -65,15 +66,14 @@ export function OrbitCameraControls({
   // still the ones the user was looking through.
   useEffect(() => {
     const controller = createOrbitController(camera, domElement)
-    controller.setTarget(initialTargetRef.current)
+    controller.setTarget(startTargetRef.current)
     controllerRef.current = controller
     const stopListening = listenForUserControl(domElement, notifyUserControl)
     return () => {
       stopListening()
-      callbacksRef.current.onLeave({
-        position: cameraPositionOf(camera),
-        orbitTarget: controller.getTarget(),
-      })
+      const pivot = controller.getTarget()
+      startTargetRef.current = pivot
+      callbacksRef.current.onLeave({ position: cameraPositionOf(camera), orbitTarget: pivot })
       controller.dispose()
       controllerRef.current = null
     }
