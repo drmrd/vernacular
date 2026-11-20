@@ -21,6 +21,7 @@ export function neededAssetHashes(project: Project, packSupplies?: PackSupplies)
   for (const reference of collectReferencedAssets(project)) {
     const supplied =
       isPackReference(reference) && packSupplies !== undefined && packSupplies(reference)
+    // A document parsed from a file can hold a hash that is not text, and only text may be listed.
     const hash: unknown = reference.contentHash
     if (!supplied && typeof hash === 'string') {
       needed.add(hash)
