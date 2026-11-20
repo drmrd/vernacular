@@ -49,11 +49,27 @@ export interface PutGate {
   startedRecords(): ProjectRecord[]
   /** Lets the oldest held put run against the real index, or makes it reject with `error`. */
   endOldestPut(error?: Error): void
+  /** Lets the oldest held put of the record of `id` run, or makes it reject with `error`. */
+  endOldestPutOf(id: string, error?: Error): void
   /** Lets every put that is held now run against the real index. Does nothing when none is held. */
   endAllPuts(): void
 }
 
 type HeldPut = (error?: Error) => void
+
+/** A held put and the id of the record it writes. */
+interface HeldPutOf {
+  readonly id: string
+  readonly end: HeldPut
+}
+
+/** Removes the first held put that `matches` from `held` and ends it; throws when none matches. */
+function endFirstHeld(held: HeldPutOf[], matches: (put: HeldPutOf) => boolean, error?: Error) {
+  const position = held.findIndex(matches)
+  if (position < 0) throw new Error('No such put is held')
+  const [put] = held.splice(position, 1)
+  put?.end(error)
+}
 
 /** A put that waits until the test ends it, then runs `run` or rejects with the given error. */
 function heldPut(run: () => Promise<void>): { promise: Promise<void>; end: HeldPut } {
@@ -71,22 +87,18 @@ function heldPut(run: () => Promise<void>): { promise: Promise<void>; end: HeldP
 export function gatePuts(index: ProjectIndex): PutGate {
   const realPut = index.put.bind(index)
   const records: ProjectRecord[] = []
-  const held: HeldPut[] = []
+  const held: HeldPutOf[] = []
   index.put = (record) => {
     records.push(record)
     const put = heldPut(() => realPut(record))
-    held.push(put.end)
+    held.push({ id: record.id, end: put.end })
     return put.promise
-  }
-  const endOldestPut = (error?: Error): void => {
-    const end = held.shift()
-    if (end === undefined) throw new Error('No put is held')
-    end(error)
   }
   return {
     started: () => records.length,
     startedRecords: () => [...records],
-    endOldestPut,
-    endAllPuts: () => held.splice(0).forEach((end) => end()),
+    endOldestPut: (error) => endFirstHeld(held, () => true, error),
+    endOldestPutOf: (id, error) => endFirstHeld(held, (put) => put.id === id, error),
+    endAllPuts: () => held.splice(0).forEach((put) => put.end()),
   }
 }
