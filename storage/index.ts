@@ -112,3 +112,6 @@ export {
   newProjectId,
 } from './active-project/active-project-id-store'
 export type { ActiveProjectIdStore } from './active-project/active-project-id-store'
+export type { ProjectRecord, ProjectIndex } from './project-index/project-index'
+export { InMemoryProjectIndex } from './project-index/in-memory-project-index'
+export { IndexedDbProjectIndex } from './project-index/indexeddb-project-index'
