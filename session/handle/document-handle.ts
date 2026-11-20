@@ -125,6 +125,24 @@ async function handOverWith(
   return outcome.ok ? { ok: true, hold } : outcome
 }
 
+/** What a handle does with its lock at the end of a close and at the end of a hand-over. */
+interface LockEnds {
+  readonly releaseLock: () => Promise<void>
+  readonly keepLock: () => Promise<void>
+}
+
+function lockEnds(hold: ProjectLockHold, records: RecordKeeper): LockEnds {
+  // The keeper hears of it first: once another handle can take the lock, no record is built here.
+  // A hand-over keeps the lock for the restored handle, which shares the keeper: it says nothing.
+  return {
+    releaseLock: () => {
+      records.lockReleased()
+      return callGuardedAsync(() => hold.release())
+    },
+    keepLock: () => Promise.resolve(),
+  }
+}
+
 /**
  * The save, the flush, the close, and the hand-over of a handle. A close flushes again while
  * autosave has work left: a write is needed, or a write of the handle runs or waits, whoever asked
@@ -165,13 +183,7 @@ function createSavePath(parts: SavePathParts): SavePath {
     })
     return state.ending
   }
-  // The keeper hears of it first: once another handle can take the lock, no record is built here.
-  // A hand-over keeps the lock for the restored handle, which shares the keeper: it says nothing.
-  const releaseLock = (): Promise<void> => {
-    records.released()
-    return callGuardedAsync(() => hold.release())
-  }
-  const keepLock = (): Promise<void> => Promise.resolve()
+  const { releaseLock, keepLock } = lockEnds(hold, records)
 
   return {
     save,

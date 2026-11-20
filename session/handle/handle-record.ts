@@ -35,10 +35,10 @@ export interface RecordKeeper {
    */
   settled(): Promise<void>
   /**
-   * The handle freed its lock. From then on no record is built and no put starts: another handle
-   * can change the store and the index now. A put that started before can still land.
+   * The handle is freeing its lock now. From then on no record is built and no put starts: another
+   * handle can change the store and the index now. A put that started before can still land.
    */
-  released(): void
+  lockReleased(): void
 }
 
 /**
@@ -53,7 +53,7 @@ interface QueueParts {
   readonly ports: RecordPorts
   readonly warn: Warn
   /** True once the handle freed its lock. */
-  readonly released: () => boolean
+  readonly lockFreed: () => boolean
 }
 
 /** The queue of the record writes of one handle. */
@@ -112,7 +112,7 @@ async function writeOne(parts: QueueParts, make: MakeRecord): Promise<void> {
     parts.warn(READ_WARNING, error)
     return
   }
-  if (record === undefined || parts.released()) {
+  if (record === undefined || parts.lockFreed()) {
     return
   }
   try {
@@ -135,7 +135,7 @@ function createRecordQueue(parts: QueueParts): RecordQueue {
       let next: MakeRecord | undefined = first
       while (next !== undefined) {
         await writeOne(parts, next)
-        next = parts.released() ? undefined : waiting
+        next = parts.lockFreed() ? undefined : waiting
         waiting = undefined
       }
     } finally {
@@ -182,17 +182,17 @@ async function recordOfOpen(
  * The mark as the keeper reads it: it also stops holding once the handle freed its lock, so a
  * record build that starts or goes on after that, also after a read of the index, gives no record.
  */
-function whileLockHeld(mark: SessionMark, released: () => boolean): SessionMark {
-  return { session: mark.session, unchanged: () => !released() && mark.unchanged() }
+function whileLockHeld(mark: SessionMark, lockFreed: () => boolean): SessionMark {
+  return { session: mark.session, unchanged: () => !lockFreed() && mark.unchanged() }
 }
 
-/** The record keeper of the handle that opened the request. It makes no index call until asked. */
-export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): RecordKeeper {
-  const warn = createWarnOnce()
-  let lockFreed = false
-  const released = (): boolean => lockFreed
-  const queue = createRecordQueue({ ports, warn, released })
-  const askAt = (make: (lastUsedAt: string) => Promise<ProjectRecord | undefined>): void => {
+/** Asks the queue for a record whose time of use is read now; a failed read of the time warns. */
+function askerAtNow(
+  ports: RecordPorts,
+  queue: RecordQueue,
+  warn: Warn,
+): (make: (lastUsedAt: string) => Promise<ProjectRecord | undefined>) => void {
+  return (make) => {
     try {
       const lastUsedAt = ports.now().toISOString()
       queue.ask(() => make(lastUsedAt))
@@ -200,16 +200,25 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
       warn(WRITE_WARNING, error)
     }
   }
+}
+
+/** The record keeper of the handle that opened the request. It makes no index call until asked. */
+export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): RecordKeeper {
+  const warn = createWarnOnce()
+  let freed = false
+  const lockFreed = (): boolean => freed
+  const queue = createRecordQueue({ ports, warn, lockFreed })
+  const askAt = askerAtNow(ports, queue, warn)
   return {
     opened(asked, opened, lastChangedAt) {
-      const mark = whileLockHeld(asked, released)
+      const mark = whileLockHeld(asked, lockFreed)
       const passedCheck = !opened.openedDespiteFaults
       askAt((lastUsedAt) =>
         recordOfOpen(ports, request, { mark, passedCheck, lastChangedAt, lastUsedAt }),
       )
     },
     saved(asked, report) {
-      const mark = whileLockHeld(asked, released)
+      const mark = whileLockHeld(asked, lockFreed)
       const passedCheck = report.faults.length === 0
       const { lastChangedAt } = report
       askAt(async (lastUsedAt) =>
@@ -222,8 +231,8 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
         warn(WAIT_WARNING)
       }
     },
-    released() {
-      lockFreed = true
+    lockReleased() {
+      freed = true
     },
   }
 }
