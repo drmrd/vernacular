@@ -173,3 +173,65 @@ export function rejectEveryCall(index: ProjectIndex, error = new Error('the inde
   index.put = reject
   index.remove = reject
 }
+
+/** The two methods of an index that only read. */
+export type ReadMethod = 'all' | 'get'
+
+export interface ReadHold {
+  /** How many reads of the method have started since the hold was set. */
+  started(): number
+  /** Lets the oldest held read run against the real index and answer with what it gives. */
+  answerOldest(): void
+  /** Makes the oldest held read reject with `error`. */
+  rejectOldest(error?: Error): void
+}
+
+interface HeldRead {
+  readonly answer: () => void
+  readonly reject: (error: Error) => void
+}
+
+/** From now on each `all` or `get` of `index`, as `method` says, stays pending until the test ends it. */
+export function holdReads(index: ProjectIndex, method: ReadMethod): ReadHold {
+  const held: HeldRead[] = []
+  const realAll = index.all.bind(index)
+  const realGet = index.get.bind(index)
+  let started = 0
+  const hold = <T>(run: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      started += 1
+      held.push({ answer: () => run().then(resolve, reject), reject })
+    })
+  if (method === 'all') index.all = () => hold(realAll)
+  else index.get = (id) => hold(() => realGet(id))
+  const oldest = (): HeldRead => {
+    const read = held.shift()
+    if (read === undefined) throw new Error('No read is held')
+    return read
+  }
+  return {
+    started: () => started,
+    answerOldest: () => oldest().answer(),
+    rejectOldest: (error = new Error('the held read was rejected')) => oldest().reject(error),
+  }
+}
+
+/** Where a promise stands: still pending, answered with a value, or rejected with an error. */
+export type Watched =
+  | { status: 'pending' }
+  | { status: 'answered'; value: unknown }
+  | { status: 'rejected'; error: unknown }
+
+/** Follows `promise` without waiting for it, so that a test can look at it after moving the clock. */
+export function watch(promise: Promise<unknown>): () => Watched {
+  let state: Watched = { status: 'pending' }
+  promise.then(
+    (value) => {
+      state = { status: 'answered', value }
+    },
+    (error: unknown) => {
+      state = { status: 'rejected', error }
+    },
+  )
+  return () => state
+}
