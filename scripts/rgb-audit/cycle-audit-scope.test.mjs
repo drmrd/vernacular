@@ -69,6 +69,24 @@ describe('auditCommits test scope', () => {
     expect(violation.message).not.toContain('core/a.test.ts')
   })
 
+  it('words the violation with the sha and the comma-joined implementation files', () => {
+    const violations = audit([
+      {
+        sha: 'red7777',
+        subject: 'test: pin the widget',
+        files: ['core/a.test.ts', 'core/a.ts', 'core/b.ts'],
+      },
+    ])
+
+    expect(violations).toEqual([
+      {
+        sha: 'red7777',
+        rule: 'test-scope',
+        message: 'RED commit red7777 changes non-test file(s): core/a.ts, core/b.ts',
+      },
+    ])
+  })
+
   it('does not apply the scope rule to e2e-scoped or Infrastructure commits', () => {
     const violations = audit([
       {
