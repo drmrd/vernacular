@@ -47,7 +47,7 @@ function outcome(read: ArchiveRead): string | readonly string[] {
 
 /**
  * The read is ok with `document`, and `assets` holds exactly these, in this order. The list
- * of rejected assets is left to the hash check of a later change, which fills it.
+ * of rejected assets is checked by the tests of the asset hash check, for every one of these faults.
  */
 function expectAssets(read: ArchiveRead, document: Uint8Array, assets: readonly HashedAsset[]) {
   expect(outcome(read)).toEqual(assets.map(([hash]) => hash))

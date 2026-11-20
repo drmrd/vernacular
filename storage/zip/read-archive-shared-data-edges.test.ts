@@ -8,6 +8,7 @@ import {
   buildSharedZip,
   buildZip64SharedZip,
   centralEntryOffsets,
+  expectRead,
   localOffsetOfEntry,
   recordPushedChunks,
   withUint32,
@@ -128,22 +129,23 @@ async function assetInsideAnother(
 
 describe('readArchive bounds shared data at its edges', () => {
   it(
-    'reads 9,999 empty assets over one local entry, and none when each declares one byte',
+    'of 9,999 empty assets over one local entry reads the one named by the hash of no bytes and rejects the others, and rejects all when each declares one byte',
     async () => {
       const declaringNothing = await manySharers(EMPTY, { method: STORED })
       const declaringOne = await manySharers(EMPTY, { method: STORED, declaredBytes: 1 })
-      // Each name but the first is no hash of the empty bytes: the hash check of a later change
-      // moves those assets to the rejected list, and this expectation then changes.
-      const names = [
-        await contentHashOf(EMPTY),
-        ...Array.from({ length: MANY_SHARERS }, (_, index) => otherHash(index)),
-      ]
+      const emptyHash = await contentHashOf(EMPTY)
+      const otherNames = Array.from({ length: MANY_SHARERS }, (_, index) => otherHash(index))
 
-      expectAssets(
-        await readArchive(declaringNothing),
-        names.map((name) => [name, EMPTY] as const),
-      )
-      expectAssets(await readArchive(declaringOne), [])
+      expectRead(await readArchive(declaringNothing), {
+        document: DOCUMENT,
+        assets: [[emptyHash, EMPTY]],
+        rejectedAssets: otherNames,
+      })
+      expectRead(await readArchive(declaringOne), {
+        document: DOCUMENT,
+        assets: [],
+        rejectedAssets: [emptyHash, ...otherNames],
+      })
     },
     MANY_ENTRIES_TIMEOUT_MS,
   )
@@ -201,15 +203,20 @@ describe('readArchive reads around shared data that it does not take', () => {
     MANY_ENTRIES_TIMEOUT_MS,
   )
 
-  it('reads four asset entries over the data of the document when five times that data fits', async () => {
-    const sharers = sharersOf(sharedDocument(), DOCUMENT_SHARERS)
+  it('reads four asset entries over the data of the document when five times that data fits, and keeps the one named by its hash', async () => {
+    const documentHash = await contentHashOf(DOCUMENT)
+    const sharers = [
+      { ...sharedDocument(), name: assetEntryName(documentHash) },
+      ...sharersOf(sharedDocument(), DOCUMENT_SHARERS - 1),
+    ]
     const bytes = buildSharedZip([sharedDocument()], sharers, 0)
 
     expect((DOCUMENT_SHARERS + 1) * DOCUMENT_DATA.length).toBeLessThanOrEqual(bytes.length)
-    // These names are no hash of the document's bytes: the hash check of a later change moves
-    // the four assets to the rejected list, and this expectation then changes.
-    const assets = sharers.map((_, index) => [otherHash(index), DOCUMENT] as const)
-    expectAssets(await readArchive(bytes), assets)
+    expectRead(await readArchive(bytes), {
+      document: DOCUMENT,
+      assets: [[documentHash, DOCUMENT]],
+      rejectedAssets: Array.from({ length: DOCUMENT_SHARERS - 1 }, (_, index) => otherHash(index)),
+    })
   })
 })
 
@@ -223,15 +230,15 @@ describe('readArchive reads the same shapes when their shared data fits', () => 
   })
 
   it('reads a sharer that gives the local offset of its owner in a ZIP64 block, when both fit', async () => {
-    const owner = await assetEntry(PICTURE)
-    const bytes = buildZip64SharedZip([sharedDocument(), owner], sharersOf(owner, 1), 1)
+    // The owner's name is no hash of its bytes, so only the sharer's bytes can be kept.
+    const sharer = await assetEntry(PICTURE)
+    const owner = { ...sharer, name: assetEntryName(otherHash(0)) }
+    const bytes = buildZip64SharedZip([sharedDocument(), owner], [sharer], 1)
 
-    // The sharer's name is no hash of its bytes: the hash check of a later change moves it to
-    // the rejected list, and this expectation then changes.
-    const assets = [
-      [await contentHashOf(PICTURE), PICTURE] as const,
-      [otherHash(0), PICTURE] as const,
-    ]
-    expectAssets(await readArchive(bytes), assets)
+    expectRead(await readArchive(bytes), {
+      document: DOCUMENT,
+      assets: [[await contentHashOf(PICTURE), PICTURE]],
+      rejectedAssets: [otherHash(0)],
+    })
   })
 })

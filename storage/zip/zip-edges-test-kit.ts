@@ -4,8 +4,9 @@
  * of the chunks that the reader pushes to fflate. Production code does not import it.
  */
 import { Deflate, Inflate } from 'fflate'
-import { vi } from 'vitest'
-import { buildZip, type TestZipEntry } from './zip-test-kit'
+import { expect, vi } from 'vitest'
+import type { ArchiveRead } from './read-archive'
+import { assetEntry, buildZip, type TestZipEntry } from './zip-test-kit'
 import { joinBytes } from './zip64-test-kit'
 
 /** The header of a stored block: one byte of flags, then its length and the complement of it. */
@@ -202,4 +203,121 @@ export function buildZip64SharedZip(
   const view = new DataView(shared.buffer)
   view.setUint32(shared.length - END_RECORD_BYTES + END_DIRECTORY_OFFSET_AT, localsEnd, true)
   return shared
+}
+
+/** A copy of the archive in which entry `entryIndex` gives the length of the file as the offset of its local header. */
+export function withLocalOffsetPastTheEnd(bytes: Uint8Array, entryIndex: number): Uint8Array {
+  return withUint32(bytes, centralEntryAt(bytes, entryIndex) + CENTRAL.localOffsetAt, bytes.length)
+}
+
+/**
+ * A fault of one asset entry: the changes of the entry, made from its true content, and when
+ * the entry alone cannot carry the fault, a change of the built archive at that entry.
+ */
+export interface AssetFault {
+  readonly overrides: (content: Uint8Array) => Partial<TestZipEntry>
+  readonly patch?: (bytes: Uint8Array, entryIndex: number) => Uint8Array
+}
+
+const GARBAGE_BYTES = 64
+const ALL_BITS = 0xff
+/** fflate refuses these bytes as an invalid block. */
+const GARBAGE = new Uint8Array(GARBAGE_BYTES).fill(ALL_BITS)
+const UNKNOWN_METHOD = 12
+const ENCRYPTED_FLAG = 1
+/** 2^60. */
+const FAR_LOCAL_OFFSET = 1_152_921_504_606_846_976n
+/** 2^40. */
+const FAR_COMPRESSED_BYTES = 1_099_511_627_776n
+const STORED_METHOD = 0
+const NO_SIGNATURE = 0
+
+/** A copy of the archive with the signature of the local header of entry `entryIndex` overwritten. */
+function withoutLocalSignature(bytes: Uint8Array, entryIndex: number): Uint8Array {
+  return withUint32(bytes, localOffsetOfEntry(bytes, entryIndex), NO_SIGNATURE)
+}
+
+/** Data that fflate refuses as an invalid block. */
+export const CORRUPT_STREAM: AssetFault = { overrides: () => ({ data: GARBAGE }) }
+/** The flag of an encrypted entry. */
+export const ENCRYPTED_ENTRY: AssetFault = { overrides: () => ({ flags: ENCRYPTED_FLAG }) }
+/** A local header offset in the classic field of the central directory entry, outside the file. */
+export const LOCAL_HEADER_PAST_THE_END: AssetFault = {
+  overrides: () => ({}),
+  patch: withLocalOffsetPastTheEnd,
+}
+
+/** Each fault that keeps an asset entry from being read, with a short description. */
+export const ASSET_FAULTS: readonly (readonly [string, AssetFault])[] = [
+  ['a corrupt stream', CORRUPT_STREAM],
+  [
+    'a stream shorter than it declares',
+    { overrides: (content) => ({ declaredBytes: content.length + 1 }) },
+  ],
+  ['an unsupported method', { overrides: () => ({ method: UNKNOWN_METHOD }) }],
+  ['the encrypted flag', ENCRYPTED_ENTRY],
+  [
+    'stored data shorter than it declares',
+    { overrides: (content) => ({ method: STORED_METHOD, declaredBytes: content.length + 1 }) },
+  ],
+  ['a classic local header offset outside the file', LOCAL_HEADER_PAST_THE_END],
+  ['a wrong local header signature', { overrides: () => ({}), patch: withoutLocalSignature }],
+  [
+    'a ZIP64 compressed size of 2^40',
+    {
+      overrides: () => ({
+        zip64: ['compressedBytes'],
+        zip64Values: { compressedBytes: FAR_COMPRESSED_BYTES },
+      }),
+    },
+  ],
+  [
+    'a ZIP64 local header offset of 2^60',
+    {
+      overrides: () => ({ zip64: ['localOffset'], zip64Values: { localOffset: FAR_LOCAL_OFFSET } }),
+    },
+  ],
+]
+
+/** An entry and the fault it carries, or `undefined` for a sound entry. */
+export type EntryWithFault = readonly [TestZipEntry, AssetFault | undefined]
+
+/** Builds the archive with the overrides of each fault, then makes the patch of each fault at its entry. */
+export function buildZipWithFaults(entries: readonly EntryWithFault[]): Uint8Array {
+  const built = buildZip(
+    entries.map(([entry, fault]) => ({ ...entry, ...fault?.overrides(entry.content) })),
+  )
+  return entries.reduce((bytes, [, fault], index) => fault?.patch?.(bytes, index) ?? bytes, built)
+}
+
+/** An asset entry named by the hash of `namedFor` that holds `content`. */
+export async function misnamedAssetEntry(
+  content: Uint8Array,
+  namedFor: Uint8Array,
+  overrides: Partial<TestZipEntry> = {},
+): Promise<TestZipEntry> {
+  return { ...(await assetEntry(namedFor)), content, ...overrides }
+}
+
+/** A content hash and the bytes it names. */
+export type HashedAsset = readonly [string, Uint8Array]
+
+/** What an ok read holds: the document, the accepted assets in their order, and the rejected hashes. */
+export interface ExpectedRead {
+  readonly document: Uint8Array
+  readonly assets: readonly HashedAsset[]
+  readonly rejectedAssets: readonly string[]
+}
+
+/** The kind of a failed read, or the hashes of both lists of an ok read: short to print. */
+export function readLists(read: ArchiveRead): unknown {
+  if (!read.ok) return read.failure.kind
+  return { assets: [...read.assets.keys()], rejectedAssets: read.rejectedAssets }
+}
+
+/** The read is ok and holds exactly `expected`, both lists in their order. */
+export function expectRead(read: ArchiveRead, expected: ExpectedRead): void {
+  const { document, assets, rejectedAssets } = expected
+  expect(readLists(read)).toEqual({ assets: assets.map(([hash]) => hash), rejectedAssets })
+  expect(read).toEqual({ ok: true, document, assets: new Map(assets), rejectedAssets })
 }
