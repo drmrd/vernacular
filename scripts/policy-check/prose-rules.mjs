@@ -6,6 +6,7 @@ import { fencedLineNumbers, withoutInlineCode } from './markdown-code.mjs'
 
 const EM_DASH = '\u2014'
 const PROSE_FILE = /\.(?:md|mdx|txt)$/
+// Mirrors the plan's exempt list, even where PROSE_FILE already excludes a name.
 const EXEMPT_NAMES = new Set(['CHANGELOG.md', 'LICENSE', 'NOTICE', 'CODE_OF_CONDUCT.md'])
 
 /**
@@ -15,13 +16,8 @@ const EXEMPT_NAMES = new Set(['CHANGELOG.md', 'LICENSE', 'NOTICE', 'CODE_OF_COND
  * @returns {Finding[]}
  */
 export function emDashFindings(addedLines, readFile) {
-  const linesByFile = new Map()
-  for (const added of addedLines) {
-    if (!isCheckedProse(added.file)) continue
-    linesByFile.set(added.file, [...(linesByFile.get(added.file) ?? []), added])
-  }
   const findings = []
-  for (const [file, lines] of linesByFile) {
+  for (const [file, lines] of proseLinesByFile(addedLines)) {
     const fenced = fencedLineNumbers(readFile(file))
     for (const added of lines) {
       if (fenced.has(added.line)) continue
@@ -38,10 +34,28 @@ export function emDashFindings(addedLines, readFile) {
 }
 
 /**
+ * @param {readonly AddedLine[]} addedLines
+ * @returns {Map<string, AddedLine[]>}
+ */
+function proseLinesByFile(addedLines) {
+  const linesByFile = new Map()
+  for (const added of addedLines) {
+    if (!isCheckedProse(added.file)) continue
+    let lines = linesByFile.get(added.file)
+    if (lines === undefined) {
+      lines = []
+      linesByFile.set(added.file, lines)
+    }
+    lines.push(added)
+  }
+  return linesByFile
+}
+
+/**
  * @param {string} file
  * @returns {boolean}
  */
 function isCheckedProse(file) {
-  const name = file.split('/').pop() ?? file
+  const name = file.slice(file.lastIndexOf('/') + 1)
   return PROSE_FILE.test(file) && !EXEMPT_NAMES.has(name)
 }

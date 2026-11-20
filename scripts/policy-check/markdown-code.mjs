@@ -10,20 +10,22 @@ const BACKTICK_RUN = /`+/g
  */
 export function fencedLineNumbers(content) {
   const fenced = new Set()
-  let open
-  content.split('\n').forEach((line, index) => {
+  let openFence
+  for (const [index, line] of content.split('\n').entries()) {
     const lineNumber = index + 1
-    if (open === undefined) {
+    if (openFence === undefined) {
       const opening = line.match(OPENING_FENCE)?.[1]
-      if (opening === undefined) return
-      open = { character: opening[0], length: opening.length }
+      if (opening === undefined) continue
+      openFence = { character: opening[0], length: opening.length }
       fenced.add(lineNumber)
-      return
+      continue
     }
     fenced.add(lineNumber)
     const closing = line.match(CLOSING_FENCE)?.[1]
-    if (closing?.[0] === open.character && closing.length >= open.length) open = undefined
-  })
+    if (closing?.[0] === openFence.character && closing.length >= openFence.length) {
+      openFence = undefined
+    }
+  }
   return fenced
 }
 
