@@ -5,6 +5,7 @@
  */
 import { Deflate, Inflate } from 'fflate'
 import { vi } from 'vitest'
+import { buildZip, type TestZipEntry } from './zip-test-kit'
 import { joinBytes } from './zip64-test-kit'
 
 /** The header of a stored block: one byte of flags, then its length and the complement of it. */
@@ -81,4 +82,63 @@ export function flushedStream(start: Uint8Array, flushes: number, end: Uint8Arra
   for (let flush = 0; flush < flushes; flush += 1) deflate.flush(true)
   deflate.push(end, true)
   return joinBytes(chunks)
+}
+
+/** The places that the builder of shared data reads in a classic archive with no comment. */
+const END_RECORD_BYTES = 22
+const END_ENTRIES_AT = 10
+const END_DIRECTORY_OFFSET_AT = 16
+const CENTRAL = {
+  bytes: 46,
+  nameLengthAt: 28,
+  extraLengthAt: 30,
+  commentLengthAt: 32,
+  localOffsetAt: 42,
+}
+
+/** Where each central directory entry starts, in an archive with a classic end record and no comment. */
+export function centralEntryOffsets(bytes: Uint8Array): number[] {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const end = bytes.length - END_RECORD_BYTES
+  const count = view.getUint16(end + END_ENTRIES_AT, true)
+  const offsets: number[] = []
+  let at = view.getUint32(end + END_DIRECTORY_OFFSET_AT, true)
+  for (let index = 0; index < count; index += 1) {
+    offsets.push(at)
+    const nameLength = view.getUint16(at + CENTRAL.nameLengthAt, true)
+    const extraLength = view.getUint16(at + CENTRAL.extraLengthAt, true)
+    at +=
+      CENTRAL.bytes + nameLength + extraLength + view.getUint16(at + CENTRAL.commentLengthAt, true)
+  }
+  return offsets
+}
+
+/**
+ * An archive whose central directory lists `owners`, each over its own local entry, and then
+ * `sharers`, each over the local entry of `owners[ownerIndex]`. No sharer writes a local entry.
+ * A sharer keeps the sizes of its own central directory entry, so give it data of the owner's
+ * length: a copy of the owner under another name has it. The archive has no comment and no
+ * ZIP64 end record, and no sharer gives its local offset in a ZIP64 block.
+ */
+export function buildSharedZip(
+  owners: readonly TestZipEntry[],
+  sharers: readonly TestZipEntry[],
+  ownerIndex: number,
+): Uint8Array {
+  const bytes = buildZip([...owners, ...sharers])
+  const view = new DataView(bytes.buffer)
+  const offsets = centralEntryOffsets(bytes)
+  const localOffsetOf = (entryAt: number) => view.getUint32(entryAt + CENTRAL.localOffsetAt, true)
+  const ownerAt = offsets[ownerIndex]
+  if (ownerAt === undefined) throw new Error(`no owner at index ${ownerIndex}`)
+  const end = bytes.length - END_RECORD_BYTES
+  const directoryOffset = view.getUint32(end + END_DIRECTORY_OFFSET_AT, true)
+  const firstSharerAt = offsets[owners.length]
+  const localsEnd = firstSharerAt === undefined ? directoryOffset : localOffsetOf(firstSharerAt)
+  const ownerOffset = localOffsetOf(ownerAt)
+  for (const sharerAt of offsets.slice(owners.length)) {
+    view.setUint32(sharerAt + CENTRAL.localOffsetAt, ownerOffset, true)
+  }
+  view.setUint32(end + END_DIRECTORY_OFFSET_AT, localsEnd, true)
+  return joinBytes([bytes.subarray(0, localsEnd), bytes.subarray(directoryOffset)])
 }
