@@ -10,6 +10,8 @@ import type { Vector3 } from '../../core'
  */
 export interface OrbitController {
   setTarget(target: Vector3): void
+  /** The point the camera orbits around and pans with, as a plain core value (a copy). */
+  getTarget(): Vector3
   setEnabled(enabled: boolean): void
   update(): void
   dispose(): void
@@ -29,6 +31,9 @@ export function createOrbitController(camera: Camera, domElement: HTMLElement): 
     setTarget(target) {
       controls.target.set(target.x, target.y, target.z)
       controls.update()
+    },
+    getTarget() {
+      return { x: controls.target.x, y: controls.target.y, z: controls.target.z }
     },
     setEnabled(enabled) {
       controls.enabled = enabled

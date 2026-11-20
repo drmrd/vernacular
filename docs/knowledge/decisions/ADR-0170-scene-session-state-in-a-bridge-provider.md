@@ -19,11 +19,15 @@ sourceFiles:
     bridge/react/scene-session-context.ts,
     bridge/react/scene-session-provider.tsx,
     bridge/react/use-scene-navigation.ts,
+    bridge/react/use-scene-navigation.test.tsx,
+    bridge/react/use-scene-navigation-saved-camera.test.tsx,
     bridge/react/use-building-view-state.ts,
     bridge/react/use-framed-scene.ts,
     bridge/react/use-scene-environment.ts,
     bridge/react/scene-camera-seed.ts,
+    bridge/react/scene-camera-seed.test.ts,
     bridge/react/orbit-camera-controls.tsx,
+    bridge/react/orbit-camera-controls.test.tsx,
     bridge/react/walk-session.ts,
     bridge/react/walk-camera-controls.tsx,
     bridge/react/walk-interaction.ts,
@@ -35,7 +39,11 @@ sourceFiles:
     bridge/react/ambient-occlusion-render-takeover.test.tsx,
     editor/shell/editor-shell.tsx,
     editor/shell/shell-providers.tsx,
+    engine/scene/orbit-controls.ts,
+    engine/scene/orbit-controls.test.ts,
     e2e/tests/journeys/scene-view-switch-keeps-state.spec.ts,
+    e2e/tests/scene-orbit-pivot-holds.spec.ts,
+    e2e/tests/live-pane-camera-drags.ts,
   ]
 status: current
 updated: 2026-11-19
@@ -333,3 +341,67 @@ temperature, the building scope, the underground visibility, or the open doors. 
 those: `bridge/react/use-scene-navigation.test.tsx` for the toggles, the preset, and the open
 doors, `bridge/react/use-scene-environment.test.tsx` for the color temperature, and
 `bridge/react/use-building-view-state.test.ts` for the scope and the underground setting.
+
+## Amendment 2026-11-19: the orbit pivot comes back too
+
+Issue #619 reported that a panned orbit camera came back turned after a view switch. Only the
+camera position was saved, and the new controller aimed the camera at the framed centre again. This
+is the gap that the Decision, the Consequences, and the follow-up note above describe. The orbit
+controller in `engine/scene/orbit-controls.ts` now has the read-back method: `getTarget()` returns
+a copy of its pivot as a plain core `Vector3`. When the 3D view unmounts, the orbit wrapper reports
+the camera position and the pivot together. The store keeps them as one `savedCamera` value of the
+type `SavedCamera`, with the fields `position` and `orbitTarget`. That field replaces
+`savedCameraPosition`, so where this record speaks of the saved camera position, the store now holds
+the position and the pivot. The next mount builds the controller on the saved pivot, passed as the
+wrapper's `initialTarget`, before anything else can move it. The camera comes back where it was and
+looks where it looked, and the first drag turns around the point the user panned to. `initialTarget`
+places only the first controller of a mount: when the camera or the canvas changes inside one
+mount, the wrapper builds a new controller and starts it on the pivot the earlier one held.
+
+Two older faults sat on the same path and would have undone the restore. Any rebuild of the scene,
+such as an edit, the edge overlay toggle, or a furniture model that finishes loading, sent the
+framed centre to the controller again unless a camera preset had been applied. When that centre
+differed from the pivot, because the user had panned or an edit had moved the centre, the pivot
+jumped to it and the camera turned toward it. A camera on an applied preset kept the preset's target
+as its pivot and did not turn. A remount loads the furniture models again, so a restored pivot
+would not have lasted. Reset view had the other fault: it put the camera back on the framed view
+but left the pivot where a pan had moved it. The pivot now follows one rule, written as
+`orbitPivot` in `bridge/react/scene-camera-seed.ts`. While the framing is active, the pivot follows
+the framed centre. Once the user steers, an applied preset sets it, Reset view sets it back to the
+framed centre, and nothing in the pane moves it otherwise. With no preset applied, the pane passes
+`null` and the controller keeps its own pivot. The navigation specification already promised this:
+once the user steers, the camera is theirs until they reset.
+
+The saved camera is now kept only for a pane the user steered. Steering is a press on the 3D view
+(a drag or a click), a wheel turn on it, entering walk mode or pressing one of its keys, or applying
+a camera preset. A pane the user never touched, or one put back with Reset view, leaves no camera
+behind. Before, the camera was saved at every unmount, and the next mount read any saved camera as
+a steered one. So after the first view switch the 3D view stopped framing the model. A room drawn
+next was cut off at the edge of the pane, and the fit no longer followed a change of pane size,
+which the camera fit specification promises. The size case was read from the code, not run. Now
+`noteCameraLeft` stores the camera when `userControlled` is true at the call and stores `null`
+otherwise. A pane that was not steered mounts like a fresh one and frames the model again. The
+Decision's rule that `userControlled` seeds `true` whenever the store holds a saved camera still
+stands. What changed is when a camera is saved, so a saved camera now always means a steered pane.
+
+A wheel turn did not count as steering before: the orbit wrapper listened only for `pointerdown`. A
+zoom made with the wheel alone left the framing active, so the next edit that changed the bounds
+framed the model again. Because every unmount saved the camera, that zoom still came back after a
+view switch, but under the steered-pane rule it would have been dropped. The wrapper now also
+listens for a passive `wheel` event on the canvas, so the wheel marks the camera as user-controlled
+like a press does. This widens the navigation specification's definition of steering, which section
+3.1 of that specification now spells out.
+
+A saved camera is restored even if the scene changed while the 3D view was away, as the position
+was before. Reset view brings the framing back. The journey
+`e2e/tests/journeys/scene-view-switch-keeps-state.spec.ts` gained a case for a panned camera: after
+the plan view and back, the first drag turns around the panned point. The new spec
+`e2e/tests/scene-orbit-pivot-holds.spec.ts` covers a rebuild through the edge overlay toggle, Reset
+view after a pan, and a second room drawn after a view switch in a pane the user never steered.
+Both live specs take their drag, pan, and view-switch helpers from
+`e2e/tests/live-pane-camera-drags.ts`. `bridge/react/orbit-camera-controls.test.tsx` tests the
+wrapper with a fake controller, including the wheel and a controller built again inside one mount,
+`bridge/react/scene-camera-seed.test.ts` tests the pivot rule, and
+`bridge/react/use-scene-navigation-saved-camera.test.tsx` tests when a camera is kept. Neither live
+spec applies a camera preset and then orbits. Issue #594 asks for a journey that does this with
+the Doorway preset.

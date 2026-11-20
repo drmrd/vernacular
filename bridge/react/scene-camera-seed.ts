@@ -20,6 +20,21 @@ export function initialCamera(
 }
 
 /**
+ * The pivot the pane asks the orbit controller for. While the framing is active the
+ * pivot follows the framed centre. Once the user steers, an applied preset sets it, and
+ * without one the controller keeps its own pivot (null), so a rebuild of the scene does
+ * not move it.
+ */
+export function orbitPivot(view: {
+  userControlled: boolean
+  presetPose: CameraPose | null
+  framedPose: CameraPose
+}): Vector3 | null {
+  if (!view.userControlled) return view.framedPose.target
+  return view.presetPose?.target ?? null
+}
+
+/**
  * A plain copy of where a live camera currently sits. The parameter is structural so a
  * three camera satisfies it without this bridge file importing three (rules.md rule 1),
  * and the copy keeps the session from holding a vector the render loop goes on mutating.

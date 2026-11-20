@@ -23,7 +23,7 @@ const defaultSceneSession: SceneSessionState = {
   showUnderground: true,
   edgeOverlay: false,
   openDoorIds: new Set<string>(),
-  savedCameraPosition: null,
+  savedCamera: null,
   walkPose: null,
   sessionRestored: false,
   frameDrawnSincePipelineSettled: false,
@@ -35,6 +35,10 @@ describe('createSceneSessionStore', () => {
 
     expect(session).toEqual(defaultSceneSession)
     expect(session.openDoorIds.size).toBe(0)
+  })
+
+  it('starts a fresh session with no saved camera', () => {
+    expect(createSceneSessionStore().getSceneSession()).toHaveProperty('savedCamera', null)
   })
 
   it('honors the fields the caller seeds and leaves the rest at their defaults', () => {

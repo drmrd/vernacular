@@ -5,6 +5,12 @@ import {
   type WalkState,
 } from '../../core'
 
+/** Where the departing 3D pane left the camera, and the orbit pivot it turned around. */
+export interface SavedCamera {
+  position: Vector3
+  orbitTarget: Vector3
+}
+
 /**
  * Session state for the 3D preview, owned by the bridge rather than by the preview itself.
  *
@@ -28,7 +34,7 @@ export interface SceneSessionState {
   edgeOverlay: boolean
   /** Replace this set on every change; mutating it in place will not notify subscribers. */
   openDoorIds: ReadonlySet<string>
-  savedCameraPosition: Vector3 | null
+  savedCamera: SavedCamera | null
   walkPose: WalkState | null
   /** True once the stored session has been applied to the live view. */
   sessionRestored: boolean
@@ -53,7 +59,7 @@ export const DEFAULT_SCENE_SESSION_STATE: SceneSessionState = Object.freeze({
   showUnderground: true,
   edgeOverlay: false,
   openDoorIds: NO_OPEN_DOORS,
-  savedCameraPosition: null,
+  savedCamera: null,
   walkPose: null,
   sessionRestored: false,
   frameDrawnSincePipelineSettled: false,
