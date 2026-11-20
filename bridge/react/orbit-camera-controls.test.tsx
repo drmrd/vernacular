@@ -159,6 +159,15 @@ describe('OrbitCameraControls', () => {
     expect(onUserControl).toHaveBeenCalledTimes(1)
   })
 
+  it('calls onUserControl when the user turns the wheel on the canvas', () => {
+    const onUserControl = vi.fn()
+    render(<OrbitCameraControls {...controlsProps({ onUserControl })} />)
+
+    canvasElement().dispatchEvent(new Event('wheel'))
+
+    expect(onUserControl).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps its one controller and calls the newest onUserControl when the callback changes', () => {
     const first = vi.fn()
     const second = vi.fn()
