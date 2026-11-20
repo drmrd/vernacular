@@ -15,7 +15,7 @@ import { parseCommitLog, parseNameStatus, parseUnifiedDiff } from './git-input.m
 import { milestoneCodeFindings } from './milestone-codes.mjs'
 import { exactPinFindings } from './package-pins.mjs'
 import { emDashFindings } from './prose-rules.mjs'
-import { formatPlainLine } from './report.mjs'
+import { formatAnnotation, formatPlainLine } from './report.mjs'
 import { severityOf } from './rule-severity.mjs'
 import { specNeedsAdrFindings } from './spec-adr.mjs'
 
@@ -45,7 +45,7 @@ const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024
  * @param {PolicyCheckDeps} deps
  * @returns {Promise<number>} the process exit code
  */
-export async function runPolicyCheck(argv, { runGit, runCommitlint, log }) {
+export async function runPolicyCheck(argv, { runGit, runCommitlint, log, githubActions }) {
   const base = flagValue(argv, '--base') ?? DEFAULT_BASE
   const head = flagValue(argv, '--head') ?? DEFAULT_HEAD
   const resolvedBranch =
@@ -68,8 +68,9 @@ export async function runPolicyCheck(argv, { runGit, runCommitlint, log }) {
     `policy:check: ${failing.length} failing and ${warnings.length} warning finding(s) in ${rangeOnBranch}`,
   )
   if (commitlint.status !== 0) for (const line of commitlint.output.split('\n')) log(line)
-  for (const finding of failing) log(formatPlainLine(finding, 'fail'))
-  for (const finding of warnings) log(formatPlainLine(finding, 'warn'))
+  const formatFinding = githubActions ? formatAnnotation : formatPlainLine
+  for (const finding of failing) log(formatFinding(finding, 'fail'))
+  for (const finding of warnings) log(formatFinding(finding, 'warn'))
   return failing.length === 0 ? EXIT_CLEAN : EXIT_FAILING_FINDINGS
 }
 
