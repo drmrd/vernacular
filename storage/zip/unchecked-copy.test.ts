@@ -4,49 +4,26 @@ import { describe, expect, it, vi } from 'vitest'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
 import { readArchive } from './read-archive'
 import { buildUncheckedCopy } from './unchecked-copy'
-import { unzipFolder } from './zip-codec'
+import {
+  assetNames,
+  DOCUMENT,
+  entriesOf,
+  FIRST,
+  FIRST_BYTES,
+  poolHolding,
+  projectFiles,
+  AUTOSAVE_SNAPSHOT,
+  NEWEST_BACKUP,
+  SECOND,
+  SECOND_BYTES,
+  THIRD,
+} from './unchecked-copy-test-kit'
 import { contentHashOf } from './zip-test-kit'
 
-const encoder = new TextEncoder()
-const DOCUMENT = encoder.encode('{"meta":{"name":"Elm Street"},"floors":[]}')
 /** Bytes that are no JSON and no UTF-8 text. */
 const NOT_JSON = Uint8Array.of(0xff, 0x00, 0xfe, 0x80, 0x7b)
-const FIRST = 'a'.repeat(64)
-const SECOND = 'b'.repeat(64)
-const THIRD = 'c'.repeat(64)
-const FIRST_BYTES = encoder.encode('the first model')
-const SECOND_BYTES = encoder.encode('the second model')
 const NOT_A_CONTENT_HASH = 'not-a-content-hash'
 const UPPER_CASE_HASH = 'A'.repeat(64)
-const AUTOSAVE_SNAPSHOT = 'session-start.json'
-const NEWEST_BACKUP = 'newest.json'
-
-type Files = Map<string, Uint8Array>
-
-/** The files of a project folder: its document, one snapshot, and one backup. */
-function projectFiles(document: Uint8Array = DOCUMENT): Files {
-  return new Map([
-    ['vernacular.json', document],
-    [`.house-autosave/${AUTOSAVE_SNAPSHOT}`, Uint8Array.of(1, 2)],
-    [`.house-backups/${NEWEST_BACKUP}`, Uint8Array.of(3, 4)],
-  ])
-}
-
-/** A pool that holds the given bytes under the given hashes. */
-async function poolHolding(held: ReadonlyArray<readonly [string, Uint8Array]>) {
-  const pool = new InMemoryAssetCache()
-  for (const [hash, bytes] of held) await pool.put(hash, bytes)
-  return pool
-}
-
-/** The entries of a copy, as the archive holds them. */
-function entriesOf(copy: { readonly bytes: Uint8Array }): Files {
-  return unzipFolder(copy.bytes)
-}
-
-function assetNames(entries: Files): string[] {
-  return [...entries.keys()].filter((name) => name.startsWith('assets/')).sort()
-}
 
 describe('an unchecked copy of the stored files', () => {
   it('holds vernacular.json byte for byte, also when its bytes are no JSON', async () => {
@@ -140,6 +117,7 @@ describe('an unchecked copy of the stored files', () => {
     files.set('nested/vernacular.json', Uint8Array.of(9))
     files.set('nested/.house-backups/old.json', Uint8Array.of(9))
     files.set('.house-autosaved/other.json', Uint8Array.of(9))
+    files.set('.house-backups-old/x.json', Uint8Array.of(9))
 
     const copy = await buildUncheckedCopy(files, new InMemoryAssetCache(), [])
 
