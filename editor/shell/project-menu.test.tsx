@@ -146,3 +146,34 @@ describe('ProjectMenu rename', () => {
     expect(onRename).toHaveBeenCalledWith('Cedar Hollow')
   })
 })
+
+describe('ProjectMenu recent projects beside the actions', () => {
+  it('a recent project named like an action row is a row of its own, opens its id, and nothing is logged', async () => {
+    const user = userEvent.setup()
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const onNewProject = vi.fn()
+    const onOpenRecent = vi.fn()
+    render(
+      <ProjectMenu
+        onNewProject={onNewProject}
+        onOpenRecent={onOpenRecent}
+        recentProjects={[{ id: 'recent-1', name: 'New project' }]}
+      />,
+    )
+    const trigger = screen.getByRole('button', { name: /project/i })
+
+    await user.click(trigger)
+    const rowCount = screen.getAllByRole('menuitem', { name: 'New project' }).length
+    expect(rowCount).toBe(2)
+    for (let index = 0; index < rowCount; index += 1) {
+      if (index > 0) await user.click(trigger)
+      await user.click(
+        screen.getAllByRole('menuitem', { name: 'New project' })[index] as HTMLElement,
+      )
+    }
+
+    expect(onOpenRecent.mock.calls).toEqual([['recent-1']])
+    expect(onNewProject).toHaveBeenCalledOnce()
+    expect(logged).not.toHaveBeenCalled()
+  })
+})

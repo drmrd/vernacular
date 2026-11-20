@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook, act, cleanup, waitFor } from '@testing-library/react'
 import { NotificationProvider } from '../editor/design-system'
-import { reconcileIndex, type DocumentHandle } from '../session'
+import { reconcileIndex, type DocumentHandle, type ProjectIndex } from '../session'
 import {
   createTestPorts,
   openOrThrow,
@@ -49,6 +49,33 @@ function renderWorkspaceState(props: EditorWorkspaceProps) {
   })
 }
 
+/** The first `all` of `index` stays pending until `release` runs; later calls run at once. */
+function holdFirstAll(index: ProjectIndex): {
+  started: () => number
+  release: () => Promise<void>
+} {
+  const realAll = index.all.bind(index)
+  let started = 0
+  let letGo: () => void = () => undefined
+  const gate = new Promise<void>((resolve) => {
+    letGo = resolve
+  })
+  let ended: Promise<unknown> = Promise.resolve()
+  index.all = () => {
+    started += 1
+    if (started > 1) return realAll()
+    ended = gate.then(realAll)
+    return ended as ReturnType<typeof realAll>
+  }
+  return {
+    started: () => started,
+    release: async () => {
+      letGo()
+      await ended
+    },
+  }
+}
+
 describe('useWorkspaceState the recent entries', () => {
   it('lists the stored projects that were used last, without the open one', async () => {
     const ports = createTestPorts()
@@ -81,6 +108,53 @@ describe('useWorkspaceState the recent entries', () => {
 
     await waitFor(() =>
       expect(result.current.recentEntries).toEqual([{ id: CURRENT_ID, name: CURRENT_NAME }]),
+    )
+  })
+
+  it('a read that ends after another project opened does not replace the list of that project', async () => {
+    const ports = createTestPorts()
+    const current = await openProject(ports, CURRENT_ID, CURRENT_NAME)
+    const other = await openProject(ports, FIRST_ID, FIRST_NAME)
+    const firstRead = holdFirstAll(ports.index)
+    const shown: string[][] = []
+    const props = workspaceProps(current, { ports })
+    const { result, rerender } = renderHook(
+      (each: EditorWorkspaceProps) => {
+        const state = useWorkspaceState(each)
+        shown.push(state.recentEntries.map((entry) => entry.id))
+        return state
+      },
+      { initialProps: props, wrapper: NotificationProvider },
+    )
+    await waitFor(() => expect(firstRead.started()).toBe(1))
+
+    rerender({ ...props, handle: other })
+    await act(async () => {
+      await firstRead.release()
+    })
+
+    await waitFor(() =>
+      expect(result.current.recentEntries).toEqual([{ id: CURRENT_ID, name: CURRENT_NAME }]),
+    )
+    expect(shown.flat()).not.toContain(FIRST_ID)
+  })
+
+  it('reads the list again for new ports', async () => {
+    const firstPorts = createTestPorts()
+    const handle = await openProject(firstPorts, CURRENT_ID, CURRENT_NAME)
+    await plantProject(firstPorts, FIRST_ID, FIRST_NAME)
+    const secondPorts = createTestPorts()
+    await plantProject(secondPorts, SECOND_ID, SECOND_NAME)
+    const props = workspaceProps(handle, { ports: firstPorts })
+    const { result, rerender } = renderWorkspaceState(props)
+    await waitFor(() =>
+      expect(result.current.recentEntries).toEqual([{ id: FIRST_ID, name: FIRST_NAME }]),
+    )
+
+    rerender({ ...props, ports: secondPorts })
+
+    await waitFor(() =>
+      expect(result.current.recentEntries).toEqual([{ id: SECOND_ID, name: SECOND_NAME }]),
     )
   })
 
