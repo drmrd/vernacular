@@ -18,9 +18,13 @@ function compareIds(first: ProjectRecord, second: ProjectRecord): number {
   return first.id < second.id ? -1 : 1
 }
 
-/** What a warning of a run says before the count of its failed steps and the first error. */
+/** What a warning of a run says first, before the label of the count of its failed steps. */
 const FAILED_STEPS_WARNING =
-  'The project index is not fully in line with the stored projects. Failed steps, first error:'
+  'The project index could not be brought fully in line with the stored projects; ' +
+  'the next rebuild tries again. Failed steps:'
+
+/** The label of the first error of a run in its warning. */
+const FIRST_ERROR_LABEL = 'First error:'
 
 /** What one run works with: the ports, and the failed steps that it notes as it goes. */
 interface ReconcileRun extends RebuildRun {
@@ -49,7 +53,7 @@ function createFailedSteps(): FailedStepsOfRun {
         return
       }
       try {
-        console.warn(FAILED_STEPS_WARNING, count, firstError)
+        console.warn(FAILED_STEPS_WARNING, count, FIRST_ERROR_LABEL, firstError)
       } catch {
         // The warning only reports; a console that cannot take it must not change the result.
       }
@@ -144,11 +148,11 @@ async function reconcileSteps(run: ReconcileRun): Promise<ProjectRecord[]> {
   )
   // One project after the other: a first start can rebuild many projects, and doing them all at
   // once holds every decoded document in memory at the same time. A start waits for this function.
-  const settled: ProjectRecord[] = []
+  const listedRecords: ProjectRecord[] = []
   for (const listed of listing) {
-    settled.push(await recordOfListed(run, listed, previousById.get(listed.id)))
+    listedRecords.push(await recordOfListed(run, listed, previousById.get(listed.id)))
   }
-  return [...kept, ...settled].sort(compareIds)
+  return [...kept, ...listedRecords].sort(compareIds)
 }
 
 /**

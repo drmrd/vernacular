@@ -1,7 +1,7 @@
-import { readStoredFacts, type DecodeFailure, type Project } from '../../core'
+import { readStoredFacts, type DecodeFailure } from '../../core'
 import { openDespiteFaults, PROJECT_FILE, type ProjectRecord, type StoreRead } from '../../storage'
 import type { SessionPorts } from '../ports'
-import { factsOf } from './project-facts'
+import { recordOfOpened, type OpenedRecordBasis } from './project-facts'
 
 /** The ports that rebuilding the record of one stored project needs. */
 export type RebuildPorts = Pick<SessionPorts, 'workspace' | 'build'>
@@ -31,13 +31,11 @@ export interface RebuiltRecord {
   readonly putInIndex: boolean
 }
 
+/** Every record of a rebuild is of a project in the workspace. */
+const IN_WORKSPACE = { kind: 'workspace' } as const
+
 /** What every record of a rebuild holds besides the facts of its document. */
-interface RecordBasis {
-  readonly build: string
-  readonly id: string
-  readonly lastChangedAt: string | undefined
-  readonly lastUsedAt: string | undefined
-}
+type RecordBasis = Omit<OpenedRecordBasis, 'passedCheck'>
 
 /** What a read that answered gives: a document, or the failure of its decode. */
 type AnsweredRead =
@@ -47,32 +45,11 @@ type AnsweredRead =
 /** The name and the asset hashes found in stored bytes. */
 type StoredFacts = ReturnType<typeof readStoredFacts>
 
-/** The record of a document that opened; its asset list is complete only when it passed the check. */
-function recordOfProject(
-  basis: RecordBasis,
-  project: Project,
-  passedCheck: boolean,
-): ProjectRecord {
-  const facts = factsOf(project)
-  return {
-    id: basis.id,
-    location: { kind: 'workspace' },
-    name: facts.name,
-    floorCount: facts.floorCount,
-    preview: facts.preview,
-    assetHashes: facts.assetHashes,
-    assetListComplete: facts.assetsListed && passedCheck,
-    lastChangedAt: basis.lastChangedAt,
-    lastUsedAt: basis.lastUsedAt,
-    lastOpen: { opened: true, build: basis.build },
-  }
-}
-
 /** The record of a project that did not open, with what could be found in its stored bytes. */
 function recordOfUnopened(basis: RecordBasis, stored: StoredFacts, reason: string): ProjectRecord {
   return {
     id: basis.id,
-    location: { kind: 'workspace' },
+    location: basis.location,
     name: stored.name,
     floorCount: undefined,
     preview: undefined,
@@ -135,7 +112,10 @@ async function recordDespiteFaults(
   decode: Extract<DecodeFailure, { readonly kind: 'format-rules' }>,
 ): Promise<RebuiltRecord> {
   try {
-    return { record: recordOfProject(basis, openDespiteFaults(decode), false), putInIndex: true }
+    return {
+      record: recordOfOpened(openDespiteFaults(decode), { ...basis, passedCheck: false }),
+      putInIndex: true,
+    }
   } catch {
     return unopenedFromStore(run, basis, decode.kind)
   }
@@ -152,11 +132,15 @@ async function recordOfRead(
   const basis = {
     build: run.ports.build,
     id: listed.id,
+    location: IN_WORKSPACE,
     lastChangedAt,
     lastUsedAt: context.lastUsedAt ?? lastChangedAt,
   }
   if (read.ok) {
-    return { record: recordOfProject(basis, read.value.project, true), putInIndex: true }
+    return {
+      record: recordOfOpened(read.value.project, { ...basis, passedCheck: true }),
+      putInIndex: true,
+    }
   }
   if (read.decode.kind === 'format-rules') {
     return recordDespiteFaults(run, basis, read.decode)
@@ -167,7 +151,7 @@ async function recordOfRead(
 /** The record of a project whose document could not be read: no facts, and why. */
 function unreadRecord(build: string, listed: ListedProject): ProjectRecord {
   const { id, lastChangedAt } = listed
-  const basis = { build, id, lastChangedAt, lastUsedAt: lastChangedAt }
+  const basis = { build, id, location: IN_WORKSPACE, lastChangedAt, lastUsedAt: lastChangedAt }
   return recordOfUnopened(basis, { assetHashes: [] }, 'storage-unavailable')
 }
 
@@ -189,7 +173,8 @@ export async function rebuildRecord(
     try {
       return await recordOfRead(run, listed, { read, lastUsedAt: earlier?.lastUsedAt })
     } catch {
-      // A sound document whose record cannot be made counts as one that could not be read.
+      // A sound document whose record cannot be made counts as one that could not be read. No port
+      // failed here, so this counts as no failed step.
     }
   }
   return { record: earlier ?? unreadRecord(run.ports.build, listed), putInIndex: false }

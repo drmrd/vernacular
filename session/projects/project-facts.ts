@@ -1,5 +1,5 @@
 import { createPlanPreview, type Project } from '../../core'
-import { collectReferencedAssets } from '../../storage'
+import { collectReferencedAssets, type ProjectLocation, type ProjectRecord } from '../../storage'
 
 /** What a record takes from a document. */
 export interface ProjectFacts {
@@ -39,5 +39,33 @@ export function factsOf(project: Project): ProjectFacts {
     preview: previewOf(project),
     assetHashes: assetHashes ?? [],
     assetsListed: assetHashes !== undefined,
+  }
+}
+
+/** What the record of an opened document holds besides the facts of that document. */
+export interface OpenedRecordBasis {
+  readonly id: string
+  readonly location: ProjectLocation
+  readonly build: string
+  /** False when the stored document did not pass the check; its asset list is then not trusted. */
+  readonly passedCheck: boolean
+  readonly lastChangedAt: string | undefined
+  readonly lastUsedAt: string | undefined
+}
+
+/** The whole record of a document that this build opened, made from its facts. */
+export function recordOfOpened(project: Project, basis: OpenedRecordBasis): ProjectRecord {
+  const facts = factsOf(project)
+  return {
+    id: basis.id,
+    location: basis.location,
+    name: facts.name,
+    floorCount: facts.floorCount,
+    preview: facts.preview,
+    assetHashes: facts.assetHashes,
+    assetListComplete: facts.assetsListed && basis.passedCheck,
+    lastChangedAt: basis.lastChangedAt,
+    lastUsedAt: basis.lastUsedAt,
+    lastOpen: { opened: true, build: basis.build },
   }
 }

@@ -5,7 +5,7 @@
  */
 import type { ProjectRecord, SaveReport } from '../../storage'
 import type { SessionPorts } from '../ports'
-import { factsOf } from '../projects/project-facts'
+import { recordOfOpened } from '../projects/project-facts'
 import type { OpenRequest } from './handle-types'
 import type { OpenedProject } from './read-for-open'
 import {
@@ -85,19 +85,14 @@ function recordIfUnchanged(
   if (!moment.mark.unchanged()) {
     return undefined
   }
-  const facts = factsOf(moment.mark.session.getProject())
-  return {
+  return recordOfOpened(moment.mark.session.getProject(), {
     id: request.id,
     location: request.location,
-    name: facts.name,
-    floorCount: facts.floorCount,
-    preview: facts.preview,
-    assetHashes: facts.assetHashes,
-    assetListComplete: facts.assetsListed && moment.passedCheck,
+    build: ports.build,
+    passedCheck: moment.passedCheck,
     lastChangedAt: moment.lastChangedAt,
     lastUsedAt: moment.lastUsedAt,
-    lastOpen: { opened: true, build: ports.build },
-  }
+  })
 }
 
 /**
