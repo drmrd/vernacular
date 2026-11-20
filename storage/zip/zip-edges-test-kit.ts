@@ -3,7 +3,7 @@
  * from stored blocks (so a test controls where each block ends), and a recorder
  * of the chunks that the reader pushes to fflate. Production code does not import it.
  */
-import { Inflate } from 'fflate'
+import { Deflate, Inflate } from 'fflate'
 import { vi } from 'vitest'
 import { joinBytes } from './zip64-test-kit'
 
@@ -57,4 +57,28 @@ export function recordPushedChunks(): () => PushedChunks {
     const bytes = lengths.reduce((sum, length) => sum + length, 0)
     return { calls: lengths.length, bytes, lastFinal: spy.mock.calls.at(-1)?.[1] }
   }
+}
+
+/** A copy of the bytes with a 16-bit little-endian number written at `at`. */
+export function withUint16(bytes: Uint8Array, at: number, value: number): Uint8Array {
+  const copy = bytes.slice()
+  new DataView(copy.buffer).setUint16(at, value, true)
+  return copy
+}
+
+/** A copy of the bytes with a 32-bit little-endian number written at `at`. */
+export function withUint32(bytes: Uint8Array, at: number, value: number): Uint8Array {
+  const copy = bytes.slice()
+  new DataView(copy.buffer).setUint32(at, value, true)
+  return copy
+}
+
+/** The bytes of `start`, then `flushes` sync flushes with no data between, then `end`, as one stream. */
+export function flushedStream(start: Uint8Array, flushes: number, end: Uint8Array): Uint8Array {
+  const chunks: Uint8Array[] = []
+  const deflate = new Deflate({ level: 6 }, (chunk) => chunks.push(chunk))
+  deflate.push(start)
+  for (let flush = 0; flush < flushes; flush += 1) deflate.flush(true)
+  deflate.push(end, true)
+  return joinBytes(chunks)
 }
