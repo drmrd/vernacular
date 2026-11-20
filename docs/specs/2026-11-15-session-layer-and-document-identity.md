@@ -568,6 +568,7 @@ Design:
 4. The design language and unit precision get keys when they get controls.
 5. Lint forbids browser storage globals outside `storage/`, and the probe in `app/opfs-probe.ts` moves into `storage/`. The rule covers the source layers and `src/`, with their tests and stories. End-to-end specs are outside it, because a spec checks the browser from inside the page. The storage sentence of rule 1 in `.claude/rules.md` then holds with no exception.
 6. Which project to open at start is not a setting. It comes from the project index (section 5.5).
+7. A setting that one tab changes reaches the other open tabs at once, with no reload. The port interface has an optional member, `onOutsideChange`, which the browser port implements by listening to the browser's `storage` event and the in-memory port leaves out. The service listens through it and calls the subscribers of the changed setting with the new value. ADR-0180 records this change to the section.
 
 Left to the builder: the browser API behind the port. The theme has to be known before the first paint, which favors an API that can be read synchronously. Also the list of forbidden globals.
 
@@ -575,6 +576,7 @@ Done when:
 
 - Snap preferences stored under the old key are in effect after the upgrade.
 - A theme choice is in effect after a reload.
+- A theme choice made in one tab shows in another open tab with no reload (`e2e/tests/journeys/settings-follow-another-tab.spec.ts`).
 - Lint rejects `localStorage` in a sample file in `editor/` and accepts it in `storage/`. The rule has no entry on the exception list.
 - A change to a setting notifies its subscribers.
 
