@@ -39,6 +39,7 @@ function fileFindings(file, text) {
   } catch {
     return [{ rule: 'exact-pin', file, message: 'package.json does not parse as JSON' }]
   }
+  const lines = text.split('\n')
   const findings = []
   for (const { section, dependencies } of dependencySections(manifest)) {
     for (const [name, version] of Object.entries(dependencies)) {
@@ -46,7 +47,7 @@ function fileFindings(file, text) {
       findings.push({
         rule: 'exact-pin',
         file,
-        line: lineOfPackage(text, name),
+        line: lineOfPackage(lines, name),
         message: `${section} pins ${name} to "${version}"; use an exact version`,
       })
     }
@@ -55,16 +56,22 @@ function fileFindings(file, text) {
 }
 
 /**
- * @param {Record<string, any>} manifest
+ * @param {unknown} manifest
  * @returns {{ section: string, dependencies: Record<string, unknown> }[]}
  */
 function dependencySections(manifest) {
+  const root = isRecord(manifest) ? manifest : {}
+  const pnpm = isRecord(root.pnpm) ? root.pnpm : {}
+  /** @type {{ section: string, dependencies: unknown }[]} */
   const sections = DEPENDENCY_SECTIONS.map((section) => ({
     section,
-    dependencies: manifest?.[section],
+    dependencies: root[section],
   }))
-  sections.push({ section: 'pnpm.overrides', dependencies: manifest?.pnpm?.overrides })
-  return sections.filter(({ dependencies }) => isRecord(dependencies))
+  sections.push({ section: 'pnpm.overrides', dependencies: pnpm.overrides })
+  return sections.filter(
+    /** @returns {entry is { section: string, dependencies: Record<string, unknown> }} */
+    (entry) => isRecord(entry.dependencies),
+  )
 }
 
 /**
@@ -76,11 +83,11 @@ function isRecord(value) {
 }
 
 /**
- * @param {string} text
+ * @param {readonly string[]} lines
  * @param {string} name
  * @returns {number | undefined}
  */
-function lineOfPackage(text, name) {
-  const index = text.split('\n').findIndex((line) => line.includes(`"${name}":`))
+function lineOfPackage(lines, name) {
+  const index = lines.findIndex((line) => line.includes(`"${name}":`))
   return index === -1 ? undefined : index + 1
 }
