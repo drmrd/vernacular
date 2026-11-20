@@ -246,21 +246,31 @@ Loaders (which produce Three.js scene graphs from Blobs) are a separate concern 
 ```
 <packid>-<version>/
   manifest.json
-    { packId, version, license, attribution, eras[],
-      categories[], assets[ { contentHash, name, kind,
-      dimensions, eras[], categories[], license, attribution } ] }
+    { formatVersion, packId, version, license, attribution, eras[],
+      categories[], assets[ { contentHash, name, kind, mediaType,
+      eras[], categories[], styles[], license, attribution, sourceUrl,
+      dimensions,                        ← models
+      image, tileSize, colorSpace } ] }  ← textures
   assets/
-    <contentHash>.glb
+    <contentHash>.glb     ← model/gltf-binary
+    <contentHash>.png     ← image/png
+    <contentHash>.webp    ← image/webp
     ...
   thumbnails/
-    <contentHash>.webp    ← precomputed at pack-build time
+    <contentHash>.webp    ← precomputed at pack-build time; required for models
   CHANGELOG.md
   LICENSE
   NOTICE
 ```
 
 - Packs are immutable per version. Versioned with SemVer.
-- Integrity via sha256 content hashes for MVP (manifest claims must match file reality).
+- `formatVersion` is the version of this layout. It is separate from the pack's own version. A manifest without it is format 1, in which every asset is a model and no asset names a media type. Format 2 adds a required `mediaType` to each asset, and the texture asset (ADR-0219). A reader refuses a pack whose format version it does not know, and loads no asset of it.
+- The kind of an asset (section 4.5) says what it is for. Its media type says how its bytes are read, and sets the extension of its file. A `texture` is `image/png` or `image/webp`. Every other kind is `model/gltf-binary` until a later record gives it a media type of its own.
+- A model declares `dimensions`: its width, depth, and height in millimetres. It has a WebP thumbnail.
+- A texture declares `image`, its width and height in pixels. Each is a power of two from 64 to 2048.
+- A texture declares `tileSize`, the millimetres of surface that one copy of the image covers.
+- A texture declares `colorSpace`: `srgb` for a color image, `linear` for a data image. It declares no dimensions, and its thumbnail is optional.
+- Integrity rests on sha256 content hashes over the stored file bytes. Manifest claims must match the files, including the size and layout in an image's header.
 - Ed25519 cryptographic signing is a phase-2 hardening; the MVP trust model is "the user opted to install this pack from this URL."
 - Thumbnails baked at pack-build time so library browsing is instant.
 
@@ -290,7 +300,7 @@ kind: 'furniture'
     | 'preview-only'
 ```
 
-Each tool sees only the kinds it can use.
+Each tool sees only the kinds it can use. The furniture library lists only `furniture`. A `texture` is an image that a surface repeats at its declared tile size. The ground uses one, and the `tiled-image` finishes will (ADR-0130, ADR-0219). Section 4.3 gives the file rules of each kind.
 
 ### 4.6 Data-driven extension model (MVP)
 
