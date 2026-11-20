@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi, type MockInstance } from 'vitest'
 import { screen, cleanup, waitFor } from '@testing-library/react'
-import { InMemoryDirectory, InMemoryRecentProjectStore, type DocumentStore } from '../storage'
+import { InMemoryDirectory, type DocumentStore } from '../storage'
 import {
   DOCUMENT_FILE,
   createTestPorts,
@@ -60,19 +60,6 @@ function savedIds(save: MockInstance<DocumentStore['save']>): string[] {
 async function documentText(directory: InMemoryDirectory): Promise<string> {
   const bytes = await directory.readFile(DOCUMENT_FILE)
   return new TextDecoder().decode(bytes)
-}
-
-// A recent list that offers both projects in the project menu.
-async function recentListOfBothProjects(): Promise<InMemoryRecentProjectStore> {
-  const recentProjects = new InMemoryRecentProjectStore()
-  await recentProjects.record({
-    id: SECOND_ID,
-    name: 'Second House',
-    backend: 'opfs',
-    lastOpened: 1,
-  })
-  await recentProjects.record({ id: FIRST_ID, name: 'First House', backend: 'opfs', lastOpened: 2 })
-  return recentProjects
 }
 
 afterEach(() => {
@@ -139,9 +126,8 @@ describe('The start after a switch between projects', () => {
     const ports = createTestPorts({ durable: true })
     await plantProject(ports, FIRST_ID, 'First House')
     await plantProject(ports, SECOND_ID, 'Second House')
-    const recentProjects = await recentListOfBothProjects()
     const save = vi.spyOn(ports.workspace, 'save')
-    renderApp(ports, { projectId: FIRST_ID, recentProjects })
+    renderApp(ports, { projectId: FIRST_ID })
     await expectOpenProject('First House')
     await chooseFromTheProjectMenu('Second House')
     await expectOpenProject('Second House')
@@ -159,7 +145,7 @@ describe('The start after a switch between projects', () => {
     cleanup()
     await settleForAWhile()
 
-    renderApp(reloadOf(ports), { recentProjects })
+    renderApp(reloadOf(ports))
 
     await expectOpenProject('First House')
   })

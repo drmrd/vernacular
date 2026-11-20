@@ -13,7 +13,6 @@ import { NotificationProvider, type NotificationApi } from '../editor/design-sys
 import type { DocumentHandle } from '../session'
 import {
   InMemoryAssetCache,
-  InMemoryRecentProjectStore,
   type DirectoryPort,
   type DocumentStore,
   type SaveReport,
@@ -159,7 +158,10 @@ export function renderApp(ports: TestPorts, props: Omit<AppProps, 'ports'> = {})
 /** The `runFlow` of an owner that is busy: it calls nothing and resolves undefined. */
 export const runNothing: RunFlow = () => Promise.resolve(undefined)
 
-/** The properties of the workspace around `handle`, with no owner behind it unless one is given. */
+/**
+ * The properties of the workspace around `handle`, with no owner behind it unless one is given.
+ * The ports are new in-memory ports unless a test gives the ones that opened `handle`.
+ */
 export function workspaceProps(
   handle: DocumentHandle,
   overrides: Partial<EditorWorkspaceProps> = {},
@@ -168,7 +170,7 @@ export function workspaceProps(
     handle,
     runFlow: runNothing,
     libraryAssets: new InMemoryAssetCache(),
-    recentProjects: new InMemoryRecentProjectStore(),
+    ports: createTestPorts(),
     capabilities: capableCapabilities(),
     ...overrides,
   }

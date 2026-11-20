@@ -3,7 +3,10 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProjectMenu } from './project-menu'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 describe('ProjectMenu', () => {
   it('renders nothing when no project handlers are provided', () => {
@@ -74,6 +77,30 @@ describe('ProjectMenu', () => {
     await user.click(screen.getByRole('button', { name: /project/i }))
     await user.click(screen.getByRole('menuitem', { name: /eastmore farmstead/i }))
     expect(onOpenRecent).toHaveBeenCalledWith('p1')
+  })
+
+  it('two recent projects with one name are two rows, each opens its own id, and nothing is logged', async () => {
+    const user = userEvent.setup()
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const onOpenRecent = vi.fn()
+    const twins = [
+      { id: 'twin-a', name: 'Untitled project' },
+      { id: 'twin-b', name: 'Untitled project' },
+    ]
+    render(<ProjectMenu onOpenRecent={onOpenRecent} recentProjects={twins} />)
+    const trigger = screen.getByRole('button', { name: /project/i })
+
+    await user.click(trigger)
+    const rows = screen.getAllByRole('menuitem', { name: 'Untitled project' })
+    expect(rows).toHaveLength(twins.length)
+    await user.click(rows[1] as HTMLElement)
+    await user.click(trigger)
+    await user.click(
+      screen.getAllByRole('menuitem', { name: 'Untitled project' })[0] as HTMLElement,
+    )
+
+    expect(onOpenRecent.mock.calls).toEqual([['twin-b'], ['twin-a']])
+    expect(logged).not.toHaveBeenCalled()
   })
 
   it('renders a visible "Project" label on the trigger beside the chevron', () => {

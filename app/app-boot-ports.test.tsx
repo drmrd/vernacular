@@ -178,7 +178,7 @@ describe('The application under StrictMode that resolves its ports', () => {
     expect(lockCalls(log)).toEqual([`lock:${START_ID}`])
   })
 
-  it('reads the index once', async () => {
+  it('reads the index once for the start and once for the recent entries', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     const all = vi.spyOn(ports.index, 'all')
@@ -191,6 +191,6 @@ describe('The application under StrictMode that resolves its ports', () => {
     await findTheShell()
     await settleForAWhile()
 
-    expect(all).toHaveBeenCalledTimes(1)
+    expect(all).toHaveBeenCalledTimes(2)
   })
 })
