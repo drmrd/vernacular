@@ -51,6 +51,19 @@ describe('removableAssets', () => {
     expect(removableAssets(DELETED, users, noLibrary)).toEqual([])
   })
 
+  it('keeps a library asset that the deleted project lists twice', () => {
+    const users = [assetUser(DELETED, [FIRST, SECOND, FIRST])]
+    const library: ReadonlySet<string> = new Set([FIRST])
+
+    expect(removableAssets(DELETED, users, library)).toEqual([SECOND])
+  })
+
+  it('an incomplete other user that lists nothing still blocks everything', () => {
+    const users = [assetUser(DELETED, [FIRST]), assetUser('unreadable-project', [], false)]
+
+    expect(removableAssets(DELETED, users, noLibrary)).toEqual([])
+  })
+
   it('removes the listed assets of the deleted project even when its own list is incomplete', () => {
     const users = [assetUser(DELETED, [FIRST, SECOND], false), assetUser(OTHER, [SECOND])]
 

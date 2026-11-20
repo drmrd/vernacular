@@ -14,7 +14,7 @@ import {
   shownWarnings,
 } from './action-test-support'
 import { workspaceProps } from './app-test-support'
-import { closeReferringHandles, openProjectReferring } from './export-report-test-kit'
+import { closeReferringHandles, openProjectReferring } from './export-report-test-support'
 import type { RunFlow } from './use-open-project'
 import { useWorkspaceState } from './use-workspace-state'
 
@@ -54,14 +54,17 @@ const importedHandles: DocumentHandle[] = []
 const originalCreateObjectUrl = URL.createObjectURL
 const originalRevokeObjectUrl = URL.revokeObjectURL
 
-// jsdom does not implement the object URLs that a download needs.
+// jsdom does not implement the object URLs that a download needs, nor the navigation that a click
+// on the download link starts.
 beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:test')
   URL.revokeObjectURL = vi.fn()
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 })
 
 afterEach(async () => {
   cleanup()
+  vi.mocked(HTMLAnchorElement.prototype.click).mockRestore()
   await closeOpenedHandles()
   await closeReferringHandles()
   URL.createObjectURL = originalCreateObjectUrl

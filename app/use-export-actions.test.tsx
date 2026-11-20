@@ -30,7 +30,7 @@ import {
   PROJECT_ID,
   startBundleExport,
   WARNING,
-} from './export-report-test-kit'
+} from './export-report-test-support'
 import {
   runExportWithToast,
   useExportBundleAction,
