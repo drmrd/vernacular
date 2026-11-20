@@ -1,5 +1,6 @@
 import { ARCHIVE_LIMITS, type ArchiveLimitName, type ArchiveLimits } from './archive-limits'
 import { assetHashOfEntry, DOCUMENT_ENTRY_NAME } from './archive-layout'
+import { contentHashOf } from './content-hash'
 import { inflateEntry } from './inflate-entry'
 import {
   entryData,
@@ -167,51 +168,79 @@ function firstAssetEntries(entries: readonly DirectoryEntry[]): AssetEntry[] {
   return first
 }
 
+/** An asset entry after its inflation: its bytes, or `LEFT_OUT` when they could not be read. */
+type InflatedAsset = readonly [contentHash: string, bytes: Uint8Array | typeof LEFT_OUT]
+
 /**
- * The assets by content hash, in the order of the central directory. `undefined` when an asset
- * refuses the archive; any other fault leaves that asset out.
+ * Every asset inflated, in the order of the central directory, before any is hashed: an asset
+ * that refuses the archive must refuse it also when an asset before it will be rejected.
+ * `undefined` when an asset refuses the archive.
  */
 function readAssets(
   view: DataView,
   entries: readonly DirectoryEntry[],
   dataBudget: DataBudget,
-): Map<string, Uint8Array> | undefined {
-  const assets = new Map<string, Uint8Array>()
+): InflatedAsset[] | undefined {
+  const inflated: InflatedAsset[] = []
   for (const [contentHash, entry] of firstAssetEntries(entries)) {
     const outcome = readAsset(view, entry, dataBudget)
     if (outcome === REFUSE_ARCHIVE) return undefined
-    if (outcome !== LEFT_OUT) assets.set(contentHash, outcome)
+    inflated.push([contentHash, outcome])
   }
-  return assets
+  return inflated
+}
+
+interface CheckedAssets {
+  readonly assets: Map<string, Uint8Array>
+  readonly rejectedAssets: string[]
 }
 
 /**
- * Checks the archive, then reads the document, then the assets. Nothing is inflated before every
- * check has passed.
+ * An asset is accepted only when its bytes hash to its name, since a name that lies would let one
+ * file stand in for another. Any other asset, also one that could not be read, is rejected under
+ * the hash of its name. One asset is hashed at a time, in the order of the central directory, so
+ * both lists keep that order and only one asset is handed to the digest at once.
  */
-function readArchiveBytes(bytes: Uint8Array, limits: ArchiveLimits): ArchiveRead {
+async function checkAssets(inflated: readonly InflatedAsset[]): Promise<CheckedAssets> {
+  const assets = new Map<string, Uint8Array>()
+  const rejectedAssets: string[] = []
+  for (const [contentHash, bytes] of inflated) {
+    if (bytes !== LEFT_OUT && (await contentHashOf(bytes)) === contentHash) {
+      assets.set(contentHash, bytes)
+    } else {
+      rejectedAssets.push(contentHash)
+    }
+  }
+  return { assets, rejectedAssets }
+}
+
+/**
+ * Checks the archive, then reads the document, then inflates the assets, then hashes them.
+ * Nothing is inflated before every check has passed.
+ */
+async function readArchiveBytes(bytes: Uint8Array, limits: ArchiveLimits): Promise<ArchiveRead> {
   const checked = checkBeforeInflating(bytes, limits)
   if (!checked.ok) return checked
   const dataBudget: DataBudget = { spent: 0, limit: bytes.length }
   const document = readDocument(checked.view, checked.document, dataBudget)
   if (document === undefined) return notAnArchive()
-  const assets = readAssets(checked.view, checked.entries, dataBudget)
-  if (assets === undefined) return notAnArchive()
-  return { ok: true, document, assets, rejectedAssets: [] }
+  const inflated = readAssets(checked.view, checked.entries, dataBudget)
+  if (inflated === undefined) return notAnArchive()
+  return { ok: true, document, ...(await checkAssets(inflated)) }
 }
 
 /**
  * Reads an imported project archive, which is an untrusted file. Refuses an archive above each
- * limit before it inflates anything. The promise never rejects, and `bytes` is never changed; a
- * stored document is a view into `bytes`.
+ * limit before it inflates anything. The promise never rejects, also when the digest is missing or
+ * fails, and `bytes` is never changed; a stored document or asset is a view into `bytes`.
  */
-export function readArchive(
+export async function readArchive(
   bytes: Uint8Array,
   limits: ArchiveLimits = ARCHIVE_LIMITS,
 ): Promise<ArchiveRead> {
   try {
-    return Promise.resolve(readArchiveBytes(bytes, limits))
+    return await readArchiveBytes(bytes, limits)
   } catch {
-    return Promise.resolve(notAnArchive())
+    return notAnArchive()
   }
 }
