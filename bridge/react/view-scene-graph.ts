@@ -5,6 +5,7 @@ import {
   type SceneGraph,
   type SceneNode,
 } from '../../core'
+import type { SceneSessionState } from '../scene-session/scene-session-store'
 
 /** Options controlling which floors the whole-building view includes. */
 export interface BuildingViewOptions {
@@ -68,8 +69,11 @@ export interface ViewSceneGraphInput {
   scope: SceneScope
   activeFloorId: string | null
   includeUnderground: boolean
-  /** A walk keeps the floor the walker stands on, even when the underground setting hides its level. */
-  cameraMode: 'orbit' | 'walk'
+  /**
+   * A walk keeps the floor the walker stands on, even when the underground setting hides
+   * its level.
+   */
+  cameraMode: SceneSessionState['cameraMode']
 }
 
 /**
