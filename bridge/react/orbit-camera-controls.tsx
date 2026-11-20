@@ -15,7 +15,10 @@ interface OrbitCameraControlsProps {
   onLeave: (camera: SavedCamera) => void
 }
 
-/** Calls `notify` on a pointer press or a wheel turn on the canvas; returns the remover. */
+/**
+ * Calls `notify` on a pointer press or a wheel turn on the canvas. Returns a function that
+ * removes both listeners.
+ */
 function listenForUserControl(domElement: HTMLElement, notify: () => void): () => void {
   domElement.addEventListener('pointerdown', notify)
   domElement.addEventListener('wheel', notify, { passive: true })
@@ -49,6 +52,7 @@ export function OrbitCameraControls({
   // Held in refs so a new identity of these props never rebuilds the controller.
   const callbacksRef = useRef({ onLeave, onUserControl })
   callbacksRef.current = { onLeave, onUserControl }
+  const notifyUserControl = () => callbacksRef.current.onUserControl()
   const initialTargetRef = useRef(initialTarget)
   // The last pivot handed to the controller. It starts as the first target because the
   // construction already placed the pivot, and strict mode runs each effect twice on
@@ -56,16 +60,16 @@ export function OrbitCameraControls({
   const appliedTargetRef = useRef(target)
 
   // Construct exactly one controller for this camera and canvas, and mark the camera
-  // as user-controlled when the user presses on it or turns the wheel. The camera and the pivot
-  // are read on the way out, before the controller is disposed of, so they are still the
-  // ones the user was looking through.
+  // as user-controlled when the user presses on it or turns the wheel. The camera and
+  // the pivot are read on the way out, before the controller is disposed of, so they are
+  // still the ones the user was looking through.
   useEffect(() => {
     const controller = createOrbitController(camera, domElement)
     controller.setTarget(initialTargetRef.current)
     controllerRef.current = controller
-    const stop = listenForUserControl(domElement, () => callbacksRef.current.onUserControl())
+    const stopListening = listenForUserControl(domElement, notifyUserControl)
     return () => {
-      stop()
+      stopListening()
       callbacksRef.current.onLeave({
         position: cameraPositionOf(camera),
         orbitTarget: controller.getTarget(),
@@ -76,7 +80,8 @@ export function OrbitCameraControls({
   }, [camera, domElement])
 
   // Move the pivot only when the pane asks for a new one. Null keeps the controller's own
-  // pivot, so a scene rebuild leaves a panned pivot alone; it is recorded all the same.
+  // pivot, so a scene rebuild leaves a panned pivot alone; the null is still recorded, so
+  // the same target object returning later is applied again.
   useEffect(() => {
     if (appliedTargetRef.current === target) return
     appliedTargetRef.current = target
