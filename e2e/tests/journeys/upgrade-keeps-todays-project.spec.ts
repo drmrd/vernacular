@@ -74,6 +74,9 @@ test('starts once in the project that an older build remembered', async ({ page,
 
   await openStorageHook(page)
   await page.evaluate(() => window.vernacularE2eStorage!.opfsPersistSave())
+  // The hook page boots the app, whose index writes could recreate the index after the delete
+  // below. A same-origin page that runs no app leaves nothing to write it.
+  await page.goto('/favicon.svg')
   await page.evaluate(({ key, id }) => localStorage.setItem(key, id), {
     key: REMEMBERED_ID_KEY,
     id: PLANTED_ID,
