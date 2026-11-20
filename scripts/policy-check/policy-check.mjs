@@ -45,16 +45,16 @@ export async function runPolicyCheck(argv, { runGit, log }) {
   const base = flagValue(argv, '--base') ?? DEFAULT_BASE
   const head = flagValue(argv, '--head') ?? DEFAULT_HEAD
   const branch = flagValue(argv, '--branch') ?? runGit(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-  const range = `${base}..${head} on ${branch}`
-  const findings = collectFindings({ runGit, base, head, branch })
+  const rangeOnBranch = `${base}..${head} on ${branch}`
+  const findings = ruleFindings(readRange({ runGit, base, head }), branch)
   const failing = findings.filter((finding) => severityOf(finding.rule) === 'fail')
   const warnings = findings.filter((finding) => severityOf(finding.rule) === 'warn')
   if (findings.length === 0) {
-    log(`policy:check: clean (${range})`)
+    log(`policy:check: clean (${rangeOnBranch})`)
     return EXIT_CLEAN
   }
   log(
-    `policy:check: ${failing.length} failing and ${warnings.length} warning finding(s) in ${range}`,
+    `policy:check: ${failing.length} failing and ${warnings.length} warning finding(s) in ${rangeOnBranch}`,
   )
   for (const finding of failing) log(formatPlainLine(finding, 'fail'))
   for (const finding of warnings) log(formatPlainLine(finding, 'warn'))
@@ -62,10 +62,18 @@ export async function runPolicyCheck(argv, { runGit, log }) {
 }
 
 /**
- * @param {{ runGit: (args: readonly string[]) => string, base: string, head: string, branch: string }} input
- * @returns {Finding[]}
+ * @typedef {object} RangeData
+ * @property {import('./git-input.mjs').PolicyCommit[]} commits
+ * @property {ReturnType<typeof parseNameStatus>} changedFiles
+ * @property {ReturnType<typeof parseUnifiedDiff>} addedLines
+ * @property {(path: string) => string} readFile
  */
-function collectFindings({ runGit, base, head, branch }) {
+
+/**
+ * @param {{ runGit: (args: readonly string[]) => string, base: string, head: string }} input
+ * @returns {RangeData}
+ */
+function readRange({ runGit, base, head }) {
   const diffArguments = ['-c', 'core.quotePath=false', 'diff']
   const commits = parseCommitLog(
     runGit([
@@ -90,6 +98,15 @@ function collectFindings({ runGit, base, head, branch }) {
     ]),
   )
   const readFile = (/** @type {string} */ path) => runGit(['show', `${head}:${path}`])
+  return { commits, changedFiles, addedLines, readFile }
+}
+
+/**
+ * @param {RangeData} range
+ * @param {string} branch
+ * @returns {Finding[]}
+ */
+function ruleFindings({ commits, changedFiles, addedLines, readFile }, branch) {
   const commitTypes = commitlintConfig.rules['type-enum'][TYPE_ENUM_VALUES_INDEX]
   return [
     ...trailerFindings(commits),
@@ -134,8 +151,9 @@ const invokedPath = process.argv[1]
 const isDirectInvocation =
   invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath
 
-if (isDirectInvocation) {
-  runPolicyCheck(process.argv.slice(2), {
+/** @returns {PolicyCheckDeps} the real git, commitlint, console, and CI environment */
+export function defaultDeps() {
+  return {
     runGit: (args) => execFileSync('git', args, { encoding: 'utf8' }),
     runCommitlint: ({ base, head }) => {
       const result = spawnCommitlint(base, head)
@@ -143,7 +161,11 @@ if (isDirectInvocation) {
     },
     log: (line) => console.log(line),
     githubActions: process.env.GITHUB_ACTIONS === 'true',
-  })
+  }
+}
+
+if (isDirectInvocation) {
+  runPolicyCheck(process.argv.slice(2), defaultDeps())
     .then((code) => {
       process.exitCode = code
     })
