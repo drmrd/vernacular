@@ -8,11 +8,24 @@ import type { ProjectIndex, ProjectRecord } from './project-index'
  */
 export const INDEX_READ_WAIT_MS = 10_000
 
+/**
+ * How long a write to the first index may stay without an answer before it rejects to its caller.
+ * A write rejects in place of switching to memory: a full disk must not empty the list of the tab,
+ * and the caller guards its own writes. Without a limit, one write that never settles would hold
+ * every caller that waits for it.
+ */
+export const INDEX_WRITE_WAIT_MS = INDEX_READ_WAIT_MS
+
 const MILLISECONDS_PER_SECOND = 1_000
 
 const READ_WAIT_SECONDS = INDEX_READ_WAIT_MS / MILLISECONDS_PER_SECOND
 
 const NO_ANSWER_MESSAGE = `The project index gave no answer within ${READ_WAIT_SECONDS} seconds.`
+
+const WRITE_WAIT_SECONDS = INDEX_WRITE_WAIT_MS / MILLISECONDS_PER_SECOND
+
+const WRITE_TIMEOUT_MESSAGE =
+  'The project index gave no answer to a write ' + `within ${WRITE_WAIT_SECONDS} seconds.`
 
 const READ_FAILED_WARNING =
   'The project index could not be read. This tab keeps its project records in memory.'
@@ -49,19 +62,41 @@ class MemoryFallbackIndex implements ProjectIndex {
     return this.read((index) => index.get(id))
   }
 
-  // Async so that a synchronous throw of `first`, in `put` and in `remove`, reaches the caller as a
-  // rejection. A write has no time limit: a write that never settles stays pending and switches
-  // nothing.
-  async put(record: ProjectRecord): Promise<void> {
-    return this.current().put(record)
+  put(record: ProjectRecord): Promise<void> {
+    return this.write((index) => index.put(record))
   }
 
-  async remove(id: string): Promise<void> {
-    return this.current().remove(id)
+  remove(id: string): Promise<void> {
+    return this.write((index) => index.remove(id))
   }
 
-  private current(): ProjectIndex {
-    return this.switched ? this.memory : this.first
+  // After the switch a write goes to memory, which needs no time limit and no timer.
+  private write(send: (index: ProjectIndex) => Promise<void>): Promise<void> {
+    return this.switched ? send(this.memory) : this.sendToFirst(send)
+  }
+
+  // The first settlement wins and the others are ignored, so each write has its own time limit and
+  // a late answer or rejection changes nothing for the caller. Both handlers are always attached,
+  // so a rejection that comes after the time limit is handled too. A synchronous throw of `first`
+  // reaches the caller as a rejection. A write that fails or times out switches nothing.
+  private sendToFirst(send: (index: ProjectIndex) => Promise<void>): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(WRITE_TIMEOUT_MESSAGE))
+      }, INDEX_WRITE_WAIT_MS)
+      const finish = (settle: () => void): void => {
+        clearTimeout(timer)
+        settle()
+      }
+      try {
+        send(this.first).then(
+          () => finish(() => resolve()),
+          (error: unknown) => finish(() => reject(error)),
+        )
+      } catch (error) {
+        finish(() => reject(error))
+      }
+    })
   }
 
   private async read<T>(ask: (index: ProjectIndex) => Promise<T>): Promise<T> {
