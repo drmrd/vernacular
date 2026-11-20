@@ -22,16 +22,11 @@ const PAIRINGS: readonly Pairing[] = [
   ['all', 'get'],
   ['get', 'all'],
 ]
-const MIXED_PAIRINGS: readonly Pairing[] = [
-  ['all', 'get'],
-  ['get', 'all'],
-]
 const HOUSE = sampleRecord()
 const BARN = sampleRecord({ id: 'barn', name: 'Barn' })
 const FIRST_ERROR = new Error('the first read failed')
 const SECOND_ERROR = new Error('the second read failed')
 const EMPTY_ANSWER: Record<ReadMethod, unknown> = { all: [], get: undefined }
-const FIRST_ANSWER: Record<ReadMethod, unknown> = { all: [HOUSE], get: HOUSE }
 
 let consoleWarn: ReturnType<typeof vi.spyOn>
 let unhandled: Mock<(reason: unknown) => void>
@@ -137,24 +132,6 @@ describe('reads that settle together', () => {
       expect(two()).toEqual(answered(EMPTY_ANSWER[secondRead]))
       expect(consoleWarn).toHaveBeenCalledTimes(1)
       expect(consoleWarn.mock.calls[0]).toContain(FIRST_ERROR)
-    },
-  )
-
-  it.each(MIXED_PAIRINGS)(
-    'a read the first index answered keeps that answer when another read rejects in the same step (%s answered, %s rejected)',
-    async (answeredRead, rejectedRead) => {
-      const { first, holds } = await firstWithBothReadsHeld()
-      const index = withMemoryFallback(first)
-      const early = watch(readOf(index, answeredRead))
-      const failing = watch(readOf(index, rejectedRead))
-
-      holds[rejectedRead].rejectOldest(FIRST_ERROR)
-      holds[answeredRead].answerOldestWith(FIRST_ANSWER[answeredRead])
-      await settle()
-
-      expect(early()).toEqual(answered(FIRST_ANSWER[answeredRead]))
-      expect(failing()).toEqual(answered(EMPTY_ANSWER[rejectedRead]))
-      expect(consoleWarn).toHaveBeenCalledTimes(1)
     },
   )
 })

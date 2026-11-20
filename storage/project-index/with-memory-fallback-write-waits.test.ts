@@ -18,11 +18,6 @@ const HOUSE = sampleRecord()
 const BARN = sampleRecord({ id: 'barn', name: 'Barn' })
 const SECOND_WRITE_DELAY_MS = 250
 const FAILURE = new Error('the first index refused')
-// Only until the constant exists, so that a case fails on its assertion and not on a wait of NaN.
-const WAIT_WHEN_MISSING_MS = 1_000
-const WRITE_WAIT_MS = Number.isFinite(INDEX_WRITE_WAIT_MS)
-  ? INDEX_WRITE_WAIT_MS
-  : WAIT_WHEN_MISSING_MS
 
 const PENDING: Watched = { status: 'pending' }
 const TOO_LATE: Watched = { status: 'rejected', error: expect.any(Error) }
@@ -42,7 +37,9 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-/** A first index that holds the house and the barn, with one write held and a spy on each method. */
+/**
+ * A first index that holds the house and the barn, with one write held and a spy on each method.
+ */
 async function firstWithHeldWrite(held: WriteMethod) {
   const first = new InMemoryProjectIndex()
   await first.put(HOUSE)
@@ -99,7 +96,7 @@ describe('a write to a first index that gives no answer', () => {
       const { first } = await firstWithHeldWrite(write)
       const result = watch(writeOf(withMemoryFallback(first), write, HOUSE.id))
 
-      await vi.advanceTimersByTimeAsync(WRITE_WAIT_MS - 1)
+      await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS - 1)
       expect(result()).toEqual(PENDING)
       await vi.advanceTimersByTimeAsync(1)
 
@@ -113,7 +110,7 @@ describe('a write to a first index that gives no answer', () => {
       const { first, hold, calls } = await firstWithHeldWrite(write)
       const index = withMemoryFallback(first)
       const result = watch(writeOf(index, write, HOUSE.id))
-      await vi.advanceTimersByTimeAsync(WRITE_WAIT_MS)
+      await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS)
       expect(result()).toEqual(TOO_LATE)
 
       expect(await seen(index.all())).toEqual(answered([BARN, HOUSE]))
@@ -137,7 +134,7 @@ describe('a write to a first index that gives no answer', () => {
       await vi.advanceTimersByTimeAsync(SECOND_WRITE_DELAY_MS)
       const later = watch(writeOf(index, write, BARN.id))
 
-      await vi.advanceTimersByTimeAsync(WRITE_WAIT_MS - SECOND_WRITE_DELAY_MS - 1)
+      await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS - SECOND_WRITE_DELAY_MS - 1)
       expect([earlier(), later()]).toEqual([PENDING, PENDING])
       await vi.advanceTimersByTimeAsync(1)
       expect([earlier(), later()]).toEqual([TOO_LATE, PENDING])
@@ -155,7 +152,7 @@ describe('a write to a first index that gives no answer', () => {
     async (write) => {
       const { first, hold } = await firstWithHeldWrite(write)
       const result = watch(writeOf(withMemoryFallback(first), write, HOUSE.id))
-      await vi.advanceTimersByTimeAsync(WRITE_WAIT_MS)
+      await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS)
 
       hold.answerOldest()
       await settle()
@@ -170,7 +167,7 @@ describe('a write to a first index that gives no answer', () => {
     async (write) => {
       const { first, hold } = await firstWithHeldWrite(write)
       const result = watch(writeOf(withMemoryFallback(first), write, HOUSE.id))
-      await vi.advanceTimersByTimeAsync(WRITE_WAIT_MS)
+      await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS)
       expect(result()).toEqual(TOO_LATE)
 
       hold.rejectOldest(new Error('the first index failed too late'))
@@ -190,7 +187,7 @@ describe('a write to a first index that answers or fails in time', () => {
     async (write) => {
       const { first, hold } = await firstWithHeldWrite(write)
       const result = watch(writeOf(withMemoryFallback(first), write, HOUSE.id))
-      await vi.advanceTimersByTimeAsync(WRITE_WAIT_MS - 1)
+      await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS - 1)
 
       hold.answerOldest()
       await settle()
@@ -205,7 +202,7 @@ describe('a write to a first index that answers or fails in time', () => {
     async (write) => {
       const { first, hold } = await firstWithHeldWrite(write)
       const result = watch(writeOf(withMemoryFallback(first), write, HOUSE.id))
-      await vi.advanceTimersByTimeAsync(WRITE_WAIT_MS - 1)
+      await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS - 1)
 
       hold.rejectOldest(FAILURE)
       await settle()
@@ -270,7 +267,7 @@ describe('a write after the switch and a write beside a read that gives no answe
         order === 'write first' ? [starts.write(), starts.read()] : [starts.read(), starts.write()]
       const [rejected, read] = order === 'write first' ? [one, two] : [two, one]
 
-      await vi.advanceTimersByTimeAsync(Math.max(INDEX_READ_WAIT_MS, WRITE_WAIT_MS))
+      await vi.advanceTimersByTimeAsync(Math.max(INDEX_READ_WAIT_MS, INDEX_WRITE_WAIT_MS))
 
       expect(rejected()).toEqual(TOO_LATE)
       expect(read()).toEqual(answered([]))
@@ -287,7 +284,7 @@ describe('a write after the switch and a write beside a read that gives no answe
     const index = withMemoryFallback(first)
     const put = watch(index.put(recordOf('cellar')))
     const read = watch(index.all())
-    await vi.advanceTimersByTimeAsync(Math.max(INDEX_READ_WAIT_MS, WRITE_WAIT_MS))
+    await vi.advanceTimersByTimeAsync(Math.max(INDEX_READ_WAIT_MS, INDEX_WRITE_WAIT_MS))
     expect([put(), read()]).toEqual([TOO_LATE, answered([])])
 
     hold.answerOldest()

@@ -256,7 +256,10 @@ export interface WriteHold {
   rejectOldest(error?: Error): void
 }
 
-/** From now on each `put` or `remove` of `index`, as `method` says, stays pending until the test ends it. */
+/**
+ * From now on each `put` or `remove` of `index`, as `method` says, stays pending until the test
+ * ends it.
+ */
 export function holdWrites(index: ProjectIndex, method: WriteMethod): WriteHold {
   const held: Array<{ answer: () => void; reject: (error: Error) => void }> = []
   const realPut = index.put.bind(index)
