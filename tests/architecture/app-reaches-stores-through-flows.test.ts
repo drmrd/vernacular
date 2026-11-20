@@ -13,6 +13,13 @@ const SOURCE_SCAN_TIMEOUT_MS = 30_000
 const PORTS_BUILDER = 'app/create-session-ports.ts'
 const PLANTED_FILE = 'app/sample.ts'
 
+const INDEX_NAMES: readonly string[] = [
+  'ProjectIndex',
+  'InMemoryProjectIndex',
+  'IndexedDbProjectIndex',
+  'withMemoryFallback',
+]
+
 const STORE_NAMES: readonly string[] = [
   'ProjectStore',
   'DocumentStore',
@@ -23,10 +30,7 @@ const STORE_NAMES: readonly string[] = [
   'ZipBundleProjectStore',
   'FileSystemFolderProjectStore',
   'createOpfsProjectStore',
-  'ProjectIndex',
-  'InMemoryProjectIndex',
-  'IndexedDbProjectIndex',
-  'withMemoryFallback',
+  ...INDEX_NAMES,
 ]
 
 const APP_RULE: NamedImportRule = { layer: 'app', names: STORE_NAMES, exempt: [PORTS_BUILDER] }
@@ -37,6 +41,8 @@ const IMPORTS_INDEX_CLASS =
   "import { IndexedDbProjectIndex } from '../storage'\nexport const index = new IndexedDbProjectIndex()\n"
 const REACHES_WORKSPACE =
   "import type { SessionPorts } from '../session'\nexport const read = (ports: SessionPorts) => ports.workspace.read('a')\n"
+const REACHES_INDEX =
+  "import type { SessionPorts } from '../session'\nexport const records = (ports: SessionPorts) => ports.index.all()\n"
 
 function reportedFor(path: string, text: string): string[] {
   return filesImportingNames(new Map([[path, text]]), APP_RULE)
@@ -108,6 +114,22 @@ describe('finding the production files of app that reach a store directly', () =
     expect(reportedFor(PLANTED_FILE, text)).toEqual(['app/sample.ts: .workspace'])
   })
 
+  it('names a planted file that reaches the index member of the ports', () => {
+    expect(reportedFor(PLANTED_FILE, REACHES_INDEX)).toEqual(['app/sample.ts: .index'])
+  })
+
+  it.each([
+    ['a destructuring', 'const { index } = ports\nexport const records = index\n'],
+    [
+      'a destructuring that renames it',
+      'const { index: records } = ports\nexport const r = records\n',
+    ],
+    ['a destructuring in a parameter', 'export const records = ({ index }: Ports) => index\n'],
+    ['an element access with a string literal', "export const records = ports['index']\n"],
+  ])('names a planted file that reaches the index of the ports by %s', (_label, text) => {
+    expect(reportedFor(PLANTED_FILE, text)).toEqual(['app/sample.ts: .index'])
+  })
+
   it('does not name an object literal with a workspace property or an indexed type', () => {
     const text = [
       "import type { SessionPorts } from '../session'",
@@ -145,6 +167,19 @@ describe('the production files of app', () => {
       const reported = filesImportingNames(readLayerSources(repositoryRoot), APP_RULE)
 
       expect(reported, 'files of app that reach a store other than through the flows').toEqual([])
+    },
+  )
+
+  it(
+    'no production file in app except app/create-session-ports.ts imports an index class or reaches the index member',
+    { timeout: SOURCE_SCAN_TIMEOUT_MS },
+    () => {
+      const indexNames = [...INDEX_NAMES, '.index']
+      const reported = filesImportingNames(readLayerSources(repositoryRoot), APP_RULE).filter(
+        (line) => indexNames.some((name) => line.endsWith(`: ${name}`)),
+      )
+
+      expect(reported, 'files of app that reach the project index directly').toEqual([])
     },
   )
 })
