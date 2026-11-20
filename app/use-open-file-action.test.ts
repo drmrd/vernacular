@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, cleanup, waitFor } from '@testing-library/react'
-import { encodeDocument, type Project } from '../core'
-import { DocumentDecodeError, InMemoryRecentProjectStore } from '../storage'
+import { encodeDocument, type AssetReference, type Project } from '../core'
+import { ARCHIVE_LIMITS, DocumentDecodeError, InMemoryRecentProjectStore } from '../storage'
 import { createTestPorts, storedName } from '../session/handle/handle-test-kit'
 import {
   closeOpenedHandles,
   openStoredProject,
+  packListing,
+  projectFileReferring,
   recordUnhandledRejections,
   renderActions,
   settleTheAction,
+  type PackListing,
   shownMessages,
   waitForOtherProject,
   waitForRecentEntry,
@@ -20,6 +23,15 @@ const CURRENT_ID = 'current'
 const DRAFT_NAME = 'Drafthouse'
 const HOUSE_NAME = 'My House'
 const READ_FAILURE = 'The file could not be read.'
+const TWO_MISSING_SENTENCE =
+  'The file did not include 2 of the assets this project uses. They show as missing.'
+const TOO_LARGE_SENTENCE = 'Open failed: The file is larger than 512 MB.'
+const FIRST_HASH = 'a'.repeat(64)
+const SECOND_HASH = 'b'.repeat(64)
+const PACK_REFERENCE: AssetReference = {
+  scope: 'pack:vernacular-starter@1.0.0',
+  contentHash: 'd'.repeat(64),
+}
 
 afterEach(async () => {
   cleanup()
@@ -28,11 +40,12 @@ afterEach(async () => {
 })
 
 /** In-memory ports with the project `current` stored and open, and the open file action on it. */
-async function renderOpenFileAction() {
+async function renderOpenFileAction(packs?: PackListing) {
   const ports = createTestPorts()
   const handle = await openStoredProject(ports, CURRENT_ID, DRAFT_NAME)
   const recentProjects = new InMemoryRecentProjectStore()
-  const { result } = renderActions({ ports, handle, recentProjects }, useOpenFileAction)
+  const rig = { ports, handle, recentProjects, ...(packs === undefined ? {} : { packs }) }
+  const { result } = renderActions(rig, useOpenFileAction)
   return { ports, handle, recentProjects, result }
 }
 
@@ -56,6 +69,35 @@ function unreadableFile(): File {
     stream: { value: failStream },
   })
   return file
+}
+
+/** A file that claims `size` bytes and fails every read, and how often a read was tried. */
+function fileClaiming(size: number): { file: File; reads: () => number } {
+  let reads = 0
+  const file = new File(['{}'], 'house.json')
+  const failRead = () => {
+    reads += 1
+    return Promise.reject(new Error(READ_FAILURE))
+  }
+  const failStream = () => {
+    reads += 1
+    throw new Error(READ_FAILURE)
+  }
+  Object.defineProperties(file, {
+    size: { value: size },
+    arrayBuffer: { value: failRead },
+    bytes: { value: failRead },
+    text: { value: failRead },
+    stream: { value: failStream },
+  })
+  return { file, reads: () => reads }
+}
+
+/** The texts of the warnings that show now. */
+function shownWarnings(result: Parameters<typeof shownMessages>[0]): string[] {
+  return result.current.shown
+    .filter((shown) => shown.severity === 'warning')
+    .map((shown) => shown.message)
 }
 
 describe('useOpenFileAction on a dropped file', () => {
@@ -119,5 +161,89 @@ describe('useOpenFileAction on a dropped file', () => {
     } finally {
       unhandled.stop()
     }
+  })
+})
+
+describe('useOpenFileAction on a file that lacks assets', () => {
+  it('shows one warning that says how many assets the file lacked', async () => {
+    const { result } = await renderOpenFileAction()
+    const file = projectFileReferring(
+      { scope: 'user', contentHash: FIRST_HASH },
+      { scope: 'user', contentHash: SECOND_HASH },
+    )
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(file)
+    })
+
+    await waitFor(() => expect(shownWarnings(result)).toEqual([TWO_MISSING_SENTENCE]))
+    await settleTheAction()
+    expect(shownWarnings(result)).toEqual([TWO_MISSING_SENTENCE])
+  })
+
+  it('shows no warning when the file lacks nothing', async () => {
+    const { handle, result } = await renderOpenFileAction()
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(projectFile(namedProject(HOUSE_NAME)))
+    })
+    await waitForOtherProject(result, handle)
+    await settleTheAction()
+
+    expect(shownWarnings(result)).toEqual([])
+  })
+
+  it('shows no warning when the import fails', async () => {
+    const { result } = await renderOpenFileAction()
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(new File(['not a project'], 'broken.json'))
+    })
+    await waitFor(() => expect(shownMessages(result)).toHaveLength(1))
+    await settleTheAction()
+
+    expect(shownWarnings(result)).toEqual([])
+  })
+
+  it('shows no warning for a pack asset that the library lists', async () => {
+    const { handle, result } = await renderOpenFileAction(packListing(PACK_REFERENCE))
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(projectFileReferring(PACK_REFERENCE))
+    })
+    await waitForOtherProject(result, handle)
+    await settleTheAction()
+
+    expect(shownWarnings(result)).toEqual([])
+  })
+})
+
+describe('useOpenFileAction on a file at the size limit of an archive', () => {
+  it('refuses a file above the limit before it reads any of its bytes, and runs no flow', async () => {
+    const { handle, result } = await renderOpenFileAction()
+    const { file, reads } = fileClaiming(ARCHIVE_LIMITS.archiveBytes + 1)
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(file)
+    })
+    await settleTheAction()
+
+    expect(shownMessages(result)).toEqual([TOO_LARGE_SENTENCE])
+    expect(reads()).toBe(0)
+    expect(result.current.flowsStarted()).toBe(0)
+    expect(result.current.handle).toBe(handle)
+  })
+
+  it('reads a file that is exactly at the limit', async () => {
+    const { result } = await renderOpenFileAction()
+    const { file, reads } = fileClaiming(ARCHIVE_LIMITS.archiveBytes)
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(file)
+    })
+    await settleTheAction()
+
+    expect(shownMessages(result)).toEqual([`Open failed: ${READ_FAILURE}`])
+    expect(reads()).toBeGreaterThan(0)
   })
 })

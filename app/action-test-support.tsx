@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { encodeDocument, type AssetReference } from '../core'
 import {
   NotificationProvider,
   useNotifications,
@@ -10,10 +11,12 @@ import type { DocumentHandle, SessionPorts } from '../session'
 import { openOrThrow, workspaceRequest, type TestPorts } from '../session/handle/handle-test-kit'
 import {
   InMemoryRecentProjectStore,
+  type LibraryItem,
   type RecentProjectEntry,
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
+import { projectReferring } from '../storage/zip/zip-test-kit'
 import {
   capableCapabilities,
   fakeNotifications,
@@ -104,6 +107,13 @@ export interface ActionRig {
   readonly handle: DocumentHandle
   readonly recentProjects?: RecentProjectStore
   readonly capabilities?: StorageCapabilities
+  /** The library whose listing tells which pack assets an installed pack brings by itself. */
+  readonly packs?: PackListing
+}
+
+/** What the actions ask of the library of the application: its listing. */
+export interface PackListing {
+  list(): Promise<readonly LibraryItem[]>
 }
 
 export interface RiggedActions<Actions> {
@@ -122,12 +132,20 @@ export function renderActions<Actions>(
 ) {
   const recentProjects = rig.recentProjects ?? new InMemoryRecentProjectStore()
   const capabilities = rig.capabilities ?? capableCapabilities()
+  const { packs } = rig
   return renderHook(
     (): RiggedActions<Actions> => {
       const owner = useTestOwner(rig.ports, rig.handle)
       const notifications = useNotifications()
       const { handle, runFlow, flowsStarted } = owner
-      const context = { handle, runFlow, recentProjects, capabilities, notifications }
+      const context = {
+        handle,
+        runFlow,
+        recentProjects,
+        capabilities,
+        notifications,
+        ...(packs === undefined ? {} : { packs }),
+      }
       return {
         actions: useAdapter(context),
         handle,
@@ -171,4 +189,29 @@ export function shownMessages(result: { readonly current: RiggedActions<unknown>
 /** Lets the work that an action started run to its end, inside `act`. */
 export async function settleTheAction(): Promise<void> {
   await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+}
+
+/** A library item of furniture that lists `reference`. */
+export function furnitureItem(reference: AssetReference): LibraryItem {
+  return {
+    reference,
+    name: 'Chair',
+    kind: 'furniture',
+    categories: [],
+    eras: [],
+    footprint: { width: 500, depth: 500 },
+    height: 750,
+  }
+}
+
+/** A library whose listing holds one item for each of `references`. */
+export function packListing(...references: AssetReference[]): PackListing {
+  const items = references.map(furnitureItem)
+  return { list: () => Promise.resolve(items) }
+}
+
+/** A `.json` project file whose document places one piece of furniture for each of `references`. */
+export function projectFileReferring(...references: AssetReference[]): File {
+  const { bytes } = encodeDocument(projectReferring(references), undefined)
+  return new File([bytes.buffer as ArrayBuffer], 'house.json')
 }
