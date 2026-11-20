@@ -1,6 +1,6 @@
 ---
 name: pr-reviewer
-description: Reviews a complete pull request before merge. Verifies red-green-blue cycle adherence in commit history, knowledge graph updates landed where required, the Clean Code rubric was applied, and CI is green. Read-only across the repository.
+description: Reviews a complete pull request before merge. Checks behavior against origin/main with probes, integration across commits, red-green-blue cycle adherence in commit history, knowledge graph and record updates, claims in the spec, ADRs, and PR text, and CI status. Leaves code quality to the clean-code-reviewer. Read-only across the repository.
 tools: Read, Glob, Grep, Bash
 model: sonnet
 color: purple
@@ -32,11 +32,15 @@ If a finding needs you to run something or reproduce a failure, do that in a dis
 
 4. **Spec or plan compliance.** If this PR references a phase plan, walk that plan's task list and confirm each is covered. If specific spec sections are claimed, verify the implementation matches.
 
-5. **Clean Code rubric compliance at the PR scope.** The clean-code-reviewer already ran per-cycle; you confirm the diff overall holds together (no slow accumulated duplication, no pattern violations).
+5. **Behavior against `origin/main`.** In a disposable worktree, probe the behavior that the branch changes and compare it with `origin/main`. Use the inputs that tests often miss: data stored by an older build, randomized geometry, a real browser for storage and input paths, and failure paths. Report each regression, each test that cannot fail, and each claim that no test pins. This is where most defects that CI cannot catch were found.
 
-6. **CI is green.**
+6. **Integration across commits and records.** Check that the commits fit together as one change: a later commit does not break or contradict an earlier one, and no defect spans units that each look correct alone. Check that ADRs, the spec, code comments, and the PR text state what the branch does. Collect wording fixes in one list so that they can land in one docs commit.
 
-7. **No em-dashes in newly composed prose** (the rubric excludes downloaded canonical text such as Contributor Covenant; otherwise zero tolerance).
+7. **Leave code quality to the clean-code-reviewer.** A clean-code-reviewer runs on the same head commit beside you and owns names, structure, dead code, duplication, layer boundaries and the other code invariants in `.claude/rules.md`, test quality against the FIRST rules, and unit-level defects. Do not search for these, and do not re-check or re-confirm per-cycle or BLUE findings. Report a code-quality issue only when it causes a behavior defect; report such a defect whenever you notice one, whichever review owns its class.
+
+8. **CI is green.**
+
+9. **No em-dashes in newly composed prose** (the rubric excludes downloaded canonical text such as Contributor Covenant; otherwise zero tolerance).
 
 ## Report format
 
