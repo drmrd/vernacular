@@ -32,18 +32,12 @@ const FOLDER_EMPTY_SENTENCE = 'This folder holds no Vernacular project.'
 const FOLDER_PERMISSION_SENTENCE = 'Vernacular has no permission to use this folder.'
 const FOLDER_UNAVAILABLE_SENTENCE = 'The folder of this project cannot be reached.'
 const STORAGE_MESSAGE = 'The storage of this browser is full.'
-const ARCHIVE_LIMIT_NAMES: readonly ArchiveLimitName[] = [
-  'archiveBytes',
-  'inflatedBytes',
-  'entries',
-  'documentBytes',
-]
-/** The sentence of each limit at its default value, in the order of ARCHIVE_LIMIT_NAMES. */
-const ARCHIVE_TOO_LARGE_SENTENCES = [
-  'The file is larger than 512 MB.',
-  'The file unpacks to more than 1,024 MB.',
-  'The file holds more than 10,000 entries.',
-  'The project document in the file is larger than 64 MB.',
+/** Each archive limit and the sentence of an archive above it, at the default value of the limit. */
+const ARCHIVE_TOO_LARGE_SENTENCES: readonly (readonly [ArchiveLimitName, string])[] = [
+  ['archiveBytes', 'The file is larger than 512 MB.'],
+  ['inflatedBytes', 'The file unpacks to more than 1,024 MB.'],
+  ['entries', 'The file holds more than 10,000 entries.'],
+  ['documentBytes', 'The project document in the file is larger than 64 MB.'],
 ]
 
 /** What a flow gives to the notices, or `undefined` when the owner was busy. */
@@ -194,18 +188,14 @@ describe('useSwitchNotices for a failure with a reason', () => {
     expectOneError('Open failed: Unsupported project file: plan.pdf')
   })
 
-  it('an archive above each of the four limits shows "Open failed: " and the sentence of that limit', async () => {
-    await showResults(
-      ARCHIVE_LIMIT_NAMES.map((limit) =>
-        failed({ kind: 'archive-too-large', limit, allowed: ARCHIVE_LIMITS[limit] }),
-      ),
-    )
+  it.each(ARCHIVE_TOO_LARGE_SENTENCES)(
+    'an archive above %s shows "Open failed: " and the sentence of that limit',
+    async (limit, sentence) => {
+      await showResult(failed({ kind: 'archive-too-large', limit, allowed: ARCHIVE_LIMITS[limit] }))
 
-    expect(screen.getAllByRole('alert')).toHaveLength(ARCHIVE_LIMIT_NAMES.length)
-    for (const sentence of ARCHIVE_TOO_LARGE_SENTENCES) {
-      expect(screen.getByText(`Open failed: ${sentence}`)).toBeInTheDocument()
-    }
-  })
+      expectOneError(`Open failed: ${sentence}`)
+    },
+  )
 
   it('storage-unavailable shows "Open failed: " and the message', async () => {
     await showResult(failed({ kind: 'storage-unavailable', message: STORAGE_MESSAGE }))
