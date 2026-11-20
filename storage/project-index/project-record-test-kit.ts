@@ -141,3 +141,35 @@ export function holdFirstGet(index: ProjectIndex): GetHold {
   }
   return { started: () => started, release: () => release() }
 }
+
+export interface PutHold {
+  /** How many puts have started since the hold was set. */
+  started(): number
+  /** Lets the held put run against the real index. */
+  release(): void
+}
+
+/** The next `put` of `index` stays pending until the test releases it; later puts run at once. */
+export function holdFirstPut(index: ProjectIndex): PutHold {
+  const realPut = index.put.bind(index)
+  let started = 0
+  let release: () => void = () => undefined
+  const released = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  index.put = async (record) => {
+    started += 1
+    if (started === 1) await released
+    return realPut(record)
+  }
+  return { started: () => started, release: () => release() }
+}
+
+/** From now on every call of `index` rejects with `error`, as the index of a refusing browser does. */
+export function rejectEveryCall(index: ProjectIndex, error = new Error('the index refused')): void {
+  const reject = (): Promise<never> => Promise.reject(error)
+  index.all = reject
+  index.get = reject
+  index.put = reject
+  index.remove = reject
+}

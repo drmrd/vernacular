@@ -239,6 +239,14 @@ export function failFileRemovals(ports: TestPorts): Error {
   return error
 }
 
+/**
+ * From now on the directory of `ports` cannot tell when a file last changed, as some stores of a
+ * browser cannot. A read and a save then report no time of change.
+ */
+export function hideTimesOfChange(ports: TestPorts): void {
+  ports.root.modifiedAt = () => Promise.resolve(undefined)
+}
+
 /** Puts `save:<id>` and `read:<id>` in the log for each call, then runs the real method. */
 function recordStoreCalls(store: DocumentStore, log: string[]): void {
   const realRead = store.read.bind(store)
