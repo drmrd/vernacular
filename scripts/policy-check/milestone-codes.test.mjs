@@ -31,7 +31,7 @@ describe('milestoneCodeFindings', () => {
 
   it('leaves ADR numbers, versions, and ordinary words alone', () => {
     const subjects = [
-      'docs: record ADR-0219',
+      'docs: record ADR-0221',
       'build: bump to 4.1.10',
       'feat: WebGL2 fallback',
       'fix: H.264 note',

@@ -3,7 +3,7 @@ import { changed } from './fake-git-test-support.mjs'
 import { specNeedsAdrFindings } from './spec-adr.mjs'
 
 const SPEC = 'docs/specs/2026-06-01-vernacular-design.md'
-const ADR = 'docs/knowledge/decisions/ADR-0219-policy-checks-in-ci.md'
+const ADR = 'docs/knowledge/decisions/ADR-0221-policy-checks-in-ci.md'
 
 describe('specNeedsAdrFindings', () => {
   it('accepts a pull request without spec changes', () => {
@@ -44,7 +44,7 @@ describe('specNeedsAdrFindings', () => {
   })
 
   it('accepts a renamed ADR as the explaining decision', () => {
-    const renamed = changed('docs/knowledge/decisions/ADR-0219-x.md', 'R')
+    const renamed = changed('docs/knowledge/decisions/ADR-0221-x.md', 'R')
     expect(specNeedsAdrFindings([changed('docs/specs/x.md'), renamed])).toEqual([])
   })
 

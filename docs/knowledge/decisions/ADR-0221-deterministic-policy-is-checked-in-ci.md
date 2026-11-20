@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0219-deterministic-policy-is-checked-in-ci
-title: 'ADR-0219: Deterministic repository policy is checked in CI'
+slug: decisions/ADR-0221-deterministic-policy-is-checked-in-ci
+title: 'ADR-0221: Deterministic repository policy is checked in CI'
 type: decision
 tags: [tooling, ci, policy, commitlint, red-green-blue, tdd, git, github-actions]
 related:
@@ -32,7 +32,7 @@ status: current
 updated: 2026-11-20
 ---
 
-# ADR-0219: Deterministic repository policy is checked in CI
+# ADR-0221: Deterministic repository policy is checked in CI
 
 ## Status
 

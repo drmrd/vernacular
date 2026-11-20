@@ -22,7 +22,7 @@ the existing auditor (`ping-pong` job), which reads the same severity table.
 `@commitlint/cli` 21.0.1 devDependency, Vitest unit project, GitHub Actions.
 
 **Spec:** none, by owner decision. The requirements are the owner decisions copied into Global
-Constraints and the Decisions section below. ADR-0219 (Task W3) records them.
+Constraints and the Decisions section below. ADR-0221 (Task W3) records them.
 
 ## Global Constraints
 
@@ -53,7 +53,7 @@ Constraints and the Decisions section below. ADR-0219 (Task W3) records them.
 - Model routing for dispatches: test-author and implementer on `sonnet` at medium effort,
   clean-code-reviewer on `opus` at high effort, refactorer on `sonnet` at medium effort, the final
   `/review` on `opus` at high effort.
-- ADR number ADR-0219 is pre-assigned. `docs/knowledge/decisions/` has no 0219 on
+- ADR number ADR-0221 is pre-assigned. `docs/knowledge/decisions/` has no 0221 on
   `a0a5cbba` (checked 2026-11-19). Check again against `origin/main` before landing.
 
 ## Decisions taken in this plan (with the evidence)
@@ -143,7 +143,7 @@ one-line change in `RULE_SEVERITY` (cycle 17 makes the auditor honor the table).
 | `scripts/rgb-audit/rgb-audit.mjs` (modify)         | exit code from the severity table                                 |
 | `package.json` (modify)                            | `policy:check` script                                             |
 | `.github/workflows/ci.yml` (modify)                | `policy` job; `ci-complete` needs it                              |
-| `docs/knowledge/decisions/ADR-0219-...md` (create) | the decision record                                               |
+| `docs/knowledge/decisions/ADR-0221-...md` (create) | the decision record                                               |
 
 Tests sit next to their module as `*.test.mjs`. Vitest's unit project picks them up through the
 default include (`vite.config.ts` excludes only `e2e/**`, `.claude/**`, and build folders), and
@@ -180,7 +180,7 @@ Rule ids (exact strings): `commit-message-format`, `forbidden-trailer`, `author-
 - [ ] **Step 1:** `cd /Users/dan/workspace/vernacular.wt/policy-checks && pnpm install --frozen-lockfile`.
       Expected: exit 0.
 - [ ] **Step 2:** `pnpm exec vitest run --project unit scripts/rgb-audit` passes, and
-      `ls docs/knowledge/decisions | grep -c ADR-0219` prints `0`.
+      `ls docs/knowledge/decisions | grep -c ADR-0221` prints `0`.
 
 ### Cycle 1: parse the commit log
 
@@ -361,7 +361,7 @@ or a token in `phase stage wave milestone sprint lane slice` is followed by a to
 it('warns about a short code or a numbered phase in a subject')
 // 'feat: finish M3 walls', 'docs: plan for slice 2', 'fix: close wave A' -> one finding each, with sha
 it('leaves ADR numbers, versions, and ordinary words alone')
-// 'docs: record ADR-0219', 'build: bump to 4.1.10', 'feat: WebGL2 fallback', 'fix: H.264 note',
+// 'docs: record ADR-0221', 'build: bump to 4.1.10', 'feat: WebGL2 fallback', 'fix: H.264 note',
 // 'docs: tick the executed steps', 'feat: stage a change for review' -> []
 it('warns about a code in the branch name') // 'feat/m3-walls', 'fix/lane-5-fade' -> 1 finding each, no sha
 it('leaves a plain branch name alone') // 'build/vitest-browser-4-1-10', 'feat/policy-checks-in-ci' -> []
@@ -729,9 +729,9 @@ parents, so with full history `<base>..<head>` is the pull request's own commits
 - [ ] `pnpm exec prettier --check .github/workflows/ci.yml` exits 0.
 - [ ] Commit `ci: run the repository policy check on each pull request`.
 
-### Task W3: ADR-0219
+### Task W3: ADR-0221
 
-- [ ] Write `docs/knowledge/decisions/ADR-0219-deterministic-policy-is-checked-in-ci.md` with the
+- [ ] Write `docs/knowledge/decisions/ADR-0221-deterministic-policy-is-checked-in-ci.md` with the
       frontmatter keys `knowledge:index` requires (`slug`, `title`, `type: decision`, `tags`,
       `related` including `decisions/ADR-0025-rgb-audit-and-foundation-acceptance`, `sourceFiles`,
       `status: current`, `updated` from `date +%F`). Sections: Status, Context (reviewers read for
