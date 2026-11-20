@@ -182,4 +182,21 @@ describe('OrbitCameraControls', () => {
     expect(second).toHaveBeenCalledTimes(1)
     expect(first).not.toHaveBeenCalled()
   })
+
+  it('starts a controller that is built again inside one mount on the pivot the earlier one held', () => {
+    const props = controlsProps({ initialTarget: SAVED_TARGET, target: null })
+    const { rerender } = render(<OrbitCameraControls {...props} />)
+    latestController().pivot = PANNED_TARGET
+    const originalCamera = collaborators.threeState['camera']
+
+    collaborators.threeState['camera'] = { position: { ...CAMERA_POSITION } }
+    try {
+      rerender(<OrbitCameraControls {...props} />)
+    } finally {
+      collaborators.threeState['camera'] = originalCamera
+    }
+
+    expect(collaborators.controllers).toHaveLength(2)
+    expect(latestController().setTarget).toHaveBeenCalledWith(PANNED_TARGET)
+  })
 })
