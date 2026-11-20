@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Pure byte and archive logic; node aligns Uint8Array realms with fflate, and its digest is the real one.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { readArchive, type ArchiveRead } from './read-archive'
+import { inLargerBuffer, readResolved, SHORT_DECLARED_BYTES, viewOf } from './read-archive-test-kit'
 import { ENCRYPTED_ENTRY, buildZipWithFaults, expectRead, readLists } from './zip-edges-test-kit'
 import { assetEntry, buildZip, contentHashOf, documentEntry, seededBytes } from './zip-test-kit'
 
@@ -11,9 +11,6 @@ const PICTURE = seededBytes(300)
 const SWATCH = encoder.encode('a small swatch of the parlor wallpaper')
 const FAULTY = encoder.encode('an encrypted asset')
 const STORED = 0
-const SHORT_DECLARED_BYTES = 10
-const BYTES_BEFORE_THE_ARCHIVE = 41
-const BYTES_AFTER_THE_ARCHIVE = 59
 /** A value that is no buffer, given by a broken digest in place of one. */
 const NOT_A_BUFFER = 42
 
@@ -21,29 +18,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-/** Reads the archive and checks that the promise resolves, so that no case can pass by a rejection. */
-async function readResolved(bytes: Uint8Array): Promise<ArchiveRead> {
-  const read = readArchive(bytes)
-  await expect(read).resolves.toBeDefined()
-  return read
-}
-
-function viewOf(data: BufferSource): Uint8Array {
-  if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
-  return new Uint8Array(data)
-}
-
 /** Detaches the buffer, as a caller does that transfers it to a worker. */
 function detach(buffer: ArrayBufferLike): void {
   structuredClone(buffer, { transfer: [buffer as ArrayBuffer] })
-}
-
-/** The archive copied into a larger buffer of other bytes, as a view at a non-zero offset. */
-function inLargerBuffer(bytes: Uint8Array): Uint8Array {
-  const total = BYTES_BEFORE_THE_ARCHIVE + bytes.length + BYTES_AFTER_THE_ARCHIVE
-  const view = new Uint8Array(seededBytes(total).buffer, BYTES_BEFORE_THE_ARCHIVE, bytes.length)
-  view.set(bytes)
-  return view
 }
 
 describe('readArchive hashes each readable first entry once', () => {

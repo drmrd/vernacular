@@ -47,7 +47,7 @@ export interface DirectoryFacts {
 
 export const ZIP64_BLOCK_ID = 0x0001
 /** The fixed order of the values in a ZIP64 block of a central directory entry. */
-export const ZIP64_ENTRY_FIELDS: readonly Zip64EntryField[] = [
+const ZIP64_ENTRY_FIELDS: readonly Zip64EntryField[] = [
   'declaredBytes',
   'compressedBytes',
   'localOffset',

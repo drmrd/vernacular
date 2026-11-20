@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { assetEntryName } from './archive-layout'
 import { NAMES_LIKE_AN_ASSET } from './archive-names-test-kit'
 import { readArchive, type ArchiveRead } from './read-archive'
+import { hashed, inLargerBuffer, otherHash, SHORT_DECLARED_BYTES } from './read-archive-test-kit'
 import {
   ASSET_FAULTS,
   buildSharedZip,
@@ -17,7 +18,6 @@ import {
   readLists,
   type AssetFault,
   type EntryWithFault,
-  type HashedAsset,
 } from './zip-edges-test-kit'
 import {
   assetEntry,
@@ -44,24 +44,7 @@ const BALUSTER = encoder.encode('a turned baluster')
 const BLOB = seededBytes(16 * 1024)
 const BLOB_DATA = deflateSync(BLOB)
 const STORED = 0
-const SHORT_DECLARED_BYTES = 10
 const SHARERS = 3
-const BYTES_BEFORE_THE_ARCHIVE = 37
-const BYTES_AFTER_THE_ARCHIVE = 53
-const HEX_RADIX = 16
-const HASH_DIGITS = 64
-
-async function hashed(bytes: Uint8Array): Promise<HashedAsset> {
-  return [await contentHashOf(bytes), bytes]
-}
-
-/** The archive copied into a larger buffer of other bytes, as a view at a non-zero offset. */
-function inLargerBuffer(bytes: Uint8Array): Uint8Array {
-  const total = BYTES_BEFORE_THE_ARCHIVE + bytes.length + BYTES_AFTER_THE_ARCHIVE
-  const view = new Uint8Array(seededBytes(total).buffer, BYTES_BEFORE_THE_ARCHIVE, bytes.length)
-  view.set(bytes)
-  return view
-}
 
 /** One asset entry of the mixed archive: its content, the bytes its name is the hash of, and its fault. */
 interface MixedEntry {
@@ -105,11 +88,6 @@ async function mixedArchive(): Promise<Uint8Array> {
 
 function bothLists(read: ArchiveRead): readonly [readonly string[], readonly string[]] {
   return read.ok ? [[...read.assets.keys()], read.rejectedAssets] : [[], []]
-}
-
-/** The hexadecimal digits of a hash that names no bytes of these tests. */
-function otherHash(index: number): string {
-  return (index + 1).toString(HEX_RADIX).padStart(HASH_DIGITS, '0')
 }
 
 describe('readArchive hashes the bytes of an asset and not the buffer around them', () => {

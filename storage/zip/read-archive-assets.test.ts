@@ -3,13 +3,13 @@
 import { describe, it } from 'vitest'
 import { assetEntryName } from './archive-layout'
 import { readArchive } from './read-archive'
+import { hashed, otherHash } from './read-archive-test-kit'
 import {
   ASSET_FAULTS,
   buildZipWithFaults,
   CORRUPT_STREAM,
   expectRead,
   misnamedAssetEntry,
-  type HashedAsset,
 } from './zip-edges-test-kit'
 import {
   assetEntry,
@@ -28,19 +28,8 @@ const FAULTY = encoder.encode('an asset with a fault')
 const MOULDING = encoder.encode('the profile of the picture rail')
 const EMPTY = new Uint8Array(0)
 const STORED = 0
-const HEX_RADIX = 16
-const HASH_DIGITS = 64
 /** How many empty assets with a wrong name stand around the one with the right name. */
 const WRONG_EMPTY_NAMES = 3
-
-async function hashed(bytes: Uint8Array): Promise<HashedAsset> {
-  return [await contentHashOf(bytes), bytes]
-}
-
-/** The hexadecimal digits of a hash that names no bytes of these tests. */
-function otherHash(index: number): string {
-  return (index + 1).toString(HEX_RADIX).padStart(HASH_DIGITS, '0')
-}
 
 /** The hashes of `one` and `other`, the larger first, so the order of an archive is not the order of the hashes. */
 async function largerHashFirst(

@@ -2,10 +2,11 @@
 // Pure byte and archive logic; node aligns Uint8Array realms with fflate.
 import { deflateSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { ARCHIVE_LIMITS, type ArchiveLimitName, type ArchiveLimits } from './archive-limits'
+import { ARCHIVE_LIMITS } from './archive-limits'
 import { inflateEntry, INFLATE_SLICE_BYTES } from './inflate-entry'
 import { readArchive, type ArchiveRead } from './read-archive'
 import { zipFolder } from './zip-codec'
+import { limitsWith, tooLarge } from './read-archive-test-kit'
 import { buildZip, documentEntry, seededBytes, type TestZipEntry } from './zip-test-kit'
 
 const encoder = new TextEncoder()
@@ -21,14 +22,6 @@ const NO_DOCUMENT: ArchiveRead = { ok: false, failure: { kind: 'no-document' } }
 
 function documentRead(document: Uint8Array): ArchiveRead {
   return { ok: true, document, assets: new Map(), rejectedAssets: [] }
-}
-
-function tooLarge(limit: ArchiveLimitName, allowed: number): ArchiveRead {
-  return { ok: false, failure: { kind: 'too-large', limit, allowed } }
-}
-
-function limitsWith(overrides: Partial<ArchiveLimits>): ArchiveLimits {
-  return { ...ARCHIVE_LIMITS, ...overrides }
 }
 
 describe('readArchive reads a sound archive', () => {

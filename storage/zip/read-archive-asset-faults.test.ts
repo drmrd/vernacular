@@ -2,8 +2,9 @@
 // Pure byte and archive logic; node aligns Uint8Array realms with fflate.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readArchive, type ArchiveRead } from './read-archive'
-import { expectRead, recordPushedChunks, type HashedAsset } from './zip-edges-test-kit'
-import { assetEntry, buildZip, contentHashOf, documentEntry, seededBytes } from './zip-test-kit'
+import { hashed, SHORT_DECLARED_BYTES } from './read-archive-test-kit'
+import { expectRead, recordPushedChunks } from './zip-edges-test-kit'
+import { assetEntry, buildZip, documentEntry, seededBytes } from './zip-test-kit'
 import { extraBlock, wideBytes, ZIP64_BLOCK_ID } from './zip64-test-kit'
 
 const encoder = new TextEncoder()
@@ -12,7 +13,6 @@ const PICTURE = seededBytes(300)
 /** fflate refuses these bytes as an invalid block. */
 const GARBAGE = new Uint8Array(64).fill(0xff)
 const STORED = 0
-const SHORT_DECLARED_BYTES = 10
 /** One entry fewer than the default entry limit, with the document. */
 const MANY_ASSETS = 9_999
 const MANY_ASSETS_TIMEOUT_MS = 120_000
@@ -24,10 +24,6 @@ afterEach(() => {
 /** The kind of a failed read, or the hashes of the assets of an ok read in their order. */
 function outcome(read: ArchiveRead): string | readonly string[] {
   return read.ok ? [...read.assets.keys()] : read.failure.kind
-}
-
-async function hashed(bytes: Uint8Array): Promise<HashedAsset> {
-  return [await contentHashOf(bytes), bytes]
 }
 
 /** The bytes of asset `index` of many: short, different for every index. */

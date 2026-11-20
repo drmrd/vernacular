@@ -206,7 +206,7 @@ export function buildZip64SharedZip(
 }
 
 /** A copy of the archive in which entry `entryIndex` gives the length of the file as the offset of its local header. */
-export function withLocalOffsetPastTheEnd(bytes: Uint8Array, entryIndex: number): Uint8Array {
+function withLocalOffsetPastTheEnd(bytes: Uint8Array, entryIndex: number): Uint8Array {
   return withUint32(bytes, centralEntryAt(bytes, entryIndex) + CENTRAL.localOffsetAt, bytes.length)
 }
 

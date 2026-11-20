@@ -1,8 +1,8 @@
 // @vitest-environment node
 // Pure byte and archive logic; node aligns Uint8Array realms with fflate.
 import { describe, expect, it } from 'vitest'
-import { ARCHIVE_LIMITS, type ArchiveLimitName, type ArchiveLimits } from './archive-limits'
 import { readArchive, type ArchiveRead } from './read-archive'
+import { limitsWith, SHORT_DECLARED_BYTES, tooLarge } from './read-archive-test-kit'
 import {
   NAMES_LIKE_AN_ASSET,
   NAMES_LIKE_THE_DOCUMENT,
@@ -29,8 +29,6 @@ const GARBAGE = new Uint8Array(64).fill(0xff)
 const STORED = 0
 const UNKNOWN_METHOD = 12
 const ENCRYPTED = 1
-/** Less than the content of the asset that declares it. */
-const SHORT_DECLARED_BYTES = 10
 const OUTSIDE_DECLARED_BYTES = 500
 
 const NOT_AN_ARCHIVE: ArchiveRead = { ok: false, failure: { kind: 'not-an-archive' } }
@@ -41,14 +39,6 @@ type HashedAsset = readonly [string, Uint8Array]
 
 function readWith(document: Uint8Array, assets: readonly HashedAsset[] = []): ArchiveRead {
   return { ok: true, document, assets: new Map(assets), rejectedAssets: [] }
-}
-
-function tooLarge(limit: ArchiveLimitName, allowed: number): ArchiveRead {
-  return { ok: false, failure: { kind: 'too-large', limit, allowed } }
-}
-
-function limitsWith(overrides: Partial<ArchiveLimits>): ArchiveLimits {
-  return { ...ARCHIVE_LIMITS, ...overrides }
 }
 
 function outsideEntry(name: string, overrides: Partial<TestZipEntry> = {}): TestZipEntry {

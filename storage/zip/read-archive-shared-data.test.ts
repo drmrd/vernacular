@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assetEntryName } from './archive-layout'
 import { NAMES_OUTSIDE_THE_LAYOUT } from './archive-names-test-kit'
 import { readArchive, type ArchiveRead } from './read-archive'
+import { hashed, otherHash } from './read-archive-test-kit'
 import {
   buildSharedZip,
   centralEntryOffsets,
@@ -12,7 +13,6 @@ import {
   recordPushedChunks,
   storedBlock,
   withUint32,
-  type HashedAsset,
 } from './zip-edges-test-kit'
 import {
   assetEntry,
@@ -45,8 +45,6 @@ const ENCRYPTED = 1
 const SHARERS = 3
 const MANY_SHARERS = 7
 const HUGE = 2n ** 40n
-const HEX_RADIX = 16
-const HASH_DIGITS = 64
 const CENTRAL_COMPRESSED_AT = 20
 const ALL_FIELDS = ['declaredBytes', 'compressedBytes', 'localOffset'] as const
 
@@ -55,11 +53,6 @@ const NOT_AN_ARCHIVE = 'not-an-archive'
 afterEach(() => {
   vi.restoreAllMocks()
 })
-
-/** The hexadecimal digits of a hash that names no bytes of these tests. */
-function otherHash(index: number): string {
-  return (index + 1).toString(HEX_RADIX).padStart(HASH_DIGITS, '0')
-}
 
 /** `count` copies of `owner`, each under another asset name, with `overrides`. */
 function sharersOf(
@@ -101,10 +94,6 @@ async function documentSharedByAnAsset(
  */
 function outcome(read: ArchiveRead): string | readonly string[] {
   return read.ok ? [...read.assets.keys()] : read.failure.kind
-}
-
-async function hashed(bytes: Uint8Array): Promise<HashedAsset> {
-  return [await contentHashOf(bytes), bytes]
 }
 
 /** The bytes of a stored document shared by one asset that are not its data: the same for every length. */

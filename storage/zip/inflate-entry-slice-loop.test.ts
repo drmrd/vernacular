@@ -3,6 +3,7 @@
 import { deflateSync, inflateSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { inflateEntry, INFLATE_SLICE_BYTES } from './inflate-entry'
+import { blocksFilling } from './read-archive-test-kit'
 import {
   emptyStoredBlocks,
   finalEmptyBlock,
@@ -46,11 +47,6 @@ function inflated(data: Uint8Array, declaredBytes: number) {
 
 function zeroSlices(count: number): Uint8Array {
   return new Uint8Array(count * SLICE)
-}
-
-/** Empty blocks that fill at least `bytes` bytes, none of them the last. */
-function blocksFilling(bytes: number): Uint8Array {
-  return emptyStoredBlocks(Math.ceil(bytes / EMPTY_BLOCK_BYTES))
 }
 
 function twoSliceHead(): Uint8Array {

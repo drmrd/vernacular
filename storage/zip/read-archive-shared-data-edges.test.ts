@@ -4,6 +4,7 @@ import { deflateSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assetEntryName } from './archive-layout'
 import { readArchive, type ArchiveRead } from './read-archive'
+import { otherHash } from './read-archive-test-kit'
 import {
   buildSharedZip,
   buildZip64SharedZip,
@@ -38,8 +39,6 @@ const DOCUMENT_SHARERS = 4
 /** With the owner and the document, the default entry limit of 10,000. */
 const MANY_SHARERS = 9_998
 const MANY_ENTRIES_TIMEOUT_MS = 120_000
-const HEX_RADIX = 16
-const HASH_DIGITS = 64
 const LOCAL_HEADER_BYTES = 30
 const LOCAL_SIGNATURE = 0x04034b50
 const LOCAL_NAME_LENGTH_AT = 26
@@ -49,11 +48,6 @@ const CENTRAL_LOCAL_OFFSET_AT = 42
 afterEach(() => {
   vi.restoreAllMocks()
 })
-
-/** The hexadecimal digits of a hash that names no bytes of these tests. */
-function otherHash(index: number): string {
-  return (index + 1).toString(HEX_RADIX).padStart(HASH_DIGITS, '0')
-}
 
 /** `count` copies of `owner`, each under the asset name of `otherHash`. */
 function sharersOf(owner: TestZipEntry, count: number): TestZipEntry[] {

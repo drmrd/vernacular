@@ -3,7 +3,7 @@
 import { deflateSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assetEntryName } from './archive-layout'
-import { readArchive, type ArchiveRead } from './read-archive'
+import { otherHash, readResolved, SHORT_DECLARED_BYTES, viewOf } from './read-archive-test-kit'
 import {
   buildSharedZip,
   buildZipWithFaults,
@@ -34,10 +34,7 @@ const RAIL = encoder.encode('a plate rail in the dining room')
 const BLOB = seededBytes(16 * 1024)
 const BLOB_DATA = deflateSync(BLOB)
 const STORED = 0
-const SHORT_DECLARED_BYTES = 10
 const SHARERS = 3
-const HEX_RADIX = 16
-const HASH_DIGITS = 64
 const UNHASHABLE = 'the digest cannot hash these bytes'
 
 /** Counts the calls of the digest where a spy stands; `undefined` where the digest is stubbed away. */
@@ -47,18 +44,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-
-/** Reads the archive and checks that the promise resolves, so that no case can pass by a rejection. */
-async function readResolved(bytes: Uint8Array): Promise<ArchiveRead> {
-  const read = readArchive(bytes)
-  await expect(read).resolves.toBeDefined()
-  return read
-}
-
-function viewOf(data: BufferSource): Uint8Array {
-  if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
-  return new Uint8Array(data)
-}
 
 function sameBytes(one: Uint8Array, other: Uint8Array): boolean {
   return one.length === other.length && one.every((byte, index) => byte === other[index])
@@ -114,11 +99,6 @@ function inSharedBuffer(bytes: Uint8Array): Uint8Array {
   const view = new Uint8Array(new SharedArrayBuffer(bytes.length))
   view.set(bytes)
   return view
-}
-
-/** The hexadecimal digits of a hash that names no bytes of these tests. */
-function otherHash(index: number): string {
-  return (index + 1).toString(HEX_RADIX).padStart(HASH_DIGITS, '0')
 }
 
 describe('readArchive rejects an asset whose bytes cannot be hashed', () => {

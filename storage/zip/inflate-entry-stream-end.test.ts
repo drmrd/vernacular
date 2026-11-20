@@ -3,12 +3,12 @@
 import { deflateSync, inflateSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { inflateEntry, INFLATE_SLICE_BYTES } from './inflate-entry'
+import { blocksFilling } from './read-archive-test-kit'
 import {
   emptyStoredBlocks,
   finalEmptyBlock,
   recordPushedChunks,
   storedBlock,
-  STORED_BLOCK_HEADER_BYTES,
 } from './zip-edges-test-kit'
 import { seededBytes } from './zip-test-kit'
 import { joinBytes } from './zip64-test-kit'
@@ -33,7 +33,6 @@ const FILLED_TAIL_BYTES = 1_000
 const FILL_BYTE = 0xff
 const SHORT_TAIL_BYTES = 100
 const SLICES_OF_EMPTY_BLOCKS_BEFORE_CONTENT = 3
-const EMPTY_BLOCK_BYTES = STORED_BLOCK_HEADER_BYTES
 const HALF_SLICE_BYTES = INFLATE_SLICE_BYTES / 2
 const FULL_BLOCKS_STREAM_SLICES = 4
 
@@ -47,10 +46,6 @@ function inflated(data: Uint8Array, declaredBytes: number) {
 
 function followedByZeroSlices(stream: Uint8Array, slices: number): Uint8Array {
   return joinBytes([stream, new Uint8Array(slices * INFLATE_SLICE_BYTES)])
-}
-
-function blocksFilling(bytes: number): Uint8Array {
-  return emptyStoredBlocks(Math.ceil(bytes / EMPTY_BLOCK_BYTES))
 }
 
 /** Exactly two slices: a block of seeded content, then empty blocks, all non-final. */

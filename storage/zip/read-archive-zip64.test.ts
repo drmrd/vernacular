@@ -1,8 +1,8 @@
 // @vitest-environment node
 // Pure byte and archive logic; node aligns Uint8Array realms with fflate.
 import { describe, expect, it } from 'vitest'
-import { ARCHIVE_LIMITS, type ArchiveLimitName, type ArchiveLimits } from './archive-limits'
 import { readArchive, type ArchiveRead } from './read-archive'
+import { limitsWith, tooLarge } from './read-archive-test-kit'
 import { buildZip, documentEntry, type TestZipEntry } from './zip-test-kit'
 import {
   forcedZip64Archive,
@@ -45,14 +45,6 @@ const DOCUMENT_READ: ArchiveRead = {
   document: DOCUMENT,
   assets: new Map(),
   rejectedAssets: [],
-}
-
-function tooLarge(limit: ArchiveLimitName, allowed: number): ArchiveRead {
-  return { ok: false, failure: { kind: 'too-large', limit, allowed } }
-}
-
-function limitsWith(overrides: Partial<ArchiveLimits>): ArchiveLimits {
-  return { ...ARCHIVE_LIMITS, ...overrides }
 }
 
 function readWithEnd(zip64End: TestZip64End, entries: readonly TestZipEntry[] = SOUND) {
