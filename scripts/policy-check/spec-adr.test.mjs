@@ -25,6 +25,38 @@ describe('specNeedsAdrFindings', () => {
     expect(findings[0].message).toContain('docs/specs/other.md')
   })
 
+  it('reports a finding with only the rule, the file, and a message', () => {
+    const findings = specNeedsAdrFindings([changed(SPEC)])
+    expect(findings[0]).toEqual({
+      rule: 'spec-needs-adr',
+      file: SPEC,
+      message: expect.stringContaining(SPEC),
+    })
+  })
+
+  it('accepts a renamed ADR as the explaining decision', () => {
+    const renamed = changed('docs/knowledge/decisions/ADR-0219-x.md', 'R')
+    expect(specNeedsAdrFindings([changed('docs/specs/x.md'), renamed])).toEqual([])
+  })
+
+  it.each([
+    'docs/knowledge/decisions/sub/ADR-0001-x.md',
+    'docs/knowledge/decisions/ADR-0001-x.png',
+    'docs/knowledge/decisions/README.md',
+  ])('does not count %s as an ADR', (path) => {
+    const findings = specNeedsAdrFindings([changed('docs/specs/x.md'), changed(path, 'A')])
+    expect(findings).toHaveLength(1)
+  })
+
+  it('counts a deleted spec as a spec change', () => {
+    expect(specNeedsAdrFindings([changed('docs/specs/x.md', 'D')])).toHaveLength(1)
+  })
+
+  it('counts a file moved into docs/specs as a spec change', () => {
+    const moved = { status: 'R', path: 'docs/specs/a.md', previousPath: 'docs/a.md' }
+    expect(specNeedsAdrFindings([moved])).toHaveLength(1)
+  })
+
   it('accepts a spec change with an added or a modified ADR', () => {
     expect(specNeedsAdrFindings([changed(SPEC), changed(ADR, 'A')])).toEqual([])
     expect(specNeedsAdrFindings([changed(SPEC), changed(ADR, 'M')])).toEqual([])
@@ -35,6 +67,7 @@ describe('specNeedsAdrFindings', () => {
     const findings = specNeedsAdrFindings([moved])
     expect(findings).toHaveLength(1)
     expect(findings[0].rule).toBe('spec-needs-adr')
+    expect(findings[0].file).toBe('docs/specs/a.md')
     expect(findings[0].message).toContain('docs/specs/a.md')
   })
 
