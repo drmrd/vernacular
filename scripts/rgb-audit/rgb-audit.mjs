@@ -8,6 +8,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { severityOf as defaultSeverityOf } from '../policy-check/rule-severity.mjs'
 import { auditCommits, parseGitLog } from './cycle-audit.mjs'
 
 const EXIT_CLEAN = 0
@@ -19,6 +20,7 @@ const DEFAULT_RANGE = 'main..HEAD'
  * @typedef {object} RgbAuditDeps
  * @property {(args: readonly string[]) => string} runGit
  * @property {(line: string) => void} log
+ * @property {(rule: string) => 'fail' | 'warn'} [severityOf] defaults to the policy severity table
  */
 
 /**
@@ -26,7 +28,7 @@ const DEFAULT_RANGE = 'main..HEAD'
  * @param {RgbAuditDeps} deps
  * @returns {Promise<number>} the process exit code
  */
-export async function runRgbAudit(argv, { runGit, log }) {
+export async function runRgbAudit(argv, { runGit, log, severityOf = defaultSeverityOf }) {
   const range = resolveRange(argv)
   const raw = runGit([
     'log',
@@ -47,10 +49,13 @@ export async function runRgbAudit(argv, { runGit, log }) {
     return EXIT_CLEAN
   }
   log(`rgb:audit: ${violations.length} violation(s) in ${range}`)
+  let anyFailure = false
   for (const violation of violations) {
-    log(`  [${violation.rule}] ${violation.message}`)
+    const isWarning = severityOf(violation.rule) === 'warn'
+    anyFailure ||= !isWarning
+    log(`  [${violation.rule}] ${isWarning ? '(warning) ' : ''}${violation.message}`)
   }
-  return EXIT_VIOLATIONS
+  return anyFailure ? EXIT_VIOLATIONS : EXIT_CLEAN
 }
 
 /**
