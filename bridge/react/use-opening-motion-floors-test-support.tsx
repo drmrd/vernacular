@@ -86,6 +86,7 @@ export function twoFloorEnvironment(scope: SceneScope): TwoFloorEnvironment {
         scope: sceneSession.getSceneSession().scope,
         activeFloorId: activeFloor.getActiveFloorId(),
         includeUnderground: true,
+        cameraMode: sceneSession.getSceneSession().cameraMode,
       }),
       new NeutralMaterialProvider(),
     )
