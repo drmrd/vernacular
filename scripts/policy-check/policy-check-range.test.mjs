@@ -45,4 +45,12 @@ describe('runPolicyCheck range and branch resolution', () => {
     expect(lines.some((line) => line.includes('[branch-prefix]'))).toBe(false)
     expect(lines).toContain(DETACHED_NOTE)
   })
+
+  it('logs the detached HEAD note before a summary without a branch name', async () => {
+    const { runGit } = fakeGit({ commits: [CLEAN_COMMIT], branch: 'HEAD' })
+    const { deps, lines } = collectingDeps(runGit)
+    const code = await runPolicyCheck([], deps)
+    expect(code).toBe(0)
+    expect(lines).toEqual([DETACHED_NOTE, 'policy:check: clean (origin/main..HEAD)'])
+  })
 })
