@@ -66,11 +66,12 @@ Vernacular reads an archive as an untrusted file (ADR-0213). Its reader refuses 
 than 512 MiB, one whose entries declare more than 1 GiB in total once inflated, one with more than
 10,000 entries, and one whose `vernacular.json` declares more than 64 MiB. It checks these limits
 before it inflates anything, and it holds each entry to its declared size while it inflates. It
-takes only two kinds of entry: `vernacular.json` at the root, and `assets/` followed by the 64
-lower-case hexadecimal digits of a content hash. It ignores every other entry. An asset whose
-bytes do not hash to its name is not accepted, and the Document still opens without it. An archive
-that spans more than one disk is refused. An archive in the ZIP64 form is read: a ZIP64 value is
-used for a field only where the classic field holds its marker.
+takes only two kinds of entry: `vernacular.json` at the root, and `assets/` followed by exactly
+the 64 lower-case hexadecimal digits of a content hash, with no extension. It ignores every other
+entry, so an asset stored under a name with an extension is not read and is reported as missing.
+An asset whose bytes do not hash to its name is not accepted, and the Document still opens without
+it. An archive that spans more than one disk is refused. An archive in the ZIP64 form is read: a
+ZIP64 value is used for a field only where the classic field holds its marker.
 
 ### 2.4 Transition note (non-normative)
 
