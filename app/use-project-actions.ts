@@ -39,7 +39,7 @@ export interface ProjectActions {
 }
 
 export function useProjectActions(context: ProjectActionsContext): ProjectActions {
-  const runSwitch = useSwitchFlow(context)
+  const runSwitch = useSwitchFlow(context.runFlow)
   return {
     onSave: useSaveAction(context),
     onOpenRecent: useOpenRecentAction(runSwitch),

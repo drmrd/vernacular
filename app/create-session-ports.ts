@@ -40,7 +40,9 @@ function portsOver(stores: PortStores): BuiltSessionPorts {
   return { ports, libraryAssets: stores.assets }
 }
 
-/** The ports over the durable storage of this browser. Rejects when the storage does not resolve. */
+/**
+ * The ports over the durable storage of this browser. Rejects when the storage does not resolve.
+ */
 export async function createSessionPorts(): Promise<BuiltSessionPorts> {
   const { store, assets } = await resolveProjectStorage()
   return portsOver({

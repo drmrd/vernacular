@@ -20,7 +20,9 @@ function previewOf(project: Project): string | undefined {
   }
 }
 
-/** Every distinct content hash of the referenced assets, sorted by code unit; undefined on a throw. */
+/**
+ * Every distinct content hash of the referenced assets, sorted by code unit; undefined on a throw.
+ */
 function assetHashesOf(project: Project): string[] | undefined {
   try {
     const hashes = collectReferencedAssets(project).map((reference) => reference.contentHash)

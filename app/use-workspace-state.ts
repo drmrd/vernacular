@@ -21,7 +21,6 @@ import { useDiscardConfirmation } from './use-discard-confirmation'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 import { useHandleNotices } from './use-handle-notices'
 import { useLatest } from './use-latest'
-import type { RecentEntry } from './project-action-helpers'
 import type { RunFlow } from './use-open-project'
 import { useProjectActions } from './use-project-actions'
 import { useSwitchNotices } from './use-switch-notices'
@@ -41,6 +40,12 @@ export interface WorkspaceState {
   actions: ReturnType<typeof useProjectActions>
   discardRequest: ReturnType<typeof useDiscardConfirmation>['discardRequest']
   resolveDiscard: ReturnType<typeof useDiscardConfirmation>['resolveDiscard']
+}
+
+/** What the Project menu shows for one recent project. */
+export interface RecentEntry {
+  id: string
+  name: string
 }
 
 export interface Recovery {

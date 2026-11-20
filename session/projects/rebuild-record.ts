@@ -61,7 +61,9 @@ function recordOfUnopened(basis: RecordBasis, stored: StoredFacts, reason: strin
   }
 }
 
-/** The name and the asset hashes of the stored document file; undefined when they cannot be read. */
+/**
+ * The name and the asset hashes of the stored document file; undefined when they cannot be read.
+ */
 async function storedFactsOf(run: RebuildRun, id: string): Promise<StoredFacts | undefined> {
   try {
     const bytes = (await run.ports.workspace.storedFiles(id)).get(PROJECT_FILE)

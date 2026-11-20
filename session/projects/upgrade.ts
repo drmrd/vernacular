@@ -19,9 +19,14 @@ const LEGACY_FOLDER_ID = 'current'
 export interface ProjectUpgrade {
   /** Learns what the read of the index gave; undefined when that read rejected. */
   noteIndexRead(records: readonly ProjectRecord[] | undefined): void
-  /** Learns the ids that the store lists, and drops a remembered id that the store does not hold. */
+  /**
+   * Learns the ids that the store lists, and drops a remembered id that the store does not hold.
+   */
   noteListing(listedIds: ReadonlySet<string>): void
-  /** The record to put, with the mark when it is due. Call it in the same turn as its put. */
+  /**
+   * The record to put, with the mark when it is due and the clock gives its time. Call it in the
+   * same turn as its put.
+   */
   recordToPut(record: ProjectRecord): ProjectRecord
   /** Learns whether the put of a record resolved; the landing of the mark removes the old id. */
   notePut(record: ProjectRecord, landed: boolean): void
