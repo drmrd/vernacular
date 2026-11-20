@@ -115,3 +115,4 @@ export type { ActiveProjectIdStore } from './active-project/active-project-id-st
 export type { ProjectRecord, ProjectIndex } from './project-index/project-index'
 export { InMemoryProjectIndex } from './project-index/in-memory-project-index'
 export { IndexedDbProjectIndex } from './project-index/indexeddb-project-index'
+export { withMemoryFallback } from './project-index/with-memory-fallback'

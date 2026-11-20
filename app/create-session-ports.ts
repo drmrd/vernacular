@@ -7,6 +7,7 @@ import {
   InMemoryProjectStore,
   IndexedDbProjectIndex,
   WebLocksProjectLockPort,
+  withMemoryFallback,
   type AssetCache,
   type ProjectIndex,
   type WorkspaceDocumentStore,
@@ -42,7 +43,11 @@ function portsOver(stores: PortStores): BuiltSessionPorts {
 /** The ports over the durable storage of this browser. Rejects when the storage does not resolve. */
 export async function createSessionPorts(): Promise<BuiltSessionPorts> {
   const { store, assets } = await resolveProjectStorage()
-  return portsOver({ workspace: store, assets, index: new IndexedDbProjectIndex() })
+  return portsOver({
+    workspace: store,
+    assets,
+    index: withMemoryFallback(new IndexedDbProjectIndex()),
+  })
 }
 
 /** Ports that keep everything in memory, for a project started after the storage did not resolve. */
