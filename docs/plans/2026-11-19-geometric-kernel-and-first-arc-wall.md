@@ -200,8 +200,8 @@ not pay for that.
 **The session layer fence.** The kernel edits none of these, which belong to the session layer
 plan's pull requests 6, 7, and 10 to 14 (its 8 and 9 are on `main` as #946 and #937): `session/` (all of it), `storage/` (all), `app/` (all, except
 `app/harness-paint.test.ts` in pull request 8 and one entry in `app/harness-environment.ts` in pull
-request 18; tell the session layer lanes before each), `src/`, `core/repairs/`,
-`core/format/best-effort-read.ts`, `editor/projects/`, `editor/shell/project-menu.tsx`,
+request 18; tell the session layer lanes before each), `src/`, `core/repairs/` (planned by the session layer plan),
+`core/format/best-effort-read.ts`, `editor/projects/` (planned by the session layer plan), `editor/shell/project-menu.tsx`,
 `editor/shell/export-menu.tsx`, `editor/shell/editor-shell.tsx`, `editor/shell/shell-providers.tsx`,
 `editor/design-system/theme-provider.tsx`, `editor/design-system/theme.ts`,
 `editor/shell/theme-toggle.tsx`, `editor/plan/snap-preferences.ts`,
