@@ -26,7 +26,7 @@ export function emDashFindings(addedLines, readFile) {
         rule: 'em-dash',
         file,
         line: added.line,
-        message: `Added prose carries an em-dash in ${file}:${added.line}; rewrite it with a comma, colon, or period`,
+        message: `Added prose carries an em-dash; rewrite it with a comma, colon, or period`,
       })
     }
   }

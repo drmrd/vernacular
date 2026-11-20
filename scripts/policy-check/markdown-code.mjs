@@ -1,4 +1,4 @@
-const OPENING_FENCE = /^ {0,3}(`{3,}|~{3,})/
+const OPENING_FENCE = /^ {0,3}(`{3,}(?=[^`]*$)|~{3,})/
 const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})\s*$/
 const BACKTICK_RUN = /`+/g
 
