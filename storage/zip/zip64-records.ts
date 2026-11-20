@@ -105,9 +105,8 @@ function hasLocator(view: DataView, locator: number): boolean {
 }
 
 /**
- * Settles the six values of the end record at `position` (rules Z3 to Z7). Gives `undefined` for
- * a malformed locator or ZIP64 end record. Reads no byte before the end record unless a field
- * holds its marker.
+ * Settles the six values of the end record at `position`. Gives `undefined` for a malformed
+ * locator or ZIP64 end record. Reads no byte before the end record unless a field holds its marker.
  */
 export function settleEndRecord(
   view: DataView,
@@ -148,8 +147,8 @@ function markerCount(classic: EntryFields): number {
 }
 
 /**
- * Settles the three fields of a central directory entry (rules Z10 to Z13). The extra field must
- * lie inside the central directory. Gives `undefined` for a ZIP64 block too short for its markers.
+ * Settles the three fields of a central directory entry. The extra field must lie inside the
+ * central directory. Gives `undefined` for a ZIP64 block too short for its markers.
  */
 export function settleEntryFields(
   view: DataView,

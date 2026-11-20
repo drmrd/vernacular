@@ -14,14 +14,14 @@ export function isContentHash(value: string): boolean {
   return CONTENT_HASH_PATTERN.test(value)
 }
 
-/** LY2: the name of the archive entry that holds the asset with this content hash. */
+/** The name of the archive entry that holds the asset with this content hash. */
 export function assetEntryName(contentHash: string): string {
   return `${ASSET_ENTRY_PREFIX}${contentHash}`
 }
 
 /**
- * LY2: the content hash of an asset entry, or `undefined` for every name outside the layout. The
- * name is compared as it is: no change of case, no trim, no normalization, no joining of segments.
+ * The content hash of an asset entry, or `undefined` for every name outside the layout. The name
+ * is compared as it is: no change of case, no trim, no normalization, no joining of segments.
  */
 export function assetHashOfEntry(name: string): string | undefined {
   if (!name.startsWith(ASSET_ENTRY_PREFIX)) return undefined

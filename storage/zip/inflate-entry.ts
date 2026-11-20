@@ -37,7 +37,7 @@ function storedEntry(entry: EntryData): InflatedEntry {
   return { ok: true, bytes: entry.data }
 }
 
-/** IN4b: after this many slices in a row with no output, the next slice is the last one fed. */
+/** After this many slices in a row with no output, the next slice is the last one fed. */
 const SLICES_WITHOUT_OUTPUT_BEFORE_THE_LAST = 2
 
 interface InflateProgress {
@@ -48,9 +48,9 @@ interface InflateProgress {
 }
 
 /**
- * IN4a and IN4b: whether the slice at `start` is the last one fed, and so is pushed with `final`
- * true. That is the last slice of the data and, after at least one push, the slice that follows
- * output equal to the declared size or two slices in a row with no output.
+ * Whether the slice at `start` is the last one fed, and so is pushed with `final` true. That is
+ * the last slice of the data and, after at least one push, the slice that follows output equal to
+ * the declared size or two slices in a row with no output.
  */
 function isLastSliceToFeed(entry: EntryData, start: number, progress: InflateProgress): boolean {
   if (start + INFLATE_SLICE_BYTES >= entry.data.length) return true
@@ -80,7 +80,7 @@ function feedSlices(inflater: Inflate, entry: EntryData, progress: InflateProgre
   }
 }
 
-/** Inflates a DEFLATE stream into a buffer of the declared size, in slices (IN3 to IN6). */
+/** Inflates a DEFLATE stream into a buffer of the declared size, in slices. */
 function inflateDeflated(entry: EntryData): InflatedEntry {
   const { declaredBytes } = entry
   const progress: InflateProgress = { produced: 0, slicesWithoutOutput: 0 }

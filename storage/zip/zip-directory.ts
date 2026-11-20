@@ -52,10 +52,10 @@ export interface DirectoryEntry {
   readonly localOffset: number
 }
 
-/** CD5: keeps a leading byte order mark, so a name that starts with one matches nothing. */
+/** Keeps a leading byte order mark, so a name that starts with one matches nothing. */
 const nameDecoder = new TextDecoder('utf-8', { ignoreBOM: true })
 
-/** CD1: the first position, searching backward, whose signature and comment length fit the file. */
+/** The first position, searching backward, whose signature and comment length fit the file. */
 function findEndRecord(view: DataView): number | undefined {
   const last = view.byteLength - END_RECORD_BYTES
   const first = Math.max(0, last - MAXIMUM_COMMENT_BYTES)
@@ -80,7 +80,10 @@ function classicEndValues(view: DataView, position: number): EndRecordValues {
   }
 }
 
-/** RD2: the end record with its six values settled (CD1, Z3 to Z7, then CD2). */
+/**
+ * The end record with its six values settled: found, its ZIP64 values read where a field holds its
+ * marker, and checked for a single disk.
+ */
 export function readEndRecord(view: DataView): SettledEndRecord | undefined {
   const position = findEndRecord(view)
   if (position === undefined) return undefined
@@ -96,7 +99,7 @@ interface EntryRead {
   readonly next: number
 }
 
-/** CD4: one central directory entry at `start`, which must lie whole before `directoryEnd`. */
+/** One central directory entry at `start`, which must lie whole before `directoryEnd`. */
 function readDirectoryEntry(
   view: DataView,
   start: number,
@@ -129,7 +132,10 @@ function readDirectoryEntry(
   }
 }
 
-/** RD4: CD3, then exactly `entries` entries from the offset of the central directory (CD4). */
+/**
+ * The central directory, which must end before the end record, then exactly `entries` entries from
+ * its offset.
+ */
 export function readCentralDirectory(
   view: DataView,
   end: SettledEndRecord,
@@ -147,12 +153,12 @@ export function readCentralDirectory(
   return entries
 }
 
-/** CD8: bit 0 of the flags marks an encrypted entry. */
+/** Bit 0 of the flags marks an encrypted entry. */
 export function isEncrypted(entry: DirectoryEntry): boolean {
   return entry.flags % ENCRYPTED_BIT_MODULUS !== 0
 }
 
-/** CD7: the data of an entry as the archive holds it, or `undefined` for data outside the file. */
+/** The data of an entry as the archive holds it, or `undefined` for data outside the file. */
 export function entryData(view: DataView, entry: DirectoryEntry): Uint8Array | undefined {
   const header = entry.localOffset
   if (header + LOCAL_HEADER_FIXED_BYTES > view.byteLength) return undefined
