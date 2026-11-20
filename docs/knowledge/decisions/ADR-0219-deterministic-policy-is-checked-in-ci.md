@@ -37,7 +37,8 @@ updated: 2026-11-20
 ## Status
 
 Current. Accepted on 2026-11-20 with the branch `feat/policy-checks-in-ci`, built in seventeen
-test-first cycles from the plan `docs/plans/2026-11-19-policy-checks-in-ci.md`. It extends
+test-first cycles from the plan `docs/plans/2026-11-19-policy-checks-in-ci.md`, plus one more
+cycle for the owner's review decisions of the same day. It extends
 [[ADR-0025-rgb-audit-and-foundation-acceptance]]: the red-green-blue auditor gains two scope rules
 and takes its exit code from the severity table described below.
 
@@ -62,7 +63,8 @@ lint them either. The auditor checked that a GREEN commit changes no test files,
 `pnpm policy:check` runs `scripts/policy-check/policy-check.mjs`. The shell reads git output for a
 commit range, small pure modules each apply one rule, and one severity table decides which
 findings fail the run and which only warn. It takes `--base` (default `origin/main`), `--head`
-(default `HEAD`), and `--branch` (default: the output of `git rev-parse --abbrev-ref HEAD`). Exit
+(default `HEAD`), `--branch` (default: the output of `git rev-parse --abbrev-ref HEAD`), and
+`--fork-pr`, which turns author findings into warnings (see "Fork pull requests" below). Exit
 code 0 means no failing finding, 1 means at least one, and 2 means an internal fault such as an
 unknown rule id or a commitlint process that died on a signal.
 
@@ -74,32 +76,35 @@ The new `policy` job in `.github/workflows/ci.yml` runs only on pull requests, h
 installs dependencies because commitlint and its config live in `node_modules`. It checks out full
 history and passes the base, head sha, and branch through environment variables
 (`POLICY_BASE`, `POLICY_HEAD`, `POLICY_BRANCH`), never as inline expressions in the script, since
-the pull request author picks the branch name. `ci-complete` lists `policy` in its `needs`, so a
-failing rule fails the required check. On `push` and `merge_group` the job is skipped, which
-`ci-complete` treats as a pass.
+the pull request author picks the branch name. A fourth variable, `POLICY_FORK_FLAG`, holds
+`--fork-pr` when the head repository is not this repository and is empty otherwise.
+`ci-complete` lists `policy` in its `needs`, so a failing rule fails the required check. On `push`
+and `merge_group` the job is skipped, which `ci-complete` treats as a pass.
 
 ### The rules
 
-| Rule id                 | Severity | What it checks                                                                               |
-| ----------------------- | -------- | -------------------------------------------------------------------------------------------- |
-| `commit-message-format` | fail     | commitlint over `<base>..<head>`                                                             |
-| `forbidden-trailer`     | fail     | co-author, AI-session, `Generated-by`, `Assisted-by` trailers and the generated-with footer  |
-| `author-identity`       | fail     | the author is the owner identity, or a bot on its own branch                                 |
-| `branch-prefix`         | fail     | the branch starts with a commit type and a slash, or with a bot prefix                       |
-| `spec-needs-adr`        | fail     | a change under `docs/specs/` comes with an added, modified, or renamed ADR                   |
-| `exact-pin`             | fail     | every dependency in a changed `package.json` is an exact version                             |
-| `milestone-code`        | warn     | short codes or numbered phases in commit subjects and the branch name                        |
-| `em-dash`               | warn     | an em-dash on an added line of a `.md`, `.mdx`, or `.txt` file, outside code                 |
-| `e2e-timing-or-focus`   | warn     | fixed-time waits, focused tests, and static skips on added lines under `e2e/`                |
-| `ordering`              | fail     | auditor: a GREEN commit follows an unconsumed RED commit                                     |
-| `independence`          | fail     | auditor: a GREEN commit changes no test file                                                 |
-| `blue`                  | fail     | auditor: each GREEN commit is closed by a BLUE commit                                        |
-| `test-scope`            | fail     | auditor: a RED commit changes only test assets                                               |
-| `refactor-scope`        | fail     | auditor: a BLUE commit changes no test file, unless the change only follows a rename or move |
+| Rule id                 | Severity | What it checks                                                                                                                |
+| ----------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `commit-message-format` | fail     | commitlint over `<base>..<head>`                                                                                              |
+| `forbidden-trailer`     | fail     | co-author, AI-session, `Generated-by`, `Assisted-by` trailers and the generated-with footer                                   |
+| `author-identity`       | fail     | the author is the owner identity, or a bot on its own branch                                                                  |
+| `fork-author-identity`  | warn     | the same author check on a fork pull request, reported under this id when `--fork-pr` is passed                               |
+| `branch-prefix`         | fail     | the branch starts with a commit type and a slash, with a bot prefix, or with `integration/`                                   |
+| `milestone-code`        | warn     | short codes or numbered phases in commit subjects and the branch name                                                         |
+| `em-dash`               | warn     | an em-dash on an added line of a `.md`, `.mdx`, or `.txt` file, outside code                                                  |
+| `spec-needs-adr`        | fail     | a modified, renamed, or deleted spec under `docs/specs/` comes with an added, modified, or renamed ADR                        |
+| `exact-pin`             | fail     | every dependency in a changed `package.json` is an exact version                                                              |
+| `e2e-timing-or-focus`   | warn     | fixed-time waits, focused tests, and static skips on added lines under `e2e/`                                                 |
+| `ordering`              | fail     | auditor: a GREEN commit follows an unconsumed RED commit                                                                      |
+| `independence`          | fail     | auditor: a GREEN commit changes no test file                                                                                  |
+| `blue`                  | fail     | auditor: each GREEN commit is closed by a BLUE commit                                                                         |
+| `test-scope`            | fail     | auditor: a RED commit changes only test assets                                                                                |
+| `refactor-scope`        | fail     | auditor: a BLUE commit changes no test file, unless that file's change is a rename, import and export lines, or comment lines |
 
-The first nine run in `policy:check`. The last five run in `pnpm rgb:audit`, in the existing
-`ping-pong` job. The rule is to fail what can be decided exactly and to warn where a pattern can
-misfire: a milestone code, an em-dash in prose, or a timing call in an e2e file.
+The table lists the rules in the order of `RULE_SEVERITY`. The first ten run in `policy:check`.
+The last five run in `pnpm rgb:audit`, in the existing `ping-pong` job. The rule is to fail what
+can be decided exactly and to warn where a pattern can misfire: a milestone code, an em-dash in
+prose, or a timing call in an e2e file.
 
 A few details of the warning rules. The em-dash rule skips `CHANGELOG.md`, `LICENSE`, `NOTICE`, and
 `CODE_OF_CONDUCT.md`, skips lines inside fenced blocks (read from the head version of the file, so
@@ -120,6 +125,22 @@ To promote a rule from `warn` to `fail`, change its value in `RULE_SEVERITY`. Th
 whole table, so the promotion is a `test:` commit that changes the expected table, then a `feat:`
 commit that changes the one line, then the BLUE step. Demoting a rule works the same way.
 
+### The owner's decisions of 2026-11-20
+
+The pull request review raised five questions, and the owner settled them on 2026-11-20. The
+sections below describe the rules as they stand after these decisions.
+
+- An added spec needs no ADR. A spec that is modified, renamed, or deleted still needs one. Writing
+  a new spec is the first step of the documented workflow, and 10 of the 15 merged pull requests
+  that the first version of the rule would have failed only added a spec.
+- `refactor-scope` stays `fail`. A test file whose changed lines are all comments is now exempt,
+  along with the rename and move case.
+- On a fork pull request, the CI job passes `--fork-pr`, and an author finding becomes the warning
+  rule `fork-author-identity`. An outside contributor's commits do not carry the owner identity, so
+  without this a fork pull request could never pass `ci-complete`.
+- `*-story-support.ts` and `*-story-support.tsx` files are test assets.
+- `integration/` is an accepted branch prefix.
+
 ### Bot exemptions
 
 The owner identity is `Dan Moore <9156191+drmrd@users.noreply.github.com>`, and a commit passes
@@ -132,14 +153,23 @@ These are the only bot authors in the history. A human commit on a bot branch, s
 fails. Bot commits still go through commitlint and the trailer rule. Only the author is checked,
 not the committer, because the web interface commits as `GitHub <noreply@github.com>`.
 
+### Fork pull requests
+
+The CI job compares `github.event.pull_request.head.repo.full_name` with `github.repository`.
+When they differ, it passes `--fork-pr`, and the script reports each `author-identity` finding
+under the rule id `fork-author-identity`, which is `warn`. The finding keeps its message and sha,
+so the warning still names the author. Every other rule applies to a fork pull request as it does
+to any other.
+
 ### Branch prefixes
 
 A branch passes when it starts with one of the ten commit types of the `type-enum` rule in
 `commitlint.config.js` (`feat fix refactor docs chore test style perf build ci`), then a slash,
-then at least one character, or when it starts with one of the two bot prefixes. The script reads
-the type list from `commitlint.config.js`, so it has one home. CLAUDE.md names only `feat/`,
-`fix/`, and `docs/`, but the merged history also has `chore/`, `test/`, `build/`, and `ci/`
-branches, and failing them would break current practice. `integration/` is not allowed.
+then at least one character, when it starts with one of the two bot prefixes, or when it starts
+with `integration/`. The script reads the type list from `commitlint.config.js`, so it has one
+home. CLAUDE.md names only `feat/`, `fix/`, and `docs/`, but the merged history also has `chore/`,
+`test/`, `build/`, `ci/`, and `integration/` branches, and failing them would break current
+practice.
 
 When no `--branch` is given and `git rev-parse` prints `HEAD`, the branch is unknown: the branch
 rules are skipped and the bot exemption never applies.
@@ -153,8 +183,8 @@ rules are skipped and the bot exemption never applies.
 - `isTestAsset` is wider: a test file, a `.spec.ts` or `.spec.tsx` file, a `-contract.ts` file, a
   `-test-support`, `-test-kit`, `-test-fixture(s)`, or `-test-setup` module, anything under a
   `testing/`, `fixtures/`, `__screenshots__/`, or `-snapshots/` folder, a file ending in
-  `fixture.ts` or `fixtures.json` and the like, anything under `tests/` or `e2e/`, and stories. The
-  `test-scope` rule uses it.
+  `fixture.ts` or `fixtures.json` and the like, anything under `tests/` or `e2e/`, stories, and
+  `-story-support.ts` or `-story-support.tsx` modules. The `test-scope` rule uses it.
 
 The strict pattern alone would fail 96 of the 638 `test:` commits since 2026-08-01, almost all for
 support files that `eslint.config.js` already lints as test files. The wide one fails 2 of them.
@@ -170,22 +200,30 @@ policy forbids. The commit timestamp check is personal to the owner and is not r
 ### Reviewer text to trim
 
 The reviewer agents and rules files can stop checking by hand what CI now checks. The plan's
-section "Follow-up: reviewer text that can drop the automated checks" lists each file and line.
+section "Follow-up: reviewer text that can drop the automated checks" lists each file and the
+items to trim, named by heading.
 `.claude/` is not writable from the sandbox, so the owner applies those edits, tracked in a
 follow-up issue. Two checks stay with the reviewers: whether an architectural change needs an ADR, and
 em-dashes in code comments and commit bodies.
 
-### The refactor rule exempts rename-only test changes
+### The refactor rule exempts rename, import, and comment changes in tests
 
-The owner kept `refactor-scope` as a failing rule, with one exemption: a test file whose change only
-follows a rename or a move. The strict rule fails 32 of 550 `refactor:` commits since 2026-08-01,
-and 21 of those changed implementation and tests together because a rename or move changed the
-names the tests import. Without the exemption, such a rename needs a `refactor:` commit for the
-implementation and a `test:` commit for the tests, and the commit between them does not typecheck.
+The owner kept `refactor-scope` as a failing rule, with two exemptions for a test file: a change
+that only follows a rename or a move, and a change to comment lines only. The strict rule fails 32
+of 550 `refactor:` commits since 2026-08-01. The rename exemption clears 2 of those 32, and 4 of
+the 139 strict failures over all history. Of the 30 commits it still flagged since 2026-08-01, 17
+change implementation and tests together, 11 only tidy tests, and 2 change only comments.
+
+The exemptions do not cover every rename. When a rename changes a name that test bodies use,
+and not only the imports, no commit shape passes: `refactor:` fails `refactor-scope`, `test:`
+fails `test-scope`, and `feat:` or `fix:` fails `independence`. Such a change needs an exempt
+commit type or an `Infrastructure:` trailer (see ADR-0025), or a split into two commits where the
+first does not typecheck.
 
 A test file is exempt when git reports it as a pure rename (`similarity index 100%`), or when every
-added and removed line is an import or export statement, a bare `from '...'` line, or a line of
-names inside such a statement. Any other changed line keeps the violation.
+added and removed line is an import or export statement, a bare `from '...'` line, a line of names
+inside such a statement, or a comment line that starts with `//`, `/*`, or `*`. Any other changed
+line keeps the violation.
 
 The auditor reads the whole commit diff with `git show -M --format= --unified=0 <sha>` and no
 pathspec, once for each `refactor:` commit that touches a test file. The plan named the test files
@@ -195,9 +233,10 @@ file, and each hunk is read on its own: lines before a section's first hunk head
 headers, and the open import state is reset at every hunk header. A section with no hunk, such as
 a binary file or a mode-only change, counts as exempt.
 
-Over 5,416 commits of history the rule flags 118, 8 of them changes to comments only. It flags 3 of
-the last 20 merged pull requests (#908, #913, #916), all real cases of a refactor that changed
-tests.
+Before the comment exemption, the rule flagged 135 of the 6,532 non-merge commits in the whole
+history. It flagged 4 of the last 20 merged pull requests: #908, #916, #913, and #875. The first
+three are refactors that changed tests. In #875 the only test change was one comment line that
+named a moved path, and the comment exemption now clears that kind of change.
 
 ### Where the build differs from the plan
 

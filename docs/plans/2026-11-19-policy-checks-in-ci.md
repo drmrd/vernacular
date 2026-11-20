@@ -764,24 +764,47 @@ pnpm exec eslint --no-config-lookup --rule '{"max-lines-per-function":["error",{
 ## Follow-up: reviewer text that can drop the automated checks (do not edit here)
 
 The main thread files one issue for these. `.claude/` agent and skill files are not writable from
-the sandbox, so the owner applies them.
+the sandbox, so the owner applies them. Items are named by heading, with item and line numbers as
+they stand on `main` after #938, which rewrote the reviewer files.
 
-- `.claude/agents/pr-reviewer.md`: checklist item 2 (the `Co-Authored-By` grep) is now the
-  `forbidden-trailer` rule; item 7 (em-dash scan) becomes "read the `em-dash` warnings of the
-  Repository policy job" for Markdown and text, still read code comments and commit bodies;
-  item 1 keeps judgment calls only, since ordering, independence, blue, and both scope rules are
-  mechanical; item 3 can cite `spec-needs-adr` for the spec case (architectural changes without
-  an ADR stay a review judgment).
-- `.claude/agents/clean-code-reviewer.md` line 35: drop "No Co-Authored-By trailers in commit
-  messages"; point the em-dash clause at the CI warning.
-- `.claude/rules.md`: rule 5 (exact pins now checked in CI), rule 7 (trailers checked in CI),
-  rule 8 (em-dash warned in CI), rule 9 (commitlint runs in CI too), rule 12 (allowed branch
-  prefixes are the ten commit types plus the two bot prefixes), rule 13 (author identity checked
-  in CI with the bot exemption), and the timing anti-pattern for e2e tests (CI warns).
-- `CLAUDE.md` "Naming and language policies" item 3 and the "Hard invariants" list: same branch
-  prefix and enforcement notes.
-- `.claude/skills/vernacular-change-control` and `vernacular-diagnostics-and-tooling`: add
-  `pnpm policy:check` to the tool table, and the `test-scope` and `refactor-scope` rows to the
-  rgb:audit violation table.
+- `.claude/agents/pr-reviewer.md`, "Audit checklist": "No Co-Authored-By trailers" (item 2, the
+  `Co-Authored-By` grep) is now the `forbidden-trailer` rule. "No em-dashes in newly composed
+  prose" (item 9, line 43) becomes "read the `em-dash` warnings of the Repository policy job" for
+  Markdown and text; code comments and commit bodies still need a read. "Red-green-blue cycle
+  adherence in commit history" (item 1) keeps judgment calls only, since ordering, independence,
+  blue, and both scope rules are mechanical. "Knowledge graph updates" (item 3) can cite
+  `spec-needs-adr` for a modified, renamed, or deleted spec; whether an architectural change needs
+  an ADR stays a review judgment.
+- `.claude/agents/clean-code-reviewer.md`, line 41 ("No em-dashes in any text. No Co-Authored-By
+  trailers in commit messages."): drop the trailer sentence and point the em-dash clause at the CI
+  warning.
+- `.claude/commands/review.md` line 9: the reviewer's check for `Co-Authored-By` trailers is now
+  the `forbidden-trailer` rule.
+- `.claude/rules.md`: "No Co-Authored-By trailers" (rule 7, checked in CI), "No em-dashes" (rule 8,
+  warned in CI), "Conventional Commits" (rule 9, commitlint runs in CI too), "Descriptive branch
+  names" (rule 12, the allowed prefixes are the ten commit types, the two bot prefixes, and
+  `integration/`), "Author identity" (rule 13, checked in CI with the bot exemption and a warning
+  on fork pull requests), and the e2e timing entry under "Anti-patterns" (CI warns). Rule 5 is the
+  cooldown and says nothing about pins, so it needs no change.
+- `CLAUDE.md`: "Hard invariants" item 6 (exact pins, now checked in CI), "Naming and language
+  policies" item 3, and the rest of the "Hard invariants" list: the same branch prefix and
+  enforcement notes.
+- `CONTRIBUTING.md`: "How to propose a change" step 2 (lines 72-74, branch names: list the accepted
+  prefixes), "Exact version pins" (lines 98-99, now checked in CI), the commitlint note under
+  "Conventions" (line 109) and the `commit-msg` hook under "Hooks and release engineering" (line
+  165), which both describe commitlint as running in the hook only.
+- `.claude/skills/vernacular-change-control/SKILL.md`: "Commit conventions" (lines 92-93, commitlint
+  only through the hook, and `/review` counting trailers by hand) and "The PR path" (line 108, the
+  CI job list has no `policy` job).
+- `.claude/skills/vernacular-diagnostics-and-tooling/SKILL.md`: add `pnpm policy:check` to "Quick
+  reference: which tool answers which question", and the `test-scope` and `refactor-scope` rows to
+  the violation table under "rgb:audit: the TDD history auditor (ADR-0025)".
+- `.claude/skills/vernacular-validation-and-qa/SKILL.md`: the hook table (line 54, commitlint) and
+  the CI job table (line 67, next to `ping-pong`) have no `policy` job.
+- `.claude/skills/vernacular-docs-and-writing/SKILL.md`: the manual em-dash scan (line 36) and the
+  em-dash row (line 126) can point at the CI warning.
+- `.claude/skills/vernacular-build-and-env/SKILL.md`: the `commit-msg` hook (line 63) and "Exact
+  pins, no ranges" (line 73): both are now checked in CI as well.
 - `.claude/agents/test-author.md` and `refactorer.md`: one line each on the scope rules (a `test:`
-  commit carries only test assets; a `refactor:` commit never touches a `*.test.*` file).
+  commit carries only test assets; a `refactor:` commit changes a `*.test.*` file only for a
+  rename, import and export lines, or comment lines).

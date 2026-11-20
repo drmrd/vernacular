@@ -8,6 +8,7 @@ related:
     decisions/ADR-0009-test-pyramid-rgb-tdd,
     decisions/ADR-0012-eslint-guardrails,
     decisions/ADR-0016-lighthouse-stryker-fixtures,
+    decisions/ADR-0219-deterministic-policy-is-checked-in-ci,
   ]
 sourceFiles:
   [
@@ -17,12 +18,19 @@ sourceFiles:
     .github/workflows/ci.yml,
   ]
 status: current
-updated: 2026-06-04
+updated: 2026-11-20
 ---
 
 # ADR-0025: Ping-pong red-green-blue auditor and foundation acceptance
 
 ## Status
+
+> Amended by [[ADR-0219-deterministic-policy-is-checked-in-ci]] on 2026-11-20. The exit code now
+> comes from the severity table in `scripts/policy-check/rule-severity.mjs`: the run exits 1 only
+> when a violation's rule is `fail`, and a `warn` violation is printed with `(warning)` after its
+> rule id. The auditor also has two scope rules, `test-scope` (a `test:` commit changes only test
+> assets) and `refactor-scope` (a `refactor:` commit changes no test file, with the exemptions
+> ADR-0219 lists). The decision below describes the original three rules.
 
 Accepted. Completes the foundation-acceptance phase (design specification
 section 10). One acceptance item, the `clean-code-pr` CI gate, is deliberately
