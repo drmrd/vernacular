@@ -16,6 +16,7 @@ export interface SettingsService {
 
 interface Subscription {
   readonly listener: (value: unknown) => void
+  readonly currentValue: () => unknown
   live: boolean
 }
 
@@ -36,6 +37,13 @@ function notify(subscriptions: ReadonlySet<Subscription> | undefined, value: unk
   }
 }
 
+function notifyOfOutsideChange(subscriptions: ReadonlySet<Subscription> | undefined): void {
+  if (subscriptions === undefined) return
+  for (const subscription of [...subscriptions]) {
+    if (subscription.live) subscription.listener(subscription.currentValue())
+  }
+}
+
 /** With no port, the service keeps its values in memory. */
 export function createSettingsService(
   port: SettingsPort = new InMemorySettingsPort(),
@@ -43,7 +51,7 @@ export function createSettingsService(
   const values = new Map<string, unknown>()
   const subscriptions = new Map<string, Set<Subscription>>()
 
-  return {
+  const service: SettingsService = {
     get<T>(key: SettingKey<T>): T {
       if (!values.has(key.name)) values.set(key.name, readSetting(port, key))
       return values.get(key.name) as T
@@ -56,6 +64,7 @@ export function createSettingsService(
     subscribe<T>(key: SettingKey<T>, listener: (value: T) => void): () => void {
       const subscription: Subscription = {
         listener: listener as (value: unknown) => void,
+        currentValue: () => readSetting(port, key),
         live: true,
       }
       const forName = subscriptions.get(key.name) ?? new Set<Subscription>()
@@ -67,4 +76,10 @@ export function createSettingsService(
       }
     },
   }
+
+  port.onOutsideChange?.((name) => {
+    values.delete(name)
+    notifyOfOutsideChange(subscriptions.get(name))
+  })
+  return service
 }
