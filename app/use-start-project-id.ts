@@ -11,8 +11,8 @@ interface StartIdOfPorts {
 
 // The id that opens at start: the override when one is given (tests), otherwise the id of the
 // workspace record used last, or the default id when the index holds none. Null until the index
-// of the current ports was read, so the boot never loads early. Calls that overlap, as under a
-// double effect run, share one read of the index.
+// of the current ports was read, so the boot never loads early. The two runs of a double effect
+// share one run of reconcileIndex, which shares overlapping calls for each ports object.
 export function useStartProjectId(
   ports: SessionPorts | null,
   override: string | undefined,

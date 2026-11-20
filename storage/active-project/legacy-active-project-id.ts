@@ -1,7 +1,7 @@
 import { isValidProjectId } from './project-id'
 
 /** Where the older build remembered the id of the last active project. */
-export const LEGACY_ACTIVE_PROJECT_ID_KEY = 'vernacular.activeProjectId'
+const LEGACY_ACTIVE_PROJECT_ID_KEY = 'vernacular.activeProjectId'
 
 /**
  * The id that the older build remembered, left in place; undefined when none is stored or the

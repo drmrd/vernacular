@@ -86,9 +86,9 @@ export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const bootPorts = useBootPorts(inputs)
   const ports = inputs.ports ?? bootPorts.built?.ports ?? null
   const startId = useStartProjectId(ports, inputs.projectId)
-  const usedLast = useMemo(() => (startId === null ? null : startRequest(startId)), [startId])
+  const startAtBoot = useMemo(() => (startId === null ? null : startRequest(startId)), [startId])
   const [freshRequest, setFreshRequest] = useState<OpenRequest | null>(null)
-  const owner = useOpenProject(ports, freshRequest ?? usedLast)
+  const owner = useOpenProject(ports, freshRequest ?? startAtBoot)
   const failure = bootPorts.failure ?? owner.failure
   const answered = useRef<SwitchFailure | null>(null)
   const startFreshProject = () => {
