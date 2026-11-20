@@ -15,6 +15,7 @@ import {
   documentNamed,
   failedRecord,
   folderRecord,
+  markedRecordOf,
   notJsonBytes,
   placeSound,
   rebuildPorts,
@@ -35,13 +36,6 @@ afterEach(() => {
 /** Ports whose workspace is durable, as the browser of a user who comes from the older code has. */
 function upgradePorts(options: RebuildPortsOptions = {}): TestPorts {
   return rebuildPorts({ durable: true, ...options })
-}
-
-/** The record of the sound project `id` with the latest use: the present time of the ports. */
-function markedRecordOf(ports: TestPorts, id: string) {
-  const usedNow = ports.now().toISOString()
-  expect(usedNow).not.toBe(STORED_AT)
-  return soundRecordOf(id, { lastUsedAt: usedNow })
 }
 
 describe("today's project and the folder that the older code kept under its id", () => {
@@ -140,12 +134,13 @@ describe("today's project and the folder that the older code kept under its id",
 })
 
 describe('the project that the older code remembered', () => {
-  it('becomes the latest use, the remembered id is gone when the call resolves, and its record was put one time', async () => {
+  it('the remembered project becomes the latest use, the remembered id is gone when the call resolves, and its record was put one time', async () => {
     const ports = upgradePorts()
     await placeSound(ports, ['a', 'b', 'c'])
     plantLegacyActiveProjectId('b')
     const put = vi.spyOn(ports.index, 'put')
     const marked = markedRecordOf(ports, 'b')
+    expect(marked.lastUsedAt).not.toBe(STORED_AT)
 
     expect(await reconcileIndex(ports)).toEqual([soundRecordOf('a'), marked, soundRecordOf('c')])
 

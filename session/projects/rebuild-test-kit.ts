@@ -121,6 +121,21 @@ export function soundRecordOf(id: string, overrides: Partial<ProjectRecord> = {}
   return soundRecord(id, soundDocumentOf(id), overrides)
 }
 
+/** Durable ports over `index` whose store holds a sound project under each of `ids`. */
+export async function upgradePortsOver(
+  index: ProjectIndex,
+  ids: readonly string[],
+): Promise<TestPorts> {
+  const ports = rebuildPorts({ durable: true, index })
+  await placeSound(ports, ids)
+  return ports
+}
+
+/** The record of the sound project `id` with the latest use: the present time of the ports. */
+export function markedRecordOf(ports: TestPorts, id: string): ProjectRecord {
+  return soundRecordOf(id, { lastUsedAt: ports.now().toISOString() })
+}
+
 /** The whole record that a rebuild makes for the document `bytes` of `id`, which did not open for `reason`. */
 export function failedRecord(id: string, bytes: Uint8Array, reason: string): ProjectRecord {
   const stored = readStoredFacts(bytes)

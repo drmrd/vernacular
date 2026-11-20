@@ -3,7 +3,13 @@ import { clearLegacyActiveProjectId } from '../../storage/active-project/legacy-
 import { rememberFolder } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
 import { reconcileIndex } from '..'
-import { documentNamed, placeSound, rebuildPorts, soundRecordOf } from './rebuild-test-kit'
+import {
+  documentNamed,
+  holdReadOf,
+  placeSound,
+  rebuildPorts,
+  soundRecordOf,
+} from './rebuild-test-kit'
 
 beforeEach(() => {
   clearLegacyActiveProjectId()
@@ -60,5 +66,20 @@ describe('a folder query of the upgrade that never answers', () => {
     await expectTwoRebuildsToSettle(ports)
 
     expect(forget).toHaveBeenCalledWith('current')
+  })
+
+  it('with a permission query that never answers, a second call made while the first run is still open settles as well', async () => {
+    const ports = await portsWithOldFolder()
+    const permission = vi.spyOn(ports.folders, 'permission').mockReturnValue(neverAnswers())
+    const read = holdReadOf(ports, 'current')
+
+    const firstCall = reconcileIndex(ports)
+    await vi.waitFor(() => expect(read.started()).toBe(true))
+    expect(permission).toHaveBeenCalledWith('current')
+    const secondCall = reconcileIndex(ports)
+    read.release()
+
+    expect(await valueOnceSettled(firstCall)).toEqual([soundRecordOf('current')])
+    expect(await valueOnceSettled(secondCall)).toEqual([soundRecordOf('current')])
   })
 })

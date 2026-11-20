@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { InMemoryProjectIndex, withMemoryFallback } from '../../storage'
-import type { ProjectIndex } from '../../storage'
 import {
   clearLegacyActiveProjectId,
   legacyActiveProjectIdIsStored,
@@ -11,15 +10,15 @@ import {
   INDEX_READ_WAIT_MS,
   INDEX_WRITE_WAIT_MS,
 } from '../../storage/project-index/with-memory-fallback'
-import type { TestPorts } from '../handle/handle-test-kit'
 import { reconcileIndex } from '..'
 import {
   holdReadOf,
-  placeSound,
+  markedRecordOf,
   rebuildPorts,
   soundRecordOf,
   stallPuts,
   stepWarnings,
+  upgradePortsOver,
 } from './rebuild-test-kit'
 
 const READ_FAILURE = new Error('the browser index cannot be read')
@@ -35,18 +34,6 @@ afterEach(() => {
   vi.useRealTimers()
   clearLegacyActiveProjectId()
 })
-
-/** Durable ports over `index` whose store holds a sound project under each of `ids`. */
-async function upgradePortsOver(index: ProjectIndex, ids: readonly string[]): Promise<TestPorts> {
-  const ports = rebuildPorts({ durable: true, index })
-  await placeSound(ports, ids)
-  return ports
-}
-
-/** The record of the sound project `id` with the latest use: the present time of the ports. */
-function markedRecordOf(ports: TestPorts, id: string) {
-  return soundRecordOf(id, { lastUsedAt: ports.now().toISOString() })
-}
 
 /** A first index whose read of all records rejects, and ports over its memory fall-back. */
 async function switchingAtTheRead(ids: readonly string[]) {
@@ -177,7 +164,7 @@ describe('the marked put and the remembered id', () => {
     expect(legacyActiveProjectIdIsStored()).toBe(false)
   })
 
-  it('a marked put that gives no answer within the write limit keeps the remembered id and the mark in the result', async () => {
+  it('a marked put that gives no answer within the write limit keeps the remembered id and the mark in the result, and counts one failed step', async () => {
     vi.useFakeTimers()
     const first = new InMemoryProjectIndex()
     stallPuts(first, (id) => id === 'b')
@@ -189,6 +176,9 @@ describe('the marked put and the remembered id', () => {
 
     expect(await rebuilding).toEqual([markedRecordOf(ports, 'b')])
     expect(legacyActiveProjectIdIsStored()).toBe(true)
+    const warnings = stepWarnings(consoleWarn.mock.calls)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain(1)
   })
 })
 
