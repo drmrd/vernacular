@@ -18,3 +18,34 @@ export function storeHolding(stored?: unknown): {
   }
   return { port, store: createSnapPreferencesStore(createSettingsService(port)) }
 }
+
+/** A settings port that another browser tab can change. */
+export interface PortWithOutsideChanges {
+  read(name: string): unknown
+  write(name: string, value: unknown): void
+  onOutsideChange(listener: (name: string) => void): () => void
+  /** Stores `value` under `name` without a call to `write`, and tells the listeners of the name. */
+  changeOutside(name: string, value: unknown): void
+}
+
+/** A port that keeps its values in memory and tells its listeners of a change from outside. */
+export function portWithOutsideChanges(): PortWithOutsideChanges {
+  const inner = new InMemorySettingsPort()
+  const listeners = new Set<(name: string) => void>()
+  return {
+    read: (name) => inner.read(name),
+    write: (name, value) => {
+      inner.write(name, value)
+    },
+    onOutsideChange: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    changeOutside: (name, value) => {
+      inner.write(name, value)
+      for (const listener of [...listeners]) listener(name)
+    },
+  }
+}

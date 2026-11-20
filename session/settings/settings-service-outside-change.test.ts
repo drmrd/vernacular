@@ -80,6 +80,67 @@ describe('a service over a port that tells of changes from outside', () => {
     expect(plain).toHaveBeenCalledExactlyOnceWith('after')
     expect(capitals).toHaveBeenCalledExactlyOnceWith('AFTER')
   })
+
+  it('gives subscribers and get the default when another tab removed the setting', () => {
+    const port = portWithOutsideChanges()
+    port.write(TEXT_NAME, 'before')
+    const service = createSettingsService(port)
+    const key = textKeyWith(parseText)
+    const subscriber = vi.fn()
+    service.subscribe(key, subscriber)
+    expect(service.get(key)).toBe('before')
+
+    port.changeOutside(TEXT_NAME, undefined)
+
+    expect(subscriber).toHaveBeenCalledExactlyOnceWith(TEXT_DEFAULT)
+    expect(service.get(key)).toBe(TEXT_DEFAULT)
+  })
+
+  it('gives the new value to get after a change that nobody subscribed to', () => {
+    const port = portWithOutsideChanges()
+    port.write(TEXT_NAME, 'before')
+    const service = createSettingsService(port)
+    const key = textKeyWith(parseText)
+    expect(service.get(key)).toBe('before')
+
+    port.changeOutside(TEXT_NAME, 'after')
+
+    expect(service.get(key)).toBe('after')
+  })
+
+  it('does not call a subscriber that another subscriber removed during the same change', () => {
+    const port = portWithOutsideChanges()
+    const service = createSettingsService(port)
+    const key = textKeyWith(parseText)
+    const removals: (() => void)[] = []
+    service.subscribe(key, () => {
+      removals.forEach((remove) => remove())
+    })
+    const removed = vi.fn()
+    removals.push(service.subscribe(key, removed))
+
+    port.changeOutside(TEXT_NAME, 'after')
+
+    expect(removed).not.toHaveBeenCalled()
+  })
+
+  it('tells the subscribers of two services over one port of a change from another tab', () => {
+    const port = portWithOutsideChanges()
+    const key = textKeyWith(parseText)
+    const firstService = createSettingsService(port)
+    const secondService = createSettingsService(port)
+    const first = vi.fn()
+    const second = vi.fn()
+    firstService.subscribe(key, first)
+    secondService.subscribe(key, second)
+
+    port.changeOutside(TEXT_NAME, 'after')
+
+    expect(first).toHaveBeenCalledExactlyOnceWith('after')
+    expect(second).toHaveBeenCalledExactlyOnceWith('after')
+    expect(firstService.get(key)).toBe('after')
+    expect(secondService.get(key)).toBe('after')
+  })
 })
 
 describe('a service over a port that has no way to tell of changes from outside', () => {

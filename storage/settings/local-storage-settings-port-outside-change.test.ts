@@ -3,6 +3,7 @@ import { InMemorySettingsPort } from './in-memory-settings-port'
 import { LocalStorageSettingsPort } from './local-storage-settings-port'
 import {
   browserStorage,
+  OLD_SNAP_KEY,
   portListeningTo,
   storageEventOf,
   storageEventSource,
@@ -19,6 +20,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   localStorage.clear()
 })
 
@@ -101,6 +103,37 @@ describe('telling a listener that the whole storage was cleared', () => {
       ])
     }
   })
+
+  it('reaches no listener when nothing was read or written before', () => {
+    const { source, port } = portWithSource()
+    const listener = vi.fn()
+    port.onOutsideChange(listener)
+
+    source.emit(storageEventOf(null))
+
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('makes the port read again every setting that it kept in memory', () => {
+    const { source, port } = portWithSource()
+    const refuseNextTwoWrites = vi.spyOn(Storage.prototype, 'setItem')
+    refuseNextTwoWrites.mockImplementation(() => {
+      throw new DOMException('The storage is full.', 'QuotaExceededError')
+    })
+    port.write('theme', 'dark')
+    port.write('shape', { a: 1 })
+    refuseNextTwoWrites.mockRestore()
+    expect(port.read('theme')).toBe('dark')
+    expect(port.read('shape')).toStrictEqual({ a: 1 })
+    localStorage.setItem(THEME_KEY, '"light"')
+    localStorage.setItem(`${KEY_PREFIX}shape`, '{"a":2}')
+    port.onOutsideChange(vi.fn())
+
+    source.emit(storageEventOf(null))
+
+    expect(port.read('theme')).toBe('light')
+    expect(port.read('shape')).toStrictEqual({ a: 2 })
+  })
 })
 
 describe('an event that is not about a setting of this port', () => {
@@ -123,6 +156,31 @@ describe('an event that is not about a setting of this port', () => {
     source.emit(storageEventOf(ACTIVE_PROJECT_KEY))
     source.emit(storageEventOf('other'))
 
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('reaches no listener when the key is the one that an older build used', () => {
+    const { source, port } = portWithSource()
+    const listener = vi.fn()
+    port.onOutsideChange(listener)
+
+    source.emit(storageEventOf(OLD_SNAP_KEY))
+
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('is ignored without an error by a port that has no storage', () => {
+    const source = storageEventSource()
+    const changed = storageEventOf(THEME_KEY)
+    const cleared = storageEventOf(null)
+    vi.stubGlobal('localStorage', null)
+    const listener = vi.fn()
+    new LocalStorageSettingsPort(undefined, source).onOutsideChange(listener)
+
+    expect(() => {
+      source.emit(changed)
+      source.emit(cleared)
+    }).not.toThrow()
     expect(listener).not.toHaveBeenCalled()
   })
 })
