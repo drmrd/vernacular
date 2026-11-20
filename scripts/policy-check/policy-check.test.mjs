@@ -5,18 +5,94 @@ import { RULE_SEVERITY, severityOf } from './rule-severity.mjs'
 
 const OWNER_NAME = 'Dan Moore'
 const OWNER_EMAIL = '9156191+drmrd@users.noreply.github.com'
+const CLEAN_SHA = 'a'.repeat(40)
 const ARGV = ['--base', 'origin/main', '--head', 'HEAD', '--branch', 'feat/x']
-const EM_DASH = '—'
+const EM_DASH = '\u2014'
 
-/** @param {string} sha @param {string} authorEmail */
-function commitBy(sha, authorEmail) {
-  return { sha, authorName: OWNER_NAME, authorEmail, message: 'feat: add x' }
+/** @param {string} sha @param {string} authorEmail @param {string} [message] */
+function commitBy(sha, authorEmail, message = 'feat: add x') {
+  return { sha, authorName: OWNER_NAME, authorEmail, message }
 }
 
-const CLEAN_COMMIT = commitBy('a'.repeat(40), OWNER_EMAIL)
+/** @param {string[]} lines @param {string} rule */
+function linesFor(lines, rule) {
+  return lines.filter((line) => line.includes(`[${rule}]`))
+}
+
+const CLEAN_COMMIT = commitBy(CLEAN_SHA, OWNER_EMAIL)
+
+const EM_DASH_ANSWERS = {
+  commits: [CLEAN_COMMIT],
+  nameStatus: 'A\tdocs/a.md\n',
+  diff: diffAddingLine('docs/a.md', 3, `A note ${EM_DASH} with a dash`),
+  files: { 'docs/a.md': `# A\n\nA note ${EM_DASH} with a dash\n` },
+}
+
+const RANGE_MANIFEST = JSON.stringify({ dependencies: { alpha: '^1.2.3' } }, null, 2)
+const E2E_FILE = 'e2e/tests/walls.spec.ts'
+const E2E_LINE = 7
+const SHORT_SHA = 'aaaaaaaa: '
+
+const RULE_CASES = [
+  {
+    rule: 'forbidden-trailer',
+    severity: 'fail',
+    location: SHORT_SHA,
+    setup: {
+      commits: [commitBy(CLEAN_SHA, OWNER_EMAIL, 'feat: add x\n\nCo-authored-by: X <x@y>')],
+    },
+  },
+  {
+    rule: 'branch-prefix',
+    severity: 'fail',
+    location: '',
+    setup: {
+      commits: [CLEAN_COMMIT],
+      argv: ['--base', 'origin/main', '--head', 'HEAD', '--branch', 'feature/x'],
+    },
+  },
+  {
+    rule: 'milestone-code',
+    severity: 'warn',
+    location: SHORT_SHA,
+    setup: { commits: [commitBy(CLEAN_SHA, OWNER_EMAIL, 'feat: finish M3 walls')] },
+  },
+  {
+    rule: 'exact-pin',
+    severity: 'fail',
+    location: 'package.json:3: ',
+    setup: {
+      commits: [CLEAN_COMMIT],
+      nameStatus: 'M\tpackage.json\n',
+      files: { 'package.json': RANGE_MANIFEST },
+    },
+  },
+  {
+    rule: 'spec-needs-adr',
+    severity: 'fail',
+    location: 'docs/specs/x.md: ',
+    setup: {
+      commits: [CLEAN_COMMIT],
+      nameStatus: 'M\tdocs/specs/x.md\n',
+      files: { 'docs/specs/x.md': '# X\n' },
+    },
+  },
+  {
+    rule: 'e2e-timing-or-focus',
+    severity: 'warn',
+    location: `${E2E_FILE}:${E2E_LINE}: `,
+    setup: {
+      commits: [CLEAN_COMMIT],
+      nameStatus: `M\t${E2E_FILE}\n`,
+      diff: diffAddingLine(E2E_FILE, E2E_LINE, '  await page.waitForTimeout(500)'),
+      files: { [E2E_FILE]: '' },
+    },
+  },
+]
 
 describe('rule severity table', () => {
   it('states every rule severity in one table', () => {
+    expect(Object.isFrozen(RULE_SEVERITY)).toBe(true)
     expect(RULE_SEVERITY).toEqual({
       'commit-message-format': 'fail',
       'forbidden-trailer': 'fail',
@@ -50,25 +126,53 @@ describe('runPolicyCheck', () => {
   })
 
   it('exits 1 and names the rule when a failing rule fires', async () => {
-    const stranger = commitBy('a'.repeat(40), 'dan@example.com')
+    const stranger = commitBy(CLEAN_SHA, 'dan@example.com')
     const { runGit } = fakeGit({ commits: [stranger] })
     const { deps, lines } = collectingDeps(runGit)
     const code = await runPolicyCheck(ARGV, deps)
     expect(code).toBe(1)
+    expect(lines[0]).toBe(
+      'policy:check: 1 failing and 0 warning finding(s) in origin/main..HEAD on feat/x',
+    )
     expect(lines.join('\n')).toContain('[fail] [author-identity] aaaaaaaa: ')
   })
 
   it('exits 0 when only warning rules fire', async () => {
-    const { runGit } = fakeGit({
-      commits: [CLEAN_COMMIT],
-      nameStatus: 'A\tdocs/a.md\n',
-      diff: diffAddingLine('docs/a.md', 3, `A note ${EM_DASH} with a dash`),
-      files: { 'docs/a.md': `# A\n\nA note ${EM_DASH} with a dash\n` },
-    })
+    const { runGit } = fakeGit(EM_DASH_ANSWERS)
     const { deps, lines } = collectingDeps(runGit)
     const code = await runPolicyCheck(ARGV, deps)
     expect(code).toBe(0)
+    expect(lines[0]).toBe(
+      'policy:check: 0 failing and 1 warning finding(s) in origin/main..HEAD on feat/x',
+    )
     expect(lines.join('\n')).toContain('[warn] [em-dash] docs/a.md:3: ')
+  })
+
+  it('logs the summary first and every failing line before any warning line', async () => {
+    const stranger = commitBy(CLEAN_SHA, 'dan@example.com', 'feat: finish M3 walls')
+    const { runGit } = fakeGit({
+      ...EM_DASH_ANSWERS,
+      commits: [stranger],
+      nameStatus: 'A\tdocs/a.md\nM\tpackage.json\n',
+      files: { ...EM_DASH_ANSWERS.files, 'package.json': '{"dependencies":{"alpha":"^1.2.3"}}' },
+    })
+    const { deps, lines } = collectingDeps(runGit)
+    const code = await runPolicyCheck(ARGV, deps)
+    expect(code).toBe(1)
+    expect(lines[0]).toBe(
+      'policy:check: 2 failing and 2 warning finding(s) in origin/main..HEAD on feat/x',
+    )
+    const severities = lines.slice(1).map((line) => line.trim().slice(1, 5))
+    expect(severities).toEqual(['fail', 'fail', 'warn', 'warn'])
+    expect(linesFor(lines, 'exact-pin')).toHaveLength(1)
+    expect(linesFor(lines, 'milestone-code')).toHaveLength(1)
+  })
+
+  it('reads each changed file from the head ref and nothing else', async () => {
+    const { runGit, calls } = fakeGit(EM_DASH_ANSWERS)
+    const { deps } = collectingDeps(runGit)
+    await runPolicyCheck(ARGV, deps)
+    expect(calls.filter((args) => args.includes('show'))).toEqual([['show', 'HEAD:docs/a.md']])
   })
 
   it('reads commits without merges and changes from the merge base', async () => {
@@ -101,4 +205,18 @@ describe('runPolicyCheck', () => {
       'origin/main...HEAD',
     ])
   })
+
+  it.each(RULE_CASES)(
+    'reaches the $rule rule through a run',
+    async ({ rule, severity, location, setup }) => {
+      const { argv = ARGV, ...answers } = setup
+      const { runGit } = fakeGit(answers)
+      const { deps, lines } = collectingDeps(runGit)
+      const code = await runPolicyCheck(argv, deps)
+      const found = linesFor(lines, rule)
+      expect(found).toHaveLength(1)
+      expect(found[0].startsWith(`  [${severity}] [${rule}] ${location}`)).toBe(true)
+      expect(code).toBe(severity === 'fail' ? 1 : 0)
+    },
+  )
 })

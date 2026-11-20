@@ -11,8 +11,8 @@ const FIELD_SEPARATOR = '\x1f'
 export function logText(commits) {
   return commits
     .map(
-      (c) =>
-        `${RECORD_SEPARATOR}${c.sha}${FIELD_SEPARATOR}${c.authorName}${FIELD_SEPARATOR}${c.authorEmail}${FIELD_SEPARATOR}${c.message}\n`,
+      (commit) =>
+        `${RECORD_SEPARATOR}${commit.sha}${FIELD_SEPARATOR}${commit.authorName}${FIELD_SEPARATOR}${commit.authorEmail}${FIELD_SEPARATOR}${commit.message}\n`,
     )
     .join('')
 }
@@ -37,20 +37,38 @@ export function diffAddingLine(file, line, text) {
 
 /**
  * A fake `runGit` that answers by the distinctive argument and records its calls.
- * @param {{ commits?: readonly FakeCommit[], nameStatus?: string, diff?: string, files?: Record<string, string>, branch?: string }} [answers]
+ * Like real git, `show` throws for any ref other than `<head>:<path>` or a path not in `files`.
+ * @param {{ commits?: readonly FakeCommit[], nameStatus?: string, diff?: string, files?: Record<string, string>, branch?: string, head?: string }} [answers]
  * @returns {{ runGit: (args: readonly string[]) => string, calls: string[][] }}
  */
 export function fakeGit(answers = {}) {
-  const { commits = [], nameStatus = '', diff = '', files = {}, branch = 'feat/x' } = answers
+  const {
+    commits = [],
+    nameStatus = '',
+    diff = '',
+    files = {},
+    branch = 'feat/x',
+    head = 'HEAD',
+  } = answers
   /** @type {string[][]} */
   const calls = []
+  /** @param {readonly string[]} args */
+  function showFile(args) {
+    const prefix = `${head}:`
+    const spec = args[1] ?? ''
+    const path = spec.slice(prefix.length)
+    if (args.length !== 2 || !spec.startsWith(prefix) || !Object.hasOwn(files, path)) {
+      throw new Error(`fatal: bad git show: ${args.join(' ')}`)
+    }
+    return files[path]
+  }
   /** @param {readonly string[]} args */
   function runGit(args) {
     calls.push([...args])
     if (args.includes('log')) return logText(commits)
     if (args.includes('--name-status')) return nameStatus
     if (args.includes('--unified=0')) return diff
-    if (args.includes('show')) return files[args[1].slice(args[1].indexOf(':') + 1)] ?? ''
+    if (args.includes('show')) return showFile(args)
     if (args.includes('rev-parse')) return `${branch}\n`
     throw new Error(`unexpected git call: ${args.join(' ')}`)
   }
@@ -60,7 +78,7 @@ export function fakeGit(answers = {}) {
 /**
  * Dependencies for `runPolicyCheck`: collects log lines, passes commitlint, no annotations.
  * @param {(args: readonly string[]) => string} runGit
- * @returns {{ deps: object, lines: string[] }}
+ * @returns {{ deps: import('./policy-check.mjs').PolicyCheckDeps, lines: string[] }}
  */
 export function collectingDeps(runGit) {
   /** @type {string[]} */
