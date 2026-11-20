@@ -183,19 +183,20 @@ function readAssets(
   entries: readonly DirectoryEntry[],
   dataBudget: DataBudget,
 ): AssetRead[] | undefined {
-  const inflated: AssetRead[] = []
+  const assetsRead: AssetRead[] = []
   for (const [contentHash, entry] of firstAssetEntries(entries)) {
     const outcome = readAsset(view, entry, dataBudget)
     if (outcome === REFUSE_ARCHIVE) return undefined
-    inflated.push([contentHash, outcome])
+    assetsRead.push([contentHash, outcome])
   }
-  return inflated
+  return assetsRead
 }
 
 /**
  * The hash of the bytes, or `undefined` when they cannot be hashed. A hash that fails rejects that
  * asset only and does not refuse the archive: the document of such an archive is sound, and a page
- * with no secure origin has no digest at all, so every archive with an asset would fail there.
+ * that is not a secure context has no digest at all, so every archive with an asset would fail
+ * there.
  */
 async function hashIfPossible(bytes: Uint8Array): Promise<string | undefined> {
   try {
@@ -216,10 +217,10 @@ interface CheckedAssets {
  * rejected under the hash of its name. One asset is hashed at a time, in the order of the central
  * directory, so both lists keep that order and only one asset is handed to the digest at once.
  */
-async function checkAssets(inflated: readonly AssetRead[]): Promise<CheckedAssets> {
+async function checkAssets(assetsRead: readonly AssetRead[]): Promise<CheckedAssets> {
   const assets = new Map<string, Uint8Array>()
   const rejectedAssets: string[] = []
-  for (const [contentHash, bytes] of inflated) {
+  for (const [contentHash, bytes] of assetsRead) {
     if (bytes !== UNREADABLE && (await hashIfPossible(bytes)) === contentHash) {
       assets.set(contentHash, bytes)
     } else {
@@ -239,15 +240,16 @@ async function readArchiveBytes(bytes: Uint8Array, limits: ArchiveLimits): Promi
   const dataBudget: DataBudget = { spent: 0, limit: bytes.length }
   const document = readDocument(checked.view, checked.document, dataBudget)
   if (document === undefined) return notAnArchive()
-  const inflated = readAssets(checked.view, checked.entries, dataBudget)
-  if (inflated === undefined) return notAnArchive()
-  return { ok: true, document, ...(await checkAssets(inflated)) }
+  const assetsRead = readAssets(checked.view, checked.entries, dataBudget)
+  if (assetsRead === undefined) return notAnArchive()
+  return { ok: true, document, ...(await checkAssets(assetsRead)) }
 }
 
 /**
  * Reads an imported project archive, which is an untrusted file. Refuses an archive above each
- * limit before it inflates anything. The promise never rejects, also when the digest is missing or
- * fails, and `bytes` is never changed; a stored document or asset is a view into `bytes`.
+ * limit before it inflates anything. The promise never rejects. A digest that is missing or fails
+ * rejects that one asset, and any other thrown value gives `not-an-archive`. `bytes` is never
+ * changed; a stored document or asset is a view into `bytes`.
  */
 export async function readArchive(
   bytes: Uint8Array,
