@@ -50,6 +50,33 @@ describe('milestoneCodeFindings', () => {
     }
   })
 
+  it('warns about a phase word followed by a letter in the branch name', () => {
+    const findings = milestoneCodeFindings([], 'feat/wave-a')
+    expect(findings).toHaveLength(1)
+    expect(findings[0].rule).toBe('milestone-code')
+    expect(findings[0]).not.toHaveProperty('sha')
+  })
+
+  it('reports one finding per offending subject and one for the branch', () => {
+    const commits = commitsFor(['feat: M3 lane 5', 'docs: plain words', 'fix: wave A'])
+    const findings = milestoneCodeFindings(commits, 'feat/m3-lane-5')
+    expect(findings).toHaveLength(3)
+    const withSha = findings.filter((finding) => 'sha' in finding)
+    expect(withSha.map((finding) => finding.sha)).toEqual([commits[0].sha, commits[2].sha])
+    expect(findings.filter((finding) => !('sha' in finding))).toHaveLength(1)
+  })
+
+  it('quotes the branch text as written', () => {
+    for (const [branch, written] of [
+      ['feat/lane_5', 'lane_5'],
+      ['feat/stage.2', 'stage.2'],
+    ]) {
+      const findings = milestoneCodeFindings([], branch)
+      expect(findings).toHaveLength(1)
+      expect(findings[0].message).toContain(`milestone code "${written}"`)
+    }
+  })
+
   it('leaves a plain branch name alone', () => {
     for (const branch of ['build/vitest-browser-4-1-10', 'feat/policy-checks-in-ci']) {
       expect(milestoneCodeFindings([], branch)).toEqual([])
