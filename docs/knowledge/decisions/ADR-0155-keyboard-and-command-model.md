@@ -40,7 +40,7 @@ sourceFiles:
     e2e/tests/journeys/switch-floor.spec.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-20
 ---
 
 # ADR-0155: Adopt the keyboard and command model as a target
@@ -358,6 +358,9 @@ region did not change, and a screen reader said nothing. Now the region falls ba
 or the snap, and the next keyboard step is heard. With nothing selected, that fallback is "Selection
 cleared", which is not true either (issue #907). The cleared sentence and the kept candidate are
 defaults. The project owner has not decided them.
+
+Decided on 2026-11-20 (#914): the project owner kept both defaults, and no follow-up change is
+needed.
 
 Tests: `editor/plan/use-plan-interaction-run-scope.test.ts`,
 `editor/plan/use-plan-authoring-run-scope.test.ts`, and `editor/plan/use-dimension-tool.test.ts` hold
