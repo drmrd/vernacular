@@ -120,11 +120,15 @@ returns a plain facade that hides the Three.js type from its caller:
 ```ts
 interface OrbitController {
   setTarget(target: Vector3): void
+  getTarget(): Vector3
   setEnabled(enabled: boolean): void
   update(): void
   dispose(): void
 }
 ```
+
+`getTarget` hands out a copy of the pivot as a core value, so the bridge can save it
+when the pane unmounts.
 
 The bridge wrapper holds the facade, not an `OrbitControls` instance, so it never
 imports `three`. The facade configures the common architectural-navigation case:
@@ -185,10 +189,14 @@ Two React Three Fiber components inside the canvas wire the engine facade and th
 core math to the live camera:
 
 - **The orbit wrapper** reads the camera and the canvas element from the fiber
-  context, constructs the engine orbit facade on mount, sets its target from the
-  framed pose, enables it only in orbit mode, marks `userControlled` on the first
-  pointer interaction through a `pointerdown` listener it adds to the canvas, and
-  disposes the facade on unmount.
+  context and constructs the engine orbit facade on mount. The facade starts on
+  the saved pivot when the session holds a saved camera, and on the framed pose's
+  target otherwise. After that the pivot follows the framed target only while the
+  framing is active. Once the user steers, it moves only to an applied preset's
+  target, so a rebuild of the scene leaves it alone. The wrapper enables the facade
+  only in orbit mode and marks `userControlled` on the first pointer interaction
+  through a `pointerdown` listener it adds to the canvas. On unmount it reports the
+  camera position and the pivot, then disposes the facade.
 - **The walk wrapper** is active in walk mode. It listens for the movement keys
   and, when the user clicks the canvas, requests pointer capture and reads pointer
   motion as look input. Each frame it calls `advanceWalk` and applies the result to
@@ -201,7 +209,8 @@ Both wrappers are React-and-Three glue that runs only under a real rendering
 context, so they are coverage-excluded glue like `WebGPUSceneView` itself
 (foundation section 6.3); their behavior is proven by the semantic end-to-end
 tests of section 5, and the testable logic they call (the facade, the walk math)
-is unit-tested directly.
+is unit-tested directly. The orbit wrapper now also has a unit test of its own,
+which replaces the engine facade with a fake controller.
 
 Decoupling the movement keys from pointer capture is also what makes walk mode
 testable end to end: pointer capture is unreliable under a headless browser, while
