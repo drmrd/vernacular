@@ -55,7 +55,7 @@ sourceFiles:
     engine/scene/near-wall-transparency-test-support.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-20
 ---
 
 # ADR-0218: Exterior walls follow the rooms along the wall, one run at a time
@@ -191,8 +191,8 @@ point is tested against the inside of a polygon, and no thickness is read.
 the distance within which the wall graph merges wall ends. So every corner of a derived room counts
 as on the walls it was traced from.
 
-The rule reads the centerline `polygon`, not the `clearPolygon`. Issue #674, which will move the
-clear polygons to the faces of the construction profile, does not bear on it.
+The rule reads the centerline `polygon`, not the `clearPolygon`. Issue #674 moved the
+clear polygons to the faces of the construction profile, which does not bear on it.
 
 `wallStretches(wall, rooms)` cuts a wall at every ring corner, of a room on its floor, that lies
 within the tolerance of its centerline. Each piece takes the sides that `roomSidesAt` reads at its
@@ -458,7 +458,8 @@ do not change (read). The captures were not run for this work.
 - #856: remove the unused wall thickness parameter once `bridge/` is free.
 - #857: compute the exterior runs once for each floor in each enrollment.
 - #858: let a courtyard count as open air.
-- Issue #674: rooms inset by the raw wall thickness, which no longer bears on the room side.
+- Issue #674: rooms now inset by the construction-profile thickness, which does not bear on the
+  room side.
 - [[ADR-0086-near-wall-transparency]]: the near-wall fade, which now fades runs.
 - [[ADR-0087-opening-fade-with-host-wall]]: the opening fade, now with the run that holds the
   opening's center.
