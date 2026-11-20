@@ -189,6 +189,19 @@ export const SECOND_FLOOR_ROOM_NAME = 'Attic'
 export const SECOND_FLOOR_DISTANCE_MM = 50000
 /** The first-floor dimension lies this far off its line, outside the room whichever side it takes. */
 export const FIRST_FLOOR_DIMENSION_OFFSET_MM = 5000
+/** The drawn content of the first floor: its wall loop, 4000 mm wide and 3000 mm deep. */
+export const FIRST_FLOOR_WIDTH_MM = WALL_LENGTH_MM
+export const FIRST_FLOOR_DEPTH_MM = ROOM_DEPTH_MM
+/**
+ * The door on the first wall of each fixture room is drawn across the full thickness of
+ * its wall, so it lies half of the default wall thickness (114 mm) beyond the wall line.
+ */
+export const FIRST_FLOOR_DOOR_OVERHANG_MM = 57
+/** The margin that the exporter leaves on each side when no `marginMm` is given. */
+export const DEFAULT_MARGIN_MM = 100
+/** The `data-layer` values of the shapes, and of the annotations, that the exporter writes. */
+export const SHAPE_LAYERS = ['rooms', 'walls', 'openings']
+export const ANNOTATION_LAYERS = ['room-labels', 'dimensions']
 const FIRST_FLOOR_DIMENSION_LENGTH_MM = WALL_LENGTH_MM
 const SECOND_FLOOR_DIMENSION_LENGTH_MM = WALL_LENGTH_MM / 2
 

@@ -7,10 +7,15 @@ import { roomKey } from '../../topology/rooms'
 import { createPlanPreview } from './plan-preview'
 import { SvgPlanExporter } from './svg-plan-exporter'
 import {
+  DEFAULT_MARGIN_MM,
+  FIRST_FLOOR_DEPTH_MM,
+  FIRST_FLOOR_DOOR_OVERHANG_MM,
   FIRST_FLOOR_ID,
   FIRST_FLOOR_ROOM_NAME,
+  FIRST_FLOOR_WIDTH_MM,
   SECOND_FLOOR_ID,
   SECOND_FLOOR_ROOM_NAME,
+  SHAPE_LAYERS,
   createTwoFloorProject,
 } from './svg-plan-exporter-test-fixtures'
 
@@ -289,5 +294,46 @@ describe('SvgPlanExporter floor and annotation options', () => {
     expect(graph.dimensions).toHaveLength(2)
     expect(textsOf(content)).toContain(FIRST_FLOOR_ROOM_NAME)
     expect(textsOf(content)).toContain(SECOND_FLOOR_ROOM_NAME)
+  })
+})
+
+describe('createPlanPreview frame and layers', () => {
+  it('the preview starts with the XML declaration and carries the SVG namespace', () => {
+    const preview = previewOf(createTwoFloorProject())
+
+    expect(preview.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true)
+    expect(parse(preview).documentElement.getAttribute('xmlns')).toBe('http://www.w3.org/2000/svg')
+  })
+
+  it('the preview is the size of the first floor in millimetres plus the default margin on each side', () => {
+    const root = parse(previewOf(createTwoFloorProject())).documentElement
+    const margins = 2 * DEFAULT_MARGIN_MM
+
+    expect(Number(root.getAttribute('width'))).toBe(FIRST_FLOOR_WIDTH_MM + margins)
+    expect(Number(root.getAttribute('height'))).toBe(
+      FIRST_FLOOR_DEPTH_MM + FIRST_FLOOR_DOOR_OVERHANG_MM + margins,
+    )
+    expect(root.getAttribute('viewBox')).toBe(
+      `0 0 ${root.getAttribute('width')} ${root.getAttribute('height')}`,
+    )
+  })
+
+  it('the preview holds the layers of the rooms, walls, and openings only', () => {
+    const layers = [...parse(previewOf(createTwoFloorProject())).querySelectorAll('[data-layer]')]
+
+    expect(layers.map((group) => group.getAttribute('data-layer')).sort()).toEqual(
+      [...SHAPE_LAYERS].sort(),
+    )
+  })
+
+  it('a first floor with nothing drawn keeps the three layers, with nothing in them', () => {
+    const layers = [
+      ...parse(previewOf(projectWithEmptyFirstFloor())).querySelectorAll('[data-layer]'),
+    ]
+
+    expect(layers.map((group) => group.getAttribute('data-layer')).sort()).toEqual(
+      [...SHAPE_LAYERS].sort(),
+    )
+    expect(layers.map((group) => group.children.length)).toEqual(layers.map(() => 0))
   })
 })
