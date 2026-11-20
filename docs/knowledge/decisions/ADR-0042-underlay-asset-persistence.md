@@ -25,6 +25,7 @@ related:
     decisions/ADR-0037-image-underlay-and-calibration,
     decisions/ADR-0041-phase-1-completion-boundary-finishing-slices,
     decisions/ADR-0211-stored-indexeddb-records-become-files,
+    decisions/ADR-0213-an-archive-is-read-as-an-untrusted-file,
   ]
 sourceFiles:
   [
@@ -37,9 +38,12 @@ sourceFiles:
     editor/plan/notify-user.ts,
     app/resolve-project-store.ts,
     storage/project-storage.ts,
+    storage/import/copy-imported-assets.ts,
+    storage/zip/export-project-bundle.ts,
+    storage/assets/removable-assets.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-19
 ---
 
 # ADR-0042: Underlay asset persistence via a directory-backed content-addressed AssetCache
@@ -53,6 +57,20 @@ updated: 2026-11-17
 > `pnpm test:storage-browser`, the CI job `storage-browser`. See
 > [[ADR-0211-stored-indexeddb-records-become-files]]. The durable IndexedDB cache that this record
 > deferred is therefore built.
+
+> Updated on 2026-11-19. An imported archive now feeds the shared pool. The archive reader checks
+> each asset against the hash in its name, and the import then copies into the pool each asset that
+> the document refers to and the pool lacks (`storage/import/copy-imported-assets.ts`). It never
+> replaces an entry of the pool, and it writes no asset that the document does not refer to. A
+> needed asset that the pool still lacks is reported in one warning, and the project opens with it
+> missing. An export reports the assets it could not include
+> (`storage/zip/export-project-bundle.ts`) and still writes the file; the application shows the
+> count in one warning. An import does not copy or report an asset that an installed pack supplies,
+> and an export does not carry or report it. `removableAssets`
+> (`storage/assets/removable-assets.ts`) holds the rule for removing an asset when a project is
+> deleted: only when no other project lists it and the user library does not hold it, and never
+> while another project has an incomplete asset list. No delete calls it yet. See
+> [[ADR-0213-an-archive-is-read-as-an-untrusted-file]].
 
 Accepted (slice 13, underlay asset persistence, the first finishing slice of the
 Phase 1 two-dimensional plan editor per ADR-0041), landed on branch
