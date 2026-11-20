@@ -44,6 +44,8 @@ export interface RebuildPortsOptions {
   readonly root?: InMemoryDirectory
   /** The index of the ports; a new in-memory index when none is given. */
   readonly index?: ProjectIndex
+  /** Whether the workspace keeps its projects after the tab closes; not durable when none is given. */
+  readonly durable?: boolean
 }
 
 /** Test ports whose store stamps every write with `STORED_AT` and whose build is fixed. */
@@ -51,6 +53,7 @@ export function rebuildPorts(options: RebuildPortsOptions = {}): TestPorts {
   const storeClock = () => new Date(STORED_AT)
   return createTestPorts({
     root: options.root ?? new InMemoryDirectory({ now: storeClock }),
+    durable: options.durable ?? false,
     build: REBUILD_BUILD,
     now: () => new Date(PORTS_NOW),
     ...(options.index === undefined ? {} : { index: options.index }),
@@ -230,6 +233,31 @@ export function holdPutOf(index: ProjectIndex, id: string): HeldPutOfId {
     })
   }
   return { started: () => started, release: () => end(), reject: (error) => end(error) }
+}
+
+export interface HeldReadOfId {
+  /** Whether the read of the project has started. */
+  started(): boolean
+  /** Lets the held read run against the real store. */
+  release(): void
+}
+
+/** From now on each `read` of the store for `id` stays pending until the test releases it. */
+export function holdReadOf(ports: TestPorts, id: string): HeldReadOfId {
+  const realRead = ports.workspace.read.bind(ports.workspace)
+  let started = false
+  let release: () => void = () => undefined
+  const released = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  ports.workspace.read = async (readId) => {
+    if (readId === id) {
+      started = true
+      await released
+    }
+    return realRead(readId)
+  }
+  return { started: () => started, release: () => release() }
 }
 
 /** From now on the reads of the store are counted; gives the most that were in flight at once. */

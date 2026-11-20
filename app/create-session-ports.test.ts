@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { version } from '../package.json'
-import { IndexedDbProjectIndex, InMemoryProjectIndex } from '../storage'
+import { IndexedDbProjectIndex, InMemoryProjectIndex, hasSwitchedToMemory } from '../storage'
 import { sampleRecord } from '../storage/project-index/project-record-test-kit'
 import { createSessionPorts, createTemporarySessionPorts } from './create-session-ports'
 
@@ -44,5 +44,14 @@ describe('the ports that the builder gives', () => {
     expect(await ports.index.all()).toEqual([])
     expect(warn).toHaveBeenCalledTimes(1)
     expect(warn.mock.calls[0]?.some((argument) => argument instanceof Error)).toBe(true)
+  })
+
+  it('the index of the durable ports says that it switched after the read that failed', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { ports } = await createSessionPorts()
+
+    await ports.index.all()
+
+    expect(hasSwitchedToMemory(ports.index)).toBe(true)
   })
 })
