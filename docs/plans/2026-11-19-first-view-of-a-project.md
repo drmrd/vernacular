@@ -1,6 +1,6 @@
 # The first view of a project: implementation plan
 
-It builds `docs/specs/2026-11-19-first-view-of-a-project.md` ("the specification" below). Issues: #737 and #627. Read against `main` at `1c02bbc5`.
+It builds `docs/specs/2026-11-19-first-view-of-a-project.md` ("the specification" below). Issues: #737 and #627. Read against `main` at `1c02bbc5`. The paths and line numbers were checked again against `main` at `82170819` on 2026-11-20.
 
 ## Global constraints
 
@@ -98,7 +98,7 @@ The rule the cycles build (specification, section 5.4). A minute qualifies when 
 - Test: "seeds the light on screen from the project that opened, once, and leaves it when the site changes".
 - Setup: a project with one closed room drawn with `addWall` and the site `{ northBearing: 0 }`. With no door, its front is plan-down. Render `ShellProviders` with a probe that reads `useEnvironmentSession()`. Dispatch `setSiteNorthBearing(Math.PI / 2)` and re-render. Then render a second shell with a session for the same room with the site `{ northBearing: Math.PI / 2 }`.
 - Assertion: the first probe reads 20 March 10:30, since the front faces south. After the site edit and the re-render it still reads 10:30. The second shell reads 20 March 14:00, because a bearing of pi/2 turns plan-down to the west. The mode is `'schematic'` and the color check is off in both.
-- Why it fails today: the store starts from the constant default (`editor/shell/shell-providers.tsx:79`).
+- Why it fails today: the store starts from the constant default (`editor/shell/shell-providers.tsx:89`).
 - Implementation: `editor/shell/shell-providers.tsx` creates the store once, in a state initializer, from `openingConditions` of `session.getProject().site` and `frontDirection(session.getSceneGraph())`. A pure helper in `core/environment/environment-state.ts` turns the conditions into an `EnvironmentState`.
 
 ### Cycle 1.7: the journey
@@ -210,7 +210,7 @@ Goal: with no door marked, the entrance is the widest swing or pivot door in an 
 
 What a user sees: on a project whose widest outside door is sliding, upstairs, or below grade, the sample sun turns to the hinged ground-floor door. Nothing else.
 
-Needs: the documents pull request. It can be built beside pull request 1. Open question 3 (floor before family) is built on its recommended answer. Its other answer swaps two rules and one test case.
+Needs: the documents pull request. It can be built beside pull request 1. It merges once it is built and reviewed, with no wait for #744 (specification, answer 10). The floor ranks before the door family, as the owner decided on 19 November (specification, answer 9).
 
 Branch: `feat/entrance-guess-on-the-ground-floor`.
 
@@ -232,7 +232,7 @@ Must not touch: `core/scene/exterior-walls.ts` and `core/scene/scene-graph.ts` (
 - Test file: `core/scene/front-direction-families.test.ts` (new).
 - Test: "prefers a swing or pivot door to a wider sliding, folding, or cased door on the same level".
 - Setup: one closed room for each of the first three cases. Case one: an 813 mm `single-swing-door` in the south wall and an 1829 mm `sliding-glass-door` in the east wall. Case two: a 914 mm `pivot-door` in the west wall and a 965 mm `barn-door` in the north wall. Case three: an 813 mm `bifold-door` in the south wall and a 914 mm `cased-opening` in the east wall. Case four: a ground floor with a 1524 mm `bypass-door` in its south wall, and a floor above with an 813 mm `single-swing-door` in its east wall.
-- Assertion: case one faces south `(0, -1)`, case two west `(-1, 0)`, and case three east `(1, 0)`, since with no hinged door the widest of the rest wins. Case four faces south: the floor ranks before the family (call 19).
+- Assertion: case one faces south `(0, -1)`, case two west `(-1, 0)`, and case three east `(1, 0)`, since with no hinged door the widest of the rest wins. Case four faces south: the floor ranks before the family (answer 9).
 - Why it fails today: the widest door of any family wins.
 - Implementation: `core/scene/front-direction.ts`, `core/registries/opening-kind.ts`.
 
@@ -257,7 +257,7 @@ Goal: a user marks one door as the main entrance, and the front and the sample s
 
 What a user sees: a "Main entrance" checkbox in the door inspector. The guessed door shows the line "Vernacular treats this door as the entrance until one is marked." There is a palette command too. The mark survives a reload, export, and import.
 
-Needs: pull request 3. It can run beside pull request 2. Open question 6 (a report for several marks) changes only the text of the ADR-0179 amendment, unless the owner wants a notice now.
+Needs: pull request 3. It can run beside pull request 2. It merges once it is built and reviewed, with no wait for #744 (answer 10). Open question 6 (a report for several marks) changes only the text of the ADR-0179 amendment, unless the owner wants a notice now.
 
 Branch: `feat/main-entrance-mark`.
 
@@ -368,7 +368,7 @@ Goal: the 3D view opens from the front, and "Reset view" and a new "Entrance" pr
 
 What a user sees: the first 3D view stands in front of the house. It is turned 30 degrees toward the side the opening light leaves in shade and looks down 20 degrees, with the front wall solid. "Reset view" returns there. "Entrance" sits beside "Doorway", and their tooltips tell them apart. Walk mode starts outside the front.
 
-Needs: pull request 1 (the shaded side reads the light the project opened in). The build of the distance rule of #744 on `main`, after the owner approves its design (24 November at the earliest). Open question 1 decides the side rule; the plan builds its recommended answer. Open question 5 decides whether #744 meets the constraint.
+Needs: pull request 1 (the shaded side reads the light the project opened in). The build of the distance rule of #744 on `main`, after the owner approves its design (24 November at the earliest). It merges after pull requests 3 and 4, as the owner decided (answer 10), although its code needs neither. Open question 1 decides the side rule; the plan builds its recommended answer. Open question 5 decides whether #744 meets the constraint.
 
 Branch: `feat/view-from-the-front`.
 
@@ -437,14 +437,14 @@ Leaves: walk mode at the entrance, the doorway preset at the entrance, and the w
 documents
   1 opening time  ──> 2 opening light
   3 entrance guess ──> 4 entrance mark
-  #744 design (24 November at the earliest) ──> #744 build ──> 5 view from the front (also after 1) ──> daylight default
+  #744 design (24 November at the earliest) ──> #744 build ──> 5 view from the front (also after 1, 3, and 4) ──> daylight default
 ```
 
 - Every code pull request merges after the documents pull request.
 - Pull requests 1 and 3 run side by side. They share only `core/index.ts`. Pull request 1 is the first to merge, as the owner's note on answer 4 asks.
 - Pull request 2 starts when 1 has merged, and 4 when 3 has merged. 2 and 4 run side by side. The second to merge rebases, regenerates the schema at the next revision, and has the test author renumber the drift reminder case.
-- Pull request 5 starts when the build of #744 is on `main`. It needs 1, and none of 2 to 4.
-- Whether 3 and 4 land before 5 is open question 4. This plan assumes they do.
+- Pull requests 3 and 4 each merge once built and reviewed. Neither waits for #744 (answer 10).
+- Pull request 5 starts when the build of #744 is on `main`. Its code needs 1, and none of 2 to 4. It merges after 3 and 4 (answer 10).
 
 Files that more than one pull request of this plan edits:
 
@@ -461,12 +461,12 @@ Files that more than one pull request of this plan edits:
 
 ## Merge points with the session layer and the kernel
 
-The session layer plan (`docs/plans/2026-11-15-session-layer-and-document-identity.md`): its pull requests 1 to 5 are on `main`. Its next is pull request 6, the project index and the preview.
+The session layer plan (`docs/plans/2026-11-15-session-layer-and-document-identity.md`): its pull requests 1 to 5, 8 (#946), and 9 (#937) are on `main` at `82170819`. Its next is pull request 6, the project index and the preview.
 
 | Session layer pull request           | Shared with this plan                                                                                                                                                                                                                                                                 |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 6, the project index and the preview | `core/index.ts` only. This plan does not touch `core/export/svg/`, `storage/`, `session/`, or `app/`.                                                                                                                                                                                 |
-| 9, the settings port                 | `editor/shell/shell-providers.tsx`, which is in its fence. Pull requests 1 and 2 change the one line that creates the environment store. The second to merge rebases.                                                                                                                 |
+| 9, the settings port                 | On `main` (#937). It changed `editor/shell/shell-providers.tsx`, where pull requests 1 and 2 change the one line that creates the environment store. A branch cut before #937 rebases over it before its merge.                                                                       |
 | 10, the Projects page                | The light is seeded once per opened project. A return from the Projects page to the project that is still open must not seed again and must not drop the light on screen. The shell test of cycle 1.6 holds the rule for a re-render. Pull request 10 adds the case of its own route. |
 | 12, a project that does not open     | `core/repairs/` is a possible home for a repair of several marks, if the owner wants one (open question 6). A repair that drops a malformed opening light would be a write on the user's click.                                                                                       |
 
@@ -505,7 +505,7 @@ The build of #744 shares `bridge/react/webgpu-scene-view.tsx` and possibly `e2e/
 | 5, the view from the front | 5      |
 | Total                      | 31     |
 
-Estimate: 6 to 9 working days for one builder, not measured. Basis: the kernel plan's own rate after its review, about 5 to 8 cycles a day. Add four journeys, three story baseline renders on the runner, one live-view baseline, two schema rebases, and the reviews. Pull request 1 alone is about one to one and a half days. The estimate leaves out #744, whose design and build are their own, and the documents pull request. The longest chain is pull requests 3 and 4 (12 cycles). With 1 and 2 beside it, two builders finish them in about three days each, and 5 follows #744.
+Estimate: 6 to 9 working days for one builder, not measured. Basis: the kernel plan's own rate after its review, about 5 to 8 cycles a day. Add four journeys, three story baseline renders on the runner, one live-view baseline, two schema rebases, and the reviews. Pull request 1 alone is about one to one and a half days. The estimate leaves out #744, whose design and build are their own, and the documents pull request. The longest chain is pull requests 3 and 4 (12 cycles). With 1 and 2 beside it, two builders finish them in about three days each, and 5 follows #744 and pull request 4.
 
 ## Risks
 
@@ -519,3 +519,4 @@ Estimate: 6 to 9 working days for one builder, not measured. Basis: the kernel p
 - `e2e/tests/scene-camera-fit.spec.ts` may fall under its threshold with the front view. Then the threshold needs a new derivation in pull request 5, with its reason.
 - The every-command test sees only the commands with samples. A later command that copies doors needs a sample that carries a marked door.
 - The design of #744 may slip past 24 November, or may not accept the constraint of open question 5. Pull request 5 and the daylight default slip with it.
+- Pull request 5 merges after pull request 4 (answer 10). If 4 is late, 5 waits for it even with #744 on `main`.
