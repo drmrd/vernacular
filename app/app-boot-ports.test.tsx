@@ -177,4 +177,20 @@ describe('The application under StrictMode that resolves its ports', () => {
 
     expect(lockCalls(log)).toEqual([`lock:${START_ID}`])
   })
+
+  it('reads the index once', async () => {
+    stubCapableStorage()
+    const ports = createTestPorts()
+    const all = vi.spyOn(ports.index, 'all')
+    render(
+      <StrictMode>
+        <App resolvePorts={() => Promise.resolve(builtPorts(ports))} />
+      </StrictMode>,
+    )
+
+    await findTheShell()
+    await settleForAWhile()
+
+    expect(all).toHaveBeenCalledTimes(1)
+  })
 })

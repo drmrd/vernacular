@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import { reconcileIndex } from '../session'
 import { createTestPorts, recordOf, type TestPorts } from '../session/handle/handle-test-kit'
 import { folderRecord } from '../session/projects/rebuild-test-kit'
@@ -11,8 +11,10 @@ import {
 import {
   START_ID,
   expectOpenProject,
+  failedOpenSentence,
   lockedIds,
   openProjectName,
+  plantFailedProject,
   plantProject,
   reloadOf,
   renderApp,
@@ -114,6 +116,22 @@ describe('The application that starts from the records of the index', () => {
     expect(await openProjectName()).toBe('Old Cottage')
     expect(read).not.toHaveBeenCalledWith(FOLDER_ID)
     expect(lockedIds(ports)).not.toContain(FOLDER_ID)
+  })
+
+  it('starts in the workspace project used last also when it did not open', async () => {
+    stubCapableStorage()
+    const ports = createTestPorts()
+    await plantFailedProject(ports)
+    await plantProject(ports, SECOND_ID, 'Second House')
+    await reconcileIndex(ports)
+    await usedLast(ports, START_ID)
+    const read = vi.spyOn(ports.workspace, 'read')
+
+    renderApp(ports)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(await failedOpenSentence(ports))
+    expect(read).not.toHaveBeenCalledWith(SECOND_ID)
+    expect(lockedIds(ports)).not.toContain(SECOND_ID)
   })
 
   it('a store with only current and no index starts in that project and then has its record', async () => {

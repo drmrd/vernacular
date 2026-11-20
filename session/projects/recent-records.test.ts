@@ -40,6 +40,13 @@ describe('the start record of the project index', () => {
     expect(latestWorkspaceRecord([away])).toBeUndefined()
   })
 
+  it('the given list is not changed', () => {
+    const records = Object.freeze([usedAt('a', EARLY), usedAt('b', LATE), usedAt('c', MIDDLE)])
+
+    expect(latestWorkspaceRecord(records)?.id).toBe('b')
+    expect(records.map((record) => record.id)).toEqual(['a', 'b', 'c'])
+  })
+
   it('a record that did not open can be the start record', () => {
     const broken = { ...failedRecord('broken', notJsonBytes(), 'not-json'), lastUsedAt: LATE }
     const records = [usedAt('a', EARLY), broken]
