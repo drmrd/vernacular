@@ -201,3 +201,50 @@ export function failReadsOf(ports: TestPorts, failing: readonly string[], error:
 export function stepWarnings(calls: readonly (readonly unknown[])[]): (readonly unknown[])[] {
   return calls.filter((args) => args.some((arg) => typeof arg === 'number'))
 }
+
+/** From now on each `put` of `index` for an id that `stalls` names never answers; the others run. */
+export function stallPuts(index: ProjectIndex, stalls: (id: string) => boolean): void {
+  const realPut = index.put.bind(index)
+  index.put = (record) => (stalls(record.id) ? new Promise<void>(() => undefined) : realPut(record))
+}
+
+export interface HeldPutOfId {
+  /** Whether the put of the record has started. */
+  started(): boolean
+  /** Lets the held put run against the real index. */
+  release(): void
+  /** Makes the held put reject with `error`. */
+  reject(error: Error): void
+}
+
+/** From now on the `put` of the record of `id` stays pending until the test ends it; others run. */
+export function holdPutOf(index: ProjectIndex, id: string): HeldPutOfId {
+  const realPut = index.put.bind(index)
+  let started = false
+  let end: (error?: Error) => void = () => undefined
+  index.put = (record) => {
+    if (record.id !== id) return realPut(record)
+    started = true
+    return new Promise<void>((resolve, reject) => {
+      end = (error) => (error === undefined ? realPut(record).then(resolve, reject) : reject(error))
+    })
+  }
+  return { started: () => started, release: () => end(), reject: (error) => end(error) }
+}
+
+/** From now on the reads of the store are counted; gives the most that were in flight at once. */
+export function trackReadsInFlight(ports: TestPorts): () => number {
+  const realRead = ports.workspace.read.bind(ports.workspace)
+  let inFlight = 0
+  let most = 0
+  ports.workspace.read = async (id) => {
+    inFlight += 1
+    most = Math.max(most, inFlight)
+    try {
+      return await realRead(id)
+    } finally {
+      inFlight -= 1
+    }
+  }
+  return () => most
+}
