@@ -97,7 +97,7 @@ describe('exportProjectBundle', () => {
     expect(loaded.floors[0]?.furniture[0]?.assetRef.contentHash).toBe(FURNITURE_HASH)
   })
 
-  it('reports incremental progress as each referenced asset is copied', async () => {
+  it('reports incremental progress as each needed asset is copied', async () => {
     const project = projectWithFurnitureAndUnderlay()
     const cache = new InMemoryAssetCache()
     await cache.put(FURNITURE_HASH, GLB_BYTES)

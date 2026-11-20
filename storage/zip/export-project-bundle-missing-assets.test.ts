@@ -100,10 +100,60 @@ describe('what an export reports as missing', () => {
     expect(exported.missingAssets).toEqual([SECOND])
     expect(await carriedBy(exported.bytes, FIRST)).toEqual(MODEL_BYTES)
     expect(read.mock.calls.filter(([hash]) => hash === FIRST)).toHaveLength(1)
+    expect(read).toHaveBeenCalledTimes(2)
     expect(progress).toEqual([
       [1, 2],
       [2, 2],
     ])
+  })
+
+  it('keeps the order of first reference when carried and missing assets interleave', async () => {
+    const project = projectReferencing(user(THIRD), user(FIRST), user(SECOND))
+    const pool = await poolHolding(FIRST)
+
+    const exported = await exportProjectBundle('current', project, { assets: pool })
+
+    expect(exported.missingAssets).toEqual([THIRD, SECOND])
+  })
+
+  it('rejects when a pool read rejects', async () => {
+    const project = projectReferencing(user(FIRST))
+    const pool = await poolHolding(FIRST)
+    vi.spyOn(pool, 'get').mockRejectedValue(new Error('pool down'))
+
+    await expect(exportProjectBundle('current', project, { assets: pool })).rejects.toThrow(
+      'pool down',
+    )
+  })
+
+  it('counts a reference whose hash is not a content hash in the progress', async () => {
+    const project = projectReferencing(user(FIRST), user(NOT_A_CONTENT_HASH))
+    const pool = await poolHolding(FIRST)
+    const progress: Array<[number, number]> = []
+
+    await exportProjectBundle('current', project, {
+      assets: pool,
+      onProgress: (completed, total) => progress.push([completed, total]),
+    })
+
+    expect(progress).toEqual([
+      [1, 2],
+      [2, 2],
+    ])
+  })
+
+  it('leaves a pack asset that packSupplies accepts out of the progress total', async () => {
+    const project = projectReferencing(user(FIRST), inPack(PACK_HASH))
+    const pool = await poolHolding(FIRST, PACK_HASH)
+    const progress: Array<[number, number]> = []
+
+    await exportProjectBundle('current', project, {
+      assets: pool,
+      packSupplies: () => true,
+      onProgress: (completed, total) => progress.push([completed, total]),
+    })
+
+    expect(progress).toEqual([[1, 1]])
   })
 
   it('names a reference whose hash is not a content hash without asking the pool', async () => {

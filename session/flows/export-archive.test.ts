@@ -201,7 +201,7 @@ describe('the assets of an export', () => {
     expect(await store.assetCache().get(FURNITURE_HASH)).toEqual(ASSET_BYTES)
   })
 
-  it('progress is reported once for each referenced asset', async () => {
+  it('progress is reported once for each needed asset', async () => {
     const { handle } = await openWithAssets()
     const progress: Array<[number, number]> = []
 
@@ -228,6 +228,15 @@ describe('the assets of an export', () => {
     const result = await exportArchive(handle)
 
     expect(result).toMatchObject({ ok: true, missingAssets: [] })
+  })
+
+  it('a pool read that rejects gives ok: false with its message', async () => {
+    const { ports, handle } = await openWithAssets()
+    vi.spyOn(ports.workspace.assets(PROJECT_ID), 'get').mockRejectedValue(new Error('pool down'))
+
+    const result = await exportArchive(handle)
+
+    expect(result).toEqual({ ok: false, message: expect.stringContaining('pool down') })
   })
 
   it('a pack asset that packSupplies accepts is neither carried nor reported', async () => {
