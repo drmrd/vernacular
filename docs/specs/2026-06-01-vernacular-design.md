@@ -1201,12 +1201,12 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 **Deliverables:**
 
 - Multiple floors (add/remove/reorder/name, elevation entry, default ceiling height per floor)
-- Stair entities (straight run, L-turn, U-turn, winder, spiral)
-- Stair geometry (treads, risers, runs, landings, railings, balusters, newels; parametric)
+- Stair entities: the straight run. The L-turn, U-turn, winder, and spiral runs come after the beta (ADR-0222)
+- Stair geometry (treads, risers, stringers, handrail, balusters, newels; plain forms; parametric). The balustrade also guards the stair well. Landings and period balustrade and newel types come after the beta (ADR-0222)
 - Stair placement (connect two floors, position on each plan)
-- Floor-by-floor view in 2D and 3D
-- Cutaway preview with adjustable transparency on floors above
-- Vertical relationships (stair wells punch openings in floors above)
+- Floor-by-floor view in 2D and 3D. The 3D floor view draws the active floor and the floors below it, and hides the floors above (ADR-0222)
+- Cutaway preview as a level cut: the view hides everything above a height that a slider sets, and a change of floor moves that height. The cut is one general clip plane with caps, level in the beta; standing the same plane upright on a line drawn in the plan is a later mode (ADR-0222)
+- Vertical relationships (a stair cuts its stair well in the floor above over its footprint, and the user can change the outline; ADR-0222)
 - Per-room ceiling height override
 - Complete underlay layer (image, PDF via pdf.js, glTF/glb scene; all calibrated)
 - Trace mode (wall tool snaps to underlay features; basic; no auto-trace)
@@ -1215,9 +1215,9 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 **Acceptance:**
 
-- 4-story old house (basement + 3 floors + attic) drawn with stairs connecting all levels
+- 4-story old house (basement + 3 floors + attic) drawn with straight-run stairs connecting all levels (ADR-0222)
 - Floor-by-floor view performance smooth
-- Cutaway preview visually intelligible
+- Level cut and floor view visually intelligible (ADR-0222)
 - Underlay calibration sub-1% accuracy
 - An externally-exported glTF loads as an underlay and supports trace mode
 - Beta announcement; community channels active
