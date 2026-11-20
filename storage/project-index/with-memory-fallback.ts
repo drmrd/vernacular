@@ -20,7 +20,7 @@ const MILLISECONDS_PER_SECOND = 1_000
 
 const READ_WAIT_SECONDS = INDEX_READ_WAIT_MS / MILLISECONDS_PER_SECOND
 
-const NO_ANSWER_MESSAGE = `The project index gave no answer within ${READ_WAIT_SECONDS} seconds.`
+const READ_TIMEOUT_MESSAGE = `The project index gave no answer within ${READ_WAIT_SECONDS} seconds.`
 
 const WRITE_WAIT_SECONDS = INDEX_WRITE_WAIT_MS / MILLISECONDS_PER_SECOND
 
@@ -84,17 +84,21 @@ class MemoryFallbackIndex implements ProjectIndex {
       const timer = setTimeout(() => {
         reject(new Error(WRITE_TIMEOUT_MESSAGE))
       }, INDEX_WRITE_WAIT_MS)
-      const finish = (settle: () => void): void => {
-        clearTimeout(timer)
-        settle()
-      }
+      const stopTimer = (): void => clearTimeout(timer)
       try {
         send(this.first).then(
-          () => finish(() => resolve()),
-          (error: unknown) => finish(() => reject(error)),
+          () => {
+            stopTimer()
+            resolve()
+          },
+          (error: unknown) => {
+            stopTimer()
+            reject(error)
+          },
         )
       } catch (error) {
-        finish(() => reject(error))
+        stopTimer()
+        reject(error)
       }
     })
   }
@@ -114,7 +118,7 @@ class MemoryFallbackIndex implements ProjectIndex {
   private askFirst<T>(ask: (index: ProjectIndex) => Promise<T>): Promise<FirstOutcome<T>> {
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
-        resolve({ kind: 'failure', error: new Error(NO_ANSWER_MESSAGE) })
+        resolve({ kind: 'failure', error: new Error(READ_TIMEOUT_MESSAGE) })
       }, INDEX_READ_WAIT_MS)
       const settle = (outcome: FirstOutcome<T>): void => {
         clearTimeout(timer)
