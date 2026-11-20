@@ -4,9 +4,10 @@ import { createEditorSession, type EditorSession } from '../editor-session/edito
 import { callGuarded, callGuardedAsync } from '../guarded-call'
 import { type HandOver, registerHandle } from './handle-internals'
 import { createHandleNotices, type HandleNotices } from './handle-notices'
-import { markSession, type RecordKeeper } from './handle-record'
+import type { RecordKeeper } from './handle-record'
 import type { DocumentHandle, OpenRequest, SaveOutcome, SaveStatus } from './handle-types'
 import type { OpenedProject } from './read-for-open'
+import { markSession } from './session-mark'
 import { messageOf } from './thrown-failures'
 
 /** What an open found, from which a handle is built. */
@@ -129,9 +130,10 @@ async function handOverWith(
  * autosave has work left: a write is needed, or a write of the handle runs or waits, whoever asked
  * for it, so no store save runs after the lock is freed. Then it marks the handle closed and stops
  * autosave with no wait in between, then waits for the record writes of the handle, at most
- * `RECORD_WAIT_MS`, then frees the lock. A hand-over does the same and keeps the lock for its caller. A flush that fails leaves the
- * handle open, the lock held, and autosave armed. A close called while another close runs, also
- * while that close frees the lock, gets the same attempt, so the lock is freed once.
+ * `RECORD_WAIT_MS`, then frees the lock. A hand-over does the same and keeps the lock for its
+ * caller. A flush that fails leaves the handle open, the lock held, and autosave armed. A close
+ * called while another close runs, also while that close frees the lock, gets the same attempt, so
+ * the lock is freed once.
  */
 function createSavePath(parts: SavePathParts): SavePath {
   const { autosave, hold, records } = parts

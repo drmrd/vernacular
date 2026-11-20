@@ -2,10 +2,12 @@ import type { ProjectLockHold } from '../../storage'
 import { callGuardedAsync } from '../guarded-call'
 import type { SessionPorts } from '../ports'
 import { createDocumentHandle, type DocumentHandleParts } from './document-handle'
+import { recordFailedOpen } from './failed-open-record'
 import { findDocumentStore } from './find-document-store'
-import { createRecordKeeper, markSession, recordFailedOpen } from './handle-record'
+import { createRecordKeeper } from './handle-record'
 import type { DocumentHandle, OpenFailed, OpenRequest, OpenResult } from './handle-types'
 import { readForOpen } from './read-for-open'
+import { markSession } from './session-mark'
 import { storageUnavailable } from './thrown-failures'
 
 type TakenLock = { readonly ok: true; readonly hold: ProjectLockHold } | OpenFailed
