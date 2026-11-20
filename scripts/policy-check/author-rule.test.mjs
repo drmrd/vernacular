@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { authorFindings } from './commit-rules.mjs'
+import { BOT_IDENTITIES, OWNER_IDENTITY } from './identities.mjs'
 
 const OWNER_NAME = 'Dan Moore'
 const OWNER_EMAIL = '9156191+drmrd@users.noreply.github.com'
@@ -54,5 +55,20 @@ describe('authorFindings', () => {
     const findings = authorFindings([dependency], '')
     expect(findings).toHaveLength(1)
     expect(findings[0]).toMatchObject({ rule: 'author-identity', sha: 'hhh' })
+  })
+
+  it('refuses a bot commit whose bot prefix appears later in the branch name', () => {
+    const dependency = commitBy('iii', 'dependabot[bot]', DEPENDENCY_BOT_EMAIL)
+    const findings = authorFindings([dependency], 'feat/dependabot/x')
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toMatchObject({ rule: 'author-identity', sha: 'iii' })
+  })
+
+  it('freezes the owner identity and every bot identity', () => {
+    expect(Object.isFrozen(OWNER_IDENTITY)).toBe(true)
+    expect(Object.isFrozen(BOT_IDENTITIES)).toBe(true)
+    for (const identity of BOT_IDENTITIES) {
+      expect(Object.isFrozen(identity)).toBe(true)
+    }
   })
 })
