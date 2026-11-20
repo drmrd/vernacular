@@ -26,9 +26,10 @@ sourceFiles:
     engine/renderer/tone-mapping.ts,
     engine/renderer/create-renderer.ts,
     bridge/react/scene-lighting.tsx,
+    bridge/react/scene-renderer-canvas.tsx,
   ]
 status: current
-updated: 2026-11-16
+updated: 2026-11-20
 ---
 
 # ADR-0147: Tone-mapping operator follows the lighting mode
@@ -122,3 +123,19 @@ The Environment panel shows a sample daylight notice in place of the missing-loc
 The rest stands. The layout effect in `bridge/react/scene-lighting.tsx` is still keyed on the
 renderer, the effective mode, and the color check, and `toneMappingOperatorFor` keeps its policy:
 AgX in realistic mode, Neutral in schematic mode, and Neutral in both while the color check is on.
+
+## Amendment 2026-11-20: one runtime owner of the operator
+
+The creation seed is not what the canvas first shows. The 3D library writes the renderer's tone
+mapping once while it configures the canvas, after the factory in
+`engine/renderer/create-renderer.ts` has seeded Neutral. `bridge/react/scene-renderer-canvas.tsx`
+now passes `flat` to its one library Canvas, and the prop is omitted from
+`SceneRendererCanvasProps`, so callers cannot override it. With `flat` the library's write is the
+identity operator, so it never becomes the visible one.
+
+`SceneLighting` is the single runtime owner of the visible operator. Its layout effect in
+`bridge/react/scene-lighting.tsx` runs after the library's write, because the library renders the
+canvas children only once configure has resolved. The final operator in every mode is unchanged, so
+no picture moves. `bridge/react/scene-canvas-tone-mapping.test.tsx` pins both halves: the library
+leaves the identity, and the operator after mount and after a re-render is the per-mode one. The
+Decision bullet on the seed still holds, since the factory keeps the one domain-to-constant mapping.
