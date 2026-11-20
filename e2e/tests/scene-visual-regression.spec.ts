@@ -34,6 +34,10 @@ async function captureShell(page: Page, query: string, snapshot: string): Promis
     })
     .toBeGreaterThan(0)
 
+  // The attribute turns true once the harness has drawn its ready frame, so the screenshot
+  // captures that frame and not an earlier one.
+  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
+
   await expect(canvas).toHaveScreenshot(snapshot, {
     threshold: SHELL_THRESHOLD,
     maxDiffPixelRatio: SHELL_MAX_DIFF_PIXEL_RATIO,
