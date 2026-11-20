@@ -43,8 +43,6 @@ const LOCAL_EXTRA_LENGTH = 28
 /** Bit 0 of the flags, read without a bitwise operator: the flags are odd when it is set. */
 const ENCRYPTED_BIT_MODULUS = 2
 
-export type { SettledEndRecord }
-
 export interface DirectoryEntry {
   readonly name: string
   readonly flags: number
