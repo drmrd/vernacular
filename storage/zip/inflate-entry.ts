@@ -37,33 +37,53 @@ function storedEntry(entry: EntryData): InflatedEntry {
   return { ok: true, bytes: entry.data }
 }
 
-const NO_BYTES = new Uint8Array(0)
+/** IN4b: after this many slices in a row with no output, the next slice is the last one fed. */
+const SLICES_WITHOUT_OUTPUT_BEFORE_THE_LAST = 2
+
+interface InflateProgress {
+  /** The bytes the inflater has produced, advanced by its callback. */
+  produced: number
+  /** The slices in a row, up to now, that gave no output, advanced by the slice loop. */
+  slicesWithoutOutput: number
+}
 
 /**
- * Feeds the stream to the inflater in slices. It stops after the first slice whose output passes
- * the declared size. Once the output equals the declared size, it feeds at most one more slice
- * and then ends the stream with an empty final push, so the bytes after the end of a stream are
- * never fed (fflate would copy all of them at each push).
+ * IN4a and IN4b: whether the slice at `start` is the last one fed, and so is pushed with `final`
+ * true. That is the last slice of the data and, after at least one push, the slice that follows
+ * output equal to the declared size or two slices in a row with no output.
  */
-function feedSlices(inflater: Inflate, entry: EntryData, progress: { produced: number }): void {
+function isLastSliceToFeed(entry: EntryData, start: number, progress: InflateProgress): boolean {
+  if (start + INFLATE_SLICE_BYTES >= entry.data.length) return true
+  if (start === 0) return false
+  return (
+    progress.produced === entry.declaredBytes ||
+    progress.slicesWithoutOutput >= SLICES_WITHOUT_OUTPUT_BEFORE_THE_LAST
+  )
+}
+
+/**
+ * Feeds the stream to the inflater in slices and stops after the first slice whose output passes
+ * the declared size, or after the slice pushed with `final` true. The inflater's callback advances
+ * `progress.produced`. At most one slice is fed after the output reaches the declared size, and at
+ * most three slices after the last output, so the bytes after the end of a stream cost at most
+ * that much (fflate keeps them and copies all of them at each push).
+ */
+function feedSlices(inflater: Inflate, entry: EntryData, progress: InflateProgress): void {
   const { data, declaredBytes } = entry
   for (let start = 0; start < data.length; start += INFLATE_SLICE_BYTES) {
-    const end = Math.min(start + INFLATE_SLICE_BYTES, data.length)
-    const isLastSlice = end === data.length
-    const outputWasComplete = start > 0 && progress.produced === declaredBytes
-    inflater.push(data.subarray(start, end), isLastSlice)
-    if (progress.produced > declaredBytes) return
-    if (outputWasComplete && !isLastSlice) {
-      inflater.push(NO_BYTES, true)
-      return
-    }
+    const isLastSlice = isLastSliceToFeed(entry, start, progress)
+    const producedBefore = progress.produced
+    inflater.push(data.subarray(start, start + INFLATE_SLICE_BYTES), isLastSlice)
+    if (isLastSlice || progress.produced > declaredBytes) return
+    const gaveOutput = progress.produced > producedBefore
+    progress.slicesWithoutOutput = gaveOutput ? 0 : progress.slicesWithoutOutput + 1
   }
 }
 
 /** Inflates a DEFLATE stream into a buffer of the declared size, in slices (IN3 to IN6). */
 function inflateDeflated(entry: EntryData): InflatedEntry {
   const { declaredBytes } = entry
-  const progress = { produced: 0 }
+  const progress: InflateProgress = { produced: 0, slicesWithoutOutput: 0 }
   try {
     const output = new Uint8Array(declaredBytes)
     const inflater = new Inflate((chunk) => {
