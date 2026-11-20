@@ -1,5 +1,6 @@
 import { ARCHIVE_LIMITS, type ArchiveLimitName, type ArchiveLimits } from './archive-limits'
-import { inflateEntry } from './inflate-entry'
+import { assetHashOfEntry } from './archive-layout'
+import { inflateEntry, type InflatedEntry } from './inflate-entry'
 import {
   entryData,
   isEncrypted,
@@ -67,7 +68,37 @@ function readDocument(view: DataView, document: DirectoryEntry): ArchiveRead {
   return { ok: true, document: inflated.bytes, assets: new Map(), rejectedAssets: [] }
 }
 
-/** The order of the checks, RD1 to RD8. Nothing is inflated before RD1 to RD7 have passed. */
+/** One asset entry inflated, or `undefined` when it is encrypted or its data lies outside the file. */
+function inflateAsset(view: DataView, entry: DirectoryEntry): InflatedEntry | undefined {
+  if (isEncrypted(entry)) return undefined
+  const data = entryData(view, entry)
+  if (data === undefined) return undefined
+  return inflateEntry({ data, method: entry.method, declaredBytes: entry.declaredBytes })
+}
+
+/**
+ * RD9 and LY2 to LY5: the asset entries of the layout, in the order of the central directory, by
+ * content hash. Only the first entry of a name is inflated, and no entry outside the layout is.
+ * `undefined` when an asset passes its declared size (D3); any other fault leaves that asset out.
+ */
+function readAssets(
+  view: DataView,
+  entries: readonly DirectoryEntry[],
+): Map<string, Uint8Array> | undefined {
+  const assets = new Map<string, Uint8Array>()
+  const seen = new Set<string>()
+  for (const entry of entries) {
+    const contentHash = assetHashOfEntry(entry.name)
+    if (contentHash === undefined || seen.has(contentHash)) continue
+    seen.add(contentHash)
+    const inflated = inflateAsset(view, entry)
+    if (inflated?.ok === true) assets.set(contentHash, inflated.bytes)
+    else if (inflated?.reason === 'passes-declared-size') return undefined
+  }
+  return assets
+}
+
+/** The order of the checks, RD1 to RD9. Nothing is inflated before RD1 to RD7 have passed. */
 function readArchiveBytes(bytes: Uint8Array, limits: ArchiveLimits): ArchiveRead {
   if (bytes.length > limits.archiveBytes) return tooLarge(limits, 'archiveBytes')
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -80,7 +111,11 @@ function readArchiveBytes(bytes: Uint8Array, limits: ArchiveLimits): ArchiveRead
   const refusal = refuseDeclaredSizes(entries, document, limits)
   if (refusal !== undefined) return refusal
   if (document === undefined) return failure({ kind: 'no-document' })
-  return readDocument(view, document)
+  const read = readDocument(view, document)
+  if (!read.ok) return read
+  const assets = readAssets(view, entries)
+  if (assets === undefined) return notAnArchive()
+  return { ...read, assets }
 }
 
 /**
