@@ -1,5 +1,6 @@
 import type { FolderRefusal, ImportFailure, RestoreRefusal, SwitchFailure } from '../session'
-import { DocumentDecodeError } from '../storage'
+import { DocumentDecodeError, type ArchiveLimitName } from '../storage'
+import { groupedNumber } from './grouped-number'
 
 export const OPEN_ELSEWHERE = 'This project is open in another tab.'
 export const NOT_STORED = 'This project is not stored in this browser.'
@@ -15,6 +16,27 @@ export type FlowRefusal = ImportFailure | FolderRefusal | RestoreRefusal
 /** Every reason a switch, an import, an open folder, or a restore can give for not opening. */
 export type OpenFailureCause = SwitchFailure | FlowRefusal
 
+const BYTES_PER_MEGABYTE = 1_048_576
+
+/** A size in bytes as whole megabytes, the unit a person reads a file size in. */
+function megabytes(bytes: number): string {
+  return `${groupedNumber(Math.round(bytes / BYTES_PER_MEGABYTE))} MB`
+}
+
+/** The sentence for an archive above one of the limits of the archive reader. */
+export function archiveTooLargeText(limit: ArchiveLimitName, allowed: number): string {
+  switch (limit) {
+    case 'archiveBytes':
+      return `The file is larger than ${megabytes(allowed)}.`
+    case 'inflatedBytes':
+      return `The file unpacks to more than ${megabytes(allowed)}.`
+    case 'entries':
+      return `The file holds more than ${groupedNumber(allowed)} entries.`
+    case 'documentBytes':
+      return `The project document in the file is larger than ${megabytes(allowed)}.`
+  }
+}
+
 /** The failure that a thrown value becomes when a flow or a boot step throws instead of failing. */
 export function storageUnavailableOf(error: unknown): SwitchFailure {
   const message = error instanceof Error ? error.message : String(error)
@@ -23,6 +45,7 @@ export function storageUnavailableOf(error: unknown): SwitchFailure {
 
 /** The kinds of failure that carry their own detail: a decode failure, a message, a file name. */
 type DetailedKind =
+  | 'archive-too-large'
   | 'did-not-open'
   | 'did-not-import'
   | 'did-not-restore'
@@ -37,10 +60,7 @@ type FixedCause = Exclude<OpenFailureCause, DetailedCause>
 type FixedKind = FixedCause['kind']
 
 /** The fixed kinds that the first switch of isDetailedKind leaves to the second one. */
-type RestKind = Exclude<
-  FixedKind,
-  'flush-failed' | 'open-elsewhere' | 'not-found' | 'folder-permission'
->
+type RestKind = Exclude<FixedKind, 'flush-failed' | 'open-elsewhere' | 'not-found'>
 
 /**
  * The text of each failure that never changes. The switch names every fixed kind and has no
@@ -70,6 +90,7 @@ function fixedReason(kind: FixedKind): string {
 /** The last fixed kinds of isDetailedKind. None of them carries detail. */
 function isDetailedRestKind(kind: RestKind): false {
   switch (kind) {
+    case 'folder-permission':
     case 'folder-unavailable':
     case 'folder-empty':
     case 'cancelled':
@@ -85,6 +106,7 @@ function isDetailedRestKind(kind: RestKind): false {
  */
 function isDetailedKind(kind: OpenFailureCause['kind']): boolean {
   switch (kind) {
+    case 'archive-too-large':
     case 'did-not-open':
     case 'did-not-import':
     case 'did-not-restore':
@@ -94,7 +116,6 @@ function isDetailedKind(kind: OpenFailureCause['kind']): boolean {
     case 'flush-failed':
     case 'open-elsewhere':
     case 'not-found':
-    case 'folder-permission':
       return false
     default:
       return isDetailedRestKind(kind)
@@ -116,6 +137,8 @@ function detailedReason(failure: DetailedCause): string {
       return failure.message
     case 'unsupported-file':
       return `Unsupported project file: ${failure.fileName}`
+    case 'archive-too-large':
+      return archiveTooLargeText(failure.limit, failure.allowed)
   }
 }
 

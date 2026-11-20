@@ -56,6 +56,9 @@ export type { ArchiveLimits, ArchiveLimitName } from './zip/archive-limits'
 export { readArchive } from './zip/read-archive'
 export type { ArchiveRead, ArchiveFailure } from './zip/read-archive'
 export { isContentHash } from './zip/archive-layout'
+export { neededAssetHashes, packSuppliesFrom } from './zip/needed-assets'
+export type { PackSupplies } from './zip/needed-assets'
+export { copyImportedAssets } from './import/copy-imported-assets'
 export { FileSystemFolderProjectStore } from './filesystem/file-system-folder-project-store'
 export { DirectoryHandleStore } from './filesystem/directory-handle-store'
 export type { FolderAccess, FolderHandles, RememberedFolder } from './filesystem/folder-access'
@@ -90,7 +93,8 @@ export {
 } from './download/pdf-plan-document'
 export type { SvgPlanToPdfOptions } from './download/pdf-plan-document'
 export { downloadBytes, downloadText } from './download/download-blob'
-export { importProjectFile, UnsupportedProjectFileError } from './import/import-project-file'
+export { importProjectFile } from './import/import-project-file'
+export type { ProjectFileRead, ProjectFileFailure } from './import/import-project-file'
 export {
   InMemoryActiveProjectIdStore,
   LocalStorageActiveProjectIdStore,
