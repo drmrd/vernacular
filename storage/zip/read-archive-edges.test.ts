@@ -17,8 +17,12 @@ const SLICES_AFTER_THE_END = 10
 /** The slice that completes the output, and one more. */
 const SLICES_FED_AT_MOST = 2
 const PUSHES_AT_MOST = 3
+/** Two slices give no output, and the next one is the last that is fed, after the slice with the output. */
+const SLICES_FED_FOR_A_SHORT_STREAM = 4
+const PUSHES_FOR_A_SHORT_STREAM = 4
 
 const NO_DOCUMENT: ArchiveRead = { ok: false, failure: { kind: 'no-document' } }
+const NOT_AN_ARCHIVE: ArchiveRead = { ok: false, failure: { kind: 'not-an-archive' } }
 
 function documentRead(document: Uint8Array): ArchiveRead {
   return { ok: true, document, assets: new Map(), rejectedAssets: [] }
@@ -40,6 +44,20 @@ describe('readArchive does not feed the bytes after the end of a stream', () => 
 
     expect(pushed().bytes).toBeLessThanOrEqual(SLICES_FED_AT_MOST * INFLATE_SLICE_BYTES)
     expect(pushed().calls).toBeLessThanOrEqual(PUSHES_AT_MOST)
+  })
+})
+
+describe('readArchive does not feed the bytes after a stream that gives less than declared', () => {
+  it('refuses a document that declares one byte more than its stream gives', async () => {
+    const trailing = new Uint8Array(SLICES_AFTER_THE_END * INFLATE_SLICE_BYTES)
+    const data = joinBytes([deflateSync(FIRST), trailing])
+    const bytes = buildZip([documentEntry(FIRST, { data, declaredBytes: FIRST.length + 1 })])
+    const pushed = recordPushedChunks()
+
+    expect(await readArchive(bytes)).toEqual(NOT_AN_ARCHIVE)
+
+    expect(pushed().bytes).toBeLessThanOrEqual(SLICES_FED_FOR_A_SHORT_STREAM * INFLATE_SLICE_BYTES)
+    expect(pushed().calls).toBeLessThanOrEqual(PUSHES_FOR_A_SHORT_STREAM)
   })
 })
 

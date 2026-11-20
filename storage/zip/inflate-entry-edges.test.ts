@@ -55,6 +55,20 @@ describe('inflateEntry stops feeding a stream once its output is complete', () =
 
     expect(inflated(data, CONTENT.length)).toMatchObject({ ok: false, reason: 'corrupt' })
   })
+
+  it.each([125, 126, 127, 128, 129, 130])(
+    'a stream of empty blocks that has not ended is corrupt for any alignment of its blocks: %i content bytes',
+    (length) => {
+      const content = seededBytes(length)
+      const emptyBlocks = emptyStoredBlocks(
+        Math.ceil((SLICES_OF_EMPTY_BLOCKS * INFLATE_SLICE_BYTES) / EMPTY_BLOCK_BYTES),
+      )
+      const data = joinBytes([storedBlock(content, false), emptyBlocks, finalEmptyBlock()])
+      expect(inflateSync(data)).toEqual(content)
+
+      expect(inflated(data, length)).toMatchObject({ ok: false, reason: 'corrupt' })
+    },
+  )
 })
 
 describe('inflateEntry still reads a stream whose end comes after the output is complete', () => {

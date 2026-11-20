@@ -42,6 +42,8 @@ export interface PushedChunks {
   readonly calls: number
   /** The sum of the lengths of the chunks it gave. */
   readonly bytes: number
+  /** Whether the last call gave `final` true; undefined when there was no call. */
+  readonly lastFinal: boolean | undefined
 }
 
 /**
@@ -52,6 +54,7 @@ export function recordPushedChunks(): () => PushedChunks {
   const spy = vi.spyOn(Inflate.prototype, 'push')
   return () => {
     const lengths = spy.mock.calls.map(([chunk]) => chunk.length)
-    return { calls: lengths.length, bytes: lengths.reduce((sum, length) => sum + length, 0) }
+    const bytes = lengths.reduce((sum, length) => sum + length, 0)
+    return { calls: lengths.length, bytes, lastFinal: spy.mock.calls.at(-1)?.[1] }
   }
 }
