@@ -14,7 +14,7 @@ import { OrbitCameraControls } from './orbit-camera-controls'
 import { usePerceivedColorStore } from './perceived-color-context'
 import { PerceivedColorSampler } from './perceived-color-sampler'
 import { FrameCamera, PresetCamera, type DoorwayStand } from './scene-camera-effects'
-import { initialCamera } from './scene-camera-seed'
+import { initialCamera, orbitPivot } from './scene-camera-seed'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
@@ -77,13 +77,16 @@ function SceneCameraRig({ nav, framed, doorway }: SceneCameraRigProps) {
         doorway={doorway}
         onApplied={nav.notePresetApplied}
       />
-      {/* An applied preset owns the pivot until the view is reset, so the first drag after
-          one turns around what the preset framed instead of snapping back to the model's
-          own framing. */}
+      {/* The pivot follows the framing until the user steers; after that only an applied
+          preset moves it, so a rebuild of the scene leaves a panned pivot alone. */}
       <OrbitCameraControls
         enabled={nav.mode === 'orbit'}
         initialTarget={nav.savedCamera?.orbitTarget ?? pose.target}
-        target={nav.presetPose?.target ?? pose.target}
+        target={orbitPivot({
+          userControlled: nav.userControlled,
+          presetPose: nav.presetPose,
+          framedPose: pose,
+        })}
         onUserControl={nav.markUserControlled}
         onLeave={nav.noteCameraLeft}
       />

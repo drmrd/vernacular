@@ -9,8 +9,8 @@ interface OrbitCameraControlsProps {
   enabled: boolean
   /** The pivot the controller starts on. Read once, when the controller is built. */
   initialTarget: Vector3
-  /** A pivot to move to when it changes. */
-  target: Vector3
+  /** A pivot to move to when it changes; null keeps the controller's own pivot. */
+  target: Vector3 | null
   onUserControl: () => void
   onLeave: (camera: SavedCamera) => void
 }
@@ -36,10 +36,9 @@ export function OrbitCameraControls({
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
   const controllerRef = useRef<OrbitController | null>(null)
-  // Held in refs so the identity of these props can never be a reason to tear the
-  // controller down and build a new one.
-  const onLeaveRef = useRef(onLeave)
-  onLeaveRef.current = onLeave
+  // Held in refs so a new identity of these props never rebuilds the controller.
+  const callbacksRef = useRef({ onLeave, onUserControl })
+  callbacksRef.current = { onLeave, onUserControl }
   const initialTargetRef = useRef(initialTarget)
   // The last pivot handed to the controller. It starts as the first target because the
   // construction already placed the pivot, and strict mode runs each effect twice on
@@ -54,24 +53,25 @@ export function OrbitCameraControls({
     const controller = createOrbitController(camera, domElement)
     controller.setTarget(initialTargetRef.current)
     controllerRef.current = controller
-    domElement.addEventListener('pointerdown', onUserControl)
+    const handlePointerDown = () => callbacksRef.current.onUserControl()
+    domElement.addEventListener('pointerdown', handlePointerDown)
     return () => {
-      domElement.removeEventListener('pointerdown', onUserControl)
-      onLeaveRef.current({
+      domElement.removeEventListener('pointerdown', handlePointerDown)
+      callbacksRef.current.onLeave({
         position: cameraPositionOf(camera),
         orbitTarget: controller.getTarget(),
       })
       controller.dispose()
       controllerRef.current = null
     }
-  }, [camera, domElement, onUserControl])
+  }, [camera, domElement])
 
-  // Move the pivot when the framed or preset target changes, so orbiting turns around
-  // the building rather than the world origin.
+  // Move the pivot only when the pane asks for a new one. Null keeps the controller's own
+  // pivot, so a scene rebuild leaves a panned pivot alone; it is recorded all the same.
   useEffect(() => {
     if (appliedTargetRef.current === target) return
     appliedTargetRef.current = target
-    controllerRef.current?.setTarget(target)
+    if (target !== null) controllerRef.current?.setTarget(target)
   }, [target])
 
   // Park the orbit controls while walk mode drives the camera.
