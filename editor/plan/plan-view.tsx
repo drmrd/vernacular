@@ -53,7 +53,7 @@ import { useFloorFillColor, useSurfacePaintLayer } from './use-surface-paint-lay
 import { useSelectionKeyboard } from './use-selection-keyboard'
 import { usePlanAuthoring, type PlanAuthoringResult } from './use-plan-authoring'
 import { useEscapeToSelect } from './use-escape-to-select'
-import { useOpeningTool } from './opening-tool-context'
+import { useOpeningTool, useRetireStaleRefusal } from './opening-tool-context'
 import { useFurniturePlacement } from './furniture-placement-context'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useUnderlayMove, type UnderlayMove } from './use-underlay-move'
@@ -280,6 +280,15 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     placementType,
     armed,
     rotation,
+  })
+  // Every member is a stable reference: the memoized active-floor graph (not the overlay graph),
+  // the floor id, the selection store's own set, and the authoring state's candidate.
+  useRetireStaleRefusal({
+    tool,
+    sceneGraph: graph,
+    activeFloorId,
+    selectedIds,
+    candidate: authoring.candidate,
   })
   const wallEditing = useWallEditing({
     session,

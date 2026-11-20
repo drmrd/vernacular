@@ -224,7 +224,7 @@ describe('usePlanAuthoring', () => {
     expect(result.current.announcement).toMatch(/placed/i)
   })
 
-  it('dispatches nothing when no wall sits under the candidate', () => {
+  it('dispatches nothing and leaves no authoring announcement when no wall sits under the candidate', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
     // A wall far from the seeded origin candidate: every wall misses by more
@@ -245,7 +245,8 @@ describe('usePlanAuthoring', () => {
     act(() => dispatchWindowKey('Enter'))
 
     expect(dispatch).not.toHaveBeenCalled()
-    expect(result.current.announcement).toMatch(/no wall/i)
+    // The refusal is spoken through the placement notice's own entry of the live region.
+    expect(result.current.announcement).toBe('')
   })
 
   it('drops the armed furniture item at the candidate on Enter', () => {

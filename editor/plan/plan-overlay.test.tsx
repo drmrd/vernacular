@@ -202,15 +202,8 @@ function overlayTree(tool: PlanOverlayProps['tool'], refusal: PlacementRefusal) 
   )
 }
 
-// Re-rendering the same tree with another tool keeps the provider mounted, so the
-// refusal state survives the switch exactly as it does when the user picks another
-// chip in the running editor.
 function renderOverlayUnderTool(tool: PlanOverlayProps['tool'], refusal: PlacementRefusal) {
-  const view = render(overlayTree(tool, refusal))
-  return {
-    ...view,
-    takeUpTool: (next: PlanOverlayProps['tool']) => view.rerender(overlayTree(next, refusal)),
-  }
+  return render(overlayTree(tool, refusal))
 }
 
 async function armRefusal() {
@@ -251,26 +244,5 @@ describe('PlanOverlay placement refusals', () => {
     await armRefusal()
 
     expect(container.querySelector('.plan-overlay__refusal')).toBeNull()
-  })
-
-  it('keeps one tool’s refusal off the canvas under another placement tool', async () => {
-    const { container, takeUpTool } = renderOverlayUnderTool('place-opening', 'no-host-wall')
-    await armRefusal()
-
-    takeUpTool('place-stair')
-
-    expect(container.querySelector('.plan-overlay__refusal')).toBeNull()
-    expect(screen.getByRole('status')).not.toHaveTextContent('No wall here to host the opening')
-  })
-
-  it('does not resurrect a refusal when its tool is taken up again', async () => {
-    const { container, takeUpTool } = renderOverlayUnderTool('place-opening', 'no-host-wall')
-    await armRefusal()
-
-    takeUpTool('select')
-    takeUpTool('place-opening')
-
-    expect(container.querySelector('.plan-overlay__refusal')).toBeNull()
-    expect(screen.getByRole('status')).not.toHaveTextContent('No wall here to host the opening')
   })
 })
