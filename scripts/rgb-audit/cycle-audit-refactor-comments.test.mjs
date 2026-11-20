@@ -92,6 +92,37 @@ describe('exemptTestFiles comment-only changes', () => {
     expect(exempt.has('core/a.test.ts')).toBe(false)
   })
 
+  it.each([
+    '/* eslint-disable */',
+    '/* eslint-disable-next-line no-console */',
+    '/** @vitest-environment jsdom */',
+    '/// <reference types="vitest" />',
+    '/* global window */',
+    '// c8 ignore next',
+    '/* c8 ignore start */',
+    '/* istanbul ignore next */',
+    '/* prettier-ignore */',
+    '/* @ts-expect-error */',
+  ])('does not exempt the tool directive %s', (directive) => {
+    const exempt = exemptTestFiles(modifiedSection('core/a.test.ts', [`+${directive}`]))
+    expect(exempt.has('core/a.test.ts')).toBe(false)
+  })
+
+  it('keeps the block state of removed lines apart from added lines', () => {
+    const changed = ['-/* start', '+expect(x).toBe(1)']
+    const exempt = exemptTestFiles(modifiedSection('core/a.test.ts', changed))
+    expect(exempt.has('core/a.test.ts')).toBe(false)
+  })
+
+  it('resets the open block comment state at the next hunk', () => {
+    const diff = modifiedSection('core/a.test.ts', ['+/* start']).replace(
+      /\n$/,
+      '\n@@ -9 +10 @@\n+expect(x).toBe(1)\n',
+    )
+    const exempt = exemptTestFiles(diff)
+    expect(exempt.has('core/a.test.ts')).toBe(false)
+  })
+
   it('judges each file section on its own', () => {
     const diff =
       modifiedSection('core/a.test.ts', COMMENT_CHANGE) +
