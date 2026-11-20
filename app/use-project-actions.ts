@@ -15,6 +15,7 @@ import {
   useExportPdfAction,
   useExportPlanAction,
 } from './use-export-actions'
+import type { LibraryLister } from './pack-supplies'
 import { useOpenFileAction } from './use-open-file-action'
 import type { RunFlow } from './use-open-project'
 
@@ -26,6 +27,8 @@ export interface ProjectActionsContext {
   recentProjects: RecentProjectStore
   capabilities: StorageCapabilities
   notifications: NotificationApi
+  /** The library whose packs supply assets by themselves, so that those assets do not count as missing. */
+  packs?: LibraryLister
 }
 
 export interface ProjectActions {

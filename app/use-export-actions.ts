@@ -14,7 +14,9 @@ import {
   PRINT_RASTER_MAX_EDGE,
 } from '../storage'
 import { type NotificationApi } from '../editor/design-system'
+import { exportMissingAssetsText } from './asset-report-text'
 import { failureMessage } from './failure-message'
+import { loadPackSupplies } from './pack-supplies'
 import type { ProjectActionsContext } from './use-project-actions'
 
 /** A no-op reporter used until the toast hands back its real one synchronously. */
@@ -61,18 +63,24 @@ export function runExportWithToast(
 // The archive export stores a pending change first, so the archive holds the last edit. It reads
 // the open project of the latest render.
 export function useExportBundleAction(context: ProjectActionsContext): () => void {
-  const { handle, notifications } = context
+  const { handle, notifications, packs } = context
   return useCallback(() => {
     const name = bundleFilename(handle.session.getProject().meta.name)
-    runExportWithToast(notifications, name, (onProgress) =>
-      exportArchive(handle, { onProgress }).then((result) => {
-        if (!result.ok) {
-          throw new Error(result.message)
-        }
-        downloadBytes(result.bytes, result.fileName)
-      }),
-    )
-  }, [handle, notifications])
+    runExportWithToast(notifications, name, async (onProgress) => {
+      const packSupplies = await loadPackSupplies(packs)
+      const result = await exportArchive(handle, {
+        onProgress,
+        ...(packSupplies === undefined ? {} : { packSupplies }),
+      })
+      if (!result.ok) {
+        throw new Error(result.message)
+      }
+      downloadBytes(result.bytes, result.fileName)
+      if (result.missingAssets.length > 0) {
+        notifications.warning(exportMissingAssetsText(result.missingAssets.length))
+      }
+    })
+  }, [handle, notifications, packs])
 }
 
 export function useExportPlanAction(context: ProjectActionsContext): () => void {

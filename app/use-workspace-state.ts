@@ -211,15 +211,16 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   const recentEntries = useRecentEntries(recentProjects, handle)
   const recovery = useCrashRecovery({ handle, runFlow, confirmDiscard })
   const notifications = useNotifications()
+  // The asset library (starter pack + user imports), assembled once for the pool of the library.
+  const assetLibrary = useMemo(() => createAssetLibrary(libraryAssets), [libraryAssets])
   const actions = useProjectActions({
     handle,
     runFlow,
     recentProjects,
     capabilities,
     notifications,
+    packs: assetLibrary.registry,
   })
-  // The asset library (starter pack + user imports), assembled once for the pool of the library.
-  const assetLibrary = useMemo(() => createAssetLibrary(libraryAssets), [libraryAssets])
   return {
     selection,
     activeFloorStore,

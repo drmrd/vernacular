@@ -10,15 +10,19 @@ import {
   UNKNOWN_WALL_FIELD_PATH,
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
-import { DocumentDecodeError } from '../documents/document-decode-error'
-import { ProjectNotFoundError } from '../project-store'
-import { ZipBundleProjectStore } from '../zip/zip-bundle-project-store'
+import { ARCHIVE_LIMITS } from '../zip/archive-limits'
 import { zipFolder } from '../zip/zip-codec'
-import { importProjectFile, UnsupportedProjectFileError } from './import-project-file'
+import { misnamedAssetEntry } from '../zip/zip-edges-test-kit'
+import { assetEntry, buildZip, contentHashOf, documentEntry } from '../zip/zip-test-kit'
+import { importProjectFile } from './import-project-file'
+import type { ProjectFileRead } from './import-project-file'
 
 const OLDER_VERSION = 8
 const DOCUMENT_FILE = 'vernacular.json'
-const ASSET_FILE = 'assets/unrelated.bin'
+const ASSET_FILE = `assets/${'e'.repeat(64)}`
+const NOT_JSON = new TextEncoder().encode('{not json')
+const MODEL = Uint8Array.of(0x67, 0x6c, 0x54, 0x46, 1, 2, 3)
+const IMAGE = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 4, 5, 6)
 
 function sampleProject() {
   return createEmptyProject({
@@ -29,6 +33,10 @@ function sampleProject() {
   })
 }
 
+function sampleBytes(): Uint8Array {
+  return encodeDocument(sampleProject(), undefined).bytes
+}
+
 function warnedAbout(spy: { mock: { calls: unknown[][] } }, path: string): boolean {
   return spy.mock.calls.some((args) => JSON.stringify(args).includes(path))
 }
@@ -37,11 +45,10 @@ function archiveOf(files: Record<string, Uint8Array>): Uint8Array {
   return zipFolder(new Map(Object.entries(files)))
 }
 
-async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
-  return promise.then(
-    () => undefined,
-    (rejected: unknown) => rejected,
-  )
+/** The read of a file that must give a project. Throws, naming the failure, otherwise. */
+function readOf(read: ProjectFileRead): Extract<ProjectFileRead, { readonly ok: true }> {
+  if (!read.ok) throw new Error(`Expected a project: ${JSON.stringify(read.failure)}`)
+  return read
 }
 
 afterEach(() => {
@@ -49,102 +56,137 @@ afterEach(() => {
 })
 
 describe('importProjectFile', () => {
-  it('reconstructs a project from its exported .building bundle bytes', async () => {
-    const project = sampleProject()
-    const store = new ZipBundleProjectStore('p1')
-    await store.save('p1', project)
+  it('reads the project of an archive that the application wrote', async () => {
+    const bytes = archiveOf({ [DOCUMENT_FILE]: sampleBytes() })
 
-    const bytes = await store.exportBundle()
-    const loaded = await importProjectFile('x.building', bytes, 'p1')
+    const read = readOf(await importProjectFile('house.building', bytes))
 
-    expect(loaded.meta.name).toBe(project.meta.name)
+    expect(read.project.meta.name).toBe('My House')
   })
 
-  it('reconstructs a project from bare vernacular.json bytes', async () => {
-    const project = sampleProject()
-    const { bytes } = encodeDocument(project, undefined)
+  it('reads the project of a .json file, whatever stands before the ending', async () => {
+    for (const name of ['vernacular.json', 'plan.json', 'a.b.json']) {
+      const read = readOf(await importProjectFile(name, sampleBytes()))
 
-    const loaded = await importProjectFile('vernacular.json', bytes, 'p1')
-
-    expect(loaded.meta.name).toBe(project.meta.name)
+      expect(read.project.meta.name).toBe('My House')
+    }
   })
 
-  it('reconstructs a project from any .json file bytes', async () => {
-    const project = sampleProject()
-    const { bytes } = encodeDocument(project, undefined)
+  it('matches the ending without regard to case', async () => {
+    const archive = archiveOf({ [DOCUMENT_FILE]: sampleBytes() })
 
-    const loaded = await importProjectFile('plan.json', bytes, 'p1')
-
-    expect(loaded.meta.name).toBe(project.meta.name)
-  })
-
-  it('rejects an unknown extension with an error naming the file', async () => {
-    await expect(importProjectFile('notes.txt', new Uint8Array(), 'p1')).rejects.toBeInstanceOf(
-      UnsupportedProjectFileError,
+    expect(readOf(await importProjectFile('PLAN.JSON', sampleBytes())).project.meta.name).toBe(
+      'My House',
     )
-    await expect(importProjectFile('notes.txt', new Uint8Array(), 'p1')).rejects.toThrow(
-      /notes\.txt/,
+    expect(readOf(await importProjectFile('House.Building', archive)).project.meta.name).toBe(
+      'My House',
     )
   })
 
-  it('rejects invalid JSON bytes under a .json name', async () => {
-    await expect(
-      importProjectFile('broken.json', new TextEncoder().encode('{not json'), 'p1'),
-    ).rejects.toThrow()
-  })
-
-  it('rejects a .json file saved at a higher schema version as a newer version', async () => {
-    const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-    metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
-
-    await expect(importProjectFile('plan.json', bytesOf(document), 'p1')).rejects.toMatchObject({
-      failure: { kind: 'newer-version' },
+  it('another ending gives unsupported-file with the name as given', async () => {
+    expect(await importProjectFile('Notes.TXT', sampleBytes())).toEqual({
+      ok: false,
+      failure: { kind: 'unsupported-file', fileName: 'Notes.TXT' },
     })
   })
 
-  it('opens a .json file that fails only the format rules and warns of the fault', async () => {
+  it('bytes that are not JSON give decode with not-json', async () => {
+    expect(await importProjectFile('broken.json', NOT_JSON)).toMatchObject({
+      ok: false,
+      failure: { kind: 'decode', decode: { kind: 'not-json' } },
+    })
+  })
+
+  it('a document of a higher schema version gives decode with newer-version', async () => {
+    const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+    metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+
+    expect(await importProjectFile('plan.json', bytesOf(document))).toMatchObject({
+      ok: false,
+      failure: { kind: 'decode', decode: { kind: 'newer-version' } },
+    })
+  })
+
+  it('a .json file that fails only the format rules opens and warns of the fault', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
 
-    const loaded = await importProjectFile('plan.json', bytesOf(document), 'p1')
+    const read = readOf(await importProjectFile('plan.json', bytesOf(document)))
 
-    expect(loaded.floors[0]!.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
+    expect(read.project.floors[0]!.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
     expect(warnedAbout(warn, UNKNOWN_WALL_FIELD_PATH)).toBe(true)
+  })
+
+  it('a .json file gives no assets and no rejected assets', async () => {
+    const read = readOf(await importProjectFile('plan.json', sampleBytes()))
+
+    expect(read.assets).toEqual(new Map())
+    expect(read.rejectedAssets).toEqual([])
   })
 })
 
 describe('importProjectFile for a .building archive', () => {
-  it('opens a migrated archive that breaks the format rules at the current version and warns of the fault', async () => {
+  it('a migrated archive document that breaks the format rules opens and warns of the fault', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const document = withUnknownWallField(fixtureDocument(OLDER_VERSION))
+    const bytes = archiveOf({ [DOCUMENT_FILE]: bytesOf(document) })
 
-    const loaded = await importProjectFile(
-      'plan.building',
-      archiveOf({ [DOCUMENT_FILE]: bytesOf(document) }),
-      'p1',
-    )
+    const read = readOf(await importProjectFile('plan.building', bytes))
 
-    expect(loaded.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    expect(read.project.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
     expect(warnedAbout(warn, UNKNOWN_WALL_FIELD_PATH)).toBe(true)
   })
 
-  it('rejects an archive whose document is not JSON as a decode failure of that kind', async () => {
-    const notJson = new TextEncoder().encode('{not json')
+  it('an archive whose document is not JSON gives decode with not-json', async () => {
+    const bytes = archiveOf({ [DOCUMENT_FILE]: NOT_JSON })
 
-    const error = await rejectionOf(
-      importProjectFile('plan.building', archiveOf({ [DOCUMENT_FILE]: notJson }), 'p1'),
-    )
-
-    expect(error).toBeInstanceOf(DocumentDecodeError)
-    expect((error as DocumentDecodeError).failure.kind).toBe('not-json')
+    expect(await importProjectFile('plan.building', bytes)).toMatchObject({
+      ok: false,
+      failure: { kind: 'decode', decode: { kind: 'not-json' } },
+    })
   })
 
-  it('rejects an archive with no document as a project not found under the id that was asked for', async () => {
-    const withoutDocument = archiveOf({ [ASSET_FILE]: new Uint8Array([1]) })
+  it('an archive with no document gives archive with no-document', async () => {
+    const bytes = archiveOf({ [ASSET_FILE]: new Uint8Array([1]) })
 
-    const error = await rejectionOf(importProjectFile('plan.building', withoutDocument, 'p1'))
+    expect(await importProjectFile('plan.building', bytes)).toEqual({
+      ok: false,
+      failure: { kind: 'archive', archive: { kind: 'no-document' } },
+    })
+  })
 
-    expect(error).toBeInstanceOf(ProjectNotFoundError)
-    expect((error as ProjectNotFoundError).projectId).toBe('p1')
+  it('bytes that are no archive give archive with not-an-archive', async () => {
+    const bytes = new TextEncoder().encode('not an archive')
+
+    expect(await importProjectFile('plan.building', bytes)).toEqual({
+      ok: false,
+      failure: { kind: 'archive', archive: { kind: 'not-an-archive' } },
+    })
+  })
+
+  it('an archive above a limit that is passed in gives archive with too-large and that limit', async () => {
+    const bytes = archiveOf({ [DOCUMENT_FILE]: sampleBytes() })
+    const limits = { ...ARCHIVE_LIMITS, archiveBytes: bytes.length - 1 }
+
+    expect(await importProjectFile('plan.building', bytes, limits)).toEqual({
+      ok: false,
+      failure: {
+        kind: 'archive',
+        archive: { kind: 'too-large', limit: 'archiveBytes', allowed: bytes.length - 1 },
+      },
+    })
+  })
+
+  it('gives the assets of an archive by hash, and its rejected assets', async () => {
+    const bytes = buildZip([
+      documentEntry(sampleBytes()),
+      await assetEntry(MODEL),
+      await misnamedAssetEntry(MODEL, IMAGE),
+    ])
+
+    const read = readOf(await importProjectFile('plan.building', bytes))
+
+    expect(read.assets).toEqual(new Map([[await contentHashOf(MODEL), MODEL]]))
+    expect(read.rejectedAssets).toEqual([await contentHashOf(IMAGE)])
   })
 })

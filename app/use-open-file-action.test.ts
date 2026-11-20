@@ -1,25 +1,38 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, cleanup, waitFor } from '@testing-library/react'
-import { encodeDocument, type Project } from '../core'
-import { DocumentDecodeError, InMemoryRecentProjectStore } from '../storage'
-import { createTestPorts, storedName } from '../session/handle/handle-test-kit'
+import type { AssetReference } from '../core'
+import { ARCHIVE_LIMITS, DocumentDecodeError } from '../storage'
+import { storedName } from '../session/handle/handle-test-kit'
 import {
   closeOpenedHandles,
-  openStoredProject,
+  packListing,
+  projectFileOf,
+  projectFileReferring,
+  READ_FAILURE,
   recordUnhandledRejections,
-  renderActions,
   settleTheAction,
   shownMessages,
+  shownWarnings,
+  STORED_PROJECT_ID,
+  STORED_PROJECT_NAME,
+  unreadableFile,
   waitForOtherProject,
   waitForRecentEntry,
 } from './action-test-support'
 import { namedProject } from './app-test-support'
-import { useOpenFileAction } from './use-open-file-action'
+import { renderOpenFileAction, TOO_LARGE_SENTENCE } from './open-file-action-test-support'
 
-const CURRENT_ID = 'current'
-const DRAFT_NAME = 'Drafthouse'
+const CURRENT_ID = STORED_PROJECT_ID
+const DRAFT_NAME = STORED_PROJECT_NAME
 const HOUSE_NAME = 'My House'
-const READ_FAILURE = 'The file could not be read.'
+const TWO_MISSING_SENTENCE =
+  'The file did not include 2 of the assets this project uses. They show as missing.'
+const FIRST_HASH = 'a'.repeat(64)
+const SECOND_HASH = 'b'.repeat(64)
+const PACK_REFERENCE: AssetReference = {
+  scope: 'pack:vernacular-starter@1.0.0',
+  contentHash: 'd'.repeat(64),
+}
 
 afterEach(async () => {
   cleanup()
@@ -27,43 +40,12 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-/** In-memory ports with the project `current` stored and open, and the open file action on it. */
-async function renderOpenFileAction() {
-  const ports = createTestPorts()
-  const handle = await openStoredProject(ports, CURRENT_ID, DRAFT_NAME)
-  const recentProjects = new InMemoryRecentProjectStore()
-  const { result } = renderActions({ ports, handle, recentProjects }, useOpenFileAction)
-  return { ports, handle, recentProjects, result }
-}
-
-/** A `.json` project file of `project`, as the application writes one. */
-function projectFile(project: Project): File {
-  const { bytes } = encodeDocument(project, undefined)
-  return new File([bytes.buffer as ArrayBuffer], 'house.json')
-}
-
-/** A project file whose every way to read its bytes fails with `READ_FAILURE`. */
-function unreadableFile(): File {
-  const file = new File(['{}'], 'house.json')
-  const failRead = () => Promise.reject(new Error(READ_FAILURE))
-  const failStream = () => {
-    throw new Error(READ_FAILURE)
-  }
-  Object.defineProperties(file, {
-    arrayBuffer: { value: failRead },
-    bytes: { value: failRead },
-    text: { value: failRead },
-    stream: { value: failStream },
-  })
-  return file
-}
-
 describe('useOpenFileAction on a dropped file', () => {
   it('activates, persists, and records a dropped project file, under a new id', async () => {
     const { ports, handle, recentProjects, result } = await renderOpenFileAction()
 
     await act(async () => {
-      await result.current.actions.onImportDroppedFile(projectFile(namedProject(HOUSE_NAME)))
+      await result.current.actions.onImportDroppedFile(projectFileOf(namedProject(HOUSE_NAME)))
     })
 
     const opened = await waitForOtherProject(result, handle)
@@ -108,7 +90,7 @@ describe('useOpenFileAction on a dropped file', () => {
 
     try {
       await act(async () => {
-        await result.current.actions.onImportDroppedFile(unreadableFile())
+        await result.current.actions.onImportDroppedFile(unreadableFile().file)
       })
       await settleTheAction()
 
@@ -119,5 +101,89 @@ describe('useOpenFileAction on a dropped file', () => {
     } finally {
       unhandled.stop()
     }
+  })
+})
+
+describe('useOpenFileAction on a file that lacks assets', () => {
+  it('shows one warning that says how many assets the file lacked', async () => {
+    const { result } = await renderOpenFileAction()
+    const file = projectFileReferring(
+      { scope: 'user', contentHash: FIRST_HASH },
+      { scope: 'user', contentHash: SECOND_HASH },
+    )
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(file)
+    })
+
+    await waitFor(() => expect(shownWarnings(result)).toEqual([TWO_MISSING_SENTENCE]))
+    await settleTheAction()
+    expect(shownWarnings(result)).toEqual([TWO_MISSING_SENTENCE])
+  })
+
+  it('shows no warning when the file lacks nothing', async () => {
+    const { handle, result } = await renderOpenFileAction()
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(projectFileOf(namedProject(HOUSE_NAME)))
+    })
+    await waitForOtherProject(result, handle)
+    await settleTheAction()
+
+    expect(shownWarnings(result)).toEqual([])
+  })
+
+  it('shows no warning when the import fails', async () => {
+    const { result } = await renderOpenFileAction()
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(new File(['not a project'], 'broken.json'))
+    })
+    await waitFor(() => expect(shownMessages(result)).toHaveLength(1))
+    await settleTheAction()
+
+    expect(shownWarnings(result)).toEqual([])
+  })
+
+  it('shows no warning for a pack asset that the library lists', async () => {
+    const { handle, result } = await renderOpenFileAction(packListing(PACK_REFERENCE))
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(projectFileReferring(PACK_REFERENCE))
+    })
+    await waitForOtherProject(result, handle)
+    await settleTheAction()
+
+    expect(shownWarnings(result)).toEqual([])
+  })
+})
+
+describe('useOpenFileAction on a file at the size limit of an archive', () => {
+  it('refuses a file above the limit before it reads any of its bytes, and runs no flow', async () => {
+    const { handle, result } = await renderOpenFileAction()
+    const { file, reads } = unreadableFile({ size: ARCHIVE_LIMITS.archiveBytes + 1 })
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(file)
+    })
+    await settleTheAction()
+
+    expect(shownMessages(result)).toEqual([TOO_LARGE_SENTENCE])
+    expect(reads()).toBe(0)
+    expect(result.current.flowsStarted()).toBe(0)
+    expect(result.current.handle).toBe(handle)
+  })
+
+  it('reads a file that is exactly at the limit', async () => {
+    const { result } = await renderOpenFileAction()
+    const { file, reads } = unreadableFile({ size: ARCHIVE_LIMITS.archiveBytes })
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(file)
+    })
+    await settleTheAction()
+
+    expect(shownMessages(result)).toEqual([`Open failed: ${READ_FAILURE}`])
+    expect(reads()).toBeGreaterThan(0)
   })
 })

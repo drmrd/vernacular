@@ -38,8 +38,11 @@ const OTHER_ID = 'b'
 const IMPORTED_NAME = 'Imported house'
 
 /** The bytes of a .building archive of the project, as an export of it writes them. */
-function archiveOf(project: Project): Promise<Uint8Array> {
-  return exportProjectBundle('archived', project, { assets: new InMemoryAssetCache() })
+async function archiveOf(project: Project): Promise<Uint8Array> {
+  const exported = await exportProjectBundle('archived', project, {
+    assets: new InMemoryAssetCache(),
+  })
+  return exported.bytes
 }
 
 /** A .json file of a sound document of the current version, named `IMPORTED_NAME`. */

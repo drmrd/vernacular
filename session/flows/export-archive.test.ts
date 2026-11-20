@@ -30,6 +30,7 @@ const PROJECT_ID = 'a'
 const APP_VERSION = '0.0.0'
 const FURNITURE_HASH = 'f'.repeat(64)
 const UNDERLAY_HASH = 'e'.repeat(64)
+const PACK_HASH = 'd'.repeat(64)
 const ASSET_BYTES = Uint8Array.of(0x67, 0x6c, 0x54, 0x46, 1, 2, 3)
 const FURNITURE_SIZE = { width: 600, depth: 600 }
 const UNDERLAY_SIZE = { width: 1000, height: 800 }
@@ -57,6 +58,26 @@ function projectWithTwoAssets(): Project {
   return project
 }
 
+/** A new project with one floor that holds a piece of furniture from the starter pack. */
+function projectWithPackAsset(): Project {
+  const project = createEmptyProject({
+    name: 'House with a pack asset',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: APP_VERSION,
+  })
+  const floor = createFloor('Ground', { id: 'ground' })
+  floor.furniture = [
+    createFurnitureInstance({
+      assetRef: { scope: 'pack:vernacular-starter@1.0.0', contentHash: PACK_HASH },
+      position: { x: 0, y: 0 },
+      footprint: FURNITURE_SIZE,
+    }),
+  ]
+  project.floors = [floor]
+  return project
+}
+
 /** The ports, and a handle on a stored sound document of the project `a`. */
 async function openStored(): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
   const ports = createTestPorts()
@@ -64,13 +85,15 @@ async function openStored(): Promise<{ ports: TestPorts; handle: DocumentHandle 
   return { ports, handle: await openOrThrow(ports, workspaceRequest(PROJECT_ID)) }
 }
 
-/** The ports, and a handle on a new project whose two assets the shared pool holds. */
-async function openWithAssets(): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
+/** The ports, and a handle on a new project; the shared pool holds the `held` hashes. */
+async function openWithAssets(
+  held: readonly string[] = [FURNITURE_HASH, UNDERLAY_HASH],
+  create: () => Project = projectWithTwoAssets,
+): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
   const ports = createTestPorts()
   const pool = ports.workspace.assets(PROJECT_ID)
-  await pool.put(FURNITURE_HASH, ASSET_BYTES)
-  await pool.put(UNDERLAY_HASH, ASSET_BYTES)
-  const request = { ...workspaceRequest(PROJECT_ID), create: projectWithTwoAssets }
+  for (const hash of held) await pool.put(hash, ASSET_BYTES)
+  const request = { ...workspaceRequest(PROJECT_ID), create }
   return { ports, handle: await openOrThrow(ports, request) }
 }
 
@@ -178,7 +201,7 @@ describe('the assets of an export', () => {
     expect(await store.assetCache().get(FURNITURE_HASH)).toEqual(ASSET_BYTES)
   })
 
-  it('progress is reported once for each referenced asset', async () => {
+  it('progress is reported once for each needed asset', async () => {
     const { handle } = await openWithAssets()
     const progress: Array<[number, number]> = []
 
@@ -188,6 +211,42 @@ describe('the assets of an export', () => {
       [1, 2],
       [2, 2],
     ])
+  })
+
+  it('an asset that the pool lacks is named in missingAssets and the archive is still made', async () => {
+    const { handle } = await openWithAssets([FURNITURE_HASH])
+
+    const result = await exportArchive(handle)
+
+    expect(result).toMatchObject({ ok: true, missingAssets: [UNDERLAY_HASH] })
+    expect((await documentIn(exportedBytes(result))).meta.name).toBe('House with assets')
+  })
+
+  it('with every asset in the pool missingAssets is empty', async () => {
+    const { handle } = await openWithAssets()
+
+    const result = await exportArchive(handle)
+
+    expect(result).toMatchObject({ ok: true, missingAssets: [] })
+  })
+
+  it('a pool read that rejects gives ok: false with its message', async () => {
+    const { ports, handle } = await openWithAssets()
+    vi.spyOn(ports.workspace.assets(PROJECT_ID), 'get').mockRejectedValue(new Error('pool down'))
+
+    const result = await exportArchive(handle)
+
+    expect(result).toEqual({ ok: false, message: expect.stringContaining('pool down') })
+  })
+
+  it('a pack asset that packSupplies accepts is neither carried nor reported', async () => {
+    const { handle } = await openWithAssets([PACK_HASH], projectWithPackAsset)
+
+    const result = await exportArchive(handle, { packSupplies: () => true })
+
+    expect(result).toMatchObject({ ok: true, missingAssets: [] })
+    const store = await ZipBundleProjectStore.fromBundle(PROJECT_ID, exportedBytes(result))
+    expect(await store.assetCache().get(PACK_HASH)).toBeUndefined()
   })
 })
 

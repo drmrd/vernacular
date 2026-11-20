@@ -51,6 +51,7 @@ type OtherKind = Exclude<
 function isSwitchKindOfOther(kind: OtherKind): false {
   switch (kind) {
     case 'nothing-to-restore':
+    case 'archive-too-large':
     case 'did-not-import':
     case 'did-not-restore':
     case 'unsupported-file':

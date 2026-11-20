@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { encodeDocument, type AssetReference, type Project } from '../core'
 import {
   NotificationProvider,
   useNotifications,
@@ -7,19 +8,27 @@ import {
   type NotificationApi,
 } from '../editor/design-system'
 import type { DocumentHandle, SessionPorts } from '../session'
-import { openOrThrow, workspaceRequest, type TestPorts } from '../session/handle/handle-test-kit'
+import {
+  createTestPorts,
+  openOrThrow,
+  workspaceRequest,
+  type TestPorts,
+} from '../session/handle/handle-test-kit'
 import {
   InMemoryRecentProjectStore,
+  type LibraryItem,
   type RecentProjectEntry,
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
+import { projectReferring } from '../storage/zip/zip-test-kit'
 import {
   capableCapabilities,
   fakeNotifications,
   namedProject,
   runNothing,
 } from './app-test-support'
+import type { LibraryLister } from './pack-supplies'
 import type { RunFlow } from './use-open-project'
 import type { ProjectActionsContext } from './use-project-actions'
 
@@ -104,6 +113,8 @@ export interface ActionRig {
   readonly handle: DocumentHandle
   readonly recentProjects?: RecentProjectStore
   readonly capabilities?: StorageCapabilities
+  /** The library whose listing tells which pack assets an installed pack brings by itself. */
+  readonly packs?: LibraryLister
 }
 
 export interface RiggedActions<Actions> {
@@ -122,12 +133,20 @@ export function renderActions<Actions>(
 ) {
   const recentProjects = rig.recentProjects ?? new InMemoryRecentProjectStore()
   const capabilities = rig.capabilities ?? capableCapabilities()
+  const { packs } = rig
   return renderHook(
     (): RiggedActions<Actions> => {
       const owner = useTestOwner(rig.ports, rig.handle)
       const notifications = useNotifications()
       const { handle, runFlow, flowsStarted } = owner
-      const context = { handle, runFlow, recentProjects, capabilities, notifications }
+      const context = {
+        handle,
+        runFlow,
+        recentProjects,
+        capabilities,
+        notifications,
+        ...(packs === undefined ? {} : { packs }),
+      }
       return {
         actions: useAdapter(context),
         handle,
@@ -163,12 +182,105 @@ export function waitForRecentEntry(
   })
 }
 
+/** A rendered hook that holds the notifications that show now. */
+interface ShowsNotifications {
+  readonly current: { readonly shown: readonly Notification[] }
+}
+
 /** The texts of the notifications that show now. */
-export function shownMessages(result: { readonly current: RiggedActions<unknown> }): string[] {
+export function shownMessages(result: ShowsNotifications): string[] {
   return result.current.shown.map((shown) => shown.message)
+}
+
+/** The texts of the warnings that show now. */
+export function shownWarnings(result: ShowsNotifications): string[] {
+  return result.current.shown
+    .filter((shown) => shown.severity === 'warning')
+    .map((shown) => shown.message)
 }
 
 /** Lets the work that an action started run to its end, inside `act`. */
 export async function settleTheAction(): Promise<void> {
   await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+}
+
+/** A library item of furniture that lists `reference`. */
+export function furnitureItem(reference: AssetReference): LibraryItem {
+  return {
+    reference,
+    name: 'Chair',
+    kind: 'furniture',
+    categories: [],
+    eras: [],
+    footprint: { width: 500, depth: 500 },
+    height: 750,
+  }
+}
+
+/** A library whose listing holds one item for each of `references`. */
+export function packListing(...references: AssetReference[]): LibraryLister {
+  const items = references.map(furnitureItem)
+  return { list: () => Promise.resolve(items) }
+}
+
+/** A `.json` project file of `project`, as the application writes one. */
+export function projectFileOf(project: Project): File {
+  const { bytes } = encodeDocument(project, undefined)
+  return new File([bytes.buffer as ArrayBuffer], 'house.json')
+}
+
+/** A `.json` project file whose document places one piece of furniture for each of `references`. */
+export function projectFileReferring(...references: AssetReference[]): File {
+  return projectFileOf(projectReferring(references))
+}
+
+/** The message that a read of `unreadableFile` fails with. */
+export const READ_FAILURE = 'The file could not be read.'
+
+interface UnreadableFileShape {
+  /** The size that the file claims. It holds its real size when this is not given. */
+  readonly size?: number
+  readonly name?: string
+}
+
+/** A file whose every way to read its bytes fails with `READ_FAILURE`, and how often a read was tried. */
+export function unreadableFile(shape: UnreadableFileShape = {}): {
+  file: File
+  reads: () => number
+} {
+  let reads = 0
+  const file = new File(['{}'], shape.name ?? 'house.json')
+  const failRead = () => {
+    reads += 1
+    return Promise.reject(new Error(READ_FAILURE))
+  }
+  const failStream = () => {
+    reads += 1
+    throw new Error(READ_FAILURE)
+  }
+  Object.defineProperties(file, {
+    ...(shape.size === undefined ? {} : { size: { value: shape.size } }),
+    arrayBuffer: { value: failRead },
+    bytes: { value: failRead },
+    text: { value: failRead },
+    stream: { value: failStream },
+  })
+  return { file, reads: () => reads }
+}
+
+/** The id and the name of the project that `renderOnAStoredProject` opens first. */
+export const STORED_PROJECT_ID = 'current'
+export const STORED_PROJECT_NAME = 'Drafthouse'
+
+/** In-memory ports with a stored project open, and the adapter hook `useAdapter` on it. */
+export async function renderOnAStoredProject<Actions>(
+  useAdapter: (context: ProjectActionsContext) => Actions,
+  packs?: LibraryLister,
+) {
+  const ports = createTestPorts()
+  const handle = await openStoredProject(ports, STORED_PROJECT_ID, STORED_PROJECT_NAME)
+  const recentProjects = new InMemoryRecentProjectStore()
+  const rig = { ports, handle, recentProjects, ...(packs === undefined ? {} : { packs }) }
+  const { result } = renderActions(rig, useAdapter)
+  return { ports, handle, recentProjects, result }
 }

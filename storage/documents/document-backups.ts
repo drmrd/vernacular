@@ -1,6 +1,9 @@
 import type { DirectoryPort } from '../fs/directory-port'
 
-/** The sidecar directory of a project that holds its backups; it never travels in an archive. */
+/**
+ * The sidecar directory of a project that holds its backups. An export and an import leave it
+ * out; only the unchecked copy of a project that did not open carries it.
+ */
 export const BACKUP_DIRECTORY = '.house-backups'
 
 /** Why a copy of a stored file is kept. */

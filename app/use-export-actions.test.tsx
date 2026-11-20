@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addFloor } from '../core'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { addFloor, type AssetReference } from '../core'
 import {
   NotificationProvider,
   useNotifications,
@@ -10,12 +10,26 @@ import {
 import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
   actionsContext,
-  closeOpenedHandles,
   openStoredProject,
+  packListing,
+  READ_FAILURE,
   renderActions,
+  settleTheAction,
+  shownWarnings,
   waitForOtherProject,
 } from './action-test-support'
 import { fakeNotifications, plantProject } from './app-test-support'
+import {
+  DOWNLOAD,
+  exportBundle,
+  exportedToasts,
+  failedToasts,
+  prepareBundleExport,
+  PROJECT_ID,
+  startBundleExport,
+  stubTheDownload,
+  WARNING,
+} from './export-report-test-support'
 import {
   runExportWithToast,
   useExportBundleAction,
@@ -27,7 +41,20 @@ const CURRENT_ID = 'current'
 const OTHER_ID = 'other'
 const HOUSE_NAME = 'My House'
 const OTHER_NAME = 'Other house'
-const DOWNLOAD = 'download'
+const ONE_LEFT_OUT_SENTENCE =
+  'The export does not include 1 asset, because this browser does not have it.'
+const USER_REFERENCE: AssetReference = { scope: 'user', contentHash: 'a'.repeat(64) }
+const OTHER_USER_REFERENCE: AssetReference = { scope: 'user', contentHash: 'b'.repeat(64) }
+const TWO_LEFT_OUT_SENTENCE =
+  'The export does not include 2 assets, because this browser does not have them.'
+const UNLISTED_PACK_REFERENCE: AssetReference = {
+  scope: 'pack:attic-finds@2.0.0',
+  contentHash: 'e'.repeat(64),
+}
+const PACK_REFERENCE: AssetReference = {
+  scope: 'pack:vernacular-starter@1.0.0',
+  contentHash: 'd'.repeat(64),
+}
 
 function wrapper({ children }: { children: ReactNode }) {
   return <NotificationProvider>{children}</NotificationProvider>
@@ -74,23 +101,7 @@ async function settleTheExport(notifications: NotificationApi): Promise<void> {
 }
 
 describe('the export actions on an open project', () => {
-  // jsdom does not implement URL.createObjectURL/revokeObjectURL. The download helpers
-  // call them, so stub both; otherwise the export throws and lands in its error branch.
-  const originalCreateObjectUrl = URL.createObjectURL
-  const originalRevokeObjectUrl = URL.revokeObjectURL
-
-  beforeEach(() => {
-    URL.createObjectURL = vi.fn(() => 'blob:test')
-    URL.revokeObjectURL = vi.fn()
-  })
-
-  afterEach(async () => {
-    cleanup()
-    await closeOpenedHandles()
-    vi.restoreAllMocks()
-    URL.createObjectURL = originalCreateObjectUrl
-    URL.revokeObjectURL = originalRevokeObjectUrl
-  })
+  stubTheDownload()
 
   it('shows a promise toast for a bundle export', async () => {
     const handle = await openStoredProject(createTestPorts(), CURRENT_ID, HOUSE_NAME)
@@ -138,7 +149,7 @@ describe('the export actions on an open project', () => {
       steps.push(`save:${id}`)
       return realSave(id, project)
     })
-    URL.createObjectURL = vi.fn(() => {
+    vi.mocked(URL.createObjectURL).mockImplementation(() => {
       steps.push(DOWNLOAD)
       return 'blob:test'
     })
@@ -152,5 +163,83 @@ describe('the export actions on an open project', () => {
 
     await waitFor(() => expect(steps).toContain(DOWNLOAD))
     expect(steps).toEqual([`save:${OTHER_ID}`, DOWNLOAD])
+  })
+
+  it('warns once, after the download, that the export leaves out an asset the pool lacks, and still shows the success toast', async () => {
+    const { steps, warnings, exported } = await exportBundle({ references: [USER_REFERENCE] })
+
+    expect(steps).toEqual([DOWNLOAD, WARNING])
+    expect(warnings).toEqual([ONE_LEFT_OUT_SENTENCE])
+    expect(exported).toHaveLength(1)
+  })
+
+  it('shows no warning when the pool holds every asset the project places', async () => {
+    const { steps, warnings } = await exportBundle({
+      references: [USER_REFERENCE],
+      held: [USER_REFERENCE],
+    })
+
+    expect(steps).toEqual([DOWNLOAD])
+    expect(warnings).toEqual([])
+  })
+
+  it('does not count a pack asset that the library of the application lists', async () => {
+    const { warnings } = await exportBundle({
+      references: [PACK_REFERENCE, USER_REFERENCE],
+      packs: packListing(PACK_REFERENCE),
+    })
+
+    expect(warnings).toEqual([ONE_LEFT_OUT_SENTENCE])
+  })
+
+  it('shows no warning for a pack asset when the listing of the library fails', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const failing = { list: () => Promise.reject(new Error(READ_FAILURE)) }
+
+    const { warnings, exported } = await exportBundle({
+      references: [PACK_REFERENCE],
+      packs: failing,
+    })
+
+    expect(warnings).toEqual([])
+    expect(exported).toHaveLength(1)
+  })
+})
+
+describe('the edges of the export warning', () => {
+  stubTheDownload()
+
+  it('shows no warning when the export fails', async () => {
+    const ports = createTestPorts()
+    const { steps, result } = await prepareBundleExport(
+      { references: [USER_REFERENCE], held: [USER_REFERENCE] },
+      ports,
+    )
+    vi.spyOn(ports.workspace.assets(PROJECT_ID), 'get').mockRejectedValue(new Error('pool down'))
+
+    startBundleExport(result)
+    await waitFor(() => expect(failedToasts(result)).toHaveLength(1))
+    await settleTheAction()
+
+    expect(shownWarnings(result)).toEqual([])
+    expect(exportedToasts(result)).toEqual([])
+    expect(steps).toEqual([])
+  })
+
+  it('counts every asset the pool lacks', async () => {
+    const { warnings } = await exportBundle({
+      references: [USER_REFERENCE, OTHER_USER_REFERENCE],
+    })
+
+    expect(warnings).toEqual([TWO_LEFT_OUT_SENTENCE])
+  })
+
+  it('counts a pack asset that the library of the application does not list', async () => {
+    const { warnings } = await exportBundle({
+      references: [UNLISTED_PACK_REFERENCE],
+      packs: packListing(PACK_REFERENCE),
+    })
+
+    expect(warnings).toEqual([ONE_LEFT_OUT_SENTENCE])
   })
 })

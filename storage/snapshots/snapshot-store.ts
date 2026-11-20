@@ -3,7 +3,10 @@ import type { CodecOptions, DecodeResult, Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { encodeForWrite, openDecodedDocument } from '../documents/open-decoded'
 
-/** The directory of recovery snapshots: a sidecar of the document that never travels in an archive. */
+/**
+ * The directory of recovery snapshots, a sidecar of the document. An export and an import leave
+ * it out; only the unchecked copy of a project that did not open carries it.
+ */
 export const AUTOSAVE_DIRECTORY = '.house-autosave'
 const SESSION_START_FILE = 'session-start.json'
 const SNAPSHOT_PREFIX = 'snapshot-'

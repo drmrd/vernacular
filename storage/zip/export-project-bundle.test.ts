@@ -16,7 +16,7 @@ import { exportProjectBundle } from './export-project-bundle'
 import { ZipBundleProjectStore } from './zip-bundle-project-store'
 
 const FURNITURE_HASH = 'f'.repeat(64)
-const UNDERLAY_HASH = 'u'.repeat(64)
+const UNDERLAY_HASH = 'e'.repeat(64)
 const GLB_BYTES = Uint8Array.of(0x67, 0x6c, 0x54, 0x46, 1, 2, 3)
 
 function projectWithUserFurniture(): Project {
@@ -89,7 +89,7 @@ describe('exportProjectBundle', () => {
     const cache = new InMemoryAssetCache()
     await cache.put(FURNITURE_HASH, GLB_BYTES)
 
-    const bytes = await exportProjectBundle('current', project, { assets: cache })
+    const { bytes } = await exportProjectBundle('current', project, { assets: cache })
     const reopened = await ZipBundleProjectStore.fromBundle('current', bytes)
 
     expect(await reopened.assetCache().get(FURNITURE_HASH)).toEqual(GLB_BYTES)
@@ -97,7 +97,7 @@ describe('exportProjectBundle', () => {
     expect(loaded.floors[0]?.furniture[0]?.assetRef.contentHash).toBe(FURNITURE_HASH)
   })
 
-  it('reports incremental progress as each referenced asset is copied', async () => {
+  it('reports incremental progress as each needed asset is copied', async () => {
     const project = projectWithFurnitureAndUnderlay()
     const cache = new InMemoryAssetCache()
     await cache.put(FURNITURE_HASH, GLB_BYTES)

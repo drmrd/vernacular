@@ -14,11 +14,13 @@ import type {
   SwitchResult,
 } from '../session'
 import {
+  ARCHIVE_LIMITS,
   DocumentDecodeError,
   InMemoryFolderAccess,
   InMemoryProjectLockPort,
   InMemoryProjectStore,
 } from '../storage'
+import type { ArchiveLimitName } from '../storage'
 import { createInitialProject } from './create-initial-project'
 import { useSwitchNotices } from './use-switch-notices'
 import type { FlowNoticeOptions } from './use-switch-notices'
@@ -30,6 +32,13 @@ const FOLDER_EMPTY_SENTENCE = 'This folder holds no Vernacular project.'
 const FOLDER_PERMISSION_SENTENCE = 'Vernacular has no permission to use this folder.'
 const FOLDER_UNAVAILABLE_SENTENCE = 'The folder of this project cannot be reached.'
 const STORAGE_MESSAGE = 'The storage of this browser is full.'
+/** Each archive limit and the sentence of an archive above it, at the default value of the limit. */
+const ARCHIVE_TOO_LARGE_SENTENCES: readonly (readonly [ArchiveLimitName, string])[] = [
+  ['archiveBytes', 'The file is larger than 512 MB.'],
+  ['inflatedBytes', 'The file unpacks to more than 1,024 MB.'],
+  ['entries', 'The file holds more than 10,000 entries.'],
+  ['documentBytes', 'The project document in the file is larger than 64 MB.'],
+]
 
 /** What a flow gives to the notices, or `undefined` when the owner was busy. */
 type ShownResult = FlowResult<ImportFailure | FolderRefusal | RestoreRefusal> | undefined
@@ -178,6 +187,15 @@ describe('useSwitchNotices for a failure with a reason', () => {
 
     expectOneError('Open failed: Unsupported project file: plan.pdf')
   })
+
+  it.each(ARCHIVE_TOO_LARGE_SENTENCES)(
+    'an archive above %s shows "Open failed: " and the sentence of that limit',
+    async (limit, sentence) => {
+      await showResult(failed({ kind: 'archive-too-large', limit, allowed: ARCHIVE_LIMITS[limit] }))
+
+      expectOneError(`Open failed: ${sentence}`)
+    },
+  )
 
   it('storage-unavailable shows "Open failed: " and the message', async () => {
     await showResult(failed({ kind: 'storage-unavailable', message: STORAGE_MESSAGE }))
