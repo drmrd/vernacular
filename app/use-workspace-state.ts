@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createActiveFloorStore, createSelectionStore } from '../bridge'
 import {
+  displayNameOf,
   guardDestructive,
+  reconcileIndex,
+  recentRecords,
   restoreSnapshot,
   type DocumentHandle,
   type FlowResult,
   type ProjectSnapshots,
   type RestoreRefusal,
   type SaveStatus,
+  type SessionPorts,
 } from '../session'
-import { orderRecentProjects, type RecentProjectStore } from '../storage'
 import { useNotifications } from '../editor/design-system'
 import type { EditorWorkspaceProps } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
@@ -47,29 +50,39 @@ export interface Recovery {
   onDiscard: () => void | Promise<void>
 }
 
-// The most-recently-opened list, read for each store and again for each open project, since a
-// flow that opened a project records entries.
-function useRecentEntries(
-  recentProjects: RecentProjectStore,
-  handle: DocumentHandle,
-): RecentEntry[] {
+/** One read of the recent entries, for the ports and the handle it was started for. */
+interface RecentRead {
+  ports: SessionPorts
+  handle: DocumentHandle
+  entries: Promise<RecentEntry[]>
+}
+
+async function readRecentEntries(ports: SessionPorts, openId: string): Promise<RecentEntry[]> {
+  const records = recentRecords(await reconcileIndex(ports), openId)
+  return records.map((record) => ({ id: record.id, name: displayNameOf(record) }))
+}
+
+// The projects used last, apart from the open one, read from the index for each pair of ports and
+// handle. Both runs of the effect under StrictMode share one read. A read that ends after its
+// ports or its handle were replaced sets nothing. The index rebuild never rejects.
+function useRecentEntries(ports: SessionPorts, handle: DocumentHandle): RecentEntry[] {
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
+  const latestRead = useRef<RecentRead | null>(null)
   useEffect(() => {
     let cancelled = false
-    void recentProjects.list().then(
-      (entries) => {
-        if (!cancelled) {
-          setRecentEntries(
-            orderRecentProjects(entries).map(({ id, name, backend }) => ({ id, name, backend })),
-          )
-        }
-      },
-      (error: unknown) => console.error('reading the recent projects failed', error),
-    )
+    const previous = latestRead.current
+    const read =
+      previous?.ports === ports && previous.handle === handle
+        ? previous
+        : { ports, handle, entries: readRecentEntries(ports, handle.id) }
+    latestRead.current = read
+    void read.entries.then((entries) => {
+      if (!cancelled) setRecentEntries(entries)
+    })
     return () => {
       cancelled = true
     }
-  }, [recentProjects, handle])
+  }, [ports, handle])
   return recentEntries
 }
 
@@ -179,7 +192,7 @@ function isUnsaved(status: SaveStatus): boolean {
 }
 
 export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
-  const { handle, runFlow, libraryAssets, recentProjects, capabilities } = props
+  const { handle, runFlow, libraryAssets, ports, capabilities } = props
   const session = handle.session
   // A selection names walls and openings inside one project, so the store belongs to
   // one session: New, Open, and restore all bring a new handle with a new session, in
@@ -197,7 +210,7 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   useFlushOnHidden(handle)
   useHandleNotices(handle)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
-  const recentEntries = useRecentEntries(recentProjects, handle)
+  const recentEntries = useRecentEntries(ports, handle)
   const recovery = useCrashRecovery({ handle, runFlow, confirmDiscard })
   const notifications = useNotifications()
   // The asset library (starter pack + user imports), assembled once for the pool of the library.
@@ -205,7 +218,6 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   const actions = useProjectActions({
     handle,
     runFlow,
-    recentProjects,
     capabilities,
     notifications,
     packs: assetLibrary.registry,

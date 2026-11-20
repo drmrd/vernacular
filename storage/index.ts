@@ -76,19 +76,14 @@ export type { FolderAccess, FolderHandles, RememberedFolder } from './filesystem
 export { BrowserFolderAccess, InMemoryFolderAccess } from './filesystem/folder-access'
 export { SnapshotStore } from './snapshots/snapshot-store'
 export type { SnapshotStoreOptions } from './snapshots/snapshot-store'
-export { InMemoryRecentProjectStore } from './recent/recent-project-store'
-export type {
-  RecentProjectStore,
-  RecentProjectEntry,
-  ProjectBackend,
-} from './recent/recent-project-store'
-export { IndexedDbRecentProjectStore } from './recent/indexeddb-recent-project-store'
 export { InMemoryProjectLockPort, WebLocksProjectLockPort } from './locks/project-lock'
 export type { ProjectLockHold, ProjectLockPort } from './locks/project-lock'
 export { selectProjectStoreBackend } from './select-project-store'
-export type { ProjectStoreBackend, SelectProjectStoreOptions } from './select-project-store'
-export { orderRecentProjects, recentEntryFor } from './recent/recent-projects'
-export type { RecentEntryInput } from './recent/recent-projects'
+export type {
+  ProjectBackend,
+  ProjectStoreBackend,
+  SelectProjectStoreOptions,
+} from './select-project-store'
 export { bundleFilename } from './zip/bundle-filename'
 export { svgPlanFilename } from './download/svg-plan-filename'
 export { pngPlanFilename } from './download/png-plan-filename'

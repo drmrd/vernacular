@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { DocumentHandle, OpenRequest, SwitchFailure } from '../session'
+import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '../session'
 import { InMemoryAssetCache, newProjectId, type AssetCache } from '../storage'
 import type { AppProps } from './app'
 import { createInitialProject } from './create-initial-project'
@@ -18,6 +18,8 @@ export interface ProjectBoot {
   /** Why no project is open: the ports did not resolve, or the open failed. */
   failure: SwitchFailure | null
   runFlow: RunFlow
+  /** The ports that the owner uses; null until they are known. */
+  ports: SessionPorts | null
   /** The pool of the user's library; null until the ports are known. */
   libraryAssets: AssetCache | null
   /** Builds the ports again when they did not resolve; otherwise repeats the failed start. */
@@ -101,5 +103,5 @@ export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const retryBoot = () => (bootPorts.failure === null ? owner.retry() : bootPorts.rebuild())
   const libraryAssets = useLibraryAssets(inputs, bootPorts.built)
   const { handle, runFlow } = owner
-  return { handle, failure, runFlow, libraryAssets, retryBoot, startFreshProject }
+  return { handle, failure, runFlow, ports, libraryAssets, retryBoot, startFreshProject }
 }

@@ -3,15 +3,16 @@ import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, type Project }
 import {
   createOpfsProjectStore,
   FileSystemDirectory,
-  IndexedDbRecentProjectStore,
+  IndexedDbProjectIndex,
   OpfsProjectStore,
   WebLocksProjectLockPort,
   originPrivateRoot,
   type DirectoryPort,
+  type ProjectRecord,
 } from '../storage'
 
-// End-to-end validation seam for the durable browser adapters (OPFS, IndexedDB
-// recent list, Web Locks). jsdom cannot exercise these, so a Playwright spec
+// End-to-end validation seam for the durable browser adapters (OPFS, the IndexedDB
+// project index, Web Locks). jsdom cannot exercise these, so a Playwright spec
 // drives them through this hook. It is loaded only via a dynamic import guarded
 // by the `e2e-storage` query parameter (see src/main.tsx), so it never ships in
 // a normal page load.
@@ -23,9 +24,9 @@ interface OpfsRoundTripResult {
   deletedGone: boolean
 }
 
-interface RecentRoundTripResult {
-  recordedName: string | null
-  recordedBackend: string | null
+interface IndexRoundTripResult {
+  readName: string | null
+  readFloorCount: number | null
   removedGone: boolean
 }
 
@@ -37,7 +38,7 @@ interface LockSequenceResult {
 
 export interface VernacularE2eStorage {
   opfsRoundTrip(): Promise<OpfsRoundTripResult>
-  recentRoundTrip(): Promise<RecentRoundTripResult>
+  indexRoundTrip(): Promise<IndexRoundTripResult>
   lockSequence(): Promise<LockSequenceResult>
   opfsPersistSave(): Promise<void>
   opfsPersistName(): Promise<string>
@@ -89,18 +90,34 @@ async function opfsRoundTrip(): Promise<OpfsRoundTripResult> {
   }
 }
 
-async function recentRoundTrip(): Promise<RecentRoundTripResult> {
-  const recent = new IndexedDbRecentProjectStore()
-  await recent.remove('e2e-recent')
-  await recent.record({ id: 'e2e-recent', name: 'Recent House', backend: 'opfs', lastOpened: 123 })
-  const listed = await recent.list()
-  const entry = listed.find((candidate) => candidate.id === 'e2e-recent')
-  await recent.remove('e2e-recent')
-  const after = await recent.list()
+const INDEX_ROUND_TRIP_ID = 'e2e-index'
+
+const indexRoundTripRecord: ProjectRecord = {
+  id: INDEX_ROUND_TRIP_ID,
+  location: { kind: 'workspace' },
+  name: 'Indexed House',
+  floorCount: 1,
+  preview: undefined,
+  assetHashes: [],
+  assetListComplete: true,
+  lastChangedAt: undefined,
+  lastUsedAt: undefined,
+  lastOpen: { opened: true, build: 'e2e' },
+}
+
+// Puts a record through one index, reads it through a second one on the same database, then
+// removes it and reads again, so the record is shown to persist beyond the instance that wrote it.
+async function indexRoundTrip(): Promise<IndexRoundTripResult> {
+  const writer = new IndexedDbProjectIndex()
+  await writer.put(indexRoundTripRecord)
+  const reader = new IndexedDbProjectIndex()
+  const read = await reader.get(INDEX_ROUND_TRIP_ID)
+  await writer.remove(INDEX_ROUND_TRIP_ID)
+  const afterRemove = await reader.get(INDEX_ROUND_TRIP_ID)
   return {
-    recordedName: entry?.name ?? null,
-    recordedBackend: entry?.backend ?? null,
-    removedGone: !after.some((candidate) => candidate.id === 'e2e-recent'),
+    readName: read?.name ?? null,
+    readFloorCount: read?.floorCount ?? null,
+    removedGone: afterRemove === undefined,
   }
 }
 
@@ -186,7 +203,7 @@ async function storedFilesOfDefaultProject(): Promise<Record<string, string>> {
 export function install(): void {
   window.vernacularE2eStorage = {
     opfsRoundTrip,
-    recentRoundTrip,
+    indexRoundTrip,
     lockSequence,
     opfsPersistSave,
     opfsPersistName,

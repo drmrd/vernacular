@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ActiveFloorProvider,
   EditorSessionProvider,
@@ -22,13 +22,7 @@ import {
   resolveDesignLanguage,
   type DesignLanguage,
 } from '../editor/design-system'
-import {
-  InMemoryRecentProjectStore,
-  probeStorageCapabilities,
-  type AssetCache,
-  type RecentProjectStore,
-  type StorageCapabilities,
-} from '../storage'
+import { probeStorageCapabilities, type AssetCache, type StorageCapabilities } from '../storage'
 import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
 import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
@@ -93,7 +87,6 @@ export interface AppProps {
   libraryAssets?: AssetCache
   /** An override for tests; when set, the index is not asked which project opens at start. */
   projectId?: string
-  recentProjects?: RecentProjectStore
   /** The port of the user settings (tests). Defaults to the settings that this browser keeps. */
   settings?: AppSettingsProps['port']
 }
@@ -128,19 +121,14 @@ export function App(props: AppProps) {
 
 function AppWorkspace(props: AppProps) {
   const boot = useProjectBoot(props)
-  const { handle, failure, libraryAssets } = boot
-  const providedRecentProjects = props.recentProjects
-  const recentProjects = useMemo(
-    () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
-    [providedRecentProjects],
-  )
+  const { handle, failure, libraryAssets, ports } = boot
   const capabilities = useStorageCapabilities()
   useDegradedStorageBanner(capabilities)
 
   if (failure !== null) {
     return bootErrorView(failure, boot.retryBoot, boot.startFreshProject)
   }
-  if (handle === null || libraryAssets === null || capabilities === null) {
+  if (handle === null || ports === null || libraryAssets === null || capabilities === null) {
     return bootLoadingView()
   }
 
@@ -149,7 +137,7 @@ function AppWorkspace(props: AppProps) {
       handle={handle}
       runFlow={boot.runFlow}
       libraryAssets={libraryAssets}
-      recentProjects={recentProjects}
+      ports={ports}
       capabilities={capabilities}
     />
   )
@@ -216,7 +204,8 @@ export interface EditorWorkspaceProps {
   handle: DocumentHandle
   runFlow: RunFlow
   libraryAssets: AssetCache
-  recentProjects: RecentProjectStore
+  /** The ports of the latest render, for the list of recent projects. */
+  ports: SessionPorts
   capabilities: StorageCapabilities
 }
 

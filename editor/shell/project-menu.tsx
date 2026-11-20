@@ -28,6 +28,8 @@ export interface ProjectMenuProps {
 }
 
 interface MenuItem {
+  /** Unique among the rows: a recent row is keyed by its project id, apart from the action rows. */
+  key: string
   label: string
   onSelect: () => void
 }
@@ -48,24 +50,28 @@ function projectMenuItems({
 }: ProjectMenuItemsInput): MenuItem[] {
   const items: MenuItem[] = []
   if (onNewProject) {
-    items.push({ label: 'New project', onSelect: onNewProject })
+    items.push({ key: 'action:new-project', label: 'New project', onSelect: onNewProject })
   }
   if (onSave) {
-    items.push({ label: 'Save', onSelect: onSave })
+    items.push({ key: 'action:save', label: 'Save', onSelect: onSave })
   }
   if (onOpenFile) {
-    items.push({ label: 'Open file', onSelect: onOpenFile })
+    items.push({ key: 'action:open-file', label: 'Open file', onSelect: onOpenFile })
   }
   if (onOpenFolder) {
-    items.push({ label: 'Open folder', onSelect: onOpenFolder })
+    items.push({ key: 'action:open-folder', label: 'Open folder', onSelect: onOpenFolder })
   }
   if (onOpenRecent && recentProjects) {
     for (const project of recentProjects) {
-      items.push({ label: project.name, onSelect: () => onOpenRecent(project.id) })
+      items.push({
+        key: `recent:${project.id}`,
+        label: project.name,
+        onSelect: () => onOpenRecent(project.id),
+      })
     }
   }
   if (onStartRename) {
-    items.push({ label: 'Rename', onSelect: onStartRename })
+    items.push({ key: 'action:rename', label: 'Rename', onSelect: onStartRename })
   }
   return items
 }
@@ -122,7 +128,7 @@ function ProjectMenuList({ items, menu }: ProjectMenuListProps): ReactElement {
   return (
     <ul className="project-menu__list" {...menu.menuProps}>
       {items.map((item) => (
-        <li key={item.label} role="none">
+        <li key={item.key} role="none">
           <Button
             role="menuitem"
             className="project-menu__row"
