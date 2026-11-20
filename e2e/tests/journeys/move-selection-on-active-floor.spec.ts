@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-import { canvasBox, drawWall, expectWallCount, gotoEditor, selectors } from './support'
+import { canvasBox, canvasPoint, drawWall, expectWallCount, gotoEditor, selectors } from './support'
 
 test('moves a selected wall on the active non-ground floor', async ({ page }) => {
   await gotoEditor(page)
@@ -22,8 +22,7 @@ test('moves a selected wall on the active non-ground floor', async ({ page }) =>
 
   // Drag the selected wall to the right by a known amount.
   const delta = box.width * 0.25
-  const sx = box.x + x0
-  const sy = box.y + yMid
+  const { x: sx, y: sy } = await canvasPoint(page, { x: x0, y: yMid })
   await page.mouse.move(sx, sy)
   await page.mouse.down()
   await page.mouse.move(sx + delta, sy, { steps: 10 })

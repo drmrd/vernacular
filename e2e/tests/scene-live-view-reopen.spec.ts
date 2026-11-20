@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import {
   liveSceneCanvas,
   settledLiveFrame,
@@ -151,6 +152,7 @@ test.describe('Live three-dimensional pane opened and closed again', () => {
     const problems = collectConsoleProblems(page)
     await countRendererReleases(page)
     await page.goto('/')
+    await webFontsSettled(page)
 
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')

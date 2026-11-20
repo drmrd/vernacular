@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { fileURLToPath } from 'node:url'
 
 import { settledSceneCanvas } from './scene-helpers'
-import { canvasBox, selectors } from './journeys/support'
+import { canvasBox, selectors, webFontsSettled } from './journeys/support'
 
 // Proves a placed furniture piece swaps its massing box for the real GLB mesh in the live 3D
 // preview. Runs only in the GPU `scene-webgl` Playwright project (the config routes
@@ -35,9 +35,9 @@ async function importCubeFurniture(page: Page) {
 
 test('a placed user-imported model swaps its box for the real mesh in 3D', async ({ page }) => {
   await page.goto('/?e2e=1')
+  await webFontsSettled(page)
   const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
   test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
-  await expect(selectors.planCanvas(page)).toBeVisible()
 
   const cube = await importCubeFurniture(page)
 

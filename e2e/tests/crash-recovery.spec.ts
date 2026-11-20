@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { gotoEditor } from './journeys/support'
 
 // Crash recovery is wired into the production app through the write-ahead autosave
 // model: each autosave writes a recovery snapshot, saves the canonical store, then
@@ -8,10 +9,9 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Crash recovery', () => {
   test('restores work silently on a clean reload without offering recovery', async ({ page }) => {
-    await page.goto('/')
+    await gotoEditor(page)
 
     const canvas = page.getByLabel('Floor plan')
-    await expect(canvas).toBeVisible()
 
     await page.getByRole('radio', { name: 'Wall', exact: true }).click()
     await canvas.click({ position: { x: 120, y: 200 } })

@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 
 // This exercises the editor's LIVE three-dimensional preview pane (`WebGPUSceneView`),
 // not the deterministic `?fixture=scene-harness` render harness. It reproduces the
@@ -59,6 +60,7 @@ async function drawWall(
 test.describe('Live three-dimensional preview pane', () => {
   test('reflects a drawn wall in the split-view 3D pane', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
 
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')

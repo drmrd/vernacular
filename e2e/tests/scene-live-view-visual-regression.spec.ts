@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { drawnRoomCanvas, stableFrame } from './scene-helpers'
 
 // The first committed pixel baseline on the render path users actually see: the editor's
@@ -43,6 +44,7 @@ async function webGpuAdapterAvailable(): Promise<boolean> {
 test.describe('Live three-dimensional view visual baseline', () => {
   test('pins the top-down live frame to a committed baseline', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
 
     const hasAdapter = await page.evaluate(webGpuAdapterAvailable)
     test.skip(

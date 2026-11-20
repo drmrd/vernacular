@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { gotoEditor, drawWall, expectWallCount, selectors } from './support'
+import { canvasBox, gotoEditor, drawWall, expectWallCount, selectors } from './support'
 
 test('re-edits a wall endpoint after placement', async ({ page }) => {
   await gotoEditor(page)
@@ -15,10 +15,7 @@ test('re-edits a wall endpoint after placement', async ({ page }) => {
   const before = await proxy.getAttribute('aria-label')
 
   // Drag the right-hand endpoint (placed at screen 520,200) down to 520,400.
-  const box = await selectors.planCanvas(page).boundingBox()
-  if (box === null) {
-    throw new Error('plan canvas has no bounding box')
-  }
+  const box = await canvasBox(page)
   await page.mouse.move(box.x + 520, box.y + 200)
   await page.mouse.down()
   await page.mouse.move(box.x + 520, box.y + 300, { steps: 5 })

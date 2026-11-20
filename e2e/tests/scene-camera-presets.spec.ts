@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { expectSameView, frameAfterChange, navButton } from './journeys/close-openings-support'
 import { frameReader } from './frame-pixels'
 import { LIVE_VIEW_READY } from './live-pane'
@@ -75,10 +76,17 @@ function floorButton(page: Page, name: string): Locator {
   return page.getByRole('navigation', { name: 'Floors' }).getByRole('button', { name, exact: true })
 }
 
+// Opens the editor and waits until the web fonts have settled, so that no late face moves the
+// plan canvas under a pointer action.
+async function openEditor(page: Page): Promise<void> {
+  await page.goto('/')
+  await webFontsSettled(page)
+}
+
 // Opens the app on the plan with the 3D view beside it, and skips the test where the live pane
 // has no WebGPU to render with.
 async function startOnPlan(page: Page): Promise<void> {
-  await page.goto('/')
+  await openEditor(page)
   const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
   test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
   await page.getByRole('button', { name: 'Split view' }).click()
@@ -194,7 +202,7 @@ async function doorwayFramesOfTwoFloors(
 test.describe('Live three-dimensional camera presets', () => {
   test.beforeEach(() => test.setTimeout(SLOW_RENDERER_TIMEOUT_MS))
   test('the top-down preset moves the live camera', async ({ page }) => {
-    await page.goto('/')
+    await openEditor(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
@@ -208,7 +216,7 @@ test.describe('Live three-dimensional camera presets', () => {
   })
 
   test('the doorway preset frames the model from an opening', async ({ page }) => {
-    await page.goto('/')
+    await openEditor(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
@@ -225,7 +233,7 @@ test.describe('Live three-dimensional camera presets', () => {
   test('the doorway preset looks through the door of an upper floor as it does on the ground floor', async ({
     page,
   }) => {
-    await page.goto('/')
+    await openEditor(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
@@ -243,7 +251,7 @@ test.describe('Live three-dimensional camera presets', () => {
   test('the doorway preset looks through the door of a basement as it does on the ground floor', async ({
     page,
   }) => {
-    await page.goto('/')
+    await openEditor(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 

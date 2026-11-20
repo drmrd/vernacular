@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { drawnSceneCanvas } from './scene-helpers'
 
 // Exercises the live three-dimensional pane's discoverable camera affordances: the
@@ -19,6 +20,7 @@ import { drawnSceneCanvas } from './scene-helpers'
 test.describe('Discoverable three-dimensional camera controls', () => {
   test('the 3D preview surfaces the camera controls and a grab cursor', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
@@ -43,6 +45,7 @@ test.describe('Discoverable three-dimensional camera controls', () => {
 
   test('the pane cursor returns to grab after an orbit drag', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 

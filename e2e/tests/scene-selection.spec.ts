@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { drawnRoomCanvas, stableFrame } from './scene-helpers'
 
 // The 3D preview region holds two status-role nodes: the nav toolbar's color-temperature
@@ -25,6 +26,7 @@ function selectionStatusOf(page: Page) {
 test.describe('Live three-dimensional default-on selection', () => {
   test('clicking an entity selects it by default (the settled frame changes)', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
@@ -53,6 +55,7 @@ test.describe('Live three-dimensional default-on selection', () => {
 
   test('disabling the Select toggle makes a click inert', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
@@ -83,6 +86,7 @@ test.describe('Live three-dimensional default-on selection', () => {
     page,
   }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 

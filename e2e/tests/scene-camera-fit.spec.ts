@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { webFontsSettled } from './journeys/support'
 import { drawnRoomCanvas } from './scene-helpers'
 
 // The 3D preview must frame the model to fill the pane rather than leaving it
@@ -14,6 +15,7 @@ const MIN_MODEL_SPREAD_FRACTION = 0.25
 test.describe('Three-dimensional preview camera fit', () => {
   test('frames the model to fill the preview pane', async ({ page }) => {
     await page.goto('/')
+    await webFontsSettled(page)
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
