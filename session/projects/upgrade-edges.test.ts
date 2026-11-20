@@ -23,6 +23,7 @@ import {
 
 const READ_FAILURE = new Error('the browser index cannot be read')
 const PUT_FAILURE = new Error('the browser index is full')
+const CLOCK_FAILURE = new Error('the clock cannot be read')
 
 beforeEach(() => {
   clearLegacyActiveProjectId()
@@ -33,6 +34,11 @@ afterEach(() => {
   vi.useRealTimers()
   clearLegacyActiveProjectId()
 })
+
+/** The ports `ports` with the clock `now` in place of their own. */
+function withClock(ports: TestPorts, now: () => Date): TestPorts {
+  return { ...ports, now }
+}
 
 /** Durable ports over a sound in-memory index whose store holds a sound project under each of `ids`. */
 function upgradePortsWith(ids: readonly string[]): Promise<TestPorts> {
@@ -134,5 +140,36 @@ describe('the read of the remembered id', () => {
     expect(getItem).toHaveBeenCalledTimes(2)
 
     expect(new Set(getItem.mock.calls.map(([key]) => key)).size).toBe(1)
+  })
+})
+
+describe('a clock that fails while the remembered id is upgraded', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  })
+
+  it('a clock that throws still lets the rebuild give every record, without a new time of use, and the remembered id stays', async () => {
+    const sound = await upgradePortsWith(['a', 'b'])
+    const ports = withClock(sound, () => {
+      throw CLOCK_FAILURE
+    })
+    plantLegacyActiveProjectId('b')
+
+    await expect(reconcileIndex(ports)).resolves.toEqual([soundRecordOf('a'), soundRecordOf('b')])
+
+    expect(legacyActiveProjectIdIsStored()).toBe(true)
+  })
+
+  it('a clock that gives an invalid date still lets the rebuild give every record, none with an invalid time, and the remembered id stays', async () => {
+    const sound = await upgradePortsWith(['a', 'b'])
+    const ports = withClock(sound, () => new Date(Number.NaN))
+    plantLegacyActiveProjectId('b')
+
+    const records = await reconcileIndex(ports)
+
+    expect(records).toEqual([soundRecordOf('a'), soundRecordOf('b')])
+    const times = records.flatMap((record) => [record.lastUsedAt, record.lastChangedAt])
+    expect(times.filter((time) => time !== undefined && Number.isNaN(Date.parse(time)))).toEqual([])
+    expect(legacyActiveProjectIdIsStored()).toBe(true)
   })
 })
