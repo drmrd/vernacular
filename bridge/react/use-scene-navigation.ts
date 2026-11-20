@@ -14,10 +14,11 @@ import {
  * The per-view camera navigation state: the active mode, whether the user has taken control
  * of the camera, the pose the last camera preset actually landed on, and the handoffs the
  * cameras use to resume where they left off (the saved camera, the walk pose, and the
- * open doors). The camera is kept only for a pane the user steered. The state lives in the scene session store, so it outlasts the preview
+ * open doors). The state lives in the scene session store, so it outlasts the preview
  * subtree's unmount when the view mode changes (ADR-0170). The state stays out of the model
- * and undo history whichever store backs it. Reset clears user control, which lets FrameCamera
- * refit the model to the viewport through its `active` transition.
+ * and undo history whichever store backs it. The camera is kept only for a pane the user
+ * steered. Reset clears user control, which lets FrameCamera refit the model to the viewport
+ * through its `active` transition.
  */
 export function useSceneNavigation() {
   const store = useSceneSessionStoreOrLocal()
@@ -65,8 +66,7 @@ export function useSceneNavigation() {
     // The departing canvas notes where the camera was standing so the next mount reopens
     // there instead of reframing the model (ADR-0170). The whole camera comes back, the
     // position and the orbit pivot together, so a restored session looks where it looked
-    // before rather than turning back toward the model's framing. Only a steered pane keeps
-    // its camera; an untouched pane leaves none, so the next mount frames the model again.
+    // before rather than turning back toward the model's framing.
     savedCamera: session.savedCamera,
     noteCameraLeft,
     // The pose the departing walker ended on, so returning to walk mode resumes there
