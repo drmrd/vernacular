@@ -5,12 +5,16 @@ import {
   enterOrbit,
   enterWalkReady,
   expectSameView,
+  frameAfterChange,
+  holdWalkKey,
   liveCanvas,
   openKeyChangesView,
   resetWithKey,
   settledLiveFrame,
   walkToDoor,
 } from './close-openings-support'
+import { stableFrame } from '../scene-helpers'
+import { frameReader } from '../frame-pixels'
 import { gotoEditor, selectors } from './support'
 
 // Issue #608: when the active floor changed during a walk, the walker's eye stayed at the height
@@ -22,7 +26,8 @@ import { gotoEditor, selectors } from './support'
 // sight, which shows that the walker reaches the doors of the floor that the walker stands on. It
 // shuts the door again, goes through an orbit detour, and walks again, which resumes the saved
 // pose on the upper floor, and compares once more. A second test starts the first walk on the
-// upper floor and presses the open key there.
+// upper floor and presses the open key there. A third test (issue #926) walks on a basement that
+// the whole-building view hides, and expects the walk to draw it.
 //
 // The live view renders through the non-deterministic WebGPU backend (ADR-0045), so this spec
 // commits no pixel baseline. All frames are taken in the same run and compared with each other
@@ -38,6 +43,12 @@ const TEST_TIMEOUT_MS = 120_000
 
 const GROUND_FLOOR = 'Ground'
 const UPPER_FLOOR = '2nd Floor'
+const BASEMENT_FLOOR = 'Basement'
+
+// A frame counts as changed when its mean channel difference (0..255) over the whole canvas
+// exceeds this bar. A room drawn or hidden moves the mean by far more than this, and a settled
+// frame of one view moves it by none.
+const CHANGED_MEAN_FLOOR = 1.0
 
 // The same room and door as the other close-doors journeys, in plan pixels. The door stands at
 // the middle of the north wall.
@@ -177,3 +188,73 @@ test('opens the door of the upper floor with the open key on a walk that starts 
   await walkToDoor(page, canvas)
   await expectDoorOpensInSight(page, canvas)
 })
+
+// Issue #926: with the whole-building view on and the underground levels off, the view hides the
+// basement. A walk on the basement stood on a floor that the view did not draw, so the frame
+// showed only the background and the walk keys changed nothing in it. The owner decided that a
+// walk draws the floor the walker stands on, and that leaving the walk hides it again. Only the
+// basement holds a room, so a view without it shows the background alone: the walk keys have to
+// move the picture, and the orbit view after the walk has to differ from the same view with the
+// underground levels shown.
+test('draws a basement that the whole-building view hides while the walker stands on it', async ({
+  page,
+}) => {
+  test.setTimeout(TEST_TIMEOUT_MS)
+  await gotoEditor(page)
+  await guardLiveSceneSupport(page, 'the walk-follows-the-active-floor journey')
+
+  // The room and its door are on the basement, which is the active floor.
+  await page.getByRole('button', { name: 'Split view' }).click()
+  await page.getByRole('button', { name: 'Add basement' }).click()
+  await floorButton(page, BASEMENT_FLOOR).click()
+  await drawRoomWithDoor(page)
+  await page.getByRole('radio', { name: 'Select', exact: true }).click()
+  await page.keyboard.press('Escape')
+
+  // The whole building is on and the underground levels are off, so the basement is hidden.
+  await page.getByRole('button', { name: 'Whole building' }).click()
+  const underground = page.getByRole('button', { name: /underground levels/i })
+  await underground.click()
+  await expect(underground).toHaveAttribute('aria-pressed', 'false')
+  const canvas = liveCanvas(page)
+  await settledLiveFrame(page, canvas)
+
+  // The walk draws the basement, so holding the walk key moves the walker past walls that are in
+  // the picture. A basement that the walk left out would leave the background alone, and the
+  // frame would not change.
+  const standing = await enterWalkReady(page, canvas)
+  const walked = await holdWalkKey(page, canvas)
+  await expectChangedView(page, 'the walk key moves the walker through the basement', {
+    before: standing,
+    after: walked,
+  })
+
+  // Leaving the walk hides the basement again. The orbit camera stands where the walker stood, so
+  // the hidden frame of before is not the reference. The underground levels are shown at this
+  // camera instead, which draws the basement: a hidden basement makes the frame differ from it.
+  await enterOrbit(page)
+  const orbitAgain = await stableFrame(canvas)
+  await underground.click()
+  await expect(underground).toHaveAttribute('aria-pressed', 'true')
+  const shown = await frameAfterChange(canvas, orbitAgain)
+  await expectChangedView(page, 'the orbit view after the walk hides the basement', {
+    before: orbitAgain,
+    after: shown,
+  })
+})
+
+async function expectChangedView(
+  page: Page,
+  label: string,
+  frames: { before: Buffer; after: Buffer },
+): Promise<void> {
+  const reader = frameReader(page)
+  const { mean } = await reader.difference(
+    frames.before,
+    frames.after,
+    await reader.whole(frames.before),
+  )
+  expect(mean, `${label}: mean channel difference over the whole canvas`).toBeGreaterThan(
+    CHANGED_MEAN_FLOOR,
+  )
+}
