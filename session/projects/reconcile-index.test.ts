@@ -242,7 +242,8 @@ describe('the records that the rebuild keeps, replaces, and orders', () => {
 
     const records = await reconcileIndex(ports)
 
-    const rebuilt = soundRecordOf('a', { lastUsedAt: expect.any(String) as string })
+    const rebuilt = soundRecordOf('a')
+    expect(rebuilt.lastUsedAt).toBe(rebuilt.lastChangedAt)
     expect(records).toEqual([rebuilt])
     expect(await ports.index.get('a')).toEqual(rebuilt)
   })

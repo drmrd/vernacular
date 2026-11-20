@@ -156,3 +156,48 @@ export function folderRecord(id: string, overrides: Partial<ProjectRecord> = {})
 export function idsOf(records: readonly ProjectRecord[]): string[] {
   return records.map((record) => record.id)
 }
+
+/**
+ * The record in the result for a listed project whose document could not be read: no facts, the
+ * reason `storage-unavailable`, and the listed time as both its times.
+ */
+export function unreadRecordOf(id: string): ProjectRecord {
+  return {
+    id,
+    location: IN_WORKSPACE,
+    name: undefined,
+    floorCount: undefined,
+    preview: undefined,
+    assetHashes: [],
+    assetListComplete: false,
+    lastChangedAt: STORED_AT,
+    lastUsedAt: STORED_AT,
+    lastOpen: { opened: false, build: REBUILD_BUILD, reason: 'storage-unavailable' },
+  }
+}
+
+/**
+ * A document of the current version with no `floors`, named `name`. It fails only the strict
+ * check, and the facts of the project that it opens as cannot be built.
+ */
+export function documentWithoutFloors(name: string): Uint8Array {
+  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+  metaOf(document).name = name
+  delete document.floors
+  return bytesOf(document)
+}
+
+/** From now on each `read` of the store rejects with `error` for the ids of `failing`. */
+export function failReadsOf(ports: TestPorts, failing: readonly string[], error: Error): void {
+  const realRead = ports.workspace.read.bind(ports.workspace)
+  ports.workspace.read = (id) => (failing.includes(id) ? Promise.reject(error) : realRead(id))
+}
+
+/**
+ * The arguments of each warning that reports failed steps: those that hold a number, the count.
+ * The warning of the store about a document that breaks the format rules holds a text and the
+ * list of the faults, and no number.
+ */
+export function stepWarnings(calls: readonly (readonly unknown[])[]): (readonly unknown[])[] {
+  return calls.filter((args) => args.some((arg) => typeof arg === 'number'))
+}

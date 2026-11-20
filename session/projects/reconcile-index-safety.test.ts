@@ -21,6 +21,7 @@ import { reconcileIndex } from '..'
 import {
   EARLIER_CHANGE,
   REBUILD_BUILD,
+  STORED_AT,
   documentNamed,
   folderRecord,
   notJsonBytes,
@@ -103,6 +104,7 @@ describe('a rebuild whose index or store fails', () => {
         undefined,
       ])
       expect(second?.assetListComplete).toBe(false)
+      expect([second?.lastChangedAt, second?.lastUsedAt]).toEqual([STORED_AT, STORED_AT])
       expect(second?.lastOpen).toStrictEqual({
         opened: false,
         build: REBUILD_BUILD,
@@ -223,14 +225,14 @@ describe('calls that overlap, and an index that never answers', () => {
     const ports = rebuildPorts({ index: withMemoryFallback(first) })
     await placeSound(ports, ['a', 'b'])
 
-    const rebuilding = watch(reconcileIndex(ports))
+    const rebuilding = reconcileIndex(ports)
+    const state = watch(rebuilding)
     await vi.advanceTimersByTimeAsync(INDEX_READ_WAIT_MS - 1)
 
-    expect(rebuilding()).toEqual({ status: 'pending' })
+    expect(state()).toEqual({ status: 'pending' })
     await vi.advanceTimersByTimeAsync(1)
-    await settle()
     const records = [soundRecordOf('a'), soundRecordOf('b')]
-    expect(rebuilding()).toEqual({ status: 'answered', value: records })
+    await expect(rebuilding).resolves.toEqual(records)
     expect(await ports.index.all()).toEqual(records)
   })
 })
