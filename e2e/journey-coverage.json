@@ -49,6 +49,11 @@
       "title": "a wall cannot host on an opening",
       "status": "required"
     },
-    { "id": "donut-room", "title": "derives a room with an interior void", "status": "required" }
+    { "id": "donut-room", "title": "derives a room with an interior void", "status": "required" },
+    {
+      "id": "recent-projects",
+      "title": "switches between two stored projects from the recent list",
+      "status": "required"
+    }
   ]
 }

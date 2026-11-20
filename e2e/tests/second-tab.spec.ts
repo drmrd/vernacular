@@ -7,6 +7,8 @@ import { drawWall, expectWallCount, gotoEditor, selectors } from './journeys/sup
 // the first tab must be what is stored, and what comes back after a reload.
 
 const OPEN_IN_OTHER_TAB = 'This project is open in another tab.'
+const DEFAULT_NAME = 'Untitled project'
+const UPPER_FLOOR = '2nd Floor'
 
 interface Tabs {
   first: Page
@@ -77,5 +79,31 @@ test.describe('A second tab', () => {
     const files = await storedFilesOfProject(context)
     expect(Object.keys(files)).toContain(STORED_DOCUMENT)
     expect(wallsOfGroundFloor(files)).toHaveLength(1)
+  })
+
+  test('a project started in the second tab leaves a way back to the first', async ({
+    context,
+  }) => {
+    const { first, second } = await openFirstTabThenSecondTab(context)
+
+    const failure = selectors.failureView(second)
+    await expect(failure.getByRole('alert')).toHaveText(OPEN_IN_OTHER_TAB)
+    await failure.getByRole('button', { name: 'Start a new project' }).click()
+    await expect(selectors.planCanvas(second)).toBeVisible()
+    await selectors.addFloorButton(second).click()
+    await expect(selectors.floorButton(second, UPPER_FLOOR)).toBeVisible()
+    await expect(selectors.savedStatus(second)).toBeVisible()
+
+    await drawWallAndWaitForSave(first)
+    await first.close()
+    await second.close()
+
+    const later = await context.newPage()
+    await later.goto('/')
+    await expect(selectors.planCanvas(later)).toBeVisible()
+    await expectWallCount(later, 1)
+    await expect(selectors.floorButton(later, UPPER_FLOOR)).toHaveCount(0)
+    await selectors.projectMenu(later).click()
+    await expect(selectors.projectMenuItem(later, DEFAULT_NAME)).toHaveCount(1)
   })
 })
