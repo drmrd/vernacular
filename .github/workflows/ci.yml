@@ -186,7 +186,8 @@ jobs:
           POLICY_BASE: origin/${{ github.base_ref }}
           POLICY_HEAD: ${{ github.event.pull_request.head.sha }}
           POLICY_BRANCH: ${{ github.head_ref }}
-        run: pnpm policy:check --base "$POLICY_BASE" --head "$POLICY_HEAD" --branch "$POLICY_BRANCH"
+          POLICY_FORK_FLAG: ${{ github.event.pull_request.head.repo.full_name != github.repository && '--fork-pr' || '' }}
+        run: pnpm policy:check --base "$POLICY_BASE" --head "$POLICY_HEAD" --branch "$POLICY_BRANCH" $POLICY_FORK_FLAG
 
   storybook-build:
     name: Storybook build and component tests
