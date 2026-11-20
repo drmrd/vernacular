@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { changed } from './fake-git-test-support.mjs'
 import { exactPinFindings } from './package-pins.mjs'
-
-/** @param {string} path @param {string} [status] */
-function changed(path, status = 'M') {
-  return { status, path }
-}
 
 /** @param {Record<string, string>} contents */
 function readerFor(contents) {

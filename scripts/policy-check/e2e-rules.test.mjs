@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { e2eTimingFindings } from './e2e-rules.mjs'
-
-/** @param {string} file @param {number} line @param {string} text */
-function added(file, line, text) {
-  return { file, line, text }
-}
+import { added } from './fake-git-test-support.mjs'
 
 describe('e2eTimingFindings', () => {
   it('warns about waitForTimeout, sleep, and setTimeout in an added e2e line', () => {

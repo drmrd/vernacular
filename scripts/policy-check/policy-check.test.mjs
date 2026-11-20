@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { collectingDeps, diffAddingLine, fakeGit } from './fake-git-test-support.mjs'
+import {
+  ARGV,
+  CLEAN_COMMIT,
+  OWNER_EMAIL,
+  OWNER_NAME,
+  collectingDeps,
+  diffAddingLine,
+  fakeGit,
+} from './fake-git-test-support.mjs'
 import { runPolicyCheck } from './policy-check.mjs'
 import { RULE_SEVERITY, severityOf } from './rule-severity.mjs'
 
-const OWNER_NAME = 'Dan Moore'
-const OWNER_EMAIL = '9156191+drmrd@users.noreply.github.com'
 const CLEAN_SHA = 'a'.repeat(40)
-const ARGV = ['--base', 'origin/main', '--head', 'HEAD', '--branch', 'feat/x']
 const EM_DASH = '\u2014'
 
 /** @param {string} sha @param {string} authorEmail @param {string} [message] */
@@ -18,8 +23,6 @@ function commitBy(sha, authorEmail, message = 'feat: add x') {
 function linesFor(lines, rule) {
   return lines.filter((line) => line.includes(`[${rule}]`))
 }
-
-const CLEAN_COMMIT = commitBy(CLEAN_SHA, OWNER_EMAIL)
 
 const EM_DASH_ANSWERS = {
   commits: [CLEAN_COMMIT],

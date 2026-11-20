@@ -91,3 +91,36 @@ export function collectingDeps(runGit) {
   }
   return { deps, lines }
 }
+
+export const OWNER_NAME = 'Dan Moore'
+export const OWNER_EMAIL = '9156191+drmrd@users.noreply.github.com'
+
+/** A commit by the owner that breaks no rule. */
+export const CLEAN_COMMIT = {
+  sha: 'a'.repeat(40),
+  authorName: OWNER_NAME,
+  authorEmail: OWNER_EMAIL,
+  message: 'feat: add x',
+}
+
+/** Explicit range and branch arguments for `runPolicyCheck`. */
+export const ARGV = ['--base', 'origin/main', '--head', 'HEAD', '--branch', 'feat/x']
+
+/**
+ * An added line, as the diff parser yields it.
+ * @param {string} file
+ * @param {number} line
+ * @param {string} text
+ */
+export function added(file, line, text) {
+  return { file, line, text }
+}
+
+/**
+ * A changed file, as the name-status parser yields it.
+ * @param {string} path
+ * @param {string} [status]
+ */
+export function changed(path, status = 'M') {
+  return { status, path }
+}

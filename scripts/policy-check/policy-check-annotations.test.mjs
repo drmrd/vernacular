@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { collectingDeps, fakeGit } from './fake-git-test-support.mjs'
+import { ARGV, OWNER_NAME, collectingDeps, fakeGit } from './fake-git-test-support.mjs'
 import { runPolicyCheck } from './policy-check.mjs'
 import { formatAnnotation } from './report.mjs'
 
-const OWNER_NAME = 'Dan Moore'
 const SHA = 'a'.repeat(40)
-const ARGV = ['--base', 'origin/main', '--head', 'HEAD', '--branch', 'feat/x']
 
 describe('formatAnnotation', () => {
   it('writes a failing finding as an error annotation with file and title', () => {

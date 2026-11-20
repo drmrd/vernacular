@@ -1,12 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
+import { added } from './fake-git-test-support.mjs'
 import { emDashFindings } from './prose-rules.mjs'
 
 const EM_DASH = '\u2014'
-
-/** @param {string} file @param {number} line @param {string} text */
-function added(file, line, text) {
-  return { file, line, text }
-}
 
 /** @param {Record<string, string>} contents */
 function readerFor(contents) {

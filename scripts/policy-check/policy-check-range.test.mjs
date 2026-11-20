@@ -1,15 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { collectingDeps, fakeGit } from './fake-git-test-support.mjs'
+import { CLEAN_COMMIT, collectingDeps, fakeGit } from './fake-git-test-support.mjs'
 import { runPolicyCheck } from './policy-check.mjs'
 
-const OWNER_NAME = 'Dan Moore'
-const OWNER_EMAIL = '9156191+drmrd@users.noreply.github.com'
-const CLEAN_COMMIT = {
-  sha: 'a'.repeat(40),
-  authorName: OWNER_NAME,
-  authorEmail: OWNER_EMAIL,
-  message: 'feat: add x',
-}
 const DETACHED_NOTE = 'policy:check: detached HEAD, branch rules skipped; pass --branch <name>'
 
 /** @param {string[][]} calls */

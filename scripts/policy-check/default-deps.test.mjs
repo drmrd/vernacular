@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { describe, expect, it, vi } from 'vitest'
 import { defaultDeps } from './policy-check.mjs'
 
@@ -19,5 +19,38 @@ describe('defaultDeps runGit', () => {
     expect(command).toBe('git')
     expect(args).toEqual(['status'])
     expect(options?.maxBuffer ?? 0).toBeGreaterThanOrEqual(MIN_GIT_OUTPUT_BYTES)
+  })
+})
+
+const BASE = 'origin/main'
+const HEAD = 'abc123'
+
+/** @param {Record<string, unknown>} result */
+function stubCommitlint(result) {
+  vi.mocked(spawnSync).mockReturnValue(/** @type {any} */ (result))
+}
+
+describe('defaultDeps runCommitlint', () => {
+  it('runs commitlint through pnpm over the base to head range', () => {
+    stubCommitlint({ status: 0, stdout: '', stderr: '' })
+    defaultDeps().runCommitlint({ base: BASE, head: HEAD })
+    expect(spawnSync).toHaveBeenLastCalledWith(
+      'pnpm',
+      ['exec', 'commitlint', '--from', BASE, '--to', HEAD],
+      { encoding: 'utf8' },
+    )
+  })
+
+  it('returns the exit status and the output with stdout before stderr', () => {
+    stubCommitlint({ status: 1, stdout: 'out text\n', stderr: 'err text\n' })
+    expect(defaultDeps().runCommitlint({ base: BASE, head: HEAD })).toEqual({
+      status: 1,
+      output: 'out text\nerr text\n',
+    })
+  })
+
+  it('throws when commitlint never produced an exit status', () => {
+    stubCommitlint({ status: null, stdout: '', stderr: '' })
+    expect(() => defaultDeps().runCommitlint({ base: BASE, head: HEAD })).toThrow()
   })
 })

@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { authorFindings } from './commit-rules.mjs'
+import { OWNER_EMAIL, OWNER_NAME } from './fake-git-test-support.mjs'
 import { BOT_IDENTITIES, OWNER_IDENTITY } from './identities.mjs'
 
-const OWNER_NAME = 'Dan Moore'
-const OWNER_EMAIL = '9156191+drmrd@users.noreply.github.com'
 const RELEASE_BOT_EMAIL = '41898282+github-actions[bot]@users.noreply.github.com'
 const DEPENDENCY_BOT_EMAIL = '49699333+dependabot[bot]@users.noreply.github.com'
 const RELEASE_BRANCH = 'release-please--branches--main'

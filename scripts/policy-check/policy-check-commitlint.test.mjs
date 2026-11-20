@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { collectingDeps, fakeGit } from './fake-git-test-support.mjs'
+import {
+  ARGV as DEFAULT_ARGV,
+  CLEAN_COMMIT,
+  collectingDeps,
+  fakeGit,
+} from './fake-git-test-support.mjs'
 import { runPolicyCheck } from './policy-check.mjs'
 
-const CLEAN_COMMIT = {
-  sha: 'a'.repeat(40),
-  authorName: 'Dan Moore',
-  authorEmail: '9156191+drmrd@users.noreply.github.com',
-  message: 'feat: add x',
-}
-const ARGV = ['--base', 'origin/main', '--head', 'abc123', '--branch', 'feat/x']
+const ARGV = DEFAULT_ARGV.map((arg) => (arg === 'HEAD' ? 'abc123' : arg))
 
 /**
  * Dependencies for a clean range whose commitlint answer and calls are controlled by the test.

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { changed } from './fake-git-test-support.mjs'
 import { specNeedsAdrFindings } from './spec-adr.mjs'
-
-/** @param {string} path @param {string} [status] */
-function changed(path, status = 'M') {
-  return { status, path }
-}
 
 const SPEC = 'docs/specs/2026-06-01-vernacular-design.md'
 const ADR = 'docs/knowledge/decisions/ADR-0219-policy-checks-in-ci.md'
