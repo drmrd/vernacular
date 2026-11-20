@@ -125,3 +125,19 @@ export function holdGets(index: ProjectIndex): GetHold {
   }
   return { started: () => started, release: () => release() }
 }
+
+/** The next `get` of `index` stays pending until the test releases it; later gets run at once. */
+export function holdFirstGet(index: ProjectIndex): GetHold {
+  const realGet = index.get.bind(index)
+  let started = 0
+  let release: () => void = () => undefined
+  const released = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  index.get = async (id) => {
+    started += 1
+    if (started === 1) await released
+    return realGet(id)
+  }
+  return { started: () => started, release: () => release() }
+}
