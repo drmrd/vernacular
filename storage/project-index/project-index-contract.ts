@@ -39,9 +39,20 @@ function describeStoringRecords(makeIndex: () => ProjectIndex): void {
     expect(await index.get('barn')).toBeUndefined()
   })
 
+  it('a preview of 200,000 characters comes back equal', async () => {
+    const index = makeIndex()
+    const preview = 'x'.repeat(LARGE_PREVIEW_LENGTH)
+    await index.put(sampleRecord({ preview }))
+
+    expect((await index.get('house'))?.preview === preview).toBe(true)
+  })
+}
+
+function describeReplacing(makeIndex: () => ProjectIndex): void {
   it('a second put under one id replaces the record', async () => {
     const index = makeIndex()
-    await index.put(sampleRecord())
+    const original = { ...sampleRecord(), unknownExtraField: 'only in the first record' }
+    await index.put(original)
     const replacement = sampleRecord({
       name: undefined,
       preview: undefined,
@@ -51,16 +62,24 @@ function describeStoringRecords(makeIndex: () => ProjectIndex): void {
 
     await index.put(replacement)
 
-    expect(await index.get('house')).toEqual(replacement)
+    const stored = await index.get('house')
+    expect(stored).toEqual(replacement)
+    expect(stored).not.toHaveProperty('unknownExtraField')
     expect(await idsOf(index)).toEqual(['house'])
   })
+}
 
-  it('a preview of 200,000 characters comes back equal', async () => {
+function describeLocations(makeIndex: () => ProjectIndex): void {
+  it('a record of a project in a folder comes back equal', async () => {
     const index = makeIndex()
-    const preview = 'x'.repeat(LARGE_PREVIEW_LENGTH)
-    await index.put(sampleRecord({ preview }))
+    const record = sampleRecord({ location: { kind: 'folder', folderName: 'Old house plans' } })
+    await index.put(record)
 
-    expect((await index.get('house'))?.preview === preview).toBe(true)
+    expect(await index.get('house')).toEqual(record)
+    expect((await index.all())[0]?.location).toEqual({
+      kind: 'folder',
+      folderName: 'Old house plans',
+    })
   })
 }
 
@@ -140,6 +159,8 @@ function describeFidelity(makeIndex: () => ProjectIndex): void {
 export function describeProjectIndexContract(label: string, makeIndex: () => ProjectIndex): void {
   describe(`${label} satisfies the ProjectIndex contract`, () => {
     describeStoringRecords(makeIndex)
+    describeReplacing(makeIndex)
+    describeLocations(makeIndex)
     describeListing(makeIndex)
     describeRemoving(makeIndex)
     describeFidelity(makeIndex)

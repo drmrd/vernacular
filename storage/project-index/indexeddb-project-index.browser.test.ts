@@ -185,6 +185,55 @@ function describeHigherVersion(): void {
   })
 }
 
+/** Makes a database of the first version that has no records store, so that no upgrade runs for it. */
+async function seedWithoutRecordsStore(name: string): Promise<void> {
+  const database = await openRaw(name, FIRST_VERSION)
+  database.close()
+}
+
+function describeFailingWork(): void {
+  it('a call whose transaction cannot start rejects and closes its connection', async () => {
+    const name = freshDatabaseName()
+    await seedWithoutRecordsStore(name)
+    const index = new IndexedDbProjectIndex(name)
+
+    expect(await settlementOf(index.all())).toBe('rejected')
+    expect(await settlementOf(index.get('house'))).toBe('rejected')
+    expect(await settlementOf(index.put(sampleRecord()))).toBe('rejected')
+    expect(await settlementOf(index.remove('house'))).toBe('rejected')
+
+    await withRawConnection(name, (database) => {
+      expect(database.version).toBe(FIRST_VERSION)
+      expect([...database.objectStoreNames]).toEqual([])
+      return Promise.resolve()
+    })
+    expect(await deletionOutcome(name)).toBe('deleted')
+  })
+
+  it('a put of a record that the database cannot store rejects, stores nothing, and closes its connection', async () => {
+    const name = freshDatabaseName()
+    const index = new IndexedDbProjectIndex(name)
+    const unstorable = { ...sampleRecord(), unstorableField: () => undefined }
+
+    expect(await settlementOf(index.put(unstorable))).toBe('rejected')
+
+    expect(await rawKeysOf(name)).toEqual([])
+    expect(await index.all()).toEqual([])
+    expect(await deletionOutcome(name)).toBe('deleted')
+  })
+
+  it('a call that rejects against a database of a higher version leaves no connection open', async () => {
+    const name = freshDatabaseName()
+    await seedHigherVersion(name)
+    const index = new IndexedDbProjectIndex(name)
+
+    expect(await settlementOf(index.all())).toBe('rejected')
+    expect(await settlementOf(index.put(sampleRecord({ id: 'barn' })))).toBe('rejected')
+
+    expect(await deletionOutcome(name)).toBe('deleted')
+  })
+}
+
 function describeOpenConnections(): void {
   it('the database can be deleted right after a call, because the call closed its connection', async () => {
     const name = freshDatabaseName()
@@ -209,5 +258,6 @@ describe('IndexedDbProjectIndex over real IndexedDB', () => {
   describeForeignValues()
   describeDefaultDatabase()
   describeHigherVersion()
+  describeFailingWork()
   describeOpenConnections()
 })
