@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { addFloor, type AssetReference } from '../core'
 import {
   NotificationProvider,
@@ -10,7 +10,6 @@ import {
 import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
   actionsContext,
-  closeOpenedHandles,
   openStoredProject,
   packListing,
   READ_FAILURE,
@@ -21,7 +20,6 @@ import {
 } from './action-test-support'
 import { fakeNotifications, plantProject } from './app-test-support'
 import {
-  closeReferringHandles,
   DOWNLOAD,
   exportBundle,
   exportedToasts,
@@ -29,6 +27,7 @@ import {
   prepareBundleExport,
   PROJECT_ID,
   startBundleExport,
+  stubTheDownload,
   WARNING,
 } from './export-report-test-support'
 import {
@@ -101,31 +100,6 @@ async function settleTheExport(notifications: NotificationApi): Promise<void> {
   })
 }
 
-/**
- * Sets up each case of the surrounding describe for a download: jsdom does not implement
- * URL.createObjectURL, URL.revokeObjectURL, or the navigation that a click on the download
- * link starts. Without the stubs the export throws and lands in its error branch.
- */
-function stubTheDownload(): void {
-  const originalCreateObjectUrl = URL.createObjectURL
-  const originalRevokeObjectUrl = URL.revokeObjectURL
-
-  beforeEach(() => {
-    URL.createObjectURL = vi.fn(() => 'blob:test')
-    URL.revokeObjectURL = vi.fn()
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-  })
-
-  afterEach(async () => {
-    cleanup()
-    await closeOpenedHandles()
-    await closeReferringHandles()
-    vi.restoreAllMocks()
-    URL.createObjectURL = originalCreateObjectUrl
-    URL.revokeObjectURL = originalRevokeObjectUrl
-  })
-}
-
 describe('the export actions on an open project', () => {
   stubTheDownload()
 
@@ -175,7 +149,7 @@ describe('the export actions on an open project', () => {
       steps.push(`save:${id}`)
       return realSave(id, project)
     })
-    URL.createObjectURL = vi.fn(() => {
+    vi.mocked(URL.createObjectURL).mockImplementation(() => {
       steps.push(DOWNLOAD)
       return 'blob:test'
     })

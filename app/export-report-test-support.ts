@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { expect, vi } from 'vitest'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, expect, vi } from 'vitest'
 import type { AssetReference } from '../core'
 import {
   NotificationProvider,
@@ -16,6 +16,7 @@ import {
 import { projectReferring } from '../storage/zip/zip-test-kit'
 import {
   actionsContext,
+  closeOpenedHandles,
   settleTheAction,
   shownMessages,
   shownWarnings,
@@ -31,6 +32,32 @@ export const PROJECT_ID = 'current'
 /** The log entries that a started download and a shown warning write. */
 export const DOWNLOAD = 'download'
 export const WARNING = 'warning'
+
+/**
+ * Sets up each case of the surrounding describe for a download: jsdom does not implement
+ * URL.createObjectURL, URL.revokeObjectURL, or the navigation that a click on the download
+ * link starts. Without the stubs the export throws and lands in its error branch. After each
+ * case, the rendered hooks and the opened handles are closed and the original URL methods return.
+ */
+export function stubTheDownload(): void {
+  const originalCreateObjectUrl = URL.createObjectURL
+  const originalRevokeObjectUrl = URL.revokeObjectURL
+
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:test')
+    URL.revokeObjectURL = vi.fn()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  })
+
+  afterEach(async () => {
+    cleanup()
+    await closeOpenedHandles()
+    await closeReferringHandles()
+    vi.restoreAllMocks()
+    URL.createObjectURL = originalCreateObjectUrl
+    URL.revokeObjectURL = originalRevokeObjectUrl
+  })
+}
 
 /** The bytes that a held asset has. Their content is of no interest to the cases. */
 const HELD_BYTES = new Uint8Array(1)
@@ -108,7 +135,7 @@ export async function prepareBundleExport(exportCase: ExportCase, ports: TestPor
   const { references, held } = exportCase
   const handle = await openProjectReferring(ports, { id: PROJECT_ID, references, held })
   const steps: string[] = []
-  URL.createObjectURL = vi.fn(() => {
+  vi.mocked(URL.createObjectURL).mockImplementation(() => {
     steps.push(DOWNLOAD)
     return 'blob:test'
   })

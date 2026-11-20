@@ -10,7 +10,6 @@ import {
   projectFileReferring,
   READ_FAILURE,
   recordUnhandledRejections,
-  renderOnAStoredProject,
   settleTheAction,
   shownMessages,
   shownWarnings,
@@ -21,15 +20,13 @@ import {
   waitForRecentEntry,
 } from './action-test-support'
 import { namedProject } from './app-test-support'
-import type { LibraryLister } from './pack-supplies'
-import { useOpenFileAction } from './use-open-file-action'
+import { renderOpenFileAction, TOO_LARGE_SENTENCE } from './open-file-action-test-support'
 
 const CURRENT_ID = STORED_PROJECT_ID
 const DRAFT_NAME = STORED_PROJECT_NAME
 const HOUSE_NAME = 'My House'
 const TWO_MISSING_SENTENCE =
   'The file did not include 2 of the assets this project uses. They show as missing.'
-const TOO_LARGE_SENTENCE = 'Open failed: The file is larger than 512 MB.'
 const FIRST_HASH = 'a'.repeat(64)
 const SECOND_HASH = 'b'.repeat(64)
 const PACK_REFERENCE: AssetReference = {
@@ -42,11 +39,6 @@ afterEach(async () => {
   await closeOpenedHandles()
   vi.restoreAllMocks()
 })
-
-/** In-memory ports with a stored project open, and the open file action on it. */
-function renderOpenFileAction(packs?: LibraryLister) {
-  return renderOnAStoredProject(useOpenFileAction, packs)
-}
 
 describe('useOpenFileAction on a dropped file', () => {
   it('activates, persists, and records a dropped project file, under a new id', async () => {

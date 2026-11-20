@@ -12,7 +12,6 @@ import {
   packListing,
   projectFileReferring,
   READ_FAILURE,
-  renderOnAStoredProject,
   settleTheAction,
   shownMessages,
   shownWarnings,
@@ -23,11 +22,10 @@ import {
 } from './action-test-support'
 import { runNothing } from './app-test-support'
 import { importMissingAssetsText } from './asset-report-text'
-import type { LibraryLister } from './pack-supplies'
+import { renderOpenFileAction, TOO_LARGE_SENTENCE } from './open-file-action-test-support'
 import { useOpenFileAction } from './use-open-file-action'
 import type { RunFlow } from './use-open-project'
 
-const TOO_LARGE_SENTENCE = 'Open failed: The file is larger than 512 MB.'
 const USER_REFERENCE: AssetReference = { scope: 'user', contentHash: 'a'.repeat(64) }
 const PACK_REFERENCE: AssetReference = {
   scope: 'pack:vernacular-starter@1.0.0',
@@ -49,10 +47,6 @@ afterEach(async () => {
   })
   vi.restoreAllMocks()
 })
-
-function renderOpenFileAction(packs?: LibraryLister) {
-  return renderOnAStoredProject(useOpenFileAction, packs)
-}
 
 /** A library that lists nothing, and how often its listing was asked for. */
 function countedListing() {

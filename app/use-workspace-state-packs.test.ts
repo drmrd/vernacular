@@ -1,12 +1,11 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { renderHook, act, cleanup, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import type { AssetReference } from '../core'
 import { NotificationProvider, useNotifications } from '../editor/design-system'
 import type { DocumentHandle, FlowResult } from '../session'
 import { createTestPorts, type TestPorts } from '../session/handle/handle-test-kit'
 import type { LibraryItem } from '../storage'
 import {
-  closeOpenedHandles,
   furnitureItem,
   openStoredProject,
   projectFileReferring,
@@ -14,7 +13,7 @@ import {
   shownWarnings,
 } from './action-test-support'
 import { workspaceProps } from './app-test-support'
-import { closeReferringHandles, openProjectReferring } from './export-report-test-support'
+import { openProjectReferring, stubTheDownload } from './export-report-test-support'
 import type { RunFlow } from './use-open-project'
 import { useWorkspaceState } from './use-workspace-state'
 
@@ -51,24 +50,9 @@ const PACK_REFERENCE: AssetReference = {
 /** Every handle that an import opened, closed after the case. */
 const importedHandles: DocumentHandle[] = []
 
-const originalCreateObjectUrl = URL.createObjectURL
-const originalRevokeObjectUrl = URL.revokeObjectURL
-
-// jsdom does not implement the object URLs that a download needs, nor the navigation that a click
-// on the download link starts.
-beforeEach(() => {
-  URL.createObjectURL = vi.fn(() => 'blob:test')
-  URL.revokeObjectURL = vi.fn()
-  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-})
+stubTheDownload()
 
 afterEach(async () => {
-  cleanup()
-  vi.mocked(HTMLAnchorElement.prototype.click).mockRestore()
-  await closeOpenedHandles()
-  await closeReferringHandles()
-  URL.createObjectURL = originalCreateObjectUrl
-  URL.revokeObjectURL = originalRevokeObjectUrl
   await act(async () => {
     await Promise.all(importedHandles.splice(0).map((handle) => handle.close()))
   })
