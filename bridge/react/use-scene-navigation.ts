@@ -13,7 +13,7 @@ import {
 /**
  * The per-view camera navigation state: the active mode, whether the user has taken control
  * of the camera, the pose the last camera preset actually landed on, and the handoffs the
- * cameras use to resume where they left off (the saved orbit position, the walk pose, and the
+ * cameras use to resume where they left off (the saved camera, the walk pose, and the
  * open doors). The state lives in the scene session store, so it outlasts the preview
  * subtree's unmount when the view mode changes (ADR-0170). The state stays out of the model
  * and undo history whichever store backs it. Reset clears user control, which lets FrameCamera
@@ -23,10 +23,10 @@ export function useSceneNavigation() {
   const store = useSceneSessionStoreOrLocal()
   const session = useSyncExternalStore(store.subscribe, store.getSceneSession)
   const writers = useSceneSessionWriters(store)
-  // A saved camera position is the mark of a viewer who was steering, so a mount that finds
+  // A saved camera is the mark of a viewer who was steering, so a mount that finds
   // one starts out of the way rather than reframing the model under them.
   const [userControlled, setUserControlled] = useState(
-    () => store.getSceneSession().savedCameraPosition !== null,
+    () => store.getSceneSession().savedCamera !== null,
   )
   const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
   const markUserControlled = useCallback(() => setUserControlled(true), [])
@@ -62,11 +62,10 @@ export function useSceneNavigation() {
     presetPose: session.presetPose,
     notePresetApplied: writers.notePresetApplied,
     // The departing canvas notes where the camera was standing so the next mount reopens
-    // there instead of reframing the model (ADR-0170). Only the position comes back: the
-    // orbit controller aims the camera at the framed target as soon as it mounts, so a
-    // restored session stands where it left off but is turned back toward the model's
-    // framing straight away. Issue #619 covers restoring the whole pose.
-    savedCameraPosition: session.savedCameraPosition,
+    // there instead of reframing the model (ADR-0170). The whole camera comes back, the
+    // position and the orbit pivot together, so a restored session looks where it looked
+    // before rather than turning back toward the model's framing.
+    savedCamera: session.savedCamera,
     noteCameraLeft: writers.noteCameraLeft,
     // The pose the departing walker ended on, so returning to walk mode resumes there
     // rather than reseeding from wherever the camera has since been left (ADR-0170).
@@ -90,7 +89,7 @@ function useSceneSessionWriters(store: SceneSessionStore) {
       toggleSelection: sceneSessionToggle(store, 'selectionEnabled'),
       toggleRevealInterior: sceneSessionToggle(store, 'revealInterior'),
       notePresetApplied: sceneSessionSetter(store, 'presetPose'),
-      noteCameraLeft: sceneSessionSetter(store, 'savedCameraPosition'),
+      noteCameraLeft: sceneSessionSetter(store, 'savedCamera'),
       noteWalkPose: sceneSessionSetter(store, 'walkPose'),
       noteOpenDoors: sceneSessionSetter(store, 'openDoorIds'),
       clearPresetPose: () => store.updateSceneSession({ presetPose: null }),

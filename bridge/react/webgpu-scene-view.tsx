@@ -82,6 +82,7 @@ function SceneCameraRig({ nav, framed, doorway }: SceneCameraRigProps) {
           own framing. */}
       <OrbitCameraControls
         enabled={nav.mode === 'orbit'}
+        initialTarget={nav.savedCamera?.orbitTarget ?? pose.target}
         target={nav.presetPose?.target ?? pose.target}
         onUserControl={nav.markUserControlled}
         onLeave={nav.noteCameraLeft}
@@ -209,7 +210,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
       <SceneRendererCanvas
         frameloop="always"
         shadows
-        camera={initialCamera(props.framed.pose, props.nav.savedCameraPosition)}
+        camera={initialCamera(props.framed.pose, props.nav.savedCamera?.position ?? null)}
       >
         <LiveSceneContents {...props} readiness={readiness} />
         {/* The sampler must live inside the Canvas because it reads the drawing
