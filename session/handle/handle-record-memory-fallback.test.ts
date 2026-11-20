@@ -2,13 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { InMemoryProjectIndex, withMemoryFallback } from '../../storage'
 import type { ProjectIndex } from '../../storage'
 import {
+  gatePuts,
   holdFirstPut,
   holdReads,
   rejectEveryCall,
   sampleRecord,
   watch,
 } from '../../storage/project-index/project-record-test-kit'
-import { INDEX_READ_WAIT_MS } from '../../storage/project-index/with-memory-fallback'
+import {
+  INDEX_READ_WAIT_MS,
+  INDEX_WRITE_WAIT_MS,
+} from '../../storage/project-index/with-memory-fallback'
 import { currentBytes } from '../../tests/storage/conformance/conformance-documents'
 import { settle } from '../autosave/save-gate-test-kit'
 import { RECORD_WAIT_MS } from './handle-record'
@@ -50,6 +54,25 @@ async function portsOverFallback(durable = new InMemoryProjectIndex()): Promise<
 async function switchToMemory(durable: ProjectIndex, index: ProjectIndex): Promise<void> {
   vi.spyOn(durable, 'all').mockRejectedValueOnce(new Error('the browser index failed'))
   expect(await index.all()).toEqual([])
+}
+
+/**
+ * Ports over the fall-back of an index whose puts never answer, a handle on `a` whose record of
+ * the open is held in its put, and a save whose record waits behind it.
+ */
+async function saveBehindAHeldOpenRecord() {
+  vi.useFakeTimers()
+  const durable = new InMemoryProjectIndex()
+  const puts = gatePuts(durable)
+  const { ports } = await portsOverFallback(durable)
+  const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+  await settle()
+  expect(puts.started()).toBe(1)
+  rename(handle, 'Saved while the record of the open waits')
+  expect(await handle.save()).toEqual({ ok: true })
+  await settle()
+  expect(puts.started()).toBe(1)
+  return { ports, handle, puts }
 }
 
 beforeEach(() => {
@@ -169,5 +192,39 @@ describe('the warnings of the keeper and of the memory fall-back', () => {
     expect(wrapperWarning.some((argument) => argument instanceof Error)).toBe(true)
     expect(await index.all()).toEqual([])
     expect(durablePut).not.toHaveBeenCalled()
+  })
+})
+
+describe('record writes over the fall-back when the puts of the index never answer', () => {
+  it('the put of the open gives up at the write limit with one warning, and the record of the waiting save starts its put at once', async () => {
+    const { puts } = await saveBehindAHeldOpenRecord()
+
+    await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS - LAST_MILLISECOND)
+    expect([puts.started(), consoleWarn.mock.calls.length]).toEqual([1, 0])
+    await vi.advanceTimersByTimeAsync(LAST_MILLISECOND)
+    await settle()
+
+    expect(puts.started()).toBe(2)
+    expect(puts.startedRecords()[1]?.name).toBe('Saved while the record of the open waits')
+    expect(consoleWarn).toHaveBeenCalledTimes(1)
+  })
+
+  it('a close while the put of the save is held resolves at the wait of the keeper, and no third put starts', async () => {
+    const { ports, handle, puts } = await saveBehindAHeldOpenRecord()
+    await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS)
+    await settle()
+    expect(puts.started()).toBe(2)
+
+    const closing = watch(handle.close())
+    await settle()
+    await vi.advanceTimersByTimeAsync(RECORD_WAIT_MS - LAST_MILLISECOND)
+    expect(closing()).toEqual({ status: 'pending' })
+    await vi.advanceTimersByTimeAsync(LAST_MILLISECOND)
+
+    expect(closing()).toEqual({ status: 'answered', value: { ok: true } })
+    expect(ports.lockRegistry.has(PROJECT_ID)).toBe(false)
+    await vi.advanceTimersByTimeAsync(INDEX_WRITE_WAIT_MS)
+    await settle()
+    expect(puts.started()).toBe(2)
   })
 })

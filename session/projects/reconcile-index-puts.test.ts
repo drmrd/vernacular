@@ -1,10 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { InMemoryProjectIndex, withMemoryFallback } from '../../storage'
-import { watch } from '../../storage/project-index/project-record-test-kit'
+import {
+  holdWrites,
+  sampleRecord,
+  watch,
+} from '../../storage/project-index/project-record-test-kit'
 import { INDEX_WRITE_WAIT_MS } from '../../storage/project-index/with-memory-fallback'
 import { placeDocument } from '../handle/handle-test-kit'
 import { reconcileIndex } from '..'
 import {
+  EARLIER_CHANGE,
+  STORED_AT,
   holdPutOf,
   idsOf,
   notJsonBytes,
@@ -18,6 +24,7 @@ import {
 const FIVE_IDS = ['a', 'b', 'c', 'd', 'e']
 const THREE_IDS = ['a', 'b', 'c']
 const PENDING = { status: 'pending' }
+const READ_TIME_MS = 1_000
 
 let consoleWarn: MockInstance<typeof console.warn>
 
@@ -82,6 +89,33 @@ describe('puts that do not answer', () => {
     await expect(rebuilding).resolves.toEqual(FIVE_IDS.map((id) => soundRecordOf(id)))
     expect(idsOf(await first.all())).toEqual(['b', 'c', 'd', 'e'])
     expectOneWarning(1)
+  })
+})
+
+/** From now on each read of the store answers `READ_TIME_MS` after its call, on the fake clock. */
+function slowReads(ports: ReturnType<typeof rebuildPorts>): void {
+  const realRead = ports.workspace.read.bind(ports.workspace)
+  ports.workspace.read = async (id) => {
+    await new Promise((resolve) => setTimeout(resolve, READ_TIME_MS))
+    return realRead(id)
+  }
+}
+
+describe('puts that do not answer, behind reads that take time', () => {
+  it('the run ends one write limit after its last read ends, and not one millisecond before', async () => {
+    const { ports } = await portsWithStalledPuts(() => true)
+    slowReads(ports)
+    const lastReadEnds = FIVE_IDS.length * READ_TIME_MS
+
+    const rebuilding = reconcileIndex(ports)
+    const state = watch(rebuilding)
+    await vi.advanceTimersByTimeAsync(lastReadEnds + INDEX_WRITE_WAIT_MS - 1)
+    expect(state()).toEqual(PENDING)
+    await vi.advanceTimersByTimeAsync(1)
+
+    expect(state().status).toBe('answered')
+    await expect(rebuilding).resolves.toEqual(FIVE_IDS.map((id) => soundRecordOf(id)))
+    expectOneWarning(FIVE_IDS.length)
   })
 })
 
@@ -166,5 +200,38 @@ describe('puts that fail', () => {
 
     expect(await rebuilding).toHaveLength(THREE_IDS.length)
     expectOneWarning(1, error)
+  })
+})
+
+describe('what the run puts and when it removes', () => {
+  it('among kept and rebuilt records, only the rebuilt ones are put', async () => {
+    const ports = rebuildPorts()
+    await placeSound(ports, ['a', 'b', 'c', 'd'])
+    await ports.index.put(sampleRecord({ id: 'a', lastChangedAt: STORED_AT }))
+    await ports.index.put(sampleRecord({ id: 'b', lastChangedAt: EARLIER_CHANGE }))
+    await ports.index.put(sampleRecord({ id: 'c', lastChangedAt: STORED_AT }))
+    const put = vi.spyOn(ports.index, 'put')
+
+    expect(idsOf(await reconcileIndex(ports))).toEqual(['a', 'b', 'c', 'd'])
+
+    expect(put.mock.calls.map(([record]) => record.id)).toEqual(['b', 'd'])
+  })
+
+  it('no project is read and nothing is put until the removes of gone records have settled', async () => {
+    const ports = rebuildPorts()
+    await placeSound(ports, ['a'])
+    await ports.index.put(sampleRecord({ id: 'gone' }))
+    const removes = holdWrites(ports.index, 'remove')
+    const read = vi.spyOn(ports.workspace, 'read')
+    const put = vi.spyOn(ports.index, 'put')
+
+    const rebuilding = reconcileIndex(ports)
+    await flush()
+    expect([removes.started(), read.mock.calls.length, put.mock.calls.length]).toEqual([1, 0, 0])
+    removes.answerOldest()
+
+    expect(await rebuilding).toEqual([soundRecordOf('a')])
+    expect(read.mock.calls).toEqual([['a']])
+    expect(idsOf(await ports.index.all())).toEqual(['a'])
   })
 })
