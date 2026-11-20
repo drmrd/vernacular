@@ -4,6 +4,8 @@ const FIELD_SEPARATOR = '\x1f'
 // Node's default 1 MiB output limit is below the largest pull request diff in this repository.
 export const GIT_OUTPUT_LIMIT_BYTES = 67_108_864 // 64 MiB
 
+/** @typedef {(path: string) => string} ReadFile */
+/** @typedef {(args: readonly string[]) => string} RunGit */
 /** @typedef {{ sha: string, authorName: string, authorEmail: string, subject: string, message: string }} PolicyCommit */
 
 /**

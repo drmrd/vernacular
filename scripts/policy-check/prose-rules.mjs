@@ -1,8 +1,8 @@
 import { fencedLineNumbers, withoutInlineCode } from './markdown-code.mjs'
 
-/** @typedef {import('./commit-rules.mjs').Finding} Finding */
+/** @typedef {import('./rule-severity.mjs').Finding} Finding */
 /** @typedef {import('./git-input.mjs').AddedLine} AddedLine */
-/** @typedef {(path: string) => string} ReadFile */
+/** @typedef {import('./git-input.mjs').ReadFile} ReadFile */
 
 const EM_DASH = '\u2014'
 const PROSE_FILE = /\.(?:md|mdx|txt)$/

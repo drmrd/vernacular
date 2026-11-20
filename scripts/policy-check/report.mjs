@@ -1,4 +1,4 @@
-/** @typedef {import('./commit-rules.mjs').Finding} Finding */
+/** @typedef {import('./rule-severity.mjs').Finding} Finding */
 /** @typedef {import('./rule-severity.mjs').Severity} Severity */
 
 const SHORT_SHA_LENGTH = 8

@@ -1,4 +1,4 @@
-/** @typedef {import('./commit-rules.mjs').Finding} Finding */
+/** @typedef {import('./rule-severity.mjs').Finding} Finding */
 /** @typedef {import('./git-input.mjs').ChangedFile} ChangedFile */
 
 const SPEC_DIRECTORY = 'docs/specs/'

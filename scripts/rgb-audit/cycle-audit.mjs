@@ -130,11 +130,7 @@ export function auditCommits(commits, { readCommitDiff } = {}) {
     } else if (role === 'green') {
       state = advanceOnGreen(state, commit, violations)
     } else if (role === 'blue') {
-      const refactorScope = refactorScopeViolation(commit, readCommitDiff)
-      if (refactorScope !== null) {
-        violations.push(refactorScope)
-      }
-      state = advanceOnBlue(state)
+      state = advanceOnBlue(state, { commit, violations, readCommitDiff })
     }
   }
   if (state.openGreen !== null) {
@@ -199,10 +195,17 @@ function advanceOnGreen(state, commit, violations) {
 /**
  * A BLUE commit closes the open GREEN cycle, satisfying the blue-presence rule.
  *
+ * A BLUE commit is also checked against the refactor-scope rule.
+ *
  * @param {AuditState} state
+ * @param {{ commit: ParsedCommit, violations: Violation[], readCommitDiff?: (sha: string) => string }} context
  * @returns {AuditState}
  */
-function advanceOnBlue(state) {
+function advanceOnBlue(state, { commit, violations, readCommitDiff }) {
+  const scopeViolation = refactorScopeViolation(commit, readCommitDiff)
+  if (scopeViolation !== null) {
+    violations.push(scopeViolation)
+  }
   return { pendingRed: state.pendingRed, openGreen: null }
 }
 

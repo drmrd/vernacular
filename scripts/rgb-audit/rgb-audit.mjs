@@ -4,7 +4,9 @@
 // rgb-audit CLI: map a branch's commit range to a red-green-blue cycle verdict.
 // The dependency-injected shell reads `git log` for a range (and `git show` for
 // each BLUE commit that touches a test file), delegates parsing and rule checks
-// to ./cycle-audit.mjs, and reports either a clean line or one line per violation. Exit code 0 means clean; 1 means at least one violation.
+// to ./cycle-audit.mjs, and reports either a clean line or one line per violation.
+// Exit code 0 means clean, or only warning violations; 1 means at least one failing
+// violation; 2 means an internal error.
 
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -17,11 +19,13 @@ const EXIT_VIOLATIONS = 1
 const EXIT_INTERNAL = 2
 const DEFAULT_RANGE = 'main..HEAD'
 
+/** @typedef {import('../policy-check/rule-severity.mjs').Severity} Severity */
+
 /**
  * @typedef {object} RgbAuditDeps
  * @property {(args: readonly string[]) => string} runGit
  * @property {(line: string) => void} log
- * @property {(rule: string) => 'fail' | 'warn'} [severityOf] defaults to the policy severity table
+ * @property {(rule: string) => Severity} [severityOf] defaults to the policy severity table
  */
 
 /**

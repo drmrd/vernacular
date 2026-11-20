@@ -24,7 +24,9 @@ import { formatAnnotation, formatPlainLine } from './report.mjs'
 import { severityOf } from './rule-severity.mjs'
 import { specNeedsAdrFindings } from './spec-adr.mjs'
 
-/** @typedef {import('./commit-rules.mjs').Finding} Finding */
+/** @typedef {import('./rule-severity.mjs').Finding} Finding */
+/** @typedef {import('./git-input.mjs').RunGit} RunGit */
+/** @typedef {import('./git-input.mjs').ReadFile} ReadFile */
 
 const EXIT_CLEAN = 0
 const EXIT_FAILING_FINDINGS = 1
@@ -40,7 +42,7 @@ const FORK_AUTHOR_IDENTITY_RULE = 'fork-author-identity'
 
 /**
  * @typedef {object} PolicyCheckDeps
- * @property {(args: readonly string[]) => string} runGit
+ * @property {RunGit} runGit
  * @property {(options: { base: string, head: string }) => { status: number, output: string }} runCommitlint
  * @property {(line: string) => void} log
  * @property {boolean} githubActions
@@ -69,7 +71,7 @@ export async function runPolicyCheck(argv, { runGit, runCommitlint, log, githubA
 
 /**
  * @param {readonly string[]} argv
- * @param {(args: readonly string[]) => string} runGit
+ * @param {RunGit} runGit
  * @returns {string} the branch name, or '' when HEAD is detached
  */
 function resolveBranch(argv, runGit) {
@@ -110,11 +112,11 @@ function reportFindings({ findings, commitlint, rangeOnBranch, log, githubAction
  * @property {import('./git-input.mjs').PolicyCommit[]} commits
  * @property {ReturnType<typeof parseNameStatus>} changedFiles
  * @property {ReturnType<typeof parseUnifiedDiff>} addedLines
- * @property {(path: string) => string} readFile
+ * @property {ReadFile} readFile
  */
 
 /**
- * @param {{ runGit: (args: readonly string[]) => string, base: string, head: string }} input
+ * @param {{ runGit: RunGit, base: string, head: string }} input
  * @returns {RangeData}
  */
 function readRange({ runGit, base, head }) {

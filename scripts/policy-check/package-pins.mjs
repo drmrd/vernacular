@@ -1,6 +1,6 @@
-/** @typedef {import('./commit-rules.mjs').Finding} Finding */
+/** @typedef {import('./rule-severity.mjs').Finding} Finding */
 /** @typedef {import('./git-input.mjs').ChangedFile} ChangedFile */
-/** @typedef {import('./prose-rules.mjs').ReadFile} ReadFile */
+/** @typedef {import('./git-input.mjs').ReadFile} ReadFile */
 
 const PACKAGE_JSON = /(^|\/)package\.json$/
 const EXACT_VERSION = '\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?'

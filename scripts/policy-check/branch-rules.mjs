@@ -1,6 +1,6 @@
 import { BOT_IDENTITIES } from './identities.mjs'
 
-/** @typedef {import('./commit-rules.mjs').Finding} Finding */
+/** @typedef {import('./rule-severity.mjs').Finding} Finding */
 
 const INTEGRATION_PREFIX = 'integration/'
 

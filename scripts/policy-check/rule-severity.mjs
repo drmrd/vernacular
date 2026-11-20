@@ -1,4 +1,6 @@
 /** @typedef {'fail' | 'warn'} Severity */
+/** @typedef {keyof typeof RULE_SEVERITY} RuleId */
+/** @typedef {{ rule: RuleId, message: string, sha?: string, file?: string, line?: number }} Finding */
 
 /** The one place that says whether a rule fails the run or only warns. */
 export const RULE_SEVERITY = Object.freeze({

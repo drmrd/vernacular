@@ -1,7 +1,7 @@
 import { BOT_IDENTITIES, OWNER_IDENTITY } from './identities.mjs'
 
 /** @typedef {import('./git-input.mjs').PolicyCommit} PolicyCommit */
-/** @typedef {{ rule: string, message: string, sha?: string, file?: string, line?: number }} Finding */
+/** @typedef {import('./rule-severity.mjs').Finding} Finding */
 
 const FORBIDDEN_TRAILER_LINE =
   /^\s*(?:co-authored-by|generated-by|assisted-by|[a-z0-9]+(?:-[a-z0-9]+)*-session)\s*:/i

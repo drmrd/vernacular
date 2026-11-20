@@ -1,4 +1,4 @@
-/** @typedef {import('./commit-rules.mjs').Finding} Finding */
+/** @typedef {import('./rule-severity.mjs').Finding} Finding */
 /** @typedef {import('./git-input.mjs').PolicyCommit} PolicyCommit */
 
 const SHORT_CODE = /\b[A-Z]{1,2}\d{1,2}(?:\.\d+)?\b/
