@@ -13,6 +13,7 @@ related:
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0030-additive-storage-capabilities,
     decisions/ADR-0211-stored-indexeddb-records-become-files,
+    decisions/ADR-0213-an-archive-is-read-as-an-untrusted-file,
   ]
 sourceFiles:
   [
@@ -30,9 +31,11 @@ sourceFiles:
     session/handle/read-for-open.ts,
     app/resolve-project-store.ts,
     app/app.tsx,
+    storage/import/import-project-file.ts,
+    storage/zip/read-archive.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0003: Provider pattern for storage with cloud-sync seam
@@ -56,6 +59,15 @@ updated: 2026-11-18
 > `ProjectNotFoundError` remains for an archive that holds no document and for a stored file that is
 > gone when `openDespiteFormatFaults` reads it. The section below on the typed "not found"
 > describes the earlier form.
+
+> Updated on 2026-11-19. An import no longer throws `ProjectNotFoundError` for an archive that
+> holds no document. `importProjectFile` (`storage/import/import-project-file.ts`) reads the file
+> with the archive reader of [[ADR-0213-an-archive-is-read-as-an-untrusted-file]] and returns a
+> typed result. An archive with no document is the failure `no-document`, and the import shows it
+> with the same sentence as a file that is no archive. A file name with no supported ending is the
+> failure `unsupported-file`, and `UnsupportedProjectFileError` is gone. In production code
+> `ProjectNotFoundError` remains only for a stored file that is gone when `openDespiteFormatFaults`
+> reads it.
 
 Accepted. The three provider interfaces, a Map-backed `InMemoryProjectStore`
 reference implementation, and a durable `IndexedDbProjectStore` are implemented
