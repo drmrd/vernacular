@@ -8,8 +8,9 @@ const DIGITS_PER_BYTE = 2
  * copied here.
  *
  * The digest takes only a view over an `ArrayBuffer`, and the type of `Uint8Array` also allows a
- * shared buffer. An imported file is read into an `ArrayBuffer`, so the type is narrowed without a
- * copy, and the reader turns any failure of the digest into a refusal of the archive.
+ * shared buffer. The type is narrowed here without a copy, on the condition that the caller holds
+ * a view over an `ArrayBuffer`. A view over a shared buffer makes the digest fail, and the caller
+ * decides what a failure means.
  */
 export async function contentHashOf(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>)

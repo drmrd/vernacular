@@ -128,28 +128,28 @@ function readDocument(
   return inflated.ok ? inflated.bytes : undefined
 }
 
-/** An asset that cannot be read but does not stop the read of the archive. */
-const LEFT_OUT = 'left-out'
+/** An asset that cannot be read, and so is rejected, but does not stop the read of the archive. */
+const UNREADABLE = 'unreadable'
 
 /** An asset that makes the whole archive `not-an-archive`. */
 const REFUSE_ARCHIVE = 'refuse-archive'
 
-type AssetOutcome = Uint8Array | typeof LEFT_OUT | typeof REFUSE_ARCHIVE
+type AssetOutcome = Uint8Array | typeof UNREADABLE | typeof REFUSE_ARCHIVE
 
 /**
- * One asset entry read. An encrypted entry, or one whose data lies outside the file, is left out
- * and adds nothing to the data spent. Data that would pass the length of the archive refuses the
- * archive before it is inflated, and so does output that passes the declared size, since an
- * archive that lies about a size is hostile or broken.
+ * One asset entry read. An encrypted entry, or one whose data lies outside the file, cannot be
+ * read: its name is rejected, and it adds nothing to the data spent. Data that would pass the
+ * length of the archive refuses the archive before it is inflated, and so does output that passes
+ * the declared size, since an archive that lies about a size is hostile or broken.
  */
 function readAsset(view: DataView, entry: DirectoryEntry, dataBudget: DataBudget): AssetOutcome {
-  if (isEncrypted(entry)) return LEFT_OUT
+  if (isEncrypted(entry)) return UNREADABLE
   const data = entryData(view, entry)
-  if (data === undefined) return LEFT_OUT
+  if (data === undefined) return UNREADABLE
   if (!takeData(dataBudget, data)) return REFUSE_ARCHIVE
   const inflated = inflateEntry({ data, method: entry.method, declaredBytes: entry.declaredBytes })
   if (inflated.ok) return inflated.bytes
-  return inflated.reason === 'passes-declared-size' ? REFUSE_ARCHIVE : LEFT_OUT
+  return inflated.reason === 'passes-declared-size' ? REFUSE_ARCHIVE : UNREADABLE
 }
 
 /**
@@ -168,20 +168,22 @@ function firstAssetEntries(entries: readonly DirectoryEntry[]): AssetEntry[] {
   return first
 }
 
-/** An asset entry after its inflation: its bytes, or `LEFT_OUT` when they could not be read. */
-type InflatedAsset = readonly [contentHash: string, bytes: Uint8Array | typeof LEFT_OUT]
+/** The hash in the name of an asset entry, and its bytes, or `UNREADABLE` when it was not read. */
+type AssetRead = readonly [contentHash: string, bytes: Uint8Array | typeof UNREADABLE]
 
 /**
- * Every asset inflated, in the order of the central directory, before any is hashed: an asset
- * that refuses the archive must refuse it also when an asset before it will be rejected.
- * `undefined` when an asset refuses the archive.
+ * Every asset read, in the order of the central directory, before any is hashed. There are two
+ * reasons for this order. An archive that a later asset refuses then costs no hashing at all. And
+ * the whole archive is read in one synchronous run, before the first `await`. The cost is that the
+ * bytes of an asset that will be rejected are held until every asset is hashed. `undefined` when
+ * an asset refuses the archive.
  */
 function readAssets(
   view: DataView,
   entries: readonly DirectoryEntry[],
   dataBudget: DataBudget,
-): InflatedAsset[] | undefined {
-  const inflated: InflatedAsset[] = []
+): AssetRead[] | undefined {
+  const inflated: AssetRead[] = []
   for (const [contentHash, entry] of firstAssetEntries(entries)) {
     const outcome = readAsset(view, entry, dataBudget)
     if (outcome === REFUSE_ARCHIVE) return undefined
@@ -201,11 +203,11 @@ interface CheckedAssets {
  * the hash of its name. One asset is hashed at a time, in the order of the central directory, so
  * both lists keep that order and only one asset is handed to the digest at once.
  */
-async function checkAssets(inflated: readonly InflatedAsset[]): Promise<CheckedAssets> {
+async function checkAssets(inflated: readonly AssetRead[]): Promise<CheckedAssets> {
   const assets = new Map<string, Uint8Array>()
   const rejectedAssets: string[] = []
   for (const [contentHash, bytes] of inflated) {
-    if (bytes !== LEFT_OUT && (await contentHashOf(bytes)) === contentHash) {
+    if (bytes !== UNREADABLE && (await contentHashOf(bytes)) === contentHash) {
       assets.set(contentHash, bytes)
     } else {
       rejectedAssets.push(contentHash)
