@@ -11,6 +11,7 @@ import {
   openStoredProject,
   projectFileReferring,
   settleTheAction,
+  shownWarnings,
 } from './action-test-support'
 import { workspaceProps } from './app-test-support'
 import type { RunFlow } from './use-open-project'
@@ -77,10 +78,8 @@ async function renderWorkspaceOnAProject() {
     () => ({ state: useWorkspaceState(props), shown: useNotifications().notifications }),
     { wrapper: NotificationProvider },
   )
-  const warnings = () =>
-    result.current.shown
-      .filter((shown) => shown.severity === 'warning')
-      .map((shown) => shown.message)
+  await settleTheAction()
+  const warnings = () => shownWarnings(result)
   return { owner, result, warnings }
 }
 

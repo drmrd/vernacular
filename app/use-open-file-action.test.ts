@@ -1,28 +1,32 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, cleanup, waitFor } from '@testing-library/react'
-import { encodeDocument, type AssetReference, type Project } from '../core'
-import { ARCHIVE_LIMITS, DocumentDecodeError, InMemoryRecentProjectStore } from '../storage'
-import { createTestPorts, storedName } from '../session/handle/handle-test-kit'
+import type { AssetReference } from '../core'
+import { ARCHIVE_LIMITS, DocumentDecodeError } from '../storage'
+import { storedName } from '../session/handle/handle-test-kit'
 import {
   closeOpenedHandles,
-  openStoredProject,
   packListing,
+  projectFileOf,
   projectFileReferring,
+  READ_FAILURE,
   recordUnhandledRejections,
-  renderActions,
+  renderOnAStoredProject,
   settleTheAction,
-  type PackListing,
   shownMessages,
+  shownWarnings,
+  STORED_PROJECT_ID,
+  STORED_PROJECT_NAME,
+  unreadableFile,
   waitForOtherProject,
   waitForRecentEntry,
 } from './action-test-support'
 import { namedProject } from './app-test-support'
+import type { LibraryLister } from './pack-supplies'
 import { useOpenFileAction } from './use-open-file-action'
 
-const CURRENT_ID = 'current'
-const DRAFT_NAME = 'Drafthouse'
+const CURRENT_ID = STORED_PROJECT_ID
+const DRAFT_NAME = STORED_PROJECT_NAME
 const HOUSE_NAME = 'My House'
-const READ_FAILURE = 'The file could not be read.'
 const TWO_MISSING_SENTENCE =
   'The file did not include 2 of the assets this project uses. They show as missing.'
 const TOO_LARGE_SENTENCE = 'Open failed: The file is larger than 512 MB.'
@@ -39,65 +43,9 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-/** In-memory ports with the project `current` stored and open, and the open file action on it. */
-async function renderOpenFileAction(packs?: PackListing) {
-  const ports = createTestPorts()
-  const handle = await openStoredProject(ports, CURRENT_ID, DRAFT_NAME)
-  const recentProjects = new InMemoryRecentProjectStore()
-  const rig = { ports, handle, recentProjects, ...(packs === undefined ? {} : { packs }) }
-  const { result } = renderActions(rig, useOpenFileAction)
-  return { ports, handle, recentProjects, result }
-}
-
-/** A `.json` project file of `project`, as the application writes one. */
-function projectFile(project: Project): File {
-  const { bytes } = encodeDocument(project, undefined)
-  return new File([bytes.buffer as ArrayBuffer], 'house.json')
-}
-
-/** A project file whose every way to read its bytes fails with `READ_FAILURE`. */
-function unreadableFile(): File {
-  const file = new File(['{}'], 'house.json')
-  const failRead = () => Promise.reject(new Error(READ_FAILURE))
-  const failStream = () => {
-    throw new Error(READ_FAILURE)
-  }
-  Object.defineProperties(file, {
-    arrayBuffer: { value: failRead },
-    bytes: { value: failRead },
-    text: { value: failRead },
-    stream: { value: failStream },
-  })
-  return file
-}
-
-/** A file that claims `size` bytes and fails every read, and how often a read was tried. */
-function fileClaiming(size: number): { file: File; reads: () => number } {
-  let reads = 0
-  const file = new File(['{}'], 'house.json')
-  const failRead = () => {
-    reads += 1
-    return Promise.reject(new Error(READ_FAILURE))
-  }
-  const failStream = () => {
-    reads += 1
-    throw new Error(READ_FAILURE)
-  }
-  Object.defineProperties(file, {
-    size: { value: size },
-    arrayBuffer: { value: failRead },
-    bytes: { value: failRead },
-    text: { value: failRead },
-    stream: { value: failStream },
-  })
-  return { file, reads: () => reads }
-}
-
-/** The texts of the warnings that show now. */
-function shownWarnings(result: Parameters<typeof shownMessages>[0]): string[] {
-  return result.current.shown
-    .filter((shown) => shown.severity === 'warning')
-    .map((shown) => shown.message)
+/** In-memory ports with a stored project open, and the open file action on it. */
+function renderOpenFileAction(packs?: LibraryLister) {
+  return renderOnAStoredProject(useOpenFileAction, packs)
 }
 
 describe('useOpenFileAction on a dropped file', () => {
@@ -105,7 +53,7 @@ describe('useOpenFileAction on a dropped file', () => {
     const { ports, handle, recentProjects, result } = await renderOpenFileAction()
 
     await act(async () => {
-      await result.current.actions.onImportDroppedFile(projectFile(namedProject(HOUSE_NAME)))
+      await result.current.actions.onImportDroppedFile(projectFileOf(namedProject(HOUSE_NAME)))
     })
 
     const opened = await waitForOtherProject(result, handle)
@@ -150,7 +98,7 @@ describe('useOpenFileAction on a dropped file', () => {
 
     try {
       await act(async () => {
-        await result.current.actions.onImportDroppedFile(unreadableFile())
+        await result.current.actions.onImportDroppedFile(unreadableFile().file)
       })
       await settleTheAction()
 
@@ -185,7 +133,7 @@ describe('useOpenFileAction on a file that lacks assets', () => {
     const { handle, result } = await renderOpenFileAction()
 
     await act(async () => {
-      await result.current.actions.onImportDroppedFile(projectFile(namedProject(HOUSE_NAME)))
+      await result.current.actions.onImportDroppedFile(projectFileOf(namedProject(HOUSE_NAME)))
     })
     await waitForOtherProject(result, handle)
     await settleTheAction()
@@ -221,7 +169,7 @@ describe('useOpenFileAction on a file that lacks assets', () => {
 describe('useOpenFileAction on a file at the size limit of an archive', () => {
   it('refuses a file above the limit before it reads any of its bytes, and runs no flow', async () => {
     const { handle, result } = await renderOpenFileAction()
-    const { file, reads } = fileClaiming(ARCHIVE_LIMITS.archiveBytes + 1)
+    const { file, reads } = unreadableFile({ size: ARCHIVE_LIMITS.archiveBytes + 1 })
 
     await act(async () => {
       await result.current.actions.onImportDroppedFile(file)
@@ -236,7 +184,7 @@ describe('useOpenFileAction on a file at the size limit of an archive', () => {
 
   it('reads a file that is exactly at the limit', async () => {
     const { result } = await renderOpenFileAction()
-    const { file, reads } = fileClaiming(ARCHIVE_LIMITS.archiveBytes)
+    const { file, reads } = unreadableFile({ size: ARCHIVE_LIMITS.archiveBytes })
 
     await act(async () => {
       await result.current.actions.onImportDroppedFile(file)
