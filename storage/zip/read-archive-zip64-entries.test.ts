@@ -20,7 +20,7 @@ const DOCUMENT = encoder.encode(
 const LENGTH = DOCUMENT.length
 const SOUND_VALUES = wideBytes([LENGTH, LENGTH, 0])
 const NOTES: TestZipEntry = { name: 'notes.txt', content: encoder.encode('a note beside it') }
-/** TK2: fflate refuses these bytes as an invalid block. */
+/** fflate refuses these bytes as an invalid block. */
 const GARBAGE = new Uint8Array(64).fill(0xff)
 const ALL_FIELDS: readonly Zip64EntryField[] = ['declaredBytes', 'compressedBytes', 'localOffset']
 const SIZES: readonly Zip64EntryField[] = ['declaredBytes', 'compressedBytes']
@@ -52,7 +52,7 @@ function read(entries: readonly TestZipEntry[], limits?: ArchiveLimits) {
 }
 
 describe('readArchive reads the ZIP64 block of a central directory entry', () => {
-  it('reads a document whose three fields hold the marker (Z10 to Z12)', async () => {
+  it('reads a document whose three fields hold the marker', async () => {
     expect(await read([NOTES, documentEntry(DOCUMENT, { zip64: ALL_FIELDS })])).toEqual(
       DOCUMENT_READ,
     )
@@ -65,20 +65,17 @@ describe('readArchive reads the ZIP64 block of a central directory entry', () =>
     { zip64: ['declaredBytes', 'compressedBytes'] },
     { zip64: ['declaredBytes', 'localOffset'] },
     { zip64: ['compressedBytes', 'localOffset'] },
-  ])(
-    'takes the values in the fixed order for every set of markers (Z12): $zip64',
-    async ({ zip64 }) => {
-      expect(await read([NOTES, documentEntry(DOCUMENT, { zip64 })])).toEqual(DOCUMENT_READ)
-    },
-  )
+  ])('takes the values in the fixed order for every set of markers: $zip64', async ({ zip64 }) => {
+    expect(await read([NOTES, documentEntry(DOCUMENT, { zip64 })])).toEqual(DOCUMENT_READ)
+  })
 
-  it('a ZIP64 block beside classic values is not read (TK11; Z10)', async () => {
+  it('a ZIP64 block beside classic values is not read', async () => {
     const centralExtra = extraBlock(ZIP64_BLOCK_ID, wideBytes([999, 999, 999]))
 
     expect(await read([documentEntry(DOCUMENT, { centralExtra })])).toEqual(DOCUMENT_READ)
   })
 
-  it('passes over other blocks before the ZIP64 block (Z11)', async () => {
+  it('passes over other blocks before the ZIP64 block', async () => {
     const centralExtra = joinBytes([
       extraBlock(OTHER_BLOCK_ID, new Uint8Array(5)),
       extraBlock(0x000a, new Uint8Array(0)),
@@ -88,7 +85,7 @@ describe('readArchive reads the ZIP64 block of a central directory entry', () =>
     expect(await read([storedDocument({ zip64: ALL_FIELDS, centralExtra })])).toEqual(DOCUMENT_READ)
   })
 
-  it('of two ZIP64 blocks the first is read (Z11)', async () => {
+  it('of two ZIP64 blocks the first is read', async () => {
     const sound = extraBlock(ZIP64_BLOCK_ID, SOUND_VALUES)
     const other = extraBlock(ZIP64_BLOCK_ID, wideBytes([1, 2, 3]))
     const tooLong = extraBlock(ZIP64_BLOCK_ID, wideBytes([LENGTH + 1, LENGTH, 0]))
@@ -100,7 +97,7 @@ describe('readArchive reads the ZIP64 block of a central directory entry', () =>
     expect(await read(withExtra(joinBytes([tooLong, sound])))).toEqual(NOT_AN_ARCHIVE)
   })
 
-  it('reads a document whose local header is in the ZIP64 form (TK13; CD7, Z15)', async () => {
+  it('reads a document whose local header is in the ZIP64 form', async () => {
     const localExtra = extraBlock(ZIP64_BLOCK_ID, wideBytes([LENGTH, LENGTH]))
 
     expect(await read([storedDocument({ localDeclaredBytes: 0xffffffff, localExtra })])).toEqual(
@@ -108,7 +105,7 @@ describe('readArchive reads the ZIP64 block of a central directory entry', () =>
     )
   })
 
-  it('reads a document whose entry holds the marker in its disk number, with a ZIP64 disk number of 0 after the three values (Z14)', async () => {
+  it('reads a document whose entry holds the marker in its disk number, with a ZIP64 disk number of 0 after the three values', async () => {
     const centralExtra = extraBlock(ZIP64_BLOCK_ID, joinBytes([SOUND_VALUES, new Uint8Array(4)]))
 
     expect(
@@ -166,14 +163,11 @@ describe('readArchive refuses a ZIP64 block it cannot trust', () => {
         },
       ],
     ],
-  ])(
-    'a block shorter than its markers need is not an archive (TK10; Z12): %s',
-    async (_case, entries) => {
-      expect(await read(entries)).toEqual(NOT_AN_ARCHIVE)
-    },
-  )
+  ])('a block shorter than its markers need is not an archive: %s', async (_case, entries) => {
+    expect(await read(entries)).toEqual(NOT_AN_ARCHIVE)
+  })
 
-  it('a marker with no block is the number that it holds (TK10; Z13)', async () => {
+  it('a marker with no block is the number that it holds', async () => {
     const noBlock = new Uint8Array(0)
     const markedDocument = (field: Zip64EntryField) =>
       storedDocument({ zip64: [field], centralExtra: noBlock })
@@ -198,14 +192,11 @@ describe('readArchive refuses a ZIP64 block it cannot trust', () => {
         extraBlock(ZIP64_BLOCK_ID, wideBytes([LENGTH])),
       ]),
     ],
-  ])(
-    'an extra field that cannot be walked counts as no block (TK10; Z11, Z13): %s',
-    async (_case, centralExtra) => {
-      const entry = storedDocument({ zip64: ['declaredBytes'], centralExtra })
+  ])('an extra field that cannot be walked counts as no block: %s', async (_case, centralExtra) => {
+    const entry = storedDocument({ zip64: ['declaredBytes'], centralExtra })
 
-      expect(await read([entry])).toEqual(tooLarge('documentBytes', ARCHIVE_LIMITS.documentBytes))
-    },
-  )
+    expect(await read([entry])).toEqual(tooLarge('documentBytes', ARCHIVE_LIMITS.documentBytes))
+  })
 
   it.each<[string, Zip64EntryField, bigint | number | null]>([
     ['a compressed size of the length of the file', 'compressedBytes', null],
@@ -213,7 +204,7 @@ describe('readArchive refuses a ZIP64 block it cannot trust', () => {
     ['a local header offset of the length of the file', 'localOffset', null],
     ['a local header offset of 2^60', 'localOffset', HUGE],
   ])(
-    'a ZIP64 compressed size or local header offset outside the file is data outside the file (CD7, Z2, Z9): %s',
+    'a ZIP64 compressed size or local header offset outside the file is data outside the file: %s',
     async (_case, field, value) => {
       const fileLength = buildZip([storedDocument({ zip64: [field] })]).length
       const zip64Values = { [field]: value ?? fileLength }
@@ -237,14 +228,14 @@ describe('readArchive refuses a size that only a ZIP64 block gives before it inf
     zip64Values: { declaredBytes },
   })
 
-  it('a declared document size above documentBytes that only the ZIP64 block gives is refused before anything is inflated (TK8, TK2; RD5, RD11)', async () => {
+  it('a declared document size above documentBytes that only the ZIP64 block gives is refused before anything is inflated', async () => {
     const limits = limitsWith({ documentBytes: 100 })
 
     expect(await read([declaringDocument(101)], limits)).toEqual(tooLarge('documentBytes', 100))
     expect(await read([declaringDocument(100)], limits)).toEqual(NOT_AN_ARCHIVE)
   })
 
-  it('a declared total above inflatedBytes that only ZIP64 blocks give is refused before anything is inflated (TK8, TK2; RD6, RD11)', async () => {
+  it('a declared total above inflatedBytes that only ZIP64 blocks give is refused before anything is inflated', async () => {
     const limits = limitsWith({ inflatedBytes: 100 })
     const document = documentEntry(DOCUMENT, { data: GARBAGE, declaredBytes: 10 })
 
@@ -254,7 +245,7 @@ describe('readArchive refuses a size that only a ZIP64 block gives before it inf
     expect(await read([document, declaringNotes(90)], limits)).toEqual(NOT_AN_ARCHIVE)
   })
 
-  it('a ZIP64 declared size of 2^60 is too large (TK9; Z2, RD11)', async () => {
+  it('a ZIP64 declared size of 2^60 is too large', async () => {
     expect(await read([declaringDocument(HUGE)])).toEqual(
       tooLarge('documentBytes', ARCHIVE_LIMITS.documentBytes),
     )

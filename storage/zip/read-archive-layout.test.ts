@@ -6,7 +6,7 @@ import { readArchive, type ArchiveRead } from './read-archive'
 import {
   NAMES_LIKE_AN_ASSET,
   NAMES_LIKE_THE_DOCUMENT,
-  PLAN_NAMES_OUTSIDE_THE_LAYOUT,
+  NAMES_OUTSIDE_THE_LAYOUT,
 } from './archive-names-test-kit'
 import {
   assetEntry,
@@ -71,9 +71,7 @@ function assetKeys(read: ArchiveRead): string[] {
 
 describe('readArchive takes only the document and the assets', () => {
   it('takes only the document and the assets of an archive that holds other entries', async () => {
-    const outside = PLAN_NAMES_OUTSIDE_THE_LAYOUT.map((name) =>
-      outsideEntry(name, { data: GARBAGE }),
-    )
+    const outside = NAMES_OUTSIDE_THE_LAYOUT.map((name) => outsideEntry(name, { data: GARBAGE }))
     const middle = outside.length / 2
     const [earlier, later] = await largerHashFirst(PICTURE, SWATCH)
     const entries = [

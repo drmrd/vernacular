@@ -3,7 +3,7 @@
 import { deflateSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { assetEntryName } from './archive-layout'
-import { PLAN_NAMES_OUTSIDE_THE_LAYOUT } from './archive-names-test-kit'
+import { NAMES_OUTSIDE_THE_LAYOUT } from './archive-names-test-kit'
 import { readArchive, type ArchiveRead } from './read-archive'
 import {
   buildSharedZip,
@@ -238,12 +238,12 @@ describe('readArchive still reads entries whose data fits the archive', () => {
   })
 
   it('reads the document when many entries outside the layout share one local entry', async () => {
-    const [ownerName = '', ...otherNames] = PLAN_NAMES_OUTSIDE_THE_LAYOUT
+    const [ownerName = '', ...otherNames] = NAMES_OUTSIDE_THE_LAYOUT
     const owner: TestZipEntry = { name: ownerName, content: BLOB, data: BLOB_DATA }
     const sharers = otherNames.map((name) => ({ ...owner, name }))
     const bytes = buildSharedZip([documentEntry(DOCUMENT), owner], sharers, 1)
 
-    expect(PLAN_NAMES_OUTSIDE_THE_LAYOUT.length * BLOB_DATA.length).toBeGreaterThan(bytes.length)
+    expect(NAMES_OUTSIDE_THE_LAYOUT.length * BLOB_DATA.length).toBeGreaterThan(bytes.length)
     expectAssets(await readArchive(bytes), DOCUMENT, [])
   })
 

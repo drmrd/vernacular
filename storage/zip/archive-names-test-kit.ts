@@ -11,8 +11,8 @@ const BYTE_ORDER_MARK = '﻿'
 const LONG_S = 'ſ'
 const ASSET_FOLDER = 'assets/'
 
-/** The six names that the plan lists: none is the document, and none is an asset. */
-export const PLAN_NAMES_OUTSIDE_THE_LAYOUT: readonly string[] = [
+/** Six names outside the layout that a hostile archive might use: none is the document, and none is an asset. */
+export const NAMES_OUTSIDE_THE_LAYOUT: readonly string[] = [
   '../x',
   '/etc/passwd',
   'a/../../b',

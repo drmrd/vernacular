@@ -190,7 +190,7 @@ export function zip64EndRecords(end: TestZip64End, facts: DirectoryFacts): Uint8
 }
 
 /**
- * T2: 372 bytes from a common command-line archiver with its option that forces
+ * The forced archive: 372 bytes from a common command-line archiver with its option that forces
  * ZIP64. `vernacular.json` (stored, `{"x":1}`) and `a.txt` (deflated). End record
  * at 350, locator at 330, ZIP64 end record at 274, central directory at 138 with
  * 136 bytes.
@@ -205,7 +205,7 @@ const FORCED_ZIP64_BASE64 = [
 ].join('')
 
 /**
- * T3: 207 bytes from the same archiver as a streaming writer. One deflated entry
+ * The streamed archive: 207 bytes from the same archiver as a streaming writer. One deflated entry
  * named `-` and no `vernacular.json`. Classic values beside a ZIP64 end record.
  * End record at 185, locator at 165, ZIP64 end record at 109, central directory
  * at 62 with 47 bytes.
@@ -220,12 +220,12 @@ function decodeBase64(text: string): Uint8Array {
   return Uint8Array.from(atob(text), (character) => character.charCodeAt(0))
 }
 
-/** A fresh copy of the fixture T2, so a test may patch its bytes. */
+/** A fresh copy of the forced archive, so a test may patch its bytes. */
 export function forcedZip64Archive(): Uint8Array {
   return decodeBase64(FORCED_ZIP64_BASE64)
 }
 
-/** A fresh copy of the fixture T3, so a test may patch its bytes. */
+/** A fresh copy of the streamed archive, so a test may patch its bytes. */
 export function streamedZip64Archive(): Uint8Array {
   return decodeBase64(STREAMED_ZIP64_BASE64)
 }

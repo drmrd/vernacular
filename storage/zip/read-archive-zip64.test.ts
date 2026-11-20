@@ -15,7 +15,7 @@ import {
 const encoder = new TextEncoder()
 const DOCUMENT = encoder.encode('{"meta":{"name":"Elm Street"},"floors":[]}')
 const NOTES: TestZipEntry = { name: 'notes.txt', content: encoder.encode('a note beside it') }
-/** TK2: fflate refuses these bytes as an invalid block. */
+/** fflate refuses these bytes as an invalid block. */
 const GARBAGE = new Uint8Array(64).fill(0xff)
 const ALL_ENTRY_FIELDS: readonly Zip64EntryField[] = [
   'declaredBytes',
@@ -25,7 +25,7 @@ const ALL_ENTRY_FIELDS: readonly Zip64EntryField[] = [
 const BOTH_COUNTS: readonly Zip64EndField[] = ['entriesOnDisk', 'entries']
 /** The sound archive of one document. */
 const SOUND: readonly TestZipEntry[] = [documentEntry(DOCUMENT)]
-/** TK7: with `zip64End: {}`, every field of the end record and of the entry holds its marker. */
+/** With `zip64End: {}`, every field of the end record and of the entry holds its marker. */
 const FORCED: readonly TestZipEntry[] = [documentEntry(DOCUMENT, { zip64: ALL_ENTRY_FIELDS })]
 const FORCED_LENGTH = buildZip(FORCED, { zip64End: {} }).length
 /** The end record (22), the locator (20), and the ZIP64 end record (56) stand last. */
@@ -72,7 +72,7 @@ function patched(bytes: Uint8Array, offset: number, value: number): Uint8Array {
 }
 
 describe('readArchive reads the ZIP64 records of an end record', () => {
-  it('reads the forced ZIP64 archive that a common command-line archiver wrote (Z1, Z7)', async () => {
+  it('reads the forced ZIP64 archive that a common command-line archiver wrote', async () => {
     expect(await readArchive(forcedZip64Archive())).toEqual({
       ...DOCUMENT_READ,
       document: encoder.encode('{"x":1}'),
@@ -86,22 +86,22 @@ describe('readArchive reads the ZIP64 records of an end record', () => {
       'with a locator that points past the file',
       patched(streamedZip64Archive(), 173, STREAMED_LENGTH),
     ],
-  ])('reads the streamed archive by its classic values (Z3): %s', async (_case, bytes) => {
+  ])('reads the streamed archive by its classic values: %s', async (_case, bytes) => {
     expect(await readArchive(bytes)).toEqual(NO_DOCUMENT)
   })
 
-  it('reads an archive with a marker in both counts, the size, and the offset (TK7; Z3 to Z7)', async () => {
+  it('reads an archive with a marker in both counts, the size, and the offset', async () => {
     expect(await readWithEnd({}, FORCED)).toEqual(DOCUMENT_READ)
   })
 
   it.each<Zip64EndField>(['entriesOnDisk', 'entries', 'directoryBytes', 'directoryOffset'])(
-    'reads an archive with a marker in one field of the end record only (Z1, Z7): %s',
+    'reads an archive with a marker in one field of the end record only: %s',
     async (field) => {
       expect(await readWithEnd({ markers: [field] })).toEqual(DOCUMENT_READ)
     },
   )
 
-  it('a classic value wins over the ZIP64 end record where no marker stands (Z1)', async () => {
+  it('a classic value wins over the ZIP64 end record where no marker stands', async () => {
     const values = { entriesOnDisk: 99, entries: 99, directoryBytes: 1 }
 
     expect(await readWithEnd({ markers: ['directoryOffset'], values })).toEqual(DOCUMENT_READ)
@@ -113,16 +113,16 @@ describe('readArchive reads the ZIP64 records of an end record', () => {
     ['a locatorOffset of the length of the file', { locatorOffset: UNMARKED_LENGTH }],
     ['locatorDisk 1', { locatorDisk: 1 }],
     ['totalDisks 5', { totalDisks: 5 }],
-  ])('ZIP64 records beside classic values are not read (TK11; Z3): %s', async (_case, end) => {
+  ])('ZIP64 records beside classic values are not read: %s', async (_case, end) => {
     expect(await readWithEnd({ ...end, markers: [] })).toEqual(DOCUMENT_READ)
   })
 
-  it("the ZIP64 end record's own size field is not read (TK7; Z6)", async () => {
+  it("the ZIP64 end record's own size field is not read", async () => {
     expect(await readWithEnd({ recordSize: 0 }, FORCED)).toEqual(DOCUMENT_READ)
     expect(await readWithEnd({ recordSize: HUGE }, FORCED)).toEqual(DOCUMENT_READ)
   })
 
-  it('a locator on another disk, or with more than one disk in total, is not an archive, and a total of 0 reads (Z5)', async () => {
+  it('a locator on another disk, or with more than one disk in total, is not an archive, and a total of 0 reads', async () => {
     expect(await readWithEnd({ locatorDisk: 1 })).toEqual(NOT_AN_ARCHIVE)
     expect(await readWithEnd({ totalDisks: 2 })).toEqual(NOT_AN_ARCHIVE)
     expect(await readWithEnd({ totalDisks: 0 })).toEqual(DOCUMENT_READ)
@@ -130,7 +130,7 @@ describe('readArchive reads the ZIP64 records of an end record', () => {
 })
 
 describe('readArchive takes the count of entries from the ZIP64 end record', () => {
-  it('a count above the limit that only the ZIP64 end record gives is refused before an entry is read (TK8, TK2; RD3, Z8)', async () => {
+  it('a count above the limit that only the ZIP64 end record gives is refused before an entry is read', async () => {
     const entries = [documentEntry(DOCUMENT, { data: GARBAGE }), { ...NOTES, data: GARBAGE }]
     const markers: Zip64EndField[] = [...BOTH_COUNTS, 'directoryOffset']
     const counting = (count: number) => ({
@@ -147,13 +147,13 @@ describe('readArchive takes the count of entries from the ZIP64 end record', () 
     )
   })
 
-  it('a ZIP64 count of 2^60 is too many entries (TK9; Z2, RD11)', async () => {
+  it('a ZIP64 count of 2^60 is too many entries', async () => {
     const zip64End = { markers: BOTH_COUNTS, values: { entriesOnDisk: HUGE, entries: HUGE } }
 
     expect(await readWithEnd(zip64End)).toEqual(tooLarge('entries', 10_000))
   })
 
-  it('a count marker with no locator is the count 65,535 (TK12; Z4)', async () => {
+  it('a count marker with no locator is the count 65,535', async () => {
     const endRecordOnly = buildZip([], { declaredEntries: 0xffff })
     const noLocator = { markers: BOTH_COUNTS, locatorSignature: 0 }
 
@@ -165,7 +165,7 @@ describe('readArchive takes the count of entries from the ZIP64 end record', () 
   })
 
   it.each<Zip64EndField>(['directoryBytes', 'directoryOffset'])(
-    'a size marker or an offset marker with no locator is not an archive (TK12; Z4, CD3): %s',
+    'a size marker or an offset marker with no locator is not an archive: %s',
     async (field) => {
       expect(await readWithEnd({ markers: [field], locatorSignature: 0 })).toEqual(NOT_AN_ARCHIVE)
     },
@@ -173,7 +173,7 @@ describe('readArchive takes the count of entries from the ZIP64 end record', () 
 })
 
 describe('readArchive refuses ZIP64 end records it cannot trust', () => {
-  it('a ZIP64 end record with a wrong signature is not an archive (Z6)', async () => {
+  it('a ZIP64 end record with a wrong signature is not an archive', async () => {
     expect(await readWithEnd({ recordSignature: 0 })).toEqual(NOT_AN_ARCHIVE)
   })
 
@@ -182,13 +182,13 @@ describe('readArchive refuses ZIP64 end records it cannot trust', () => {
     ['the true offset plus 1', TRUE_RECORD_OFFSET + 1],
     ['2^60', HUGE],
   ])(
-    'a locator whose offset does not leave the ZIP64 end record whole before the locator is not an archive (TK7; Z6, Z2, Z9): %s',
+    'a locator whose offset does not leave the ZIP64 end record whole before the locator is not an archive: %s',
     async (_case, locatorOffset) => {
       expect(await readWithEnd({ locatorOffset }, FORCED)).toEqual(NOT_AN_ARCHIVE)
     },
   )
 
-  it('a disk number other than 0 is not an archive, as a classic value and as a ZIP64 value (CD2, Z4, Z7)', async () => {
+  it('a disk number other than 0 is not an archive, as a classic value and as a ZIP64 value', async () => {
     const disks: Zip64EndField[] = ['disk', 'directoryDisk']
 
     expect(await readArchive(soundWithEndField(4, 1))).toEqual(NOT_AN_ARCHIVE)
@@ -201,7 +201,7 @@ describe('readArchive refuses ZIP64 end records it cannot trust', () => {
     expect(await readWithEnd({ markers: disks, locatorSignature: 0 })).toEqual(NOT_AN_ARCHIVE)
   })
 
-  it('a count on this disk other than the count is not an archive, as classic values and as ZIP64 values (CD2, Z7)', async () => {
+  it('a count on this disk other than the count is not an archive, as classic values and as ZIP64 values', async () => {
     expect(await readArchive(soundWithEndField(8, 0))).toEqual(NOT_AN_ARCHIVE)
     expect(await readWithEnd({ markers: BOTH_COUNTS, values: { entriesOnDisk: 0 } })).toEqual(
       NOT_AN_ARCHIVE,
@@ -214,7 +214,7 @@ describe('readArchive refuses ZIP64 end records it cannot trust', () => {
     ['an offset of 2^60', () => ({ directoryOffset: HUGE })],
     ['a size of 2^60', () => ({ directoryBytes: HUGE })],
   ])(
-    'a ZIP64 size or offset of the central directory that passes the ZIP64 end record is not an archive (TK7; CD3, Z2, Z9): %s',
+    'a ZIP64 size or offset of the central directory that passes the ZIP64 end record is not an archive: %s',
     async (_case, fault) => {
       const classic = buildZip(FORCED)
       const view = new DataView(classic.buffer)
@@ -227,7 +227,7 @@ describe('readArchive refuses ZIP64 end records it cannot trust', () => {
     },
   )
 
-  it('every prefix of a forced ZIP64 archive resolves, and none is read as ok (TK7; RD12)', async () => {
+  it('every prefix of a forced ZIP64 archive resolves, and none is read as ok', async () => {
     const bytes = buildZip(FORCED, { zip64End: {} })
     const prefixes = Array.from({ length: bytes.length }, (_, length) => bytes.slice(0, length))
 

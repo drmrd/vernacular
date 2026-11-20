@@ -3,7 +3,7 @@ import { assetEntryName, assetHashOfEntry, isContentHash } from './archive-layou
 import {
   NAMES_LIKE_AN_ASSET,
   NAMES_LIKE_THE_DOCUMENT,
-  PLAN_NAMES_OUTSIDE_THE_LAYOUT,
+  NAMES_OUTSIDE_THE_LAYOUT,
 } from './archive-names-test-kit'
 
 /** 64 lower-case hexadecimal digits, with every digit and every letter in it. */
@@ -62,7 +62,7 @@ describe('assetEntryName and assetHashOfEntry', () => {
     },
   )
 
-  it.each([...PLAN_NAMES_OUTSIDE_THE_LAYOUT, ...NAMES_LIKE_THE_DOCUMENT, DOCUMENT_NAME, ''])(
+  it.each([...NAMES_OUTSIDE_THE_LAYOUT, ...NAMES_LIKE_THE_DOCUMENT, DOCUMENT_NAME, ''])(
     'assetHashOfEntry gives undefined for the name %j',
     (name) => {
       expect(assetHashOfEntry(name)).toBeUndefined()

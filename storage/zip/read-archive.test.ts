@@ -11,7 +11,7 @@ import { buildZip, documentEntry, seededBytes, type TestZipEntry } from './zip-t
 const encoder = new TextEncoder()
 const DOCUMENT = encoder.encode('{"meta":{"name":"Elm Street"},"floors":[]}')
 const NOTES: TestZipEntry = { name: 'notes.txt', content: encoder.encode('a note beside it') }
-/** TK2: fflate refuses these bytes as an invalid block, so inflating them gives `corrupt`. */
+/** fflate refuses these bytes as an invalid block, so inflating them gives `corrupt`. */
 const GARBAGE = new Uint8Array(64).fill(0xff)
 const END_RECORD_BYTES = 22
 const END_RECORD_SIGNATURE = 0x06054b50
@@ -67,7 +67,7 @@ describe('readArchive reads a sound archive', () => {
     )
   })
 
-  it('reads an archive whose comment holds an end record signature (CD1)', async () => {
+  it('reads an archive whose comment holds an end record signature', async () => {
     const comment = new Uint8Array(32)
     const view = new DataView(comment.buffer)
     view.setUint32(0, END_RECORD_SIGNATURE, true)
@@ -77,7 +77,7 @@ describe('readArchive reads a sound archive', () => {
     expect(await readArchive(bytes)).toEqual(documentRead(DOCUMENT))
   })
 
-  it('reads an entry written with a data descriptor whose content holds a header signature (CD7)', async () => {
+  it('reads an entry written with a data descriptor whose content holds a header signature', async () => {
     const nested = buildZip([{ name: 'inner.json', content: DOCUMENT, method: 0 }])
     const bytes = buildZip([documentEntry(nested, { method: 0, dataDescriptor: true }), NOTES])
 
@@ -97,7 +97,7 @@ describe('readArchive reads a sound archive', () => {
     expect(await readArchive(centralSaysMore)).toEqual(NOT_AN_ARCHIVE)
   })
 
-  it('does not change the bytes it is given (RD14)', async () => {
+  it('does not change the bytes it is given', async () => {
     const bytes = buildZip([documentEntry(DOCUMENT, { method: 0 }), NOTES])
     const before = bytes.slice()
 
@@ -107,7 +107,7 @@ describe('readArchive reads a sound archive', () => {
 })
 
 describe('readArchive refuses an archive above a limit', () => {
-  it('an archive above archiveBytes is refused before anything is read (RD1)', async () => {
+  it('an archive above archiveBytes is refused before anything is read', async () => {
     const bytes = encoder.encode('x'.repeat(101))
 
     expect(await readArchive(bytes, limitsWith({ archiveBytes: 100 }))).toEqual(
@@ -127,7 +127,7 @@ describe('readArchive refuses an archive above a limit', () => {
     )
   })
 
-  it('more entries than the limit are refused from the end record (RD3)', async () => {
+  it('more entries than the limit are refused from the end record', async () => {
     const entries = [documentEntry(DOCUMENT, { data: GARBAGE }), { ...NOTES, data: GARBAGE }]
     const limits = limitsWith({ entries: 2 })
 
@@ -137,7 +137,7 @@ describe('readArchive refuses an archive above a limit', () => {
     expect(await readArchive(buildZip(entries), limits)).toEqual(NOT_AN_ARCHIVE)
   })
 
-  it('a declared document above documentBytes is refused from the central directory (TK2; RD5, RD11)', async () => {
+  it('a declared document above documentBytes is refused from the central directory', async () => {
     const limits = limitsWith({ documentBytes: 100 })
     const declaring = (declaredBytes: number) =>
       buildZip([documentEntry(DOCUMENT, { data: GARBAGE, declaredBytes })])
@@ -146,7 +146,7 @@ describe('readArchive refuses an archive above a limit', () => {
     expect(await readArchive(declaring(100), limits)).toEqual(NOT_AN_ARCHIVE)
   })
 
-  it('a declared total above inflatedBytes is refused from the central directory (TK2; RD6, RD11)', async () => {
+  it('a declared total above inflatedBytes is refused from the central directory', async () => {
     const limits = limitsWith({ inflatedBytes: 100 })
     const declaring = (notesBytes: number) =>
       buildZip([
@@ -160,7 +160,7 @@ describe('readArchive refuses an archive above a limit', () => {
 })
 
 describe('readArchive refuses an archive it cannot trust', () => {
-  it('stops inflating an entry that passes the declared size (TK1)', async () => {
+  it('stops inflating an entry that passes the declared size', async () => {
     const content = seededBytes(2 * 1024 * 1024)
     const data = deflateSync(content, { level: 0 })
     const bytes = buildZip([documentEntry(content, { data, declaredBytes: 10 })])
@@ -205,7 +205,7 @@ describe('readArchive refuses an archive it cannot trust', () => {
     expect(await readArchive(buildZip([]))).toEqual(NO_DOCUMENT)
   })
 
-  it('an end record that declares more entries than the directory holds is not an archive (CD4)', async () => {
+  it('an end record that declares more entries than the directory holds is not an archive', async () => {
     const bytes = buildZip([documentEntry(DOCUMENT)], { declaredEntries: 2 })
 
     expect(await readArchive(bytes)).toEqual(NOT_AN_ARCHIVE)
@@ -220,7 +220,7 @@ describe('readArchive refuses an archive it cannot trust', () => {
     expect(await readArchive(bytes)).toEqual(NOT_AN_ARCHIVE)
   })
 
-  it('every prefix of a sound archive resolves, and none is read as ok (RD12)', async () => {
+  it('every prefix of a sound archive resolves, and none is read as ok', async () => {
     const bytes = buildZip([documentEntry(DOCUMENT), NOTES])
     const prefixes = Array.from({ length: bytes.length }, (_, length) => bytes.slice(0, length))
 
