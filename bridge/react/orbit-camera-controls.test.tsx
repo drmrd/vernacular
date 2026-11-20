@@ -70,6 +70,11 @@ const latestController = (): FakeController => {
   return controller
 }
 
+const canvasElement = (): HTMLElement => {
+  const gl = collaborators.threeState['gl'] as { domElement: HTMLElement }
+  return gl.domElement
+}
+
 const everyTargetSet = (): Vector3[] =>
   collaborators.controllers.flatMap((controller) =>
     controller.setTarget.mock.calls.map(([target]) => target),
@@ -133,5 +138,39 @@ describe('OrbitCameraControls', () => {
     rerender(<OrbitCameraControls {...controlsProps({ target: PRESET_TARGET })} />)
 
     expect(latestController().getTarget()).toEqual(PRESET_TARGET)
+  })
+
+  it('applies a target that returns after null again, also when it is the same object', () => {
+    const { rerender } = render(<OrbitCameraControls {...controlsProps()} />)
+    latestController().pivot = PANNED_TARGET
+    rerender(<OrbitCameraControls {...controlsProps({ target: null })} />)
+
+    rerender(<OrbitCameraControls {...controlsProps({ target: FRAMED_TARGET })} />)
+
+    expect(latestController().getTarget()).toEqual(FRAMED_TARGET)
+  })
+
+  it('calls onUserControl when the user presses the pointer on the canvas', () => {
+    const onUserControl = vi.fn()
+    render(<OrbitCameraControls {...controlsProps({ onUserControl })} />)
+
+    canvasElement().dispatchEvent(new Event('pointerdown'))
+
+    expect(onUserControl).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps its one controller and calls the newest onUserControl when the callback changes', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const { rerender } = render(
+      <OrbitCameraControls {...controlsProps({ onUserControl: first })} />,
+    )
+
+    rerender(<OrbitCameraControls {...controlsProps({ onUserControl: second })} />)
+    canvasElement().dispatchEvent(new Event('pointerdown'))
+
+    expect(collaborators.controllers).toHaveLength(1)
+    expect(second).toHaveBeenCalledTimes(1)
+    expect(first).not.toHaveBeenCalled()
   })
 })
