@@ -97,8 +97,10 @@ The pane owns a small navigation state, held in the React view layer and reset o
 reload:
 
 - `mode`: `'orbit' | 'walk'`, the active navigation mode, defaulting to `orbit`.
-- `userControlled`: a flag set the moment the user first orbits or walks, which
-  tells the framing effect to stop reframing on edits.
+- `userControlled`: a flag set when the user steers the camera, which tells the
+  framing effect to stop reframing on edits. Steering is a press on the 3D view (a
+  drag or a click), a wheel turn on it, entering walk mode or pressing one of its
+  keys, or applying a camera preset.
 
 The reset control clears `userControlled`, and the framing effect (section 3.5)
 reapplies the framed pose on that transition, so reset reframes the camera to the
@@ -136,8 +138,8 @@ rotate, pan, and zoom enabled, the target set from the framed pose so orbiting
 turns around the building rather than the origin. `setEnabled(false)` parks orbit
 while walk mode is active. `update` reapplies the controls after the target moves,
 and `dispose` detaches the controls' listeners when the pane unmounts. Detecting
-that the user has grabbed the camera is left to the bridge wrapper, which owns the
-canvas pointer and key listeners (section 3.4), so the facade stays a thin,
+that the user has grabbed the camera is left to the bridge wrappers, which own the
+canvas pointer, wheel, and key listeners (section 3.4), so the facade stays a thin,
 unit-testable wrapper over the controls. Damped, inertial motion is left off in
 this slice and recorded as an additive follow-on (section 4).
 
@@ -191,12 +193,14 @@ core math to the live camera:
 - **The orbit wrapper** reads the camera and the canvas element from the fiber
   context and constructs the engine orbit facade on mount. The facade starts on
   the saved pivot when the session holds a saved camera, and on the framed pose's
-  target otherwise. After that the pivot follows the framed target only while the
-  framing is active. Once the user steers, it moves only to an applied preset's
-  target, so a rebuild of the scene leaves it alone. The wrapper enables the facade
-  only in orbit mode and marks `userControlled` on the first pointer interaction
-  through a `pointerdown` listener it adds to the canvas. On unmount it reports the
-  camera position and the pivot, then disposes the facade.
+  target otherwise. A facade built again inside one mount, because the camera or
+  the canvas changed, starts on the pivot the previous one held. After that the
+  pivot follows the framed target only while the framing is active. Once the user
+  steers, it moves only to an applied preset's target, so a rebuild of the scene
+  leaves it alone. The wrapper enables the facade only in orbit mode and marks
+  `userControlled` on a pointer press or a wheel turn, through a `pointerdown`
+  listener and a passive `wheel` listener it adds to the canvas. On unmount it
+  reports the camera position and the pivot, then disposes the facade.
 - **The walk wrapper** is active in walk mode. It listens for the movement keys
   and, when the user clicks the canvas, requests pointer capture and reads pointer
   motion as look input. Each frame it calls `advanceWalk` and applies the result to
@@ -206,11 +210,15 @@ core math to the live camera:
   Escape releases capture (the browser default) without leaving walk mode.
 
 Both wrappers are React-and-Three glue that runs only under a real rendering
-context, so they are coverage-excluded glue like `WebGPUSceneView` itself
-(foundation section 6.3); their behavior is proven by the semantic end-to-end
+context. Their behavior on the live camera is proven by the semantic end-to-end
 tests of section 5, and the testable logic they call (the facade, the walk math)
-is unit-tested directly. The orbit wrapper now also has a unit test of its own,
-which replaces the engine facade with a fake controller.
+is unit-tested directly. Each wrapper also has a unit test with fake
+collaborators. `orbit-camera-controls.test.tsx` mounts the orbit wrapper with the
+fiber context and the engine facade replaced by fakes, and
+`walk-camera-controls.test.ts` drives the walk wrapper's key handlers
+(`walkKeyHandlers` in `walk-session.ts`) against a stand-in session. Unlike
+`WebGPUSceneView` (foundation section 6.3), neither wrapper is excluded from
+coverage.
 
 Decoupling the movement keys from pointer capture is also what makes walk mode
 testable end to end: pointer capture is unreliable under a headless browser, while
@@ -311,8 +319,9 @@ again, and asserts the frame changed. Two gestures are covered:
   3.4 gives.
 
 These run only where WebGPU is available and self-skip otherwise, like the
-existing live-pane test. The R3F wrappers and the `WebGPUSceneView` integration are
-the coverage-excluded glue this tier exercises.
+existing live-pane test. This tier exercises the R3F wrappers and the
+`WebGPUSceneView` integration. Of these, only `WebGPUSceneView` is excluded from
+coverage.
 
 The deterministic visual harness (`SceneHarnessView`) renders a single static
 frame with no controls, so this slice does not change it and the committed pixel
