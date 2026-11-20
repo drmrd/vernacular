@@ -97,6 +97,7 @@ describe('rule severity table', () => {
       'commit-message-format': 'fail',
       'forbidden-trailer': 'fail',
       'author-identity': 'fail',
+      'fork-author-identity': 'warn',
       'branch-prefix': 'fail',
       'spec-needs-adr': 'fail',
       'exact-pin': 'fail',
@@ -135,6 +136,27 @@ describe('runPolicyCheck', () => {
       'policy:check: 1 failing and 0 warning finding(s) in origin/main..HEAD on feat/x',
     )
     expect(lines.join('\n')).toContain('[fail] [author-identity] aaaaaaaa: ')
+  })
+
+  it('reports a non-owner author as a warning and exits 0 on a fork pull request', async () => {
+    const strangers = [commitBy(CLEAN_SHA, 'dan@example.com'), commitBy('b'.repeat(40), 'x@y.z')]
+    const { runGit } = fakeGit({ commits: strangers })
+    const { deps, lines } = collectingDeps(runGit)
+    const code = await runPolicyCheck([...ARGV, '--fork-pr'], deps)
+    expect(code).toBe(0)
+    expect(lines[0]).toContain('0 failing and 2 warning finding(s)')
+    expect(linesFor(lines, 'fork-author-identity')).toHaveLength(2)
+    expect(linesFor(lines, 'author-identity')).toHaveLength(0)
+    expect(lines.join('\n')).toContain('[warn] [fork-author-identity] aaaaaaaa: ')
+  })
+
+  it('still fails a non-owner author without the fork flag', async () => {
+    const { runGit } = fakeGit({ commits: [commitBy(CLEAN_SHA, 'dan@example.com')] })
+    const { deps, lines } = collectingDeps(runGit)
+    const code = await runPolicyCheck(ARGV, deps)
+    expect(code).toBe(1)
+    expect(lines.join('\n')).toContain('[fail] [author-identity] aaaaaaaa: ')
+    expect(linesFor(lines, 'fork-author-identity')).toHaveLength(0)
   })
 
   it('exits 0 when only warning rules fire', async () => {

@@ -135,8 +135,14 @@ describe('isTestAsset', () => {
     'tests/architecture/import-graph.ts',
     'e2e/tests/helpers.ts',
     'editor/a.stories.tsx',
+    'editor/design-system/arris-story-support.ts',
+    'editor/design-system/x-story-support.tsx',
   ])('is true for %s', (path) => {
     expect(isTestAsset(path)).toBe(true)
+  })
+
+  it('is false for story-support-notes.md', () => {
+    expect(isTestAsset('editor/design-system/story-support-notes.md')).toBe(false)
   })
 
   it.each(['core/a.ts', 'docs/x.md', 'scripts/fixture-loader.ts', 'editor/a.tsx', 'package.json'])(

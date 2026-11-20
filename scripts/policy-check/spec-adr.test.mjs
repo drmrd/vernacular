@@ -16,13 +16,26 @@ describe('specNeedsAdrFindings', () => {
   })
 
   it('refuses a spec change without an added or modified ADR', () => {
-    const files = [changed(SPEC), changed('docs/specs/other.md', 'A')]
+    const files = [changed(SPEC), changed('docs/specs/other.md')]
     const findings = specNeedsAdrFindings(files)
     expect(findings).toHaveLength(1)
     expect(findings[0].rule).toBe('spec-needs-adr')
     expect(findings[0].file).toBe(SPEC)
     expect(findings[0].message).toContain(SPEC)
     expect(findings[0].message).toContain('docs/specs/other.md')
+  })
+
+  it('accepts a newly added spec without an ADR', () => {
+    const files = [changed('docs/specs/2026-11-20-new-topic.md', 'A'), changed('src/main.ts')]
+    expect(specNeedsAdrFindings(files)).toEqual([])
+  })
+
+  it('still refuses a modified spec beside an added spec when no ADR changes', () => {
+    const files = [changed('docs/specs/new.md', 'A'), changed(SPEC)]
+    const findings = specNeedsAdrFindings(files)
+    expect(findings).toHaveLength(1)
+    expect(findings[0].rule).toBe('spec-needs-adr')
+    expect(findings[0].file).toBe(SPEC)
   })
 
   it('reports a finding with only the rule, the file, and a message', () => {
