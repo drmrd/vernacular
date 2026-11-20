@@ -17,8 +17,6 @@ const LEGACY_FOLDER_ID = 'current'
  * The remembered id is removed only once its marked record landed in the durable index.
  */
 export interface ProjectUpgrade {
-  /** The forget of the remembered folder. Never rejects. */
-  readonly folderStep: Promise<void>
   /** Learns what the read of the index gave; undefined when that read rejected. */
   noteIndexRead(records: readonly ProjectRecord[] | undefined): void
   /** Learns the ids that the store lists, and drops a remembered id that the store does not hold. */
@@ -32,6 +30,7 @@ export interface ProjectUpgrade {
 /**
  * Forgets the folder that the older build remembered, without reopening it, so the browser asks
  * nothing and no file of the folder is touched. A failure is logged and tried again next time.
+ * The run does not wait for this step, so a folder query that never answers holds nothing.
  */
 async function forgetLegacyFolder(folders: FolderAccess): Promise<void> {
   let answer: Awaited<ReturnType<FolderAccess['permission']>>
@@ -69,12 +68,11 @@ function holdsNoWorkspaceRecordOf(
  * so a tab that finds no id reads the index after another tab's mark landed.
  */
 export function startUpgrade(ports: SessionPorts): ProjectUpgrade {
-  const folderStep = folderStepOf(ports)
+  void folderStepOf(ports)
   const rememberedId = ports.workspace.durable ? readLegacyActiveProjectId() : undefined
   let markDue = false
   let marked: ProjectRecord | undefined
   return {
-    folderStep,
     noteIndexRead(records) {
       markDue = rememberedId !== undefined && holdsNoWorkspaceRecordOf(rememberedId, records)
     },

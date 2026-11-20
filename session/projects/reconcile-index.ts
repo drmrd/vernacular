@@ -185,7 +185,7 @@ async function reconcile(ports: SessionPorts): Promise<ProjectRecord[]> {
   const upgrade = startUpgrade(ports)
   const records = await reconcileSteps({ ports, failed, startedPuts, upgrade })
   // A guarded put never rejects, so this waits for every put and the warning counts each failure.
-  await Promise.all([...startedPuts, upgrade.folderStep])
+  await Promise.all(startedPuts)
   failed.warnIfAny()
   return records
 }
