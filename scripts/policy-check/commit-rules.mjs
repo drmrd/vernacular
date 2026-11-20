@@ -1,3 +1,5 @@
+import { BOT_IDENTITIES, OWNER_IDENTITY } from './identities.mjs'
+
 /** @typedef {import('./git-input.mjs').PolicyCommit} PolicyCommit */
 /** @typedef {{ rule: string, message: string, sha?: string, file?: string, line?: number }} Finding */
 
@@ -29,4 +31,34 @@ export function trailerFindings(commits) {
  */
 function isForbiddenTrailerLine(line) {
   return FORBIDDEN_TRAILER_LINE.test(line) || line.toLowerCase().includes(GENERATED_WITH_FOOTER)
+}
+
+/**
+ * One finding per commit whose author is neither the owner nor a bot on its own branch.
+ * @param {PolicyCommit[]} commits
+ * @param {string} branch
+ * @returns {Finding[]}
+ */
+export function authorFindings(commits, branch) {
+  return commits
+    .filter((commit) => !isAllowedAuthor(commit, branch))
+    .map((commit) => ({
+      rule: 'author-identity',
+      message: `Author ${commit.authorName} <${commit.authorEmail}> is not the owner identity`,
+      sha: commit.sha,
+    }))
+}
+
+/**
+ * @param {PolicyCommit} commit
+ * @param {string} branch
+ * @returns {boolean}
+ */
+function isAllowedAuthor(commit, branch) {
+  const isOwner =
+    commit.authorName === OWNER_IDENTITY.name && commit.authorEmail === OWNER_IDENTITY.email
+  const isBotOnItsBranch = BOT_IDENTITIES.some(
+    (bot) => commit.authorEmail === bot.email && branch.startsWith(bot.branchPrefix),
+  )
+  return isOwner || isBotOnItsBranch
 }
