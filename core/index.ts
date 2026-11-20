@@ -564,6 +564,7 @@ export type { PlanBounds, SvgView, SvgViewOptions } from './export/svg/svg-view'
 export { createSvgView, planContentBounds } from './export/svg/svg-view'
 export type { SvgPlanExportOptions } from './export/svg/svg-plan-exporter'
 export { SvgPlanExporter } from './export/svg/svg-plan-exporter'
+export { createPlanPreview } from './export/svg/plan-preview'
 export type { LinearRgb, OkLab, Srgb } from './color/oklab'
 export { linearToSrgb, okLabToSrgb, srgbToLinear, srgbToOkLab } from './color/oklab'
 export {
