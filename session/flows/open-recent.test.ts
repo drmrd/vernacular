@@ -147,6 +147,18 @@ describe('a recent project of the workspace', () => {
     expect(handle.session.getProject().meta.name).not.toBe(FOLDER_PROJECT_NAME)
   })
 
+  it('a project stored under an id of an earlier build opens from the workspace', async () => {
+    const ports = createTestPorts()
+    const earlierId = 'project-3f2b8c1e-6d4a-4b7e-9a15-0c8d2e7f1a64'
+    await placeDocument(ports, earlierId, currentBytes())
+    await ports.index.put(sampleRecord({ id: earlierId, location: IN_WORKSPACE }))
+
+    const handle = handleOf(await openRecent(ports, undefined, earlierId))
+
+    expect(handle.id).toBe(earlierId)
+    expect(handle.location).toEqual(IN_WORKSPACE)
+  })
+
   it('an index whose get rejects opens from the workspace', async () => {
     const ports = createTestPorts()
     await placeDocument(ports, CURRENT_ID, currentBytes())

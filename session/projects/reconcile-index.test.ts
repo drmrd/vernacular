@@ -182,6 +182,19 @@ describe('the records that the rebuild keeps, replaces, and orders', () => {
     expect(remove).not.toHaveBeenCalled()
   })
 
+  it('a sound record under an id of an earlier build whose times agree is kept as it is, and the document is not read', async () => {
+    const ports = rebuildPorts()
+    const earlierId = 'project-3f2b8c1e-6d4a-4b7e-9a15-0c8d2e7f1a64'
+    await placeSound(ports, [earlierId])
+    const kept = soundRecordOf(earlierId, { lastUsedAt: USED_AT })
+    await ports.index.put(kept)
+    const read = vi.spyOn(ports.workspace, 'read')
+
+    expect(await reconcileIndex(ports)).toEqual([kept])
+
+    expect(read).not.toHaveBeenCalled()
+  })
+
   it("a record whose time of change differs from the store's is rebuilt and keeps its time of use", async () => {
     const ports = rebuildPorts()
     await placeSound(ports, ['a'])

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProjectRecord } from '../../storage'
 import { reconcileIndex } from '..'
 import {
+  EARLIER_CHANGE,
   REBUILD_BUILD,
   USED_AT,
   failedRecord,
@@ -113,5 +114,62 @@ describe('a record of a project that did not open', () => {
 
     expect(records).toEqual([opened])
     expect(read).not.toHaveBeenCalled()
+  })
+
+  it('a check whose read rejects keeps the record of the index, and the next call reads the project again', async () => {
+    const ports = rebuildPorts()
+    await placeSound(ports, ['a'])
+    const stale = failedUnderOlderBuild('a', soundDocumentOf('a'), 'newer-version')
+    await ports.index.put(stale)
+    const read = vi.spyOn(ports.workspace, 'read').mockRejectedValue(new Error('The store failed'))
+
+    expect(await reconcileIndex(ports)).toEqual([stale])
+
+    expect(await ports.index.get('a')).toEqual(stale)
+    await reconcileIndex(ports)
+    expect(read.mock.calls).toEqual([['a'], ['a']])
+  })
+
+  it('a check whose new record cannot be put still shows the new record, and the next call reads the project again', async () => {
+    const ports = rebuildPorts()
+    await placeSound(ports, ['a'])
+    const stale = failedUnderOlderBuild('a', soundDocumentOf('a'), 'newer-version')
+    await ports.index.put(stale)
+    vi.spyOn(ports.index, 'put').mockRejectedValueOnce(new Error('The index failed'))
+    const read = vi.spyOn(ports.workspace, 'read')
+
+    expect(await reconcileIndex(ports)).toEqual([soundRecordOf('a', { lastUsedAt: USED_AT })])
+
+    expect(await ports.index.get('a')).toEqual(stale)
+    await reconcileIndex(ports)
+    expect(read.mock.calls).toEqual([['a'], ['a']])
+  })
+
+  it('a failed record whose time of change is behind the store is read once and keeps its time of use', async () => {
+    const ports = rebuildPorts()
+    await placeSound(ports, ['a'])
+    const stale = {
+      ...failedUnderOlderBuild('a', soundDocumentOf('a'), 'newer-version'),
+      lastChangedAt: EARLIER_CHANGE,
+    }
+    await ports.index.put(stale)
+    const read = vi.spyOn(ports.workspace, 'read')
+
+    const records = await reconcileIndex(ports)
+
+    expect(records).toEqual([soundRecordOf('a', { lastUsedAt: USED_AT })])
+    expect(read.mock.calls).toEqual([['a']])
+  })
+
+  it('a check that fails again whose stored files cannot be read leaves the named record in the index', async () => {
+    const ports = rebuildPorts()
+    await placeDocument(ports, 'broken', notJsonBytes())
+    const stale = failedUnderOlderBuild('broken', notJsonBytes(), 'newer-version')
+    await ports.index.put(stale)
+    vi.spyOn(ports.workspace, 'storedFiles').mockRejectedValue(new Error('The files failed'))
+
+    await reconcileIndex(ports)
+
+    expect(await ports.index.get('broken')).toEqual(stale)
   })
 })
