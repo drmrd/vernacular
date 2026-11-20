@@ -4,6 +4,7 @@ import { createEditorSession, type EditorSession } from '../editor-session/edito
 import { callGuarded, callGuardedAsync } from '../guarded-call'
 import { type HandOver, registerHandle } from './handle-internals'
 import { createHandleNotices, type HandleNotices } from './handle-notices'
+import type { RecordKeeper } from './handle-record'
 import type { DocumentHandle, OpenRequest, SaveOutcome, SaveStatus } from './handle-types'
 import type { OpenedProject } from './read-for-open'
 import { messageOf } from './thrown-failures'
@@ -22,6 +23,8 @@ export interface DocumentHandleParts {
    * snapshots object, which is safe because that object holds no state of a session.
    */
   readonly snapshots?: ProjectSnapshots
+  /** The record writes of the project; a restore passes on those of the handle before it. */
+  readonly records: RecordKeeper
 }
 
 interface SaveStatusCell {
@@ -72,6 +75,7 @@ function failedWith(error: unknown): SaveOutcome {
 interface SavePathParts {
   readonly autosave: Autosave
   readonly hold: ProjectLockHold
+  readonly records: RecordKeeper
 }
 
 interface SavePath {
@@ -124,13 +128,14 @@ async function handOverWith(
  * The save, the flush, the close, and the hand-over of a handle. A close flushes again while
  * autosave has work left: a write is needed, or a write of the handle runs or waits, whoever asked
  * for it, so no store save runs after the lock is freed. Then it marks the handle closed and stops
- * autosave with no wait in between, then frees the lock. A hand-over does the same and keeps the
+ * autosave with no wait in between, then waits for the record writes of the handle, then frees the
+ * lock. A hand-over does the same and keeps the
  * lock for its caller. A flush that fails leaves the handle open, the lock held, and autosave
  * armed. A close called while another close runs, also while that close frees the lock, gets the
  * same attempt, so the lock is freed once.
  */
 function createSavePath(parts: SavePathParts): SavePath {
-  const { autosave, hold } = parts
+  const { autosave, hold, records } = parts
   const state: EndState = { closed: false, ending: undefined }
 
   const save = (): Promise<SaveOutcome> =>
@@ -148,6 +153,7 @@ function createSavePath(parts: SavePathParts): SavePath {
     }
     state.closed = true
     autosave.dispose()
+    await records.settled()
     await afterEnd()
     return SAVED
   }
@@ -184,13 +190,50 @@ function reportFaultsTo(
   }
 }
 
+/** What the autosave of a handle tells: each status, and what each store save found. */
+interface WriteListeners {
+  onStatusChange(next: SaveStatus): void
+  onReport(report: SaveReport): void
+}
+
+/** What the listeners of the writes of a handle report to. */
+interface WriteListenerParts {
+  readonly session: EditorSession
+  readonly status: SaveStatusCell
+  readonly reportFaults: (report: SaveReport) => void
+  readonly records: RecordKeeper
+}
+
+/**
+ * Sets each status, and once a write reported saved, asks for the record of the session's project:
+ * no change arrived since that write started, so it is the stored project. A store save always
+ * reports before its write reports saved, so the last report is that of the write.
+ */
+function listenToWrites(parts: WriteListenerParts): WriteListeners {
+  const { session, status, reportFaults, records } = parts
+  let lastReport: SaveReport | undefined
+  return {
+    onReport(report) {
+      lastReport = report
+      reportFaults(report)
+    },
+    onStatusChange(next) {
+      const stored = next === 'saved' ? session.getProject() : undefined
+      status.set(next)
+      if (stored !== undefined && lastReport !== undefined) {
+        records.saved(stored, lastReport)
+      }
+    },
+  }
+}
+
 /**
  * Builds the handle of an opened project: its session, its autosave, its status, its notices, and
  * its save, flush, and close. It records the store and the hand-over of the handle in the internal
  * lookup of the session layer, so that the handle keeps only its public members.
  */
 export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle {
-  const { request, store, hold, opened } = parts
+  const { request, store, hold, opened, records } = parts
   const session = parts.session ?? createEditorSession(opened.project)
   const status = createSaveStatusCell()
   const notices = createHandleNotices()
@@ -198,15 +241,15 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     notices.raise('saved-by-newer-build')
   }
   const snapshots = parts.snapshots ?? store.snapshots(request.id)
+  const reportFaults = reportFaultsTo(notices, opened)
   const autosave = createAutosave({
     session,
     store,
     projectId: request.id,
     snapshots,
-    onStatusChange: status.set,
-    onReport: reportFaultsTo(notices, opened),
+    ...listenToWrites({ session, status, reportFaults, records }),
   })
-  const savePath = createSavePath({ autosave, hold })
+  const savePath = createSavePath({ autosave, hold, records })
   const handle: DocumentHandle = {
     id: request.id,
     location: request.location,
@@ -220,6 +263,6 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     flush: savePath.flush,
     close: savePath.close,
   }
-  registerHandle(handle, { request, store, handOver: savePath.handOver })
+  registerHandle(handle, { request, store, records, handOver: savePath.handOver })
   return handle
 }

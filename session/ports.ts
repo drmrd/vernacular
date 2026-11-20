@@ -1,4 +1,9 @@
-import type { FolderAccess, ProjectLockPort, WorkspaceDocumentStore } from '../storage'
+import type {
+  FolderAccess,
+  ProjectIndex,
+  ProjectLockPort,
+  WorkspaceDocumentStore,
+} from '../storage'
 
 /** What the session layer needs from the outside world to open and keep projects. */
 export interface SessionPorts {
@@ -10,4 +15,8 @@ export interface SessionPorts {
   readonly folders: FolderAccess
   /** The present time. */
   readonly now: () => Date
+  /** One record for each project that the workspace knows. */
+  readonly index: ProjectIndex
+  /** The version of the application package, written into each record. */
+  readonly build: string
 }

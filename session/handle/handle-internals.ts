@@ -1,4 +1,5 @@
 import type { DocumentStore, ProjectLockHold } from '../../storage'
+import type { RecordKeeper } from './handle-record'
 import type { DocumentHandle, OpenRequest } from './handle-types'
 
 /** The lock of a handle that ended and gave its lock away, or why it did not end. */
@@ -10,6 +11,8 @@ export type HandOver =
 export interface HandleInternals {
   readonly request: OpenRequest
   readonly store: DocumentStore
+  /** The record writes of the handle, which a restore passes on to the handle after it. */
+  readonly records: RecordKeeper
   /** Ends the handle as a close does, keeps the lock, and gives it to the caller. */
   handOver(): Promise<HandOver>
 }

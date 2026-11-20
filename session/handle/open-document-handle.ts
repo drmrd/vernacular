@@ -3,6 +3,7 @@ import { callGuardedAsync } from '../guarded-call'
 import type { SessionPorts } from '../ports'
 import { createDocumentHandle, type DocumentHandleParts } from './document-handle'
 import { findDocumentStore } from './find-document-store'
+import { createRecordKeeper, recordFailedOpen } from './handle-record'
 import type { OpenFailed, OpenRequest, OpenResult } from './handle-types'
 import { readForOpen } from './read-for-open'
 import { storageUnavailable } from './thrown-failures'
@@ -22,23 +23,32 @@ async function takeLock(ports: SessionPorts, id: string): Promise<TakenLock> {
   }
 }
 
-/** Reads the project and builds its handle, under a lock already taken. It never rejects. */
+/**
+ * Reads the project and builds its handle, under a lock already taken. A project that the read
+ * found in the store gets its record, written apart from the open. It never rejects.
+ */
 async function openUnderLock(parts: Omit<DocumentHandleParts, 'opened'>): Promise<OpenResult> {
   const read = await readForOpen(parts.store, parts.request)
   if (!read.ok) {
     return read
   }
+  let result: OpenResult
   try {
-    return { ok: true, handle: createDocumentHandle({ ...parts, opened: read.opened }) }
+    result = { ok: true, handle: createDocumentHandle({ ...parts, opened: read.opened }) }
   } catch (error) {
     return storageUnavailable(error)
   }
+  if (read.stored) {
+    parts.records.opened(read.opened, read.lastChangedAt)
+  }
+  return result
 }
 
 /**
  * Opens a project: finds its store, takes its lock, reads it, and builds its session and
  * autosave. Each failure is typed, a failure frees the lock it took, and the promise never
- * rejects.
+ * rejects. A stored project that did not open has that noted in its record, if it has one, before
+ * the lock is freed.
  */
 export async function openDocumentHandle(
   ports: SessionPorts,
@@ -52,8 +62,12 @@ export async function openDocumentHandle(
   if (!lock.ok) {
     return lock
   }
-  const result = await openUnderLock({ request, store: found.store, hold: lock.hold })
+  const records = createRecordKeeper(ports, request)
+  const result = await openUnderLock({ request, store: found.store, hold: lock.hold, records })
   if (!result.ok) {
+    if (result.failure.kind === 'did-not-open') {
+      await recordFailedOpen(ports, request.id, result.failure.decode)
+    }
     // A release that fails goes to the console; the open still reports its own failure.
     await callGuardedAsync(() => lock.hold.release())
   }

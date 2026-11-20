@@ -92,7 +92,7 @@ export async function restoreSnapshot(current: DocumentHandle): Promise<RestoreR
   if (!handedOver.ok) {
     return flushFailed()
   }
-  const { request, store } = internals
+  const { request, store, records } = internals
   let handle: DocumentHandle
   try {
     handle = createDocumentHandle({
@@ -102,6 +102,7 @@ export async function restoreSnapshot(current: DocumentHandle): Promise<RestoreR
       opened,
       session,
       snapshots: current.snapshots,
+      records,
     })
   } catch (error) {
     // Defence in depth: the builder calls no store method here, so nothing in it is known to throw.
