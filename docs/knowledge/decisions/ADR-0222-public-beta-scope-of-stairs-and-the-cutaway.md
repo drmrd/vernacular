@@ -59,8 +59,8 @@ Here is what the code holds on `main` at the time of this record:
   building", each upper floor covers the floor below it. There is no cutaway.
 - The floor thickness is a 250 mm placeholder (ADR-0062), and the model has no roof.
 
-Transparency is expensive in this renderer. Five records already govern the near-wall fade
-(ADR-0086, ADR-0087, ADR-0103, ADR-0140, ADR-0145). Ghosted floors would have to sort correctly
+Transparency is expensive in this renderer. Six records already govern the near-wall fade
+(ADR-0086, ADR-0087, ADR-0103, ADR-0140, ADR-0145, ADR-0218). Ghosted floors would have to sort correctly
 against that fade and against shadows.
 
 ## Decision
@@ -83,6 +83,9 @@ The beta has no adjustable transparency on the floors above.
 In the floor view, the active floor and every floor below it are drawn solid, and the floors above
 are hidden, so a stair that arrives from below is in view. Today "This floor" draws the active floor
 alone.
+
+Which floors the camera frames in the floor view is not decided here. The first view of a project
+frames what the view shows, so drawing the floors below may change what it frames. That stays open.
 
 ### The first stair is a straight run with a plain balustrade and newels
 
@@ -135,6 +138,7 @@ These were not decided and stay open for the design round on #169:
 - The shadow rules for the cut plane and its caps.
 - The stair well rule under a sloped ceiling, such as a stair into an attic. This waits for the
   design round on roofs and sloped ceilings.
+- Which floors the camera frames in the floor view, now that the floors below are drawn.
 
 ## Consequences
 

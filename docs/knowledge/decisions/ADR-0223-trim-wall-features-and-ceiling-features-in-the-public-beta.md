@@ -65,7 +65,7 @@ or trim outside a closed room. A hand-placed run keeps the path model of section
 reference to a `TrimProfile`.
 
 So the beta has two ways to make trim and two tools. Room-owned trim needs room data that survives
-a wall split, so it waits for the fix that keeps a room's stored data across the split.
+a wall split, so it waits for the fix that keeps a room's stored data across the split (the room records of the geometric kernel specification, section 5.6).
 
 ### A wall feature is a band in the beta, and a rectangle joins it later
 
@@ -128,6 +128,7 @@ model, so it needs a change to the finishes specification and a record of its ow
   described.
 - Phase 4, "Trim system": room-owned runs that follow wall edits, and hand-placed runs.
 - Phase 4, "Ceiling features": a room ceiling treatment for beams and coffers, and placed pieces.
+- Phase 4, after "Wall features": the wall feature band between two heights along a room's wall faces, with a rectangle on one face after the beta as the same kind of object, and the 3D builders for baseboard, door and window casing, wainscot, and ceiling beams.
 
 Section 3.1's `wallFeatures[]` line and the Phase 4 "Wall features" line still name built-ins,
 columns, arches, half-walls, and alcoves. This record does not say whether the wall feature object

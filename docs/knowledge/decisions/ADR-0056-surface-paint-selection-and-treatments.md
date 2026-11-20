@@ -216,9 +216,9 @@ Not decided here:
 
 ADR-0224 decides the click on furniture, on a door leaf or frame, on glass, and on a junction fill,
 the first case in the list above. Every object that is not faded now stops the click, and one hit
-gives both the selection and the paint target. Furniture, door parts, and glass clear the paint
-target. A junction fill gives no paint target and no selection. The rule "a wall decides at its
-first hit" now holds for every object. A faded object still does not take a click.
+gives both the selection and the paint target. Furniture and glass clear the paint
+target, and so does a door leaf or frame, which has no paintable face. A junction fill gives
+no paint target and no selection. The rule "a wall decides at its first hit" now holds for every object. A faded object still does not take a click.
 
 Two points in the list above stay open: a line hit on the edge overlay of a faded wall (#742), and
 the fade that depends on the camera's distance (#744).

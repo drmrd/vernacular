@@ -74,7 +74,7 @@ tell the cases apart: glass and the furniture placeholder both draw at an opacit
 A click stops at the first object along the ray that is not faded: a wall, a junction fill, an
 opening and its parts, furniture, a ceiling, or the lawn. That one hit gives both the selection and
 the paint target, so the two can no longer differ, and no click reaches a surface behind an object
-that is not faded. A faded object still never stops a click (ADR-0056).
+that is not faded. A faded object still never stops a click (ADR-0056). An object that the cut of ADR-0222 hides, above the cut height or on a floor above the floor view, never stops a click, as a faded object does not.
 
 This extends to every object the rule that the 2026-11-15 amendment of ADR-0056 set for walls, "a
 wall decides at its first hit". A wall keeps that rule for its faces, caps, ends, and reveals.

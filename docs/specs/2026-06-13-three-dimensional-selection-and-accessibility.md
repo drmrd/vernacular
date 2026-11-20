@@ -90,7 +90,8 @@ surface pick, and its one hit gives both the selection and the paint target. A
 junction fill gives no entity id: the pick does not take the level id from the
 group above it, so a click on a junction fill clears the selection. The
 nearest-ancestor rule still holds for the parts of a wall, an opening, a room, and
-furniture.
+furniture. An object that the cut of ADR-0222 hides, above the cut height or on a floor
+above the floor view, never stops a click, as a faded object does not.
 
 ---
 

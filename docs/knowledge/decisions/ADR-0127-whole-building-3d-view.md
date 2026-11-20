@@ -11,6 +11,7 @@ related:
     decisions/ADR-0064-three-dimensional-camera-navigation,
     decisions/ADR-0075-three-dimensional-preview-camera-fit,
     decisions/ADR-0088-three-dimensional-incremental-scene-updates,
+    decisions/ADR-0222-public-beta-scope-of-stairs-and-the-cutaway,
   ]
 sourceFiles:
   [
@@ -21,7 +22,7 @@ sourceFiles:
     bridge/react/webgpu-scene-view.tsx,
   ]
 status: current
-updated: 2026-06-27
+updated: 2026-11-20
 ---
 
 # ADR-0127: Whole-building 3D view stacks every floor at the bridge seam
@@ -113,3 +114,7 @@ reads the elevation the floors carry rather than a redundant flag that could dri
 - ADR-0075 (the camera fit to world bounds that frames the taller building).
 - ADR-0088 (the incremental reconciler the selected graph feeds).
 - Issues: #206 (view the whole building as one model); related #196, #197, #198, #207.
+
+## Amendment 2026-11-20: the floor scope draws the floors below
+
+ADR-0222 changes the floor scope. The 3D floor view draws the active floor and every floor below it, and hides the floors above, so a stair that comes up from below is in view. The scope toggle and the underground control stay. ADR-0222 does not decide what the accessibility proxies and the Doorway preset read; that stays open.

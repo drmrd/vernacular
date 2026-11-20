@@ -1178,6 +1178,8 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 - Trim system: room-owned runs that follow wall edits, and hand-placed runs (path-based, multi-segment) for special cases (ADR-0223)
 - `TrimProfileRegistry` starter set: crown (3), baseboard (3), chair rail (2), picture rail (1), plate rail (1), wainscoting cap (1), beadboard panel (1), cornice (2)
 - Wall features (archways, half-walls, columns, alcoves, built-in shelving; atomic in MVP)
+- Wall feature band between two heights along a room's wall faces (wainscot, beadboard, full-height paneling); a rectangle on one face comes after the beta as the same kind of object (ADR-0223)
+- 3D builders for baseboard, door and window casing, wainscot, and ceiling beams (ADR-0223)
 - Ceiling features: a room ceiling treatment that lays out beams or coffers by rule, and placed pieces (medallions x3, single beams, coved ceiling zones, tin ceiling zones) (ADR-0223)
 - Wall construction profiles (plaster 6", lath-plaster 5", drywall 4.5", brick variants, stone)
 - `EraRegistry` populated: Victorian, Edwardian, Craftsman, Mid-Century, Contemporary, Mixed/Uncertain
