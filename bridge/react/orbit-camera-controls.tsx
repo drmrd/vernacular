@@ -15,14 +15,24 @@ interface OrbitCameraControlsProps {
   onLeave: (camera: SavedCamera) => void
 }
 
+/** Calls `notify` on a pointer press or a wheel turn on the canvas; returns the remover. */
+function listenForUserControl(domElement: HTMLElement, notify: () => void): () => void {
+  domElement.addEventListener('pointerdown', notify)
+  domElement.addEventListener('wheel', notify, { passive: true })
+  return () => {
+    domElement.removeEventListener('pointerdown', notify)
+    domElement.removeEventListener('wheel', notify)
+  }
+}
+
 /**
  * Wires the engine orbit facade to the live camera and canvas so a drag orbits, a
  * secondary drag pans, and the wheel zooms. It holds the facade, not a three
  * OrbitControls instance, so this bridge file does not import three (rules.md rule
  * 1). The controller starts on `initialTarget`, so a remount can resume the pivot the
- * departing canvas turned around. It marks the camera as user-controlled on the first
- * pointer press through a listener it owns on the canvas, which is what tells the pane
- * to stop reframing on edits. On the way out it reports the camera position and the
+ * departing canvas turned around. It marks the camera as user-controlled on a pointer
+ * press or a wheel turn through listeners it owns on the canvas, which is what tells the
+ * pane to stop reframing on edits. On the way out it reports the camera position and the
  * orbit pivot through onLeave, so a session that outlives this canvas can reopen the
  * next one looking where this one looked.
  */
@@ -46,17 +56,16 @@ export function OrbitCameraControls({
   const appliedTargetRef = useRef(target)
 
   // Construct exactly one controller for this camera and canvas, and mark the camera
-  // as user-controlled the first time the user presses on it. The camera and the pivot
+  // as user-controlled when the user presses on it or turns the wheel. The camera and the pivot
   // are read on the way out, before the controller is disposed of, so they are still the
   // ones the user was looking through.
   useEffect(() => {
     const controller = createOrbitController(camera, domElement)
     controller.setTarget(initialTargetRef.current)
     controllerRef.current = controller
-    const handlePointerDown = () => callbacksRef.current.onUserControl()
-    domElement.addEventListener('pointerdown', handlePointerDown)
+    const stop = listenForUserControl(domElement, () => callbacksRef.current.onUserControl())
     return () => {
-      domElement.removeEventListener('pointerdown', handlePointerDown)
+      stop()
       callbacksRef.current.onLeave({
         position: cameraPositionOf(camera),
         orbitTarget: controller.getTarget(),
