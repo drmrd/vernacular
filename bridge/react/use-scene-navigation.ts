@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
-import type { SceneSessionStore } from '../scene-session/scene-session-store'
+import type { SavedCamera, SceneSessionStore } from '../scene-session/scene-session-store'
 
 import type { PresetRequest } from './scene-camera-effects'
 import type { PresetChoice } from './scene-nav-toolbar'
@@ -14,7 +14,7 @@ import {
  * The per-view camera navigation state: the active mode, whether the user has taken control
  * of the camera, the pose the last camera preset actually landed on, and the handoffs the
  * cameras use to resume where they left off (the saved camera, the walk pose, and the
- * open doors). The state lives in the scene session store, so it outlasts the preview
+ * open doors). The camera is kept only for a pane the user steered. The state lives in the scene session store, so it outlasts the preview
  * subtree's unmount when the view mode changes (ADR-0170). The state stays out of the model
  * and undo history whichever store backs it. Reset clears user control, which lets FrameCamera
  * refit the model to the viewport through its `active` transition.
@@ -23,11 +23,12 @@ export function useSceneNavigation() {
   const store = useSceneSessionStoreOrLocal()
   const session = useSyncExternalStore(store.subscribe, store.getSceneSession)
   const writers = useSceneSessionWriters(store)
-  // A saved camera is the mark of a viewer who was steering, so a mount that finds
-  // one starts out of the way rather than reframing the model under them.
+  // Only a steered pane leaves a camera behind (see useCameraLeaveNote), so a mount that
+  // finds one starts out of the way rather than reframing the model under the viewer.
   const [userControlled, setUserControlled] = useState(
     () => store.getSceneSession().savedCamera !== null,
   )
+  const noteCameraLeft = useCameraLeaveNote(store, userControlled)
   const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
   const markUserControlled = useCallback(() => setUserControlled(true), [])
   // Reset drops the applied preset along with user control, so the camera goes back to
@@ -64,9 +65,10 @@ export function useSceneNavigation() {
     // The departing canvas notes where the camera was standing so the next mount reopens
     // there instead of reframing the model (ADR-0170). The whole camera comes back, the
     // position and the orbit pivot together, so a restored session looks where it looked
-    // before rather than turning back toward the model's framing.
+    // before rather than turning back toward the model's framing. Only a steered pane keeps
+    // its camera; an untouched pane leaves none, so the next mount frames the model again.
     savedCamera: session.savedCamera,
-    noteCameraLeft: writers.noteCameraLeft,
+    noteCameraLeft,
     // The pose the departing walker ended on, so returning to walk mode resumes there
     // rather than reseeding from wherever the camera has since been left (ADR-0170).
     walkPose: session.walkPose,
@@ -89,11 +91,29 @@ function useSceneSessionWriters(store: SceneSessionStore) {
       toggleSelection: sceneSessionToggle(store, 'selectionEnabled'),
       toggleRevealInterior: sceneSessionToggle(store, 'revealInterior'),
       notePresetApplied: sceneSessionSetter(store, 'presetPose'),
-      noteCameraLeft: sceneSessionSetter(store, 'savedCamera'),
       noteWalkPose: sceneSessionSetter(store, 'walkPose'),
       noteOpenDoors: sceneSessionSetter(store, 'openDoorIds'),
       clearPresetPose: () => store.updateSceneSession({ presetPose: null }),
     }),
+    [store],
+  )
+}
+
+/**
+ * The departing pane's note of where its camera stood. The session keeps the camera only when
+ * the navigation is steered at the moment of the call and forgets it otherwise, because the next
+ * mount reads a saved camera as a steered viewer. The identity stays stable across renders and
+ * the call reads the newest steering flag, since the pane calls it once as it unmounts.
+ */
+function useCameraLeaveNote(
+  store: SceneSessionStore,
+  userControlled: boolean,
+): (camera: SavedCamera) => void {
+  const userControlledRef = useRef(userControlled)
+  userControlledRef.current = userControlled
+  return useCallback(
+    (camera: SavedCamera) =>
+      store.updateSceneSession({ savedCamera: userControlledRef.current ? camera : null }),
     [store],
   )
 }
