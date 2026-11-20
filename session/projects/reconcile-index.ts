@@ -6,6 +6,7 @@ import {
   type ListedProject,
   type RebuildRun,
 } from './rebuild-record'
+import { startUpgrade, type ProjectUpgrade } from './upgrade'
 
 /** The run of each ports object that has not ended yet, so that calls that overlap share it. */
 const runs = new WeakMap<SessionPorts, Promise<ProjectRecord[]>>()
@@ -27,12 +28,13 @@ const FAILED_STEPS_WARNING =
 const FIRST_ERROR_LABEL = 'First error:'
 
 /**
- * What one run works with: the ports, the failed steps that it notes as it goes, and the puts that
- * it started and awaits at its end.
+ * What one run works with: the ports, the failed steps that it notes as it goes, the puts that it
+ * started and awaits at its end, and the upgrade from the older build.
  */
 interface ReconcileRun extends RebuildRun {
   readonly ports: SessionPorts
   readonly startedPuts: Promise<void>[]
+  readonly upgrade: ProjectUpgrade
 }
 
 /** The failed steps of one run: their count, the first error, and the one warning about them. */
@@ -65,13 +67,13 @@ function createFailedSteps(): FailedStepsOfRun {
   }
 }
 
-/** Every record of the index; none when the index cannot be read, so every project is rebuilt. */
-async function indexRecords(run: ReconcileRun): Promise<readonly ProjectRecord[]> {
+/** Every record of the index; undefined when the index cannot be read. */
+async function indexRecords(run: ReconcileRun): Promise<readonly ProjectRecord[] | undefined> {
   try {
     return await run.ports.index.all()
   } catch (error) {
     run.failed.note(error)
-    return []
+    return undefined
   }
 }
 
@@ -94,12 +96,17 @@ async function removeRecord(run: ReconcileRun, id: string): Promise<void> {
   }
 }
 
-/** Puts a rebuilt record. A failure leaves the index behind, and the next call rebuilds it. */
-async function putRecord(run: ReconcileRun, record: ProjectRecord): Promise<void> {
+/**
+ * Puts a rebuilt record, and answers whether the put resolved. A failure leaves the index behind,
+ * and the next call rebuilds it.
+ */
+async function putRecord(run: ReconcileRun, record: ProjectRecord): Promise<boolean> {
   try {
     await run.ports.index.put(record)
+    return true
   } catch (error) {
     run.failed.note(error)
+    return false
   }
 }
 
@@ -131,22 +138,29 @@ async function recordOfListed(
     return previous
   }
   const rebuilt = await rebuildRecord(run, listed, previous)
-  if (rebuilt.putInIndex) {
-    // Started, not awaited here: over an index whose writes do not answer, awaiting each put before
-    // the next read would make a run last one write limit for each project.
-    run.startedPuts.push(putRecord(run, rebuilt.record))
+  if (!rebuilt.putInIndex) {
+    return rebuilt.record
   }
-  return rebuilt.record
+  // The mark is decided in the same turn as the put is called, so it goes where the put goes.
+  const record = run.upgrade.recordToPut(rebuilt.record)
+  // Started, not awaited here: over an index whose writes do not answer, awaiting each put before
+  // the next read would make a run last one write limit for each project.
+  const put = putRecord(run, record).then((landed) => run.upgrade.notePut(record, landed))
+  run.startedPuts.push(put)
+  return record
 }
 
 /** Reads the index first, then lists the store, then drops, keeps, or rebuilds each record. */
 async function reconcileSteps(run: ReconcileRun): Promise<ProjectRecord[]> {
-  const records = await indexRecords(run)
+  const answer = await indexRecords(run)
+  run.upgrade.noteIndexRead(answer)
+  const records = answer ?? []
   const listing = await storeListing(run)
   if (listing === undefined) {
     return [...records].sort(compareIds)
   }
   const listedIds = new Set(listing.map((listed) => listed.id))
+  run.upgrade.noteListing(listedIds)
   const previousById = new Map(records.map((record) => [record.id, record]))
   const kept = await dropGoneRecords(
     run,
@@ -168,9 +182,10 @@ async function reconcileSteps(run: ReconcileRun): Promise<ProjectRecord[]> {
 async function reconcile(ports: SessionPorts): Promise<ProjectRecord[]> {
   const failed = createFailedSteps()
   const startedPuts: Promise<void>[] = []
-  const records = await reconcileSteps({ ports, failed, startedPuts })
+  const upgrade = startUpgrade(ports)
+  const records = await reconcileSteps({ ports, failed, startedPuts, upgrade })
   // A guarded put never rejects, so this waits for every put and the warning counts each failure.
-  await Promise.all(startedPuts)
+  await Promise.all([...startedPuts, upgrade.folderStep])
   failed.warnIfAny()
   return records
 }

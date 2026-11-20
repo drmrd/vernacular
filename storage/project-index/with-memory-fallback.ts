@@ -48,11 +48,24 @@ export function withMemoryFallback(first: ProjectIndex): ProjectIndex {
   return new MemoryFallbackIndex(first)
 }
 
+/**
+ * True when `index` is a fall-back that switched to memory, so a write called now goes to memory.
+ * False for every other index, which has no memory to switch to. Calls no method of the index.
+ */
+export function hasSwitchedToMemory(index: ProjectIndex): boolean {
+  return index instanceof MemoryFallbackIndex && index.hasSwitched
+}
+
 class MemoryFallbackIndex implements ProjectIndex {
   private readonly memory = new InMemoryProjectIndex()
   private switched = false
 
   constructor(private readonly first: ProjectIndex) {}
+
+  /** The same value that routes a write. */
+  get hasSwitched(): boolean {
+    return this.switched
+  }
 
   all(): Promise<ProjectRecord[]> {
     return this.read((index) => index.all())
