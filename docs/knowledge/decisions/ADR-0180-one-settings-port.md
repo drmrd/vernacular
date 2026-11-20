@@ -80,8 +80,9 @@ language choice the Arris migration introduces will need one. The design specifi
   member is optional because the memory port has no outside to hear from, and a port without it is
   still a complete port.
 - The browser port takes a second constructor argument, the object that carries the browser's
-  `storage` event. By default it is the global object, and a test passes its own. The port
-  listens only while it has a listener.
+  `storage` event. By default the port uses the global object when that object can carry the `storage` event,
+  and listens to nothing when it cannot. A test passes its own. The port listens only while it has
+  a listener.
 - The settings service listens for its whole life when its port has the member.
 
 Whether the port is the library store's settings methods or a separate interface is left to the
@@ -105,9 +106,9 @@ amendment under Status records.
 - This is the second user-visible change, after the stored theme. A theme or snap change in one
   tab shows in every open tab at once. An older copy in another tab can no longer overwrite a
   newer snap change after that change has arrived, because the service drops its kept value and
-  reads the new one before the next change builds on it. Two tabs that both show an editor always
-  show two different projects, because a second tab that asks for the same project is refused.
-  The settings are shared by all of them.
+  reads the new one before the next change builds on it. Where the browser grants its project locks,
+  two tabs that both show an editor show two different projects, because a second tab that asks
+  for a project open in another tab is refused. The settings are shared by all of them.
 - The browser port reacts to an event for its own storage and for a key with its own prefix, and
   it drops its memory copy of that setting before it tells the listeners. For a cleared storage it
   does so for every name that it has read or written. The service then calls each subscriber of
