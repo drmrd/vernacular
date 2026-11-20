@@ -14,6 +14,9 @@ import { navButton } from './close-openings-support'
 // unmounts in the plan view and mounts again on the way back (ADR-0170). Each hook has unit
 // tests, and the editor shell test runs in jsdom, where the pane shows its unsupported message and
 // has no toolbar. These cases run the real pane and read what a person sees after the switch.
+// They cover a flipped toolbar toggle with a dragged orbit camera, the walk pose across a detour
+// into orbit mode and across the switch, and (issue #619) a panned orbit camera: after the switch
+// the camera looks where it looked, and the first drag turns around the panned point.
 //
 // Like the neighbouring live-view specs this one reads what the renderer drew and not a marker:
 // canvas-only captures, which must differ from the earlier frames (so that the later equality
@@ -42,6 +45,12 @@ const WALK_HOLD_MS = 600
 const DRAG_DX = 120
 const DRAG_DY = 40
 const DRAG_STEPS = 8
+
+// The pan: a secondary-button drag from the canvas centre by this many CSS pixels, in the same
+// number of mouse moves. The orbit controls move the camera and the point it turns around by the
+// same offset, so a pan is the one drag that moves the pivot.
+const PAN_DX = 90
+const PAN_DY = 50
 
 // A closed rectangular room in plan pixels (the last corner is the first again, which closes the
 // loop), drawn in the split view.
@@ -84,18 +93,37 @@ async function leaveAndReturn(page: Page): Promise<void> {
   await waitForLiveCanvasReady(page)
 }
 
-// Drags the orbit camera from the canvas centre, then parks the pointer away from the canvas, so
-// no hover highlight sits on the frame that follows.
-async function dragOrbitCamera(page: Page): Promise<void> {
+// Drags from the canvas centre by the given offset with the given mouse button, then parks the
+// pointer away from the canvas, so no hover highlight sits on the frame that follows.
+async function dragFromCanvasCentre(
+  page: Page,
+  button: 'left' | 'right',
+  offset: { dx: number; dy: number },
+): Promise<void> {
   const box = await liveSceneCanvas(page).locator('canvas').boundingBox()
   if (box === null) throw new Error('the 3D canvas has no bounding box')
   const centerX = box.x + box.width / 2
   const centerY = box.y + box.height / 2
   await page.mouse.move(centerX, centerY)
-  await page.mouse.down()
-  await page.mouse.move(centerX + DRAG_DX, centerY + DRAG_DY, { steps: DRAG_STEPS })
-  await page.mouse.up()
+  await page.mouse.down({ button })
+  await page.mouse.move(centerX + offset.dx, centerY + offset.dy, { steps: DRAG_STEPS })
+  await page.mouse.up({ button })
   await page.mouse.move(0, 0)
+}
+
+// Drags the orbit camera with the primary button.
+async function dragOrbitCamera(page: Page): Promise<void> {
+  await dragFromCanvasCentre(page, 'left', { dx: DRAG_DX, dy: DRAG_DY })
+}
+
+// The orbit drag the other way round, which turns the camera back to where it was.
+async function dragOrbitCameraBack(page: Page): Promise<void> {
+  await dragFromCanvasCentre(page, 'left', { dx: -DRAG_DX, dy: -DRAG_DY })
+}
+
+// Pans the camera with the secondary button, which moves the orbit pivot with the camera.
+async function panOrbitCamera(page: Page): Promise<void> {
+  await dragFromCanvasCentre(page, 'right', { dx: PAN_DX, dy: PAN_DY })
 }
 
 // Waits until the pane shows the kept frame and holds it. When it never does, the failure names
@@ -234,5 +262,41 @@ test.describe('Live three-dimensional pane across a view switch', () => {
       .soft(navButton(page, 'Walk'), 'the camera mode was reset by the view switch')
       .toHaveAttribute('aria-pressed', 'true')
     await expectKeptFrame(page, walked, [standing, orbitRoom])
+  })
+
+  test('keeps a panned orbit camera and turns the first drag around the panned point after the plan view', async ({
+    page,
+  }) => {
+    test.slow()
+    const room = await openDrawnRoom(page)
+
+    // Pan the camera. The pan moves the camera and the point it turns around together, so the
+    // panned frame differs from the framed view of the room.
+    await panOrbitCamera(page)
+    const panned = {
+      name: 'the panned camera',
+      frame: await settledFrameAfterChange(page, room, 'the pan'),
+    }
+
+    // Turn the camera and turn it back. The turn around the panned point differs from the panned
+    // frame, and the way back returns to the panned frame exactly, which is the reading that the
+    // second turn after the switch is compared with.
+    await dragOrbitCamera(page)
+    const turned = {
+      name: 'the panned camera turned around the panned point',
+      frame: await settledFrameAfterChange(page, panned, 'the orbit drag'),
+    }
+    await dragOrbitCameraBack(page)
+    await expectKeptFrame(page, panned, [room, turned])
+
+    await leaveAndReturn(page)
+
+    // The camera must stand where it stood and look where it looked, which is the panned frame.
+    await expectKeptFrame(page, panned, [room, turned])
+
+    // The first drag after the switch must turn around the panned point, not around the framed
+    // centre of the model, so it gives the frame that the same drag gave before the switch.
+    await dragOrbitCamera(page)
+    await expectKeptFrame(page, turned, [panned, room])
   })
 })
