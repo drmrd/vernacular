@@ -16,8 +16,16 @@ const NAMES_LINE = /^[\w$,\s]+$/
 const LINE_COMMENT_PREFIX = '//'
 const BLOCK_COMMENT_OPEN = '/*'
 const BLOCK_COMMENT_CLOSE = '*/'
-const TOOL_DIRECTIVE =
-  /^\/\/\s*(?:@vitest-environment\b|eslint-(?:disable|enable)\b|@ts-|prettier-ignore\b)/
+const COMMENT_START = String.raw`(?:\/\/|\/\*+)\s*`
+const TOOL_DIRECTIVE_PATTERNS = [
+  new RegExp(
+    '^' +
+      COMMENT_START +
+      String.raw`(?:@vitest-environment|eslint-(?:disable|enable)|@ts-|prettier-ignore|c8 ignore|istanbul ignore)`,
+  ),
+  /^\/\/\/\s*<reference\b/,
+  /^\/\*+\s*globals?\b/,
+]
 const NOT_COMMENT = 'not-comment'
 const COMMENT_BLOCK_OPEN = 'comment-block-open'
 const COMMENT_BLOCK_CLOSED = 'comment-block-closed'
@@ -105,8 +113,11 @@ function acceptChangedLine(code, state) {
  * @returns {string} NOT_COMMENT, COMMENT_BLOCK_OPEN, or COMMENT_BLOCK_CLOSED
  */
 function scanComment(code, insideBlock) {
+  if (!insideBlock && TOOL_DIRECTIVE_PATTERNS.some((pattern) => pattern.test(code))) {
+    return NOT_COMMENT
+  }
   if (!insideBlock && code.startsWith(LINE_COMMENT_PREFIX)) {
-    return TOOL_DIRECTIVE.test(code) ? NOT_COMMENT : COMMENT_BLOCK_CLOSED
+    return COMMENT_BLOCK_CLOSED
   }
   if (!insideBlock && !code.startsWith(BLOCK_COMMENT_OPEN)) {
     return NOT_COMMENT
