@@ -40,20 +40,21 @@ export function milestoneCodeFindings(commits, branch) {
  * @returns {string | undefined} the offending text, if any
  */
 function findBranchCode(branch) {
-  const tokens = branch
+  const partsWithSeparators = branch
     .split('/')
     .slice(1)
     .join('/')
-    .split(/[-/_.]/)
-  for (const [index, token] of tokens.entries()) {
+    .split(/([-/_.])/)
+  for (let index = 0; index < partsWithSeparators.length; index += 2) {
+    const token = partsWithSeparators[index]
     if (BRANCH_SHORT_CODE.test(token)) return token
-    const label = tokens[index + 1]
+    const label = partsWithSeparators[index + 2]
     if (
       BRANCH_PHASE_WORDS.includes(token) &&
       label !== undefined &&
       BRANCH_PHASE_LABEL.test(label)
     ) {
-      return `${token}-${label}`
+      return partsWithSeparators.slice(index, index + 3).join('')
     }
   }
   return undefined
