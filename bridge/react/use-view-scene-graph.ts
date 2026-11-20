@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 
 import type { SceneGraph } from '../../core'
 
 import { useActiveFloorId } from './active-floor-context'
 import { useBuildingViewState, type BuildingViewState } from './use-building-view-state'
+import { useSceneSessionStoreOrLocal } from './scene-session-context'
 import { useSceneGraph } from './use-scene-graph'
 import { viewSceneGraph } from './view-scene-graph'
 
@@ -11,7 +12,7 @@ import { viewSceneGraph } from './view-scene-graph'
  * Memoizes the scene graph the 3D view renders for the current scope: the active floor
  * on its own, or the whole building stacked at its elevations (with underground levels
  * dropped when the view hides them). The memo holds the scoped graph stable so the scene
- * rebuilds only when the raw graph, active floor, or building-view toggles change, not on
+ * rebuilds only when the raw graph, active floor, camera mode, or building-view toggles change, not on
  * every render (viewSceneGraph returns a fresh object each call).
  */
 export function useViewSceneGraph(
@@ -19,6 +20,8 @@ export function useViewSceneGraph(
   activeFloorId: string | null,
   view: BuildingViewState,
 ): SceneGraph {
+  const store = useSceneSessionStoreOrLocal()
+  const { cameraMode } = useSyncExternalStore(store.subscribe, store.getSceneSession)
   return useMemo(
     () =>
       viewSceneGraph({
@@ -26,8 +29,9 @@ export function useViewSceneGraph(
         scope: view.scope,
         activeFloorId,
         includeUnderground: view.showUnderground,
+        cameraMode,
       }),
-    [rawGraph, activeFloorId, view.scope, view.showUnderground],
+    [rawGraph, activeFloorId, view.scope, view.showUnderground, cameraMode],
   )
 }
 
