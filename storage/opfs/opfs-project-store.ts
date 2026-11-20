@@ -2,6 +2,7 @@ import { WorkspaceDocumentStore } from '../documents/document-store'
 import type { DirectoryPort } from '../fs/directory-port'
 import { FileSystemDirectory } from '../fs/file-system-directory'
 import { WorkspaceFiles } from '../project-files/workspace-files'
+import { originPrivateRoot } from './origin-private-root'
 
 /**
  * Many projects under one directory, each in a subdirectory named by its id. It is the document
@@ -16,6 +17,6 @@ export class OpfsProjectStore extends WorkspaceDocumentStore {
 
 /** Build the durable OPFS-backed project store from the origin private file system. */
 export async function createOpfsProjectStore(): Promise<OpfsProjectStore> {
-  const root = await navigator.storage.getDirectory()
+  const root = await originPrivateRoot()
   return new OpfsProjectStore(new FileSystemDirectory(root))
 }

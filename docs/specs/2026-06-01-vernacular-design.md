@@ -347,8 +347,6 @@ interface ProjectStore {
 interface LibraryStore {
   put(asset: Asset): Promise<AssetReference>
   list(filter?: LibraryFilter): AsyncIterator<LibraryEntry>
-  getSettings(): Promise<UserSettings>
-  saveSettings(settings: UserSettings): Promise<void>
 }
 
 interface AssetCache {
@@ -358,6 +356,8 @@ interface AssetCache {
   evictIfNeeded(targetUtilization: number): Promise<EvictionResult>
 }
 ```
+
+User settings do not go through `LibraryStore`; section 7.7 gives them a settings port of their own (ADR-0180).
 
 Adding a future `CloudSyncProjectStore` is purely additive.
 
@@ -369,7 +369,8 @@ Adding a future `CloudSyncProjectStore` is purely additive.
 | Project folder (fallback)             | OPFS                                       | Sandboxed virtual filesystem; no permission prompt; fast for binary |
 | Asset cache                           | OPFS                                       | Better than IndexedDB for binary; origin-isolated                   |
 | User library                          | OPFS (binary) + IndexedDB (metadata index) | Binary in OPFS; queryable index in IndexedDB                        |
-| User settings, recent list            | IndexedDB                                  | Small, queryable                                                    |
+| User settings                         | Local storage, through the settings port   | Reads synchronously, so the theme is known at the first render      |
+| Recent list                           | IndexedDB                                  | Small, queryable                                                    |
 | App shell + bundled registries        | Service worker cache                       | Offline app shell                                                   |
 | Multi-tab coordination                | Web Locks API                              | Standard mutual exclusion                                           |
 | Quota observability                   | navigator.storage.estimate                 | Approaching-limits surfacing                                        |
@@ -632,7 +633,7 @@ Architecturally covered in §4.8. Cross-cutting commitments:
 
 ### 7.7 Settings and theming
 
-User settings persisted in `LibraryStore`:
+User settings are stored through the settings port of `storage/`, an interface of its own with a browser implementation and one in memory. The session layer owns a settings service with typed keys, defaults, a check of each stored value, and change notification, and the editor reads it through an adapter in `bridge/`. The snap preferences and the theme choice have keys today. Each other entry of the list gets a key when it gets a control:
 
 - Default units (per category)
 - Locale override

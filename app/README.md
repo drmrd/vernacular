@@ -9,6 +9,8 @@ Where things happen:
 - `create-session-ports.ts` builds the session ports in one place: the workspace store over the
   storage that `resolve-project-store.ts` picks, the project lock port, the folder access, and the
   clock. When the storage does not resolve, "Start a new project" gets the same ports in memory.
+- `app-settings.tsx` mounts the settings service of `session/` above the notifications and the
+  workspace, over the browser's local storage unless a test passes another `SettingsPort`.
 - `use-project-boot.ts` chooses what opens at start: the remembered id, or a new id after "Start a
   new project". Its Retry builds the ports again when they did not resolve, and otherwise repeats
   the failed start.
@@ -38,5 +40,5 @@ providers and the scene harness view; and `editor/` for the shell, the dialogs, 
 notifications. It imports nothing from `engine/`. A store is named only in
 `create-session-ports.ts`: `tests/architecture/app-reaches-stores-through-flows.test.ts` reports
 any other production file of `app/` that imports a store, imports all of `storage/` as a namespace,
-or reaches the `workspace` member of the ports. See ADR-0175, ADR-0212, and the design
+or reaches the `workspace` member of the ports. See ADR-0175, ADR-0180, ADR-0212, and the design
 specification, section 2.1.

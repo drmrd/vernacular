@@ -5,6 +5,8 @@ export type { GuardDestructiveOptions } from './editor-session/discard-guard'
 export { guardDestructive, needsDiscardConfirmation } from './editor-session/discard-guard'
 export type { AutosaveStatus } from './autosave/create-autosave'
 export { DEFAULT_AUTOSAVE_DELAY_MS } from './autosave/create-autosave'
+export type { SettingKey, SettingsService } from './settings/settings-service'
+export { createSettingsService } from './settings/settings-service'
 export type { SessionPorts } from './ports'
 export type {
   OpenFailure,

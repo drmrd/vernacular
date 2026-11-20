@@ -1,6 +1,7 @@
 import type { WorkspaceDocumentStore } from './documents/document-store'
 import type { AssetCache } from './asset-cache'
 import { OpfsProjectStore } from './opfs/opfs-project-store'
+import { originPrivateRoot } from './opfs/origin-private-root'
 import { FileSystemDirectory } from './fs/file-system-directory'
 import { DirectoryAssetCache } from './directory-asset-cache'
 import { IndexedDbDirectory } from './indexeddb/indexeddb-directory'
@@ -27,7 +28,7 @@ export interface ProjectStorage {
  * projects in the store.
  */
 export async function createOpfsProjectStorage(): Promise<ProjectStorage> {
-  const directory = new FileSystemDirectory(await navigator.storage.getDirectory())
+  const directory = new FileSystemDirectory(await originPrivateRoot())
   return {
     store: new OpfsProjectStore(directory),
     assets: new DirectoryAssetCache(directory),

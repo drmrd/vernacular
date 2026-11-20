@@ -29,7 +29,8 @@ boundary rules (ADR-0012, ADR-0017, ADR-0175).
 |  session/     Application state and logic. No React.       |
 |               No Three.js.                                 |
 +------------------------------------------------------------+
-|  storage/     Project store, library store, asset cache    |
+|  storage/     Project store, library store, asset cache,   |
+|               settings port                                |
 +------------------------------------------------------------+
 |  core/        Pure-TS domain. No React. No Three.js.       |
 |               Types, project model, registries, commands,  |
@@ -59,12 +60,14 @@ Hard invariants:
 - `session/` imports no React and no Three.js and uses no DOM global.
   Lint enforces this. The layer holds the editor session, the document
   handle, the flows that open and switch projects, the discard guard,
-  and autosave.
+  autosave, and the settings service.
 - `bridge/` is the only place that touches both React state and
   Three.js scene state. All mutations flow through `dispatch(command)`
   at this boundary.
 - `storage/` exposes provider interfaces; multiple implementations
   exist (file system, OPFS, zip bundle, future cloud sync).
+- Browser storage APIs are used only in `storage/`. Lint enforces this
+  in the seven other folders (ADR-0180).
 - `bridge/` and `editor/` reach `storage/` only through `session/`. A
   file that still imports `storage/` is on the lint exception list with
   issue #717, which moves the asset and library ports behind `session/`.

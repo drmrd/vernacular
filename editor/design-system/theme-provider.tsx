@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useSetting } from '../../bridge/react/settings-context'
 import { DEFAULT_DESIGN_LANGUAGE, type DesignLanguage } from './design-language'
-import { resolveTheme, type ResolvedTheme, type ThemeChoice } from './theme'
+import { resolveTheme, THEME_SETTING, type ResolvedTheme, type ThemeChoice } from './theme'
 import './tokens.css'
 // Scoped entirely under [data-design-language='arris'], so loading it changes nothing
 // until the attribute above selects it. It must come after tokens.css: the Arris light
@@ -44,10 +45,14 @@ export interface ThemeProviderProps {
 
 export function ThemeProvider({
   children,
-  defaultChoice = 'system',
+  defaultChoice = THEME_SETTING.defaultValue,
   designLanguage = DEFAULT_DESIGN_LANGUAGE,
 }: ThemeProviderProps) {
-  const [choice, setChoice] = useState<ThemeChoice>(defaultChoice)
+  // The service keeps the first value it reads for the name, a default included, so only the
+  // `defaultChoice` of that first read counts, and a valid stored choice wins over it. The key
+  // is memoized because a new key object on every render would subscribe again on every render.
+  const key = useMemo(() => ({ ...THEME_SETTING, defaultValue: defaultChoice }), [defaultChoice])
+  const [choice, setChoice] = useSetting(key)
   const resolved = resolveTheme(choice, usePrefersDark())
   return (
     <ThemeContext.Provider value={{ choice, resolved, setChoice }}>

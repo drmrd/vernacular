@@ -1,3 +1,5 @@
+import type { SettingKey } from '../../session'
+
 export type ThemeChoice = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
@@ -18,4 +20,11 @@ export function resolveTheme(choice: ThemeChoice, prefersDark: boolean): Resolve
     return prefersDark ? 'dark' : 'light'
   }
   return choice
+}
+
+/** The theme choice as a user setting. Anything but one of the three choices counts as not stored. */
+export const THEME_SETTING: SettingKey<ThemeChoice> = {
+  name: 'theme',
+  defaultValue: 'system',
+  parse: (raw) => (isThemeChoice(raw) ? raw : undefined),
 }

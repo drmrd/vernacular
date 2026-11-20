@@ -67,15 +67,110 @@ const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contrac
 const storyFileGlobs = ['**/*.stories.{ts,tsx}']
 const sessionTestingUsers = [...testFileGlobs, ...storyFileGlobs, '**/*-test-support.{ts,tsx}']
 
-const nodeGlobalNames = new Set(Object.keys(globals.node))
-const browserOnlyGlobalNames = Object.keys(globals.browser).filter(
-  (name) => !nodeGlobalNames.has(name),
+// Browser storage APIs are used only inside storage/ (ADR-0180), so every layer
+// outside it reaches storage through a port or a store of storage/. The block
+// covers shipped code, tests, stories, and test support alike. storage/, e2e/,
+// tests/, scripts/, and .storybook/ are not listed, so they keep direct access.
+const storageApiNames = [
+  'localStorage',
+  'sessionStorage',
+  'indexedDB',
+  'caches',
+  'showDirectoryPicker',
+  'showOpenFilePicker',
+  'showSaveFilePicker',
+]
+const globalObjectNames = ['window', 'globalThis', 'self']
+const navigatorStorageMembers = ['storage', 'locks']
+const storageApiMessage =
+  'Browser storage APIs are used only inside storage/ (ADR-0180). Reach them through a port or a store of storage/.'
+const storageGlobals = storageApiNames.map((name) => ({ name, message: storageApiMessage }))
+const storageProperties = [
+  ...globalObjectNames.flatMap((object) =>
+    storageApiNames.map((property) => ({ object, property, message: storageApiMessage })),
+  ),
+  ...navigatorStorageMembers.map((property) => ({
+    object: 'navigator',
+    property,
+    message: storageApiMessage,
+  })),
+]
+
+// Pieces of the selectors below. A name list becomes one regular expression.
+// The name lists hold plain identifiers, with no character that is special in a pattern.
+const anyOf = (names) => `/^(${names.join('|')})$/`
+const propertyNamed = (names) =>
+  `:matches([property.name=${anyOf(names)}], [property.value=${anyOf(names)}])`
+const keyNamed = (names) => `:matches([key.name=${anyOf(names)}], [key.value=${anyOf(names)}])`
+const typeScriptWrapper = anyOf(['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression'])
+// Matches when the node at the path is a global object, plain or behind one TypeScript wrapper.
+const globalObjectAt = (path) =>
+  `:matches([${path}.name=${anyOf(globalObjectNames)}], ` +
+  `[${path}.type=${typeScriptWrapper}][${path}.expression.name=${anyOf(globalObjectNames)}])`
+const storageSelector = (selector) => ({ selector, message: storageApiMessage })
+
+// navigator reached through a global object: globalThis.navigator.storage
+const navigatorThroughAnObject = storageSelector(
+  "MemberExpression[object.type='MemberExpression'][object.property.name='navigator']" +
+    globalObjectAt('object.object') +
+    propertyNamed(navigatorStorageMembers),
 )
-const browserOnlyGlobalsFor = (layerName) =>
-  browserOnlyGlobalNames.map((name) => ({
+// A global object behind a TypeScript wrapper: (window as Window).localStorage
+const wrappedGlobalObject = storageSelector(
+  `MemberExpression[object.type=${typeScriptWrapper}]` +
+    `[object.expression.name=${anyOf(globalObjectNames)}]` +
+    propertyNamed(storageApiNames),
+)
+// navigator behind a TypeScript wrapper, direct or read from a global object:
+// (navigator as Navigator).storage, globalThis.navigator!.locks
+const wrappedNavigator = storageSelector(
+  `MemberExpression[object.type=${typeScriptWrapper}]` +
+    ":matches([object.expression.name='navigator'], " +
+    `[object.expression.property.name='navigator']${globalObjectAt('object.expression.object')})` +
+    propertyNamed(navigatorStorageMembers),
+)
+// A destructuring from a navigator read from a global object: const { storage } = globalThis.navigator
+const destructuredFromNavigatorThroughAnObject = storageSelector(
+  "VariableDeclarator[init.type='MemberExpression'][init.property.name='navigator']" +
+    globalObjectAt('init.object') +
+    ` > ObjectPattern > Property${keyNamed(navigatorStorageMembers)}`,
+)
+// A destructuring of navigator out of a global object: const { navigator: { storage } } = window
+const destructuredNavigatorOfGlobalObject = storageSelector(
+  `VariableDeclarator[init.name=${anyOf(globalObjectNames)}]` +
+    " > ObjectPattern > Property[key.name='navigator']" +
+    ` > ObjectPattern > Property${keyNamed(navigatorStorageMembers)}`,
+)
+const storageApiBlock = {
+  files: ['core/**', 'session/**', 'engine/**', 'bridge/**', 'editor/**', 'app/**', 'src/**'],
+  rules: {
+    'no-restricted-globals': ['error', ...storageGlobals],
+    'no-restricted-properties': ['error', ...storageProperties],
+    'no-restricted-syntax': [
+      'error',
+      navigatorThroughAnObject,
+      wrappedGlobalObject,
+      wrappedNavigator,
+      destructuredFromNavigatorThroughAnObject,
+      destructuredNavigatorOfGlobalObject,
+    ],
+  },
+}
+
+const nodeGlobalNames = new Set(Object.keys(globals.node))
+const storageApiNameSet = new Set(storageApiNames)
+const browserOnlyGlobalNames = Object.keys(globals.browser).filter(
+  (name) => !nodeGlobalNames.has(name) && !storageApiNameSet.has(name),
+)
+// The purity blocks below replace the options of the storage block for shipped
+// core/ and session/ files, so their list carries the storage names too.
+const browserOnlyGlobalsFor = (layerName) => [
+  ...browserOnlyGlobalNames.map((name) => ({
     name,
     message: `${layerName}/ uses no global that exists only in a browser.`,
-  }))
+  })),
+  ...storageGlobals,
+]
 
 const layerPurityBlocks = [
   {
@@ -532,6 +627,7 @@ export function buildConfig(exceptions = lintExceptions) {
         'no-magic-numbers': 'off',
       },
     },
+    storageApiBlock,
     ...layerPurityBlocks,
     ...exceptions.map(exceptionBlock),
   )

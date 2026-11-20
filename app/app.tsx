@@ -12,6 +12,7 @@ import {
   EditorShell,
   initialToolForProject,
 } from '../editor'
+import { AppSettings, type AppSettingsProps } from './app-settings'
 import { AssetProviders } from './asset-providers'
 import type { BuiltSessionPorts } from './create-session-ports'
 import {
@@ -96,6 +97,8 @@ export interface AppProps {
   /** Remembers which project opens at start; defaults to in memory, nothing remembered. */
   activeProjectIds?: ActiveProjectIdStore
   recentProjects?: RecentProjectStore
+  /** The port of the user settings (tests). Defaults to the settings that this browser keeps. */
+  settings?: AppSettingsProps['port']
 }
 
 export function App(props: AppProps) {
@@ -118,9 +121,11 @@ export function App(props: AppProps) {
   // site sits under it: the storage check in AppWorkspace's body and the file-op hooks in
   // EditorWorkspace's body both run above their returned trees, so the provider must be their ancestor.
   return (
-    <NotificationProvider>
-      <AppWorkspace {...props} />
-    </NotificationProvider>
+    <AppSettings port={props.settings}>
+      <NotificationProvider>
+        <AppWorkspace {...props} />
+      </NotificationProvider>
+    </AppSettings>
   )
 }
 

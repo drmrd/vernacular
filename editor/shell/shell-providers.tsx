@@ -13,6 +13,7 @@ import {
   useEditorSession,
   useSceneGraph,
   useSelection,
+  useSettingsService,
 } from '../../bridge'
 import { sceneGraphForFloor } from '../../core'
 import {
@@ -26,7 +27,10 @@ import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { PLAN_HEIGHT, PLAN_WIDTH } from '../plan/plan-scene'
-import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
+import {
+  createSnapPreferencesStore,
+  type SnapPreferencesStore,
+} from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
@@ -59,6 +63,12 @@ function KeybindingLayer({ onSave }: { onSave?: (() => void) | undefined }) {
 function EntitySurfaceBridge() {
   useEntitySurfaceBridge()
   return null
+}
+
+// The snap preferences store over the settings of the tree, made once for each settings service.
+function useSnapPreferencesStoreOfSettings(): SnapPreferencesStore {
+  const settings = useSettingsService()
+  return useMemo(() => createSnapPreferencesStore(settings), [settings])
 }
 
 interface ProviderLayerProps {
@@ -99,9 +109,11 @@ function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
 /**
  * The editor's provider pyramid, wrapped around whatever frame it is given. The
  * command-palette provider sits outermost so the keybinding layer, the command bar,
- * and the palette dialog share one open/close state. The snap preferences are created
- * once here and read by the keybinding layer, the command palette, the snap panel, and
- * the plan's snapping, persisted to localStorage as an editor preference. The underlay
+ * and the palette dialog share one open/close state. The snap preferences store is
+ * created here once for each settings service and read by the keybinding layer, the
+ * command palette, the snap panel, and the plan's snapping. The preferences are kept
+ * through the settings of the tree, so the settings of the application keep them across a
+ * reload, and a tree with no settings above it keeps them in memory. The underlay
  * and opening-tool providers wrap the frame so the shared underlay state and the
  * opening placement type reach the canvas glue and the inspector and tools panels from
  * one source. The viewport provider reads the active floor's already-drawn walls and
@@ -112,7 +124,7 @@ function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
  * viewport only ever consumes on its first render.
  */
 export function ShellProviders({ onSave, children }: ProviderLayerProps) {
-  const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
+  const snapPreferences = useSnapPreferencesStoreOfSettings()
   const session = useEditorSession()
   const activeFloorStore = useContext(ActiveFloorContext)
   if (activeFloorStore === null) {

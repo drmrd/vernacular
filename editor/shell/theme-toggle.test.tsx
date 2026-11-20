@@ -1,6 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { SettingsProvider } from '../../bridge'
+import { createSettingsService } from '../../session'
+import { InMemorySettingsPort } from '../../session/testing'
 import { ThemeProvider } from '../design-system'
 import { ThemeToggle } from './theme-toggle'
 
@@ -43,5 +46,21 @@ describe('ThemeToggle', () => {
     expect(container.querySelector('[data-theme="light"]')).not.toBeNull()
     await user.click(screen.getByRole('button', { name: /^dark$/i }))
     expect(container.querySelector('[data-theme="dark"]')).not.toBeNull()
+  })
+
+  it('a choice in the toggle reaches the settings port', async () => {
+    const user = userEvent.setup()
+    const port = new InMemorySettingsPort()
+    render(
+      <SettingsProvider service={createSettingsService(port)}>
+        <ThemeProvider defaultChoice="light">
+          <ThemeToggle />
+        </ThemeProvider>
+      </SettingsProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /^dark$/i }))
+
+    expect(port.read('theme')).toBe('dark')
   })
 })

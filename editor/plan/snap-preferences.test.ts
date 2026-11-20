@@ -5,11 +5,13 @@ import {
   isSnapKindEnabled,
   setSnapEnabled,
   setSnapPixelRadius,
+  SNAP_PREFERENCES_SETTING,
   TOGGLABLE_SNAP_KINDS,
   toggleSnapKind,
   type SnapPreferences,
   type TogglableSnapKind,
 } from './snap-preferences'
+import { storeHolding } from './snap-preferences-test-support'
 
 /** The eight running snap kinds the preferences govern (everything except the draw-aid trace). */
 const RUNNING_SNAP_KINDS: readonly TogglableSnapKind[] = [
@@ -138,5 +140,108 @@ describe('isSnapKindEnabled', () => {
     const next = toggleSnapKind(DEFAULT_SNAP_PREFERENCES, 'midpoint')
 
     expect(isSnapKindEnabled(next, 'midpoint')).toBe(false)
+  })
+})
+
+/** Preferences that differ from the defaults in every field. */
+const STORED_PREFERENCES: SnapPreferences = {
+  enabled: false,
+  kinds: { ...DEFAULT_SNAP_PREFERENCES.kinds, grid: false, angle: false, trace: true },
+  pixelRadius: 24,
+}
+
+describe('the snap preferences setting', () => {
+  const parse = (raw: unknown) => SNAP_PREFERENCES_SETTING.parse(raw)
+
+  it('is named snapPreferences and defaults to the default preferences', () => {
+    expect(SNAP_PREFERENCES_SETTING.name).toBe('snapPreferences')
+    expect(SNAP_PREFERENCES_SETTING.defaultValue).toBe(DEFAULT_SNAP_PREFERENCES)
+  })
+
+  it('takes a whole stored value', () => {
+    expect(parse(structuredClone(STORED_PREFERENCES))).toEqual(STORED_PREFERENCES)
+  })
+
+  it('fills missing fields from the defaults', () => {
+    expect(parse({ enabled: false })).toEqual({ ...DEFAULT_SNAP_PREFERENCES, enabled: false })
+  })
+
+  it('fills a kind that is missing or not a boolean from its default', () => {
+    const result = parse({ kinds: { grid: false, midpoint: 'off', trace: 1 } })
+
+    expect(result?.kinds).toEqual({ ...DEFAULT_SNAP_PREFERENCES.kinds, grid: false })
+  })
+
+  it('ignores a kind that this build does not know', () => {
+    const result = parse({ kinds: { grid: false, kindFromANewerBuild: true } })
+
+    expect(result?.kinds).toEqual({ ...DEFAULT_SNAP_PREFERENCES.kinds, grid: false })
+  })
+
+  it('takes the default radius when the stored one is not a number', () => {
+    const result = parse({ pixelRadius: '18' })
+
+    expect(result?.pixelRadius).toBe(DEFAULT_SNAP_PREFERENCES.pixelRadius)
+  })
+
+  it('refuses a value that is not an object', () => {
+    for (const raw of ['not an object', 18, true, null]) {
+      expect(parse(raw)).toBeUndefined()
+    }
+  })
+
+  it('reads an array as an object with no known field', () => {
+    expect(parse([false, 18])).toEqual(DEFAULT_SNAP_PREFERENCES)
+  })
+
+  it('changes neither the stored object nor the defaults', () => {
+    const stored = { enabled: false, kinds: { grid: false }, pixelRadius: 18 }
+    const storedBefore = structuredClone(stored)
+    const defaultsBefore = structuredClone(DEFAULT_SNAP_PREFERENCES)
+
+    parse(stored)
+
+    expect(stored).toEqual(storedBefore)
+    expect(DEFAULT_SNAP_PREFERENCES).toEqual(defaultsBefore)
+  })
+})
+
+/** The text of a radius that is too large for a number: JSON reads it as infinity. */
+const OVERSIZED_RADIUS_TEXT = '{"pixelRadius":1e999}'
+
+/** The value that JSON text gives, as a browser port would read it. */
+function fromText(text: string): unknown {
+  return JSON.parse(text)
+}
+
+describe('the snap preferences setting reading a stored value with an own __proto__ key', () => {
+  it('at the top level changes nothing', () => {
+    const withKey = fromText('{"enabled":false,"__proto__":{"polluted":true}}')
+    const withoutKey = fromText('{"enabled":false}')
+
+    expect(SNAP_PREFERENCES_SETTING.parse(withKey)).toEqual(
+      SNAP_PREFERENCES_SETTING.parse(withoutKey),
+    )
+    expect(storeHolding(withKey).store.getPreferences().enabled).toBe(false)
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
+  })
+
+  it('inside the kinds changes nothing', () => {
+    const withKey = fromText('{"kinds":{"grid":false,"__proto__":{"polluted":true}}}')
+    const withoutKey = fromText('{"kinds":{"grid":false}}')
+
+    expect(SNAP_PREFERENCES_SETTING.parse(withKey)).toEqual(
+      SNAP_PREFERENCES_SETTING.parse(withoutKey),
+    )
+    expect(storeHolding(withKey).store.getPreferences().kinds.grid).toBe(false)
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
+  })
+})
+
+describe('the snap preferences setting reading a stored radius that is too large for a number', () => {
+  it('records the present behavior: the radius is read as infinity and is not clamped on read', () => {
+    const parsed = SNAP_PREFERENCES_SETTING.parse(fromText(OVERSIZED_RADIUS_TEXT))
+
+    expect(parsed?.pixelRadius).toBe(Infinity)
   })
 })

@@ -7,13 +7,8 @@ import { SnapPanel } from './snap-panel'
 
 afterEach(cleanup)
 
-function fakeStorage(): Pick<Storage, 'getItem' | 'setItem'> {
-  const map = new Map<string, string>()
-  return { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v) }
-}
-
 function renderPanel() {
-  const store = createSnapPreferencesStore({ storage: fakeStorage() })
+  const store = createSnapPreferencesStore()
   render(
     <SnapPreferencesProvider store={store}>
       <SnapPanel />

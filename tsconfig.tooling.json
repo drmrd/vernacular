@@ -1,6 +1,9 @@
 // Type-checks the two groups of files that no other project covers. This config covers both:
 // .storybook/ (every .ts and .tsx file) and the TypeScript and declaration files under scripts/.
 // `pnpm typecheck` runs this project after the application and end-to-end ones. It emits nothing.
+// The storage declaration files are listed because the Storybook decorator reaches the theme
+// provider, which reaches the settings service and through it the storage entry. The file system
+// code of storage/ needs those ambient declarations, as in tsconfig.e2e.json.
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -10,5 +13,11 @@
     // allowJs: the tests import the .mjs scripts, and their types come from the scripts' JSDoc.
     "allowJs": true
   },
-  "include": [".storybook/**/*.ts", ".storybook/**/*.tsx", "scripts/**/*.ts", "scripts/**/*.mts"]
+  "include": [
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "scripts/**/*.ts",
+    "scripts/**/*.mts",
+    "storage/**/*.d.ts"
+  ]
 }

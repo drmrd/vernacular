@@ -20,7 +20,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0185: Lint warnings fail CI, and exceptions are one recorded list
@@ -78,8 +78,9 @@ only when a file in it changed, so a pull request that changes only source does 
 - An import cycle through value imports fails. A cycle of type-only imports is allowed.
 - The tests under `tests/` run on every pull request that changes a source layer.
 
-The ban on browser storage globals outside `storage/` arrives with the settings port (ADR-0180). An
-import order inside each layer is left to the later stage specifications.
+Lint forbids browser storage globals in `core/`, `session/`, `engine/`, `bridge/`, `editor/`,
+`app/`, and `src/` (ADR-0180), and no file is on the exception list for that rule. An import
+order inside each layer is left to the later stage specifications.
 
 ## Consequences
 
