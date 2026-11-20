@@ -1,16 +1,9 @@
 // @vitest-environment node
 // Reads .building archives; node aligns Uint8Array realms with fflate.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Project } from '../../core'
 import { ARCHIVE_LIMITS } from '../../storage'
 import { currentBytes } from '../../tests/storage/conformance/conformance-documents'
-import {
-  assetEntry,
-  buildZip,
-  contentHashOf,
-  projectArchive,
-  projectReferring,
-} from '../../storage/zip/zip-test-kit'
+import { assetEntry, buildZip } from '../../storage/zip/zip-test-kit'
 import {
   createTestPorts,
   failSaves,
@@ -22,33 +15,15 @@ import {
 } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
 import { importFile } from './import-file'
-import { logWrites, POOL_FOLDER } from './import-file-test-kit'
+import { completeArchive, house, IMAGE, logWrites, MODEL, poolWrites } from './import-file-test-kit'
 
 const CURRENT_ID = 'a'
-const MODEL = Uint8Array.of(0x67, 0x6c, 0x54, 0x46, 1, 2, 3)
-const IMAGE = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 4, 5, 6)
-
-/** A project that places a furniture model and lays an underlay image. */
-async function house(): Promise<Project> {
-  return projectReferring(
-    [{ scope: 'user', contentHash: await contentHashOf(MODEL) }],
-    [{ scope: 'project', contentHash: await contentHashOf(IMAGE) }],
-  )
-}
-
-/** The archive of the house with both of its assets. */
-async function completeArchive(): Promise<Uint8Array> {
-  return projectArchive(await house(), [await assetEntry(MODEL), await assetEntry(IMAGE)])
-}
 
 /** A handle on the stored project `a`. */
 async function openCurrent(ports: TestPorts) {
   await placeDocument(ports, CURRENT_ID, currentBytes())
   return openOrThrow(ports, workspaceRequest(CURRENT_ID))
 }
-
-const poolWrites = (writes: readonly string[]) =>
-  writes.filter((path) => path.startsWith(POOL_FOLDER))
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -68,7 +43,7 @@ describe('an import with assets that is refused', () => {
 
     const result = await importFile(ports, undefined, {
       name: 'house.zip',
-      bytes: await completeArchive(),
+      bytes: await completeArchive((await house()).project),
     })
 
     expect(result).toEqual({
@@ -88,7 +63,7 @@ describe('an import with assets that is refused', () => {
 
     const result = await importFile(ports, current, {
       name: 'house.building',
-      bytes: await completeArchive(),
+      bytes: await completeArchive((await house()).project),
     })
 
     expect(result).toEqual({ ok: false, failure: { kind: 'flush-failed' } })
@@ -98,7 +73,7 @@ describe('an import with assets that is refused', () => {
   it('an archive above a limit gives archive-too-large with the limit, and the current project stays open', async () => {
     const ports = createTestPorts()
     const current = await openCurrent(ports)
-    const bytes = await completeArchive()
+    const bytes = await completeArchive((await house()).project)
     const limits = { ...ARCHIVE_LIMITS, archiveBytes: bytes.length - 1 }
     const writes = logWrites(ports)
 

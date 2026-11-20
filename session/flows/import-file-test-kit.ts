@@ -53,3 +53,7 @@ export function logWrites(ports: TestPorts): string[] {
   }
   return log
 }
+
+/** The paths of `writes` that go to the asset pool. */
+export const poolWrites = (writes: readonly string[]) =>
+  writes.filter((path) => path.startsWith(POOL_FOLDER))

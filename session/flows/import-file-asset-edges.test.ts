@@ -32,6 +32,7 @@ import {
   MODEL,
   OTHER_ID,
   POOL_FOLDER,
+  poolWrites,
 } from './import-file-test-kit'
 
 const ABSENT = 'd'.repeat(64)
@@ -51,8 +52,6 @@ const openingWarnings = () =>
   vi
     .mocked(console.warn)
     .mock.calls.filter(([sentence]) => String(sentence).includes(OPENING_SENTENCE))
-const poolWrites = (writes: readonly string[]) =>
-  writes.filter((path) => path.startsWith(POOL_FOLDER))
 
 /** The document of `project` as parsed JSON, with a reference to one asset that has no scope. */
 function documentWithScopelessReference(): Json {
