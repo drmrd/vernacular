@@ -8,14 +8,23 @@ import type { ProjectIndex, ProjectRecord } from './project-index'
  */
 export const INDEX_READ_WAIT_MS = 10_000
 
+const MILLISECONDS_PER_SECOND = 1_000
+
+const READ_WAIT_SECONDS = INDEX_READ_WAIT_MS / MILLISECONDS_PER_SECOND
+
+const NO_ANSWER_MESSAGE = `The project index gave no answer within ${READ_WAIT_SECONDS} seconds.`
+
 const READ_FAILED_WARNING =
   'The project index could not be read. This tab keeps its project records in memory.'
 
-/** What a read of the first index came to. `stale` is an answer that came after the switch. */
+/**
+ * What a read of the first index came to. `afterSwitch` is an answer of the first index that came
+ * after this object switched to memory, so the read is answered from memory.
+ */
 type FirstOutcome<T> =
   | { readonly kind: 'answer'; readonly value: T }
   | { readonly kind: 'failure'; readonly error: unknown }
-  | { readonly kind: 'stale' }
+  | { readonly kind: 'afterSwitch' }
 
 /**
  * An index over `first` that answers from memory, for the life of this object, once a read of
@@ -41,7 +50,8 @@ class MemoryFallbackIndex implements ProjectIndex {
   }
 
   // Async so that a synchronous throw of `first`, in `put` and in `remove`, reaches the caller as a
-  // rejection. A write has no time limit: a write that never settles stays pending and switches nothing.
+  // rejection. A write has no time limit: a write that never settles stays pending and switches
+  // nothing.
   async put(record: ProjectRecord): Promise<void> {
     return this.current().put(record)
   }
@@ -64,12 +74,12 @@ class MemoryFallbackIndex implements ProjectIndex {
   }
 
   // The first settlement wins and the others are ignored, so each read has its own time limit and a
-  // late answer or rejection changes nothing. Both handlers are always attached, so a rejection that
-  // comes after the time limit is handled too.
+  // late answer or rejection changes nothing. Both handlers are always attached, so a rejection
+  // that comes after the time limit is handled too.
   private askFirst<T>(ask: (index: ProjectIndex) => Promise<T>): Promise<FirstOutcome<T>> {
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
-        resolve({ kind: 'failure', error: new Error(noAnswerMessage()) })
+        resolve({ kind: 'failure', error: new Error(NO_ANSWER_MESSAGE) })
       }, INDEX_READ_WAIT_MS)
       const settle = (outcome: FirstOutcome<T>): void => {
         clearTimeout(timer)
@@ -77,7 +87,7 @@ class MemoryFallbackIndex implements ProjectIndex {
       }
       try {
         ask(this.first).then(
-          (value) => settle(this.switched ? { kind: 'stale' } : { kind: 'answer', value }),
+          (value) => settle(this.switched ? { kind: 'afterSwitch' } : { kind: 'answer', value }),
           (error: unknown) => settle({ kind: 'failure', error }),
         )
       } catch (error) {
@@ -86,8 +96,8 @@ class MemoryFallbackIndex implements ProjectIndex {
     })
   }
 
-  // A second failed read, such as one that was already in flight, switches nothing and warns nothing.
-  // A warn that throws must not turn the answer from memory into a rejection.
+  // A second failed read, such as one that was already in flight, switches nothing and warns
+  // nothing. A warn that throws must not turn the answer from memory into a rejection.
   private switchToMemory(error: unknown): void {
     if (this.switched) return
     this.switched = true
@@ -97,8 +107,4 @@ class MemoryFallbackIndex implements ProjectIndex {
       // The switch has happened; losing the warning is better than losing the answer.
     }
   }
-}
-
-function noAnswerMessage(): string {
-  return `The project index gave no answer within ${INDEX_READ_WAIT_MS} ms.`
 }
