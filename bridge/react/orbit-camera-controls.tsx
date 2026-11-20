@@ -7,7 +7,10 @@ import { cameraPositionOf } from './scene-camera-seed'
 
 interface OrbitCameraControlsProps {
   enabled: boolean
-  /** The pivot the first controller starts on. Later builds in one mount start where the last one stopped. */
+  /**
+   * The pivot the first controller starts on. A controller built again in one mount
+   * starts where the last one stopped.
+   */
   initialTarget: Vector3
   /** A pivot to move to when it changes; null keeps the controller's own pivot. */
   target: Vector3 | null
@@ -32,7 +35,8 @@ function listenForUserControl(domElement: HTMLElement, notify: () => void): () =
  * Wires the engine orbit facade to the live camera and canvas so a drag orbits, a
  * secondary drag pans, and the wheel zooms. It holds the facade, not a three
  * OrbitControls instance, so this bridge file does not import three (rules.md rule
- * 1). The controller starts on `initialTarget`, so a remount can resume the pivot the
+ * 1). The first controller starts on `initialTarget`, and one built again in the same
+ * mount starts on the pivot the last one held, so a remount can resume the pivot the
  * departing canvas turned around. It marks the camera as user-controlled on a pointer
  * press or a wheel turn through listeners it owns on the canvas, which is what tells the
  * pane to stop reframing on edits. On the way out it reports the camera position and the
@@ -53,7 +57,8 @@ export function OrbitCameraControls({
   const callbacksRef = useRef({ onLeave, onUserControl })
   callbacksRef.current = { onLeave, onUserControl }
   const notifyUserControl = () => callbacksRef.current.onUserControl()
-  // The next controller starts here; each cleanup stores the pivot it held.
+  // The next controller starts here; each cleanup stores the pivot it held, so a camera or
+  // canvas change inside one mount does not reset a panned pivot.
   const startTargetRef = useRef(initialTarget)
   // The last pivot handed to the controller. It starts as the first target because the
   // construction already placed the pivot, and strict mode runs each effect twice on
