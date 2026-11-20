@@ -192,6 +192,19 @@ function readAssets(
   return inflated
 }
 
+/**
+ * The hash of the bytes, or `undefined` when they cannot be hashed. A hash that fails rejects that
+ * asset only and does not refuse the archive: the document of such an archive is sound, and a page
+ * with no secure origin has no digest at all, so every archive with an asset would fail there.
+ */
+async function hashIfPossible(bytes: Uint8Array): Promise<string | undefined> {
+  try {
+    return await contentHashOf(bytes)
+  } catch {
+    return undefined
+  }
+}
+
 interface CheckedAssets {
   readonly assets: Map<string, Uint8Array>
   readonly rejectedAssets: string[]
@@ -199,15 +212,15 @@ interface CheckedAssets {
 
 /**
  * An asset is accepted only when its bytes hash to its name, since a name that lies would let one
- * file stand in for another. Any other asset, also one that could not be read, is rejected under
- * the hash of its name. One asset is hashed at a time, in the order of the central directory, so
- * both lists keep that order and only one asset is handed to the digest at once.
+ * file stand in for another. Any other asset, also one that could not be read or hashed, is
+ * rejected under the hash of its name. One asset is hashed at a time, in the order of the central
+ * directory, so both lists keep that order and only one asset is handed to the digest at once.
  */
 async function checkAssets(inflated: readonly AssetRead[]): Promise<CheckedAssets> {
   const assets = new Map<string, Uint8Array>()
   const rejectedAssets: string[] = []
   for (const [contentHash, bytes] of inflated) {
-    if (bytes !== UNREADABLE && (await contentHashOf(bytes)) === contentHash) {
+    if (bytes !== UNREADABLE && (await hashIfPossible(bytes)) === contentHash) {
       assets.set(contentHash, bytes)
     } else {
       rejectedAssets.push(contentHash)
