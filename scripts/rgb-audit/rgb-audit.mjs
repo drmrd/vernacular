@@ -2,9 +2,9 @@
 // scripts/rgb-audit/rgb-audit.mjs
 //
 // rgb-audit CLI: map a branch's commit range to a red-green-blue cycle verdict.
-// The dependency-injected shell reads `git log` for a range, delegates parsing
-// and rule checks to ./cycle-audit.mjs, and reports either a clean line or one
-// line per violation. Exit code 0 means clean; 1 means at least one violation.
+// The dependency-injected shell reads `git log` for a range (and `git show` for
+// each BLUE commit that touches a test file), delegates parsing and rule checks
+// to ./cycle-audit.mjs, and reports either a clean line or one line per violation. Exit code 0 means clean; 1 means at least one violation.
 
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
