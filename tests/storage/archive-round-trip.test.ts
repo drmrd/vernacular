@@ -67,5 +67,6 @@ describe('an archive round trip', () => {
       )
     }
     expect(imported.missingAssets).toEqual([])
+    expect(exported.missingAssets).toEqual([])
   })
 })

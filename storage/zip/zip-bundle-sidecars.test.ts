@@ -86,7 +86,7 @@ describe('the archive that the application exports', () => {
   it('has the document and no backup or snapshot entry', async () => {
     const assets = new InMemoryAssetCache()
 
-    const bytes = await exportProjectBundle(ARCHIVE_ID, projectNamed('Exported'), { assets })
+    const { bytes } = await exportProjectBundle(ARCHIVE_ID, projectNamed('Exported'), { assets })
 
     const paths = [...unzipFolder(bytes).keys()]
     expect(paths).toContain(DOCUMENT_PATH)
