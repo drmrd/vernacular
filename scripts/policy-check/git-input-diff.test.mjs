@@ -35,6 +35,18 @@ describe('parseUnifiedDiff', () => {
     expect(parseUnifiedDiff(raw)).toEqual([{ file: 'docs/a.md', line: 1, text: '++ heading' }])
   })
 
+  it('drops the tab git writes after a path with a space in the file header', () => {
+    const raw = diffOf(
+      'diff --git a/sp ace.md b/sp ace.md',
+      'index 1111111..2222222 100644',
+      '--- a/sp ace.md\t',
+      '+++ b/sp ace.md\t',
+      '@@ -0,0 +1 @@',
+      '+hello',
+    )
+    expect(parseUnifiedDiff(raw)).toEqual([{ file: 'sp ace.md', line: 1, text: 'hello' }])
+  })
+
   it('gives no added lines for a deleted file or a binary file', () => {
     const raw = diffOf(
       'diff --git a/old.md b/old.md',
