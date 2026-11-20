@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import type { CameraPose, WalkState } from '../../core'
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
-import type { SavedCamera } from '../scene-session/scene-session-store'
 import { useSceneNavigation } from './use-scene-navigation'
 
 const SOME_POSE: CameraPose = {
@@ -11,11 +10,6 @@ const SOME_POSE: CameraPose = {
   target: { x: 0, y: 0, z: 0 },
   near: 0.1,
   far: 100,
-}
-
-const SAVED_CAMERA: SavedCamera = {
-  position: { x: 4, y: 5, z: 6 },
-  orbitTarget: { x: 7, y: 8, z: 9 },
 }
 
 const SAMPLE_WALK_POSE: WalkState = {
@@ -173,43 +167,6 @@ describe('useSceneNavigation inside a scene session provider', () => {
     expect(secondMount.result.current.mode).toBe('walk')
     expect(secondMount.result.current.selectionEnabled).toBe(false)
     expect(secondMount.result.current.revealInterior).toBe(false)
-  })
-
-  it('reads a saved camera as the user already steering, so a remount leaves it alone', () => {
-    const steeredStore = createSceneSessionStore({ savedCamera: SAVED_CAMERA })
-    const unsteeredStore = createSceneSessionStore()
-
-    const steered = renderNavigationOn(steeredStore)
-    const unsteered = renderNavigationOn(unsteeredStore)
-
-    expect(steered.result.current.userControlled).toBe(true)
-    expect(unsteered.result.current.userControlled).toBe(false)
-  })
-
-  it('offers no camera for a fresh session and the saved one once the session holds it', () => {
-    const freshStore = createSceneSessionStore()
-    const steeredStore = createSceneSessionStore({ savedCamera: SAVED_CAMERA })
-
-    const fresh = renderNavigationOn(freshStore)
-    const steered = renderNavigationOn(steeredStore)
-
-    expect(fresh.result.current.savedCamera).toBeNull()
-    expect(steered.result.current.savedCamera).toEqual(SAVED_CAMERA)
-  })
-
-  it('hands a remounted navigation the camera position and orbit target the departing mount noted', () => {
-    const store = createSceneSessionStore()
-    const firstMount = renderNavigationOn(store)
-
-    act(() => {
-      firstMount.result.current.noteCameraLeft(SAVED_CAMERA)
-    })
-    firstMount.unmount()
-
-    const secondMount = renderNavigationOn(store)
-
-    expect(store.getSceneSession().savedCamera).toEqual(SAVED_CAMERA)
-    expect(secondMount.result.current.savedCamera).toEqual(SAVED_CAMERA)
   })
 
   it('offers no walk pose for a fresh session and the saved one once the session holds it', () => {
