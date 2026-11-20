@@ -1,21 +1,30 @@
 import type { ReactNode } from 'react'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addFloor } from '../core'
+import { addFloor, type AssetReference } from '../core'
 import {
   NotificationProvider,
   useNotifications,
+  type Notification,
   type NotificationApi,
 } from '../editor/design-system'
+import type { DocumentHandle } from '../session'
 import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
   actionsContext,
   closeOpenedHandles,
   openStoredProject,
+  packListing,
+  READ_FAILURE,
   renderActions,
+  settleTheAction,
+  shownMessages,
+  shownWarnings,
   waitForOtherProject,
 } from './action-test-support'
 import { fakeNotifications, plantProject } from './app-test-support'
+import { closeReferringHandles, openProjectReferring } from './export-report-test-kit'
+import type { LibraryLister } from './pack-supplies'
 import {
   runExportWithToast,
   useExportBundleAction,
@@ -28,6 +37,14 @@ const OTHER_ID = 'other'
 const HOUSE_NAME = 'My House'
 const OTHER_NAME = 'Other house'
 const DOWNLOAD = 'download'
+const WARNING = 'warning'
+const ONE_LEFT_OUT_SENTENCE =
+  'The export does not include 1 asset, because this browser does not have it.'
+const USER_REFERENCE: AssetReference = { scope: 'user', contentHash: 'a'.repeat(64) }
+const PACK_REFERENCE: AssetReference = {
+  scope: 'pack:vernacular-starter@1.0.0',
+  contentHash: 'd'.repeat(64),
+}
 
 function wrapper({ children }: { children: ReactNode }) {
   return <NotificationProvider>{children}</NotificationProvider>
@@ -73,6 +90,60 @@ async function settleTheExport(notifications: NotificationApi): Promise<void> {
   })
 }
 
+/** The bundle export on `handle`, with the toasts that show, and a log that the warning writes to. */
+function renderBundleExport(handle: DocumentHandle, steps: string[], packs?: LibraryLister) {
+  return renderHook(
+    () => {
+      const real = useNotifications()
+      const notifications: NotificationApi = {
+        ...real,
+        warning: (message, options) => {
+          steps.push(WARNING)
+          return real.warning(message, options)
+        },
+      }
+      const context = {
+        ...actionsContext(handle, notifications),
+        ...(packs === undefined ? {} : { packs }),
+      }
+      return { run: useExportBundleAction(context), shown: real.notifications }
+    },
+    { wrapper },
+  )
+}
+
+interface ExportCase {
+  /** The assets that the project places. */
+  readonly references: readonly AssetReference[]
+  /** The assets whose bytes the pool of the project holds. */
+  readonly held?: readonly AssetReference[]
+  /** The library that tells which pack assets an installed pack brings. */
+  readonly packs?: LibraryLister
+}
+
+/** Exports the project of `exportCase` as a bundle, waits for the success toast, and reports what showed. */
+async function exportBundle({ references, held, packs }: ExportCase) {
+  const ports = createTestPorts()
+  const handle = await openProjectReferring(ports, { id: CURRENT_ID, references, held })
+  const steps: string[] = []
+  URL.createObjectURL = vi.fn(() => {
+    steps.push(DOWNLOAD)
+    return 'blob:test'
+  })
+  const { result } = renderBundleExport(handle, steps, packs)
+  act(() => {
+    result.current.run()
+  })
+  await waitFor(() => expect(exportedToasts(result)).toHaveLength(1))
+  await settleTheAction()
+  return { steps, warnings: shownWarnings(result), exported: exportedToasts(result) }
+}
+
+/** The success toasts of an export that show now. */
+function exportedToasts(result: { readonly current: { readonly shown: readonly Notification[] } }) {
+  return shownMessages(result).filter((message) => message.startsWith('Exported '))
+}
+
 describe('the export actions on an open project', () => {
   // jsdom does not implement URL.createObjectURL/revokeObjectURL. The download helpers
   // call them, so stub both; otherwise the export throws and lands in its error branch.
@@ -87,6 +158,7 @@ describe('the export actions on an open project', () => {
   afterEach(async () => {
     cleanup()
     await closeOpenedHandles()
+    await closeReferringHandles()
     vi.restoreAllMocks()
     URL.createObjectURL = originalCreateObjectUrl
     URL.revokeObjectURL = originalRevokeObjectUrl
@@ -152,5 +224,45 @@ describe('the export actions on an open project', () => {
 
     await waitFor(() => expect(steps).toContain(DOWNLOAD))
     expect(steps).toEqual([`save:${OTHER_ID}`, DOWNLOAD])
+  })
+
+  it('warns once, after the download, that the export leaves out an asset the pool lacks, and still shows the success toast', async () => {
+    const { steps, warnings, exported } = await exportBundle({ references: [USER_REFERENCE] })
+
+    expect(steps).toEqual([DOWNLOAD, WARNING])
+    expect(warnings).toEqual([ONE_LEFT_OUT_SENTENCE])
+    expect(exported).toHaveLength(1)
+  })
+
+  it('shows no warning when the pool holds every asset the project places', async () => {
+    const { steps, warnings } = await exportBundle({
+      references: [USER_REFERENCE],
+      held: [USER_REFERENCE],
+    })
+
+    expect(steps).toEqual([DOWNLOAD])
+    expect(warnings).toEqual([])
+  })
+
+  it('does not count a pack asset that the library of the application lists', async () => {
+    const { warnings } = await exportBundle({
+      references: [PACK_REFERENCE, USER_REFERENCE],
+      packs: packListing(PACK_REFERENCE),
+    })
+
+    expect(warnings).toEqual([ONE_LEFT_OUT_SENTENCE])
+  })
+
+  it('shows no warning for a pack asset when the listing of the library fails', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const failing = { list: () => Promise.reject(new Error(READ_FAILURE)) }
+
+    const { warnings, exported } = await exportBundle({
+      references: [PACK_REFERENCE],
+      packs: failing,
+    })
+
+    expect(warnings).toEqual([])
+    expect(exported).toHaveLength(1)
   })
 })
