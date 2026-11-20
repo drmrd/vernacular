@@ -26,3 +26,67 @@ function parseCommitRecord(record) {
   const [subject] = message.split('\n')
   return { sha, authorName, authorEmail, subject, message }
 }
+
+/** @typedef {{ file: string, line: number, text: string }} AddedLine */
+/** @typedef {{ status: string, path: string, previousPath?: string }} ChangedFile */
+
+const DIFF_FILE_START = 'diff --git '
+const NEW_FILE_MARKER = '+++ '
+const NULL_FILE = '/dev/null'
+const NEW_FILE_PREFIX = 'b/'
+const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
+
+/**
+ * Parse `git diff --unified=0` output into the lines it adds.
+ * @param {string} raw
+ * @returns {AddedLine[]}
+ */
+export function parseUnifiedDiff(raw) {
+  /** @type {AddedLine[]} */
+  const addedLines = []
+  let file = null
+  let inHunk = false
+  let nextLine = 0
+  for (const diffLine of raw.split('\n')) {
+    if (diffLine.startsWith(DIFF_FILE_START)) {
+      file = null
+      inHunk = false
+    } else if (!inHunk && diffLine.startsWith(NEW_FILE_MARKER)) {
+      file = readNewFilePath(diffLine)
+    } else if (HUNK_HEADER.test(diffLine)) {
+      inHunk = true
+      nextLine = Number(HUNK_HEADER.exec(diffLine)[1])
+    } else if (inHunk && file !== null && diffLine.startsWith('+')) {
+      addedLines.push({ file, line: nextLine, text: diffLine.slice(1) })
+      nextLine += 1
+    }
+  }
+  return addedLines
+}
+
+/**
+ * @param {string} headerLine a `+++ ` line from a file header
+ * @returns {string | null} the new path, or null for a deleted file
+ */
+function readNewFilePath(headerLine) {
+  const path = headerLine.slice(NEW_FILE_MARKER.length)
+  if (path === NULL_FILE) return null
+  return path.startsWith(NEW_FILE_PREFIX) ? path.slice(NEW_FILE_PREFIX.length) : path
+}
+
+/**
+ * Parse `git diff --name-status` output.
+ * @param {string} raw
+ * @returns {ChangedFile[]}
+ */
+export function parseNameStatus(raw) {
+  return raw
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => {
+      const [code, firstPath, secondPath] = line.split('\t')
+      const status = code[0]
+      if (secondPath === undefined) return { status, path: firstPath }
+      return { status, path: secondPath, previousPath: firstPath }
+    })
+}
