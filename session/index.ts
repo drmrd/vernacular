@@ -32,6 +32,8 @@ export { openRecent } from './flows/open-recent'
 export { exportArchive } from './flows/export-archive'
 export { restoreSnapshot } from './flows/restore-snapshot'
 export { assetsOf } from './handle/handle-assets'
+export { reconcileIndex } from './projects/reconcile-index'
+export { displayNameOf, UNNAMED_PROJECT } from './projects/display-name'
 export type {
   AssetCache,
   ProjectIndex,
