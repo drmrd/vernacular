@@ -1,13 +1,18 @@
 import { test, expect, type Page } from '@playwright/test'
 import { webFontsSettled } from './support'
-import {
-  captureLiveFrame,
-  liveSceneCanvas,
-  settledLiveFrame,
-  waitForLiveCanvasReady,
-  waitForLiveFrameDifferentFrom,
-} from '../live-pane-frames'
+import { captureLiveFrame, settledLiveFrame, waitForLiveCanvasReady } from '../live-pane-frames'
 import { navButton } from './close-openings-support'
+import {
+  DRAG_DX,
+  DRAG_DY,
+  FIRST_ROOM,
+  dragFromCanvasCentre,
+  dragOrbitCamera,
+  leaveAndReturn,
+  panOrbitCamera,
+  settledFrameAfterChange,
+  type NamedFrame,
+} from '../live-pane-camera-drags'
 
 // Issue #621: the 3D preview's session state (camera mode, toolbar toggles, the camera pose, the
 // walk pose) lives in a store that the bridge owns, so it outlives the preview subtree, which
@@ -41,89 +46,9 @@ const FRAME_TIMEOUT_MS = 10_000
 // scene-navigation spec holds the key for the same time and also has no event to wait for.
 const WALK_HOLD_MS = 600
 
-// The orbit drag: from the canvas centre by this many CSS pixels, in this many mouse moves.
-const DRAG_DX = 120
-const DRAG_DY = 40
-const DRAG_STEPS = 8
-
-// The pan: a secondary-button drag from the canvas centre by this many CSS pixels, in the same
-// number of mouse moves. The orbit controls move the camera and the point it turns around by the
-// same offset, so a pan is the one drag that moves the pivot.
-const PAN_DX = 90
-const PAN_DY = 50
-
-// A closed rectangular room in plan pixels (the last corner is the first again, which closes the
-// loop), drawn in the split view.
-const ROOM_CORNERS = [
-  { x: 100, y: 120 },
-  { x: 300, y: 120 },
-  { x: 300, y: 260 },
-  { x: 100, y: 260 },
-  { x: 100, y: 120 },
-]
-
-// A frame with the name that the failure message uses for it.
-interface NamedFrame {
-  readonly name: string
-  readonly frame: Buffer
-}
-
-// The settled frame after a change that was just requested. A change may not have drawn yet, and
-// two equal captures taken before it draws would also look settled, so the first wait is for a
-// frame that differs from the one before.
-async function settledFrameAfterChange(
-  page: Page,
-  before: NamedFrame,
-  change: string,
-): Promise<Buffer> {
-  await waitForLiveFrameDifferentFrom(
-    page,
-    before.frame,
-    `${change} never changed the live 3D frame: it still matches ${before.name}`,
-  )
-  return settledLiveFrame(page)
-}
-
-// Plan view, where the 3D pane unmounts, then back to the split view, where it mounts again, and
-// the wait for the start-up of that new mount to end.
-async function leaveAndReturn(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Plan view' }).click()
-  await expect(liveSceneCanvas(page)).toHaveCount(0)
-  await page.getByRole('button', { name: 'Split view' }).click()
-  await waitForLiveCanvasReady(page)
-}
-
-// Drags from the canvas centre by the given offset with the given mouse button, then parks the
-// pointer away from the canvas, so no hover highlight sits on the frame that follows.
-async function dragFromCanvasCentre(
-  page: Page,
-  button: 'left' | 'right',
-  offset: { dx: number; dy: number },
-): Promise<void> {
-  const box = await liveSceneCanvas(page).locator('canvas').boundingBox()
-  if (box === null) throw new Error('the 3D canvas has no bounding box')
-  const centerX = box.x + box.width / 2
-  const centerY = box.y + box.height / 2
-  await page.mouse.move(centerX, centerY)
-  await page.mouse.down({ button })
-  await page.mouse.move(centerX + offset.dx, centerY + offset.dy, { steps: DRAG_STEPS })
-  await page.mouse.up({ button })
-  await page.mouse.move(0, 0)
-}
-
-// Drags the orbit camera with the primary button.
-async function dragOrbitCamera(page: Page): Promise<void> {
-  await dragFromCanvasCentre(page, 'left', { dx: DRAG_DX, dy: DRAG_DY })
-}
-
 // The orbit drag the other way round, which turns the camera back to where it was.
 async function dragOrbitCameraBack(page: Page): Promise<void> {
   await dragFromCanvasCentre(page, 'left', { dx: -DRAG_DX, dy: -DRAG_DY })
-}
-
-// Pans the camera with the secondary button, which moves the orbit pivot with the camera.
-async function panOrbitCamera(page: Page): Promise<void> {
-  await dragFromCanvasCentre(page, 'right', { dx: PAN_DX, dy: PAN_DY })
 }
 
 // Waits until the pane shows the kept frame and holds it. When it never does, the failure names
@@ -163,7 +88,7 @@ async function openDrawnRoom(page: Page): Promise<NamedFrame> {
   const plan = page.getByLabel('Floor plan')
   await expect(plan).toBeVisible()
   await page.getByRole('radio', { name: 'Wall', exact: true }).click()
-  for (const position of ROOM_CORNERS) await plan.click({ position })
+  for (const position of FIRST_ROOM) await plan.click({ position })
   await expect(page.getByRole('option', { name: /^Room,/ })).toHaveCount(1)
   // Leave the wall tool and clear the selection, so no highlight sits on the room.
   await page.getByRole('radio', { name: 'Select', exact: true }).click()

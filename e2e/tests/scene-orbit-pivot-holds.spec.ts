@@ -2,10 +2,17 @@ import { test, expect, type Page } from '@playwright/test'
 import { gotoEditor } from './journeys/support'
 import { navButton } from './journeys/close-openings-support'
 import {
-  liveSceneCanvas,
+  FIRST_ROOM,
+  dragOrbitCamera,
+  leaveAndReturn,
+  panOrbitCamera,
+  settledFrameAfterChange,
+  type Corner,
+  type NamedFrame,
+} from './live-pane-camera-drags'
+import {
   settledLiveFrame,
   waitForLiveCanvasReady,
-  waitForLiveFrameDifferentFrom,
   waitForLiveFrameEqualTo,
 } from './live-pane-frames'
 
@@ -32,28 +39,6 @@ import {
 // three's WebGL 2 fallback. The WebGPU path runs only where someone runs the scene-webgl project
 // on a development Mac, which has a real adapter.
 
-// The orbit drag: from the canvas centre by this many CSS pixels, in this many mouse moves.
-const DRAG_DX = 120
-const DRAG_DY = 40
-const DRAG_STEPS = 8
-
-// The pan: a secondary-button drag from the canvas centre by this many CSS pixels, in the same
-// number of mouse moves. A pan is the one drag that moves the pivot with the camera.
-const PAN_DX = 90
-const PAN_DY = 50
-
-type Corner = { readonly x: number; readonly y: number }
-
-// A closed rectangular room in plan pixels (the last corner is the first again, which closes the
-// loop), drawn in the split view.
-const FIRST_ROOM: readonly Corner[] = [
-  { x: 100, y: 120 },
-  { x: 300, y: 120 },
-  { x: 300, y: 260 },
-  { x: 100, y: 260 },
-  { x: 100, y: 120 },
-]
-
 // A second closed room beside the first one.
 const SECOND_ROOM: readonly Corner[] = [
   { x: 340, y: 120 },
@@ -62,28 +47,6 @@ const SECOND_ROOM: readonly Corner[] = [
   { x: 340, y: 260 },
   { x: 340, y: 120 },
 ]
-
-// A frame with the name that the failure message uses for it.
-interface NamedFrame {
-  readonly name: string
-  readonly frame: Buffer
-}
-
-// The settled frame after a change that was just requested. A change may not have drawn yet, and
-// two equal captures taken before it draws would also look settled, so the first wait is for a
-// frame that differs from the one before.
-async function settledFrameAfterChange(
-  page: Page,
-  before: NamedFrame,
-  change: string,
-): Promise<Buffer> {
-  await waitForLiveFrameDifferentFrom(
-    page,
-    before.frame,
-    `${change} never changed the live 3D frame: it still matches ${before.name}`,
-  )
-  return settledLiveFrame(page)
-}
 
 // Opens the split view on the empty floor and returns the settled frame of the empty floor.
 async function openSplitView(page: Page): Promise<NamedFrame> {
@@ -119,41 +82,6 @@ async function openDrawnRoom(page: Page): Promise<NamedFrame> {
   await drawRoom(page, FIRST_ROOM, 1)
   const room = await settledFrameAfterChange(page, empty, 'drawing the room')
   return { name: 'the framed view of the room', frame: room }
-}
-
-// Drags from the canvas centre by the given offset with the given mouse button, then parks the
-// pointer away from the canvas, so no hover highlight sits on the frame that follows.
-async function dragFromCanvasCentre(
-  page: Page,
-  button: 'left' | 'right',
-  offset: { dx: number; dy: number },
-): Promise<void> {
-  const box = await liveSceneCanvas(page).locator('canvas').boundingBox()
-  if (box === null) throw new Error('the 3D canvas has no bounding box')
-  const centerX = box.x + box.width / 2
-  const centerY = box.y + box.height / 2
-  await page.mouse.move(centerX, centerY)
-  await page.mouse.down({ button })
-  await page.mouse.move(centerX + offset.dx, centerY + offset.dy, { steps: DRAG_STEPS })
-  await page.mouse.up({ button })
-  await page.mouse.move(0, 0)
-}
-
-async function dragOrbitCamera(page: Page): Promise<void> {
-  await dragFromCanvasCentre(page, 'left', { dx: DRAG_DX, dy: DRAG_DY })
-}
-
-async function panOrbitCamera(page: Page): Promise<void> {
-  await dragFromCanvasCentre(page, 'right', { dx: PAN_DX, dy: PAN_DY })
-}
-
-// Plan view, where the 3D pane unmounts, then back to the split view, where it mounts again, and
-// the wait for the start-up of that new mount to end.
-async function leaveAndReturn(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Plan view' }).click()
-  await expect(liveSceneCanvas(page)).toHaveCount(0)
-  await page.getByRole('button', { name: 'Split view' }).click()
-  await waitForLiveCanvasReady(page)
 }
 
 test.describe('Live three-dimensional pane keeps its orbit pivot and its framing', () => {
