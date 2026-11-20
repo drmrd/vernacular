@@ -107,6 +107,8 @@ export async function restoreSnapshot(current: DocumentHandle): Promise<RestoreR
   } catch (error) {
     // Defence in depth: the builder calls no store method here, so nothing in it is known to throw.
     // The branch frees the lock so that it cannot leak if it does.
+    // The lock is free after this, so the keeper must build no more records.
+    records.lockReleased()
     await callGuardedAsync(() => handedOver.hold.release())
     return storageUnavailable(error)
   }
