@@ -27,6 +27,8 @@ const EXIT_INTERNAL = 2
 const DEFAULT_BASE = 'origin/main'
 const DEFAULT_HEAD = 'HEAD'
 const TYPE_ENUM_VALUES_INDEX = 2
+// Node's default 1 MiB output limit is below the largest pull request diff in this repository.
+const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024
 
 /**
  * @typedef {object} PolicyCheckDeps
@@ -154,7 +156,8 @@ const isDirectInvocation =
 /** @returns {PolicyCheckDeps} the real git, commitlint, console, and CI environment */
 export function defaultDeps() {
   return {
-    runGit: (args) => execFileSync('git', args, { encoding: 'utf8' }),
+    runGit: (args) =>
+      execFileSync('git', args, { encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT_BYTES }),
     runCommitlint: ({ base, head }) => {
       const result = spawnCommitlint(base, head)
       return { status: result.status, output: `${result.stdout}${result.stderr}` }
