@@ -5,7 +5,7 @@
 
 const SECTION_HEADER_PATTERN = /^diff --git a\/.+? b\/(.+)$/
 const PURE_RENAME_LINE = 'similarity index 100%'
-const FILE_HEADER_PATTERN = /^(?:\+\+\+|---)(?: |$)/
+const HUNK_HEADER_PREFIX = '@@'
 const MODULE_SPECIFIER = String.raw`\s*['"][^'"]+['"];?\s*$`
 const SINGLE_LINE_MODULE_STATEMENT = new RegExp(
   String.raw`^(?:import|export)\b.*\bfrom` + MODULE_SPECIFIER,
@@ -36,16 +36,23 @@ export function splitDiffSections(diffText) {
 /**
  * True when every added and removed line of a file's diff section is part of
  * an import or export statement. Added and removed lines each track their own
- * open multi-line statement.
+ * open multi-line statement, and each hunk starts with both closed. Lines
+ * before the first hunk header are file headers, not changes.
  *
  * @param {string[]} sectionLines
  * @returns {boolean}
  */
 export function isImportOnlyChange(sectionLines) {
-  const openStatement = { '+': false, '-': false }
+  let openStatement = closedStatements()
+  let insideHunk = false
   for (const line of sectionLines) {
+    if (line.startsWith(HUNK_HEADER_PREFIX)) {
+      openStatement = closedStatements()
+      insideHunk = true
+      continue
+    }
     const sign = line[0]
-    if ((sign !== '+' && sign !== '-') || FILE_HEADER_PATTERN.test(line)) {
+    if (!insideHunk || (sign !== '+' && sign !== '-')) {
       continue
     }
     const code = line.slice(1).trim()
@@ -55,6 +62,10 @@ export function isImportOnlyChange(sectionLines) {
     openStatement[sign] = continuesOpenStatement(code, openStatement[sign])
   }
   return true
+}
+
+function closedStatements() {
+  return { '+': false, '-': false }
 }
 
 /**
