@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   currentBytes,
+  faultyProject,
   renamed,
   soundProject,
 } from '../../tests/storage/conformance/conformance-documents'
@@ -20,11 +21,26 @@ const SAVED_AT = new Date('2026-03-05T06:07:08.000Z')
 const FOLDER_DOCUMENT = 'vernacular.json'
 const FOLDER_PROJECT_ID = 'p'
 const NEW_NAME = 'Saved under a new name'
+const NOT_JSON = new TextEncoder().encode('{ not json')
 
 /** Test support: a directory whose lookup of the time of change always rejects. */
 class DirectoryThatCannotTellTime extends PassThroughDirectory {
   override modifiedAt(): Promise<string | undefined> {
     return Promise.reject(new Error('the time of change is not available'))
+  }
+}
+
+/** Test support: a directory whose lookup of the time of change resolves to nothing. */
+class DirectoryWithNoTimeToTell extends PassThroughDirectory {
+  override modifiedAt(): Promise<string | undefined> {
+    return Promise.resolve(undefined)
+  }
+}
+
+/** Test support: a directory whose lookup of the time of change throws before it returns a promise. */
+class DirectoryWhoseLookupThrows extends PassThroughDirectory {
+  override modifiedAt(): Promise<string | undefined> {
+    throw new Error('the lookup of the time of change broke at once')
   }
 }
 
@@ -86,5 +102,73 @@ describe('the time of last change that a save reports', () => {
     expect(report).not.toHaveProperty('lastChangedAt')
     expect((await readProject(storeOver(root), 'a')).meta.name).toBe(NEW_NAME)
     expect(await root.modifiedAt(DOCUMENT_PATH)).toBeDefined()
+  })
+})
+
+describe('the time of last change beside the other members of the report', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('a lookup that resolves to nothing still saves, and reports no time', async () => {
+    const root = await rootHolding(currentBytes())
+    const store = storeOver(new DirectoryWithNoTimeToTell(root))
+
+    const report = await store.save('a', renamed(soundProject(), NEW_NAME))
+
+    expect(report).not.toHaveProperty('lastChangedAt')
+    expect((await readProject(storeOver(root), 'a')).meta.name).toBe(NEW_NAME)
+  })
+
+  it('a lookup that throws at once still saves, and reports no time', async () => {
+    const root = await rootHolding(currentBytes())
+    const store = storeOver(new DirectoryWhoseLookupThrows(root))
+
+    const report = await store.save('a', renamed(soundProject(), NEW_NAME))
+
+    expect(report).not.toHaveProperty('lastChangedAt')
+    expect((await readProject(storeOver(root), 'a')).meta.name).toBe(NEW_NAME)
+  })
+
+  it('the first save of a project with no stored file reports the time of that write', async () => {
+    const clock = movableClock(SAVED_AT)
+    const store = storeOver(await rootHolding(undefined, clock.now))
+
+    const report = await store.save('a', soundProject())
+
+    expect(report.lastChangedAt).toBe(SAVED_AT.toISOString())
+    expect(await store.list()).toEqual([{ id: 'a', lastChangedAt: SAVED_AT.toISOString() }])
+  })
+
+  it('a save that drops the graft reports the time, and keeps its other members', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const clock = movableClock(SAVED_AT)
+    const store = storeOver(await rootHolding(NOT_JSON, clock.now))
+
+    const report = await store.save('a', soundProject())
+
+    expect(report.lastChangedAt).toBe(SAVED_AT.toISOString())
+    expect(report.graftDropped).toBeDefined()
+    expect(report.faults).toEqual([])
+    expect(report.backedUp).toBe(false)
+  })
+
+  it('a save that makes a backup reports the time', async () => {
+    const clock = movableClock(SAVED_AT)
+    const store = storeOver(await rootHolding(currentBytes(), clock.now))
+
+    const report = await store.save('a', faultyProject())
+
+    expect(report.backedUp).toBe(true)
+    expect(report.lastChangedAt).toBe(SAVED_AT.toISOString())
+  })
+
+  it('a lookup that rejects changes no other member of a plain save report', async () => {
+    const root = await rootHolding(currentBytes())
+    const store = storeOver(new DirectoryThatCannotTellTime(root))
+
+    const report = await store.save('a', renamed(soundProject(), NEW_NAME))
+
+    expect(report).toEqual({ faults: [], backedUp: false })
   })
 })
