@@ -14,7 +14,7 @@ const E2E_PATTERNS = [
     message: 'sleep waits a fixed time; wait for an observable condition instead',
   },
   {
-    pattern: /\bsetTimeout\s*\(/,
+    pattern: /(?:^|[^.\w$])setTimeout\s*\(|\b(?:window|globalThis|self)\.setTimeout\s*\(/,
     message: 'setTimeout waits a fixed time; wait for an observable condition instead',
   },
   {
