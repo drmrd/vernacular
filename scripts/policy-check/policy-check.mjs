@@ -45,7 +45,7 @@ const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024
  * @param {PolicyCheckDeps} deps
  * @returns {Promise<number>} the process exit code
  */
-export async function runPolicyCheck(argv, { runGit, log }) {
+export async function runPolicyCheck(argv, { runGit, runCommitlint, log }) {
   const base = flagValue(argv, '--base') ?? DEFAULT_BASE
   const head = flagValue(argv, '--head') ?? DEFAULT_HEAD
   const resolvedBranch =
@@ -53,7 +53,11 @@ export async function runPolicyCheck(argv, { runGit, log }) {
   const branch = resolvedBranch === DETACHED_HEAD ? '' : resolvedBranch
   if (branch === '') log(DETACHED_HEAD_NOTE)
   const rangeOnBranch = branch === '' ? `${base}..${head}` : `${base}..${head} on ${branch}`
-  const findings = ruleFindings(readRange({ runGit, base, head }), branch)
+  const commitlint = runCommitlint({ base, head })
+  const findings = [
+    ...ruleFindings(readRange({ runGit, base, head }), branch),
+    ...commitlintFindings(commitlint, `${base}..${head}`),
+  ]
   const failing = findings.filter((finding) => severityOf(finding.rule) === 'fail')
   const warnings = findings.filter((finding) => severityOf(finding.rule) === 'warn')
   if (findings.length === 0) {
@@ -63,6 +67,7 @@ export async function runPolicyCheck(argv, { runGit, log }) {
   log(
     `policy:check: ${failing.length} failing and ${warnings.length} warning finding(s) in ${rangeOnBranch}`,
   )
+  if (commitlint.status !== 0) for (const line of commitlint.output.split('\n')) log(line)
   for (const finding of failing) log(formatPlainLine(finding, 'fail'))
   for (const finding of warnings) log(formatPlainLine(finding, 'warn'))
   return failing.length === 0 ? EXIT_CLEAN : EXIT_FAILING_FINDINGS
@@ -124,6 +129,21 @@ function ruleFindings({ commits, changedFiles, addedLines, readFile }, branch) {
     ...exactPinFindings(changedFiles, readFile),
     ...specNeedsAdrFindings(changedFiles),
     ...e2eTimingFindings(addedLines),
+  ]
+}
+
+/**
+ * @param {{ status: number }} result
+ * @param {string} range
+ * @returns {Finding[]}
+ */
+function commitlintFindings({ status }, range) {
+  if (status === 0) return []
+  return [
+    {
+      rule: 'commit-message-format',
+      message: `commitlint rejected at least one commit message in ${range}`,
+    },
   ]
 }
 
