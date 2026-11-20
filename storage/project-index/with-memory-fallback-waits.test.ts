@@ -14,9 +14,6 @@ const READS: readonly ReadMethod[] = ['all', 'get']
 const HOUSE = sampleRecord()
 const BARN = sampleRecord({ id: 'barn', name: 'Barn' })
 const SECOND_READ_DELAY_MS = 250
-// Used only while the constant is missing, so that a case fails on its assertion and not on a wait of NaN.
-const WAIT_WHEN_MISSING_MS = 1_000
-const WAIT_MS = Number.isFinite(INDEX_READ_WAIT_MS) ? INDEX_READ_WAIT_MS : WAIT_WHEN_MISSING_MS
 
 const PENDING: Watched = { status: 'pending' }
 const EMPTY_ANSWER: Record<ReadMethod, unknown> = { all: [], get: undefined }
@@ -80,7 +77,7 @@ async function readUntilTimeUp(read: ReadMethod) {
   const { first, hold, calls } = await firstWithHeldRead(read)
   const index = withMemoryFallback(first)
   const result = watch(readOf(index, read))
-  await vi.advanceTimersByTimeAsync(WAIT_MS - 1)
+  await vi.advanceTimersByTimeAsync(INDEX_READ_WAIT_MS - 1)
   expect(result()).toEqual(PENDING)
   await vi.advanceTimersByTimeAsync(1)
   return { index, result, hold, calls }
@@ -100,7 +97,7 @@ describe('a read of a first index that gives no answer', () => {
     'switches with exactly one warning that carries an Error, however long the clock runs on (%s)',
     async (read) => {
       await readUntilTimeUp(read)
-      await vi.advanceTimersByTimeAsync(WAIT_MS * 2)
+      await vi.advanceTimersByTimeAsync(INDEX_READ_WAIT_MS * 2)
 
       expect(consoleWarn).toHaveBeenCalledTimes(1)
       expect(consoleWarn.mock.calls[0]).toContainEqual(expect.any(Error))
@@ -150,7 +147,7 @@ describe('a read of a first index that gives no answer', () => {
       await vi.advanceTimersByTimeAsync(SECOND_READ_DELAY_MS)
       const later = watch(readOf(index, read))
 
-      await vi.advanceTimersByTimeAsync(WAIT_MS - SECOND_READ_DELAY_MS - 1)
+      await vi.advanceTimersByTimeAsync(INDEX_READ_WAIT_MS - SECOND_READ_DELAY_MS - 1)
       expect([earlier(), later()]).toEqual([PENDING, PENDING])
       await vi.advanceTimersByTimeAsync(1)
       expect([earlier(), later()]).toEqual([answered(EMPTY_ANSWER[read]), PENDING])
@@ -206,7 +203,7 @@ describe('a first index that answers in time or only leaves writes pending', () 
       const { first, hold, calls } = await firstWithHeldRead(read)
       const index = withMemoryFallback(first)
       const result = watch(readOf(index, read))
-      await vi.advanceTimersByTimeAsync(WAIT_MS - 1)
+      await vi.advanceTimersByTimeAsync(INDEX_READ_WAIT_MS - 1)
 
       hold.answerOldest()
       await settle()
@@ -229,7 +226,7 @@ describe('a first index that answers in time or only leaves writes pending', () 
     const put = watch(index.put(BARN))
     const remove = watch(index.remove(HOUSE.id))
 
-    await vi.advanceTimersByTimeAsync(WAIT_MS * 2)
+    await vi.advanceTimersByTimeAsync(INDEX_READ_WAIT_MS * 2)
 
     expect([put(), remove()]).toEqual([PENDING, PENDING])
     expect(consoleWarn).not.toHaveBeenCalled()

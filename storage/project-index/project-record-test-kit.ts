@@ -182,12 +182,15 @@ export interface ReadHold {
   started(): number
   /** Lets the oldest held read run against the real index and answer with what it gives. */
   answerOldest(): void
+  /** Settles the oldest held read at once with `value`, so that no other promise runs in between. */
+  answerOldestWith(value: unknown): void
   /** Makes the oldest held read reject with `error`. */
   rejectOldest(error?: Error): void
 }
 
 interface HeldRead {
   readonly answer: () => void
+  readonly resolveWith: (value: unknown) => void
   readonly reject: (error: Error) => void
 }
 
@@ -200,7 +203,11 @@ export function holdReads(index: ProjectIndex, method: ReadMethod): ReadHold {
   const hold = <T>(run: () => Promise<T>): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       started += 1
-      held.push({ answer: () => run().then(resolve, reject), reject })
+      held.push({
+        answer: () => run().then(resolve, reject),
+        resolveWith: (value) => resolve(value as T),
+        reject,
+      })
     })
   if (method === 'all') index.all = () => hold(realAll)
   else index.get = (id) => hold(() => realGet(id))
@@ -212,6 +219,7 @@ export function holdReads(index: ProjectIndex, method: ReadMethod): ReadHold {
   return {
     started: () => started,
     answerOldest: () => oldest().answer(),
+    answerOldestWith: (value) => oldest().resolveWith(value),
     rejectOldest: (error = new Error('the held read was rejected')) => oldest().reject(error),
   }
 }
