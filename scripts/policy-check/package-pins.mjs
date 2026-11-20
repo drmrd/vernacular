@@ -4,7 +4,9 @@
 
 const PACKAGE_JSON = /(^|\/)package\.json$/
 const EXACT_VERSION = '\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?'
-const EXACT_PIN = new RegExp(`^(?:${EXACT_VERSION}|npm:[^@]+@${EXACT_VERSION})$`)
+const EXACT_PIN = new RegExp(
+  `^(?:${EXACT_VERSION}|npm:(?:@[a-z0-9][\\w.-]*\\/)?[a-z0-9][\\w.-]*@${EXACT_VERSION})$`,
+)
 const DEPENDENCY_SECTIONS = [
   'dependencies',
   'devDependencies',
@@ -47,8 +49,8 @@ function fileFindings(file, text) {
       findings.push({
         rule: 'exact-pin',
         file,
-        line: lineOfPackage(lines, name),
-        message: `${section} pins ${name} to "${version}"; use an exact version`,
+        line: lineOfEntry(lines, section, name),
+        message: `${section} entry ${name} is ${JSON.stringify(version)}, not an exact version; pin it exactly`,
       })
     }
   }
@@ -83,11 +85,18 @@ function isRecord(value) {
 }
 
 /**
+ * Line of the entry inside its own section, so a same-named key elsewhere is skipped.
  * @param {readonly string[]} lines
+ * @param {string} section
  * @param {string} name
  * @returns {number | undefined}
  */
-function lineOfPackage(lines, name) {
-  const index = lines.findIndex((line) => line.includes(`"${name}":`))
-  return index === -1 ? undefined : index + 1
+function lineOfEntry(lines, section, name) {
+  let start = 0
+  for (const key of [...section.split('.'), name]) {
+    const index = lines.findIndex((line, at) => at >= start && line.includes(`"${key}":`))
+    if (index === -1) return undefined
+    start = index
+  }
+  return start + 1
 }
