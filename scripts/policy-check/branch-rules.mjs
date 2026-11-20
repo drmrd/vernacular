@@ -2,6 +2,8 @@ import { BOT_IDENTITIES } from './identities.mjs'
 
 /** @typedef {import('./commit-rules.mjs').Finding} Finding */
 
+const INTEGRATION_PREFIX = 'integration/'
+
 /**
  * At most one finding when the branch lacks a commit-type prefix or a bot prefix.
  * An unknown (empty) branch skips the rule.
@@ -29,5 +31,5 @@ function hasAllowedPrefix(branch, commitTypes) {
   const startsWithCommitType = commitTypes.some(
     (type) => branch.startsWith(`${type}/`) && branch.length > type.length + 1,
   )
-  return startsWithBotPrefix || startsWithCommitType
+  return startsWithBotPrefix || startsWithCommitType || branch.startsWith(INTEGRATION_PREFIX)
 }

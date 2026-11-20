@@ -14,6 +14,7 @@ const TEST_ASSET_PATTERNS = [
   /fixtures?\.(?:ts|tsx|json|mjs)$/,
   /^(?:tests|e2e)\//,
   /\.stories\.tsx$/,
+  /-story-support\.tsx?$/,
 ]
 
 /**

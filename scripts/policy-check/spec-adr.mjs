@@ -4,14 +4,19 @@
 const SPEC_DIRECTORY = 'docs/specs/'
 const ADR_PATH = /^docs\/knowledge\/decisions\/ADR-\d{4}-[^/]+\.md$/
 const ADR_STATUSES = new Set(['A', 'M', 'R'])
+const ADDED_STATUS = 'A'
 
 /**
- * One finding when a spec changes and no ADR is added or modified.
+ * One finding when a spec is modified, renamed, or deleted and no ADR is added or modified.
+ * A newly added spec needs no ADR.
  * @param {readonly ChangedFile[]} changedFiles
  * @returns {Finding[]}
  */
 export function specNeedsAdrFindings(changedFiles) {
-  const specPaths = changedFiles.map(specPathOf).filter((path) => path !== undefined)
+  const specPaths = changedFiles
+    .filter((changed) => changed.status !== ADDED_STATUS)
+    .map(specPathOf)
+    .filter((path) => path !== undefined)
   if (specPaths.length === 0 || changedFiles.some(isAdrChange)) return []
   return [
     {

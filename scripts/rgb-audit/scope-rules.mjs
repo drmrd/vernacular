@@ -2,7 +2,7 @@
 //
 // Scope rules for the red-green-blue auditor: which paths a commit role may touch.
 
-import { isImportOnlyChange, isPureRename, splitDiffSections } from './commit-diff.mjs'
+import { isModuleOrCommentOnlyChange, isPureRename, splitDiffSections } from './commit-diff.mjs'
 import { isTestAsset, isTestFile } from './test-files.mjs'
 
 /**
@@ -53,7 +53,7 @@ export function refactorScopeViolation(commit, readCommitDiff) {
 /**
  * The new paths of the files in a rename-aware diff whose change only follows a
  * rename or a move: a pure rename, or a diff whose every added and removed line
- * belongs to an import or export statement.
+ * is a comment line or belongs to an import or export statement.
  *
  * @param {string} diffText output of `git show -M --format= --unified=0 <sha>`
  * @returns {Set<string>}
@@ -61,7 +61,7 @@ export function refactorScopeViolation(commit, readCommitDiff) {
 export function exemptTestFiles(diffText) {
   const exempt = new Set()
   for (const section of splitDiffSections(diffText)) {
-    if (isPureRename(section.lines) || isImportOnlyChange(section.lines)) {
+    if (isPureRename(section.lines) || isModuleOrCommentOnlyChange(section.lines)) {
       exempt.add(section.path)
     }
   }

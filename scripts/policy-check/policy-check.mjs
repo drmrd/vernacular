@@ -11,7 +11,12 @@ import commitlintConfig from '../../commitlint.config.js'
 import { branchFindings } from './branch-rules.mjs'
 import { authorFindings, trailerFindings } from './commit-rules.mjs'
 import { e2eTimingFindings } from './e2e-rules.mjs'
-import { parseCommitLog, parseNameStatus, parseUnifiedDiff } from './git-input.mjs'
+import {
+  GIT_OUTPUT_LIMIT_BYTES,
+  parseCommitLog,
+  parseNameStatus,
+  parseUnifiedDiff,
+} from './git-input.mjs'
 import { milestoneCodeFindings } from './milestone-codes.mjs'
 import { exactPinFindings } from './package-pins.mjs'
 import { emDashFindings } from './prose-rules.mjs'
@@ -29,8 +34,9 @@ const DEFAULT_HEAD = 'HEAD'
 const DETACHED_HEAD = 'HEAD'
 const DETACHED_HEAD_NOTE = 'policy:check: detached HEAD, branch rules skipped; pass --branch <name>'
 const TYPE_ENUM_VALUES_INDEX = 2
-// Node's default 1 MiB output limit is below the largest pull request diff in this repository.
-const GIT_OUTPUT_LIMIT_BYTES = 67_108_864 // 64 MiB
+const FORK_PR_FLAG = '--fork-pr'
+const AUTHOR_IDENTITY_RULE = 'author-identity'
+const FORK_AUTHOR_IDENTITY_RULE = 'fork-author-identity'
 
 /**
  * @typedef {object} PolicyCheckDeps
@@ -53,7 +59,9 @@ export async function runPolicyCheck(argv, { runGit, runCommitlint, log, githubA
   const rangeOnBranch = branch === '' ? `${base}..${head}` : `${base}..${head} on ${branch}`
   const commitlint = runCommitlint({ base, head })
   const findings = [
-    ...ruleFindings(readRange({ runGit, base, head }), branch),
+    ...ruleFindings(readRange({ runGit, base, head }), branch).map((finding) =>
+      argv.includes(FORK_PR_FLAG) ? asForkFinding(finding) : finding,
+    ),
     ...commitlintFindings(commitlint, `${base}..${head}`),
   ]
   return reportFindings({ findings, commitlint, rangeOnBranch, log, githubActions })
@@ -154,6 +162,17 @@ function ruleFindings({ commits, changedFiles, addedLines, readFile }, branch) {
     ...specNeedsAdrFindings(changedFiles),
     ...e2eTimingFindings(addedLines),
   ]
+}
+
+/**
+ * A fork pull request's author is reported as a warning, not a failure.
+ * @param {Finding} finding
+ * @returns {Finding}
+ */
+function asForkFinding(finding) {
+  return finding.rule === AUTHOR_IDENTITY_RULE
+    ? { ...finding, rule: FORK_AUTHOR_IDENTITY_RULE }
+    : finding
 }
 
 /**

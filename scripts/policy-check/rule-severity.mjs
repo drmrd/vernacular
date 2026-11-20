@@ -5,6 +5,7 @@ export const RULE_SEVERITY = Object.freeze({
   'commit-message-format': 'fail',
   'forbidden-trailer': 'fail',
   'author-identity': 'fail',
+  'fork-author-identity': 'warn',
   'branch-prefix': 'fail',
   'milestone-code': 'warn',
   'em-dash': 'warn',

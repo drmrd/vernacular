@@ -8,6 +8,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { GIT_OUTPUT_LIMIT_BYTES } from '../policy-check/git-input.mjs'
 import { severityOf as defaultSeverityOf } from '../policy-check/rule-severity.mjs'
 import { auditCommits, parseGitLog } from './cycle-audit.mjs'
 
@@ -80,11 +81,17 @@ const invokedPath = process.argv[1]
 const isDirectInvocation =
   invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath
 
-if (isDirectInvocation) {
-  runRgbAudit(process.argv.slice(2), {
-    runGit: (args) => execFileSync('git', args, { encoding: 'utf8' }),
+/** @returns {RgbAuditDeps} the real git and console */
+export function defaultDeps() {
+  return {
+    runGit: (args) =>
+      execFileSync('git', args, { encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT_BYTES }),
     log: (line) => console.log(line),
-  })
+  }
+}
+
+if (isDirectInvocation) {
+  runRgbAudit(process.argv.slice(2), defaultDeps())
     .then((code) => {
       // Set, don't exit: let queued async work and beforeExit handlers drain.
       process.exitCode = code

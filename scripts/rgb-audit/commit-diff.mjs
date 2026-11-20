@@ -1,7 +1,7 @@
 // scripts/rgb-audit/commit-diff.mjs
 //
 // Reads the unified diff of one commit (`git show -M --format= --unified=0`):
-// per-file sections, rename headers, and import or export line classification.
+// per-file sections, rename headers, and import, export, and comment line classification.
 
 const SECTION_HEADER_PATTERN = /^diff --git a\/.+? b\/(.+)$/
 const PURE_RENAME_LINE = 'similarity index 100%'
@@ -13,6 +13,7 @@ const SINGLE_LINE_MODULE_STATEMENT = new RegExp(
 const BARE_FROM_LINE = new RegExp(String.raw`^\}?\s*from` + MODULE_SPECIFIER)
 const OPEN_MODULE_STATEMENT = /^(?:import|export)\s+(?:type\s+)?\{[^}]*$/
 const NAMES_LINE = /^[\w$,\s]+$/
+const COMMENT_LINE = /^(?:\/\/|\/\*|\*)/
 
 /**
  * Split a diff into one section for each file, keyed by the file's new path.
@@ -34,15 +35,15 @@ export function splitDiffSections(diffText) {
 }
 
 /**
- * True when every added and removed line of a file's diff section is part of
- * an import or export statement. Added and removed lines each track their own
+ * True when every added and removed line of a file's diff section is a comment
+ * line or part of an import or export statement. Added and removed lines each track their own
  * open multi-line statement, and each hunk starts with both closed. Lines
  * before the first hunk header are file headers, not changes.
  *
  * @param {string[]} sectionLines
  * @returns {boolean}
  */
-export function isImportOnlyChange(sectionLines) {
+export function isModuleOrCommentOnlyChange(sectionLines) {
   let openStatement = closedStatements()
   let insideHunk = false
   for (const line of sectionLines) {
@@ -74,6 +75,9 @@ function closedStatements() {
  * @returns {boolean}
  */
 function isModuleStatementLine(code, insideStatement) {
+  if (COMMENT_LINE.test(code)) {
+    return true
+  }
   if (SINGLE_LINE_MODULE_STATEMENT.test(code) || BARE_FROM_LINE.test(code)) {
     return true
   }
