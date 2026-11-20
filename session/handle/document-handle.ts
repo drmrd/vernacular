@@ -130,10 +130,10 @@ async function handOverWith(
  * autosave has work left: a write is needed, or a write of the handle runs or waits, whoever asked
  * for it, so no store save runs after the lock is freed. Then it marks the handle closed and stops
  * autosave with no wait in between, then waits for the record writes of the handle, at most
- * `RECORD_WAIT_MS`, then frees the lock. A hand-over does the same and keeps the lock for its
- * caller. A flush that fails leaves the handle open, the lock held, and autosave armed. A close
- * called while another close runs, also while that close frees the lock, gets the same attempt, so
- * the lock is freed once.
+ * `RECORD_WAIT_MS`, then tells the keeper and frees the lock. A hand-over does the same, except
+ * that it keeps the lock for its caller and does not tell the keeper. A flush that fails leaves the
+ * handle open, the lock held, and autosave armed. A close called while another close runs, also
+ * while that close frees the lock, gets the same attempt, so the lock is freed once.
  */
 function createSavePath(parts: SavePathParts): SavePath {
   const { autosave, hold, records } = parts
@@ -165,7 +165,12 @@ function createSavePath(parts: SavePathParts): SavePath {
     })
     return state.ending
   }
-  const releaseLock = (): Promise<void> => callGuardedAsync(() => hold.release())
+  // The keeper hears of it first: once another handle can take the lock, no record is built here.
+  // A hand-over keeps the lock for the restored handle, which shares the keeper: it says nothing.
+  const releaseLock = (): Promise<void> => {
+    records.released()
+    return callGuardedAsync(() => hold.release())
+  }
   const keepLock = (): Promise<void> => Promise.resolve()
 
   return {
