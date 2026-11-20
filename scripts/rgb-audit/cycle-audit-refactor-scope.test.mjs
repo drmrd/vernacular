@@ -2,18 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { auditCommits, parseGitLog } from './cycle-audit.mjs'
 import { runRgbAudit } from './rgb-audit.mjs'
 import { exemptTestFiles } from './scope-rules.mjs'
-
-const RECORD_SEPARATOR = '\x1e'
-const UNIT_SEPARATOR = '\x1f'
-
-function record({ sha, subject, infra = '', files = [] }) {
-  const header = [sha, subject, infra].join(UNIT_SEPARATOR)
-  return [header, ...files].join('\n')
-}
-
-function gitLog(records) {
-  return records.map(record).join(RECORD_SEPARATOR)
-}
+import { gitLog } from './cycle-audit-test-support.mjs'
 
 function audit(records, diffs = {}) {
   const readCommitDiff = vi.fn((sha) => diffs[sha] ?? '')
@@ -277,6 +266,104 @@ describe('exemptTestFiles', () => {
 
   it('returns an empty set for an empty diff', () => {
     expect(exemptTestFiles('').size).toBe(0)
+  })
+
+  it('does not carry an open import across hunks to exempt a later fixture change', () => {
+    const diff = modifiedSection('core/a.test.ts', [
+      '-import {',
+      '+import type {',
+      '@@ -20 +20 @@',
+      '-  42,',
+      '+  43,',
+    ])
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(false)
+  })
+
+  it('reads a changed line that starts with dashes or pluses as a real change', () => {
+    const diff = modifiedSection('core/a.test.ts', [
+      "-import { a } from './x'",
+      "+import { a } from './y'",
+      '@@ -9 +9 @@',
+      '--- a',
+      '+++ b',
+    ])
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(false)
+  })
+
+  it('exempts a single-line import type path change', () => {
+    const diff = modifiedSection('core/a.test.ts', [
+      "-import type { A } from './x'",
+      "+import type { A } from './y'",
+    ])
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(true)
+  })
+
+  it('exempts a multi-line import type collapsed onto one line', () => {
+    const diff = modifiedSection('core/a.test.ts', [
+      '-import type {',
+      '-  A,',
+      '-  B,',
+      "-} from './x'",
+      "+import type { A, B } from './x'",
+    ])
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(true)
+  })
+
+  it('exempts a multi-line export-from statement', () => {
+    const diff = modifiedSection('core/a.test.ts', [
+      '-export {',
+      '-  a,',
+      "-} from './x'",
+      '+export {',
+      '+  a,',
+      "+} from './y'",
+    ])
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(true)
+  })
+
+  it('does not exempt a changed export declaration', () => {
+    const diff = modifiedSection('core/a.test.ts', ['-export const a = 1', '+export const a = 2'])
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(false)
+  })
+
+  it('does not exempt a changed side-effect import', () => {
+    const diff = modifiedSection('core/a.test.ts', [
+      "-import './old-setup'",
+      "+import './new-setup'",
+    ])
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(false)
+  })
+
+  it('does not exempt a deleted test file', () => {
+    const diff = [
+      'diff --git a/core/a.test.ts b/core/a.test.ts',
+      'deleted file mode 100644',
+      'index 1111111..0000000',
+      '--- a/core/a.test.ts',
+      '+++ /dev/null',
+      '@@ -1,2 +0,0 @@',
+      '-it("works", () => {',
+      '-})',
+      '',
+    ].join('\n')
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(false)
+  })
+
+  it('ignores the no-newline-at-end-of-file marker beside an import change', () => {
+    const diff = modifiedSection('core/a.test.ts', [
+      ...IMPORT_PATH_CHANGE,
+      '\\ No newline at end of file',
+    ])
+
+    expect(exemptTestFiles(diff).has('core/a.test.ts')).toBe(true)
   })
 })
 

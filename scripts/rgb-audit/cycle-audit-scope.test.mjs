@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { auditCommits, parseGitLog } from './cycle-audit.mjs'
 import { isTestAsset, isTestFile } from './test-files.mjs'
-
-const RECORD_SEPARATOR = '\x1e'
-const UNIT_SEPARATOR = '\x1f'
-
-function record({ sha, subject, infra = '', files = [] }) {
-  const header = [sha, subject, infra].join(UNIT_SEPARATOR)
-  return [header, ...files].join('\n')
-}
-
-function gitLog(records) {
-  return records.map(record).join(RECORD_SEPARATOR)
-}
+import { gitLog } from './cycle-audit-test-support.mjs'
 
 function audit(records) {
   return auditCommits(parseGitLog(gitLog(records)))
