@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import { App } from '../app'
 import {
   IndexedDbRecentProjectStore,
-  LocalStorageActiveProjectIdStore,
   registerServiceWorker,
   type ServiceWorkerContainerLike,
 } from '../storage'
@@ -14,21 +13,16 @@ if (!rootElement) {
 }
 
 // Under `?e2e-storage` the Playwright hook owns storage setup, so the app boots
-// with its in-memory remembered id and recent list. Otherwise wire the durable
-// browser ports for real users:
-// - the IndexedDB recent-project list, so "Open recent" survives a reload instead
-//   of resetting to empty on every page load (the in-memory fallback's behavior).
-//   Construction is synchronous, so the first paint is not delayed.
-// - the remembered active project id, so a reload opens the project last worked on.
+// with its in-memory recent list. Otherwise wire the IndexedDB recent-project list
+// for real users, so "Open recent" survives a reload instead of resetting to empty
+// on every page load (the in-memory fallback's behavior). Construction is
+// synchronous, so the first paint is not delayed.
 // The ports of the session layer are built by the application itself, after the
-// first paint; crash recovery reads the snapshots of the open project.
+// first paint. The start opens the project used last, as the project index tells,
+// under `?e2e-storage` as on any page; crash recovery reads the snapshots of the
+// open project.
 const isE2eStorage = new URLSearchParams(globalThis.location?.search ?? '').has('e2e-storage')
-const productionProps = isE2eStorage
-  ? {}
-  : {
-      activeProjectIds: new LocalStorageActiveProjectIdStore(),
-      recentProjects: new IndexedDbRecentProjectStore(),
-    }
+const productionProps = isE2eStorage ? {} : { recentProjects: new IndexedDbRecentProjectStore() }
 
 createRoot(rootElement).render(
   <StrictMode>

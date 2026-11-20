@@ -106,13 +106,7 @@ export type { SvgPlanToPdfOptions } from './download/pdf-plan-document'
 export { downloadBytes, downloadText } from './download/download-blob'
 export { importProjectFile } from './import/import-project-file'
 export type { ProjectFileRead, ProjectFileFailure } from './import/import-project-file'
-export {
-  InMemoryActiveProjectIdStore,
-  LocalStorageActiveProjectIdStore,
-  isValidProjectId,
-  newProjectId,
-} from './active-project/active-project-id-store'
-export type { ActiveProjectIdStore } from './active-project/active-project-id-store'
+export { isValidProjectId, newProjectId } from './active-project/project-id'
 export {
   readLegacyActiveProjectId,
   removeLegacyActiveProjectId,

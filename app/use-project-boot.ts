@@ -8,10 +8,9 @@ import {
   createTemporarySessionPorts,
   type BuiltSessionPorts,
 } from './create-session-ports'
-import { useActiveProjectId } from './use-active-project-id'
 import { storageUnavailableOf } from './open-failure-text'
 import { useOpenProject, type RunFlow } from './use-open-project'
-import { useRememberSavedProject } from './use-remember-saved-project'
+import { useStartProjectId } from './use-start-project-id'
 
 export interface ProjectBoot {
   /** The open project. Null while the start runs and after a start that failed. */
@@ -25,13 +24,11 @@ export interface ProjectBoot {
   retryBoot: () => void
   /** Leaves the project that failed alone and starts a new one under a new id. */
   startFreshProject: () => void
-  /** Reports a save, so that a reload opens the project that was saved. */
-  rememberSavedProject: (handle: DocumentHandle) => void
 }
 
 export type ProjectBootInputs = Pick<
   AppProps,
-  'ports' | 'resolvePorts' | 'libraryAssets' | 'projectId' | 'activeProjectIds'
+  'ports' | 'resolvePorts' | 'libraryAssets' | 'projectId'
 >
 
 function startRequest(id: string): OpenRequest {
@@ -83,15 +80,15 @@ function useLibraryAssets(inputs: ProjectBootInputs, built: BuiltSessionPorts | 
   return inputs.libraryAssets ?? built?.libraryAssets ?? injected
 }
 
-// Composes the start: the ports, the start request (the remembered id, or a new project after a
-// failure), the one owner of the open project, and the remembered id. It holds no handle itself.
+// Composes the start: the ports, the start request (the project used last, or a new project after
+// a failure), and the one owner of the open project. It holds no handle itself.
 export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const bootPorts = useBootPorts(inputs)
   const ports = inputs.ports ?? bootPorts.built?.ports ?? null
-  const startId = useActiveProjectId(inputs.projectId, inputs.activeProjectIds)
-  const remembered = useMemo(() => (startId === null ? null : startRequest(startId)), [startId])
+  const startId = useStartProjectId(ports, inputs.projectId)
+  const usedLast = useMemo(() => (startId === null ? null : startRequest(startId)), [startId])
   const [freshRequest, setFreshRequest] = useState<OpenRequest | null>(null)
-  const owner = useOpenProject(ports, freshRequest ?? remembered)
+  const owner = useOpenProject(ports, freshRequest ?? usedLast)
   const failure = bootPorts.failure ?? owner.failure
   const answered = useRef<SwitchFailure | null>(null)
   const startFreshProject = () => {
@@ -102,19 +99,7 @@ export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     setFreshRequest(startRequest(newProjectId([])))
   }
   const retryBoot = () => (bootPorts.failure === null ? owner.retry() : bootPorts.rebuild())
-  const rememberSavedProject = useRememberSavedProject({
-    startId,
-    activeProjectIds: inputs.activeProjectIds,
-  })
   const libraryAssets = useLibraryAssets(inputs, bootPorts.built)
   const { handle, runFlow } = owner
-  return {
-    handle,
-    failure,
-    runFlow,
-    libraryAssets,
-    retryBoot,
-    startFreshProject,
-    rememberSavedProject,
-  }
+  return { handle, failure, runFlow, libraryAssets, retryBoot, startFreshProject }
 }

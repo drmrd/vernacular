@@ -178,16 +178,6 @@ function isUnsaved(status: SaveStatus): boolean {
   return status === 'pending' || status === 'error'
 }
 
-// Reports the handle each time its save status becomes saved.
-function useReportSaved(props: EditorWorkspaceProps, saveStatus: SaveStatus): void {
-  const { handle, onProjectSaved } = props
-  useEffect(() => {
-    if (saveStatus === 'saved') {
-      onProjectSaved?.(handle)
-    }
-  }, [saveStatus, handle, onProjectSaved])
-}
-
 export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   const { handle, runFlow, libraryAssets, recentProjects, capabilities } = props
   const session = handle.session
@@ -206,7 +196,6 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   useUnsavedChangesGuard(handle)
   useFlushOnHidden(handle)
   useHandleNotices(handle)
-  useReportSaved(props, saveStatus)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
   const recentEntries = useRecentEntries(recentProjects, handle)
   const recovery = useCrashRecovery({ handle, runFlow, confirmDiscard })

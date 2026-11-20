@@ -25,7 +25,6 @@ import {
 import {
   InMemoryRecentProjectStore,
   probeStorageCapabilities,
-  type ActiveProjectIdStore,
   type AssetCache,
   type RecentProjectStore,
   type StorageCapabilities,
@@ -42,7 +41,7 @@ import { useDiscardPrompt } from './use-discard-prompt'
 import type { RunFlow } from './use-open-project'
 import { useWorkspaceState } from './use-workspace-state'
 
-export { DEFAULT_PROJECT_ID } from './use-active-project-id'
+export { DEFAULT_PROJECT_ID } from './use-start-project-id'
 export type { BuiltSessionPorts } from './create-session-ports'
 
 // Test-only render-harness seam. When `?fixture=scene-harness` is present the app
@@ -92,10 +91,8 @@ export interface AppProps {
   resolvePorts?: () => Promise<BuiltSessionPorts>
   /** The pool of the user's library. Defaults to the built one, or in memory under `ports`. */
   libraryAssets?: AssetCache
-  /** An override for tests; when set, the remembered id is not read. */
+  /** An override for tests; when set, the index is not asked which project opens at start. */
   projectId?: string
-  /** Remembers which project opens at start; defaults to in memory, nothing remembered. */
-  activeProjectIds?: ActiveProjectIdStore
   recentProjects?: RecentProjectStore
   /** The port of the user settings (tests). Defaults to the settings that this browser keeps. */
   settings?: AppSettingsProps['port']
@@ -154,7 +151,6 @@ function AppWorkspace(props: AppProps) {
       libraryAssets={libraryAssets}
       recentProjects={recentProjects}
       capabilities={capabilities}
-      onProjectSaved={boot.rememberSavedProject}
     />
   )
 }
@@ -222,8 +218,6 @@ export interface EditorWorkspaceProps {
   libraryAssets: AssetCache
   recentProjects: RecentProjectStore
   capabilities: StorageCapabilities
-  /** Called each time the save status of the handle becomes `saved`. */
-  onProjectSaved?: (handle: DocumentHandle) => void
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
