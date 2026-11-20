@@ -2,6 +2,8 @@
 
 Date: 2026-06-16
 
+Amendment 2026-11-20: ADR-0219 replaces the format rules of this specification for format 2 packs. Format 1 packs still load as described here.
+
 ## Problem
 
 The asset pack format has a working scaffold but not a working contract. The

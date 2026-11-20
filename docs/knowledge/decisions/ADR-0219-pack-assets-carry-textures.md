@@ -50,7 +50,7 @@ On 2026-11-19 he confirmed five defaults of this record:
 - Format 1 packs still load.
 - A reader refuses a pack of a newer format as a whole.
 - The library hides textures until finishes use them.
-- A texture is PNG or WebP, 64 to 2048 pixels a side, and at most 8 MiB.
+- A texture is PNG or WebP, each side a power of two from 64 to 2048 pixels, at most 8 MiB, with no animation and no embedded color profile.
 - The CC0-1.0 license of the generated grass is a rule for the starter pack only.
 
 The other rules below are this record's design. The record stays proposed until the format is

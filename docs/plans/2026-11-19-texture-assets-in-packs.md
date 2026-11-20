@@ -38,14 +38,14 @@ draws it in the live view and in the scene harness, and the calibrated daylight 
 - `app/create-asset-library-registry.ts` reads one pack, `/packs/vernacular-starter-1.0.0`, and
   registers a `user` and a `pack` source only.
 - `bridge/` may import `core`, `session`, and `engine` (`eslint.config.js:25-28`). Files that touch
-  `storage/` today do so through exceptions tagged with issue #717 (`eslint.config.js:310-317`).
+  `storage/` today do so through exceptions tagged with issue #717 (`eslint.config.js:405-412`).
   New bridge files use core types only.
 - `engine/scene/ground-plane.ts` builds a `MeshStandardMaterial` with `GROUND_SURFACE_HEX` and
   `groundPlaneDepthBiasParameters()` (lines 98 to 105). `PlaneGeometry` gives UVs from 0 to 1.
 - `refreshGroundPlane` (`bridge/react/framed-scene.ts:123-132`) frees an old plane with
   `disposeObject` (`engine/scene/furniture-model.ts:40-52`), which frees every material texture.
 - The scene harness builds its scene once, in a memo, through `buildFramedScene`, `buildScene`, and
-  `addGroundPlane` (`bridge/react/scene-harness-view.tsx:220-225`, `engine/scene/build-scene.ts:36`).
+  `addGroundPlane` (`bridge/react/scene-harness-view.tsx:268-270`, `engine/scene/build-scene.ts:36`; `addGroundPlane` is reached through `bridge/react/framed-scene.ts:131`).
   The reconciler's path for an empty graph calls `buildFramedScene` too
   (`bridge/react/framed-scene-reconciler.ts:134-136`). `app/app.tsx` renders the harness with no
   asset registry provider.
@@ -81,10 +81,10 @@ draws it in the live view and in the scene harness, and the calibrated daylight 
 - The linux scene baselines are rendered on the ubuntu runner that checks them, by the
   `Refresh scene baselines` workflow (`.github/workflows/refresh-scene-baselines.yml`, ADR-0152).
   The darwin ones are rendered on the development Mac (ADR-0149).
-- A file of `bridge/`, a test included, may not import `three` (`eslint.config.js:111-114`).
+- A file of `bridge/`, a test included, may not import `three` (`eslint.config.js:206-209`).
   Bridge tests take the Three.js classes they need from the test-support barrel
   `engine/testing/index.ts`, which re-exports `Mesh`, `PerspectiveCamera`, and `Raycaster`.
-- The lint limits are gates at commit time (`eslint.config.js:477-479`, run by lint-staged): 300
+- The lint limits are gates at commit time (`eslint.config.js:572-574`, run by lint-staged): 300
   counted lines a file, tests included; 40 lines a function, 120 in a test file; 3 parameters.
 - The `storage-browser` test project runs every `*.browser.test.ts` file in a real browser.
 - `three` is pinned at 0.184.0. Its WebGPU backend uploads an sRGB texture as `rgba8unorm-srgb`.
@@ -761,7 +761,7 @@ is not a function`, and typecheck reports TS2339. Implementation: `use-live-view
    `FramedSceneState`; `webgpu-scene-view.tsx` passes it to `LiveSceneCanvas` as a prop, and
    `LiveSceneCanvas` calls `useGroundReadinessNotes(groundTexture, readiness)`. The first-frame
    flag is untouched. No unit test renders the live view: it runs only with WebGPU and never under
-   jsdom (`webgpu-scene-view.tsx:327-328`). The end-to-end proof is the live-view baseline and the
+   jsdom (`webgpu-scene-view.tsx:331-332`). The end-to-end proof is the live-view baseline and the
    live specs of the scene work.
 9. **`app/create-asset-library-registry.test.ts`: "the scene harness registry resolves and
    describes the ground grass".** `createHarnessAssetRegistry(fetch)` is a new export. Assert

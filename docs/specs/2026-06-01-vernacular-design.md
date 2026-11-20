@@ -300,7 +300,7 @@ kind: 'furniture'
     | 'preview-only'
 ```
 
-Each tool sees only the kinds it can use. The furniture library lists only `furniture`. A `texture` is an image that a surface repeats at its declared tile size. The ground uses one, and the `tiled-image` finishes will (ADR-0130, ADR-0219). Section 4.3 gives the file rules of each kind.
+Each tool sees only the kinds it can use. The furniture library lists only `furniture`. A `texture` is an image that a surface repeats at its declared tile size. The ground will use one for its grass (#409), and the `tiled-image` finishes will too (ADR-0130, ADR-0219). Section 4.3 gives the file rules of each kind.
 
 ### 4.6 Data-driven extension model (MVP)
 
