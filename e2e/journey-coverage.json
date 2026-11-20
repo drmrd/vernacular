@@ -35,6 +35,11 @@
       "status": "required"
     },
     {
+      "id": "theme-follows-other-tab",
+      "title": "shows a theme chosen in one tab in the other open tab without a reload",
+      "status": "required"
+    },
+    {
       "id": "carried-snap-preferences",
       "title": "keeps the snap preferences that an older build stored",
       "status": "required"
