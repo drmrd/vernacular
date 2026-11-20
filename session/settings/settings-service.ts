@@ -16,7 +16,7 @@ export interface SettingsService {
 
 interface Subscription {
   readonly listener: (value: unknown) => void
-  readonly currentValue: () => unknown
+  readonly readValue: () => unknown
   live: boolean
 }
 
@@ -30,17 +30,13 @@ function readSetting<T>(port: SettingsPort, key: SettingKey<T>): T {
   }
 }
 
-function notify(subscriptions: ReadonlySet<Subscription> | undefined, value: unknown): void {
+function notify(
+  subscriptions: ReadonlySet<Subscription> | undefined,
+  valueFor: (subscription: Subscription) => unknown,
+): void {
   if (subscriptions === undefined) return
   for (const subscription of [...subscriptions]) {
-    if (subscription.live) subscription.listener(value)
-  }
-}
-
-function notifyOfOutsideChange(subscriptions: ReadonlySet<Subscription> | undefined): void {
-  if (subscriptions === undefined) return
-  for (const subscription of [...subscriptions]) {
-    if (subscription.live) subscription.listener(subscription.currentValue())
+    if (subscription.live) subscription.listener(valueFor(subscription))
   }
 }
 
@@ -59,12 +55,12 @@ export function createSettingsService(
     set<T>(key: SettingKey<T>, value: T): void {
       port.write(key.name, value)
       values.set(key.name, value)
-      notify(subscriptions.get(key.name), value)
+      notify(subscriptions.get(key.name), () => value)
     },
     subscribe<T>(key: SettingKey<T>, listener: (value: T) => void): () => void {
       const subscription: Subscription = {
         listener: listener as (value: unknown) => void,
-        currentValue: () => readSetting(port, key),
+        readValue: () => readSetting(port, key),
         live: true,
       }
       const forName = subscriptions.get(key.name) ?? new Set<Subscription>()
@@ -79,7 +75,7 @@ export function createSettingsService(
 
   port.onOutsideChange?.((name) => {
     values.delete(name)
-    notifyOfOutsideChange(subscriptions.get(name))
+    notify(subscriptions.get(name), (subscription) => subscription.readValue())
   })
   return service
 }

@@ -86,13 +86,6 @@ export class LocalStorageSettingsPort implements SettingsPort {
     }
   }
 
-  private tellChanged(names: readonly string[]): void {
-    for (const name of names) this.unstored.delete(name)
-    for (const listener of [...this.outsideListeners]) {
-      for (const name of names) listener(name)
-    }
-  }
-
   write(name: string, value: unknown): void {
     this.touchedNames.add(name)
     const text = JSON.stringify(value) as string | undefined
@@ -100,6 +93,13 @@ export class LocalStorageSettingsPort implements SettingsPort {
       this.unstored.delete(name)
     } else {
       this.unstored.set(name, text)
+    }
+  }
+
+  private tellChanged(names: readonly string[]): void {
+    for (const name of names) this.unstored.delete(name)
+    for (const listener of [...this.outsideListeners]) {
+      for (const name of names) listener(name)
     }
   }
 
