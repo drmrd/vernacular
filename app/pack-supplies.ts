@@ -18,7 +18,8 @@ export async function loadPackSupplies(
   }
   try {
     return packSuppliesFrom(await library.list())
-  } catch {
+  } catch (error: unknown) {
+    console.warn('The asset library cannot be listed; no pack asset counts as missing.', error)
     return () => true
   }
 }
