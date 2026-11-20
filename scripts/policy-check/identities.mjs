@@ -1,7 +1,7 @@
-export const OWNER_IDENTITY = {
+export const OWNER_IDENTITY = Object.freeze({
   name: 'Dan Moore',
   email: '9156191+drmrd@users.noreply.github.com',
-}
+})
 
 /** Bot authors allowed only on the branches their tooling creates. */
 export const BOT_IDENTITIES = Object.freeze([
