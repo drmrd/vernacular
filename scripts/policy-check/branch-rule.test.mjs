@@ -32,6 +32,19 @@ describe('branchFindings', () => {
     expect(findings[0]).not.toHaveProperty('sha')
   })
 
+  it('refuses a bot prefix that is not at the start of the branch', () => {
+    for (const branch of ['x/dependabot/y', 'feat-release-please--branches--main']) {
+      const findings = branchFindings(branch, TYPES)
+      expect(findings).toHaveLength(1)
+      expect(findings[0].rule).toBe('branch-prefix')
+    }
+  })
+
+  it('takes the allowed types from the commitTypes argument', () => {
+    expect(branchFindings('feat/x', ['feat'])).toEqual([])
+    expect(branchFindings('fix/x', ['feat'])).toHaveLength(1)
+  })
+
   it('skips the rule when the branch is unknown', () => {
     expect(branchFindings('', TYPES)).toEqual([])
   })
