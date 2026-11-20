@@ -4,13 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { encodeDocument, type AssetReference, type Project } from '../../core'
 import { collectReferencedAssets } from '../../storage'
 import { misnamedAssetEntry } from '../../storage/zip/zip-edges-test-kit'
-import {
-  assetEntry,
-  contentHashOf,
-  projectArchive,
-  projectReferring,
-  seededBytes,
-} from '../../storage/zip/zip-test-kit'
+import { assetEntry, contentHashOf, projectArchive } from '../../storage/zip/zip-test-kit'
 import { assetsOf } from '../handle/handle-assets'
 import {
   createTestPorts,
@@ -19,55 +13,26 @@ import {
   storedName,
 } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
-import type { DocumentHandle } from '../handle/handle-types'
 import { importFile } from './import-file'
-import type { ImportResult } from './import-file'
+import {
+  completeArchive,
+  house,
+  IMAGE,
+  importedOf,
+  logWrites,
+  MODEL,
+  OTHER_ID,
+  POOL_FOLDER,
+} from './import-file-test-kit'
 
-const OTHER_ID = 'b'
-const MODEL = seededBytes(4096)
-const IMAGE = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 4, 5, 6)
 const STRAY = Uint8Array.of(7, 7, 7)
 const PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
-const POOL_FOLDER = 'assets/'
-
-/** A project that places a furniture model and lays an underlay image, with the hashes of both. */
-async function house(extra: readonly AssetReference[] = []) {
-  const model = await contentHashOf(MODEL)
-  const image = await contentHashOf(IMAGE)
-  const project = projectReferring(
-    [{ scope: 'user', contentHash: model }, ...extra],
-    [{ scope: 'project', contentHash: image }],
-  )
-  return { model, image, project }
-}
-
-/** The archive of the house with both of its assets. */
-async function completeArchive(project: Project): Promise<Uint8Array> {
-  return projectArchive(project, [await assetEntry(MODEL), await assetEntry(IMAGE)])
-}
 
 const building = (bytes: Uint8Array) => ({ name: 'house.building', bytes })
 
 /** The hash of each asset that the project refers to, in the order of first reference. */
 function referencedHashes(project: Project): string[] {
   return [...new Set(collectReferencedAssets(project).map((reference) => reference.contentHash))]
-}
-
-/** The handle and the missing assets of an import that must open a project. */
-function importedOf(result: ImportResult): { handle: DocumentHandle; missingAssets: unknown } {
-  if (!result.ok) throw new Error(`Expected a project to open: ${JSON.stringify(result.failure)}`)
-  return { handle: result.handle, missingAssets: result.missingAssets }
-}
-
-/** From now on each path written to the directory of `ports` goes into the returned log. */
-function logWrites(ports: TestPorts): string[] {
-  const log: string[] = []
-  const write = ports.root.writeFile.bind(ports.root)
-  ports.root.writeFile = (path, bytes) => {
-    log.push(path)
-    return write(path, bytes)
-  }
-  return log
 }
 
 /** From now on each write under the asset pool rejects; other writes work. */

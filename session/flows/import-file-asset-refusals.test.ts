@@ -22,11 +22,11 @@ import {
 } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
 import { importFile } from './import-file'
+import { logWrites, POOL_FOLDER } from './import-file-test-kit'
 
 const CURRENT_ID = 'a'
 const MODEL = Uint8Array.of(0x67, 0x6c, 0x54, 0x46, 1, 2, 3)
 const IMAGE = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 4, 5, 6)
-const POOL_FOLDER = 'assets/'
 
 /** A project that places a furniture model and lays an underlay image. */
 async function house(): Promise<Project> {
@@ -45,17 +45,6 @@ async function completeArchive(): Promise<Uint8Array> {
 async function openCurrent(ports: TestPorts) {
   await placeDocument(ports, CURRENT_ID, currentBytes())
   return openOrThrow(ports, workspaceRequest(CURRENT_ID))
-}
-
-/** From now on each path written to the directory of `ports` goes into the returned log. */
-function logWrites(ports: TestPorts): string[] {
-  const log: string[] = []
-  const write = ports.root.writeFile.bind(ports.root)
-  ports.root.writeFile = (path, bytes) => {
-    log.push(path)
-    return write(path, bytes)
-  }
-  return log
 }
 
 const poolWrites = (writes: readonly string[]) =>

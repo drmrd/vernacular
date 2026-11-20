@@ -184,7 +184,7 @@ describe('copyImportedAssets when the pool fails or a value is no content hash',
 describe('copyImportedAssets when a needed value is not text', () => {
   it('the pool is not asked about it, and no entry is written for it', async () => {
     const pool = recordingPool()
-    const needed = [ARRAY_HASH, MODEL] as string[]
+    const needed = [ARRAY_HASH, MODEL]
 
     await copyImportedAssets(pool, supplied([MODEL, MODEL_BYTES]), needed)
 
@@ -194,7 +194,7 @@ describe('copyImportedAssets when a needed value is not text', () => {
 
   it('it is not named as missing, and a text hash next to it still is', async () => {
     const pool = recordingPool()
-    const needed = [ABSENT, ARRAY_HASH] as string[]
+    const needed = [ABSENT, ARRAY_HASH]
 
     expect(await copyImportedAssets(pool, supplied(), needed)).toEqual([ABSENT])
   })
