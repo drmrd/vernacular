@@ -11,6 +11,8 @@ const ABSENT = 'd'.repeat(64)
 const MODEL_BYTES = Uint8Array.of(1, 2, 3)
 const IMAGE_BYTES = Uint8Array.of(4, 5, 6, 7)
 const STRAY_BYTES = Uint8Array.of(8)
+/** A value that a hand-edited document can hold for a hash: an array with one text of 64 hexadecimal characters. */
+const ARRAY_HASH = JSON.parse(JSON.stringify([ABSENT])) as unknown
 const NOT_CONTENT_HASHES = ['../../outside', '', 'A'.repeat(64), `${MODEL}/x`]
 
 /** Which calls of the pool reject, by method and content hash. */
@@ -176,5 +178,24 @@ describe('copyImportedAssets when the pool fails or a value is no content hash',
     const missing = await copyImportedAssets(pool, assets, needed)
 
     expect(missing).toEqual([ABSENT, NOT_CONTENT_HASHES[0], IMAGE])
+  })
+})
+
+describe('copyImportedAssets when a needed value is not text', () => {
+  it('the pool is not asked about it, and no entry is written for it', async () => {
+    const pool = recordingPool()
+    const needed = [ARRAY_HASH, MODEL] as string[]
+
+    await copyImportedAssets(pool, supplied([MODEL, MODEL_BYTES]), needed)
+
+    expect(hashesAsked(pool).every((asked) => asked === MODEL)).toBe(true)
+    expect(pool.entries).toEqual(new Map([[MODEL, MODEL_BYTES]]))
+  })
+
+  it('it is not named as missing, and a text hash next to it still is', async () => {
+    const pool = recordingPool()
+    const needed = [ABSENT, ARRAY_HASH] as string[]
+
+    expect(await copyImportedAssets(pool, supplied(), needed)).toEqual([ABSENT])
   })
 })

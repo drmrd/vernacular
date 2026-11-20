@@ -95,6 +95,13 @@ describe('neededAssetHashes', () => {
     expect(neededAssetHashes(project)).toEqual([FIRST, SECOND, THIRD])
   })
 
+  it('gives text hashes only for a reference whose hash is an array of one text', () => {
+    const parsed: unknown = JSON.parse(JSON.stringify({ scope: 'user', contentHash: [SECOND] }))
+    const project = projectOf(floorWith([user(FIRST), parsed as AssetReference]))
+
+    expect(neededAssetHashes(project)).toEqual([FIRST])
+  })
+
   it('is empty for a project with no floor', () => {
     expect(neededAssetHashes(emptyProject())).toEqual([])
   })
