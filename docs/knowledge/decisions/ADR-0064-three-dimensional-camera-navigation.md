@@ -290,6 +290,9 @@ Three of these choices are working assumptions that the project owner has not
 decided: the plan position stays, the walk goes on across a change of floor, and
 the whole-building view follows the active floor.
 
+Issue #926 settled one part of the last assumption. When the whole-building view hides the active
+floor's level, a walk still draws that floor, and leaving the walk hides it again.
+
 The E key had a related fault. An opening's height is measured on its own floor,
 and the reach test compared it with the walker's eye in world space. With the
 eye on an upper floor or in a basement, the ray could pass above or below that

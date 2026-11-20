@@ -90,6 +90,13 @@ Marking floors as underground in the model was rejected because elevation alread
 level is one seated below the zero datum, which the floor-placement defaults already produce, so the filter
 reads the elevation the floors carry rather than a redundant flag that could drift out of step with it.
 
+## Amendment 2026-11-20: a walk keeps the active floor
+
+A walk is the exception to the underground setting. While the camera walks, the floor the walker
+stands on stays drawn even when the setting hides its level, because the walk's floor height and
+collision already come from that floor (issue #926). Other hidden floors stay hidden, and leaving the
+walk hides the active floor again.
+
 ## Consequences
 
 - The single-floor preview is unchanged: floor scope is the default and still narrows through
