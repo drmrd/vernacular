@@ -21,11 +21,18 @@ export interface RecordKeeper {
 /** Makes the record when its write starts, so a record that is never written is never made. */
 type MakeRecord = () => Promise<ProjectRecord>
 
+/** The queue of the record writes of one handle. */
+interface RecordQueue {
+  ask(make: MakeRecord): void
+  settled(): Promise<void>
+  warn(error: unknown): void
+}
+
 /** What a record holds besides the request and the facts of its project. */
 interface RecordMoment {
   readonly project: Project
   /** False when the stored document did not pass the check. */
-  readonly checked: boolean
+  readonly passedCheck: boolean
   readonly lastChangedAt: string | undefined
   readonly lastUsedAt: string
 }
@@ -46,7 +53,7 @@ function wholeRecord(
     floorCount: facts.floorCount,
     preview: facts.preview,
     assetHashes: facts.assetHashes,
-    assetListComplete: facts.assetsListed && moment.checked,
+    assetListComplete: facts.assetsListed && moment.passedCheck,
     lastChangedAt: moment.lastChangedAt,
     lastUsedAt: moment.lastUsedAt,
     lastOpen: { opened: true, build: ports.build },
@@ -68,11 +75,7 @@ function createWarnOnce(): (error: unknown) => void {
  * The record writes of one handle: one runs at a time, in the order asked, and while one runs only
  * the latest request waits. The first write that fails goes to console.warn; later ones are silent.
  */
-function createRecordQueue(ports: RecordPorts): {
-  ask(make: MakeRecord): void
-  settled(): Promise<void>
-  warn(error: unknown): void
-} {
+function createRecordQueue(ports: RecordPorts): RecordQueue {
   let running: Promise<void> | undefined
   let waiting: MakeRecord | undefined
   const warn = createWarnOnce()
@@ -128,7 +131,7 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
     opened(opened, lastChangedAt) {
       askAt(async (lastUsedAt) => ({
         project: opened.project,
-        checked: !opened.openedDespiteFaults,
+        passedCheck: !opened.openedDespiteFaults,
         lastChangedAt: lastChangedAt ?? (await storedChangedAt(ports, request.id)),
         lastUsedAt,
       }))
@@ -136,7 +139,7 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
     saved(project, report) {
       askAt(async (lastUsedAt) => ({
         project,
-        checked: report.faults.length === 0,
+        passedCheck: report.faults.length === 0,
         lastChangedAt: report.lastChangedAt,
         lastUsedAt,
       }))

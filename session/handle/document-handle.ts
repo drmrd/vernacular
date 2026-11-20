@@ -129,10 +129,9 @@ async function handOverWith(
  * autosave has work left: a write is needed, or a write of the handle runs or waits, whoever asked
  * for it, so no store save runs after the lock is freed. Then it marks the handle closed and stops
  * autosave with no wait in between, then waits for the record writes of the handle, then frees the
- * lock. A hand-over does the same and keeps the
- * lock for its caller. A flush that fails leaves the handle open, the lock held, and autosave
- * armed. A close called while another close runs, also while that close frees the lock, gets the
- * same attempt, so the lock is freed once.
+ * lock. A hand-over does the same and keeps the lock for its caller. A flush that fails leaves the
+ * handle open, the lock held, and autosave armed. A close called while another close runs, also
+ * while that close frees the lock, gets the same attempt, so the lock is freed once.
  */
 function createSavePath(parts: SavePathParts): SavePath {
   const { autosave, hold, records } = parts
