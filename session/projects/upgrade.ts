@@ -64,6 +64,19 @@ function holdsNoWorkspaceRecordOf(
 }
 
 /**
+ * The time of the mark, or undefined when the clock throws or gives an invalid date. The failure
+ * is logged and the mark is given up for this run, so the remembered id stays for the next run.
+ */
+function readTimeOfUse(ports: SessionPorts): string | undefined {
+  try {
+    return ports.now().toISOString()
+  } catch (error) {
+    console.error(error)
+    return undefined
+  }
+}
+
+/**
  * Starts the upgrade of one run. The remembered id is read here, before the run reads the index,
  * so a tab that finds no id reads the index after another tab's mark landed.
  */
@@ -86,7 +99,11 @@ export function startUpgrade(ports: SessionPorts): ProjectUpgrade {
       if (!markDue || record.id !== rememberedId || hasSwitchedToMemory(ports.index)) {
         return record
       }
-      marked = { ...record, lastUsedAt: ports.now().toISOString() }
+      const usedAt = readTimeOfUse(ports)
+      if (usedAt === undefined) {
+        return record
+      }
+      marked = { ...record, lastUsedAt: usedAt }
       return marked
     },
     notePut(record, landed) {
