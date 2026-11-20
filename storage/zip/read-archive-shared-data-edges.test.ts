@@ -1,0 +1,237 @@
+// @vitest-environment node
+// Pure byte and archive logic; node aligns Uint8Array realms with fflate.
+import { deflateSync } from 'fflate'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { assetEntryName } from './archive-layout'
+import { readArchive, type ArchiveRead } from './read-archive'
+import {
+  buildSharedZip,
+  buildZip64SharedZip,
+  centralEntryOffsets,
+  localOffsetOfEntry,
+  recordPushedChunks,
+  withUint32,
+} from './zip-edges-test-kit'
+import {
+  assetEntry,
+  contentHashOf,
+  documentEntry,
+  seededBytes,
+  type TestZipEntry,
+} from './zip-test-kit'
+
+const encoder = new TextEncoder()
+const DOCUMENT = encoder.encode('{"meta":{"name":"Elm Street"},"floors":[]}')
+const DOCUMENT_DATA = deflateSync(DOCUMENT)
+const PICTURE = seededBytes(300)
+/** Bytes that do not compress: their deflated data is about as long as they are. */
+const BLOB = seededBytes(16 * 1024)
+const BLOB_DATA = deflateSync(BLOB)
+const VIEWED = seededBytes(40_000)
+const SHORTER_VIEWS = [20_000, 10_000]
+const EMPTY = new Uint8Array(0)
+const STORED = 0
+const ENCRYPTED = 1
+const SHARERS = 3
+const DOCUMENT_SHARERS = 4
+/** With the owner and the document, the default entry limit of 10,000. */
+const MANY_SHARERS = 9_998
+const MANY_ENTRIES_TIMEOUT_MS = 120_000
+const HEX_RADIX = 16
+const HASH_DIGITS = 64
+const LOCAL_HEADER_BYTES = 30
+const LOCAL_SIGNATURE = 0x04034b50
+const LOCAL_NAME_LENGTH_AT = 26
+const CENTRAL_COMPRESSED_AT = 20
+const CENTRAL_LOCAL_OFFSET_AT = 42
+
+/** A content hash and the bytes it names. */
+type HashedAsset = readonly [string, Uint8Array]
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+/** The hexadecimal digits of a hash that names no bytes of these tests. */
+function otherHash(index: number): string {
+  return (index + 1).toString(HEX_RADIX).padStart(HASH_DIGITS, '0')
+}
+
+/** `count` copies of `owner`, each under the asset name of `otherHash`. */
+function sharersOf(owner: TestZipEntry, count: number): TestZipEntry[] {
+  return Array.from({ length: count }, (_, index) => ({
+    ...owner,
+    name: assetEntryName(otherHash(index)),
+  }))
+}
+
+/** The kind of a failed read, or the hashes of the assets of an ok read in their order. */
+function outcome(read: ArchiveRead): string | readonly string[] {
+  return read.ok ? [...read.assets.keys()] : read.failure.kind
+}
+
+/** The read is ok with the document, and `assets` holds exactly these, in this order. */
+function expectAssets(read: ArchiveRead, assets: readonly HashedAsset[]) {
+  expect(outcome(read)).toEqual(assets.map(([hash]) => hash))
+  expect(read.ok && read.document).toEqual(DOCUMENT)
+  expect(read.ok && read.assets).toEqual(new Map(assets))
+}
+
+function sharedDocument(): TestZipEntry {
+  return documentEntry(DOCUMENT, { data: DOCUMENT_DATA })
+}
+
+/** The document, an owner of `MANY_SHARERS` sharers, and the sharers, each a copy of the owner. */
+async function manySharers(
+  content: Uint8Array,
+  overrides: Partial<TestZipEntry>,
+): Promise<Uint8Array> {
+  const owner = await assetEntry(content, overrides)
+  return buildSharedZip([sharedDocument(), owner], sharersOf(owner, MANY_SHARERS), 1)
+}
+
+/** A copy of the archive in which every entry after the first gives a compressed size of the length of the file. */
+function withDataPastTheEnd(bytes: Uint8Array): Uint8Array {
+  const copy = bytes.slice()
+  const view = new DataView(copy.buffer)
+  for (const entryAt of centralEntryOffsets(copy).slice(1)) {
+    view.setUint32(entryAt + CENTRAL_COMPRESSED_AT, copy.length, true)
+  }
+  return copy
+}
+
+/**
+ * An outer stored asset whose bytes are the local entry of an inner stored asset, and a
+ * central directory entry for the inner asset that points into the data of the outer one.
+ */
+async function assetInsideAnother(
+  inner: Uint8Array,
+): Promise<{ readonly bytes: Uint8Array; readonly outer: Uint8Array }> {
+  const innerEntry = await assetEntry(inner, { method: STORED })
+  const innerName = encoder.encode(innerEntry.name)
+  const innerLocal = new Uint8Array(LOCAL_HEADER_BYTES + innerName.length + inner.length)
+  const view = new DataView(innerLocal.buffer)
+  view.setUint32(0, LOCAL_SIGNATURE, true)
+  view.setUint16(LOCAL_NAME_LENGTH_AT, innerName.length, true)
+  innerLocal.set(innerName, LOCAL_HEADER_BYTES)
+  innerLocal.set(inner, LOCAL_HEADER_BYTES + innerName.length)
+  const outer = await assetEntry(innerLocal, { method: STORED })
+  const bytes = buildSharedZip([outer, sharedDocument()], [innerEntry], 0)
+  const outerDataAt =
+    localOffsetOfEntry(bytes, 0) + LOCAL_HEADER_BYTES + encoder.encode(outer.name).length
+  const innerAt = centralEntryOffsets(bytes)[2] ?? Number.NaN
+  return {
+    bytes: withUint32(bytes, innerAt + CENTRAL_LOCAL_OFFSET_AT, outerDataAt),
+    outer: innerLocal,
+  }
+}
+
+describe('readArchive bounds shared data at its edges', () => {
+  it(
+    'reads 9,999 empty assets over one local entry, and none when each declares one byte',
+    async () => {
+      const declaringNothing = await manySharers(EMPTY, { method: STORED })
+      const declaringOne = await manySharers(EMPTY, { method: STORED, declaredBytes: 1 })
+      // Each name but the first is no hash of the empty bytes: the hash check of a later change
+      // moves those assets to the rejected list, and this expectation then changes.
+      const names = [
+        await contentHashOf(EMPTY),
+        ...Array.from({ length: MANY_SHARERS }, (_, index) => otherHash(index)),
+      ]
+
+      expectAssets(
+        await readArchive(declaringNothing),
+        names.map((name) => [name, EMPTY] as const),
+      )
+      expectAssets(await readArchive(declaringOne), [])
+    },
+    MANY_ENTRIES_TIMEOUT_MS,
+  )
+
+  it('refuses views of different lengths of one stored local entry', async () => {
+    const owner = await assetEntry(VIEWED, { method: STORED })
+    const views = await Promise.all(
+      SHORTER_VIEWS.map((length) => assetEntry(VIEWED.subarray(0, length), { method: STORED })),
+    )
+    const bytes = buildSharedZip([sharedDocument(), owner], views, 1)
+
+    const viewed = VIEWED.length + SHORTER_VIEWS.reduce((sum, length) => sum + length, 0)
+    expect(viewed).toBeGreaterThan(bytes.length)
+    expect(outcome(await readArchive(bytes))).toBe('not-an-archive')
+  })
+
+  it('refuses an asset whose local header lies inside the stored data of another asset', async () => {
+    const { bytes } = await assetInsideAnother(BLOB)
+
+    expect(2 * BLOB.length).toBeGreaterThan(bytes.length)
+    expect(outcome(await readArchive(bytes))).toBe('not-an-archive')
+  })
+
+  it('refuses sharers that give the local offset of their owner in a ZIP64 block', async () => {
+    const owner = await assetEntry(BLOB, { data: BLOB_DATA })
+    const bytes = buildZip64SharedZip([sharedDocument(), owner], sharersOf(owner, SHARERS), 1)
+
+    expect((SHARERS + 1) * BLOB_DATA.length).toBeGreaterThan(bytes.length)
+    expect(outcome(await readArchive(bytes))).toBe('not-an-archive')
+  })
+})
+
+describe('readArchive reads around shared data that it does not take', () => {
+  it('reads no asset when an encrypted first entry of a name shares its data with a sound one', async () => {
+    const owner = await assetEntry(PICTURE, { flags: ENCRYPTED })
+    const bytes = buildSharedZip([sharedDocument(), owner], [{ ...owner, flags: 0 }], 1)
+    const pushed = recordPushedChunks()
+
+    expectAssets(await readArchive(bytes), [])
+    expect(pushed().bytes).toBeLessThanOrEqual(DOCUMENT_DATA.length)
+  })
+
+  it.each<[string, Partial<TestZipEntry>, (bytes: Uint8Array) => Uint8Array]>([
+    ['are encrypted', { flags: ENCRYPTED }, (bytes) => bytes],
+    ['have data that runs past the end of the file', {}, withDataPastTheEnd],
+  ])(
+    'inflates only the document when 9,999 asset entries over one local entry %s',
+    async (_case, overrides, patch) => {
+      const bytes = patch(await manySharers(PICTURE, overrides))
+      const pushed = recordPushedChunks()
+
+      expectAssets(await readArchive(bytes), [])
+      expect(pushed().calls).toBe(1)
+    },
+    MANY_ENTRIES_TIMEOUT_MS,
+  )
+
+  it('reads four asset entries over the data of the document when five times that data fits', async () => {
+    const sharers = sharersOf(sharedDocument(), DOCUMENT_SHARERS)
+    const bytes = buildSharedZip([sharedDocument()], sharers, 0)
+
+    expect((DOCUMENT_SHARERS + 1) * DOCUMENT_DATA.length).toBeLessThanOrEqual(bytes.length)
+    // These names are no hash of the document's bytes: the hash check of a later change moves
+    // the four assets to the rejected list, and this expectation then changes.
+    const assets = sharers.map((_, index) => [otherHash(index), DOCUMENT] as const)
+    expectAssets(await readArchive(bytes), assets)
+  })
+})
+
+describe('readArchive reads the same shapes when their shared data fits', () => {
+  it('reads an asset whose local header lies inside the stored data of another, when both fit', async () => {
+    const { bytes, outer } = await assetInsideAnother(PICTURE)
+
+    const read = await readArchive(bytes)
+    expect(outcome(read)).toEqual([await contentHashOf(outer), await contentHashOf(PICTURE)])
+    expect(read.ok && read.assets.get(await contentHashOf(PICTURE))).toEqual(PICTURE)
+  })
+
+  it('reads a sharer that gives the local offset of its owner in a ZIP64 block, when both fit', async () => {
+    const owner = await assetEntry(PICTURE)
+    const bytes = buildZip64SharedZip([sharedDocument(), owner], sharersOf(owner, 1), 1)
+
+    // The sharer's name is no hash of its bytes: the hash check of a later change moves it to
+    // the rejected list, and this expectation then changes.
+    const assets = [
+      [await contentHashOf(PICTURE), PICTURE] as const,
+      [otherHash(0), PICTURE] as const,
+    ]
+    expectAssets(await readArchive(bytes), assets)
+  })
+})

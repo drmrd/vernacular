@@ -142,3 +142,64 @@ export function buildSharedZip(
   view.setUint32(end + END_DIRECTORY_OFFSET_AT, localsEnd, true)
   return joinBytes([bytes.subarray(0, localsEnd), bytes.subarray(directoryOffset)])
 }
+
+const LOCAL_HEADER_BYTES = 30
+
+function centralEntryAt(bytes: Uint8Array, entryIndex: number): number {
+  const entryAt = centralEntryOffsets(bytes)[entryIndex]
+  if (entryAt === undefined) throw new Error(`no central directory entry at index ${entryIndex}`)
+  return entryAt
+}
+
+/** The offset of the local header that entry `entryIndex` gives in its classic field. */
+export function localOffsetOfEntry(bytes: Uint8Array, entryIndex: number): number {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  return view.getUint32(centralEntryAt(bytes, entryIndex) + CENTRAL.localOffsetAt, true)
+}
+
+/**
+ * A copy of the archive with the name of entry `entryIndex` replaced by the bytes `name`, in
+ * its local header and in its central directory entry. Build the archive with a placeholder
+ * name of the same byte length: the kit writes names with `TextEncoder`, so a name that is no
+ * valid UTF-8 can only come in this way.
+ */
+export function withEntryName(bytes: Uint8Array, entryIndex: number, name: Uint8Array): Uint8Array {
+  const copy = bytes.slice()
+  const view = new DataView(copy.buffer)
+  const entryAt = centralEntryAt(copy, entryIndex)
+  if (view.getUint16(entryAt + CENTRAL.nameLengthAt, true) !== name.length) {
+    throw new Error('the new name must have the byte length of the placeholder')
+  }
+  copy.set(name, entryAt + CENTRAL.bytes)
+  copy.set(name, localOffsetOfEntry(copy, entryIndex) + LOCAL_HEADER_BYTES)
+  return copy
+}
+
+function directoryOffsetOf(bytes: Uint8Array): number {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  return view.getUint32(bytes.length - END_RECORD_BYTES + END_DIRECTORY_OFFSET_AT, true)
+}
+
+/**
+ * Like `buildSharedZip`, but each sharer gives the owner's local offset in a ZIP64 block, and
+ * the classic field of its central directory entry holds the marker.
+ */
+export function buildZip64SharedZip(
+  owners: readonly TestZipEntry[],
+  sharers: readonly TestZipEntry[],
+  ownerIndex: number,
+): Uint8Array {
+  const ownersOnly = buildZip(owners)
+  const ownerOffset = localOffsetOfEntry(ownersOnly, ownerIndex)
+  const marked = sharers.map((sharer) => ({
+    ...sharer,
+    zip64: ['localOffset'] as const,
+    zip64Values: { localOffset: ownerOffset },
+  }))
+  const bytes = buildZip([...owners, ...marked])
+  const localsEnd = directoryOffsetOf(ownersOnly)
+  const shared = joinBytes([bytes.subarray(0, localsEnd), bytes.subarray(directoryOffsetOf(bytes))])
+  const view = new DataView(shared.buffer)
+  view.setUint32(shared.length - END_RECORD_BYTES + END_DIRECTORY_OFFSET_AT, localsEnd, true)
+  return shared
+}
