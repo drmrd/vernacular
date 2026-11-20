@@ -26,9 +26,13 @@ const FAILED_STEPS_WARNING =
 /** The label of the first error of a run in its warning. */
 const FIRST_ERROR_LABEL = 'First error:'
 
-/** What one run works with: the ports, and the failed steps that it notes as it goes. */
+/**
+ * What one run works with: the ports, the failed steps that it notes as it goes, and the puts that
+ * it started and awaits at its end.
+ */
 interface ReconcileRun extends RebuildRun {
   readonly ports: SessionPorts
+  readonly startedPuts: Promise<void>[]
 }
 
 /** The failed steps of one run: their count, the first error, and the one warning about them. */
@@ -128,7 +132,9 @@ async function recordOfListed(
   }
   const rebuilt = await rebuildRecord(run, listed, previous)
   if (rebuilt.putInIndex) {
-    await putRecord(run, rebuilt.record)
+    // Started, not awaited here: over an index whose writes do not answer, awaiting each put before
+    // the next read would make a run last one write limit for each project.
+    run.startedPuts.push(putRecord(run, rebuilt.record))
   }
   return rebuilt.record
 }
@@ -146,8 +152,8 @@ async function reconcileSteps(run: ReconcileRun): Promise<ProjectRecord[]> {
     run,
     records.filter((record) => !listedIds.has(record.id)),
   )
-  // One project after the other: a first start can rebuild many projects, and doing them all at
-  // once holds every decoded document in memory at the same time. A start waits for this function.
+  // The reads run one after the other: a first start can rebuild many projects, and reading them
+  // all at once holds every decoded document in memory at the same time. Their puts overlap.
   const listedRecords: ProjectRecord[] = []
   for (const listed of listing) {
     listedRecords.push(await recordOfListed(run, listed, previousById.get(listed.id)))
@@ -161,7 +167,10 @@ async function reconcileSteps(run: ReconcileRun): Promise<ProjectRecord[]> {
  */
 async function reconcile(ports: SessionPorts): Promise<ProjectRecord[]> {
   const failed = createFailedSteps()
-  const records = await reconcileSteps({ ports, failed })
+  const startedPuts: Promise<void>[] = []
+  const records = await reconcileSteps({ ports, failed, startedPuts })
+  // A guarded put never rejects, so this waits for every put and the warning counts each failure.
+  await Promise.all(startedPuts)
   failed.warnIfAny()
   return records
 }
