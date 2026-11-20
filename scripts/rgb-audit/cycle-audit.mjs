@@ -16,7 +16,7 @@
  * @typedef {{ sha: string, rule: 'ordering'|'independence'|'blue'|'test-scope'|'refactor-scope', message: string }} Violation
  */
 
-import { testScopeViolation } from './scope-rules.mjs'
+import { refactorScopeViolation, testScopeViolation } from './scope-rules.mjs'
 import { isTestFile } from './test-files.mjs'
 
 const RECORD_SEPARATOR = '\x1e'
@@ -106,15 +106,21 @@ function classify(commit) {
  *
  * Test-scope rule: a RED commit must change only test assets.
  *
+ * Refactor-scope rule: a BLUE commit must change no test files, unless the
+ * change only follows a rename or a move. `readCommitDiff` returns the
+ * rename-aware diff of a commit; it is called only for BLUE commits that touch
+ * a test file, and without it no exemption applies.
+ *
  * The loop is a small state machine over two carried values: `pendingRed`, the
  * count of RED commits not yet consumed by a GREEN, and `openGreen`, the sha of
  * a GREEN cycle still awaiting its closing BLUE (or null). Each role advances
  * that state and may emit violations; `auditCommits` itself only drives the loop.
  *
  * @param {ParsedCommit[]} commits
+ * @param {{ readCommitDiff?: (sha: string) => string }} [options]
  * @returns {Violation[]}
  */
-export function auditCommits(commits) {
+export function auditCommits(commits, { readCommitDiff } = {}) {
   const violations = []
   let state = { pendingRed: 0, openGreen: null }
   for (const commit of commits) {
@@ -124,6 +130,10 @@ export function auditCommits(commits) {
     } else if (role === 'green') {
       state = advanceOnGreen(state, commit, violations)
     } else if (role === 'blue') {
+      const refactorScope = refactorScopeViolation(commit, readCommitDiff)
+      if (refactorScope !== null) {
+        violations.push(refactorScope)
+      }
       state = advanceOnBlue(state)
     }
   }

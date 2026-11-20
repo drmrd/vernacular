@@ -39,7 +39,9 @@ export async function runRgbAudit(argv, { runGit, log }) {
     '--pretty=format:%x1e%H%x1f%s%x1f%(trailers:key=Infrastructure,valueonly,separator=%x20)',
     '--name-only',
   ])
-  const violations = auditCommits(parseGitLog(raw))
+  const violations = auditCommits(parseGitLog(raw), {
+    readCommitDiff: (sha) => runGit(['show', '-M', '--format=', '--unified=0', sha]),
+  })
   if (violations.length === 0) {
     log(`rgb:audit: clean (${range})`)
     return EXIT_CLEAN
