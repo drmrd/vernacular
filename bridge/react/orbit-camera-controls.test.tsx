@@ -24,6 +24,7 @@ const PRESET_TARGET: Vector3 = { x: 300, y: 50, z: 800 }
 // without a canvas or a GPU.
 const collaborators = vi.hoisted(() => ({
   threeState: {
+    // Must match CAMERA_POSITION: vi.hoisted cannot read a top-level constant.
     camera: { position: { x: 4000, y: 3000, z: 9000 } },
     gl: { domElement: document.createElement('div') },
   } as Record<string, unknown>,
@@ -109,6 +110,25 @@ describe('OrbitCameraControls', () => {
 
   it('moves to a new target when the target changes', () => {
     const { rerender } = render(<OrbitCameraControls {...controlsProps()} />)
+
+    rerender(<OrbitCameraControls {...controlsProps({ target: PRESET_TARGET })} />)
+
+    expect(latestController().getTarget()).toEqual(PRESET_TARGET)
+  })
+
+  it('keeps its own pivot while the target is null', () => {
+    const { rerender } = render(<OrbitCameraControls {...controlsProps()} />)
+    latestController().pivot = PANNED_TARGET
+
+    rerender(<OrbitCameraControls {...controlsProps({ target: null })} />)
+
+    expect(latestController().getTarget()).toEqual(PANNED_TARGET)
+  })
+
+  it('moves to a new target that arrives after a null target', () => {
+    const { rerender } = render(<OrbitCameraControls {...controlsProps()} />)
+    latestController().pivot = PANNED_TARGET
+    rerender(<OrbitCameraControls {...controlsProps({ target: null })} />)
 
     rerender(<OrbitCameraControls {...controlsProps({ target: PRESET_TARGET })} />)
 
