@@ -6,6 +6,10 @@ const CONTENT_HASH_PATTERN = new RegExp(`^[0-9a-f]{${String(CONTENT_HASH_DIGITS)
 
 const ASSET_ENTRY_PREFIX = 'assets/'
 
+/** The name of the archive entry that holds the project document. */
+export const DOCUMENT_ENTRY_NAME = 'vernacular.json'
+
+/** Accepts exactly 64 lower-case hexadecimal ASCII digits, and nothing else. */
 export function isContentHash(value: string): boolean {
   return CONTENT_HASH_PATTERN.test(value)
 }
