@@ -6,6 +6,15 @@
  */
 import { deflateSync } from 'fflate'
 import {
+  createEmptyProject,
+  createFloor,
+  createFurnitureInstance,
+  createUnderlay,
+  encodeDocument,
+  type AssetReference,
+  type Project,
+} from '../../core'
+import {
   endMarkers,
   entryZip64Block,
   joinBytes,
@@ -309,4 +318,36 @@ export function seededBytes(length: number): Uint8Array {
     bytes[index] = state
   }
   return bytes
+}
+
+/** Where a test places a piece of furniture, and how large an underlay image is, in pixels. */
+const TEST_FURNITURE_PLACE = { position: { x: 0, y: 0 }, footprint: { width: 600, depth: 600 } }
+const TEST_IMAGE_PIXELS = { width: 1000, height: 800 }
+
+/**
+ * A project of one floor that places a piece of furniture for each reference of `furniture`, and
+ * lays a raster underlay for each reference of `images`, in their order.
+ */
+export function projectReferring(
+  furniture: readonly AssetReference[],
+  images: readonly AssetReference[] = [],
+): Project {
+  const project = createEmptyProject({
+    name: 'House with assets',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.0.0',
+  })
+  const floor = createFloor('Ground')
+  floor.furniture = furniture.map((assetRef) =>
+    createFurnitureInstance({ assetRef, ...TEST_FURNITURE_PLACE }),
+  )
+  floor.underlays = images.map((image) => createUnderlay({ image, ...TEST_IMAGE_PIXELS }))
+  project.floors = [floor]
+  return project
+}
+
+/** The archive of `project`: its document as the codec writes it, then the entries of `assets`. */
+export function projectArchive(project: Project, assets: readonly TestZipEntry[] = []): Uint8Array {
+  return buildZip([documentEntry(encodeDocument(project, undefined).bytes), ...assets])
 }
