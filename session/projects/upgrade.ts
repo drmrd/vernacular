@@ -54,7 +54,10 @@ function folderStepOf(ports: SessionPorts): Promise<void> {
 }
 
 /** True when the index answered and holds no workspace record under the remembered id. */
-function markIsOpen(id: string, records: readonly ProjectRecord[] | undefined): boolean {
+function holdsNoWorkspaceRecordOf(
+  id: string,
+  records: readonly ProjectRecord[] | undefined,
+): boolean {
   return (
     records !== undefined &&
     !records.some((record) => record.id === id && record.location.kind === 'workspace')
@@ -73,11 +76,11 @@ export function startUpgrade(ports: SessionPorts): ProjectUpgrade {
   return {
     folderStep,
     noteIndexRead(records) {
-      markDue = rememberedId !== undefined && markIsOpen(rememberedId, records)
+      markDue = rememberedId !== undefined && holdsNoWorkspaceRecordOf(rememberedId, records)
     },
     noteListing(listedIds) {
-      const unheld = rememberedId !== undefined && !listedIds.has(rememberedId)
-      if (unheld && !hasSwitchedToMemory(ports.index)) {
+      const notListed = rememberedId !== undefined && !listedIds.has(rememberedId)
+      if (notListed && !hasSwitchedToMemory(ports.index)) {
         removeLegacyActiveProjectId()
       }
     },
