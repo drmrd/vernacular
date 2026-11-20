@@ -3,12 +3,20 @@ import type { Project } from '../../core'
 import {
   InMemoryDirectory,
   InMemoryFolderAccess,
+  InMemoryProjectIndex,
   InMemoryProjectLockPort,
   InMemoryProjectStore,
   WorkspaceDocumentStore,
   WorkspaceFiles,
 } from '../../storage'
-import type { DocumentStore, ProjectLockHold, ProjectLockPort } from '../../storage'
+import type {
+  DocumentStore,
+  ProjectIndex,
+  ProjectLockHold,
+  ProjectLockPort,
+  ProjectRecord,
+} from '../../storage'
+import { settle } from '../autosave/save-gate-test-kit'
 import type { SessionPorts } from '../ports'
 import type { DocumentHandle, OpenFailure, OpenRequest, SaveOutcome } from './handle-types'
 import { openDocumentHandle } from './open-document-handle'
@@ -24,10 +32,17 @@ export const IN_WORKSPACE = { kind: 'workspace' } as const
 /** The location of a project in a folder that the user picked. */
 export const IN_FOLDER = { kind: 'folder', folderName: 'Old house' } as const
 
+/** The build that test ports write into each record, unless a test gives another. */
+export const TEST_BUILD = 'test-build'
+
 export interface TestPorts extends SessionPorts {
   readonly workspace: WorkspaceDocumentStore
   readonly locks: InMemoryProjectLockPort
   readonly folders: InMemoryFolderAccess
+  /** The project index: a new in-memory index, unless a test gives one. */
+  readonly index: ProjectIndex
+  /** The version written into each record. */
+  readonly build: string
   /** The directory under the workspace: a document is at `<id>/vernacular.json`. */
   readonly root: InMemoryDirectory
   readonly lockRegistry: Set<string>
@@ -40,6 +55,12 @@ export interface TestPortsOptions {
   readonly lockRegistry?: Set<string>
   /** True for a workspace over durable files, as the stores of a browser are. Default false. */
   readonly durable?: boolean
+  /** The index of another call (a second tab, or a reload), or one that misbehaves. */
+  readonly index?: ProjectIndex
+  /** The build of the ports. Default `TEST_BUILD`. */
+  readonly build?: string
+  /** The clock of the ports. Default the present time. */
+  readonly now?: () => Date
 }
 
 /** The workspace over `root`: durable files when asked, otherwise the in-memory store. */
@@ -48,7 +69,10 @@ function workspaceOver(root: InMemoryDirectory, durable: boolean): WorkspaceDocu
   return new WorkspaceDocumentStore(new WorkspaceFiles(root, { durable: true }))
 }
 
-/** In-memory ports. Give the `root` and `lockRegistry` of another call to act as a second tab. */
+/**
+ * In-memory ports. Give the `root`, `lockRegistry`, and `index` of another call to act as a second
+ * tab, or the `root` and `index` alone to act as a reload.
+ */
 export function createTestPorts(options: TestPortsOptions = {}): TestPorts {
   const root = options.root ?? new InMemoryDirectory()
   const lockRegistry = options.lockRegistry ?? new Set<string>()
@@ -58,7 +82,34 @@ export function createTestPorts(options: TestPortsOptions = {}): TestPorts {
     folders: new InMemoryFolderAccess(),
     root,
     lockRegistry,
-    now: () => new Date(),
+    now: options.now ?? (() => new Date()),
+    index: options.index ?? new InMemoryProjectIndex(),
+    build: options.build ?? TEST_BUILD,
+  }
+}
+
+/** Lets the microtasks settle, so that a started record write ends, then reads the record. */
+export async function recordOf(
+  ports: { readonly index: ProjectIndex },
+  id: string,
+): Promise<ProjectRecord | undefined> {
+  await settle()
+  return ports.index.get(id)
+}
+
+export interface MovableClock {
+  readonly now: () => Date
+  moveTo(time: Date): void
+}
+
+/** A clock that stays at `start` until the test moves it. */
+export function movableClock(start: Date): MovableClock {
+  let time = start
+  return {
+    now: () => time,
+    moveTo: (next) => {
+      time = next
+    },
   }
 }
 
@@ -266,6 +317,25 @@ export function pickFolder(
   if (name !== undefined) Object.defineProperty(picked, 'name', { value: name })
   ports.folders.pickNext(picked)
   return picked
+}
+
+export type Settlement<T> =
+  | { status: 'pending' }
+  | { status: 'resolved'; value: T }
+  | { status: 'rejected'; error: unknown }
+
+/** Follows any promise so that a test can ask, without timers, whether it has settled yet. */
+export function settlementOf<T>(promise: Promise<T>): () => Settlement<T> {
+  let settlement: Settlement<T> = { status: 'pending' }
+  promise.then(
+    (value) => {
+      settlement = { status: 'resolved', value }
+    },
+    (error: unknown) => {
+      settlement = { status: 'rejected', error }
+    },
+  )
+  return () => settlement
 }
 
 export type Followed =

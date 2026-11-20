@@ -136,15 +136,16 @@ export function plantFailedProject(ports: TestPorts): Promise<void> {
   return placeDocument(ports, FAILED_ID, projectFromANewerBuild())
 }
 
-/** The ports of a second tab of the same browser: the same files and the same locks. */
+/** The ports of a second tab of the browser: the same files, index, and locks. */
 export function secondTab(ports: TestPorts): TestPorts {
-  const { root, lockRegistry } = ports
-  return createTestPorts({ root, lockRegistry, durable: ports.workspace.durable })
+  const { root, lockRegistry, index } = ports
+  return createTestPorts({ root, lockRegistry, index, durable: ports.workspace.durable })
 }
 
-/** The ports after a reload of the page: the same files, and no lock of the old page. */
+/** The ports after a reload of the page: the same files and index, and no lock of the old page. */
 export function reloadOf(ports: TestPorts): TestPorts {
-  return createTestPorts({ root: ports.root, durable: ports.workspace.durable })
+  const { root, index } = ports
+  return createTestPorts({ root, index, durable: ports.workspace.durable })
 }
 
 /** What a builder of the ports resolves with, around `ports`. */

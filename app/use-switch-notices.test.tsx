@@ -17,6 +17,7 @@ import {
   ARCHIVE_LIMITS,
   DocumentDecodeError,
   InMemoryFolderAccess,
+  InMemoryProjectIndex,
   InMemoryProjectLockPort,
   InMemoryProjectStore,
 } from '../storage'
@@ -50,6 +51,8 @@ function inMemoryPorts(): SessionPorts {
     locks: new InMemoryProjectLockPort(),
     folders: new InMemoryFolderAccess(),
     now: () => new Date(),
+    index: new InMemoryProjectIndex(),
+    build: 'test-build',
   }
 }
 

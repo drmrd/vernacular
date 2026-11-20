@@ -23,12 +23,18 @@ const STORE_NAMES: readonly string[] = [
   'ZipBundleProjectStore',
   'FileSystemFolderProjectStore',
   'createOpfsProjectStore',
+  'ProjectIndex',
+  'InMemoryProjectIndex',
+  'IndexedDbProjectIndex',
+  'withMemoryFallback',
 ]
 
 const APP_RULE: NamedImportRule = { layer: 'app', names: STORE_NAMES, exempt: [PORTS_BUILDER] }
 
 const IMPORTS_DOCUMENT_STORE =
   "import { DocumentStore } from '../storage'\nexport const store = DocumentStore\n"
+const IMPORTS_INDEX_CLASS =
+  "import { IndexedDbProjectIndex } from '../storage'\nexport const index = new IndexedDbProjectIndex()\n"
 const REACHES_WORKSPACE =
   "import type { SessionPorts } from '../session'\nexport const read = (ports: SessionPorts) => ports.workspace.read('a')\n"
 
@@ -40,6 +46,12 @@ describe('finding the production files of app that reach a store directly', () =
   it('names a planted file of app that imports DocumentStore', () => {
     expect(reportedFor(PLANTED_FILE, IMPORTS_DOCUMENT_STORE)).toEqual([
       'app/sample.ts: DocumentStore',
+    ])
+  })
+
+  it('names a planted file of app that imports IndexedDbProjectIndex', () => {
+    expect(reportedFor(PLANTED_FILE, IMPORTS_INDEX_CLASS)).toEqual([
+      'app/sample.ts: IndexedDbProjectIndex',
     ])
   })
 
