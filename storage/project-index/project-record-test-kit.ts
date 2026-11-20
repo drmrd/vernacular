@@ -102,3 +102,26 @@ export function gatePuts(index: ProjectIndex): PutGate {
     endAllPuts: () => held.splice(0).forEach((put) => put.end()),
   }
 }
+
+export interface GetHold {
+  /** How many gets have started since the hold was set. */
+  started(): number
+  /** Lets every held get run against the real index, and every later get run at once. */
+  release(): void
+}
+
+/** From now on each `get` of `index` stays pending until the test releases the hold. */
+export function holdGets(index: ProjectIndex): GetHold {
+  const realGet = index.get.bind(index)
+  let started = 0
+  let release: () => void = () => undefined
+  const released = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  index.get = async (id) => {
+    started += 1
+    await released
+    return realGet(id)
+  }
+  return { started: () => started, release: () => release() }
+}
