@@ -13,7 +13,14 @@ const SINGLE_LINE_MODULE_STATEMENT = new RegExp(
 const BARE_FROM_LINE = new RegExp(String.raw`^\}?\s*from` + MODULE_SPECIFIER)
 const OPEN_MODULE_STATEMENT = /^(?:import|export)\s+(?:type\s+)?\{[^}]*$/
 const NAMES_LINE = /^[\w$,\s]+$/
-const COMMENT_LINE = /^(?:\/\/|\/\*|\*)/
+const LINE_COMMENT_PREFIX = '//'
+const BLOCK_COMMENT_OPEN = '/*'
+const BLOCK_COMMENT_CLOSE = '*/'
+const TOOL_DIRECTIVE =
+  /^\/\/\s*(?:@vitest-environment\b|eslint-(?:disable|enable)\b|@ts-|prettier-ignore\b)/
+const NOT_COMMENT = 'not-comment'
+const COMMENT_BLOCK_OPEN = 'comment-block-open'
+const COMMENT_BLOCK_CLOSED = 'comment-block-closed'
 
 /**
  * Split a diff into one section for each file, keyed by the file's new path.
@@ -35,8 +42,8 @@ export function splitDiffSections(diffText) {
 }
 
 /**
- * True when every added and removed line of a file's diff section is a comment
- * line or part of an import or export statement. Added and removed lines each track their own
+ * True when every added and removed line of a file's diff section is a whole-line comment
+ * or part of an import or export statement. Added and removed lines each track their own
  * open multi-line statement, and each hunk starts with both closed. Lines
  * before the first hunk header are file headers, not changes.
  *
@@ -44,11 +51,11 @@ export function splitDiffSections(diffText) {
  * @returns {boolean}
  */
 export function isModuleOrCommentOnlyChange(sectionLines) {
-  let openStatement = closedStatements()
+  let state = closedStates()
   let insideHunk = false
   for (const line of sectionLines) {
     if (line.startsWith(HUNK_HEADER_PREFIX)) {
-      openStatement = closedStatements()
+      state = closedStates()
       insideHunk = true
       continue
     }
@@ -56,17 +63,61 @@ export function isModuleOrCommentOnlyChange(sectionLines) {
     if (!insideHunk || (sign !== '+' && sign !== '-')) {
       continue
     }
-    const code = line.slice(1).trim()
-    if (!isModuleStatementLine(code, openStatement[sign])) {
+    if (!acceptChangedLine(line.slice(1).trim(), state[sign])) {
       return false
     }
-    openStatement[sign] = continuesOpenStatement(code, openStatement[sign])
   }
   return true
 }
 
-function closedStatements() {
-  return { '+': false, '-': false }
+function closedStates() {
+  return {
+    '+': { statement: false, block: false },
+    '-': { statement: false, block: false },
+  }
+}
+
+/**
+ * Judge one changed line and advance the open comment block and open statement of its sign.
+ *
+ * @param {string} code a changed line without its sign, trimmed
+ * @param {{ statement: boolean, block: boolean }} state
+ * @returns {boolean} whether the line is a whole comment line or part of a module statement
+ */
+function acceptChangedLine(code, state) {
+  const comment = scanComment(code, state.block)
+  if (comment !== NOT_COMMENT) {
+    state.block = comment === COMMENT_BLOCK_OPEN
+    return true
+  }
+  if (!isModuleStatementLine(code, state.statement)) {
+    return false
+  }
+  state.statement = continuesOpenStatement(code, state.statement)
+  return true
+}
+
+/**
+ * Classify a line as comment text only when the whole line is comment.
+ *
+ * @param {string} code
+ * @param {boolean} insideBlock
+ * @returns {string} NOT_COMMENT, COMMENT_BLOCK_OPEN, or COMMENT_BLOCK_CLOSED
+ */
+function scanComment(code, insideBlock) {
+  if (!insideBlock && code.startsWith(LINE_COMMENT_PREFIX)) {
+    return TOOL_DIRECTIVE.test(code) ? NOT_COMMENT : COMMENT_BLOCK_CLOSED
+  }
+  if (!insideBlock && !code.startsWith(BLOCK_COMMENT_OPEN)) {
+    return NOT_COMMENT
+  }
+  const searchFrom = insideBlock ? 0 : BLOCK_COMMENT_OPEN.length
+  const closeIndex = code.indexOf(BLOCK_COMMENT_CLOSE, searchFrom)
+  if (closeIndex === -1) {
+    return COMMENT_BLOCK_OPEN
+  }
+  const rest = code.slice(closeIndex + BLOCK_COMMENT_CLOSE.length)
+  return rest.trim() === '' ? COMMENT_BLOCK_CLOSED : NOT_COMMENT
 }
 
 /**
@@ -75,9 +126,6 @@ function closedStatements() {
  * @returns {boolean}
  */
 function isModuleStatementLine(code, insideStatement) {
-  if (COMMENT_LINE.test(code)) {
-    return true
-  }
   if (SINGLE_LINE_MODULE_STATEMENT.test(code) || BARE_FROM_LINE.test(code)) {
     return true
   }
