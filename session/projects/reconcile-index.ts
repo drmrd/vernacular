@@ -50,12 +50,12 @@ async function putRecord(ports: SessionPorts, record: ProjectRecord): Promise<vo
 }
 
 /**
- * The records whose project the listing lacks. A workspace record belongs to a project that is
- * gone, since a record is written only after its project was stored: it is removed. A folder
- * record names a project in a folder, which the listing of the store does not cover, so it is
- * kept as it is.
+ * Removes the workspace records whose project the listing lacks, and returns the folder records
+ * among them, which stay. A workspace record belongs to a project that is gone, since a record is
+ * written only after its project was stored. A folder record names a project in a folder, which
+ * the listing of the store does not cover, so it is kept as it is.
  */
-async function keepUnlisted(
+async function dropGoneRecords(
   ports: SessionPorts,
   unlisted: readonly ProjectRecord[],
 ): Promise<ProjectRecord[]> {
@@ -92,25 +92,32 @@ async function reconcile(ports: SessionPorts): Promise<ProjectRecord[]> {
   }
   const listedIds = new Set(listing.map((listed) => listed.id))
   const previousById = new Map(records.map((record) => [record.id, record]))
-  const [kept, settled] = await Promise.all([
-    keepUnlisted(
-      ports,
-      records.filter((record) => !listedIds.has(record.id)),
-    ),
-    Promise.all(
-      listing.map((listed) => recordOfListed(ports, listed, previousById.get(listed.id))),
-    ),
-  ])
+  const kept = await dropGoneRecords(
+    ports,
+    records.filter((record) => !listedIds.has(record.id)),
+  )
+  // One project after the other: a first start can rebuild many projects, and doing them all at
+  // once holds every decoded document in memory at the same time. A start waits for this function.
+  const settled: ProjectRecord[] = []
+  for (const listed of listing) {
+    settled.push(await recordOfListed(ports, listed, previousById.get(listed.id)))
+  }
   return [...kept, ...settled].sort(compareIds)
 }
 
-/** Brings the index in line with the stored projects and gives every record. Never rejects. */
-export function reconcileIndex(ports: SessionPorts): Promise<ProjectRecord[]> {
-  const running = runs.get(ports)
-  if (running !== undefined) {
-    return running
-  }
+/** Starts the run of a ports object, and forgets it when it ends. */
+function startRun(ports: SessionPorts): Promise<ProjectRecord[]> {
   const run = reconcile(ports).finally(() => runs.delete(ports))
   runs.set(ports, run)
   return run
+}
+
+/**
+ * Brings the index in line with the stored projects and gives every record. Never rejects.
+ * Calls that overlap share one run, and each gets its own list.
+ */
+export function reconcileIndex(ports: SessionPorts): Promise<ProjectRecord[]> {
+  const running = runs.get(ports)
+  const run = running ?? startRun(ports)
+  return run.then((records) => [...records])
 }
