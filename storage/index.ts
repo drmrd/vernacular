@@ -51,6 +51,7 @@ export { OpfsProjectStore, createOpfsProjectStore } from './opfs/opfs-project-st
 export { ZipBundleProjectStore } from './zip/zip-bundle-project-store'
 export { collectReferencedAssets } from './project-files/referenced-assets'
 export { exportProjectBundle } from './zip/export-project-bundle'
+export type { ExportedBundle, ExportProjectBundleOptions } from './zip/export-project-bundle'
 export { ARCHIVE_LIMITS } from './zip/archive-limits'
 export type { ArchiveLimits, ArchiveLimitName } from './zip/archive-limits'
 export { readArchive } from './zip/read-archive'
