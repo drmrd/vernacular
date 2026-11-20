@@ -1,6 +1,4 @@
 import { useCallback } from 'react'
-import type { DocumentHandle } from '../session'
-import type { StorageCapabilities } from '../storage'
 import type { FlowRefusal } from './open-failure-text'
 import type { Flow, RunFlow } from './use-open-project'
 import { useSwitchNotices, type FlowNoticeOptions } from './use-switch-notices'
@@ -11,20 +9,10 @@ export interface RecentEntry {
   name: string
 }
 
-/** What an adapter needs to run a flow that may replace the open project. */
-export interface SwitchFlowContext {
-  handle: DocumentHandle
-  runFlow: RunFlow
-  capabilities: StorageCapabilities
-}
-
-/** How a switch reports what its flow gave. */
-export type SwitchOptions = FlowNoticeOptions
-
 /** Runs a flow through the owner, then reports what it gave. */
 export type RunSwitch = <Refusal extends FlowRefusal = never>(
   flow: Flow<Refusal>,
-  options?: SwitchOptions,
+  options?: FlowNoticeOptions,
 ) => Promise<void>
 
 /**
@@ -32,11 +20,13 @@ export type RunSwitch = <Refusal extends FlowRefusal = never>(
  * the owner did not run shows nothing. The handle records the projects it opens and saves in the
  * project index, so no adapter keeps a list.
  */
-export function useSwitchFlow(context: SwitchFlowContext): RunSwitch {
-  const { runFlow } = context
+export function useSwitchFlow({ runFlow }: { runFlow: RunFlow }): RunSwitch {
   const notify = useSwitchNotices()
   return useCallback(
-    async <Refusal extends FlowRefusal = never>(flow: Flow<Refusal>, options?: SwitchOptions) => {
+    async <Refusal extends FlowRefusal = never>(
+      flow: Flow<Refusal>,
+      options?: FlowNoticeOptions,
+    ) => {
       const result = await runFlow(flow)
       notify(result, options)
     },

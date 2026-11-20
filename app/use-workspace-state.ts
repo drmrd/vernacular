@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createActiveFloorStore, createSelectionStore } from '../bridge'
 import {
   displayNameOf,
@@ -50,33 +50,20 @@ export interface Recovery {
   onDiscard: () => void | Promise<void>
 }
 
-/** One read of the recent entries, for the ports and the handle it was started for. */
-interface RecentRead {
-  ports: SessionPorts
-  handle: DocumentHandle
-  entries: Promise<RecentEntry[]>
-}
-
 async function readRecentEntries(ports: SessionPorts, openId: string): Promise<RecentEntry[]> {
   const records = recentRecords(await reconcileIndex(ports), openId)
   return records.map((record) => ({ id: record.id, name: displayNameOf(record) }))
 }
 
 // The projects used last, apart from the open one, read from the index for each pair of ports and
-// handle. Both runs of the effect under StrictMode share one read. A read that ends after its
-// ports or its handle were replaced sets nothing. The index rebuild never rejects.
+// handle. Both runs of the effect under StrictMode share one rebuild, because overlapping calls of
+// `reconcileIndex` share a run. A read that ends after its ports or its handle were replaced sets
+// nothing. The rebuild never rejects.
 function useRecentEntries(ports: SessionPorts, handle: DocumentHandle): RecentEntry[] {
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
-  const latestRead = useRef<RecentRead | null>(null)
   useEffect(() => {
     let cancelled = false
-    const previous = latestRead.current
-    const read =
-      previous?.ports === ports && previous.handle === handle
-        ? previous
-        : { ports, handle, entries: readRecentEntries(ports, handle.id) }
-    latestRead.current = read
-    void read.entries.then((entries) => {
+    void readRecentEntries(ports, handle.id).then((entries) => {
       if (!cancelled) setRecentEntries(entries)
     })
     return () => {

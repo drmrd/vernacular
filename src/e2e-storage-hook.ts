@@ -91,6 +91,7 @@ async function opfsRoundTrip(): Promise<OpfsRoundTripResult> {
 }
 
 const INDEX_ROUND_TRIP_ID = 'e2e-index'
+const INDEX_ROUND_TRIP_DATABASE = 'vernacular-index-e2e-round-trip'
 
 const indexRoundTripRecord: ProjectRecord = {
   id: INDEX_ROUND_TRIP_ID,
@@ -107,10 +108,12 @@ const indexRoundTripRecord: ProjectRecord = {
 
 // Puts a record through one index, reads it through a second one on the same database, then
 // removes it and reads again, so the record is shown to persist beyond the instance that wrote it.
+// The round trip uses a database of its own: the application on the same page rebuilds the
+// project index, and that rebuild drops a workspace record that the store does not list.
 async function indexRoundTrip(): Promise<IndexRoundTripResult> {
-  const writer = new IndexedDbProjectIndex()
+  const writer = new IndexedDbProjectIndex(INDEX_ROUND_TRIP_DATABASE)
   await writer.put(indexRoundTripRecord)
-  const reader = new IndexedDbProjectIndex()
+  const reader = new IndexedDbProjectIndex(INDEX_ROUND_TRIP_DATABASE)
   const read = await reader.get(INDEX_ROUND_TRIP_ID)
   await writer.remove(INDEX_ROUND_TRIP_ID)
   const afterRemove = await reader.get(INDEX_ROUND_TRIP_ID)
