@@ -2,8 +2,9 @@
 //
 // Pure helpers for auditing the red-green-blue TDD cycle across a branch's git
 // history. No filesystem or process access: callers feed in raw `git log` output
-// and receive structured commits and rule violations. This module is the parsing
-// half; rule checks consume the parsed commits it produces.
+// and receive structured commits and rule violations. This module parses commits
+// and runs the cycle rules (ordering, independence, blue presence, test scope,
+// refactor scope) over them.
 
 /**
  * A single commit parsed from `git log` output.
@@ -103,6 +104,8 @@ function classify(commit) {
  * Blue presence rule: every GREEN commit must be closed by a BLUE refactor
  * commit before the next RED commit or the end of the range.
  *
+ * Test-scope rule: a RED commit must change only test assets.
+ *
  * The loop is a small state machine over two carried values: `pendingRed`, the
  * count of RED commits not yet consumed by a GREEN, and `openGreen`, the sha of
  * a GREEN cycle still awaiting its closing BLUE (or null). Each role advances
@@ -150,9 +153,9 @@ function advanceOnRed(state, commit, violations) {
   if (state.openGreen !== null) {
     violations.push(blueViolation(state.openGreen))
   }
-  const scope = testScopeViolation(commit)
-  if (scope !== null) {
-    violations.push(scope)
+  const scopeViolation = testScopeViolation(commit)
+  if (scopeViolation !== null) {
+    violations.push(scopeViolation)
   }
   return { pendingRed: state.pendingRed + 1, openGreen: null }
 }
