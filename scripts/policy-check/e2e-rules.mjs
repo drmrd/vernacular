@@ -28,7 +28,7 @@ const E2E_PATTERNS = [
 ]
 
 /**
- * One warning per added e2e line that waits a fixed time, focuses a test, or skips one statically.
+ * One warning per matched pattern on each added e2e line: a fixed-time wait, a focused test, or a static skip.
  * @param {readonly AddedLine[]} addedLines
  * @returns {Finding[]}
  */
