@@ -69,7 +69,7 @@ export function parseUnifiedDiff(raw) {
  * @returns {string | null} the new path, or null for a deleted file
  */
 function readNewFilePath(headerLine) {
-  const path = headerLine.slice(NEW_FILE_MARKER.length)
+  const path = headerLine.slice(NEW_FILE_MARKER.length).replace(/\t$/, '')
   if (path === NULL_FILE) return null
   return path.startsWith(NEW_FILE_PREFIX) ? path.slice(NEW_FILE_PREFIX.length) : path
 }
