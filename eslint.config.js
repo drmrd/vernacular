@@ -250,7 +250,7 @@ export const lintExceptions = [
     file: 'bridge/react/framed-scene.test.ts',
     rule: 'max-lines-per-function',
     issue: 689,
-    max: 283,
+    max: 218,
   },
   { file: 'bridge/react/scene-nav-toolbar.test.tsx', rule: 'max-lines', issue: 689, max: 378 },
   {
