@@ -26,7 +26,7 @@ sourceFiles:
     docs/specs/2026-11-15-session-layer-and-document-identity.md,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0212: One owner holds the open project, and the application reaches stores only through its ports builder
@@ -77,7 +77,9 @@ second handle beside the first, take a lock twice, or leave a handle open that n
   and takes the document from its session when the store does not hold that project yet. A handle
   whose close failed is still open, and the owner installs it again.
 - The session ports are built in one module, `app/create-session-ports.ts`: the workspace store,
-  the lock port, the folder access, and the clock. The same module builds ports in memory, which
+  the lock port, the folder access, the clock, the project index, and the build version. The index
+  of the browser ports is the IndexedDB form behind the memory fall-back. The same module builds
+  ports in memory, with an in-memory index, which
   "Start a new project" uses when the storage did not resolve. No other production file of `app/`
   names a store.
   `tests/architecture/app-reaches-stores-through-flows.test.ts` reads every source file and

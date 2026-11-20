@@ -25,7 +25,7 @@ sourceFiles:
     app/use-remember-saved-project.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0183: A project started after a failed load gets its own id
@@ -56,6 +56,14 @@ that id after the project's first successful save.
 > read that project and write nothing over it. The remembered id now follows the last workspace
 > project saved on a durable store (`app/use-remember-saved-project.ts`), whether or not it was
 > started after a failed load.
+
+> Updated on 2026-11-19. The port of the remembered id, `ActiveProjectIdStore`, is deleted, and
+> so are the hooks that read and wrote it. The project index decides the start: the application
+> opens the workspace record used last, and opens `'current'` when the index holds none. A project
+> started after a failed load still gets its own id, now a bare UUID from `newProjectId`. A small
+> reader of the old `localStorage` key stays in `storage/active-project/`. The rebuild of the index
+> uses it once, to give the remembered project its place as the latest use, and then removes the
+> key.
 
 ## Context
 

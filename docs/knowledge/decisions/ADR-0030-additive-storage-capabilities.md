@@ -33,7 +33,7 @@ sourceFiles:
     e2e/tests/durable-storage.spec.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0030: Additive storage capabilities for recent projects, multi-tab locks, and autosave snapshots
@@ -76,6 +76,14 @@ routing) is recorded in the "Project save, open, and recent wiring" section belo
 > run as flows in `session/flows/`. When the browser denies access to the folder of a recent folder
 > project, the open now fails with a message. It used to open the project of the default store
 > instead.
+
+> Updated on 2026-11-19. `RecentProjectStore`, its IndexedDB adapter, and the pure recent-list
+> rules are deleted, with the `storage/recent/` folder. The project index of ADR-0188 holds the
+> location of each project in its record, either the browser's workspace or a picked folder, and
+> the recent entries in the Project menu are read from it. A project in the workspace has a record
+> and a recent entry on every storage backend, the IndexedDB fallback included, so the corollary
+> below about the missing `'indexeddb'` backend no longer holds. The sections below describe the
+> store as it was.
 
 ## Context
 

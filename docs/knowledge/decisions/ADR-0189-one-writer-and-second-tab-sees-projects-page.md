@@ -20,7 +20,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0189: One tab writes a document, and a second tab sees the Projects page
@@ -45,6 +45,14 @@ takes a lock when it opens a project, and two tabs can write the same document.
 > instead. A switch frees the lock of the project it leaves. The restore of a recovered copy hands
 > the lock from the old handle to the new one without freeing it. The delete that holds the lock,
 > and the project list that reads `heldIds()`, are not built yet.
+
+> Updated on 2026-11-19. `supported` on `ProjectLockPort` means that the lock API exists in this
+> browser. It does not say that a request is granted. It stays `true` in a browser that refuses
+> lock requests, because the port learns of a refusal only when it asks. A reader must not take
+> `supported: true` to mean that a project open in another tab is always seen. The one safe
+> conclusion is the reverse: with `supported: false`, `heldIds()` is always empty and no card can
+> say that another tab holds a project. A browser with no lock API gives the empty set, and a card
+> cannot say so.
 
 ## Context
 
