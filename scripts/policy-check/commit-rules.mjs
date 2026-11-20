@@ -17,7 +17,7 @@ export function trailerFindings(commits) {
       .filter(isForbiddenTrailerLine)
       .map((line) => ({
         rule: 'forbidden-trailer',
-        message: `Commit ${commit.sha.slice(0, 8)} carries a forbidden trailer: ${line.trim()}`,
+        message: `Forbidden trailer: ${line.trim()}`,
         sha: commit.sha,
       })),
   )
