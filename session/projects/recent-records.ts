@@ -17,6 +17,19 @@ function compareUse(first: ProjectRecord, second: ProjectRecord): number {
   return first.id < second.id ? -1 : 1
 }
 
+/** How many records the recent list gives at most. */
+const RECENT_RECORD_LIMIT = 5
+
+/**
+ * The records used last, latest first, at most five, without the record of `openId`. Folder records
+ * and records of projects that did not open are listed like the others. The given list is not
+ * changed.
+ */
+export function recentRecords(records: readonly ProjectRecord[], openId?: string): ProjectRecord[] {
+  const others = records.filter((record) => record.id !== openId)
+  return others.sort(compareUse).slice(0, RECENT_RECORD_LIMIT)
+}
+
 /** The workspace record with the latest use; undefined when there is none. */
 export function latestWorkspaceRecord(
   records: readonly ProjectRecord[],

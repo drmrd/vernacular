@@ -34,7 +34,7 @@ export { restoreSnapshot } from './flows/restore-snapshot'
 export { assetsOf } from './handle/handle-assets'
 export { reconcileIndex } from './projects/reconcile-index'
 export { displayNameOf, UNNAMED_PROJECT } from './projects/display-name'
-export { latestWorkspaceRecord } from './projects/recent-records'
+export { latestWorkspaceRecord, recentRecords } from './projects/recent-records'
 export type {
   AssetCache,
   ProjectIndex,

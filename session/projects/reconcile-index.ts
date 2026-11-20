@@ -126,15 +126,31 @@ async function dropGoneRecords(
 }
 
 /**
- * The record of a listed project: the workspace record when it agrees with the store, so its
- * document is not read, else a record rebuilt from the stored document.
+ * Whether a workspace record can be kept without reading its document: its time of change agrees
+ * with the store, and it does not say that the project failed to open under another build, which
+ * may open it now.
+ */
+function keepsRecord(
+  run: ReconcileRun,
+  listed: ListedProject,
+  previous: ProjectRecord | undefined,
+): previous is ProjectRecord {
+  if (previous?.location.kind !== 'workspace' || previous.lastChangedAt !== listed.lastChangedAt) {
+    return false
+  }
+  return previous.lastOpen.opened || previous.lastOpen.build === run.ports.build
+}
+
+/**
+ * The record of a listed project: the workspace record when it can be kept, so its document is not
+ * read, else a record rebuilt from the stored document.
  */
 async function recordOfListed(
   run: ReconcileRun,
   listed: ListedProject,
   previous: ProjectRecord | undefined,
 ): Promise<ProjectRecord> {
-  if (previous?.location.kind === 'workspace' && previous.lastChangedAt === listed.lastChangedAt) {
+  if (keepsRecord(run, listed, previous)) {
     return previous
   }
   const rebuilt = await rebuildRecord(run, listed, previous)
