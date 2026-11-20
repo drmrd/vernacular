@@ -21,8 +21,9 @@ export function neededAssetHashes(project: Project, packSupplies?: PackSupplies)
   for (const reference of collectReferencedAssets(project)) {
     const supplied =
       isPackReference(reference) && packSupplies !== undefined && packSupplies(reference)
-    if (!supplied) {
-      needed.add(reference.contentHash)
+    const hash: unknown = reference.contentHash
+    if (!supplied && typeof hash === 'string') {
+      needed.add(hash)
     }
   }
   return [...needed]

@@ -40,10 +40,13 @@ async function copyOne(
 export async function copyImportedAssets(
   pool: AssetCache,
   supplied: ReadonlyMap<string, Uint8Array>,
-  needed: readonly string[],
+  needed: readonly unknown[],
 ): Promise<string[]> {
   const missing: string[] = []
   for (const hash of needed) {
+    if (typeof hash !== 'string') {
+      continue
+    }
     if (!(await copyOne(pool, supplied, hash))) {
       missing.push(hash)
     }
