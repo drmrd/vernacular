@@ -37,12 +37,32 @@ function storedEntry(entry: EntryData): InflatedEntry {
   return { ok: true, bytes: entry.data }
 }
 
+const NO_BYTES = new Uint8Array(0)
+
 /**
- * Feeds the stream to one streaming inflater in slices and stops after the first slice whose
- * output passes the declared size, so a stream that lies about its size costs at most one slice.
+ * Feeds the stream to the inflater in slices. It stops after the first slice whose output passes
+ * the declared size. Once the output equals the declared size, it feeds at most one more slice
+ * and then ends the stream with an empty final push, so the bytes after the end of a stream are
+ * never fed (fflate would copy all of them at each push).
  */
-function inflateDeflated(entry: EntryData): InflatedEntry {
+function feedSlices(inflater: Inflate, entry: EntryData, progress: { produced: number }): void {
   const { data, declaredBytes } = entry
+  for (let start = 0; start < data.length; start += INFLATE_SLICE_BYTES) {
+    const end = Math.min(start + INFLATE_SLICE_BYTES, data.length)
+    const isLastSlice = end === data.length
+    const outputWasComplete = start > 0 && progress.produced === declaredBytes
+    inflater.push(data.subarray(start, end), isLastSlice)
+    if (progress.produced > declaredBytes) return
+    if (outputWasComplete && !isLastSlice) {
+      inflater.push(NO_BYTES, true)
+      return
+    }
+  }
+}
+
+/** Inflates a DEFLATE stream into a buffer of the declared size, in slices (IN3 to IN6). */
+function inflateDeflated(entry: EntryData): InflatedEntry {
+  const { declaredBytes } = entry
   const progress = { produced: 0 }
   try {
     const output = new Uint8Array(declaredBytes)
@@ -50,12 +70,9 @@ function inflateDeflated(entry: EntryData): InflatedEntry {
       if (progress.produced + chunk.length <= output.length) output.set(chunk, progress.produced)
       progress.produced += chunk.length
     })
-    for (let start = 0; start < data.length; start += INFLATE_SLICE_BYTES) {
-      const end = Math.min(start + INFLATE_SLICE_BYTES, data.length)
-      inflater.push(data.subarray(start, end), end === data.length)
-      if (progress.produced > declaredBytes) {
-        return refusal('passes-declared-size', progress.produced)
-      }
+    feedSlices(inflater, entry, progress)
+    if (progress.produced > declaredBytes) {
+      return refusal('passes-declared-size', progress.produced)
     }
     if (progress.produced < declaredBytes) {
       return refusal('shorter-than-declared', progress.produced)

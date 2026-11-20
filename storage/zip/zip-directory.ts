@@ -52,7 +52,8 @@ export interface DirectoryEntry {
   readonly localOffset: number
 }
 
-const nameDecoder = new TextDecoder()
+/** CD5: keeps a leading byte order mark, so a name that starts with one matches nothing. */
+const nameDecoder = new TextDecoder('utf-8', { ignoreBOM: true })
 
 /** CD1: the first position, searching backward, whose signature and comment length fit the file. */
 function findEndRecord(view: DataView): number | undefined {
