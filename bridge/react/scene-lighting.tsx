@@ -125,8 +125,12 @@ function useLightingReadiness(provider: LightingProvider, onReady: (() => void) 
   }, [provider, onReady])
 }
 
-// The renderer's tone-mapping operator follows the effective mode, which is what the render
-// actually shows. The color check overrides both with Neutral (ADR-0142).
+// The one runtime owner of the visible tone-mapping operator. It follows the effective mode,
+// which is what the render actually shows; the color check overrides both with Neutral
+// (ADR-0142). The 3D library writes its own operator once while it configures the canvas;
+// this layout effect runs after, because the library renders the canvas children only once
+// configure resolves (see SceneRendererCanvas). The library canvas passes `flat`, so the
+// library's own write is the identity and never the visible operator.
 function useToneMapping(effectiveMode: LightingMode, colorCheck: boolean) {
   const renderer = useThree((state) => state.gl)
   useLayoutEffect(() => {
