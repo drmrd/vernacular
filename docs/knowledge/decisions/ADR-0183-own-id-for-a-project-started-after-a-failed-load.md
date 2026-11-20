@@ -18,11 +18,8 @@ sourceFiles:
     app/use-workspace-state.ts,
     session/handle/read-for-open.ts,
     storage/project-store.ts,
-    storage/active-project/active-project-id-store.ts,
-    app/use-active-project-id.ts,
     app/use-open-project.ts,
     app/use-project-boot.ts,
-    app/use-remember-saved-project.ts,
   ]
 status: current
 updated: 2026-11-19
@@ -62,8 +59,7 @@ that id after the project's first successful save.
 > opens the workspace record used last, and opens `'current'` when the index holds none. A project
 > started after a failed load still gets its own id, now a bare UUID from `newProjectId`. A small
 > reader of the old `localStorage` key stays in `storage/active-project/`. The rebuild of the index
-> uses it once, to give the remembered project its place as the latest use, and then removes the
-> key.
+> reads the key once to give the remembered project its place as the latest use, then removes it.
 
 ## Context
 

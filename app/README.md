@@ -14,8 +14,8 @@ Where things happen:
   workspace, over the browser's local storage unless a test passes another `SettingsPort`.
 - `use-project-boot.ts` chooses what opens at start: the workspace project used last, or a new id
   after "Start a new project". `use-start-project-id.ts` reads the project index for the first, and
-  gives `current` when the index holds no workspace record. The Retry of the boot builds the ports
-  again when they did not resolve, and otherwise repeats the failed start.
+  gives `current` when the index holds no workspace record. The boot's Retry builds the ports again
+  when they did not resolve, and otherwise repeats the failed start.
 - `use-open-project.ts` is the one owner of the open project. It holds the one open document
   handle, runs the start, and runs one flow at a time through `runFlow`, which resolves `undefined`
   while the start or another flow runs. It closes the handle when its effects are cleaned up.
@@ -23,9 +23,10 @@ Where things happen:
   on the same ports wait for that close.
 - `use-workspace-state.ts` gathers what the workspace renders from the handle: the save status,
   the recent list (the records of the project index used last, apart from the open project), the
-  recovery prompt, and the menu actions. It mounts three small hooks on the handle. `useUnsavedChangesGuard` (in `use-before-unload-guard.ts`) arms the browser's leave
-  warning while a change is not stored, `useFlushOnHidden` asks for a write when the page hides,
-  and `useHandleNotices` shows each notice of the handle once. The content cache of the editor is
+  recovery prompt, and the menu actions. It mounts three small hooks on the handle.
+  `useUnsavedChangesGuard` (in `use-before-unload-guard.ts`) arms the browser's leave warning
+  while a change is not stored, `useFlushOnHidden` asks for a write when the page hides, and
+  `useHandleNotices` shows each notice of the handle once. The content cache of the editor is
   the open project's own, from `assetsOf(handle)` in `asset-providers.tsx`, so a folder project
   reads its assets from its folder first, while the library keeps the shared pool that the ports
   builder returns beside the ports.

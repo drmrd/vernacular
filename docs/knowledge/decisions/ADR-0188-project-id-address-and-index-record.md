@@ -54,19 +54,19 @@ the recent-project store holds one entry at most.
 > location, then the three parts named above: the facts of the document, the time of the last
 > change from the store, and the time of the last use with the result of the last open. The
 > document handle writes the record. It writes after an open that read the stored project and
-> after a save that the store accepted, and never ahead of the store, so a project that was never
+> after a save that the store accepted, and never ahead of the store. A project that was never
 > stored has no record. A failed open adds its result to the record that is already there.
 > `reconcileIndex` in `session/projects/` rebuilds the index from the stored projects. It drops the
 > record of a workspace project that is gone and keeps a folder record as it is. It keeps a record
 > whose time of change still matches the store, and rebuilds every other record from the stored
-> document. It never rejects, and calls that overlap share one run. The same run turns the id that
-> the older build remembered into the latest use of that project, and forgets the folder that the
-> older build stored under `'current'` without reopening it. A new project id is now a bare UUID
-> from `newProjectId`. The form `project-<uuid>` and the id `'current'` stay valid. The Project
-> menu lists the five records used last, apart from the open project, through `recentRecords`.
-> The start opens the workspace record used last, and opens `'current'` when there is none. The
-> recent-project store and the port of the remembered id are deleted. The addresses and the
-> Projects page are not built yet.
+> document. It never rejects, and overlapping calls share one run. The same run turns the id that
+> the older build remembered into the latest use of that project. It also forgets the folder that
+> the older build stored under `'current'`, without reopening it. A new project id is now a bare
+> UUID from `newProjectId`. The form `project-<uuid>` and the id `'current'` stay valid. The
+> Project menu lists the five records used last, apart from the open project, through
+> `recentRecords`. The start opens the workspace record used last, and opens `'current'` when there
+> is none. The recent-project store and the port of the remembered id are deleted. The addresses
+> and the Projects page are not built yet.
 
 ## Context
 

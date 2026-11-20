@@ -50,9 +50,8 @@ takes a lock when it opens a project, and two tabs can write the same document.
 > browser. It does not say that a request is granted. It stays `true` in a browser that refuses
 > lock requests, because the port learns of a refusal only when it asks. A reader must not take
 > `supported: true` to mean that a project open in another tab is always seen. The one safe
-> conclusion is the reverse: with `supported: false`, `heldIds()` is always empty and no card can
-> say that another tab holds a project. A browser with no lock API gives the empty set, and a card
-> cannot say so.
+> conclusion is the reverse. With `supported: false`, the browser has no lock API, `heldIds()` is
+> always empty, and no card can say that another tab holds a project.
 
 ## Context
 
