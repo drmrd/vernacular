@@ -6,6 +6,18 @@ import { factsOf } from './project-facts'
 /** The ports that rebuilding the record of one stored project needs. */
 export type RebuildPorts = Pick<SessionPorts, 'workspace' | 'build'>
 
+/** The calls of a port that rejected or threw during one run of the rebuild. */
+export interface FailedSteps {
+  /** Notes one failed call with its error. */
+  note(error: unknown): void
+}
+
+/** What rebuilding the record of one stored project works with. */
+export interface RebuildRun {
+  readonly ports: RebuildPorts
+  readonly failed: FailedSteps
+}
+
 /** One project as the listing of the store gives it. */
 export interface ListedProject {
   readonly id: string
@@ -15,7 +27,7 @@ export interface ListedProject {
 /** The record made for one listed project, and whether the index should get it. */
 export interface RebuiltRecord {
   readonly record: ProjectRecord
-  /** False when the stored document could not be read, so the next call reads it again. */
+  /** False when the stored project could not be read in full, so the next call reads it again. */
   readonly putInIndex: boolean
 }
 
@@ -72,22 +84,24 @@ function recordOfUnopened(basis: RecordBasis, stored: StoredFacts, reason: strin
   }
 }
 
-/** The name and the asset hashes of the stored document file; none when it cannot be read. */
-async function storedFactsOf(ports: RebuildPorts, id: string): Promise<StoredFacts> {
+/** The name and the asset hashes of the stored document file; undefined when they cannot be read. */
+async function storedFactsOf(run: RebuildRun, id: string): Promise<StoredFacts | undefined> {
   try {
-    const bytes = (await ports.workspace.storedFiles(id)).get(PROJECT_FILE)
+    const bytes = (await run.ports.workspace.storedFiles(id)).get(PROJECT_FILE)
     return bytes === undefined ? { assetHashes: [] } : readStoredFacts(bytes)
-  } catch {
-    return { assetHashes: [] }
+  } catch (error) {
+    run.failed.note(error)
+    return undefined
   }
 }
 
 /** The read of the project; undefined when it rejects or finds no document. */
-async function answeredRead(ports: RebuildPorts, id: string): Promise<AnsweredRead | undefined> {
+async function answeredRead(run: RebuildRun, id: string): Promise<AnsweredRead | undefined> {
   let read: StoreRead
   try {
-    read = await ports.workspace.read(id)
-  } catch {
+    read = await run.ports.workspace.read(id)
+  } catch (error) {
+    run.failed.note(error)
     return undefined
   }
   if (read.ok) {
@@ -96,29 +110,58 @@ async function answeredRead(ports: RebuildPorts, id: string): Promise<AnsweredRe
   return read.failure.kind === 'decode' ? { ok: false, decode: read.failure.decode } : undefined
 }
 
+/**
+ * The record of a project that did not open, with the facts of its stored bytes. When those bytes
+ * cannot be read the record has no name, and the index does not get it, so a name is not lost.
+ */
+async function unopenedFromStore(
+  run: RebuildRun,
+  basis: RecordBasis,
+  reason: string,
+): Promise<RebuiltRecord> {
+  const stored = await storedFactsOf(run, basis.id)
+  const record = recordOfUnopened(basis, stored ?? { assetHashes: [] }, reason)
+  return { record, putInIndex: stored !== undefined }
+}
+
+/**
+ * The interim rule: a document that only breaks the format rules opens anyway, so its record says
+ * it opened, and its asset list is not trusted. When even its facts cannot be built, it counts as a
+ * document that did not open.
+ */
+async function recordDespiteFaults(
+  run: RebuildRun,
+  basis: RecordBasis,
+  decode: Extract<DecodeFailure, { readonly kind: 'format-rules' }>,
+): Promise<RebuiltRecord> {
+  try {
+    return { record: recordOfProject(basis, openDespiteFaults(decode), false), putInIndex: true }
+  } catch {
+    return unopenedFromStore(run, basis, decode.kind)
+  }
+}
+
 /** The record of a read that answered, with the time of use that it keeps. */
 async function recordOfRead(
-  ports: RebuildPorts,
+  run: RebuildRun,
   listed: ListedProject,
   context: { readonly read: AnsweredRead; readonly lastUsedAt: string | undefined },
-): Promise<ProjectRecord> {
+): Promise<RebuiltRecord> {
   const { read } = context
   const lastChangedAt = read.ok ? read.lastChangedAt : listed.lastChangedAt
   const basis = {
-    build: ports.build,
+    build: run.ports.build,
     id: listed.id,
     lastChangedAt,
     lastUsedAt: context.lastUsedAt ?? lastChangedAt,
   }
   if (read.ok) {
-    return recordOfProject(basis, read.value.project, true)
+    return { record: recordOfProject(basis, read.value.project, true), putInIndex: true }
   }
-  // The interim rule: a document that only breaks the format rules opens anyway, so its record
-  // says it opened, and its asset list is not trusted.
   if (read.decode.kind === 'format-rules') {
-    return recordOfProject(basis, openDespiteFaults(read.decode), false)
+    return recordDespiteFaults(run, basis, read.decode)
   }
-  return recordOfUnopened(basis, await storedFactsOf(ports, listed.id), read.decode.kind)
+  return unopenedFromStore(run, basis, read.decode.kind)
 }
 
 /** The record of a project whose document could not be read: no facts, and why. */
@@ -130,24 +173,24 @@ function unreadRecord(build: string, listed: ListedProject): ProjectRecord {
 
 /**
  * The record of one listed project, rebuilt from its stored document. `previous` is the record that
- * the index held under its id. A read that rejects or finds no document keeps `previous`, or gives
- * a record with no facts that the index does not get, so the next call reads the project again.
- * Never rejects.
+ * the index held under its id. A read that rejects or finds no document keeps a previous workspace
+ * record, or gives a record with no facts that the index does not get, so the next call reads the
+ * project again. A folder record under the id belongs to another project and gives nothing. Never
+ * rejects.
  */
 export async function rebuildRecord(
-  ports: RebuildPorts,
+  run: RebuildRun,
   listed: ListedProject,
   previous: ProjectRecord | undefined,
 ): Promise<RebuiltRecord> {
-  const read = await answeredRead(ports, listed.id)
+  const earlier = previous?.location.kind === 'workspace' ? previous : undefined
+  const read = await answeredRead(run, listed.id)
   if (read !== undefined) {
-    // A folder record under the id belongs to another project, so its time of use is not taken.
-    const lastUsedAt = previous?.location.kind === 'workspace' ? previous.lastUsedAt : undefined
     try {
-      return { record: await recordOfRead(ports, listed, { read, lastUsedAt }), putInIndex: true }
+      return await recordOfRead(run, listed, { read, lastUsedAt: earlier?.lastUsedAt })
     } catch {
-      // A document too damaged to describe counts as one that could not be read.
+      // A sound document whose record cannot be made counts as one that could not be read.
     }
   }
-  return { record: previous ?? unreadRecord(ports.build, listed), putInIndex: false }
+  return { record: earlier ?? unreadRecord(run.ports.build, listed), putInIndex: false }
 }
