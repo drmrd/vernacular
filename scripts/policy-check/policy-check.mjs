@@ -26,6 +26,8 @@ const EXIT_FAILING_FINDINGS = 1
 const EXIT_INTERNAL = 2
 const DEFAULT_BASE = 'origin/main'
 const DEFAULT_HEAD = 'HEAD'
+const DETACHED_HEAD = 'HEAD'
+const DETACHED_HEAD_NOTE = 'policy:check: detached HEAD, branch rules skipped; pass --branch <name>'
 const TYPE_ENUM_VALUES_INDEX = 2
 // Node's default 1 MiB output limit is below the largest pull request diff in this repository.
 const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024
@@ -46,8 +48,11 @@ const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024
 export async function runPolicyCheck(argv, { runGit, log }) {
   const base = flagValue(argv, '--base') ?? DEFAULT_BASE
   const head = flagValue(argv, '--head') ?? DEFAULT_HEAD
-  const branch = flagValue(argv, '--branch') ?? runGit(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-  const rangeOnBranch = `${base}..${head} on ${branch}`
+  const resolvedBranch =
+    flagValue(argv, '--branch') ?? runGit(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
+  const branch = resolvedBranch === DETACHED_HEAD ? '' : resolvedBranch
+  if (branch === '') log(DETACHED_HEAD_NOTE)
+  const rangeOnBranch = branch === '' ? `${base}..${head}` : `${base}..${head} on ${branch}`
   const findings = ruleFindings(readRange({ runGit, base, head }), branch)
   const failing = findings.filter((finding) => severityOf(finding.rule) === 'fail')
   const warnings = findings.filter((finding) => severityOf(finding.rule) === 'warn')
