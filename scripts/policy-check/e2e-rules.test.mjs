@@ -53,4 +53,91 @@ describe('e2eTimingFindings', () => {
     ]
     expect(e2eTimingFindings(lines)).toEqual([])
   })
+
+  it('leaves a raised Playwright time limit alone', () => {
+    const texts = ['  test.setTimeout(TEST_TIMEOUT_MS)', '  testInfo.setTimeout(60_000)']
+    const lines = texts.map((text, index) => added('e2e/tests/walls.spec.ts', index + 1, text))
+    expect(e2eTimingFindings(lines)).toEqual([])
+  })
+
+  it('warns about setTimeout called on window or globalThis', () => {
+    const texts = ['  window.setTimeout(done, 5)', '  globalThis.setTimeout(done, 5)']
+    const lines = texts.map((text, index) => added('e2e/tests/walls.spec.ts', index + 1, text))
+    const findings = e2eTimingFindings(lines)
+    expect(findings).toHaveLength(lines.length)
+    findings.forEach((finding, index) => {
+      expect(finding.rule).toBe('e2e-timing-or-focus')
+      expect(finding.line).toBe(index + 1)
+    })
+  })
+
+  it('warns about focus and skip on it and describe, nested or not', () => {
+    const texts = [
+      "it.only('draws a wall', () => {",
+      "describe.only('walls', () => {",
+      "describe.skip('walls', () => {",
+      "test.describe.skip('x', () => {",
+      '  it.skip()',
+    ]
+    const lines = texts.map((text, index) => added('e2e/tests/walls.spec.ts', index + 1, text))
+    const findings = e2eTimingFindings(lines)
+    expect(findings).toHaveLength(lines.length)
+    findings.forEach((finding, index) => {
+      expect(finding.rule).toBe('e2e-timing-or-focus')
+      expect(finding.line).toBe(index + 1)
+    })
+  })
+
+  it('checks tsx and mjs files under e2e', () => {
+    const lines = [
+      added('e2e/support/view.tsx', 7, '  await page.waitForTimeout(5)'),
+      added('e2e/support/view.mjs', 9, '  await page.waitForTimeout(5)'),
+    ]
+    const findings = e2eTimingFindings(lines)
+    expect(findings).toHaveLength(lines.length)
+    findings.forEach((finding, index) => {
+      expect(finding.rule).toBe('e2e-timing-or-focus')
+      expect(finding.file).toBe(lines[index].file)
+      expect(finding.line).toBe(lines[index].line)
+    })
+  })
+
+  it('ignores non-code files under e2e and paths that only contain e2e later', () => {
+    const lines = [
+      added('e2e/README.md', 1, "test.only('x', () => {"),
+      added('packages/e2e/a.ts', 2, "test.only('x', () => {"),
+    ]
+    expect(e2eTimingFindings(lines)).toEqual([])
+  })
+
+  it('gives one finding for each pattern that a single line matches', () => {
+    const lines = [
+      added(
+        'e2e/tests/walls.spec.ts',
+        8,
+        "test.only('x', async () => { await page.waitForTimeout(5) })",
+      ),
+    ]
+    const findings = e2eTimingFindings(lines)
+    expect(findings).toHaveLength(2)
+    findings.forEach((finding) => {
+      expect(finding.rule).toBe('e2e-timing-or-focus')
+      expect(finding.file).toBe('e2e/tests/walls.spec.ts')
+      expect(finding.line).toBe(8)
+    })
+  })
+
+  it('gives every finding a non-empty message', () => {
+    const lines = [
+      added('e2e/tests/walls.spec.ts', 1, '  await page.waitForTimeout(5)'),
+      added('e2e/tests/walls.spec.ts', 2, "test.only('x', () => {"),
+      added('e2e/tests/walls.spec.ts', 3, '  test.skip()'),
+    ]
+    const findings = e2eTimingFindings(lines)
+    expect(findings).toHaveLength(lines.length)
+    findings.forEach((finding) => {
+      expect(typeof finding.message).toBe('string')
+      expect(finding.message.length).toBeGreaterThan(0)
+    })
+  })
 })
