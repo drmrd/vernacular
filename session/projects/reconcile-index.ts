@@ -130,15 +130,11 @@ async function dropGoneRecords(
  * with the store, and it does not say that the project failed to open under another build, which
  * may open it now.
  */
-function keepsRecord(
-  run: ReconcileRun,
-  listed: ListedProject,
-  previous: ProjectRecord | undefined,
-): previous is ProjectRecord {
-  if (previous?.location.kind !== 'workspace' || previous.lastChangedAt !== listed.lastChangedAt) {
+function canKeepRecord(previous: ProjectRecord, listed: ListedProject, build: string): boolean {
+  if (previous.location.kind !== 'workspace' || previous.lastChangedAt !== listed.lastChangedAt) {
     return false
   }
-  return previous.lastOpen.opened || previous.lastOpen.build === run.ports.build
+  return previous.lastOpen.opened || previous.lastOpen.build === build
 }
 
 /**
@@ -150,7 +146,7 @@ async function recordOfListed(
   listed: ListedProject,
   previous: ProjectRecord | undefined,
 ): Promise<ProjectRecord> {
-  if (keepsRecord(run, listed, previous)) {
+  if (previous !== undefined && canKeepRecord(previous, listed, run.ports.build)) {
     return previous
   }
   const rebuilt = await rebuildRecord(run, listed, previous)

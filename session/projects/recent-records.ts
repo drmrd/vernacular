@@ -21,7 +21,7 @@ function compareUse(first: ProjectRecord, second: ProjectRecord): number {
 const RECENT_RECORD_LIMIT = 5
 
 /**
- * The records used last, latest first, at most five, without the record of `openId`. Folder records
+ * The records used last, latest first, at most `RECENT_RECORD_LIMIT`, without the record of `openId`. Folder records
  * and records of projects that did not open are listed like the others. The given list is not
  * changed.
  */

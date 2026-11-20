@@ -4,8 +4,6 @@ import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import { type SwitchResult, switchProject } from './switch-project'
 
-type FolderPermission = Awaited<ReturnType<SessionPorts['folders']['permission']>>
-
 /** The record of the id in the index. A `get` that rejects counts as no record. */
 async function recordOf(ports: SessionPorts, id: string): Promise<ProjectRecord | undefined> {
   try {
@@ -16,17 +14,14 @@ async function recordOf(ports: SessionPorts, id: string): Promise<ProjectRecord 
 }
 
 /**
- * The folder access of the id. An answer that rejects is left to the open, which reports that the
- * storage did not answer.
+ * Whether the browser would ask the user for the folder of the id. An answer that rejects is left
+ * to the open, which reports that the storage did not answer.
  */
-async function folderPermissionOf(
-  ports: SessionPorts,
-  id: string,
-): Promise<FolderPermission | undefined> {
+async function wouldAskUser(ports: SessionPorts, id: string): Promise<boolean> {
   try {
-    return await ports.folders.permission(id)
+    return (await ports.folders.permission(id)) === 'prompt'
   } catch {
-    return undefined
+    return false
   }
 }
 
@@ -41,8 +36,7 @@ async function recentTarget(ports: SessionPorts, id: string): Promise<OpenReques
   if (record?.location.kind !== 'folder') {
     return { id, location: { kind: 'workspace' } }
   }
-  const permission = await folderPermissionOf(ports, id)
-  if (permission === 'prompt') {
+  if (await wouldAskUser(ports, id)) {
     await ports.folders.reopen(id)
   }
   return { id, location: record.location }
