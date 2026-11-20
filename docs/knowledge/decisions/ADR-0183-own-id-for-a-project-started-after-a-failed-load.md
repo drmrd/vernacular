@@ -59,7 +59,11 @@ that id after the project's first successful save.
 > opens the workspace record used last, and opens `'current'` when the index holds none. A project
 > started after a failed load still gets its own id, now a bare UUID from `newProjectId`. A small
 > reader of the old `localStorage` key stays in `storage/active-project/`. The rebuild of the index
-> reads the key once to give the remembered project its place as the latest use, then removes it.
+> reads the key on a durable workspace for as long as it is stored. When the index holds no record
+> of the remembered project, the rebuild gives that project the latest use, and it removes the key
+> only once that marked record is stored. If the clock fails, no marked record is stored and the
+> key stays for the next rebuild. The rebuild also removes a key whose project the store does not
+> hold.
 
 ## Context
 
