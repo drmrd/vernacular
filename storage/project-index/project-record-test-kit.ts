@@ -243,3 +243,40 @@ export function watch(promise: Promise<unknown>): () => Watched {
   )
   return () => state
 }
+
+/** The two methods of an index that write. */
+export type WriteMethod = 'put' | 'remove'
+
+export interface WriteHold {
+  /** How many writes of the method have started since the hold was set. */
+  started(): number
+  /** Lets the oldest held write run against the real index and settle with what it gives. */
+  answerOldest(): void
+  /** Makes the oldest held write reject with `error`. */
+  rejectOldest(error?: Error): void
+}
+
+/** From now on each `put` or `remove` of `index`, as `method` says, stays pending until the test ends it. */
+export function holdWrites(index: ProjectIndex, method: WriteMethod): WriteHold {
+  const held: Array<{ answer: () => void; reject: (error: Error) => void }> = []
+  const realPut = index.put.bind(index)
+  const realRemove = index.remove.bind(index)
+  let started = 0
+  const hold = (run: () => Promise<void>): Promise<void> =>
+    new Promise<void>((resolve, reject) => {
+      started += 1
+      held.push({ answer: () => run().then(resolve, reject), reject })
+    })
+  if (method === 'put') index.put = (record) => hold(() => realPut(record))
+  else index.remove = (id) => hold(() => realRemove(id))
+  const oldest = () => {
+    const write = held.shift()
+    if (write === undefined) throw new Error('No write is held')
+    return write
+  }
+  return {
+    started: () => started,
+    answerOldest: () => oldest().answer(),
+    rejectOldest: (error = new Error('the held write was rejected')) => oldest().reject(error),
+  }
+}

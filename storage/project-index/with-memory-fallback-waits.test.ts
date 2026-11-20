@@ -196,7 +196,7 @@ describe('a read that the first index answers or rejects after the time is up', 
   )
 })
 
-describe('a first index that answers in time or only leaves writes pending', () => {
+describe('a first index that answers in time', () => {
   it.each(READS)(
     'a read answered one millisecond before the time is up gives that answer, switches nothing, warns nothing, and leaves no timer (%s)',
     async (read) => {
@@ -215,22 +215,4 @@ describe('a first index that answers in time or only leaves writes pending', () 
       expect(consoleWarn).not.toHaveBeenCalled()
     },
   )
-
-  it('a put and a remove stay pending after the time limit passed twice, switch nothing, and warn nothing', async () => {
-    const first = new InMemoryProjectIndex()
-    await first.put(HOUSE)
-    vi.spyOn(first, 'put').mockImplementation(() => new Promise<void>(() => undefined))
-    vi.spyOn(first, 'remove').mockImplementation(() => new Promise<void>(() => undefined))
-    const readSpy = vi.spyOn(first, 'all')
-    const index = withMemoryFallback(first)
-    const put = watch(index.put(BARN))
-    const remove = watch(index.remove(HOUSE.id))
-
-    await vi.advanceTimersByTimeAsync(INDEX_READ_WAIT_MS * 2)
-
-    expect([put(), remove()]).toEqual([PENDING, PENDING])
-    expect(consoleWarn).not.toHaveBeenCalled()
-    expect(await seen(index.all())).toEqual(answered([HOUSE]))
-    expect(readSpy).toHaveBeenCalledTimes(1)
-  })
 })
