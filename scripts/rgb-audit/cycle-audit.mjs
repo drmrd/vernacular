@@ -12,13 +12,15 @@
 
 /**
  * A red-green-blue cycle rule that a sequence of commits broke.
- * @typedef {{ sha: string, rule: 'ordering'|'independence'|'blue', message: string }} Violation
+ * @typedef {{ sha: string, rule: 'ordering'|'independence'|'blue'|'test-scope'|'refactor-scope', message: string }} Violation
  */
+
+import { testScopeViolation } from './scope-rules.mjs'
+import { isTestFile } from './test-files.mjs'
 
 const RECORD_SEPARATOR = '\x1e'
 const UNIT_SEPARATOR = '\x1f'
 const CONVENTIONAL_COMMIT_PATTERN = /^(\w+)(?:\(([^)]*)\))?!?:\s*(.*)$/
-const TEST_FILE_PATTERN = /\.test\.(ts|tsx|mjs|js)$/
 
 /**
  * Parse raw `git log` output into structured commits.
@@ -115,7 +117,7 @@ export function auditCommits(commits) {
   for (const commit of commits) {
     const role = classify(commit)
     if (role === 'red') {
-      state = advanceOnRed(state, violations)
+      state = advanceOnRed(state, commit, violations)
     } else if (role === 'green') {
       state = advanceOnGreen(state, commit, violations)
     } else if (role === 'blue') {
@@ -137,13 +139,20 @@ export function auditCommits(commits) {
  * A RED commit closes any open GREEN cycle (it cannot have seen its BLUE) and
  * adds to the pool of RED commits a later GREEN may consume.
  *
+ * A RED commit is also checked against the test-scope rule.
+ *
  * @param {AuditState} state
+ * @param {ParsedCommit} commit
  * @param {Violation[]} violations
  * @returns {AuditState}
  */
-function advanceOnRed(state, violations) {
+function advanceOnRed(state, commit, violations) {
   if (state.openGreen !== null) {
     violations.push(blueViolation(state.openGreen))
+  }
+  const scope = testScopeViolation(commit)
+  if (scope !== null) {
+    violations.push(scope)
   }
   return { pendingRed: state.pendingRed + 1, openGreen: null }
 }
@@ -209,7 +218,7 @@ function orderingViolation(commit, hasPrecedingRed) {
  * @returns {Violation|null}
  */
 function independenceViolation(commit) {
-  const testFiles = commit.files.filter((file) => TEST_FILE_PATTERN.test(file))
+  const testFiles = commit.files.filter((file) => isTestFile(file))
   if (testFiles.length === 0) {
     return null
   }
