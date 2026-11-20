@@ -11,7 +11,8 @@ afterEach(() => {
 describe('isValidProjectId', () => {
   it.each([
     ['the default id', 'current'],
-    ['a generated id', `project-${SAMPLE_UUID}`],
+    ['a bare UUID', SAMPLE_UUID],
+    ['an id that an earlier build generated', `project-${SAMPLE_UUID}`],
     ['a single digit', '7'],
     ['the longest allowed id', 'a'.repeat(MAX_ID_LENGTH)],
   ])('accepts %s', (_label, id) => {
@@ -31,19 +32,22 @@ describe('isValidProjectId', () => {
 })
 
 describe('newProjectId', () => {
-  it('returns a valid id made of "project-" and a UUID', () => {
+  it('returns a bare random UUID, which is a valid id', () => {
+    vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce(SAMPLE_UUID)
+
     const id = newProjectId([])
 
+    expect(id).toBe(SAMPLE_UUID)
     expect(isValidProjectId(id)).toBe(true)
-    expect(id).toMatch(/^project-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
   })
 
   it('never returns a member of the existing ids', () => {
     vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce(SAMPLE_UUID)
+    const existing = [SAMPLE_UUID, `project-${SAMPLE_UUID}`, 'current']
 
-    const id = newProjectId([`project-${SAMPLE_UUID}`, 'current'])
+    const id = newProjectId(existing)
 
-    expect(id).not.toBe(`project-${SAMPLE_UUID}`)
+    expect(existing).not.toContain(id)
   })
 
   it('returns different ids on repeated calls', () => {
