@@ -158,6 +158,36 @@ jobs:
       - name: Audit the red-green-blue commit history
         run: pnpm rgb:audit --range "origin/${{ github.base_ref }}..HEAD"
 
+  policy:
+    name: Repository policy
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check commits and changes against repository policy
+        env:
+          POLICY_BASE: origin/${{ github.base_ref }}
+          POLICY_HEAD: ${{ github.event.pull_request.head.sha }}
+          POLICY_BRANCH: ${{ github.head_ref }}
+        run: pnpm policy:check --base "$POLICY_BASE" --head "$POLICY_HEAD" --branch "$POLICY_BRANCH"
+
   storybook-build:
     name: Storybook build and component tests
     runs-on: ubuntu-24.04
@@ -442,6 +472,7 @@ jobs:
         storage-browser,
         decide,
         ping-pong,
+        policy,
         storybook-build,
         e2e,
         scene-visual,
@@ -451,8 +482,8 @@ jobs:
     steps:
       - name: Gate on required jobs
         run: |
-          echo "check=${{ needs.check.result }} storage-browser=${{ needs.storage-browser.result }} decide=${{ needs.decide.result }} ping-pong=${{ needs.ping-pong.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} scene-visual=${{ needs.scene-visual.result }} live-view-visual=${{ needs.live-view-visual.result }} lighthouse=${{ needs.lighthouse.result }}"
-          for result in "${{ needs.check.result }}" "${{ needs.storage-browser.result }}" "${{ needs.decide.result }}" "${{ needs.ping-pong.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.scene-visual.result }}" "${{ needs.live-view-visual.result }}" "${{ needs.lighthouse.result }}"; do
+          echo "check=${{ needs.check.result }} storage-browser=${{ needs.storage-browser.result }} decide=${{ needs.decide.result }} ping-pong=${{ needs.ping-pong.result }} policy=${{ needs.policy.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} scene-visual=${{ needs.scene-visual.result }} live-view-visual=${{ needs.live-view-visual.result }} lighthouse=${{ needs.lighthouse.result }}"
+          for result in "${{ needs.check.result }}" "${{ needs.storage-browser.result }}" "${{ needs.decide.result }}" "${{ needs.ping-pong.result }}" "${{ needs.policy.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.scene-visual.result }}" "${{ needs.live-view-visual.result }}" "${{ needs.lighthouse.result }}"; do
             if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
               echo "A required job did not pass: $result"
               exit 1
