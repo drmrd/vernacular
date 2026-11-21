@@ -1,8 +1,9 @@
 import { useFrame, useThree } from '@react-three/fiber'
 
+import { e2eRuntimeFlagSet } from './e2e-runtime-flag'
 import { writeRendererMemory } from './renderer-memory-attributes'
 
-// After the frame signal (3), so the write follows the draw that counts newly drawn geometry.
+// After the ambient-occlusion takeover's draw (1), so the counts include everything that frame drew.
 const RENDERER_MEMORY_PRIORITY = 4
 
 function RendererMemoryWriter() {
@@ -20,6 +21,6 @@ function RendererMemoryWriter() {
  * per-frame work, unless the `?e2e` runtime flag is set, so it is inert in normal use.
  */
 export function RendererMemoryProbe() {
-  if (!new URLSearchParams(window.location.search).has('e2e')) return null
+  if (!e2eRuntimeFlagSet(window.location.search)) return null
   return <RendererMemoryWriter />
 }
