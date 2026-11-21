@@ -263,6 +263,10 @@ test.describe('Keyboard plan authoring announcements', () => {
 
 const GROUND_FLOOR = 'Ground'
 const UPPER_FLOOR = '2nd Floor'
+const STAIR_STEPS = 2
+
+// A placed stair is selected, and its inspector is the only place that offers an angle.
+const stairInspectorAngle = (page: Page) => page.getByLabel('Angle (deg)')
 
 test.describe('Keyboard plan authoring across floors', () => {
   test('a keyboard wall run does not survive a change of floor', async ({ page }) => {
@@ -287,5 +291,44 @@ test.describe('Keyboard plan authoring across floors', () => {
     await page.keyboard.press('Enter')
     await expect(live).toHaveText('Wall vertex dropped')
     await expectWallCount(page, 0)
+  })
+
+  test('places a stair with the arrow keys and Enter when a floor sits above', async ({ page }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+
+    // Add an upper floor and come back to Ground, so a stair has a floor to rise to.
+    await selectors.addFloorButton(page).click()
+    await selectors.floorButton(page, GROUND_FLOOR).click()
+    await armTool(page, 'Stairs')
+    await expect(stairInspectorAngle(page)).toHaveCount(0)
+
+    // Real arrow keys move the candidate, and Enter drops the stair there. The placed
+    // stair is selected, so its inspector appears beside the plan.
+    await pressRepeatedly(page, 'ArrowRight', STAIR_STEPS)
+    await page.keyboard.press('Enter')
+
+    await expect(live).toHaveText('Stair placed')
+    await expect(stairInspectorAngle(page)).toHaveCount(1)
+  })
+
+  test('refuses a stair on Enter when no floor sits above', async ({ page }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+
+    // The Stairs chip is disabled on the top floor, so arm the tool on Ground, then
+    // climb to the upper floor: nothing sits above it.
+    await selectors.addFloorButton(page).click()
+    await selectors.floorButton(page, GROUND_FLOOR).click()
+    await armTool(page, 'Stairs')
+    await selectors.floorButton(page, UPPER_FLOOR).click()
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await page.keyboard.press('Enter')
+
+    await expect(page.locator('.plan-overlay__refusal')).toHaveText(
+      'Add a floor above to place stairs',
+    )
+    await expect(live).toHaveText('Add a floor above to place stairs')
+    await expect(stairInspectorAngle(page)).toHaveCount(0)
   })
 })
