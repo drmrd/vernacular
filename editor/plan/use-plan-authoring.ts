@@ -86,7 +86,7 @@ interface ToolStateSlot<State> {
   setState: (state: State) => void
 }
 
-// The graph and placement values that only the opening and furniture
+// The graph and placement values that only the opening, furniture, and stair
 // branches read, grouped so the call site can pass them as one line.
 interface AuthoringPlacementDeps {
   graph: SceneGraph | undefined
@@ -184,7 +184,7 @@ function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
   }
 }
 
-// The placement values the opening and furniture branches read, with the optional
+// The placement values the opening, furniture, and stair branches read, with the optional
 // deps defaulted and the placement notice setter taken from the opening-tool
 // context. Memoized so the keydown listener is only reinstalled when one of them
 // actually changes.
