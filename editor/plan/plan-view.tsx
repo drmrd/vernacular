@@ -76,7 +76,7 @@ import {
   type PlanScene,
 } from './plan-scene'
 import { useViewOverlay } from '../viewport/view-overlay-context'
-import { screenToWorld, type Viewport } from './viewport'
+import { screenToWorld, type Viewport, type ViewportSize } from './viewport'
 import { useViewport } from './viewport-context'
 import { useReportPointer } from './pointer-readout'
 
@@ -98,6 +98,7 @@ interface PlanLayers {
   selectedIds: ReadonlySet<string>
   selectedWall: WallSceneNode | null
   viewport: Viewport
+  stageSize: ViewportSize
   preferences: UnitPreferences
   northBearing: number | undefined
   selection: SelectionStore
@@ -145,6 +146,7 @@ function buildScene(
     endpointHandles: inputs.selectedWall,
     openingResizeHandles: openingLayer.selectedOpening,
     viewport: inputs.viewport,
+    size: inputs.stageSize,
     preferences: inputs.preferences,
     underlays: underlayLayer.underlays,
     openings: openingLayer.drawables,
@@ -212,7 +214,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const selection = useSelection()
   const { tool, setTool } = useActiveTool()
   const { layer } = useActiveEditLayer()
-  const { viewport, setViewport } = useViewport()
+  const { viewport, setViewport, stageSize } = useViewport()
   const viewOverlay = useViewOverlay()
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
@@ -342,6 +344,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     selectedIds,
     selectedWall,
     viewport,
+    stageSize,
     preferences,
     northBearing,
     selection,

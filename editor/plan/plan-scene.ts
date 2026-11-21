@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useLayoutEffect, useState, type RefObject } from 'react'
 import type { OpeningSceneNode, SceneGraph, UnitPreferences, WallSceneNode } from '../../core'
 import { useViewOverlay, type ViewOverlayValue } from '../viewport/view-overlay-context'
 import type { DrawableDimension } from './draw-dimension'
@@ -9,7 +9,7 @@ import type { PlanPalette } from './plan-palette'
 import { createPlanWallGraphMemo } from './plan-wall-graph'
 import type { DrawableUnderlay } from './draw-underlay'
 import type { SnapResult } from './snap'
-import type { Viewport } from './viewport'
+import type { Viewport, ViewportSize } from './viewport'
 
 export const PLAN_WIDTH = 800
 export const PLAN_HEIGHT = 600
@@ -34,6 +34,8 @@ export interface PlanScene {
   // The single selected opening whose jamb resize handles paint, or null when none is.
   openingResizeHandles: OpeningSceneNode | null
   viewport: Viewport
+  // The measured stage size the canvas draws at.
+  size: ViewportSize
   // The active unit preferences that format the room-label area text.
   preferences: UnitPreferences
   underlays: readonly DrawableUnderlay[]
@@ -105,8 +107,8 @@ export function buildDrawOptions(
     walls: scene.walls,
     rooms: scene.rooms,
     viewport: scene.viewport,
-    width: PLAN_WIDTH,
-    height: PLAN_HEIGHT,
+    width: scene.size.width,
+    height: scene.size.height,
     selectedIds: scene.selectedIds,
     grid: overlay.showGrid,
     // The rulers are their own canvas-chrome layer in the design language, and the
@@ -130,13 +132,15 @@ export function buildDrawOptions(
  * Redraws the canvas whenever any draw-meaningful scene leaf changes. The effect
  * depends on each leaf member individually rather than on the per-render scene
  * object, which would rasterize on every render; the scene members are listed
- * explicitly because exhaustive-deps cannot infer them through buildDrawOptions.
+ * explicitly because exhaustive-deps cannot infer them through buildDrawOptions. It runs
+ * in the layout phase because a canvas clears when its width is set, so a later redraw
+ * after a resize would paint one blank frame.
  */
 export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: PlanPalette): void {
   const overlay = useViewOverlay()
   const [wallGraphFor] = useState(createPlanWallGraphMemo)
   const options = { ...buildDrawOptions(scene, palette, overlay), wallGraphFor }
-  useEffect(() => {
+  useLayoutEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
     if (ctx) {
       drawPlan(ctx, options)
@@ -154,6 +158,7 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: P
     scene.endpointHandles,
     scene.openingResizeHandles,
     scene.viewport,
+    scene.size,
     scene.preferences,
     scene.underlays,
     scene.openings,
