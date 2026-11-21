@@ -66,7 +66,7 @@ describe('OpeningInspector sash side control on a wall with one room side', () =
     expect(button).toHaveAccessibleDescription('')
   })
 
-  it('keeps "Swap sash sides" available on a wall with two room sides', () => {
+  it('keeps "Swap sash sides" available when the wall does not have one room side', () => {
     renderInspector(vi.fn(), 'metric', { opening: buildHungWindow() })
 
     const button = screen.getByRole('button', { name: 'Swap sash sides' })

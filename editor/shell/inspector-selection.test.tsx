@@ -10,6 +10,7 @@ import {
   DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   STAIR_NODE_PREFIX,
+  type Wall,
 } from '../../core'
 import type { LibraryItem } from '../../storage'
 import { handleFurnitureKey } from '../plan/authoring-tool-handlers'
@@ -212,5 +213,52 @@ describe('Inspector with a hung window in an exterior wall selected', () => {
     expect(button).toHaveAccessibleDescription(
       'The room side sets which way the sashes face on this wall.',
     )
+  })
+})
+
+describe('Inspector with a hung window on a wall without one room side', () => {
+  function swapSashSidesOn(walls: Wall[], hostWall: Wall) {
+    const window = createOpening({
+      type: 'double-hung-window',
+      hostWallId: hostWall.id,
+      position: 1000,
+    })
+    const { selection, session } = renderInspector({ walls, openings: [window] })
+    act(() => {
+      selection.select(`${OPENING_NODE_PREFIX}${window.id}`)
+    })
+    const facing = () => session.getProject().floors[0]?.openings[0]?.orientation.facing
+    return { button: screen.getByRole('button', { name: 'Swap sash sides' }), facing }
+  }
+
+  async function expectSwapFlipsFacing(walls: Wall[], hostWall: Wall) {
+    const { button, facing } = swapSashSidesOn(walls, hostWall)
+    expect(button).not.toHaveAttribute('aria-disabled', 'true')
+    const before = facing()
+
+    await userEvent.setup().click(button)
+
+    expect(facing()).toBe(before === 'positive' ? 'negative' : 'positive')
+  }
+
+  it('keeps "Swap sash sides" available and flips the facing on a wall between two rooms', async () => {
+    const sharedWall = createWall({ x: 2000, y: 0 }, { x: 2000, y: 3000 })
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }),
+      createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
+      sharedWall,
+    ]
+    expect(deriveRooms(walls)).toHaveLength(2)
+
+    await expectSwapFlipsFacing(walls, sharedWall)
+  })
+
+  it('keeps "Swap sash sides" available and flips the facing on a free-standing wall', async () => {
+    const freeWall = createWall({ x: 0, y: 0 }, { x: 4000, y: 0 })
+    expect(deriveRooms([freeWall])).toHaveLength(0)
+
+    await expectSwapFlipsFacing([freeWall], freeWall)
   })
 })
