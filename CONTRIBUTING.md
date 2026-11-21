@@ -220,7 +220,7 @@ CI runs Lighthouse on pushes to `main` and on tag pushes; the per-PR loop intent
 Local commands:
 
 - `pnpm mutate:check` checks the Stryker config and runs the initial test run without mutating anything.
-- `pnpm mutate` runs the mutation suite. With no incremental file it tests all of `core/`, which took about 14 hours on a recent laptop.
+- `pnpm mutate` runs the mutation suite. With no incremental file it tests all of `core/`. The seed run in November 2026 took about 14 hours on a recent laptop, well above the earlier estimate of 270 minutes.
 
 CI runs Stryker on a weekly schedule (`.github/workflows/mutation.yml`) and on manual dispatch. A run from scratch does not fit in the job's 360-minute limit, so the job runs in incremental mode. It reads `stryker-incremental.json` from the `stryker-incremental` branch, tests only the mutants whose source or tests changed since the last run, and pushes the updated file back as a new commit on that branch. A repository ruleset blocks deleting or force-pushing the branch. If the file is lost, seed it again on a local machine with the steps in "Seed the Stryker incremental file" in `docs/plans/2026-11-20-green-commit-proof.md`.
 
@@ -239,7 +239,7 @@ A new Stryker version can change the mutants it generates, and Stryker cannot re
    pnpm mutate
    ```
 
-   After the initial test run, Stryker logs `N of M mutant result(s) are reused`. Stop the run once that line appears.
+   After the initial test run, Stryker logs `N of M mutant result(s) are reused`. Stop the run with Ctrl-C once that line appears. `pnpm mutate:check` does not print it, because it stops before Stryker compares the results.
 
 4. If nearly all results are reused, merge. If not, reseed on a local machine right after the merge and push the new file as a normal commit on top of `origin/stryker-incremental`.
 
