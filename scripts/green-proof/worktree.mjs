@@ -14,72 +14,102 @@ const LOCKFILE = 'pnpm-lock.yaml'
 const STDERR_TAIL_LINES = 20
 
 /**
- * @param {{ runGit: RunGit, runCommand: RunCommand, files: Files, now: () => number }} deps
+ * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, now: () => number }} Deps
+ * @typedef {{ worktree: { tempDir: string, root: string, added: boolean } | null, lastInstalledBlob: string | null }} State
+ */
+
+/**
+ * @param {Deps} deps
  * @returns {{ checkout(sha: string): { root: string, installMs: number }, dispose(): void }}
  */
 export function createWorktreeSession(deps) {
-  const { runGit, runCommand, files, now } = deps
-  /** @type {{ tempDir: string, root: string, added: boolean } | null} */
-  let created = null
-  let lastInstalledBlob = null
-
-  const git = (sha, what, args) => {
-    try {
-      return runGit(args)
-    } catch (error) {
-      throw new Error(
-        `${what} failed for ${sha}: ${error instanceof Error ? error.message : error}`,
-      )
-    }
-  }
-
-  const addWorktree = (sha) => {
-    if (created === null) {
-      const tempDir = files.makeTempDir(TEMP_PREFIX)
-      created = { tempDir, root: join(tempDir, WORKTREE_FOLDER), added: false }
-    }
-    git(sha, 'git worktree add', ['worktree', 'add', '--detach', created.root, sha])
-    created.added = true
-  }
-
-  const moveTo = (sha) => {
-    if (created === null || !created.added) {
-      addWorktree(sha)
-      return
-    }
-    git(sha, 'git checkout', ['-C', created.root, 'checkout', '--detach', '--force', sha])
-    git(sha, 'git clean', ['-C', created.root, 'clean', '-fdx', '-e', 'node_modules'])
-  }
-
-  const install = (sha, root) => {
-    const blob = git(sha, 'git rev-parse', ['rev-parse', `${sha}:${LOCKFILE}`]).trim()
-    if (blob === lastInstalledBlob) return 0
-    lastInstalledBlob = null
-    const started = now()
-    const result = runCommand('pnpm', ['install', '--frozen-lockfile'], { cwd: root })
-    if (result.status !== 0) {
-      throw new Error(`pnpm install failed for ${sha}: ${stderrTail(result.stderr)}`)
-    }
-    lastInstalledBlob = blob
-    return now() - started
-  }
-
+  /** @type {State} */
+  const state = { worktree: null, lastInstalledBlob: null }
   return {
     checkout(sha) {
-      moveTo(sha)
-      const root = created.root
-      return { root, installMs: install(sha, root) }
+      const root = moveTo(state, sha, deps)
+      return { root, installMs: install(state, sha, deps) }
     },
     dispose() {
-      if (created === null) return
-      const { tempDir, root } = created
-      created = null
-      lastInstalledBlob = null
-      attempt(() => runGit(['worktree', 'remove', '--force', root]))
-      attempt(() => files.removeDir(tempDir))
-      attempt(() => runGit(['worktree', 'prune']))
+      dispose(state, deps)
     },
   }
+}
+
+/**
+ * @param {RunGit} runGit
+ * @param {string} sha
+ * @param {string} what
+ * @param {readonly string[]} args
+ * @returns {string}
+ */
+function gitFor(runGit, sha, what, args) {
+  try {
+    return runGit(args)
+  } catch (error) {
+    throw new Error(`${what} failed for ${sha}: ${error instanceof Error ? error.message : error}`)
+  }
+}
+
+/**
+ * Checks out `sha`, adding the worktree on first use and moving it afterwards.
+ * @param {State} state
+ * @param {string} sha
+ * @param {Deps} deps
+ * @returns {string} the worktree root
+ */
+function moveTo(state, sha, deps) {
+  const { runGit, files } = deps
+  if (state.worktree === null) {
+    const tempDir = files.makeTempDir(TEMP_PREFIX)
+    state.worktree = { tempDir, root: join(tempDir, WORKTREE_FOLDER), added: false }
+  }
+  const worktree = state.worktree
+  if (!worktree.added) {
+    gitFor(runGit, sha, 'git worktree add', ['worktree', 'add', '--detach', worktree.root, sha])
+    worktree.added = true
+    return worktree.root
+  }
+  gitFor(runGit, sha, 'git checkout', ['-C', worktree.root, 'checkout', '--detach', '--force', sha])
+  gitFor(runGit, sha, 'git clean', ['-C', worktree.root, 'clean', '-fdx', '-e', 'node_modules'])
+  return worktree.root
+}
+
+/**
+ * Installs dependencies unless the lockfile is unchanged since the last install.
+ * @param {State} state
+ * @param {string} sha
+ * @param {Deps} deps
+ * @returns {number} milliseconds spent installing
+ */
+function install(state, sha, deps) {
+  const { runGit, runCommand, now } = deps
+  const blob = gitFor(runGit, sha, 'git rev-parse', ['rev-parse', `${sha}:${LOCKFILE}`]).trim()
+  if (blob === state.lastInstalledBlob) return 0
+  state.lastInstalledBlob = null
+  const started = now()
+  const result = runCommand('pnpm', ['install', '--frozen-lockfile'], {
+    cwd: state.worktree.root,
+  })
+  if (result.status !== 0) {
+    throw new Error(`pnpm install failed for ${sha}: ${stderrTail(result.stderr)}`)
+  }
+  state.lastInstalledBlob = blob
+  return now() - started
+}
+
+/**
+ * @param {State} state
+ * @param {Deps} deps
+ */
+function dispose(state, deps) {
+  if (state.worktree === null) return
+  const { tempDir, root } = state.worktree
+  state.worktree = null
+  state.lastInstalledBlob = null
+  attempt(() => deps.runGit(['worktree', 'remove', '--force', root]))
+  attempt(() => deps.files.removeDir(tempDir))
+  attempt(() => deps.runGit(['worktree', 'prune']))
 }
 
 /**
