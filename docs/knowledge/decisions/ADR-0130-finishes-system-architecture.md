@@ -269,9 +269,9 @@ finish (issue #629). `PhysicalMaterialProvider` now copies the surface's resolve
 the material's `color`, into `sheenColor`. Each surface's sheen follows its own paint, and a later
 change to how the color resolves keeps the two in step.
 
-The tint is the paint color and not white. A white sheen adds a gray haze at grazing angles and,
-for energy conservation, darkens the base under it, which washes out the paint. A sheen in the
-paint's own color keeps the hue and gives the surface a soft lift near grazing angles. The
+The tint is the paint color and not white. Either tint darkens the base a little for energy
+conservation, but a white sheen also adds a gray haze at grazing angles, which washes out the
+paint. A sheen in the paint's own color keeps the hue and gives the surface a soft lift near grazing angles. The
 colorless gloss of the paint's binder is already carried by the specular lobe
 (`specularIntensity`).
 
