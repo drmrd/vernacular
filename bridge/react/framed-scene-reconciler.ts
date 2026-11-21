@@ -169,6 +169,23 @@ function reuseOrBuildFloor(node: SceneNode, pass: ReconcilePass): CachedFloorBui
   return build
 }
 
+/** The scene of a graph with no floors, kept with the graph and paint it was built from so a
+ *  reconcile with the same references (a StrictMode double render) returns it untouched. */
+interface EmptyGraphScene {
+  framed: FramedScene
+  graph: SceneGraph
+  paint: Record<string, SurfaceTreatment>
+}
+
+/** Whether the cached empty-graph scene was built from exactly this empty graph and paint. */
+function isSameEmptyGraph(
+  scene: EmptyGraphScene,
+  graph: SceneGraph,
+  paint: Record<string, SurfaceTreatment>,
+): boolean {
+  return graph.nodes.length === 0 && scene.graph === graph && scene.paint === paint
+}
+
 /** A framed scene together with the floor builds it stacked, so a later reconcile that
  *  reuses the exact same builds, in the same order, returns it untouched. */
 interface AssembledScene {
@@ -263,17 +280,20 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
   const buildsByFloorId = new Map<string, CachedFloorBuild>()
   const scenesByFloorSet = new Map<string, AssembledScene>()
   const retired: RetiredResources = { objects: new Set(), providers: new Set() }
-  let emptyScene: FramedScene | undefined
+  let emptyScene: EmptyGraphScene | undefined
 
   return {
     reconcile(graph, paint = {}, models = BOX_ONLY) {
-      if (emptyScene !== undefined) retired.objects.add(emptyScene.root)
+      if (emptyScene !== undefined) {
+        if (isSameEmptyGraph(emptyScene, graph, paint)) return emptyScene.framed
+        retired.objects.add(emptyScene.framed.root)
+      }
       emptyScene = undefined
-      // No floors (a transient empty graph): build a throwaway scene without caching,
-      // since there is no floor id to key it by. The next reconcile supersedes and retires it.
+      // No floors (a transient empty graph): there is no floor id to key a build by, so the
+      // scene is kept by graph and paint alone. The next different reconcile retires it.
       if (graph.nodes.length === 0) {
-        emptyScene = buildFramedScene(graph, paint, view)
-        return emptyScene
+        emptyScene = { framed: buildFramedScene(graph, paint, view), graph, paint }
+        return emptyScene.framed
       }
       const pass: ReconcilePass = { graph, paint, models, view, cache: buildsByFloorId, retired }
       return reconcileStackedScene(pass, scenesByFloorSet)
@@ -283,7 +303,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
     },
     dispose() {
       retireEverything(buildsByFloorId, scenesByFloorSet, retired)
-      if (emptyScene !== undefined) retired.objects.add(emptyScene.root)
+      if (emptyScene !== undefined) retired.objects.add(emptyScene.framed.root)
       buildsByFloorId.clear()
       scenesByFloorSet.clear()
       emptyScene = undefined
