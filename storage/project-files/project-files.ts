@@ -32,4 +32,9 @@ export interface ProjectFiles {
 export interface RemovableProjectFiles extends ProjectFiles {
   /** Removes every file of the project and leaves no empty directory. */
   remove(id: string): Promise<void>
+  /**
+   * Removes the named assets from the shared pool. A value that is not a content hash is skipped.
+   * Resolves when an asset is absent. Rejects when a removal fails; assets before it are removed.
+   */
+  removeAssets(contentHashes: readonly string[]): Promise<void>
 }
