@@ -15,12 +15,14 @@ import {
   projectOf,
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
+import { treeOf } from '../../storage/documents/document-store-test-kit'
 import type { DocumentHandle, HandleNotice, OpenRequest } from './handle-types'
 import {
   DOCUMENT_FILE,
   IN_FOLDER,
   IN_WORKSPACE,
   createTestPorts,
+  failureOf,
   openOrThrow,
   placeDocument,
   rememberFolder,
@@ -31,7 +33,6 @@ import {
 const PROJECT_ID = 'a'
 const OTHER_ID = 'b'
 const OLDER_VERSION = 8
-const BACKUP_DIRECTORY = `${PROJECT_ID}/.house-backups`
 
 const HANDLE_MEMBERS = [
   'close',
@@ -110,20 +111,16 @@ describe('opening a project of the workspace', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
-  it('a document that fails the check opens through openDespiteFormatFaults with its migration backup', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  it('a document that fails the check does not open, and no file of it is written', async () => {
     const ports = createTestPorts()
     const original = bytesOf(withUnknownWallField(fixtureDocument(OLDER_VERSION)))
     await placeDocument(ports, PROJECT_ID, original)
-    const openDespiteFaults = vi.spyOn(ports.workspace, 'openDespiteFormatFaults')
+    const before = await treeOf(ports.root)
 
-    const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+    const failure = await failureOf(ports, workspaceRequest(PROJECT_ID))
 
-    expect(openDespiteFaults).toHaveBeenCalledTimes(1)
-    expect(handle.session.getProject().meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
-    const backups = await ports.root.list(BACKUP_DIRECTORY)
-    expect(backups).toHaveLength(1)
-    expect(await ports.root.readFile(`${BACKUP_DIRECTORY}/${backups[0]}`)).toEqual(original)
+    expect(failure).toMatchObject({ kind: 'did-not-open', decode: { kind: 'format-rules' } })
+    expect(await treeOf(ports.root)).toEqual(before)
   })
 
   it('durable is the durable flag of the store that holds the project', async () => {

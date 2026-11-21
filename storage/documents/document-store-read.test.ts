@@ -1,12 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, decodeDocument } from '../../core'
-import type {
-  CodecOptions,
-  DecodedDocument,
-  DecodeFailure,
-  Project,
-  SchemaMigration,
-} from '../../core'
+import type { CodecOptions, DecodedDocument, DecodeFailure, SchemaMigration } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
   bytesOf,
@@ -22,6 +16,7 @@ import {
   BACKUP_DIRECTORY,
   DOCUMENT_PATH,
   backupsOf,
+  readProject,
   rootHolding,
   storeOver,
   treeOf,
@@ -58,16 +53,6 @@ function decodeFailureOf(read: StoreRead): DecodeFailure {
     throw new Error(`Expected a decode failure: ${JSON.stringify(read)}`)
   }
   return read.failure.decode
-}
-
-/** Reads the project `a`, then opens the decode failure of that read despite its format faults. */
-async function openedDespiteFaults(root: InMemoryDirectory): Promise<Project> {
-  const store = storeOver(root)
-  return store.openDespiteFormatFaults('a', decodeFailureOf(await store.read('a')))
-}
-
-function warnedText(warn: { mock: { calls: unknown[][] } }): string[] {
-  return warn.mock.calls.map((args) => JSON.stringify(args))
 }
 
 describe('reading a stored document through the store', () => {
@@ -151,10 +136,6 @@ describe('a read that fails', () => {
 })
 
 describe('a document that breaks the format rules', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
   it.each([CURRENT_SCHEMA_VERSION, OLDER_VERSION])(
     'is refused by read at version %i with its faults, and nothing is written',
     async (version) => {
@@ -172,54 +153,22 @@ describe('a document that breaks the format rules', () => {
     },
   )
 
-  it('is opened by openDespiteFormatFaults as its migrated document, with a warning that names the fault', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const root = await rootStoredAtKnownTime(
-      bytesOf(withUnknownWallField(fixtureDocument(OLDER_VERSION))),
-    )
+  it.each([CURRENT_SCHEMA_VERSION, OLDER_VERSION])(
+    'a read of a document that breaks the format rules rejects with the failure and writes nothing, also at version %i',
+    async (version) => {
+      const root = await rootStoredAtKnownTime(
+        bytesOf(withUnknownWallField(fixtureDocument(version))),
+      )
+      const before = await treeOf(root)
 
-    const project = await openedDespiteFaults(root)
+      const error = await readProject(storeOver(root), 'a').then(
+        () => undefined,
+        (rejected: unknown) => rejected,
+      )
 
-    expect(project.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
-    expect(warnedText(warn).some((text) => text.includes(UNKNOWN_WALL_FIELD_PATH))).toBe(true)
-  })
-
-  it('has its original bytes in a migration backup by the time openDespiteFormatFaults resolves', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const original = bytesOf(withUnknownWallField(fixtureDocument(OLDER_VERSION)))
-    const root = await rootStoredAtKnownTime(original)
-
-    await openedDespiteFaults(root)
-
-    const backups = await backupsOf(root)
-    expect(backups).toHaveLength(1)
-    expect(backups[0]?.bytes).toEqual(original)
-  })
-
-  it('is opened by openDespiteFormatFaults at the current version with no backup, because nothing was migrated', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const root = await rootStoredAtKnownTime(
-      bytesOf(withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))),
-    )
-
-    await openedDespiteFaults(root)
-
-    expect(await root.list(BACKUP_DIRECTORY)).toEqual([])
-  })
-})
-
-describe('openDespiteFormatFaults for bytes that cannot be read at all', () => {
-  it('rejects with the decode failure and writes nothing', async () => {
-    const root = await rootStoredAtKnownTime(NOT_JSON)
-    const before = await treeOf(root)
-
-    const error = await openedDespiteFaults(root).then(
-      () => undefined,
-      (rejected: unknown) => rejected,
-    )
-
-    expect(error).toBeInstanceOf(DocumentDecodeError)
-    expect((error as DocumentDecodeError).failure.kind).toBe('not-json')
-    expect(await treeOf(root)).toEqual(before)
-  })
+      expect(error).toBeInstanceOf(DocumentDecodeError)
+      expect((error as DocumentDecodeError).failure.kind).toBe('format-rules')
+      expect(await treeOf(root)).toEqual(before)
+    },
+  )
 })

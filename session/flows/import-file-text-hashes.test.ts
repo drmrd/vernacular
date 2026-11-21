@@ -62,7 +62,7 @@ afterEach(() => {
 })
 
 describe('an import of a document whose content hash is not text', () => {
-  it('the pool is asked about text hashes only, and nothing is written for the other', async () => {
+  it('is refused as a document that breaks the format rules, and the pool is not asked', async () => {
     const ports = createTestPorts()
     const asked = recordPoolValues(ports)
     const project = projectReferring([
@@ -71,17 +71,22 @@ describe('an import of a document whose content hash is not text', () => {
     ])
     const file = { name: 'house.json', bytes: encodeDocument(project, undefined).bytes }
 
-    await importFile(ports, undefined, file)
+    const result = await importFile(ports, undefined, file)
 
-    expect(asked.filter((value) => typeof value !== 'string')).toEqual([])
-    expect(asked).toContain(ABSENT)
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { kind: 'did-not-import', decode: { kind: 'format-rules' } },
+    })
+    expect(asked).toEqual([])
   })
+})
 
-  it('missingAssets holds text hashes only, and each hash once', async () => {
+describe('an import of a document that refers to one asset twice', () => {
+  it('missingAssets holds the hash once', async () => {
     const ports = createTestPorts()
     const project = projectReferring([
       { scope: 'user', contentHash: ABSENT },
-      referenceWithArrayHash(ABSENT),
+      { scope: 'user', contentHash: ABSENT },
     ])
     const file = { name: 'house.json', bytes: encodeDocument(project, undefined).bytes }
 
@@ -90,17 +95,18 @@ describe('an import of a document whose content hash is not text', () => {
     expect(missingAssetsOf(result)).toEqual([ABSENT])
   })
 
-  it('a reference with a text hash next to it is still copied from the archive', async () => {
+  it('a reference to an asset that the archive lacks does not stop the copy of the one that it holds', async () => {
     const ports = createTestPorts()
     const model = await contentHashOf(MODEL)
     const project = projectReferring([
       { scope: 'user', contentHash: model },
-      referenceWithArrayHash(ABSENT),
+      { scope: 'user', contentHash: ABSENT },
     ])
     const bytes = projectArchive(project, [await assetEntry(MODEL)])
 
     const result = await importFile(ports, undefined, { name: 'house.building', bytes })
 
     expect(await assetsOf(handleOf(result)).get(model)).toEqual(MODEL)
+    expect(missingAssetsOf(result)).toEqual([ABSENT])
   })
 })

@@ -4,15 +4,13 @@ import {
   holdGets,
   sampleRecord,
 } from '../../storage/project-index/project-record-test-kit'
-import {
-  currentBytes,
-  documentBreakingFormatRules,
-} from '../../tests/storage/conformance/conformance-documents'
+import { currentBytes } from '../../tests/storage/conformance/conformance-documents'
 import { settle } from '../autosave/save-gate-test-kit'
 import type { DocumentHandle } from './handle-types'
 import {
   createTestPorts,
   follow,
+  hideTimesOfChange,
   openOrThrow,
   placeDocument,
   recordOf,
@@ -75,9 +73,10 @@ describe('a record is never built from a state that the store does not hold', ()
 
   it("an edit while the open's record reads the index does not reach the record of the open", async () => {
     const ports = createTestPorts()
-    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
+    await placeDocument(ports, PROJECT_ID, currentBytes())
     const planted = sampleRecord({ id: PROJECT_ID })
     await ports.index.put(planted)
+    hideTimesOfChange(ports)
     const gets = holdGets(ports.index)
     const put = vi.spyOn(ports.index, 'put')
 

@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renameProject } from '../../core'
-import {
-  currentBytes,
-  documentBreakingFormatRules,
-  faultyProject,
-} from '../../tests/storage/conformance/conformance-documents'
+import { currentBytes, faultyProject } from '../../tests/storage/conformance/conformance-documents'
 import { DEFAULT_AUTOSAVE_DELAY_MS } from '../autosave/create-autosave'
 import { settle } from '../autosave/save-gate-test-kit'
 import type { DocumentHandle, HandleNotice } from './handle-types'
@@ -92,17 +88,6 @@ describe('the saved-with-faults notice', () => {
 
     expect(first).toEqual(['saved-with-faults'])
     expect(later).toEqual([])
-  })
-
-  it('a document that opened despite format faults raises no saved-with-faults', async () => {
-    const ports = createTestPorts()
-    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
-    const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
-    const notices = noticesOf(handle)
-
-    expect(await handle.save()).toEqual({ ok: true })
-
-    expect(notices).toEqual([])
   })
 
   it('saved-with-faults has reached a listener by the time the save that caused it resolves', async () => {

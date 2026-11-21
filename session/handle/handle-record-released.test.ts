@@ -4,10 +4,7 @@ import {
   holdFirstGet,
   sampleRecord,
 } from '../../storage/project-index/project-record-test-kit'
-import {
-  currentBytes,
-  documentBreakingFormatRules,
-} from '../../tests/storage/conformance/conformance-documents'
+import { currentBytes } from '../../tests/storage/conformance/conformance-documents'
 import { settle } from '../autosave/save-gate-test-kit'
 import { restoreSnapshot } from '../flows/restore-snapshot'
 import {
@@ -19,6 +16,7 @@ import {
   createControlledLocks,
   createTestPorts,
   handleOf,
+  hideTimesOfChange,
   openOrThrow,
   placeDocument,
   recordOf,
@@ -97,14 +95,19 @@ afterEach(() => {
 describe('no record is built after a close freed the lock', () => {
   it('an index read that answers after the lock is freed builds no record', async () => {
     const ports = createTestPorts()
-    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
+    await placeDocument(ports, PROJECT_ID, currentBytes())
     await ports.index.put(sampleRecord({ id: PROJECT_ID, lastChangedAt: OLDER_CHANGE }))
     const firstGet = holdFirstGet(ports.index)
+    const timeOfChange = ports.root.modifiedAt.bind(ports.root)
+    hideTimesOfChange(ports)
     const old = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+    await settle()
+    expect(firstGet.started()).toBe(1)
     const oldName = old.session.getProject().meta.name
     await closeAfterTheLimit(old)
     expect(ports.lockRegistry.has(PROJECT_ID)).toBe(false)
 
+    ports.root.modifiedAt = timeOfChange
     const newer = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
     rename(newer, 'Newer')
     expect(await newer.save()).toEqual({ ok: true })

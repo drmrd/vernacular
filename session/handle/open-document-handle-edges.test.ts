@@ -3,7 +3,6 @@ import { renameProject } from '../../core'
 import type { ProjectLockPort } from '../../storage'
 import {
   currentBytes,
-  documentBreakingFormatRules,
   documentOfHigherRevision,
   soundProject,
 } from '../../tests/storage/conformance/conformance-documents'
@@ -73,20 +72,6 @@ describe('opening a project in a folder whose permission is granted', () => {
 })
 
 describe('opening a project that fails after the lock was taken', () => {
-  it('an openDespiteFormatFaults that rejects gives storage-unavailable and frees the lock', async () => {
-    const ports = createTestPorts()
-    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
-    vi.spyOn(ports.workspace, 'openDespiteFormatFaults').mockRejectedValue(
-      new Error('the backup could not be written'),
-    )
-
-    expect(await failureOf(ports, workspaceRequest(PROJECT_ID))).toEqual({
-      kind: 'storage-unavailable',
-      message: 'the backup could not be written',
-    })
-    expect(await ports.locks.heldIds()).toEqual(new Set())
-  })
-
   it('a create that throws gives storage-unavailable with the message, and frees the lock', async () => {
     const ports = createTestPorts()
     const create = (): never => {

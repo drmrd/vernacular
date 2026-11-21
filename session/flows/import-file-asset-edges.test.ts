@@ -43,15 +43,8 @@ const SNAPSHOT_PREFIX = 'snapshot-'
 /** The entries of the archive of the house: the document and the two assets. */
 const ENTRIES_OF_HOUSE = 3
 const ONE_BYTE = 1
-const OPENING_SENTENCE = 'opening it anyway'
-const LISTING_SENTENCE = 'The assets that the imported document needs cannot be listed'
 
 const building = (bytes: Uint8Array, name = 'house.building') => ({ name, bytes })
-/** The warnings that say a document was opened though it breaks the format rules. */
-const openingWarnings = () =>
-  vi
-    .mocked(console.warn)
-    .mock.calls.filter(([sentence]) => String(sentence).includes(OPENING_SENTENCE))
 
 /** The document of `project` as parsed JSON, with a reference to one asset that has no scope. */
 function documentWithScopelessReference(): Json {
@@ -84,19 +77,19 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('an import of a document whose references cannot be listed', () => {
-  it('a reference with no scope still opens the copy, reports nothing missing, and writes no asset', async () => {
+describe('an import of a document whose reference has no scope', () => {
+  it('is refused as a document that breaks the format rules, and nothing is stored', async () => {
     const ports = createTestPorts()
     const writes = logWrites(ports)
     const file = { name: 'house.json', bytes: bytesOf(documentWithScopelessReference()) }
 
-    const { handle, missingAssets } = importedOf(await importFile(ports, undefined, file))
+    const result = await importFile(ports, undefined, file)
 
-    expect(handle.session.getProject().meta.name).toBeDefined()
-    expect(missingAssets).toEqual([])
-    expect(poolWrites(writes)).toEqual([])
-    expect(console.error).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(console.error).mock.calls[0]?.[0]).toContain(LISTING_SENTENCE)
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { kind: 'did-not-import', decode: { kind: 'format-rules' } },
+    })
+    expect(writes).toEqual([])
   })
 })
 
@@ -187,23 +180,23 @@ describe('an import of an archive that is named or written unusually', () => {
     expect(await assetsOf(handle).get(image)).toEqual(IMAGE)
   })
 
-  it('a document that only breaks the format rules opens with its assets and warns once of the fault', async () => {
+  it('a document that only breaks the format rules does not import, and nothing is stored', async () => {
     const ports = createTestPorts()
-    const { model, image, project } = await house()
+    const { project } = await house()
     const bytes = buildZip([
       documentEntry(documentBreakingRulesReferring(project)),
       await assetEntry(MODEL),
       await assetEntry(IMAGE),
     ])
+    const writes = logWrites(ports)
 
-    const { handle, missingAssets } = importedOf(
-      await importFile(ports, undefined, building(bytes)),
-    )
+    const result = await importFile(ports, undefined, building(bytes))
 
-    expect(missingAssets).toEqual([])
-    expect(await assetsOf(handle).get(model)).toEqual(MODEL)
-    expect(await assetsOf(handle).get(image)).toEqual(IMAGE)
-    expect(openingWarnings()).toHaveLength(1)
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { kind: 'did-not-import', decode: { kind: 'format-rules' } },
+    })
+    expect(writes).toEqual([])
   })
 })
 

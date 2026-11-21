@@ -1,23 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
-  UNKNOWN_WALL_FIELD_PATH,
   bytesOf,
   fixtureDocument,
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
-import {
-  documentBreakingFormatRules,
-  faultyProject,
-} from '../../tests/storage/conformance/conformance-documents'
-import { settle } from '../autosave/save-gate-test-kit'
-import {
-  createTestPorts,
-  failSaves,
-  handleOf,
-  openOrThrow,
-  placeDocument,
-  workspaceRequest,
-} from '../handle/handle-test-kit'
+import { faultyProject } from '../../tests/storage/conformance/conformance-documents'
+import { handleOf } from '../handle/handle-test-kit'
 import { PROJECT_ID, openStored, snapshotRecovered } from './restore-snapshot-test-kit'
 import type { StoredAndOpen } from './restore-snapshot-test-kit'
 import { restoreSnapshot } from './restore-snapshot'
@@ -25,6 +13,7 @@ import { restoreSnapshot } from './restore-snapshot'
 const SNAPSHOT_FAILURE = 'The snapshot store failed'
 const SNAPSHOT_DIRECTORY = `${PROJECT_ID}/.house-autosave`
 const BACKUP_DIRECTORY = `${PROJECT_ID}/.house-backups`
+const START_FILE = 'session-start.json'
 const OLDER_VERSION = 8
 
 beforeEach(() => {
@@ -38,54 +27,45 @@ afterEach(() => {
 })
 
 describe('a restore of a snapshot that breaks the format rules', () => {
+  const FORMAT_RULES_BACKUP = /^refused-snapshot-v\d+-[0-9a-f]{64}\.json$/
+
   async function restoreFaulty() {
     const opened = await openStored()
     await opened.handle.snapshots.writeSnapshot(faultyProject())
-    const result = await restoreSnapshot(opened.handle)
-    return { ...opened, restored: handleOf(result) }
+    const [name] = await opened.ports.root.list(SNAPSHOT_DIRECTORY)
+    const copy = await opened.ports.root.readFile(`${SNAPSHOT_DIRECTORY}/${name}`)
+    return { ...opened, copy, result: await restoreSnapshot(opened.handle) }
   }
 
-  it('restores it, and the status of the new handle is saved', async () => {
-    const { restored } = await restoreFaulty()
+  it('gives did-not-restore with format-rules', async () => {
+    const { result } = await restoreFaulty()
 
-    expect(restored.saveStatus()).toBe('saved')
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { kind: 'did-not-restore', decode: { kind: 'format-rules' } },
+    })
   })
 
-  it('writes a warning that names the fault', async () => {
-    const opened = await openStored()
-    await opened.handle.snapshots.writeSnapshot(faultyProject())
-    vi.mocked(console.warn).mockClear()
-    // A save that rejects writes nothing, so it cannot be the one that warns of the fault.
-    failSaves(opened.ports.workspace)
+  it('leaves the open project as it was', async () => {
+    const { ports, handle } = await restoreFaulty()
 
-    await restoreSnapshot(opened.handle)
-
-    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).toContain(UNKNOWN_WALL_FIELD_PATH)
+    expect(await ports.locks.heldIds()).toEqual(new Set([PROJECT_ID]))
+    expect(handle.saveStatus()).toBe('idle')
+    expect(await handle.save()).toEqual({ ok: true })
   })
 
-  it('raises no saved-with-faults notice on the restored handle', async () => {
-    const { restored } = await restoreFaulty()
-    const listener = vi.fn()
+  it('moves the copy to the backups, byte for byte', async () => {
+    const { ports, copy } = await restoreFaulty()
 
-    restored.onNotice(listener)
-    await settle()
-
-    expect(listener).not.toHaveBeenCalled()
+    const backups = await ports.root.list(BACKUP_DIRECTORY)
+    expect(backups).toHaveLength(1)
+    expect(backups[0]).toMatch(FORMAT_RULES_BACKUP)
+    expect(await ports.root.readFile(`${BACKUP_DIRECTORY}/${backups[0]}`)).toEqual(copy)
+    expect(await ports.root.list(SNAPSHOT_DIRECTORY)).toEqual([START_FILE])
   })
 })
 
 describe('a restore of a faulty snapshot that was migrated', () => {
-  /**
-   * A handle on a stored document that already breaks the format rules, so that the save of the
-   * restored document has no last sound document to keep in a backup.
-   */
-  async function openStoredFaulty(): Promise<StoredAndOpen> {
-    const ports = createTestPorts()
-    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
-    const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
-    return { ports, sessionPorts: ports, handle }
-  }
-
   /** Writes a snapshot through the handle, then puts an older document with a fault in its place. */
   async function plantMigratedFaultySnapshot({ ports, handle }: StoredAndOpen): Promise<void> {
     await handle.snapshots.writeSnapshot(faultyProject())
@@ -97,13 +77,17 @@ describe('a restore of a faulty snapshot that was migrated', () => {
     )
   }
 
-  it('writes no backup file', async () => {
-    const opened = await openStoredFaulty()
+  it('keeps a migrated copy under the version that it was migrated from', async () => {
+    const opened = await openStored()
     await plantMigratedFaultySnapshot(opened)
 
-    handleOf(await restoreSnapshot(opened.handle))
+    await restoreSnapshot(opened.handle)
 
-    expect(await opened.ports.root.list(BACKUP_DIRECTORY)).toEqual([])
+    const backups = await opened.ports.root.list(BACKUP_DIRECTORY)
+    expect(backups).toHaveLength(1)
+    expect(backups[0]).toMatch(
+      new RegExp(`^refused-snapshot-v${OLDER_VERSION}-[0-9a-f]{64}\\.json$`),
+    )
   })
 })
 
