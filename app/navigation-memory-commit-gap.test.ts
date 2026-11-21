@@ -31,7 +31,11 @@ async function navigationAtTheSecondProject() {
       : new Promise(() => undefined)
   }
   const view = { setPage: vi.fn(), setEntry: vi.fn(), bump: vi.fn() }
-  const memory = newNavigationMemory(bar, view, { runFlow, retry: vi.fn() })
+  const memory = newNavigationMemory(bar, view, {
+    runFlow,
+    runAction: () => Promise.resolve(undefined),
+    retry: vi.fn(),
+  })
   memory.live = true
   takeCommitted(memory, { ports, handle: second, failure: null })
   return { bar, flows, first, memory, ports }

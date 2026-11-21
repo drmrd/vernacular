@@ -18,6 +18,7 @@ import type { PageScreen } from './resolve-place'
 import { useHistoryNavigation } from './use-history-navigation'
 import type { HistoryNavigation } from './use-history-navigation'
 import type { Flow } from './use-open-project'
+import type { TestAction, TestActionOutcome } from './use-open-project-test-support'
 
 /** Test support: renders the history navigation over ports in memory and follows what it shows. */
 
@@ -226,4 +227,39 @@ export async function atTheSecondProject() {
 /** The id of the project that is open now. */
 export function openId(result: NavigationResult): string | undefined {
   return result.current.handle?.id
+}
+
+/** Starts a page action through the navigation inside `act`, and gives the promise of `runPageAction`. */
+export function startPageAction<Result>(
+  result: NavigationResult,
+  action: TestAction<Result>,
+): Promise<TestActionOutcome<Result> | undefined> {
+  let running!: Promise<TestActionOutcome<Result> | undefined>
+  act(() => {
+    running = result.current.runPageAction(action)
+  })
+  return running
+}
+
+/** Runs a page action through the navigation inside `act`, and gives what it resolved with. */
+export async function runPageActionIn<Result>(
+  result: NavigationResult,
+  action: TestAction<Result>,
+): Promise<TestActionOutcome<Result> | undefined> {
+  const outcomes: Array<TestActionOutcome<Result> | undefined> = []
+  await act(async () => {
+    outcomes.push(await result.current.runPageAction(action))
+  })
+  return outcomes[0]
+}
+
+/** An action that ends the open project as a delete does: it closes it, then removes its files. */
+export function deletesTheOpenProject(): TestAction<string> {
+  return async (ports, current) => {
+    if (current === undefined) throw new Error('No project is open to delete')
+    await current.close()
+    await ports.workspace.delete(current.id)
+    await ports.index.remove(current.id)
+    return { result: current.id, currentClosed: true }
+  }
 }

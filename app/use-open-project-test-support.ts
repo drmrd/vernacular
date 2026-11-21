@@ -145,6 +145,80 @@ export function gatedFlow<Refusal>(then: Flow<Refusal>): GatedFlow<Refusal> {
   return { flow, letEnd: () => letEnd() }
 }
 
+/** What an action gives back: its result, and whether it ended the project it was given. */
+export interface TestActionOutcome<Result> {
+  readonly result: Result
+  readonly currentClosed: boolean
+}
+
+/** A step of a card that may end the open project: it gets the ports and the project open now. */
+export type TestAction<Result> = (
+  ports: SessionPorts,
+  current: DocumentHandle | undefined,
+) => Promise<TestActionOutcome<Result>>
+
+export const ACTION_RESULT = 'the action ran'
+
+/** An action that touches no port, leaves the open project as it is, and gives `ACTION_RESULT`. */
+export function keepsTheProject(): TestAction<string> {
+  return () => Promise.resolve({ result: ACTION_RESULT, currentClosed: false })
+}
+
+/** An action that closes the project it is given, and says so. */
+export function closesTheProject(): TestAction<string> {
+  return async (_ports, current) => {
+    await current?.close()
+    return { result: ACTION_RESULT, currentClosed: true }
+  }
+}
+
+/** Runs `action` through the owner inside `act`, and gives how `runAction` settled. */
+export async function settleRunAction<Result>(
+  result: OwnerResult,
+  action: TestAction<Result>,
+): Promise<Settled<TestActionOutcome<Result> | undefined>> {
+  const settled: Array<Settled<TestActionOutcome<Result> | undefined>> = []
+  await act(async () => {
+    await result.current.runAction(action).then(
+      (value) => settled.push({ status: 'resolved', value }),
+      (error: unknown) => settled.push({ status: 'rejected', error }),
+    )
+  })
+  const [outcome] = settled
+  if (outcome === undefined) throw new Error('runAction did not settle')
+  return outcome
+}
+
+/** Starts `action` through the owner inside `act`, and gives the promise of `runAction`. */
+export function startAction<Result>(
+  result: OwnerResult,
+  action: TestAction<Result>,
+): Promise<TestActionOutcome<Result> | undefined> {
+  let running!: Promise<TestActionOutcome<Result> | undefined>
+  act(() => {
+    running = result.current.runAction(action)
+  })
+  return running
+}
+
+export interface GatedAction<Result> {
+  readonly action: TestAction<Result>
+  readonly letEnd: () => void
+}
+
+/** An action that waits until the test lets it end, then runs `then`. */
+export function gatedAction<Result>(then: TestAction<Result>): GatedAction<Result> {
+  let letEnd: () => void = () => undefined
+  const gate = new Promise<void>((resolve) => {
+    letEnd = resolve
+  })
+  const action: TestAction<Result> = async (ports, current) => {
+    await gate
+    return then(ports, current)
+  }
+  return { action, letEnd: () => letEnd() }
+}
+
 export async function unmountAndSettle(unmount: () => void): Promise<void> {
   await act(async () => {
     unmount()
