@@ -9,6 +9,7 @@ import { useCatalogNames } from './use-catalog-names'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
+import { LiveSceneRoot } from './live-scene-root'
 import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { usePerceivedColorStore } from './perceived-color-context'
@@ -136,6 +137,7 @@ interface LiveSceneCanvasProps {
   site: Site | undefined
   onProxyPositions: (positions: EntityScreenPosition[]) => void
   doorway: DoorwayStand | null
+  onSceneAttached: (scene: FramedScene) => () => void
 }
 
 // The wrapper carries the shared readiness props (scene-readiness.ts) so the editor
@@ -150,7 +152,7 @@ function SceneReadinessBoundary({ ready, children }: { ready: boolean; children:
   )
 }
 
-// The scene-graph elements that render inside the Canvas: the keyed primitive, the
+// The scene-graph elements that render inside the Canvas: the scene root, the
 // lighting, the selection and proxy wiring, the camera rig, and the ambient-occlusion
 // takeover. Grouped apart from LiveSceneCanvas so that function keeps to the Canvas's
 // own setup and its two render-order-sensitive post-processing hooks, the same way
@@ -160,10 +162,7 @@ function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewRe
   const { root, bounds, nearWallTargets, roomPolygons, buildingTopWorld } = framed
   return (
     <>
-      {/* Key the primitive on the rebuilt group so a new scene replaces the old one:
-          React Three Fiber does not re-attach a <primitive> when its object prop
-          changes in place, only when the element remounts. */}
-      <primitive key={root.uuid} object={root} />
+      <LiveSceneRoot framed={framed} onAttached={props.onSceneAttached} />
       <ViewSceneLighting viewEnvironment={viewEnvironment} site={site} bounds={bounds} />
       <SceneSelection
         root={root}
@@ -334,8 +333,8 @@ function SceneViewToolbar({
 // scene graph scoped to the active floor, so the pane rebuilds and reframes as the plan
 // is edited.
 export function WebGPUSceneView() {
-  const { graph, buildingView, edgeOverlay, toggleEdgeOverlay, framed, modelsVersion } =
-    useFramedScene()
+  const framedScene = useFramedScene()
+  const { graph, buildingView, edgeOverlay, toggleEdgeOverlay, framed, modelsVersion } = framedScene
   const nav = useSceneNavigation()
   const viewEnvironment = useSceneEnvironment()
   const site = useProjectSite()
@@ -363,6 +362,7 @@ export function WebGPUSceneView() {
           site={site}
           onProxyPositions={setPositions}
           doorway={doorway}
+          onSceneAttached={framedScene.onSceneAttached}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
