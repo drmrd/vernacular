@@ -931,3 +931,4 @@ export {
 } from './assets/sub-resource'
 export type { DataRemovingRepair, RepairOffer } from './repairs/repair-list'
 export { DATA_REMOVING_REPAIRS, findRepairOffer } from './repairs/repair-list'
+export { repairOfferFor } from './repairs/find-repair-offer'

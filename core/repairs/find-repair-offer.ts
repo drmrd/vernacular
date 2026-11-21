@@ -1,5 +1,6 @@
 import { checkCurrentSchema } from '../format/current-schema'
 import { checkModeFor, readRevision } from '../format/codec/revision'
+import type { DecodeFailure } from '../format/codec/codec-types'
 import type { Project } from '../model/types'
 import type { DataRemovingRepair } from './data-removing-repair'
 import { DATA_REMOVING_REPAIRS } from './data-removing-repairs'
@@ -67,4 +68,9 @@ export function findRepairOffer(document: unknown): RepairOffer | undefined {
     sentences: applied.sentences,
     removedPaths: [...applied.removedPaths].sort(),
   }
+}
+
+/** The repair that would let a refused document open; only a format-rules failure can have one. */
+export function repairOfferFor(failure: DecodeFailure): RepairOffer | undefined {
+  return failure.kind === 'format-rules' ? findRepairOffer(failure.document) : undefined
 }

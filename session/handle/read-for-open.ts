@@ -1,4 +1,4 @@
-import { findRepairOffer, type DecodeFailure, type Project } from '../../core'
+import { repairOfferFor, type DecodeFailure, type Project } from '../../core'
 import { InvalidProjectIdError, type DocumentStore } from '../../storage'
 import type { OpenFailed, OpenRequest } from './handle-types'
 import { storageUnavailable } from './thrown-failures'
@@ -33,9 +33,9 @@ function foundStored(opened: OpenedProject, lastChangedAt: string | undefined): 
   return { ok: true, opened, stored: true, lastChangedAt }
 }
 
-/** A document that failed to decode does not open; one that breaks the format rules may be repairable. */
+/** A document that failed to decode does not open. It carries a repair when one would fix it. */
 function refusedDecode(decode: DecodeFailure): ReadForOpen {
-  const repair = decode.kind === 'format-rules' ? findRepairOffer(decode.document) : undefined
+  const repair = repairOfferFor(decode)
   return {
     ok: false,
     failure: { kind: 'did-not-open', decode, ...(repair === undefined ? {} : { repair }) },

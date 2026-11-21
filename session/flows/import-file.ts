@@ -1,5 +1,5 @@
-import { findRepairOffer } from '../../core'
-import type { DecodeFailure, Project, RepairOffer } from '../../core'
+import { repairOfferFor } from '../../core'
+import type { DecodeFailure, RepairOffer } from '../../core'
 import {
   copyImportedAssets,
   importProjectFile,
@@ -70,7 +70,7 @@ function importFailureOf(failure: ProjectFileFailure): ImportFailure {
 
 /** A document that failed to decode, with the repair that would let it open, when there is one. */
 function didNotImport(decode: DecodeFailure): ImportFailure {
-  const repair = decode.kind === 'format-rules' ? findRepairOffer(decode.document) : undefined
+  const repair = repairOfferFor(decode)
   return { kind: 'did-not-import', decode, ...(repair === undefined ? {} : { repair }) }
 }
 
@@ -101,22 +101,6 @@ function poolOf(ports: SessionPorts, id: string): AssetCache | undefined {
 }
 
 /**
- * The content hashes that the document needs. A document whose references cannot be listed names
- * nothing as missing rather than fail an import whose project is already open.
- */
-function neededOf(project: Project, packSupplies: PackSupplies | undefined): string[] {
-  try {
-    return neededAssetHashes(project, packSupplies)
-  } catch (error) {
-    console.error(
-      'The assets that the imported document needs cannot be listed; no asset is copied.',
-      error,
-    )
-    return []
-  }
-}
-
-/**
  * Reads the file, switches to the copy, and copies the assets that its document needs. Nothing is
  * written before the switch, so a refused file or a failed switch leaves every store as it was.
  * The reader's assets are not kept past this function, since they may be views into the file.
@@ -140,7 +124,7 @@ async function openWithAssets(
   if (!switched.ok) {
     return switched
   }
-  const needed = neededOf(project, file.packSupplies)
+  const needed = neededAssetHashes(project, file.packSupplies)
   const pool = poolOf(ports, id)
   const missingAssets =
     pool === undefined ? needed : await copyImportedAssets(pool, read.assets, needed)
