@@ -17,10 +17,17 @@ sourceFiles:
     storage/locks/project-lock.ts,
     storage/locks/web-locks-manager.ts,
     session/handle/open-document-handle.ts,
+    session/projects/project-cards.ts,
+    editor/projects/projects-page.tsx,
+    editor/projects/project-card.tsx,
+    editor/projects/card-text.ts,
+    app/projects-screen.tsx,
+    app/page-notice-text.ts,
+    app/use-project-cards.ts,
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-21
 ---
 
 # ADR-0189: One tab writes a document, and a second tab sees the Projects page
@@ -52,6 +59,19 @@ takes a lock when it opens a project, and two tabs can write the same document.
 > `supported: true` to mean that a project open in another tab is always seen. The one safe
 > conclusion is the reverse. With `supported: false`, the browser has no lock API, `heldIds()` is
 > always empty, and no card can say that another tab holds a project.
+
+> Updated on 2026-11-21. The Projects page has landed, and a second tab shows it. When an open
+> fails with `open-elsewhere`, at the start or at the address of the project, the application shows
+> the page where it used to show the failed-open view. `listProjectCards` in
+> `session/projects/project-cards.ts` reads `heldIds()` through the port, and the card of a project
+> that another tab holds says "Already open in another tab." The page's notice does not repeat it.
+> It reads "This project is open in another tab." only when that card lacks the line, for example
+> when the read of the held ids fails. A click on the card tries the open again; if it fails, the
+> page stays. From the page, the second tab can start a new project, import a file, or open another
+> project. In the card model, a project that another tab holds has one action, Export. The
+> application does not show the menu of actions of a card yet, so for now the card offers none. The
+> delete that holds the lock is not built yet. Section 5.6 of the design specification now
+> describes this behavior in place of the read-only prompt.
 
 ## Context
 

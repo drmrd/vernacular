@@ -413,7 +413,7 @@ Layered: schema-level (in `core/migrations/schema/`) and per-registry (in `core/
 
 ### 5.6 Multi-tab safety
 
-Web Locks-based exclusive ownership. First tab to open holds the lock; second tab gets a prompt: "open read-only here, or take ownership and force the other tab to read-only?" Read-only mode disables all mutation commands with a clear banner.
+One tab at a time writes a project. The document handle takes the project's lock through the Web Locks API when it opens the project and frees it when it closes, and the browser frees it when the tab ends (ADR-0189). A second tab that asks for a project that another tab holds does not open it. It shows the Projects page instead, and the card of that project says "Already open in another tab." If the card lacks that line, the page's notice reads "This project is open in another tab." From the page, the second tab can start a new project or open another one. There is no read-only mode, and no tab can take a project away from the tab that holds it. A browser with no lock API, or one that refuses lock requests, does not notice a second tab, and two tabs can then write the same project.
 
 ### 5.7 File System Access permission lifecycle
 
