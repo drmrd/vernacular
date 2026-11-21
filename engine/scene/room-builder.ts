@@ -213,7 +213,10 @@ function buildCeilingMesh(
   )
   const geometry = geometryFromPositions(positions)
   geometry.computeVertexNormals()
-  return new THREE.Mesh(geometry, materials.material('base', { kind: 'ceiling', floorId }))
+  const mesh = new THREE.Mesh(geometry, materials.material('base', { kind: 'ceiling', floorId }))
+  // The ceiling carries its own surface ref, so a 3D pick from inside the room paints it.
+  mesh.userData.surface = { kind: 'ceiling', floorId }
+  return mesh
 }
 
 /**
