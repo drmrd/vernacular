@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { shortSha } from '../policy-check/report.mjs'
 import { severityOf } from '../policy-check/rule-severity.mjs'
 import { checkCoverage, planCoverage } from './prove-coverage.mjs'
+import { checkMutation } from './prove-mutation.mjs'
 import { redTestSet } from './test-set.mjs'
 import {
   declarationFiles,
@@ -34,6 +35,7 @@ import { assertRanExactlyRedFiles, GENERATED_FOLDER, runVitest } from './vitest-
  * @typedef {{ root: string, sha: string }} Checkout the worktree root and the commit checked out in it
  * @typedef {{ cycle: GreenCycle, context: CycleContext, set: RedTestSet, result: CycleResult }} Run the cycle in progress; `set` is the RED test set the next check runs
  * @typedef {{ findings: Finding[], notes: string[] }} CheckReport what a check found and what it noted
+ * @typedef {CheckReport & { mutation?: { findings: Finding[], elapsed: number } }} GreenReport checks 2 to 4
  * @typedef {{ skip: string } | { set: RedTestSet, findings: Finding[] }} ParentOutcome either why the cycle is skipped, or the RED test set that ran and the findings
  */
 
@@ -189,10 +191,10 @@ function checkParent(run) {
 }
 
 /**
- * Checks 2 and 3: the RED tests pass at the GREEN commit and run every line it adds. Check 3 runs
- * only after check 2 passed.
+ * Checks 2 to 4: the RED tests pass at the GREEN commit, run every line it adds, and those lines
+ * survive mutation. Checks 3 and 4 run only after check 2 passed.
  * @param {Run} run
- * @returns {CheckReport}
+ * @returns {GreenReport}
  */
 function checkGreen(run) {
   const { context, set } = run
@@ -204,11 +206,13 @@ function checkGreen(run) {
     const message = `RED tests do not pass at the GREEN commit: ${outcome.detail}`
     return { findings: [{ rule: 'red-fails-at-green', sha, message }], notes: [] }
   }
-  return checkCoverage(
+  const coverage = checkCoverage(
     lines,
     { sha, root: checkout.root, mixed: set.kind === 'mixed' },
     context.files,
   )
+  const proof = { sha, root: checkout.root, redFiles: set.unitFiles }
+  return { ...coverage, mutation: checkMutation(coverage.covered, proof, context) }
 }
 
 /**
@@ -245,6 +249,10 @@ export function proveCycle(cycle, context) {
   const green = checkGreen({ ...run, set: parent.set })
   result.findings.push(...parent.findings, ...green.findings)
   result.notes.push(...green.notes)
+  if (green.mutation) {
+    result.findings.push(...green.mutation.findings)
+    result.timings.mutation = green.mutation.elapsed
+  }
   if (result.findings.some((finding) => severityOf(finding.rule) === 'fail')) {
     result.status = 'failed'
   }

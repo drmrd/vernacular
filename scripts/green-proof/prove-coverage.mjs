@@ -85,15 +85,15 @@ function readLcov(files, root) {
  * @param {AddedLine[]} lines the provable added lines of the GREEN commit
  * @param {{ sha: string, root: string, mixed: boolean }} proof
  * @param {Files} files
- * @returns {{ findings: Finding[], notes: string[] }}
+ * @returns {{ findings: Finding[], notes: string[], covered: AddedLine[] }}
  */
 export function checkCoverage(lines, { sha, root, mixed }, files) {
-  if (lines.length === 0) return { findings: [], notes: [] }
+  if (lines.length === 0) return { findings: [], notes: [], covered: [] }
   const coverage = parseLcov(readLcov(files, root), root)
   if (coverage.size === 0) {
     throw new Error(`the coverage run wrote an lcov file with no records at ${lcovPath(root)}`)
   }
-  const { uncovered, unrecorded } = splitByCoverage(lines, coverage)
+  const { covered, uncovered, unrecorded } = splitByCoverage(lines, coverage)
   const rule = mixed ? 'mixed-uncovered-added-line' : 'uncovered-added-line'
   const notes =
     unrecorded.length === 0
@@ -104,5 +104,5 @@ export function checkCoverage(lines, { sha, root, mixed }, files) {
     ...uncoveredLineFindings(other, sha, rule),
     ...uncoveredLineFindings(guard, sha, 'uncovered-guard-line'),
   ]
-  return { findings, notes }
+  return { findings, notes, covered }
 }
