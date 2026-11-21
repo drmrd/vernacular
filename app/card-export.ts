@@ -52,11 +52,10 @@ async function exportAndDownload(
   { ports, handle, id, notifications, packs }: ExportRun,
   onProgress: (completed: number, total: number) => void,
 ): Promise<string> {
-  const packSupplies = await loadPackSupplies(packs)
   const result = await exportProject(ports, handle, {
     id,
     onProgress,
-    ...(packSupplies === undefined ? {} : { packSupplies }),
+    loadPackSupplies: () => loadPackSupplies(packs),
   })
   if (!result.ok) {
     throw new Error(exportFailureText(result.failure))

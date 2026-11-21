@@ -14,6 +14,12 @@ import { recentTarget, recordOf } from './open-recent'
 export interface ExportRequest {
   readonly id: string
   readonly packSupplies?: PackSupplies
+  /**
+   * Supplies the pack supplies when the export needs them: after the folder of a closed project
+   * grants its permission, so that a slow listing cannot outlast the click that asked. Used when
+   * `packSupplies` is absent.
+   */
+  readonly loadPackSupplies?: () => Promise<PackSupplies | undefined>
   readonly onProgress?: (completed: number, total: number) => void
 }
 
@@ -65,6 +71,15 @@ function failedWith(failure: OpenFailure): ExportProjectResult {
     default:
       return unhandled(failure)
   }
+}
+
+/** The request with its pack supplies loaded, when it carries a loader and no supplies. */
+async function withLoadedSupplies(request: ExportRequest): Promise<ExportRequest> {
+  if (request.packSupplies !== undefined || request.loadPackSupplies === undefined) {
+    return request
+  }
+  const packSupplies = await request.loadPackSupplies()
+  return packSupplies === undefined ? request : { ...request, packSupplies }
 }
 
 /** Packs the open project after its pending changes are written. */
@@ -135,7 +150,7 @@ async function exportStoredProject(
   }
   const read = await readForOpen(found.store, target.request)
   if (read.ok) {
-    return archiveOfStored(found.store, read.opened.project, request)
+    return archiveOfStored(found.store, read.opened.project, await withLoadedSupplies(request))
   }
   return read.failure.kind === 'did-not-open'
     ? uncheckedCopyOf(ports, found.store, request.id)
@@ -155,7 +170,7 @@ export async function exportProject(
 ): Promise<ExportProjectResult> {
   try {
     return current?.id === request.id
-      ? await exportOpenProject(current, request)
+      ? await exportOpenProject(current, await withLoadedSupplies(request))
       : await exportStoredProject(ports, request)
   } catch (error) {
     return exportFailed(messageOf(error))
