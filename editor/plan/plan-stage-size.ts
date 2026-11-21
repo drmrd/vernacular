@@ -19,7 +19,7 @@ export const MIN_PLAN_STAGE_HEIGHT = 120
  * nothing changed, so callers can skip a redundant state update.
  */
 export function resolveStageSize(previous: ViewportSize, measured: ViewportSize): ViewportSize {
-  if (!isMeasurable(measured.width) || !isMeasurable(measured.height)) {
+  if (!isMeasurableSize(measured)) {
     return previous
   }
   const width = Math.max(MIN_PLAN_STAGE_WIDTH, Math.floor(measured.width))
@@ -28,6 +28,11 @@ export function resolveStageSize(previous: ViewportSize, measured: ViewportSize)
     return previous
   }
   return { width, height }
+}
+
+/** Whether a pane measurement is real: a hidden pane reports zero or non-finite sizes. */
+export function isMeasurableSize(measured: ViewportSize): boolean {
+  return isMeasurable(measured.width) && isMeasurable(measured.height)
 }
 
 function isMeasurable(dimension: number): boolean {

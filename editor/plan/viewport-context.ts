@@ -13,7 +13,7 @@ import {
 import type { Point } from '../../core'
 import { computeFitViewport, contentBounds, planContentPoints, type Bounds } from './fit'
 import { PLAN_HEIGHT, PLAN_WIDTH } from './plan-scene'
-import { resolveStageSize } from './plan-stage-size'
+import { isMeasurableSize, resolveStageSize } from './plan-stage-size'
 import { DEFAULT_PLAN_SCALE, type Viewport, type ViewportSize } from './viewport'
 
 export interface ViewportValue {
@@ -85,14 +85,17 @@ export function ViewportProvider({ children, initialContent }: ViewportProviderP
   const hasMeasuredRef = useRef(false)
   const reportStageSize = useCallback(
     (measured: ViewportSize) => {
+      if (!isMeasurableSize(measured)) {
+        return
+      }
+      const isFirstMeasurement = !hasMeasuredRef.current
+      hasMeasuredRef.current = true
       const resolved = resolveStageSize(stageSizeRef.current, measured)
       if (resolved === stageSizeRef.current) {
         return
       }
       stageSizeRef.current = resolved
       setStageSize(resolved)
-      const isFirstMeasurement = !hasMeasuredRef.current
-      hasMeasuredRef.current = true
       const { bounds } = opening
       if (isFirstMeasurement && bounds !== null) {
         setViewport((current) =>
