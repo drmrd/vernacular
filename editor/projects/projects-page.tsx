@@ -1,7 +1,8 @@
-import { useId, useState, type DragEvent, type ReactElement } from 'react'
+import { useId, useRef, useState, type DragEvent, type ReactElement, type RefObject } from 'react'
 import { Button } from '../design-system'
 import type { ProjectCardAction, ProjectCardModel } from '../../session'
 import { NO_PROJECTS, backText } from './card-text'
+import { DeleteProjectDialog } from './delete-project-dialog'
 import { ProjectCard, type CardRename } from './project-card'
 import './projects-page.css'
 
@@ -15,6 +16,9 @@ export interface ProjectCardActions {
   /** Resolves true when the name is stored, so the form closes. False keeps the form open. */
   readonly onRename?: (id: string, name: string) => Promise<boolean>
   readonly onExport?: (id: string) => void
+  /** Called once the dialog of a delete is confirmed. The dialog shows before it. */
+  readonly onDelete?: (id: string) => void
+  readonly onRemoveFromList?: (id: string) => void
 }
 
 export interface ProjectsPageProps {
@@ -65,37 +69,100 @@ interface CardListProps {
   readonly cardActions?: ProjectCardActions | undefined
 }
 
+/** The handler of an action, or undefined when the page was given none. */
+function handlerOf(action: ProjectCardAction, cardActions: ProjectCardActions | undefined) {
+  switch (action) {
+    case 'rename':
+      return cardActions?.onRename
+    case 'export':
+      return cardActions?.onExport
+    case 'delete':
+      return cardActions?.onDelete
+    case 'remove-from-list':
+      return cardActions?.onRemoveFromList
+  }
+}
+
 /** The actions of the card that have a handler, in the card's order. */
 function offeredActions(
   card: ProjectCardModel,
   cardActions: ProjectCardActions | undefined,
 ): readonly ProjectCardAction[] {
-  return card.actions.filter(
-    (action) =>
-      (action === 'rename' && cardActions?.onRename) ||
-      (action === 'export' && cardActions?.onExport),
-  )
+  return card.actions.filter((action) => handlerOf(action, cardActions) !== undefined)
 }
 
-/** The runner of a chosen action: the rename opens its form, the export calls its handler. */
+/** What a chosen action starts when it needs more than a call: a form or a dialog. */
+interface ActionStarts {
+  readonly rename: (id: string) => void
+  readonly delete: (id: string) => void
+}
+
+/** The runner of a chosen action: rename and delete open their form or dialog, the rest call. */
 function actionRunner(
   cardActions: ProjectCardActions | undefined,
-  startRename: (id: string) => void,
+  starts: ActionStarts,
 ): (id: string, action: ProjectCardAction) => void {
   return (id, action) => {
     switch (action) {
       case 'rename':
-        startRename(id)
+        starts.rename(id)
         break
       case 'export':
         cardActions?.onExport?.(id)
+        break
+      case 'delete':
+        starts.delete(id)
+        break
+      case 'remove-from-list':
+        cardActions?.onRemoveFromList?.(id)
         break
     }
   }
 }
 
+/** The card's "..." control, found by the card's place in the list. */
+function focusMenuOfCard(list: RefObject<HTMLUListElement | null>, index: number): void {
+  list.current?.children[index]?.querySelector<HTMLElement>('[aria-haspopup]')?.focus()
+}
+
+/**
+ * The dialog of a delete. A card that leaves the list takes its dialog with it. Cancel returns the
+ * focus to the card's "..." control; a confirmed delete moves it to the page's main region, since
+ * the card is about to go.
+ */
+function useDeleteDialog(
+  cards: readonly ProjectCardModel[],
+  onDelete: ProjectCardActions['onDelete'],
+  list: RefObject<HTMLUListElement | null>,
+) {
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  if (deletingId !== null && !cards.some(({ id }) => id === deletingId)) {
+    setDeletingId(null)
+  }
+  const index = cards.findIndex(({ id }) => id === deletingId)
+  const card = cards[index]
+  const dialog =
+    card && onDelete ? (
+      <DeleteProjectDialog
+        name={card.name}
+        onCancel={() => {
+          focusMenuOfCard(list, index)
+          setDeletingId(null)
+        }}
+        onConfirm={() => {
+          list.current?.closest('main')?.focus()
+          setDeletingId(null)
+          onDelete(card.id)
+        }}
+      />
+    ) : null
+  return { dialog, startDelete: setDeletingId }
+}
+
 function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): ReactElement {
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const list = useRef<HTMLUListElement>(null)
+  const { dialog, startDelete } = useDeleteDialog(cards, cardActions?.onDelete, list)
   // A card that left the list takes its form with it, also when it comes back.
   if (renamingId !== null && !cards.some(({ id }) => id === renamingId)) {
     setRenamingId(null)
@@ -103,7 +170,7 @@ function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): React
   if (cards.length === 0) {
     return <p className="projects-page__empty">{NO_PROJECTS}</p>
   }
-  const chooseAction = actionRunner(cardActions, setRenamingId)
+  const chooseAction = actionRunner(cardActions, { rename: setRenamingId, delete: startDelete })
   const renameOf = (id: string): CardRename | undefined =>
     renamingId === id && cardActions?.onRename
       ? {
@@ -112,21 +179,32 @@ function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): React
         }
       : undefined
   return (
-    <ul className="projects-page__cards">
-      {cards.map((card) => {
-        const actions = offeredActions(card, cardActions)
-        return (
-          <ProjectCard
-            key={card.id}
-            card={{ ...card, actions }}
-            href={hrefFor(card.id)}
-            onOpen={onOpen}
-            onAction={actions.length === 0 ? undefined : chooseAction}
-            rename={renameOf(card.id)}
-          />
-        )
-      })}
-    </ul>
+    <>
+      <ul className="projects-page__cards" ref={list}>
+        {cards.map((card) => {
+          const actions = offeredActions(card, cardActions)
+          return (
+            <ProjectCard
+              key={card.id}
+              card={{ ...card, actions }}
+              href={hrefFor(card.id)}
+              onOpen={onOpen}
+              onAction={actions.length === 0 ? undefined : chooseAction}
+              rename={renameOf(card.id)}
+            />
+          )
+        })}
+      </ul>
+      {dialog}
+    </>
+  )
+}
+
+function PageNotice({ text }: { readonly text: string }): ReactElement {
+  return (
+    <p role="alert" className="projects-page__notice">
+      {text}
+    </p>
   )
 }
 
@@ -161,15 +239,16 @@ export function ProjectsPage({
 }: ProjectsPageProps): ReactElement {
   const headingId = useId()
   return (
-    <main className="projects-page" aria-labelledby={headingId} {...dropHandlers(onDropFile)}>
+    <main
+      className="projects-page"
+      aria-labelledby={headingId}
+      tabIndex={-1}
+      {...dropHandlers(onDropFile)}
+    >
       <h1 id={headingId} className="projects-page__heading">
         Projects
       </h1>
-      {notice ? (
-        <p role="alert" className="projects-page__notice">
-          {notice}
-        </p>
-      ) : null}
+      {notice ? <PageNotice text={notice} /> : null}
       {openProject ? (
         <Button onClick={openProject.onBack}>{backText(openProject.name)}</Button>
       ) : null}

@@ -1,5 +1,5 @@
-import type { ExportFailure, RenameFailure } from '../session'
-import { openFailureReason } from './open-failure-text'
+import type { DeleteFailure, ExportFailure, RemoveFromListFailure, RenameFailure } from '../session'
+import { OPEN_ELSEWHERE, openFailureReason } from './open-failure-text'
 
 const RENAME_FAILED = 'Could not rename the project: '
 
@@ -27,4 +27,36 @@ export function exportFailureText(failure: ExportFailure): string {
 /** The warning for a copy of a project that did not open, and what it holds. */
 export function uncheckedCopyText(includedAssets: number): string {
   return includedAssets === 0 ? `${UNCHECKED_COPY} ${NO_ASSETS}` : UNCHECKED_COPY
+}
+
+const DELETE_FAILED = 'Could not delete the project: '
+
+/** One sentence for a delete that did not happen. */
+export function deleteFailureText(failure: DeleteFailure): string {
+  switch (failure.kind) {
+    case 'open-elsewhere':
+      return OPEN_ELSEWHERE
+    case 'flush-failed':
+      return 'The changes of the open project could not be saved, so nothing was deleted.'
+    case 'folder-project':
+      return `${DELETE_FAILED}it is a folder project, which is removed from the list instead.`
+    case 'storage-unavailable':
+      return `${DELETE_FAILED}${failure.message}`
+  }
+}
+
+const REMOVE_FAILED = 'Could not remove the folder from the list: '
+
+/** One sentence for a folder that stays in the list. */
+export function removeFromListFailureText(failure: RemoveFromListFailure): string {
+  switch (failure.kind) {
+    case 'open-elsewhere':
+      return OPEN_ELSEWHERE
+    case 'flush-failed':
+      return 'The changes of the open project could not be saved, so the folder stays in the list.'
+    case 'workspace-project':
+      return `${REMOVE_FAILED}it is not a folder project.`
+    case 'storage-unavailable':
+      return `${REMOVE_FAILED}${failure.message}`
+  }
 }

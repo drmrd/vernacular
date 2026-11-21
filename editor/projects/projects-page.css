@@ -164,3 +164,41 @@
   display: flex;
   gap: var(--space-2);
 }
+
+/* The shade covers the viewport and sits above the page, so the dialog cannot be passed by. */
+.delete-project-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.delete-project-dialog {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  max-width: 32rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+}
+
+.delete-project-dialog__title,
+.delete-project-dialog__consequence {
+  min-width: 100%;
+  margin: 0;
+}
+
+.delete-project-dialog__title {
+  font-weight: var(--font-weight-semibold);
+}
