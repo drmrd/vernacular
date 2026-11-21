@@ -21,10 +21,10 @@ describe('plan-overlay.css', () => {
 
   it('sizes the plan stage to its pane and clips instead of scrolling, with no pixel size', () => {
     // The stage takes the size of the plan area, which the resize observer measures,
-    // so the CSS must not state a pixel size. The nominal and minimum sizes are set
-    // inline from the stage-size constants so CSS and code cannot drift. overflow:
-    // clip (not hidden or auto) keeps the stage from being a scroll container, so a
-    // focused off-stage proxy or a scrollIntoView call cannot move it.
+    // so the CSS must not state a pixel size. The minimum size is set inline from the
+    // stage-size constants, so CSS and code cannot drift. overflow: clip (not hidden or
+    // auto) keeps the stage from being a scroll container, so a focused off-stage proxy
+    // or a scrollIntoView call cannot move it.
     const stage = css.match(/(?<![-\w])\.plan-stage\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(stage).not.toBe('')
     expect(stage).toMatch(/(?<![-\w])width:\s*100%/)
