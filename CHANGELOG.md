@@ -11,6 +11,49 @@ Starting in Phase 0e, this file is maintained automatically by
 `release-please` from Conventional Commit messages. Until then, entries
 are added by hand and intentionally coarse-grained (one bullet per phase).
 
+## [0.3.5](https://github.com/drmrd/vernacular/compare/v0.3.4...v0.3.5) (2026-11-21)
+
+
+### Features
+
+* give each project an address and start from it ([1f2e049](https://github.com/drmrd/vernacular/commit/1f2e049a4782dff804e9b0082d6f5b8c467c3734))
+* open each project in the light chosen for its house ([cc31de1](https://github.com/drmrd/vernacular/commit/cc31de1e48502d814f1f7dbbf1c62f0dc4ae4a3b))
+
+
+### Bug fixes
+
+* build the plan wall graph once per scene change rather than per redraw ([3656012](https://github.com/drmrd/vernacular/commit/36560125b004ae6f8d6dc33cba8cfa692c63185c))
+* build the plan wall graph once per scene change rather than per redraw ([c450216](https://github.com/drmrd/vernacular/commit/c450216fb215c33bf2f22661caf5c52e06f13431))
+* draw the active floor during a walk when the building view hides its level ([719e2ad](https://github.com/drmrd/vernacular/commit/719e2ad5a2caa9b2077fff4a4b1d54c949edee5e))
+* give painted finishes with sheen the paint color as their sheen color ([b0bd626](https://github.com/drmrd/vernacular/commit/b0bd626dc5818f9112d43b24d38fb34b7f998122))
+* inset derived rooms by the construction-profile wall thickness ([610a8ef](https://github.com/drmrd/vernacular/commit/610a8ef66650de9ff483ca637d74e1077e91e1d2))
+* make the scene lighting the one owner of the tone-mapping operator ([d8b309c](https://github.com/drmrd/vernacular/commit/d8b309cf9493815b684bf6cc275a169e1ad85082))
+
+
+### Refactoring
+
+* name the plan wall graph resolver and state its rule once ([53d0d1b](https://github.com/drmrd/vernacular/commit/53d0d1b8cfb7cdd26c5fced94c8d0489fd1ce58f))
+
+
+### Documentation
+
+* add the specification and the plan for the geometric kernel and the first arc wall ([0b2c8ef](https://github.com/drmrd/vernacular/commit/0b2c8efe0549917349381fb7991de3f7af11b1d8))
+* record texture assets in packs and amend the pack format ([84d940c](https://github.com/drmrd/vernacular/commit/84d940cf6265768a21f937f75016262a6811c8e7))
+* record the beta scope of stairs, trim, ceiling features, and the 3D pick ([af8f1dd](https://github.com/drmrd/vernacular/commit/af8f1dd87026e784ca237c0085402ff0e7944718))
+* record the plan wall graph memo in ADR-0160 ([74dce69](https://github.com/drmrd/vernacular/commit/74dce69868d10ee98fcc66c2e930b64c923bc12b))
+* specify and plan the first view of a project ([888b5e2](https://github.com/drmrd/vernacular/commit/888b5e2d3f2c7b44dde3c4ce564aed619651c738))
+
+
+### Tests
+
+* show the plan builds its wall graph once across redraws over the same walls ([fdffc9a](https://github.com/drmrd/vernacular/commit/fdffc9ad6f894ccecc40108dc977df8e1e10d555))
+
+
+### Chores
+
+* merge main into the project addresses branch ([66635b9](https://github.com/drmrd/vernacular/commit/66635b9ad90cab250df09bb5c20252af44e99f5b))
+* merge main into the walk floor branch ([4e85575](https://github.com/drmrd/vernacular/commit/4e8557513f83f5b8f6e1e5b6807af179da14ae07))
+
 ## [0.3.4](https://github.com/drmrd/vernacular/compare/v0.3.3...v0.3.4) (2026-11-21)
 
 
