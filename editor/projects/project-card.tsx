@@ -47,32 +47,42 @@ function linesOf(card: ProjectCardModel, idBase: string): DescribedText[] {
   }))
 }
 
+function sentenceOf(card: ProjectCardModel, idBase: string): DescribedText[] {
+  return card.preview === 'did-not-open' ? [{ id: `${idBase}-sentence`, text: DID_NOT_OPEN }] : []
+}
+
 interface CardPreviewProps {
   readonly preview: ProjectCardModel['preview']
-  readonly sentenceId: string
+  readonly sentence: readonly DescribedText[]
 }
 
-function CardPreview({ preview, sentenceId }: CardPreviewProps): ReactElement {
-  let content: ReactElement | null = null
-  if (preview === 'did-not-open') {
-    content = (
-      <span id={sentenceId} className="project-card__sentence">
-        {DID_NOT_OPEN}
-      </span>
-    )
-  } else if (preview !== 'none') {
-    content = <img className="project-card__drawing" src={previewSource(preview.svg)} alt="" />
-  }
-  return <span className="project-card__preview">{content}</span>
+function CardPreview({ preview, sentence }: CardPreviewProps): ReactElement {
+  return (
+    <span className="project-card__preview">
+      {sentence.map(({ id, text }) => (
+        <span key={id} id={id} className="project-card__sentence">
+          {text}
+        </span>
+      ))}
+      {typeof preview === 'object' ? (
+        <img className="project-card__drawing" src={previewSource(preview.svg)} alt="" />
+      ) : null}
+    </span>
+  )
 }
 
-function CardLink({ card, href, onOpen }: Omit<ProjectCardProps, 'onAction'>): ReactElement {
+interface CardLinkProps {
+  readonly card: ProjectCardModel
+  readonly href: string
+  readonly onOpen?: ProjectCardProps['onOpen'] | undefined
+}
+
+function CardLink({ card, href, onOpen }: CardLinkProps): ReactElement {
   const idBase = useId()
   const nameId = `${idBase}-name`
-  const sentenceId = `${idBase}-sentence`
   const facts = factsOf(card, idBase)
+  const sentence = sentenceOf(card, idBase)
   const lines = linesOf(card, idBase)
-  const sentence = card.preview === 'did-not-open' ? [{ id: sentenceId, text: DID_NOT_OPEN }] : []
   const described = [...facts, ...sentence, ...lines]
   const open = (event: MouseEvent): void => {
     if (onOpen === undefined || !isPlainClick(event)) {
@@ -89,7 +99,7 @@ function CardLink({ card, href, onOpen }: Omit<ProjectCardProps, 'onAction'>): R
       aria-describedby={described.map(({ id }) => id).join(' ')}
       onClick={open}
     >
-      <CardPreview preview={card.preview} sentenceId={sentenceId} />
+      <CardPreview preview={card.preview} sentence={sentence} />
       <span id={nameId} className="project-card__name">
         {card.name}
       </span>
@@ -107,10 +117,16 @@ function CardLink({ card, href, onOpen }: Omit<ProjectCardProps, 'onAction'>): R
   )
 }
 
-export function ProjectCard({ card, href, onOpen, onAction }: ProjectCardProps): ReactElement {
+/** The public props, as a parent that forwards handlers it may not have passes them. */
+interface ProjectCardInput extends Pick<ProjectCardProps, 'card' | 'href'> {
+  readonly onOpen?: ProjectCardProps['onOpen'] | undefined
+  readonly onAction?: ProjectCardProps['onAction'] | undefined
+}
+
+export function ProjectCard({ card, href, onOpen, onAction }: ProjectCardInput): ReactElement {
   return (
     <li className="project-card">
-      <CardLink card={card} href={href} {...(onOpen ? { onOpen } : {})} />
+      <CardLink card={card} href={href} onOpen={onOpen} />
       {onAction ? (
         <ProjectCardMenu
           projectName={card.name}

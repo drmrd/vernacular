@@ -25,7 +25,11 @@ export interface ProjectsPageProps {
   readonly onOpenFolder?: () => void
 }
 
-type PageActionHandlers = Pick<ProjectsPageProps, 'onNewProject' | 'onImportFile' | 'onOpenFolder'>
+interface PageActionHandlers {
+  readonly onNewProject?: ProjectsPageProps['onNewProject'] | undefined
+  readonly onImportFile?: ProjectsPageProps['onImportFile'] | undefined
+  readonly onOpenFolder?: ProjectsPageProps['onOpenFolder'] | undefined
+}
 
 function PageActions({
   onNewProject,
@@ -45,8 +49,11 @@ function PageActions({
   )
 }
 
-type CardListProps = Pick<ProjectsPageProps, 'hrefFor' | 'onOpen' | 'onCardAction'> & {
+interface CardListProps {
   readonly cards: readonly ProjectCardModel[]
+  readonly hrefFor: ProjectsPageProps['hrefFor']
+  readonly onOpen?: ProjectsPageProps['onOpen'] | undefined
+  readonly onCardAction?: ProjectsPageProps['onCardAction'] | undefined
 }
 
 function CardList({ cards, hrefFor, onOpen, onCardAction }: CardListProps): ReactElement {
@@ -60,16 +67,25 @@ function CardList({ cards, hrefFor, onOpen, onCardAction }: CardListProps): Reac
           key={card.id}
           card={card}
           href={hrefFor(card.id)}
-          {...(onOpen ? { onOpen } : {})}
-          {...(onCardAction ? { onAction: onCardAction } : {})}
+          onOpen={onOpen}
+          onAction={onCardAction}
         />
       ))}
     </ul>
   )
 }
 
-export function ProjectsPage(props: ProjectsPageProps): ReactElement {
-  const { cards, hrefFor, onOpen, onCardAction, openProject, notice } = props
+export function ProjectsPage({
+  cards,
+  hrefFor,
+  onOpen,
+  onCardAction,
+  openProject,
+  notice,
+  onNewProject,
+  onImportFile,
+  onOpenFolder,
+}: ProjectsPageProps): ReactElement {
   const headingId = useId()
   return (
     <main className="projects-page" aria-labelledby={headingId}>
@@ -84,14 +100,13 @@ export function ProjectsPage(props: ProjectsPageProps): ReactElement {
       {openProject ? (
         <Button onClick={openProject.onBack}>{backText(openProject.name)}</Button>
       ) : null}
-      <PageActions {...props} />
+      <PageActions
+        onNewProject={onNewProject}
+        onImportFile={onImportFile}
+        onOpenFolder={onOpenFolder}
+      />
       {cards ? (
-        <CardList
-          cards={cards}
-          hrefFor={hrefFor}
-          {...(onOpen ? { onOpen } : {})}
-          {...(onCardAction ? { onCardAction } : {})}
-        />
+        <CardList cards={cards} hrefFor={hrefFor} onOpen={onOpen} onCardAction={onCardAction} />
       ) : null}
     </main>
   )
