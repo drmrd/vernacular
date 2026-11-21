@@ -96,9 +96,9 @@ function openedFrame(shut: OpeningFrame, motion: OpeningMotion, openness: number
 
 /**
  * Whether the slide moves a sash inside a frame that stays put, as a hung window's sash
- * does. Such an opening keeps its shut rectangle at every openness, so looking anywhere in
- * the frame of an open hung window reaches it, and looking at the wall above the head does
- * not. A slide along the wall instead carries the leaf out of the opening, so the reach
+ * does. The risen sash of such a window is not tested as a separate rectangle, so looking
+ * anywhere in the frame of an open hung window reaches it, and the wall above the head is
+ * never reached. A slide along the wall instead carries the leaf out of the opening, so the reach
  * also follows the moved leaf.
  */
 function slidesInsideFrame(motion: SlideMotion): boolean {
@@ -169,7 +169,8 @@ function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit)
 /**
  * The id of the opening the walker looks at within reach, or null when none is in
  * view. A short ray runs from the eye along the look direction; each opening is
- * tested as the rectangle its leaf or sash fills (spec section 3.2), and the
+ * tested as its shut frame and, once open, the rectangle its leaf or sash fills (spec
+ * section 3.2), and the
  * nearest one the ray crosses within `reachMm` wins. The direction need not be
  * normalized; it is normalized here so the reach is measured in millimeters. Every
  * opening keeps its shut rectangle at every openness, and an open one also counts where
