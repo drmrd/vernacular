@@ -1,19 +1,7 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { disposeObject } from '../index'
-
-type Resource = THREE.BufferGeometry | THREE.Material
-
-function countFrees(resources: Resource[]): Map<Resource, number> {
-  const counts = new Map<Resource, number>()
-  for (const resource of resources) {
-    counts.set(resource, 0)
-    resource.addEventListener('dispose', () => {
-      counts.set(resource, (counts.get(resource) ?? 0) + 1)
-    })
-  }
-  return counts
-}
+import { countFrees } from './dispose-count-test-support'
 
 function singlePoint(): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry()

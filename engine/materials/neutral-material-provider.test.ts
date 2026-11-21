@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
+import { countFrees } from '../scene/dispose-count-test-support'
 import { isCacheHeld } from '../scene/dispose-object'
 import { NeutralMaterialProvider } from './neutral-material-provider'
 import type { SurfaceRole } from './material-provider'
@@ -49,19 +50,13 @@ describe('NeutralMaterialProvider', () => {
   it('holds each material it returns and frees each one exactly once on dispose', () => {
     const provider = new NeutralMaterialProvider()
     const materials = NAMED_ROLES.map((role) => provider.material(role))
-    const disposals = materials.map((material) => {
-      const counter = { count: 0 }
-      material.addEventListener('dispose', () => {
-        counter.count += 1
-      })
-      return counter
-    })
+    const counts = countFrees(materials)
 
     expect(materials.every((material) => isCacheHeld(material))).toBe(true)
 
     provider.dispose()
     provider.dispose()
 
-    expect(disposals.map((counter) => counter.count)).toEqual(materials.map(() => 1))
+    expect([...counts.values()]).toEqual(materials.map(() => 1))
   })
 })

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
 import { furnitureFootprintCorners } from '../../core'
+import { countFrees, totalFrees } from './dispose-count-test-support'
 import { disposeObject, isCacheHeld, type GpuResource } from './dispose-object'
 import {
   buildFurnitureModelGroup,
@@ -208,36 +209,26 @@ describe('parseFurnitureModel', () => {
     // cube.glb carries no texture, so the held texture case is not exercised by this fixture.
     const template = await parseFurnitureModel(new Uint8Array(readFileSync(CUBE_GLB)))
     const resources = gpuResourcesOf(template)
-    let freed = 0
-    for (const resource of resources) {
-      resource.addEventListener('dispose', () => {
-        freed += 1
-      })
-    }
+    const counts = countFrees(resources)
 
     disposeObject(template.clone(true))
 
     expect(resources.length).toBeGreaterThan(0)
     expect(resources.every((resource) => isCacheHeld(resource))).toBe(true)
-    expect(freed).toBe(0)
+    expect(totalFrees(counts)).toBe(0)
   })
 
   it('holds the line and point resources of a parsed model, so disposing a clone frees none of them', async () => {
     const template = await parseFurnitureModel(lineAndPointBytes())
     const resources = gpuResourcesOf(template)
-    let freed = 0
-    for (const resource of resources) {
-      resource.addEventListener('dispose', () => {
-        freed += 1
-      })
-    }
+    const counts = countFrees(resources)
 
     disposeObject(template.clone(true))
 
     expect(template.getObjectByProperty('isLine', true)).toBeDefined()
     expect(template.getObjectByProperty('isPoints', true)).toBeDefined()
     expect(resources.every((resource) => isCacheHeld(resource))).toBe(true)
-    expect(freed).toBe(0)
+    expect(totalFrees(counts)).toBe(0)
   })
 
   it('rejects when given bytes that are not a valid GLB', async () => {
