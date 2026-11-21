@@ -7,7 +7,7 @@ import {
   SILL_HEIGHT_MM,
   buildOpeningOfWidth,
   renderInspector,
-} from './opening-inspector-test-helpers'
+} from './opening-inspector-test-support'
 
 // A width with a 1/4" remainder, so a chip that sets the fraction to 1/2" is
 // distinguishable from a chip that merely adds 1/2" to whatever is already there.

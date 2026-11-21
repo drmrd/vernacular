@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { screen, cleanup } from '@testing-library/react'
 import { createOpening } from '../../core'
-import { HEIGHT_MM, OPENING_ID, WIDTH_MM, renderInspector } from './opening-inspector-test-helpers'
+import { HEIGHT_MM, OPENING_ID, WIDTH_MM, renderInspector } from './opening-inspector-test-support'
 
 const HUNG_WINDOW_SILL_MM = 900
 

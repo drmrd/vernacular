@@ -25,7 +25,7 @@ import {
   UNITS,
   buildOpeningOfWidth,
   renderInspector,
-} from './opening-inspector-test-helpers'
+} from './opening-inspector-test-support'
 
 // The metric entry unit defaults to metres and the value is shown bare, so an
 // 813 mm width reads as "0.813".
