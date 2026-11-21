@@ -1,15 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import {
-  FLOOR_NODE_PREFIX,
-  createEmptyProject,
-  createFloor,
-  createSceneGraphDeriver,
-  sceneGraphForFloor,
-} from '../../core'
-import type { Floor, Project, RoomSceneNode, SceneGraph, SceneNode } from '../../core'
-import { isGroundPlane } from '../../engine'
+import { createFloor, createSceneGraphDeriver, sceneGraphForFloor } from '../../core'
+import type { Floor } from '../../core'
 import { findByEntityId } from '../../engine/testing'
-import type { Object3D } from '../../engine/testing'
 import {
   expectEachDisposedOnce,
   expectEveryGeometryDisposedOnce,
@@ -21,42 +13,24 @@ import {
 } from './dispose-tracking-test-support'
 import { RIGHT_MM, partitionedWalls, widenedWalls } from './partitioned-floor-test-support'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import {
+  FLOOR_ID,
+  FLOOR_NODE_ID,
+  UPPER_FLOOR_ID,
+  graphOf,
+  groundNode,
+  groundOf,
+  projectWith,
+  rightmostRoom,
+  upperNode,
+} from './framed-scene-reconciler-dispose-test-support'
 import type { FramedScene } from './framed-scene'
 
 // These tests count real 'dispose' events on the geometries and materials of real built scenes.
 // The reconciler must queue every tree, ground plane, and provider it drops, and free them only
 // when releaseRetired() runs (after commit), never while a live scene still draws with them.
 
-const FLOOR_ID = 'g'
-const FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${FLOOR_ID}`
-const UPPER_ELEVATION_MM = 3000
-const WALL_LENGTH_MM = 2000
-const WALL_THICKNESS_MM = 120
-const WALL_HEIGHT_MM = 2400
-
 const emptyPaint = (): Record<string, never> => ({})
-
-function projectWith(floor: Floor): Project {
-  const base = createEmptyProject({
-    name: 'Dispose',
-    units: 'metric',
-    period: 'period',
-    appVersion: '0',
-  })
-  return { ...base, floors: [floor] }
-}
-
-function maxX(room: RoomSceneNode): number {
-  return Math.max(...room.polygon.map((point) => point.x))
-}
-
-function groundOf(framed: FramedScene): Object3D {
-  const ground = framed.root.children.find(isGroundPlane)
-  if (ground === undefined) {
-    throw new Error('expected the framed scene to seat a ground plane')
-  }
-  return ground
-}
 
 interface RoomEdit {
   reconciler: ReturnType<typeof createFramedSceneReconciler>
@@ -76,12 +50,11 @@ function editOneRoom(): RoomEdit {
   const floor = createFloor('Ground', { id: FLOOR_ID, walls })
   const firstGraph = sceneGraphForFloor(derive(projectWith(floor)), FLOOR_ID)
   const first = reconciler.reconcile(firstGraph, paint)
-  const [roomA, roomB] = firstGraph.rooms
-  if (roomA === undefined || roomB === undefined) {
+  const moved = rightmostRoom(firstGraph)
+  const kept = firstGraph.rooms.find((room) => room !== moved)
+  if (kept === undefined) {
     throw new Error('expected the partitioned floor to derive two rooms')
   }
-  const moved = maxX(roomA) >= maxX(roomB) ? roomA : roomB
-  const kept = moved === roomA ? roomB : roomA
   const movedFirstGroup = findByEntityId(first.root, moved.id)
   const keptFirstGroup = findByEntityId(first.root, kept.id)
   if (movedFirstGroup === null || keptFirstGroup === null) {
@@ -148,45 +121,6 @@ describe('createFramedSceneReconciler retirement of replaced builds', () => {
   })
 })
 
-const groundNode = (): SceneNode => ({
-  id: FLOOR_NODE_ID,
-  kind: 'floor',
-  name: 'Ground',
-  elevation: 0,
-})
-
-const upperNode = (): SceneNode => ({
-  id: `${FLOOR_NODE_PREFIX}u`,
-  kind: 'floor',
-  name: 'Upper',
-  elevation: UPPER_ELEVATION_MM,
-})
-
-function floorWall(floorId: string): SceneGraph['walls'][number] {
-  return {
-    id: `wall:${floorId}1`,
-    kind: 'wall',
-    floorId,
-    start: { x: 0, y: 0 },
-    end: { x: WALL_LENGTH_MM, y: 0 },
-    thickness: WALL_THICKNESS_MM,
-    height: WALL_HEIGHT_MM,
-  }
-}
-
-function graphOf(nodes: SceneNode[], floorIds: string[]): SceneGraph {
-  return {
-    nodes,
-    walls: floorIds.map(floorWall),
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
-}
-
 describe('createFramedSceneReconciler retirement of replaced scenes', () => {
   it('retires an evicted scene ground plane but not the floors another scene now holds', () => {
     const reconciler = createFramedSceneReconciler()
@@ -198,7 +132,10 @@ describe('createFramedSceneReconciler retirement of replaced scenes', () => {
     const activeGround = trackResources(groundOf(active))
 
     // The whole-building scene reuses the ground floor's build, which evicts the active scene.
-    const whole = reconciler.reconcile(graphOf([ground, upperNode()], [FLOOR_ID, 'u']), paint)
+    const whole = reconciler.reconcile(
+      graphOf([ground, upperNode()], [FLOOR_ID, UPPER_FLOOR_ID]),
+      paint,
+    )
     const wholeGround = trackResources(groundOf(whole))
     // The ground floor's sub-groups moved into the whole-building scene's floor group.
     const wholeFloor = trackResources(findByEntityId(whole.root, FLOOR_NODE_ID))

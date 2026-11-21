@@ -3,14 +3,12 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import {
-  FLOOR_NODE_PREFIX,
-  createEmptyProject,
   createFloor,
   createFurnitureInstance,
   createSceneGraphDeriver,
   sceneGraphForFloor,
 } from '../../core'
-import type { Floor, Project } from '../../core'
+import type { Floor } from '../../core'
 import { isGroundPlane, parseFurnitureModel } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import type { Object3D } from '../../engine/testing'
@@ -25,14 +23,18 @@ import {
 import type { FurnitureModelLookup } from './floor-build'
 import { RIGHT_MM, WIDENED_RIGHT_MM, partitionedWalls } from './partitioned-floor-test-support'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import {
+  FLOOR_ID,
+  FLOOR_NODE_ID,
+  UPPER_FLOOR_ID,
+  projectWith,
+} from './framed-scene-reconciler-dispose-test-support'
 
 // dispose() ends a reconciler's life: it must free every geometry and material the reconciler
 // still holds (cached scenes, builds, ground planes, and the retired queue) exactly once, and
 // leave alone what a long-lived owner holds, here a parsed model template shared by clones.
 
 const CUBE_GLB = resolve(dirname(fileURLToPath(import.meta.url)), '../../e2e/fixtures/cube.glb')
-const FLOOR_ID = 'g'
-const FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${FLOOR_ID}`
 const UPPER_ELEVATION_MM = 3000
 const CHAIR_HASH = 'c'
 const CHAIR_SIZE_MM = 500
@@ -58,20 +60,10 @@ function groundFloor(rightX: number): Floor {
 
 function upperFloor(): Floor {
   return createFloor('Upper', {
-    id: 'u',
+    id: UPPER_FLOOR_ID,
     elevation: UPPER_ELEVATION_MM,
-    walls: partitionedWalls(RIGHT_MM, 'u-'),
+    walls: partitionedWalls(RIGHT_MM, `${UPPER_FLOOR_ID}-`),
   })
-}
-
-function projectOf(ground: Floor): Project {
-  const base = createEmptyProject({
-    name: 'Dispose all',
-    units: 'metric',
-    period: 'period',
-    appVersion: '0',
-  })
-  return { ...base, floors: [ground, upperFloor()] }
 }
 
 function groupOf(root: Object3D, entityId: string): Object3D {
@@ -96,10 +88,14 @@ describe('createFramedSceneReconciler dispose', () => {
 
     // A whole-building scene, then a single-floor scene that evicts it, then a room edit whose
     // replaced build waits in the retired queue: dispose runs before any releaseRetired.
-    const whole = reconciler.reconcile(derive(projectOf(groundFloor(RIGHT_MM))), paint, models)
+    const whole = reconciler.reconcile(
+      derive(projectWith(groundFloor(RIGHT_MM), upperFloor())),
+      paint,
+      models,
+    )
     trackers.push(trackResources(whole.root))
     const graphOf = (floor: Floor): ReturnType<typeof sceneGraphForFloor> =>
-      sceneGraphForFloor(derive(projectOf(floor)), FLOOR_ID)
+      sceneGraphForFloor(derive(projectWith(floor, upperFloor())), FLOOR_ID)
     const single = reconciler.reconcile(graphOf(groundFloor(RIGHT_MM)), paint, models)
     trackers.push(trackResources(single.root))
     const retiredFloor = trackResources(groupOf(single.root, FLOOR_NODE_ID))

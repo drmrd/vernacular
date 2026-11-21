@@ -1,22 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
-  FLOOR_NODE_PREFIX,
   WALL_NODE_PREFIX,
-  createEmptyProject,
   createFloor,
   createFurnitureInstance,
   createSceneGraphDeriver,
   sceneGraphForFloor,
 } from '../../core'
-import type {
-  Floor,
-  FurnitureInstance,
-  Project,
-  RoomSceneNode,
-  SceneGraph,
-  SceneNode,
-} from '../../core'
-import { isGroundPlane } from '../../engine'
+import type { Floor, FurnitureInstance, Project, SceneGraph } from '../../core'
 import { findByEntityId } from '../../engine/testing'
 import type { Object3D } from '../../engine/testing'
 import {
@@ -33,20 +23,24 @@ import {
   widenedWalls,
 } from './partitioned-floor-test-support'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import {
+  FLOOR_ID,
+  FLOOR_NODE_ID,
+  UPPER_FLOOR_ID,
+  UPPER_FLOOR_NODE_ID,
+  graphOf,
+  groundNode,
+  groundOf,
+  projectWith,
+  rightmostRoom,
+  upperNode,
+} from './framed-scene-reconciler-dispose-test-support'
 import type { FramedScene } from './framed-scene'
 
 // Guards on the other side of the retirement rules: which resources releaseRetired() must leave
 // alone, and which dropped scenes it must free exactly once. Like the sibling suite, these count
 // real 'dispose' events on real built scenes.
 
-const FLOOR_ID = 'g'
-const FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${FLOOR_ID}`
-const UPPER_FLOOR_ID = 'u'
-const UPPER_FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${UPPER_FLOOR_ID}`
-const UPPER_ELEVATION_MM = 3000
-const WALL_LENGTH_MM = 2000
-const WALL_THICKNESS_MM = 120
-const WALL_HEIGHT_MM = 2400
 const CHAIR_ID = 'chair-moved'
 const CHAIR_SIZE_MM = 500
 const CHAIR_HEIGHT_MM = 900
@@ -66,20 +60,6 @@ function chairAt(x: number): FurnitureInstance {
   })
 }
 
-function projectWith(floor: Floor): Project {
-  const base = createEmptyProject({
-    name: 'Dispose guards',
-    units: 'metric',
-    period: 'period',
-    appVersion: '0',
-  })
-  return { ...base, floors: [floor] }
-}
-
-function activeFloorGraph(derive: (project: Project) => SceneGraph, floor: Floor): SceneGraph {
-  return sceneGraphForFloor(derive(projectWith(floor)), FLOOR_ID)
-}
-
 function groupOf(framed: FramedScene, entityId: string): Object3D {
   const group = findByEntityId(framed.root, entityId)
   if (group === null) {
@@ -88,12 +68,8 @@ function groupOf(framed: FramedScene, entityId: string): Object3D {
   return group
 }
 
-function groundOf(framed: FramedScene): Object3D {
-  const ground = framed.root.children.find(isGroundPlane)
-  if (ground === undefined) {
-    throw new Error('expected the framed scene to seat a ground plane')
-  }
-  return ground
+function activeFloorGraph(derive: (project: Project) => SceneGraph, floor: Floor): SceneGraph {
+  return sceneGraphForFloor(derive(projectWith(floor)), FLOOR_ID)
 }
 
 describe('createFramedSceneReconciler releases only what a scene change dropped', () => {
@@ -134,45 +110,6 @@ describe('createFramedSceneReconciler releases only what a scene change dropped'
     expectNoneDisposed(secondFloor)
   })
 })
-
-const groundNode = (): SceneNode => ({
-  id: FLOOR_NODE_ID,
-  kind: 'floor',
-  name: 'Ground',
-  elevation: 0,
-})
-
-const upperNode = (): SceneNode => ({
-  id: UPPER_FLOOR_NODE_ID,
-  kind: 'floor',
-  name: 'Upper',
-  elevation: UPPER_ELEVATION_MM,
-})
-
-function floorWall(floorId: string): SceneGraph['walls'][number] {
-  return {
-    id: `wall:${floorId}1`,
-    kind: 'wall',
-    floorId,
-    start: { x: 0, y: 0 },
-    end: { x: WALL_LENGTH_MM, y: 0 },
-    thickness: WALL_THICKNESS_MM,
-    height: WALL_HEIGHT_MM,
-  }
-}
-
-function graphOf(nodes: SceneNode[], floorIds: string[]): SceneGraph {
-  return {
-    nodes,
-    walls: floorIds.map(floorWall),
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
-}
 
 describe('createFramedSceneReconciler frees a dropped scene ground plane and empty scene', () => {
   it('frees only the whole-building ground plane when one floor replaces the whole building', () => {
@@ -238,15 +175,6 @@ describe('createFramedSceneReconciler frees a dropped scene ground plane and emp
     expectNoneDisposed(floorTree)
   })
 })
-
-function rightmostRoom(graph: SceneGraph): RoomSceneNode {
-  const [first, ...rest] = graph.rooms
-  if (first === undefined) {
-    throw new Error('expected the partitioned floor to derive rooms')
-  }
-  const maxX = (room: RoomSceneNode): number => Math.max(...room.polygon.map((point) => point.x))
-  return rest.reduce((best, room) => (maxX(room) > maxX(best) ? room : best), first)
-}
 
 describe('createFramedSceneReconciler releases only for the scene the latest reconcile returned', () => {
   it('frees nothing for the scene from before an edit and frees the old room once for the edit scene', () => {
