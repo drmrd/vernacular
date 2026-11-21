@@ -30,8 +30,8 @@ const GROUND_TIE_TOLERANCE_MM = 1
 
 /**
  * The hit that decides the pick among the hits that are not faded, nearest first. The
- * ground decides only when no other hit lies at or before its distance (within the tie
- * tolerance), so a floor slab coplanar with the lawn wins.
+ * ground decides unless the next hit lies within GROUND_TIE_TOLERANCE_MM behind it, so a
+ * floor slab coplanar with the lawn wins.
  */
 function decidingHit(hits: THREE.Intersection[]): THREE.Intersection | undefined {
   const [nearest, next] = hits
