@@ -117,7 +117,6 @@ test("keeps the walker's view and reach when the upper floor becomes active mid-
   await guardLiveSceneSupport(page, 'the walk-follows-the-active-floor journey')
 
   // Both floors hold the same room and the same door.
-  await page.getByRole('button', { name: 'Split view' }).click()
   await drawRoomWithDoor(page)
   await selectors.addFloorButton(page).click()
   await floorButton(page, UPPER_FLOOR).click()
@@ -125,6 +124,7 @@ test("keeps the walker's view and reach when the upper floor becomes active mid-
 
   // The ground floor is active again, with no tool and no selection, and the live view settled.
   await floorButton(page, GROUND_FLOOR).click()
+  await page.getByRole('button', { name: 'Split view' }).click()
   await page.getByRole('radio', { name: 'Select', exact: true }).click()
   await page.keyboard.press('Escape')
   const canvas = liveCanvas(page)
@@ -176,10 +176,10 @@ test('opens the door of the upper floor with the open key on a walk that starts 
   await guardLiveSceneSupport(page, 'the walk-follows-the-active-floor journey')
 
   // Only the upper floor holds a room with a door, and it is the active floor when the walk starts.
-  await page.getByRole('button', { name: 'Split view' }).click()
   await selectors.addFloorButton(page).click()
   await floorButton(page, UPPER_FLOOR).click()
   await drawRoomWithDoor(page)
+  await page.getByRole('button', { name: 'Split view' }).click()
   await page.getByRole('radio', { name: 'Select', exact: true }).click()
   await page.keyboard.press('Escape')
   const canvas = liveCanvas(page)
@@ -204,10 +204,10 @@ test('draws a basement that the whole-building view hides while the walker stand
   await guardLiveSceneSupport(page, 'the walk-follows-the-active-floor journey')
 
   // The room and its door are on the basement, which is the active floor.
-  await page.getByRole('button', { name: 'Split view' }).click()
   await page.getByRole('button', { name: 'Add basement' }).click()
   await floorButton(page, BASEMENT_FLOOR).click()
   await drawRoomWithDoor(page)
+  await page.getByRole('button', { name: 'Split view' }).click()
   await page.getByRole('radio', { name: 'Select', exact: true }).click()
   await page.keyboard.press('Escape')
 

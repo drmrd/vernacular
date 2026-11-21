@@ -5,15 +5,12 @@ import { gotoEditor, drawWall, expectWallCount, selectors } from './journeys/sup
 // to travel toward the wall's far end. Fractions of the canvas box, no raw pixels.
 const WALL_START = { x: 0.25, y: 0.35 }
 const WALL_END = { x: 0.7, y: 0.35 }
-const WALL_SPAN_FRACTION = WALL_END.x - WALL_START.x
 
 // The plan never auto-fits (fit is bound to the 'f' key only), so a freshly drawn
 // wall keeps the editor's default scale. These mirror the app's stable defaults
-// (editor/plan/viewport DEFAULT_PLAN_SCALE, plan-scene PLAN_WIDTH, and core
-// DEFAULT_OPENING_WIDTH_MM) so the spec can place the jamb handle deterministically
+// (editor/plan/viewport DEFAULT_PLAN_SCALE and core DEFAULT_OPENING_WIDTH_MM) so the spec can place the jamb handle deterministically
 // without reading internal geometry.
 const PLAN_BACKING_PX_PER_MM = 0.08
-const PLAN_BACKING_WIDTH_PX = 800
 const DEFAULT_OPENING_WIDTH_MM = 813
 
 // A deliberate rightward drag of the end jamb, as a fraction of the canvas width. The
@@ -61,11 +58,8 @@ test.describe('Opening resize handles', () => {
     const labelBefore = await openingProxy(page).getAttribute('aria-label')
 
     // Convert the opening's half-width from millimeters to client pixels along the wall.
-    // The wall world length follows from the fixed scale; the wall's client span gives
-    // the world-to-client ratio, which stays correct even if the canvas is stretched.
-    const wallWorldMm = (WALL_SPAN_FRACTION * PLAN_BACKING_WIDTH_PX) / PLAN_BACKING_PX_PER_MM
-    const worldToClientPx = (box.width * WALL_SPAN_FRACTION) / wallWorldMm
-    const jambOffsetX = (DEFAULT_OPENING_WIDTH_MM / 2) * worldToClientPx
+    // The backing store is CSS pixels one to one, so the scale is the client ratio directly.
+    const jambOffsetX = (DEFAULT_OPENING_WIDTH_MM / 2) * PLAN_BACKING_PX_PER_MM
     // The end jamb sits at the right edge of the footprint on the wall centerline.
     const endJamb = { x: center.x + jambOffsetX, y: center.y }
 

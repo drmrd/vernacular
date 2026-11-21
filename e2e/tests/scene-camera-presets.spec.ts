@@ -83,13 +83,13 @@ async function openEditor(page: Page): Promise<void> {
   await webFontsSettled(page)
 }
 
-// Opens the app on the plan with the 3D view beside it, and skips the test where the live pane
-// has no WebGPU to render with.
+// Opens the app on the plan view, where the plan stage has the whole viewport to draw on, and
+// skips the test where the live pane has no WebGPU to render with. The plan stage takes the size
+// of its pane, so the cases draw here and not in the narrow plan pane of the split view.
 async function startOnPlan(page: Page): Promise<void> {
   await openEditor(page)
   const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
   test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
-  await page.getByRole('button', { name: 'Split view' }).click()
 }
 
 // Shows every floor in the live view.
@@ -185,7 +185,6 @@ async function doorwayFramesOfTwoFloors(
   page: Page,
   other: { addButton: string; name: string },
 ): Promise<{ ground: Buffer; other: Buffer }> {
-  await page.getByRole('button', { name: 'Split view' }).click()
   await drawRoomWithDoor(page)
   await page.getByRole('button', { name: other.addButton, exact: true }).click()
   await showFloor(page, other.name)
@@ -304,7 +303,7 @@ test.describe('Live three-dimensional camera presets', () => {
     let canvas = await settledSceneCanvas(page)
     await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
     const alone = await doorwayFrame(page, canvas)
-    await page.getByRole('button', { name: 'Split view' }).click()
+    await page.getByRole('button', { name: 'Plan view' }).click()
     await drawWalls(page, OUTBUILDING, 2)
     await leaveTools(page)
     canvas = await settledSceneCanvas(page)
