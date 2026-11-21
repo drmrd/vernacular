@@ -38,9 +38,9 @@ export async function requestFor(ports: SessionPorts, id: string): Promise<OpenR
 }
 
 /**
- * Where the project of the id is kept: its request. For a folder, when the browser
- * would ask the user, the access is requested here, inside the user's gesture; its answer is left
- * to the open. Rejects when that request rejects.
+ * Where the project of the id is kept: its request. For a folder, when the browser would ask the
+ * user, the access is requested here, inside the user's gesture; its answer is left to the open.
+ * Rejects when that request rejects.
  */
 async function recentTarget(ports: SessionPorts, id: string): Promise<OpenRequest> {
   const request = await requestFor(ports, id)

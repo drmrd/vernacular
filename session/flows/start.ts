@@ -13,8 +13,8 @@ export function newProjectRequest(create: () => Project): OpenRequest {
 }
 
 /**
- * The request that the bare address opens: the project used last, or a new project under a new
- * id when the index holds no record. The promise never rejects.
+ * The request of the start: the project used last, or a new project under a new id when the
+ * index holds no record. The promise never rejects.
  */
 export async function startProject(
   ports: SessionPorts,

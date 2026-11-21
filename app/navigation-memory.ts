@@ -111,7 +111,7 @@ export function samePlace(first: Place, second: Place): boolean {
   return addressFor(first) === addressFor(second) && first.kind === second.kind
 }
 
-/** Gives the place of the address now, and replaces a fragment that is not exact by the exact one. */
+/** The place of the address now; replaces an inexact fragment by the exact one. */
 export function replaceInexactAddress(address: AddressBar): Place {
   const hash = address.hash()
   const place = parseAddress(hash)
