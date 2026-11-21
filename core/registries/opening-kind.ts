@@ -4,13 +4,12 @@ import { getEntry } from './registry'
 /** Whether an opening reads as a door or a window. */
 export type OpeningKind = 'door' | 'window'
 
-const doorFamilies: ReadonlySet<OpeningFamily> = new Set([
-  'swing',
-  'slide',
-  'fold',
-  'pivot',
-  'cased',
-])
+const DOOR_FAMILIES = ['swing', 'slide', 'fold', 'pivot', 'cased'] as const
+
+/** The family of a door opening: how its leaf moves, or a cased hole with none. */
+export type DoorFamily = (typeof DOOR_FAMILIES)[number]
+
+const doorFamilies: ReadonlySet<OpeningFamily> = new Set<OpeningFamily>(DOOR_FAMILIES)
 
 /**
  * Classifies a built-in element type as a door or window opening. Returns `undefined`
@@ -23,9 +22,6 @@ export function openingKindOfType(typeId: string): OpeningKind | undefined {
   }
   return doorFamilies.has(family) ? 'door' : 'window'
 }
-
-/** The family of a door opening: how its leaf moves, or a cased hole with none. */
-export type DoorFamily = Extract<OpeningFamily, 'swing' | 'slide' | 'fold' | 'pivot' | 'cased'>
 
 function isDoorFamily(family: OpeningFamily): family is DoorFamily {
   return doorFamilies.has(family)
