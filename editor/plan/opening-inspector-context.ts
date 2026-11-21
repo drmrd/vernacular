@@ -1,10 +1,4 @@
-import {
-  openingRoomSide,
-  OPENING_NODE_PREFIX,
-  type Opening,
-  type Project,
-  type SceneGraph,
-} from '../../core'
+import { OPENING_NODE_PREFIX, type Opening, type Project, type SceneGraph } from '../../core'
 
 /**
  * Whether the wall under the opening with this raw id has a room along only one side at the
@@ -14,7 +8,7 @@ export function openingWallHasOneRoomSide(graph: SceneGraph, openingId: string):
   const node = graph.openings.find(
     (candidate) => candidate.id === `${OPENING_NODE_PREFIX}${openingId}`,
   )
-  return node !== undefined && openingRoomSide(node, graph.rooms) !== undefined
+  return node?.roomSide !== undefined
 }
 
 // The openings on the given floor, or an empty list when the floor is gone; handed to
