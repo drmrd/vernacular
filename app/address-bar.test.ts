@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { START_ADDRESS } from './address'
 import { createBrowserAddressBar, createMemoryAddressBar } from './address-bar'
 
 const PROJECTS = '#/projects'
@@ -180,6 +181,45 @@ describe('the address bar of the window', () => {
 
     expect(where()).toBe(`${PLAN_PATH}?fixture=scene-harness`)
     expect(createBrowserAddressBar(window).hash()).toBe('')
+  })
+
+  describe('on a page whose path starts with two slashes', () => {
+    const SLASHED_PATH = '//app/'
+    const QUERY = '?x=1'
+
+    const openSlashedPage = (suffix: string): void => {
+      window.history.replaceState(null, '', `${window.location.origin}${SLASHED_PATH}${suffix}`)
+    }
+
+    it('keeps the path and the query when it replaces the fragment', () => {
+      openSlashedPage(`${QUERY}${PROJECTS}`)
+
+      expect(() => createBrowserAddressBar(window).replace(KITCHEN)).not.toThrow()
+
+      expect(window.location.pathname).toBe(SLASHED_PATH)
+      expect(window.location.search).toBe(QUERY)
+      expect(window.location.hash).toBe(KITCHEN)
+    })
+
+    it('keeps the path and the query when it pushes a fragment', () => {
+      openSlashedPage(QUERY)
+
+      expect(() => createBrowserAddressBar(window).push(CELLAR)).not.toThrow()
+
+      expect(window.location.pathname).toBe(SLASHED_PATH)
+      expect(window.location.search).toBe(QUERY)
+      expect(window.location.hash).toBe(CELLAR)
+    })
+
+    it('keeps the path and the query and leaves no fragment for the start address', () => {
+      openSlashedPage(`${QUERY}${KITCHEN}`)
+
+      expect(() => createBrowserAddressBar(window).replace(START_ADDRESS)).not.toThrow()
+
+      expect(window.location.pathname).toBe(SLASHED_PATH)
+      expect(window.location.search).toBe(QUERY)
+      expect(window.location.hash).toBe('')
+    })
   })
 
   it('adds no entry at a replace and one entry at a push', () => {
