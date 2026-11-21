@@ -133,6 +133,26 @@ export function formatFaultsOf(document: unknown): readonly FormatFault[] {
   return result.failure.faults
 }
 
+/**
+ * The document that the codec hands over when it refuses `document` for its format faults: the
+ * migrated document, as the open path gives it to a repair. Throws when the decode does not fail
+ * that way, or when no migration ran.
+ */
+export function migratedDocumentOf(document: unknown): unknown {
+  const result = decodeDocument(bytesOf(document))
+  if (result.ok || result.failure.kind !== 'format-rules') {
+    throw new Error('Expected the decode to fail for its format faults')
+  }
+  if (result.failure.migratedFrom === undefined) throw new Error('Expected a migration to run')
+  return result.failure.document
+}
+
+/** The document, without the walls of its first floor, a field that the format requires. */
+export function withoutRequiredField(document: Json = soundDocument()): Json {
+  delete firstFloorOf(document).walls
+  return document
+}
+
 /** The room overrides of the document, keyed as the document keys them. */
 export function roomOverridesOf(document: Json): Record<string, Json> {
   return document.roomOverrides as Record<string, Json>

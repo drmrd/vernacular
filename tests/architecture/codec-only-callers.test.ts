@@ -22,10 +22,15 @@ const CODEC_DIRECTORIES: readonly string[] = ['core/format/', 'core/migrations/'
 // A re-export calls nothing, and a production file that uses a name must still name it, so the rule catches the user.
 const CODEC_BARREL = 'core/index.ts'
 
+// The repair offer checks a repaired document against the current schema, so the files of `core/repairs/` may name that one function and no other.
+const REPAIRS_DIRECTORY = 'core/repairs/'
+const NAMED_BY_THE_REPAIRS = 'checkCurrentSchema'
+
 const NON_PRODUCTION_PATTERN = /\.(test|spec|stories)\.tsx?$|\.d\.ts$|(^|\/)__tests__\//
 
-function isProductionOutsideTheCodec(path: string): boolean {
+function isProductionOutsideTheCodec(path: string, identifier: string): boolean {
   if (NON_PRODUCTION_PATTERN.test(path) || path === CODEC_BARREL) return false
+  if (path.startsWith(REPAIRS_DIRECTORY) && identifier === NAMED_BY_THE_REPAIRS) return false
   return !CODEC_DIRECTORIES.some((directory) => path.startsWith(directory))
 }
 
@@ -39,7 +44,7 @@ function findNamingsOutsideTheCodec(
 ): string[] {
   const wholeWord = new RegExp(`\\b${identifier}\\b`)
   return [...sources]
-    .filter(([path]) => isProductionOutsideTheCodec(path))
+    .filter(([path]) => isProductionOutsideTheCodec(path, identifier))
     .flatMap(([path, text]) =>
       text
         .split('\n')
@@ -95,6 +100,25 @@ describe('the codec-only rule scan', () => {
     expect(reportedFor('storage/sample.test.ts')).toEqual([])
     expect(reportedFor('editor/sample.stories.tsx')).toEqual([])
     expect(reportedFor('storage/sample.d.ts')).toEqual([])
+  })
+})
+
+describe('the files of core/repairs', () => {
+  it('a file under core/repairs may name checkCurrentSchema', () => {
+    const sources = plantedSource(
+      'core/repairs/find-repair-offer.ts',
+      'export const faults = checkCurrentSchema(document, mode)\n',
+    )
+
+    expect(findNamingsOutsideTheCodec(sources, 'checkCurrentSchema')).toEqual([])
+  })
+
+  it('a file under core/repairs that names another codec function is reported', () => {
+    const sources = plantedSource('core/repairs/find-repair-offer.ts', CALLING_SAMPLE)
+
+    expect(findNamingsOutsideTheCodec(sources, 'migrateProject')).toEqual([
+      'core/repairs/find-repair-offer.ts:1',
+    ])
   })
 })
 
