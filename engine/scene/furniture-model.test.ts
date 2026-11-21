@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
 import { furnitureFootprintCorners } from '../../core'
+import { disposeObject, isCacheHeld, type GpuResource } from './dispose-object'
 import {
   buildFurnitureModelGroup,
   hasUsableGeometry,
@@ -135,11 +136,46 @@ describe('hasUsableGeometry', () => {
   })
 })
 
+/** Every geometry, material, and texture the meshes of a model reach. */
+function gpuResourcesOf(model: THREE.Object3D): GpuResource[] {
+  const found = new Set<GpuResource>()
+  model.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return
+    found.add(object.geometry)
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    for (const material of materials) {
+      found.add(material)
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) found.add(value)
+      }
+    }
+  })
+  return [...found]
+}
+
 describe('parseFurnitureModel', () => {
   it('resolves to a THREE.Object3D when given a valid GLB', async () => {
     const bytes = new Uint8Array(readFileSync(CUBE_GLB))
     const model = await parseFurnitureModel(bytes)
     expect(model).toBeInstanceOf(THREE.Object3D)
+  })
+
+  it('holds the geometries and materials of a parsed model, so disposing a clone frees none of them', async () => {
+    // cube.glb carries no texture, so the held texture case is not exercised by this fixture.
+    const template = await parseFurnitureModel(new Uint8Array(readFileSync(CUBE_GLB)))
+    const resources = gpuResourcesOf(template)
+    let freed = 0
+    for (const resource of resources) {
+      resource.addEventListener('dispose', () => {
+        freed += 1
+      })
+    }
+
+    disposeObject(template.clone(true))
+
+    expect(resources.length).toBeGreaterThan(0)
+    expect(resources.every((resource) => isCacheHeld(resource))).toBe(true)
+    expect(freed).toBe(0)
   })
 
   it('rejects when given bytes that are not a valid GLB', async () => {
