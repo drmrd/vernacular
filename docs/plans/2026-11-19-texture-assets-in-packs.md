@@ -96,7 +96,9 @@ draws it in the live view and in the scene harness, and the calibrated daylight 
 - A reader refuses a pack of a format it does not know, as a whole.
 - The library shows no textures until finishes use them. `list()` stays the library listing.
 - Texture limits: PNG or WebP, sides a power of two from 64 to 2048, file at most 8 MiB.
-- The CC0-1.0 license of the generated grass is a rule for the starter pack only.
+- The CC0-1.0 license of the generated grass is a rule for the starter pack only. (Replaced on
+  2026-11-21: the grass carries CC-BY-4.0. ADR-0229 and
+  `docs/specs/2026-11-21-asset-pack-distribution.md` record that license decision.)
 
 ## Working assumptions
 
@@ -505,8 +507,8 @@ rebuild test of cycle 5 is the tripwire.
 **The build of starter pack 1.1.0.** `pnpm pack:starter` runs `build-starter-pack.mjs`. It writes
 the chair and its thumbnail from its own constants, generates the grass, writes the PNG, hashes
 every asset, and writes `manifest.json` (`JSON.stringify` with two spaces and a newline, keys in a
-fixed order), `LICENSE` (`CC0-1.0`), `NOTICE` (the attribution, the generator's path, and the
-command), and `CHANGELOG.md` (1.0.0, then 1.1.0: "Add a generated mown-grass texture."). The hash in
+fixed order), `LICENSE` (`CC0-1.0` for the chair, `CC-BY-4.0` for the grass), `NOTICE` (the
+attribution, the generator's path, and the command), and `CHANGELOG.md` (1.0.0, then 1.1.0: "Add a generated mown-grass texture."). The hash in
 the manifest comes from the bytes the build writes.
 
 **Screenshot baselines.** None move.
