@@ -11,6 +11,117 @@ Starting in Phase 0e, this file is maintained automatically by
 `release-please` from Conventional Commit messages. Until then, entries
 are added by hand and intentionally coarse-grained (one bullet per phase).
 
+## [0.3.6](https://github.com/drmrd/vernacular/compare/v0.3.5...v0.3.6) (2026-11-21)
+
+
+### Features
+
+* add a toolbar button that gives its unavailable reason to assistive technology ([f2b9c16](https://github.com/drmrd/vernacular/commit/f2b9c1660a1d6922fda27102742514be640cd40c))
+* model the project cards from the index and the lock state ([ef02bdf](https://github.com/drmrd/vernacular/commit/ef02bdfd50c7c84be8315c5ac901b03122bcc7a9))
+* open, return to, and retry projects from their cards ([9415759](https://github.com/drmrd/vernacular/commit/9415759b83d77f0e698e3044035fd16c0cd7fc32))
+* show a failed import or folder open in the notice of the Projects page ([57860a2](https://github.com/drmrd/vernacular/commit/57860a22842d15532773817d7f0ffad83f6115fd))
+* show the Projects page ([f7fcf3c](https://github.com/drmrd/vernacular/commit/f7fcf3c59833821e4bbbcd88f44b003f59cb206e))
+* show the Projects page with one card for each stored project ([1c08fa4](https://github.com/drmrd/vernacular/commit/1c08fa44da70e351c79f8508a73dff0ad3fd1b17))
+* start, import, and open folders from the Projects page ([3b24845](https://github.com/drmrd/vernacular/commit/3b2484528d8c997eb65d3d9d05d902891fdbba06))
+
+
+### Bug fixes
+
+* clear the keyboard authoring announcement on a pointer down ([06902d8](https://github.com/drmrd/vernacular/commit/06902d88ab4105643a1cbd421ff9f339645d43d2))
+* commit nothing in the plan text fields on a key of a text composition ([86b1e2e](https://github.com/drmrd/vernacular/commit/86b1e2ec3830f836f19083a27b01ba9f457124c3))
+* give close doors and windows its reason through the toolbar button ([1d057cc](https://github.com/drmrd/vernacular/commit/1d057ccfe97107cb7de52d866d22c2eb907e94b8))
+* give the disabled 3D toolbar controls their reason ([f27f6e0](https://github.com/drmrd/vernacular/commit/f27f6e03fa71485d76c65f001bdf96e489667b63))
+* give the disabled 3D toolbar controls their reason through the toolbar button ([474eed4](https://github.com/drmrd/vernacular/commit/474eed44c072e76f63dcb0544256b5f9272c513f))
+* keep a pointer wall run open when Enter lands on a focused button ([24c2140](https://github.com/drmrd/vernacular/commit/24c2140ef0468bcc420490b909dcf9510a16adab))
+* keep Enter for the tool only on the chip of the armed tool ([3790d76](https://github.com/drmrd/vernacular/commit/3790d76ca32239be86d92891d9ebcc0f40ed42b1))
+* keep the underlay flyout open on an escape of a text composition ([ba33fe7](https://github.com/drmrd/vernacular/commit/ba33fe79290d462759466aa9d37fc6eced7a0e60))
+* leave a key of a text composition to the input method in the plan text fields ([0923bff](https://github.com/drmrd/vernacular/commit/0923bffe5bb456449c201add4698b4197407b38d))
+* leave Enter to a focused button while an authoring tool is armed ([e6c67d8](https://github.com/drmrd/vernacular/commit/e6c67d8c6cc2cc5661345743eff6d0aedf78a311))
+* let a focused button own Enter while an authoring tool is armed ([cb043de](https://github.com/drmrd/vernacular/commit/cb043de6ec123a51865a953517bdd81760358b41))
+* make the Projects page fill the window so a drop anywhere imports ([b11c47f](https://github.com/drmrd/vernacular/commit/b11c47fe289a967c3818b807eea280a9423c19a0))
+* place a stair at the keyboard candidate under the stair tool ([816609e](https://github.com/drmrd/vernacular/commit/816609eef59f1fb9604a363ba08dcb9ab186755d))
+* place a stair with the keyboard ([cbaa2e2](https://github.com/drmrd/vernacular/commit/cbaa2e22a25a69096f3d52b235c032aa286ad3cc))
+* show the keyboard candidate under the stair tool ([8eb99eb](https://github.com/drmrd/vernacular/commit/8eb99eb736da6e22ef0baa3d315f2f72df93303c))
+* stop a recent folder project's open when the browser refuses the folder ([fff998e](https://github.com/drmrd/vernacular/commit/fff998e9ddf3b64022e29605238d87c94a358efe))
+
+
+### Refactoring
+
+* clear the page notice in one place for card tries and page actions ([14fb8ca](https://github.com/drmrd/vernacular/commit/14fb8caf638f762c68c3f625669b91428ca45aac))
+* give the did-not-open sentence one home and pass card props straight through ([1ca955f](https://github.com/drmrd/vernacular/commit/1ca955f062340da5edfa15bbedac616b84029d87))
+* move the wall run keyboard hook into its own file ([938e2dc](https://github.com/drmrd/vernacular/commit/938e2dc70a9cc20774d52b0846f18a2480bf9911))
+* name the lock facts of a card by what they mean ([147a57a](https://github.com/drmrd/vernacular/commit/147a57a9379b858604f8f5c3e7a187b566a658f3))
+* name the notice under no card and tidy names and comments of the Projects page ([8e0141f](https://github.com/drmrd/vernacular/commit/8e0141f91a36a36e108629e6daf46bf01af59933))
+* name the stair branch in the comments on the placement values ([c29ffe1](https://github.com/drmrd/vernacular/commit/c29ffe16bca5812fbfe0671d250b34376eaa03aa))
+* name the toolbar reason constants as reasons ([df55c5e](https://github.com/drmrd/vernacular/commit/df55c5e7e94c922c0ad389ef73d2eca43e04ea19))
+* no change after the review of the armed tool chip check ([c5eaab7](https://github.com/drmrd/vernacular/commit/c5eaab75627c3ce4968ea33ae2b0161071c0d320))
+* no change after the review of the close doors toolbar button ([1c4faa5](https://github.com/drmrd/vernacular/commit/1c4faa5f5cc1365e99a80ace0f3ab35dab611e1a))
+* no change after the review of the focused button Enter guard ([639797b](https://github.com/drmrd/vernacular/commit/639797bd5ee10421e67232c0504014b8c3304dd1))
+* no change after the review of the plan text field composition check ([bfa6121](https://github.com/drmrd/vernacular/commit/bfa6121cff7fd66b1c5e050c527dd3e3031c060c))
+* no change after the review of the pointer down announcement clear ([2ecab4d](https://github.com/drmrd/vernacular/commit/2ecab4dbe243f214997c7694b2c17838588d0cad))
+* no change after the review of the Projects page window height ([097a4fa](https://github.com/drmrd/vernacular/commit/097a4fa6428d4108b6dc08c989c09c30a6fa85ce))
+* no change after the review of the stair candidate marker ([8957dcb](https://github.com/drmrd/vernacular/commit/8957dcbd6ec989403118a9951efb982226b64dac))
+* no change after the review of the underlay flyout composition check ([e133e53](https://github.com/drmrd/vernacular/commit/e133e530910d677299ea36356f8a51f6ef3678ef))
+* pass the folder flow as it is and keep one drop handler between renders ([4747b57](https://github.com/drmrd/vernacular/commit/4747b57d838a7ee9f03948be38e0a9d33601ecc8))
+* remove the design language re-export from the app module ([591494a](https://github.com/drmrd/vernacular/commit/591494afd653911a7510349ae6b74dd2040f3702))
+* say that a pointer down also clears the keyboard announcement ([38afb7c](https://github.com/drmrd/vernacular/commit/38afb7ce6a63a8ca0a1728ad1ab9f1470bc218ef))
+* share the address seams and name the failure view, the page step, and the replaced failure ([f584eca](https://github.com/drmrd/vernacular/commit/f584eca5c91e435fa4debe5cfb73dd03d3777807))
+* share the answer of a refused folder request between the open and the recent flow ([0026a5f](https://github.com/drmrd/vernacular/commit/0026a5f81ff2e707bf0c8c16bacc55701b9f1fe8))
+* simplify the unavailable check of the toolbar button ([118005c](https://github.com/drmrd/vernacular/commit/118005c5c8f6769be4aa06e6706bdf7becd647f1))
+* use one condition for the composition check in the plan text fields ([5aed8ff](https://github.com/drmrd/vernacular/commit/5aed8ffa0d1d274f43a367a0a12c6ef359d691d0))
+
+
+### Documentation
+
+* bring the Projects page records and guides up to date ([b1844ca](https://github.com/drmrd/vernacular/commit/b1844cacd1b4337706968fd971077e7a3b0349be))
+* correct the toolbar reason record and close its note in the panel record ([747d725](https://github.com/drmrd/vernacular/commit/747d725d6a416a3636f17e8c483d754c25a5b3ce))
+* describe what a second tab shows ([c75b37e](https://github.com/drmrd/vernacular/commit/c75b37e715fe4544fe29b31f296f04236162cc21))
+* list the files and the form submit gap of the composition update ([a14e843](https://github.com/drmrd/vernacular/commit/a14e843231794d58efb9131bc90c2706f9d8e71a))
+* name the opening tool in the pointer down announcement note ([466dfe5](https://github.com/drmrd/vernacular/commit/466dfe5b566c551fb0e1485668164be2d9cb4c75))
+* record that a focused button keeps a pointer wall run open on Enter ([a19c5e3](https://github.com/drmrd/vernacular/commit/a19c5e3d9ed5aa7ec7d56ead318f47335aba3679))
+* record that a focused button owns enter while an authoring tool is armed ([e1f60d8](https://github.com/drmrd/vernacular/commit/e1f60d83fb0dd273c664cbdc0a3eb4a638c17754))
+* record that an unavailable toolbar control stays focusable and gives its reason ([6862134](https://github.com/drmrd/vernacular/commit/6862134dae0ca12f8beb106482ac5054db810c6c))
+* record that the plan text fields leave a key of a text composition alone ([90692a0](https://github.com/drmrd/vernacular/commit/90692a086c7e0941269fe0c2c97ab988fc407923))
+* record that the stair tool takes the keyboard candidate ([59fbc30](https://github.com/drmrd/vernacular/commit/59fbc30b2c4cf49001f02c85e84cbac50435b43a))
+* record the stair candidate marker and the pointer down announcement clear ([89442dd](https://github.com/drmrd/vernacular/commit/89442dd35b377033c0892cf14816deb54b751cd9))
+
+
+### Tests
+
+* add stories for the Projects page ([bb44131](https://github.com/drmrd/vernacular/commit/bb4413130bc4592f67d4658324c3e19dbc41824f))
+* **e2e:** add the story baselines for the Projects page ([e827d50](https://github.com/drmrd/vernacular/commit/e827d50757de8df60a6c42a3aaa120b143538a7c))
+* **e2e:** add the story baselines for the toolbar button ([c83ce70](https://github.com/drmrd/vernacular/commit/c83ce704d7a1eca7ea3b64944c286e06492e98f7))
+* **e2e:** expect a second tab to show the Projects page ([8667547](https://github.com/drmrd/vernacular/commit/8667547ec4cbe862c63f2a3593f83921aa839252))
+* **e2e:** expect enter on a focused button to activate it while a tool is armed ([1873e70](https://github.com/drmrd/vernacular/commit/1873e70405fea6547e62975adefcb559c5d4bf1a))
+* **e2e:** expect the candidate announcement before the stair refusal ([1c3b453](https://github.com/drmrd/vernacular/commit/1c3b453231f41aacda525fc01798a303ecd2ee0d))
+* **e2e:** expect the Projects page where a project does not open ([9b997e6](https://github.com/drmrd/vernacular/commit/9b997e629df1b9b6fa30a7701b8559c90c41b320))
+* **e2e:** place a stair with the keyboard and refuse one with no floor above ([7c2e228](https://github.com/drmrd/vernacular/commit/7c2e2289cba48afff00561abd09658758d30be1a))
+* **e2e:** show the stair candidate and refuse on Enter at the armed chip ([358723b](https://github.com/drmrd/vernacular/commit/358723b75ea98db0cbe733689f161a906318b57f))
+* expect a card model with the facts, lines, and actions of each kind ([4aa4bc1](https://github.com/drmrd/vernacular/commit/4aa4bc1b00f56cb5fd1f054022f9b19aa312fbeb))
+* expect a click on each kind of card to do what the spec says ([76ec83d](https://github.com/drmrd/vernacular/commit/76ec83d3746600a929c2a42dd31b1b719ab39293))
+* expect a failed import or folder open to show in the page notice and refresh the cards ([84d8827](https://github.com/drmrd/vernacular/commit/84d8827bd67478dd6e4925a3c2892ed68ed482b9))
+* expect a key of a text composition to commit nothing in the plan text fields ([ac39420](https://github.com/drmrd/vernacular/commit/ac394206496a7a60ca79b75c3570c8379bbc4d82))
+* expect a pointer down to clear the keyboard authoring announcement ([4217c53](https://github.com/drmrd/vernacular/commit/4217c53b6432c0a0aaefd57f8fdfbfbb8def0dbc))
+* expect a refused folder request to leave the open project as it was ([135765b](https://github.com/drmrd/vernacular/commit/135765b5de07bf75535fd87ff84635769d2fe7c2))
+* expect a toolbar button to give its unavailable reason and swallow activation ([5684dc9](https://github.com/drmrd/vernacular/commit/5684dc9bed3ce49a40ef80f597dfa8bd2a0e0f47))
+* expect an escape of a text composition to keep the underlay flyout open ([fc8377e](https://github.com/drmrd/vernacular/commit/fc8377e634c8b7d6642c39c98d7b9712ea6b66e1))
+* expect close doors and the toolbar button story to give the unavailable reason ([de71fbd](https://github.com/drmrd/vernacular/commit/de71fbd7a30238fd18ea509c6ce7557c39b4f1ac))
+* expect Enter on a focused button to activate it while an authoring tool is armed ([38b578a](https://github.com/drmrd/vernacular/commit/38b578a2f13f92ae507c26271e7e9b70852dad06))
+* expect Enter on a focused button to keep a pointer wall run open ([92a889d](https://github.com/drmrd/vernacular/commit/92a889d66975b803717d7d0a5b1121b5e78195d2))
+* expect only the chip of the armed tool to keep Enter for the tool ([2268855](https://github.com/drmrd/vernacular/commit/22688559b1cad258a232597cbe41a0449cd7fde1))
+* expect the arrow keys and Enter to place a stair under the stair tool ([1650555](https://github.com/drmrd/vernacular/commit/1650555fe7ba2fbde6c2c6ebfdb6b012019fd798))
+* expect the candidate marker under the stair tool ([bb79de0](https://github.com/drmrd/vernacular/commit/bb79de0055d3702897e9571f07de3703018e16d5))
+* expect the disabled 3D toolbar controls to give their reason to assistive technology ([a171a08](https://github.com/drmrd/vernacular/commit/a171a083ebb8b4412c8b6bba17fdb06ed83a7288))
+* expect the page actions and the Project menu order ([3224797](https://github.com/drmrd/vernacular/commit/3224797808853d7302ae88300287f5fed7fe908f))
+* expect the Projects page to fill the window so a drop anywhere imports ([fe76380](https://github.com/drmrd/vernacular/commit/fe76380bf79e81644027dac243b395087b126072))
+* expect the Projects page to show one card per project ([83bcade](https://github.com/drmrd/vernacular/commit/83bcade5f5650ad49f9898d1252a3c6378ef206d))
+* pin the cleared notice at Import file and share the failed-open helpers ([d492b77](https://github.com/drmrd/vernacular/commit/d492b7794f3cb773278f56175bc2c1799798bd48))
+* pin the lines and actions of the open project and of a held folder ([dcddd33](https://github.com/drmrd/vernacular/commit/dcddd33846f783860018ff0ab0a4d0d6f67fc641))
+* pin the menu action id, the preview source, the change fact, and the empty frame of a card ([b720a56](https://github.com/drmrd/vernacular/commit/b720a56219ea9ff5b0bb74f3e141106a639a6e18))
+* pin the menu order with gaps, the pack supplies of a page import, and toasts with no Retry ([a24de4c](https://github.com/drmrd/vernacular/commit/a24de4cb1d330424b79f51b7b60356c13fbe0a9c))
+* pin the start helper, the read after a try, the new project entry, and the cleared notice ([1cbd755](https://github.com/drmrd/vernacular/commit/1cbd7555b71594d801d2bad189b1f6eedb3bc02f))
+* share the page test helpers and show a real notice in the page story ([abea350](https://github.com/drmrd/vernacular/commit/abea350c666e6f50f9d32ea2bdc12169821aa798))
+
 ## [0.3.5](https://github.com/drmrd/vernacular/compare/v0.3.4...v0.3.5) (2026-11-21)
 
 
