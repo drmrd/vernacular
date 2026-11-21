@@ -14,6 +14,7 @@ import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { usePerceivedColorStore } from './perceived-color-context'
 import { PerceivedColorSampler } from './perceived-color-sampler'
+import { RendererMemoryProbe } from './renderer-memory-probe'
 import { FrameCamera, PresetCamera, type DoorwayStand } from './scene-camera-effects'
 import { initialCamera, orbitPivot } from './scene-camera-seed'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
@@ -224,6 +225,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
           onFirstFrame={handleFirstFrame}
           onDrawnFrame={readiness.noteFrameDrawn}
         />
+        <RendererMemoryProbe />
       </SceneRendererCanvas>
     </SceneReadinessBoundary>
   )
