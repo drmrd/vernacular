@@ -28,6 +28,10 @@ import {
 
 const BOX_ONLY: FurnitureModelLookup = { get: () => undefined }
 
+// The paint a reconcile uses when the caller passes none, shared so repeated paint-less
+// reconciles see the same reference.
+const NO_PAINT: Record<string, SurfaceTreatment> = {}
+
 // Joins the floor node ids into the key a stacked scene is cached under, so a scene is
 // reused only when the exact same floors, in the same order, are reconciled again.
 const FLOOR_SET_SEPARATOR = '|'
@@ -183,7 +187,15 @@ function isSameEmptyGraph(
   graph: SceneGraph,
   paint: Record<string, SurfaceTreatment>,
 ): boolean {
-  return graph.nodes.length === 0 && scene.graph === graph && scene.paint === paint
+  return scene.graph === graph && scene.paint === paint
+}
+
+function buildEmptyGraphScene(
+  graph: SceneGraph,
+  paint: Record<string, SurfaceTreatment>,
+  view: EdgeOverlayOptions,
+): EmptyGraphScene {
+  return { framed: buildFramedScene(graph, paint, view), graph, paint }
 }
 
 /** A framed scene together with the floor builds it stacked, so a later reconcile that
@@ -283,7 +295,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
   let emptyScene: EmptyGraphScene | undefined
 
   return {
-    reconcile(graph, paint = {}, models = BOX_ONLY) {
+    reconcile(graph, paint = NO_PAINT, models = BOX_ONLY) {
       if (emptyScene !== undefined) {
         if (isSameEmptyGraph(emptyScene, graph, paint)) return emptyScene.framed
         retired.objects.add(emptyScene.framed.root)
@@ -292,7 +304,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
       // No floors (a transient empty graph): there is no floor id to key a build by, so the
       // scene is kept by graph and paint alone. The next different reconcile retires it.
       if (graph.nodes.length === 0) {
-        emptyScene = { framed: buildFramedScene(graph, paint, view), graph, paint }
+        emptyScene = buildEmptyGraphScene(graph, paint, view)
         return emptyScene.framed
       }
       const pass: ReconcilePass = { graph, paint, models, view, cache: buildsByFloorId, retired }
