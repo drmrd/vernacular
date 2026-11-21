@@ -108,17 +108,27 @@ function bestCandidate(candidates: FrontCandidate[]): FrontCandidate | undefined
   )
 }
 
+/** The door a building is entered by, how it was found, and the direction it faces. */
+export interface Entrance {
+  /** The entrance door; undefined when there is no exterior door (and, later, no mark). */
+  readonly door: OpeningSceneNode | undefined
+  /** 'marked' arrives with the entrance mark (pull request 4); this change returns the other two. */
+  readonly source: 'marked' | 'guessed' | 'none'
+  readonly front: PlanDirection
+}
+
 /**
- * The plan direction the building faces: the outward normal of the wall that
- * hosts the entrance door. Only the first level with an exterior door competes:
+ * The entrance of the building: the guessed door and the outward normal of the
+ * wall that hosts it. Only the first level with an exterior door competes:
  * levels at or above grade from the lowest up, then levels below grade from the
  * highest down. On that level a swing or pivot door comes before a sliding,
  * folding, or cased one, and then the widest door wins. Equal widths prefer the
  * direction nearer plan-down (directions within a rounding tolerance are equally
  * near), then the opening id that sorts first as a string (so `opening:10` comes
- * before `opening:9`). With no exterior door it is plan-down.
+ * before `opening:9`), then the floor that comes first in the walls. With no
+ * exterior door there is no door and the front is plan-down.
  */
-export function frontDirection(input: FrontDirectionInput): PlanDirection {
+export function entranceOf(input: FrontDirectionInput): Entrance {
   const grade = input.gradeElevation ?? DEFAULT_GRADE_ELEVATION_MM
   const elevations = floorElevations(input)
   const floorIds = [...new Set(input.walls.map((wall) => wall.floorId))]
@@ -127,5 +137,12 @@ export function frontDirection(input: FrontDirectionInput): PlanDirection {
   )
   const level = entranceLevel(candidates, grade)
   const best = bestCandidate(candidates.filter(({ elevation }) => elevation === level))
-  return best === undefined ? PLAN_DOWN : best.outward
+  return best === undefined
+    ? { door: undefined, source: 'none', front: PLAN_DOWN }
+    : { door: best.opening, source: 'guessed', front: best.outward }
+}
+
+/** The plan direction the building faces: the front of its entrance. */
+export function frontDirection(input: FrontDirectionInput): PlanDirection {
+  return entranceOf(input).front
 }
