@@ -929,3 +929,5 @@ export {
   formatSubResource,
   parseSubResourceText,
 } from './assets/sub-resource'
+export type { DataRemovingRepair } from './repairs/repair-list'
+export { DATA_REMOVING_REPAIRS } from './repairs/repair-list'
