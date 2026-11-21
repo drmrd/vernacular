@@ -30,6 +30,7 @@ sourceFiles:
     bridge/react/renderer-memory-attributes.ts,
     bridge/react/e2e-runtime-flag.ts,
     e2e/tests/scene-edge-overlay-resources.spec.ts,
+    e2e/tests/live-webgpu.ts,
   ]
 status: current
 updated: 2026-11-21
@@ -104,8 +105,10 @@ the same paint, so every sub-group of a build draws from that build's provider b
 
 ### Deferred retirement
 
-`reconcile` frees nothing. It adds what it replaces to a retired queue, so a render stays free of
-side effects on the scene still on screen. The queue takes:
+`reconcile` defers its frees. It adds what it replaces to a retired queue, so a render never
+frees what the scene still on screen may draw. One case frees at once: a cache hit with a new
+grade swaps the cached scene's ground plane in place, removing the old plane from the root in
+the same call that frees it, so nothing can draw it afterwards. The queue takes:
 
 - every sub-group of a replaced floor build that its successor did not reuse, compared by
   identity, so a reused sub-group is never freed;
@@ -171,7 +174,9 @@ frees the material. Its vertex and index buffers are already freed.
 That retained memory is bounded by the owner. For provider materials it lasts until the floor's
 lineage ends (a paint edit), the overlay flips, or the pane unmounts. Within one lineage each
 rebuilt sub-group adds to it. For template materials it lasts until the model cache releases the
-template. `renderer.info` does not show it.
+template. `renderer.info` does not show it. Issue #1040 tracks measuring it with a heap snapshot
+after repeated edits, and then deciding whether to bound it, for example by rotating the provider
+after a number of rebuilds.
 
 ### Known residual: the first attach
 
@@ -180,8 +185,28 @@ attached. If a user-input edit lands while the first mount of the scene contents
 hook's effect frees a batch that the stale first scene then draws. The window is a few
 milliseconds, once per pane start, and one batch leaks each time it happens. This is derived from
 the source and has not been reproduced. The fix is additive: `SceneRendererCanvas` reports the
-handover from the outer tree as a second reason to wait. It is left for a follow-up issue because
-it adds a prop to a shared component.
+handover from the outer tree as a second reason to wait. It is left for issue #1038 because it
+adds a prop to a shared component.
+
+### Known residual: the build of a deleted floor
+
+`buildsByFloorId` is keyed by floor id, and only `dispose()` prunes it. When a floor is deleted,
+its cached sub-groups and its provider stay allocated until the overlay flips or the pane
+unmounts. The leak is bounded by the number of floors deleted during one pane lifetime. A probe
+on this branch reproduced it: after the deleted floor's scene was dropped, its 13 geometries were
+freed only at `dispose()`. The code before this change never freed them either, so nothing
+regressed. The fix is to prune the cached builds against the project's floor ids and to retire
+the pruned builds through the queue. Pruning against the shown graph's nodes would be wrong,
+because the active-floor graph holds one node and every floor switch would then discard the
+cache. Issue #1039 tracks it.
+
+### Known residual: model cache eviction
+
+`furniture-model-cache.ts` frees an evicted template at once, from a passive effect. If a clone
+of that template is still in the scene the library root draws for one more frame, the renderer
+uploads the freed geometry again, and nothing frees it later because the clone's resources are
+held. This happens only when the cache holds more templates than `maxTemplates`, and it was true
+before this change. Issue #1042 tracks deferring that eviction to the release point.
 
 ### The test-only memory probe and the GPU check
 
@@ -193,11 +218,17 @@ is read by `e2eRuntimeFlagSet` (`bridge/react/e2e-runtime-flag.ts`), which the f
 signal also uses. It is a runtime flag, so it survives the production preview build that the
 end-to-end tests run against.
 
-`e2e/tests/scene-edge-overlay-resources.spec.ts` runs in the GPU project and skips itself without
-WebGPU. It draws a closed room, takes a settled reading, flips the surface-edge overlay ten times,
-and expects both counts to return to the first reading or below. The check allows no margin. It
-also checks that the first flip raised the geometry count, so the probe is known to count what the
-overlay builds.
+`e2e/tests/scene-edge-overlay-resources.spec.ts` runs in the GPU project. It calls
+`guardLiveSceneSupport` from `e2e/tests/live-webgpu.ts`, so it skips on a runner that has no
+WebGPU adapter or no WebGL 2 context, and it fails there when `E2E_REQUIRE_WEBGPU` is set. The
+macOS WebGPU job in `.github/workflows/ci.yml` lists its specs one by one and does not list this
+one. The Linux runners have no adapter, so the spec skips there as well. Until the macOS job
+runs it, the check that matters for the WebGPU backend, whose render object and geometry
+behavior this ADR analyses, runs only on a developer's machine. Issue #1041 tracks adding it to
+that job. The spec draws a closed room, takes a settled reading, flips the surface-edge overlay
+ten times, and expects both counts to return to the first reading or below. The check allows no
+margin. It also checks that the first flip raised the geometry count, so the probe is known to
+count what the overlay builds.
 
 `renderer.info` does not count materials, so a leaked material cannot show in that check. The
 unit tests of the providers and the reconciler cover materials. They track `dispose` events with
@@ -206,8 +237,9 @@ unit tests of the providers and the reconciler cover materials. They track `disp
 ### How this refines earlier decisions
 
 - ADR-0088 made the reconciler cache floor builds. The reconciler now also owns the lifetime of
-  what it replaces. Nothing it drops is freed during `reconcile`. It is freed by
-  `releaseRetired(displayed)` or `dispose()`, at the release point above.
+  what it replaces. Apart from the ground-plane swap on a grade change, nothing it drops is
+  freed during `reconcile`. It is freed by `releaseRetired(displayed)` or `dispose()`, at the
+  release point above.
 - ADR-0089 reuses unchanged sub-groups within a floor. Reuse by identity is now also the retire
   rule: a sub-group is retired only when the successor build does not hold it. A build that
   reuses sub-groups also keeps the prior build's provider, where before every build made a new
@@ -223,7 +255,11 @@ unit tests of the providers and the reconciler cover materials. They track `disp
 - A new builder that shares a resource across sub-groups draws it from a held owner. A resource
   private to one tree needs nothing; `disposeObject` frees it once.
 - A new place that replaces part of a scene adds it to the retired queue. It does not free
-  anything during render.
+  anything during render, unless it detaches the part from the drawn root in the same call, as
+  the ground-plane swap does.
+- `HeldMaterialCache` marks materials only. A provider that gives a cached material a texture
+  marks that texture held as well. Otherwise a sub-group release frees the texture while live
+  meshes still draw it. No provider material carries a texture today.
 - A new way of drawing the live scene root keeps the report next to the drawing, the way
   `LiveSceneRoot` does, or the release point is lost.
 - Full builds outside the reconciler stay out of scope. The scene harness remounts per state and
@@ -262,6 +298,9 @@ context, and it leaks a batch whenever a frame falls in it.
 - Issue #434, ADR-0088 (incremental scene updates), ADR-0089 (within-floor mesh reuse), ADR-0219
   (pack assets carry textures), ADR-0132 (surface-edge overlay), ADR-0170 (scene session state),
   ADR-0197 (scene renderer lifecycle).
+- Follow-up issues: #1038 (the first attach), #1039 (the build of a deleted floor), #1040
+  (render objects that stay reachable within a lineage), #1041 (the overlay spec in the macOS
+  WebGPU job), and #1042 (model cache eviction).
 - three 0.184: `src/renderers/common/RenderObject.js` (the material `dispose` listener and
   `dispose()`), `RenderObjects.js` (the chain map of render objects), and `Geometries.js` (upload
   on draw and the free on `dispose`).
