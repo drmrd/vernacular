@@ -1,4 +1,4 @@
-import type { DecodeFailure, Project } from '../../core'
+import { findRepairOffer, type DecodeFailure, type Project } from '../../core'
 import { InvalidProjectIdError, type DocumentStore } from '../../storage'
 import type { OpenFailed, OpenRequest } from './handle-types'
 import { storageUnavailable } from './thrown-failures'
@@ -7,8 +7,6 @@ import { storageUnavailable } from './thrown-failures'
 export interface OpenedProject {
   readonly project: Project
   readonly savedByNewerBuild: boolean
-  /** True when the interim rule opened a document that fails the check. */
-  readonly openedDespiteFaults: boolean
 }
 
 /** The project to open, or why it did not open. */
@@ -27,7 +25,7 @@ function openedProject(
   project: Project,
   flags: Partial<Omit<OpenedProject, 'project'>> = {},
 ): OpenedProject {
-  return { project, savedByNewerBuild: false, openedDespiteFaults: false, ...flags }
+  return { project, savedByNewerBuild: false, ...flags }
 }
 
 /** A project that the read found in the store. */
@@ -35,17 +33,13 @@ function foundStored(opened: OpenedProject, lastChangedAt: string | undefined): 
   return { ok: true, opened, stored: true, lastChangedAt }
 }
 
-/** A document that failed to decode opens only under the interim rule for format faults. */
-async function openFailedDecode(
-  store: DocumentStore,
-  id: string,
-  decode: DecodeFailure,
-): Promise<ReadForOpen> {
-  if (decode.kind !== 'format-rules') {
-    return { ok: false, failure: { kind: 'did-not-open', decode } }
+/** A document that failed to decode does not open; one that breaks the format rules may be repairable. */
+function refusedDecode(decode: DecodeFailure): ReadForOpen {
+  const repair = decode.kind === 'format-rules' ? findRepairOffer(decode.document) : undefined
+  return {
+    ok: false,
+    failure: { kind: 'did-not-open', decode, ...(repair === undefined ? {} : { repair }) },
   }
-  const project = await store.openDespiteFormatFaults(id, decode)
-  return foundStored(openedProject(project, { openedDespiteFaults: true }), undefined)
 }
 
 async function readStored(store: DocumentStore, request: OpenRequest): Promise<ReadForOpen> {
@@ -64,7 +58,7 @@ async function readStored(store: DocumentStore, request: OpenRequest): Promise<R
           lastChangedAt: undefined,
         }
   }
-  return openFailedDecode(store, request.id, read.failure.decode)
+  return refusedDecode(read.failure.decode)
 }
 
 /**

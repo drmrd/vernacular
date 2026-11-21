@@ -1,4 +1,5 @@
-import type { DecodeFailure, Project } from '../../core'
+import { findRepairOffer } from '../../core'
+import type { DecodeFailure, Project, RepairOffer } from '../../core'
 import {
   copyImportedAssets,
   importProjectFile,
@@ -31,7 +32,12 @@ export interface ImportedFile {
 /** Why a file did not become a project. */
 export type ImportFailure =
   | { readonly kind: 'unsupported-file'; readonly fileName: string }
-  | { readonly kind: 'did-not-import'; readonly decode: DecodeFailure }
+  | {
+      readonly kind: 'did-not-import'
+      readonly decode: DecodeFailure
+      /** A repair that would let the document open, when there is one. */
+      readonly repair?: RepairOffer
+    }
   | {
       readonly kind: 'archive-too-large'
       readonly limit: ArchiveLimitName
@@ -56,10 +62,16 @@ function importFailureOf(failure: ProjectFileFailure): ImportFailure {
     case 'unsupported-file':
       return failure
     case 'decode':
-      return { kind: 'did-not-import', decode: failure.decode }
+      return didNotImport(failure.decode)
     case 'archive':
       return archiveFailureOf(failure.archive)
   }
+}
+
+/** A document that failed to decode, with the repair that would let it open, when there is one. */
+function didNotImport(decode: DecodeFailure): ImportFailure {
+  const repair = decode.kind === 'format-rules' ? findRepairOffer(decode.document) : undefined
+  return { kind: 'did-not-import', decode, ...(repair === undefined ? {} : { repair }) }
 }
 
 function archiveFailureOf(archive: ArchiveFailure): ImportFailure {
@@ -89,9 +101,8 @@ function poolOf(ports: SessionPorts, id: string): AssetCache | undefined {
 }
 
 /**
- * The content hashes that the document needs. A document that opened under the interim rule may
- * hold references that cannot be read; the copy then names nothing as missing rather than fail
- * an import whose project is already open.
+ * The content hashes that the document needs. A document whose references cannot be listed names
+ * nothing as missing rather than fail an import whose project is already open.
  */
 function neededOf(project: Project, packSupplies: PackSupplies | undefined): string[] {
   try {

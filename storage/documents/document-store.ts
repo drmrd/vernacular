@@ -9,13 +9,11 @@ import type {
 } from '../../core'
 import type { AssetCache } from '../asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
-import { ProjectNotFoundError } from '../project-store'
 import { PROJECT_FILE } from '../project-files/project-file-name'
 import type { ProjectFiles, RemovableProjectFiles } from '../project-files/project-files'
 import { collectReferencedAssets } from '../project-files/referenced-assets'
 import { writeBackup } from './document-backups'
-import { DocumentDecodeError } from './document-decode-error'
-import { mayOpenDespiteFaults, openDespiteFaults, warnAboutEncodeProblems } from './open-decoded'
+import { warnAboutEncodeProblems } from './open-decoded'
 import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
 import { listStoredFiles } from './stored-files'
@@ -200,33 +198,6 @@ export class DocumentStore {
       return new Map()
     }
     return listStoredFiles(this.files.projectDirectory(id))
-  }
-
-  /**
-   * Interim: opens a document that breaks the format rules, after the migration backup when the
-   * file was migrated. The rule itself lives in `openDespiteFaults`. The backup holds the file as
-   * stored at the time of this call, which is part of the interim rule; a later change removes this
-   * method, because a caller that holds only the failure cannot name the bytes that failed.
-   */
-  async openDespiteFormatFaults(id: string, failure: DecodeFailure): Promise<Project> {
-    if (!mayOpenDespiteFaults(failure)) {
-      throw new DocumentDecodeError(failure)
-    }
-    const { migratedFrom } = failure
-    if (migratedFrom === undefined) {
-      return openDespiteFaults(failure)
-    }
-    const bytes = this.files.holds(id)
-      ? await this.files.projectDirectory(id).readFile(PROJECT_FILE)
-      : undefined
-    if (bytes === undefined) {
-      throw new ProjectNotFoundError(id)
-    }
-    await writeBackup(this.files.projectDirectory(id), 'pre-migration', {
-      version: migratedFrom,
-      bytes,
-    })
-    return openDespiteFaults(failure)
   }
 }
 

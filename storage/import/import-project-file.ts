@@ -25,8 +25,8 @@ export type ProjectFileRead =
 type Failed = Extract<ProjectFileRead, { readonly ok: false }>
 
 /**
- * Decodes the document bytes. A document that only breaks the format rules opens under the interim
- * rule, with its faults in a warning; nothing is stored yet, so no migration backup is written.
+ * Decodes the document bytes. A document that fails to decode, one that breaks the format rules
+ * included, is refused; nothing is stored yet, so no migration backup is written.
  */
 function readDocument(
   document: Uint8Array,

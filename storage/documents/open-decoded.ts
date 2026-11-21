@@ -1,12 +1,5 @@
 import { decodeDocument, encodeDocument } from '../../core'
-import type {
-  CodecOptions,
-  DecodeFailure,
-  EncodedDocument,
-  FormatFault,
-  GraftDropped,
-  Project,
-} from '../../core'
+import type { CodecOptions, EncodedDocument, FormatFault, GraftDropped, Project } from '../../core'
 import { DocumentDecodeError } from './document-decode-error'
 
 /** A document that a store or an import opened from stored bytes. */
@@ -27,40 +20,17 @@ function warnGraftDropped(failure: GraftDropped): void {
   )
 }
 
-/** A decode failure of the one kind the interim rule opens anyway. */
-export type FormatRulesFailure = Extract<DecodeFailure, { readonly kind: 'format-rules' }>
-
-/** Whether the interim rule opens a document with this failure anyway. */
-export function mayOpenDespiteFaults(failure: DecodeFailure): failure is FormatRulesFailure {
-  return failure.kind === 'format-rules'
-}
-
-/**
- * The interim rule, in one place: a document that only breaks the format rules is opened anyway,
- * as its migrated document, with its faults reported in a warning. The cast of the failed document
- * to a Project is the deliberate gap of this interim rule: the document failed the check and still
- * opens, and the later refusal to open such a document removes the cast.
- */
-export function openDespiteFaults(failure: FormatRulesFailure): Project {
-  warnFaults('The stored document breaks the format rules; opening it anyway.', failure.faults)
-  return failure.document as Project
-}
-
 /**
  * Read stored bytes through the codec: the one place where every read path decides what a failed
- * decode means. A document that only breaks the format rules opens through `openDespiteFaults`;
- * every other failure throws a DocumentDecodeError that carries the failure.
+ * decode means. Every failure throws a DocumentDecodeError that carries the failure, a document
+ * that breaks the format rules included.
  */
 export function openDecodedDocument(bytes: Uint8Array, options?: CodecOptions): OpenedDocument {
   const result = decodeDocument(bytes, options)
-  if (result.ok) {
-    return { project: result.value.project, migratedFrom: result.value.migratedFrom }
+  if (!result.ok) {
+    throw new DocumentDecodeError(result.failure)
   }
-  const { failure } = result
-  if (!mayOpenDespiteFaults(failure)) {
-    throw new DocumentDecodeError(failure)
-  }
-  return { project: openDespiteFaults(failure), migratedFrom: failure.migratedFrom }
+  return { project: result.value.project, migratedFrom: result.value.migratedFrom }
 }
 
 /**

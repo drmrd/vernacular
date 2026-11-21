@@ -68,16 +68,10 @@ function createSaveStatusCell(): SaveStatusCell {
   }
 }
 
-/**
- * Raises saved-with-faults for a store save that found faults, unless the document opened despite
- * format faults: such a document was faulty already, so no sound copy is kept for it.
- */
-function reportFaultsTo(
-  notices: HandleNotices,
-  opened: OpenedProject,
-): (report: SaveReport) => void {
+/** Raises saved-with-faults for a store save that found faults. */
+function reportFaultsTo(notices: HandleNotices): (report: SaveReport) => void {
   return (report) => {
-    if (!opened.openedDespiteFaults && report.faults.length > 0) {
+    if (report.faults.length > 0) {
       notices.raise('saved-with-faults')
     }
   }
@@ -161,7 +155,7 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     notices.raise('recovery-copy-kept')
   }
   const { snapshots } = parts
-  const reportFaults = reportFaultsTo(notices, opened)
+  const reportFaults = reportFaultsTo(notices)
   const storedFlag = createStoredFlag(parts.stored ?? false)
   const writes = listenToWrites({ session, status, reportFaults, records, storedFlag })
   const autosave = createHandleAutosave(parts, session, writes)

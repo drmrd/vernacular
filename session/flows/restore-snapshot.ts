@@ -1,5 +1,4 @@
 import type { DecodeFailure, DecodeResult } from '../../core'
-import { openDespiteFaults } from '../../storage'
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuardedAsync } from '../guarded-call'
 import { createDocumentHandle } from '../handle/document-handle'
@@ -32,24 +31,12 @@ function refused(failure: RestoreRefusal): Refused {
   return { ok: false, failure }
 }
 
-/**
- * The document of the recovered copy. A copy that only breaks the format rules restores anyway
- * under the interim rule of the storage layer, which warns with its faults; it counts as opened
- * despite faults.
- */
+/** The document of the recovered copy, or why the copy does not restore. */
 function decideDocument(restored: DecodeResult): OpenedProject | Refused {
   if (restored.ok) {
-    return { project: restored.value.project, savedByNewerBuild: false, openedDespiteFaults: false }
+    return { project: restored.value.project, savedByNewerBuild: false }
   }
-  const { failure } = restored
-  if (failure.kind !== 'format-rules') {
-    return refused({ kind: 'did-not-restore', decode: failure })
-  }
-  return {
-    project: openDespiteFaults(failure),
-    savedByNewerBuild: false,
-    openedDespiteFaults: true,
-  }
+  return refused({ kind: 'did-not-restore', decode: restored.failure })
 }
 
 /**

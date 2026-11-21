@@ -75,7 +75,7 @@ async function openUnderLock(parts: OpenParts): Promise<OpenResult> {
     return storageUnavailable(error)
   }
   if (read.stored) {
-    parts.records.opened(markSession(handle.session), read.opened, read.lastChangedAt)
+    parts.records.opened(markSession(handle.session), read.lastChangedAt)
   }
   return { ok: true, handle }
 }

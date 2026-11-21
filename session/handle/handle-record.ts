@@ -7,7 +7,6 @@ import type { ProjectRecord, SaveReport } from '../../storage'
 import type { SessionPorts } from '../ports'
 import { recordOfOpened } from '../projects/project-facts'
 import type { OpenRequest } from './handle-types'
-import type { OpenedProject } from './read-for-open'
 import {
   createWarnOnce,
   READ_WARNING,
@@ -26,7 +25,7 @@ export type RecordPorts = Pick<SessionPorts, 'index' | 'build' | 'now'>
 /** Writes the record of one project into the index, one write at a time. */
 export interface RecordKeeper {
   /** A read found the stored project. Writes its record with a new time of use. */
-  opened(mark: SessionMark, opened: OpenedProject, lastChangedAt: string | undefined): void
+  opened(mark: SessionMark, lastChangedAt: string | undefined): void
   /** A write stored the project of the marked session. Writes its record with a new time of use. */
   saved(mark: SessionMark, report: SaveReport): void
   /**
@@ -205,11 +204,10 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
   const queue = createRecordQueue({ ports, warn, lockFreed })
   const askAt = askerAtNow(ports, queue, warn)
   return {
-    opened(asked, opened, lastChangedAt) {
+    opened(asked, lastChangedAt) {
       const mark = whileLockHeld(asked, lockFreed)
-      const passedCheck = !opened.openedDespiteFaults
       askAt((lastUsedAt) =>
-        recordOfOpen(ports, request, { mark, passedCheck, lastChangedAt, lastUsedAt }),
+        recordOfOpen(ports, request, { mark, passedCheck: true, lastChangedAt, lastUsedAt }),
       )
     },
     saved(asked, report) {
