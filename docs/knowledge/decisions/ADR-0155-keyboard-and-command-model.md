@@ -38,6 +38,18 @@ sourceFiles:
     editor/plan/use-dimension-tool.test.ts,
     e2e/tests/journeys/cancel-wall.spec.ts,
     e2e/tests/journeys/switch-floor.spec.ts,
+    editor/plan/room-name-editor.tsx,
+    editor/plan/room-sub-purpose-editor.tsx,
+    editor/plan/furniture-inspector.tsx,
+    editor/plan/length-field.tsx,
+    editor/plan/angle-field.tsx,
+    editor/plan/underlay-menu.tsx,
+    editor/plan/room-name-editor-composing.test.tsx,
+    editor/plan/room-sub-purpose-editor-composing.test.tsx,
+    editor/plan/furniture-inspector-composing.test.tsx,
+    editor/plan/length-field-composing.test.tsx,
+    editor/plan/angle-field-composing.test.tsx,
+    editor/plan/underlay-menu-composing.test.tsx,
   ]
 status: current
 updated: 2026-11-21
@@ -256,7 +268,8 @@ The rule does not cover every handler of a text field that acts on Enter or Esca
 (`angle-field.tsx`), which commit on Enter. The underlay flyout (`underlay-menu.tsx`) is the other
 one. Its `useDismissOnEscape` adds a `keydown` listener on `document` that closes the flyout on any
 Escape, with no guard. The flyout holds the known distance field of calibration, so a composing
-Escape typed there closes the flyout, as read from the code. Issue #863 stays open for these six. The update of 2026-11-21 below closes them.
+Escape typed there closes the flyout, as read from the code. Issue #863 stays open for these six. The update of 2026-11-21 below closes
+them.
 
 The other handlers that act on these keys hold no text field and need no check: the menu of
 `use-menu-button.ts`, the discard dialog, the entity proxies in `entity-proxy.tsx` and their
@@ -370,7 +383,7 @@ the discards, the guard against a discard on a plain re-render, and the cleared 
 
 ## Update (2026-11-21): the plan text fields leave a key of a text composition alone
 
-The six handlers that the update of 2026-11-18 left open now follow the same rule. A key that
+The six handlers that the update of 2026-11-18 on a key of a text composition left open now follow the same rule. A key that
 belongs to a text composition is the input method's key, so none of them acts on it. This closes
 issue #863.
 
@@ -399,11 +412,15 @@ in jsdom, with `isComposing` set or with key code 229. All pass:
 
 That makes 18 tests in six files.
 
-Still unchecked, as the earlier update left them. The menu of `use-menu-button.ts`, the discard
+Checked by reading the code only, with no test. The menu of `use-menu-button.ts`, the discard
 dialog, the entity proxies in `entity-proxy.tsx` and their container in `use-overlay-keyboard.ts`
 hold no text field and were judged to need no check. The window listeners of the plan that act on
 Enter or Escape were judged safe because they skip a key whose target is a text field, through
-`isTextEntry` or `ownsKeystroke` in `editor/plan/keyboard-guard.ts`. Both judgments come from
-reading the code. No test was written for them. The spacebar pan and fit key in
-`use-viewport-controls.ts` and the held-Alt tracker in `use-held-alt-key.ts` do not use that guard
-but act on other keys. Whether a browser submits a form on a composing Enter is still unchecked.
+`isTextEntry` or `ownsKeystroke` in `editor/plan/keyboard-guard.ts`. They are the deselect Escape
+binding in `editor/commands/use-keybindings.ts`, `use-escape-to-select.ts`,
+`use-dimension-tool.ts`, `use-calibration-arming.ts` and `use-plan-authoring.ts`. The spacebar pan
+and fit key in `use-viewport-controls.ts` and the held-Alt tracker in `use-held-alt-key.ts` do not
+use that guard but act on other keys. The three rename fields and the angle form in
+`editor/plan/selection-transform-panel.tsx`, an `input type="number"` that commits through its
+form's submit, commit by form submit. Whether a browser submits such a form on a composing Enter
+was not checked.
