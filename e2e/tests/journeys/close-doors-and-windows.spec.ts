@@ -4,6 +4,7 @@ import { signatureOf } from '../region-sampler'
 import { configureGpuChromiumOnMac } from '../live-webgpu'
 import {
   closeControl,
+  closeWithKey,
   enterOrbit,
   enterWalk,
   enterWalkReady,
@@ -58,6 +59,7 @@ import {
 // through the list of 3D entities, which draws an outline around its frame, and checks that
 // nothing of the open window appears outside that outline, that the open window does not flicker,
 // and that a second press of the open key from the pose that opened it shuts the window again.
+// The door scenario checks the same second press (issue #817).
 // The outline check does not show that only the lower sash rises, because the wall hides the
 // parts above the head. The unit tests in engine/scene/opening-motion.test.ts guard that.
 //
@@ -102,6 +104,9 @@ test('closes a door opened in walk mode from the 3D toolbar, in orbit mode and i
   const atOpen = await openWithKey(page, canvas, atShut)
   await views.expectDifferent(atShut, atOpen, within(whole, 'the walker view with the door open'))
   const doorInWalk = await views.openingRegion(atShut, atOpen)
+  const shutByKey = await closeWithKey(page, canvas, atOpen)
+  await views.expectSame(shutByKey, atShut, within(whole, 'the door shut by a second open key'))
+  await openWithKey(page, canvas, shutByKey)
 
   // Scenario 3: the door stays open in orbit mode, and one press swings it shut.
   const openSouth = await orbitSouthFrame(page, canvas)

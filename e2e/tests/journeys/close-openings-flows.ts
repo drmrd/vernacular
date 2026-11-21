@@ -72,14 +72,10 @@ export interface SearchTarget {
 // The press of the open key hit some opening. Looks from orbit mode whether it is the wanted
 // one, and returns the orbit frame if so.
 //
-// If not, the wrong opening is open and the walker is not at the wanted one. The open key cannot
-// shut a door again from this pose: measured on the live view, a swing door that stands fully
-// open is parallel to the reach ray from the head-on pose that opened it, so a second press does
-// nothing. (A hung window is reached again, because the reach treats it as its shut frame; the
-// window scenario that presses the key twice checks that.) The toolbar control shuts either
-// one, and the control being disabled again confirms that nothing is left open. That undo is
-// only taken when no other opening was open before the search, because the control shuts all of
-// them.
+// If not, the wrong opening is open and the walker is not at the wanted one. The undo goes
+// through the toolbar control, which shuts any wrong opening, and the control being disabled
+// again confirms that nothing is left open. That undo is only taken when no other opening was
+// open before the search, because the control shuts all of them.
 async function wantedOpening(
   page: Page,
   canvas: Locator,
