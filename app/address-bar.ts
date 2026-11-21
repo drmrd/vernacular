@@ -18,7 +18,10 @@ export interface MemoryAddressBar extends AddressBar {
   forward(): void
   /** What a user does who types an address: a new entry, and the listeners hear of it. */
   visit(fragment: string): void
-  /** Tells the listeners of the present entry once more, as a window does that reports one move with two events. Changes no entry. */
+  /**
+   * Tells the listeners of the present entry once more, as a window does when it reports one
+   * move with two events. Changes no entry and no position.
+   */
   reportAgain(): void
   /** Every entry, oldest first. */
   entries(): readonly string[]
