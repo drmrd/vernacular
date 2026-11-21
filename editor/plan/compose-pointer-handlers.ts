@@ -46,8 +46,8 @@ export interface PointerSources {
   hover: PlanHover
   // The reverse finish-chip link: hovering a selected wall's face previews its A/B chip.
   wallFaceHighlight: WallFacePlanHighlight
-  // Clears any standing keyboard-authoring announcement. A pointer move is a fresh
-  // pointer interaction, so it supersedes a stale authoring step ("Wall vertex
+  // Clears any standing keyboard-authoring announcement. A pointer move or down is a
+  // fresh pointer interaction, so it supersedes a stale authoring step ("Wall vertex
   // dropped") that would otherwise keep masking the live snap/selection text.
   clearAuthoringAnnouncement: () => void
 }
