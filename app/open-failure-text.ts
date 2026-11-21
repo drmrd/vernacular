@@ -45,7 +45,10 @@ export function storageUnavailableOf(error: unknown): SwitchFailure {
   return { kind: 'storage-unavailable', message }
 }
 
-/** The kinds of failure that carry their own detail: a decode failure, a message, a file name. */
+/**
+ * The kinds of failure that carry their own detail: a message, a file name, or a decode failure
+ * other than the fixed one of a recovery copy that did not restore.
+ */
 type DetailedKind =
   | 'archive-too-large'
   | 'did-not-open'

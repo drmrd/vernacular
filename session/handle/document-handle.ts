@@ -20,11 +20,11 @@ export interface DocumentHandleParts {
   /** A session built ahead on the opened project; when absent, the handle builds its own. */
   readonly session?: EditorSession
   /**
-   * The snapshots of the request's id on the store, obtained ahead; when absent, the handle asks
-   * the store for them. After a restore, the closed old handle and the new handle share one
-   * snapshots object, which is safe because that object holds no state of a session.
+   * The snapshots of the request's id on the store. After a restore, the closed old handle and the
+   * new handle share one snapshots object, which is safe because that object holds no state of a
+   * session.
    */
-  readonly snapshots?: ProjectSnapshots
+  readonly snapshots: ProjectSnapshots
   /** True: the autosave writes no recovery snapshot and removes none. `snapshots` is unchanged. */
   readonly leaveSnapshots?: boolean
   /** True: the open moved a recovery copy that cannot be read to the backups; the handle says so. */
@@ -141,7 +141,7 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
   if (parts.recoveryCopyKept === true) {
     notices.raise('recovery-copy-kept')
   }
-  const snapshots = parts.snapshots ?? store.snapshots(request.id)
+  const { snapshots } = parts
   const reportFaults = reportFaultsTo(notices, opened)
   const storedFlag = createStoredFlag(parts.stored ?? false)
   const autosave = createAutosave({
