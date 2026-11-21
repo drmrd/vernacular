@@ -110,13 +110,13 @@ cannot disagree.
 The stage and `.editor-shell__plan-area` fill their pane and use `overflow: clip`. The split panes
 drop `overflow: auto`. `clip` is not a scroll container, so a script `scrollIntoView` or a focused
 off-stage proxy cannot move the stage, and the mode toolbar stays in view because the body never
-overflows. `overflow: clip` needs Safari 16 or later; this is the first rule in `editor/` to use it.
-Older browsers drop the declaration and fall back to `visible`.
+overflows. This is the first rule in `editor/` to use `overflow: clip`. Safari 14 and 15, which the build still
+targets, drop the declaration and fall back to `visible`, and `.ds-app-frame__main` still clips there.
 
 Two side effects of clipping are handled in the stylesheet. An outline sits outside the border box
 and the clip would cut it, so the canvas outline is drawn inward with `outline-offset: -1px`. The
 canvas position rule is a static layout rule, so it sits in `plan-overlay.css` where a CSS pin test
-can see it, and only the dynamic values stay inline in `plan-view.tsx`, which is excluded from
+could see it, and only the dynamic values stay inline in `plan-view.tsx`, which is excluded from
 coverage.
 
 ### Out of scope
@@ -134,8 +134,9 @@ coverage.
   size or 0.08 px per millimetre directly.
 - Plan clicks in split view must land inside the plan pane. The pane no longer scrolls, so a click
   at x 440 that worked before can fall outside it.
-- The home visual baselines change because the stage has a new shape. Story and scene baselines do
-  not move; the 3D pane keeps its size.
+- The darwin home screenshots differ slightly, because the compass and scale bar now show in the
+  stage corner, but they stay within the comparison tolerance. CI's visual jobs are unaffected and
+  no baseline refresh is needed. Story and scene baselines do not move; the 3D pane keeps its size.
 - A future minimap, HiDPI backing store, or saved viewport can use the same value and the
   top-left anchor rule.
 - At a pane below 160 by 120 the compass, the scale bar, and a focus ring on the stage edge are
@@ -159,7 +160,7 @@ or by focus, which breaks the one-to-one canvas coordinates.
 
 Use `overflow: hidden` for the clip. It still clips, but it is a scroll container that a script can
 scroll, so it cannot give the guarantee this decision needs. A `hidden` fallback before `clip` was
-considered for Safari 14 and 15 and left out, since the support floor is Safari 16.
+considered for Safari 14 and 15 and left out, because `.ds-app-frame__main` already clips there.
 
 Measure the canvas, or size the stage from the canvas. This creates the feedback loop described
 above.
@@ -168,3 +169,11 @@ above.
 
 - Issue #646, ADR-0021 (2D plan rendering and interaction), ADR-0031 (plan viewport projection),
   ADR-0070 (two-dimensional pan), ADR-0186 (performance gated on counts).
+- Issue #690 (the canvas follows its container and the device pixel ratio). This decision delivers
+  the container half early. The device-pixel-ratio half stays with #690.
+- `docs/specs/2026-11-14-architecture-refactor-round.md`, section 5.8 and stage 7.
+
+## Notes
+
+2026-11-21: wording corrected after review. The baseline claim, the Safari floor, and the pin test
+claim above now match the code. No pin test covers the canvas position rule yet.
