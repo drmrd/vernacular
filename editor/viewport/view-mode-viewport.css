@@ -27,7 +27,8 @@
 .view-mode-viewport__pane {
   flex: 1;
   min-width: 0;
-  overflow: auto;
+  min-height: 0;
+  overflow: clip;
 }
 
 .view-mode-viewport__separator {

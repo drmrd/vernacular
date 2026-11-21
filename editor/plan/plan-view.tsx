@@ -68,8 +68,6 @@ import {
   type ViewportControls,
 } from './use-viewport-controls'
 import {
-  PLAN_HEIGHT,
-  PLAN_WIDTH,
   scopeSceneToShownAnnotations,
   usePlanRedraw,
   type CanvasRef,
@@ -78,9 +76,9 @@ import {
 import { useViewOverlay } from '../viewport/view-overlay-context'
 import { screenToWorld, type Viewport, type ViewportSize } from './viewport'
 import { useViewport } from './viewport-context'
+import { MIN_PLAN_STAGE_HEIGHT, MIN_PLAN_STAGE_WIDTH } from './plan-stage-size'
+import { usePlanStageSize } from './use-plan-stage-size'
 import { useReportPointer } from './pointer-readout'
-
-const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
 
 // A project-level unit-preferences store is later work; this slice picks the
 // default preferences for the project's units (see the slice deferrals).
@@ -300,7 +298,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     preferences,
   })
   const controls = useViewportControls(canvasRef, setViewport)
-  useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
+  useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: stageSize }, setViewport)
   // A calibration that cannot commit reports through the shell's notifications rather
   // than dropping the second click in silence.
   const { error } = useNotifications()
@@ -469,24 +467,32 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
  */
 export function PlanView() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const { stageSize } = useViewport()
+  usePlanStageSize(stageRef)
   const prefs = useSnapPreferences()
   const traceEnabled = prefs.enabled && isSnapKindEnabled(prefs, 'trace')
   const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef, traceEnabled)
   const reportPointer = useReportPointer()
 
-  // The stage is a positioned wrapper sized to the Canvas so the absolutely
-  // positioned overlay (inset: 0) registers exactly over it. The pointer-move and
+  // The stage fills the plan pane and is the element the size observer watches. The
+  // Canvas sits absolutely at its top-left, so the Canvas size can never hold the stage
+  // open, and the overlay (inset: 0) registers over the stage. The pointer-move and
   // -leave handlers also report the cursor's world point to the status-bar readout
   // before delegating to the tool handlers, which are otherwise unchanged.
   return (
-    <div className="plan-stage" style={{ width: PLAN_WIDTH, height: PLAN_HEIGHT }}>
+    <div
+      ref={stageRef}
+      className="plan-stage"
+      style={{ minWidth: MIN_PLAN_STAGE_WIDTH, minHeight: MIN_PLAN_STAGE_HEIGHT }}
+    >
       <canvas
         ref={canvasRef}
-        width={PLAN_WIDTH}
-        height={PLAN_HEIGHT}
+        width={stageSize.width}
+        height={stageSize.height}
         aria-label="Floor plan"
         className="plan-view"
-        style={{ touchAction: 'none', cursor }}
+        style={{ position: 'absolute', top: 0, left: 0, touchAction: 'none', cursor }}
         onPointerDown={pointerHandlers.onPointerDown}
         onPointerMove={(event) => {
           reportPointer(screenToWorld(eventToCanvas(event, event.currentTarget), overlay.viewport))
