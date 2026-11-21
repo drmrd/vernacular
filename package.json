@@ -136,8 +136,7 @@
       "baseline-browser-mapping@2": "2.11.29",
       "source-map-js@1": "1.2.2",
       "compression@1": "1.8.2",
-      "qs@6": "6.16.1",
-      "@stryker-mutator/instrumenter>@babel/core@7": "7.29.7"
+      "qs@6": "6.16.1"
     },
     "patchedDependencies": {
       "three@0.184.0": "patches/three@0.184.0.patch"
