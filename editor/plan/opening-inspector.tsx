@@ -4,8 +4,10 @@ import {
   clampOpeningWidth,
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
+  builtinElementTypes,
   flipOpening,
   formatAdaptiveLength,
+  getEntry,
   inchesToMillimeters,
   millimetersToInches,
   removeOpening,
@@ -230,13 +232,24 @@ function OpeningTypeField({ opening, onChangeType }: OpeningTypeFieldProps): Rea
   )
 }
 
+function facingButtonLabel(typeId: string): string {
+  const family = getEntry(builtinElementTypes, typeId)?.opening?.family
+  return family === 'window-hung' ? 'Swap sash sides' : 'Flip swing'
+}
+
 interface OpeningControlsProps {
+  typeId: string
   floorId: string
   openingId: string
   dispatch: (command: Command) => void
 }
 
-function OpeningControls({ floorId, openingId, dispatch }: OpeningControlsProps): ReactElement {
+function OpeningControls({
+  typeId,
+  floorId,
+  openingId,
+  dispatch,
+}: OpeningControlsProps): ReactElement {
   return (
     <Stack direction="horizontal" gap="space-3">
       <Stack direction="horizontal" gap="space-2">
@@ -250,7 +263,7 @@ function OpeningControls({ floorId, openingId, dispatch }: OpeningControlsProps)
           variant="neutral"
           onClick={() => dispatch(flipOpening(floorId, openingId, 'facing'))}
         >
-          Flip swing
+          {facingButtonLabel(typeId)}
         </Button>
       </Stack>
       <RemoveControl
@@ -290,7 +303,12 @@ export function OpeningInspector({
           )
         }
       />
-      <OpeningControls floorId={floorId} openingId={opening.id} dispatch={dispatch} />
+      <OpeningControls
+        typeId={opening.type}
+        floorId={floorId}
+        openingId={opening.id}
+        dispatch={dispatch}
+      />
     </Stack>
   )
 }
