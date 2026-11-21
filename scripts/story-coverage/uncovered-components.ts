@@ -1,3 +1,7 @@
+/* eslint-disable max-lines --
+ * This file is a flat list of data entries that grows by one entry per component
+ * that cannot earn an isolated story, so the per-file line cap does not measure
+ * anything useful here. */
 // The story-coverage ratchet allowlist (ADR-0111).
 //
 // Every component module under app/, editor/, and bridge/ that does not yet
@@ -114,6 +118,12 @@ export const UNCOVERED_COMPONENTS: {
     file: 'bridge/react/perceived-color-sampler.tsx',
     reason:
       'reads the drawing buffer inside the per-frame callback to fulfil a pending color sample and renders no DOM (it returns null); it requires a live R3F Canvas and an already drawn frame, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
+    component: 'ReasonDescription',
+    file: 'bridge/react/reason-description.tsx',
+    reason:
+      'renders only a hidden span that an unavailable control points at with aria-describedby, so an isolated story would show nothing; the toolbar button and tool chip stories and tests cover it where it is used (permanent allowlist candidate, see ADR-0111).',
   },
   {
     component: 'FrameCamera / PresetCamera',
