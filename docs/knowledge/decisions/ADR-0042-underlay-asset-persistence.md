@@ -41,9 +41,10 @@ sourceFiles:
     storage/import/copy-imported-assets.ts,
     storage/zip/export-project-bundle.ts,
     storage/assets/removable-assets.ts,
+    session/flows/asset-users.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-21
 ---
 
 # ADR-0042: Underlay asset persistence via a directory-backed content-addressed AssetCache
@@ -66,10 +67,12 @@ updated: 2026-11-19
 > missing. An export reports the assets it could not include
 > (`storage/zip/export-project-bundle.ts`) and still writes the file; the application shows the
 > count in one warning. An import does not copy or report an asset that an installed pack supplies,
-> and an export does not carry or report it. `removableAssets`
-> (`storage/assets/removable-assets.ts`) holds the rule for removing an asset when a project is
-> deleted: only when no other project lists it and the user library does not hold it, and never
-> while another project has an incomplete asset list. No delete calls it yet. See
+> and an export does not carry or report it. `removableAssets` in `session/flows/asset-users.ts`
+> decides which pool assets a project delete removes. It keeps each asset that another listed
+> project, the live document, or the user library uses, and it removes nothing while the library,
+> the deleted project's own list, or the list of any other project is unknown, as when a record
+> cannot be read or is incomplete. `storage/assets/removable-assets.ts` has no caller, and an issue
+> tracks removing it or putting it to use. Updated on 2026-11-21 to describe the code. See
 > [[ADR-0213-an-archive-is-read-as-an-untrusted-file]].
 
 Accepted (slice 13, underlay asset persistence, the first finishing slice of the

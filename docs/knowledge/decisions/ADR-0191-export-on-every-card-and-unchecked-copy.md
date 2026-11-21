@@ -36,7 +36,7 @@ the same day, with that specification. It amends ADR-0182, where a backup never 
 archive. The code changes with #685. Until then export is the Export control in the editor, whose
 first target is the archive, and no page lists projects to export.
 
-> Updated on 2026-11-21. The code has landed. Every card of the Projects page has Export, including
+> Updated on 2026-11-21 to describe the code. Every card of the Projects page has Export, including
 > the card of a project that another tab holds, where it is the only action. `exportProject` in
 > `session/flows/export-project.ts` decides at the click. The project open in this tab is packed
 > after its pending changes are written. Any other project is read from its store with no lock, so
