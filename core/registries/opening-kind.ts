@@ -24,6 +24,19 @@ export function openingKindOfType(typeId: string): OpeningKind | undefined {
   return doorFamilies.has(family) ? 'door' : 'window'
 }
 
+/** The family of a door opening: how its leaf moves, or a cased hole with none. */
+export type DoorFamily = Extract<OpeningFamily, 'swing' | 'slide' | 'fold' | 'pivot' | 'cased'>
+
+function isDoorFamily(family: OpeningFamily): family is DoorFamily {
+  return doorFamilies.has(family)
+}
+
+/** The door family of a built-in opening type; undefined for a window type or an unknown id. */
+export function doorFamilyOfType(typeId: string): DoorFamily | undefined {
+  const family = getEntry(builtinElementTypes, typeId)?.opening?.family
+  return family !== undefined && isDoorFamily(family) ? family : undefined
+}
+
 /**
  * Whether the opening type hangs a body in its void: the `scene3D.fill` the 3D
  * builder renders there, a door leaf on a door and a sash on a window. A type

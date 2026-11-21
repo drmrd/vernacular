@@ -1,5 +1,5 @@
 import { DEFAULT_GRADE_ELEVATION_MM } from '../model/site'
-import { openingKindOfType } from '../registries/opening-kind'
+import { doorFamilyOfType, openingKindOfType } from '../registries/opening-kind'
 import { exteriorWalls } from './exterior-walls'
 import { FLOOR_NODE_PREFIX, type OpeningSceneNode, type SceneGraph } from './scene-graph'
 
@@ -31,8 +31,16 @@ function dotWithPlanDown(direction: PlanDirection): number {
  */
 const DIRECTION_TIE_TOLERANCE = 1e-9
 
+function hasHingedLeaf(candidate: FrontCandidate): boolean {
+  const family = doorFamilyOfType(candidate.opening.type)
+  return family === 'swing' || family === 'pivot'
+}
+
 /** True when `candidate` is a better front than `current`; see `frontDirection` for the rule. */
 function beats(candidate: FrontCandidate, current: FrontCandidate): boolean {
+  if (hasHingedLeaf(candidate) !== hasHingedLeaf(current)) {
+    return hasHingedLeaf(candidate)
+  }
   if (candidate.opening.width !== current.opening.width) {
     return candidate.opening.width > current.opening.width
   }
@@ -104,7 +112,8 @@ function bestCandidate(candidates: FrontCandidate[]): FrontCandidate | undefined
  * The plan direction the building faces: the outward normal of the wall that
  * hosts the entrance door. Only the first level with an exterior door competes:
  * levels at or above grade from the lowest up, then levels below grade from the
- * highest down. On that level the widest door wins. Equal widths prefer the
+ * highest down. On that level a swing or pivot door comes before a sliding,
+ * folding, or cased one, and then the widest door wins. Equal widths prefer the
  * direction nearer plan-down (directions within a rounding tolerance are equally
  * near), then the opening id that sorts first as a string (so `opening:10` comes
  * before `opening:9`). With no exterior door it is plan-down.
