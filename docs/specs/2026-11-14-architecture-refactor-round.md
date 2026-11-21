@@ -160,7 +160,7 @@ Today every tool hook is always mounted, 41 checks in 22 files compare a tool id
 
 ### 5.8 Plan drawing and export
 
-Today every render repaints all 20 passes, the canvas is a fixed 800 by 600 bitmap, and the SVG exporter is a second renderer that omits stairs, furniture, and underlays.
+Today every render repaints all 20 passes, the canvas was a fixed 800 by 600 bitmap (the container half landed early in ADR-0228 for #646; the device pixel ratio half stays with #690), and the SVG exporter is a second renderer that omits stairs, furniture, and underlays.
 
 - One plan drawing model in `core/` describes what to draw for a floor. It is derived from the scene graph and the plan geometry.
 - The canvas, SVG, and PDF outputs all render that model. A kind drawn once appears in all three.

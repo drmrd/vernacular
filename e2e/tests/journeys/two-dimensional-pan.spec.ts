@@ -15,12 +15,9 @@ import {
 // drag in the default Select tool.
 //
 // Raw mouse coordinates here are always derived from a box measured AFTER hovering the
-// gesture's start point through the locator. The plan stage is a fixed-size canvas, so
-// when the window is short (CI's taller fallback-font chrome, or the short-window suite
-// below) the first canvas interaction scrolls the main pane and any box cached before
-// that scroll aims the gesture at the wrong spot, or at the chrome above the canvas.
-// The hover performs the same scroll-into-view a click would, and pointer capture on
-// the canvas keeps the rest of the drag delivered even where it leaves the visible part.
+// gesture's start point through the locator, so a box cached before the hover never aims the
+// gesture at a stale spot. The plan stage takes the size of its pane and nothing in the main
+// pane scrolls for it (ADR-0228), so the box stays where the hover found it.
 
 test('a plain primary drag pans the view in Select mode', async ({ page }) => {
   await gotoEditor(page)
@@ -75,15 +72,14 @@ test('a Shift-drag still draws a marquee that selects', async ({ page }) => {
   await shiftDragMarqueeSelects(page)
 })
 
-// The failure mode this pins: a window too short for the whole plan stage makes the
-// first canvas click scroll the main pane (CI's fallback fonts inflate the chrome enough
-// to do the same at the default size). A marquee aimed with coordinates cached before
-// that scroll misses the wall and selects nothing. See the main run that caught it:
-// the window-mode rectangle cut through below the wall's top endpoint.
-test.describe('with a window too short for the whole plan stage', () => {
+// A window too short for the old fixed-size stage (CI's fallback fonts inflate the chrome enough
+// to do the same at the default size) used to make the first canvas click scroll the main pane,
+// and a marquee aimed with coordinates cached before that scroll missed the wall. The stage now
+// fits its pane and the pane never scrolls, so the marquee must keep selecting in a short window.
+test.describe('with a short window, where the plan stage fits the smaller pane', () => {
   test.use({ viewport: { width: 1280, height: 560 } })
 
-  test('a Shift-drag marquee still selects after the canvas scrolls', async ({ page }) => {
+  test('a Shift-drag marquee still selects on the smaller stage', async ({ page }) => {
     await shiftDragMarqueeSelects(page)
   })
 })

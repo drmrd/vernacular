@@ -45,9 +45,9 @@ export function liveCanvas(page: Page): Locator {
   return page.getByRole('region', { name: /3d preview/i }).locator('canvas')
 }
 
-// Draws the closed room in the plan, then puts a door and a window on the north wall.
+// Draws the closed room in the plan view, where the plan stage has the whole viewport, then puts
+// a door and a window on the north wall and opens the split view.
 export async function drawRoomWithOpenings(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Split view' }).click()
   const plan = page.getByLabel('Floor plan')
   await expect(plan).toBeVisible()
   await page.getByRole('radio', { name: 'Wall', exact: true }).click()
@@ -58,6 +58,7 @@ export async function drawRoomWithOpenings(page: Page): Promise<void> {
   await page.getByRole('radio', { name: 'Window', exact: true }).click()
   await plan.click({ position: WINDOW_AT })
   await expect(page.getByRole('option', { name: / wide$/ })).toHaveCount(2)
+  await page.getByRole('button', { name: 'Split view' }).click()
 }
 
 // Waits for the pane to raise its ready marker, then returns the canvas's settled frame. The

@@ -10,20 +10,20 @@ test('derives a room with an interior void', async ({ page }) => {
   const canvas = selectors.planCanvas(page)
 
   // Outer loop, closed by clicking back on the first corner.
-  await canvas.click({ position: { x: 160, y: 140 } })
-  await canvas.click({ position: { x: 600, y: 140 } })
-  await canvas.click({ position: { x: 600, y: 500 } })
-  await canvas.click({ position: { x: 160, y: 500 } })
-  await canvas.click({ position: { x: 160, y: 140 } })
+  await canvas.click({ position: { x: 160, y: 60 } })
+  await canvas.click({ position: { x: 600, y: 60 } })
+  await canvas.click({ position: { x: 600, y: 420 } })
+  await canvas.click({ position: { x: 160, y: 420 } })
+  await canvas.click({ position: { x: 160, y: 60 } })
 
   await expect(selectors.roomProxies(page)).toHaveCount(1)
 
   // Inner loop, well clear of the outer walls so it stays free-standing.
-  await canvas.click({ position: { x: 320, y: 260 } })
-  await canvas.click({ position: { x: 440, y: 260 } })
-  await canvas.click({ position: { x: 440, y: 380 } })
-  await canvas.click({ position: { x: 320, y: 380 } })
-  await canvas.click({ position: { x: 320, y: 260 } })
+  await canvas.click({ position: { x: 320, y: 180 } })
+  await canvas.click({ position: { x: 440, y: 180 } })
+  await canvas.click({ position: { x: 440, y: 300 } })
+  await canvas.click({ position: { x: 320, y: 300 } })
+  await canvas.click({ position: { x: 320, y: 180 } })
 
   await expectWallCount(page, 8)
 

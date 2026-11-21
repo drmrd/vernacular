@@ -1,20 +1,28 @@
 import {
   createContext,
   createElement,
+  useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
 } from 'react'
 import type { Point } from '../../core'
-import { computeFitViewport, contentBounds, planContentPoints } from './fit'
+import { computeFitViewport, contentBounds, planContentPoints, type Bounds } from './fit'
+import { PLAN_HEIGHT, PLAN_WIDTH } from './plan-scene'
+import { isMeasurableSize, resolveStageSize } from './plan-stage-size'
 import { DEFAULT_PLAN_SCALE, type Viewport, type ViewportSize } from './viewport'
 
 export interface ViewportValue {
   viewport: Viewport
   setViewport: Dispatch<SetStateAction<Viewport>>
+  /** The plan stage size in pixels: nominal until the first measurement. */
+  stageSize: ViewportSize
+  /** Records a pane measurement. Never writes the viewport, except the one opening refit. */
+  reportStageSize: (measured: ViewportSize) => void
 }
 
 const ViewportContext = createContext<ViewportValue | null>(null)
@@ -31,33 +39,90 @@ export function useViewport(): ViewportValue {
 export interface ViewportInitialContent {
   walls: readonly { start: Point; end: Point }[]
   rooms: readonly { polygon: readonly Point[] }[]
+  /** The pane size the initial viewport fits to. Also the stage size until the first measurement. */
   size: ViewportSize
 }
 
 export interface ViewportProviderProps {
   children: ReactNode
   /** When provided, the initial viewport frames this content instead of starting at the default scale. */
-  initialContent?: ViewportInitialContent
+  initialContent?: ViewportInitialContent | undefined
 }
 
 const DEFAULT_VIEWPORT: Viewport = { scale: DEFAULT_PLAN_SCALE }
 
-function computeInitialViewport(initialContent: ViewportInitialContent | undefined): Viewport {
+const NOMINAL_STAGE_SIZE: ViewportSize = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
+
+interface OpeningState {
+  viewport: Viewport
+  /** Bounds of the content the floor opened with, or null when it opened empty. */
+  bounds: Bounds | null
+  stageSize: ViewportSize
+}
+
+function computeOpeningState(initialContent: ViewportInitialContent | undefined): OpeningState {
   if (initialContent === undefined) {
-    return DEFAULT_VIEWPORT
+    return { viewport: DEFAULT_VIEWPORT, bounds: null, stageSize: NOMINAL_STAGE_SIZE }
   }
   const bounds = contentBounds(planContentPoints(initialContent.walls, initialContent.rooms))
-  return bounds === null ? DEFAULT_VIEWPORT : computeFitViewport(bounds, initialContent.size)
+  const viewport =
+    bounds === null ? DEFAULT_VIEWPORT : computeFitViewport(bounds, initialContent.size)
+  return { viewport, bounds, stageSize: initialContent.size }
+}
+
+/**
+ * Owns the measured stage size and the one opening refit. The first measurable report
+ * that changes the size refits the opening viewport, so the opening fit frames the real
+ * pane. Every later report only updates the size.
+ */
+function useStageSize(
+  opening: OpeningState,
+  setViewport: Dispatch<SetStateAction<Viewport>>,
+): Pick<ViewportValue, 'stageSize' | 'reportStageSize'> {
+  const [stageSize, setStageSize] = useState<ViewportSize>(opening.stageSize)
+  const stageSizeRef = useRef(stageSize)
+  const openingRefitSpentRef = useRef(false)
+  const reportStageSize = useCallback(
+    (measured: ViewportSize) => {
+      if (!isMeasurableSize(measured)) {
+        return
+      }
+      const isOpeningRefit = !openingRefitSpentRef.current
+      openingRefitSpentRef.current = true
+      const resolved = resolveStageSize(stageSizeRef.current, measured)
+      if (resolved === stageSizeRef.current) {
+        return
+      }
+      stageSizeRef.current = resolved
+      setStageSize(resolved)
+      const { bounds } = opening
+      if (isOpeningRefit && bounds !== null) {
+        // A viewport the user has moved is a new object, so it is never refit.
+        setViewport((current) =>
+          current === opening.viewport ? computeFitViewport(bounds, resolved) : current,
+        )
+      }
+    },
+    [opening, setViewport],
+  )
+  return { stageSize, reportStageSize }
 }
 
 /**
  * Owns the plan camera (scale + pan offset) so the canvas that draws it, the header
  * zoom control, and the status-bar coordinate readout all read and drive one source.
  * The plan view consumes `setViewport` for its pan/zoom/fit input exactly as it did
- * when the state lived locally; the value shape is unchanged.
+ * when the state lived locally. The provider also holds the measured stage size. A
+ * measurement leaves the viewport alone, except that the first one refits the opening
+ * viewport to the measured size once, so the opening fit frames the real pane.
  */
 export function ViewportProvider({ children, initialContent }: ViewportProviderProps) {
-  const [viewport, setViewport] = useState<Viewport>(() => computeInitialViewport(initialContent))
-  const value = useMemo<ViewportValue>(() => ({ viewport, setViewport }), [viewport])
+  const [opening] = useState(() => computeOpeningState(initialContent))
+  const [viewport, setViewport] = useState<Viewport>(opening.viewport)
+  const { stageSize, reportStageSize } = useStageSize(opening, setViewport)
+  const value = useMemo<ViewportValue>(
+    () => ({ viewport, setViewport, stageSize, reportStageSize }),
+    [viewport, stageSize, reportStageSize],
+  )
   return createElement(ViewportContext.Provider, { value }, children)
 }

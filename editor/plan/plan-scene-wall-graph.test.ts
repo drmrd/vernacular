@@ -10,7 +10,7 @@ import {
 import { ViewOverlayProvider } from '../viewport/view-overlay-context'
 import { recordingContext, sampleWall } from './draw-plan-test-fixtures'
 import { DEFAULT_PLAN_PALETTE } from './plan-palette'
-import { usePlanRedraw, type PlanScene } from './plan-scene'
+import { PLAN_HEIGHT, PLAN_WIDTH, usePlanRedraw, type PlanScene } from './plan-scene'
 import { DEFAULT_PLAN_SCALE, worldToScreen, type Viewport } from './viewport'
 
 // A pass-through spy: the real builder still runs, the mock only counts the calls.
@@ -40,6 +40,7 @@ function sceneOver(walls: WallSceneNode[], viewport: Viewport): PlanScene {
     endpointHandles: null,
     openingResizeHandles: null,
     viewport,
+    size: { width: PLAN_WIDTH, height: PLAN_HEIGHT },
     preferences: DEFAULT_METRIC_PREFERENCES,
     underlays: [],
     openings: [],

@@ -39,11 +39,13 @@ import {
 // three's WebGL 2 fallback. The WebGPU path runs only where someone runs the scene-webgl project
 // on a development Mac, which has a real adapter.
 
-// A second closed room beside the first one.
+// A second closed room beside the first one. It is drawn in the split view, where the plan pane
+// is about 465 px wide at 1280x720, so every corner stays well inside that width. Every reading
+// that involves it compares two frames of this spec with the same room.
 const SECOND_ROOM: readonly Corner[] = [
   { x: 340, y: 120 },
-  { x: 480, y: 120 },
-  { x: 480, y: 260 },
+  { x: 430, y: 120 },
+  { x: 430, y: 260 },
   { x: 340, y: 260 },
   { x: 340, y: 120 },
 ]

@@ -135,16 +135,21 @@
 }
 
 /*
- * The positioned wrapper for the plan canvas so the canvas reference control (the
- * trace-underlay loader) anchors to the canvas corner. It sizes to the fixed plan
- * stage inside it.
+ * The plan pane's box. It fills the pane and clips, so a stage held at its
+ * minimum size in a tiny window is cut off at the right and bottom instead of
+ * growing a scrollbar. It is never a scroll container.
  */
 .editor-shell__plan-area {
-  position: relative;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: clip;
 }
 
 .plan-view {
   outline: 1px solid var(--color-border);
+  /* Drawn inside the box: the stage and plan area clip any outline outside it. */
+  outline-offset: -1px;
   /*
    * The plan view draws its own pan- and zoom-aware grid and rulers on the canvas,
    * so the surface only needs a plain backdrop here.

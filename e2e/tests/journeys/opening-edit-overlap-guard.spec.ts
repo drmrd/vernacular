@@ -6,17 +6,15 @@ import { gotoEditor, drawWall, expectWallCount, selectors } from './support'
 // canvas box, no raw pixels, so the spec is resolution-independent.
 const WALL_START = { x: 0.2, y: 0.4 }
 const WALL_END = { x: 0.85, y: 0.4 }
-const WALL_SPAN_FRACTION = WALL_END.x - WALL_START.x
 // A deliberate jamb-drag target well to the right of the right door, still short of
 // the wall's far end so the drag does not run off the wall.
 const FAR_RIGHT_X = 0.84
 
 // The plan never auto-fits, so a freshly drawn wall keeps the editor's default scale.
 // These mirror the app's stable defaults (editor/plan/viewport DEFAULT_PLAN_SCALE via
-// PLAN_BACKING_PX_PER_MM, plan-scene PLAN_WIDTH, and core DEFAULT_OPENING_WIDTH_MM) so
+// PLAN_BACKING_PX_PER_MM and core DEFAULT_OPENING_WIDTH_MM) so
 // the spec can place the jamb handle deterministically without reading internal geometry.
 const PLAN_BACKING_PX_PER_MM = 0.08
-const PLAN_BACKING_WIDTH_PX = 800
 const DEFAULT_OPENING_WIDTH_MM = 813
 
 // Opening proxies read through their accessible label, which ends in "wide", so they
@@ -128,12 +126,9 @@ test.describe('Opening edit overlap guard', () => {
     await placeDoorAt(page, box, neighborFraction)
     await expect(openingProxies(page)).toHaveCount(2)
 
-    // Convert the opening's half-width from millimeters to client pixels along the wall
-    // (mirrors opening-resize-handles.spec): the wall world length follows from the fixed
-    // scale, and the wall's client span gives the world-to-client ratio.
-    const wallWorldMm = (WALL_SPAN_FRACTION * PLAN_BACKING_WIDTH_PX) / PLAN_BACKING_PX_PER_MM
-    const worldToClientPx = (box.width * WALL_SPAN_FRACTION) / wallWorldMm
-    const jambOffsetX = (DEFAULT_OPENING_WIDTH_MM / 2) * worldToClientPx
+    // Convert the opening's half-width from millimeters to client pixels along the wall.
+    // The backing store is CSS pixels one to one, so the scale is the client ratio directly.
+    const jambOffsetX = (DEFAULT_OPENING_WIDTH_MM / 2) * PLAN_BACKING_PX_PER_MM
 
     const wallY = box.y + box.height * WALL_START.y
     const neighborCenter = box.x + box.width * neighborFraction

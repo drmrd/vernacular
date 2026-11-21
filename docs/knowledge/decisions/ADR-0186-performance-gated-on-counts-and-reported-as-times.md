@@ -184,8 +184,8 @@ are two worktrees, `--baseline` takes the absolute path of the file in the `main
 
 ### What each figure is
 
-**Plan redraw.** The main-thread time of one `drawPlan` call on a real 800 by 600 canvas, the size
-the app uses. The clock is read just before the call and just after it returns, and one draw runs in
+**Plan redraw.** The main-thread time of one `drawPlan` call on a real 800 by 600 canvas, the nominal
+plan size (the app now sizes the stage to its pane; see ADR-0228). The clock is read just before the call and just after it returns, and one draw runs in
 each animation frame. The draws follow a scripted endpoint drag on the ground floor. Its first wall
 is selected and carries the endpoint handles. The preview runs from the wall's fixed start to an end
 that walks a circle of 500 mm around the wall's real end, one step a frame, with no snap. Only the
@@ -497,3 +497,6 @@ yet).
 - `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`, section 5.6.
 - `docs/specs/2026-06-01-vernacular-design.md`, sections 6.10 and 9.3.
 - Issues #684 and #502.
+
+Note, 2026-11-21: the plan stage now takes the size of its pane (ADR-0228), so 800 by 600 is the nominal
+size, not the size the app always uses. The gated counts do not change.
