@@ -10,7 +10,7 @@ import {
   Stairs,
   Tag,
 } from '@phosphor-icons/react'
-import { useContext, useSyncExternalStore } from 'react'
+import { useContext, useId, useSyncExternalStore } from 'react'
 import { builtinElementTypes, openingKindOfType, type Floor } from '../../core'
 import { ActiveFloorContext } from '../../bridge'
 import { EditorSessionContext } from '../../bridge/react/editor-session-context'
@@ -65,25 +65,39 @@ function chipTitle({ unavailable, unavailableReason }: ChipProps): string | unde
   return unavailableReason ?? PLANNED_TOOL_REASON
 }
 
+function ChipReason({ id, reason }: { id: string; reason: string | undefined }) {
+  return reason === undefined ? null : (
+    <span hidden id={id}>
+      {reason}
+    </span>
+  )
+}
+
 function Chip(props: ChipProps) {
   const { toolId, label, unavailable, icon, fallbackTabStop } = props
   const { tool, setTool } = useActiveTool()
   const isActive = toolId !== undefined && tool === toolId
   const IconComponent = icon
+  const reasonId = useId()
+  const reason = chipTitle(props)
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={isActive}
-      aria-disabled={unavailable || undefined}
-      tabIndex={isActive || fallbackTabStop ? 0 : -1}
-      className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-      title={chipTitle(props)}
-      onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
-    >
-      {IconComponent ? <IconComponent size={16} aria-hidden="true" /> : null}
-      {label}
-    </button>
+    <>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={isActive}
+        aria-disabled={unavailable || undefined}
+        tabIndex={isActive || fallbackTabStop ? 0 : -1}
+        className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
+        aria-describedby={reason !== undefined ? reasonId : undefined}
+        title={reason}
+        onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
+      >
+        {IconComponent ? <IconComponent size={16} aria-hidden="true" /> : null}
+        {label}
+      </button>
+      <ChipReason id={reasonId} reason={reason} />
+    </>
   )
 }
 
