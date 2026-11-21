@@ -49,6 +49,28 @@ Where things happen:
   project. `App` also remembers the handles whose recovered work it offered, so each open handle
   offers it once. A return from the page does not offer it again. A reload offers it again until the
   next save, because each save removes the recovery snapshots.
+  The "..." control of a card holds the actions that `use-card-actions.ts` builds: Rename, Export,
+  and Delete, with Remove from list in place of Delete for a folder project. A project that did
+  not open has no Rename, and a project that another tab holds has Export only. Rename, Delete, and
+  Remove from list run through `runPageAction` of the navigation, so none of them overlaps a flow.
+  A failure shows as one sentence in the page's notice, and an action that ran reads the cards
+  again. A delete or a removal of the open project leaves the page with no project open. Export,
+  in `card-export.ts`, runs outside that runner, so it works while another step runs. Its toast
+  follows the export, and the file goes to the download. A project that did not open gives the
+  unchecked copy of ADR-0191, with the warning from `card-action-text.ts`. Delete asks first in a
+  dialog. `deleteProject` first writes the pending changes of the open project, and stops with
+  nothing removed when that write fails. It then removes the project's document, its migration
+  backups, its recovery snapshots, its record, and each pool asset that only this project used. An asset that another
+  project or the library uses stays. No asset goes when there is no library or its list cannot be
+  read (`library-hashes.ts` reads its hashes at the click), or when the asset list of any project
+  is not known. The document and the record still go. There is one known limit. A record lists the
+  assets of the current document only, so a delete can remove bytes that a recovery snapshot, a
+  migration backup, or an undo step of another project still names. A later restore of that copy
+  then shows the asset as missing. It takes two projects that share an asset outside the library,
+  such as one archive imported twice. Remove from list forgets the folder and its record and
+  touches no file of the folder. For the folder project open in this tab, it first saves the
+  pending changes into the folder and closes the project. When that save fails, nothing is
+  forgotten and a sentence says so.
 - `nothing-open-failure-view.tsx` is the view for storage that does not resolve. It says why, and
   offers Retry and "Start a new project".
 - `use-open-project.ts` is the one owner of the open project. It holds the one open document
