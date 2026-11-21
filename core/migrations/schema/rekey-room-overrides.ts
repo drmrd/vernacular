@@ -5,8 +5,9 @@ import type { ProjectShape, SchemaMigration } from '../types'
 const DASH_ERA_SEPARATOR = '-'
 
 /**
- * Migrates a version-16 document to version 17, rebinding every room override
- * still filed under a dash-era key to the key `roomKey` derives today.
+ * Migrates a version-16 document to version 17, rebinding each room override
+ * still filed under a dash-era key to the key `roomKey` derives today, when no
+ * other entry already holds that key.
  *
  * An early build keyed `Project.roomOverrides` by the room's sorted bounding wall
  * ids joined with `-`. Wall ids contain `-` themselves, so that key was ambiguous
@@ -33,8 +34,8 @@ export const rekeyRoomOverridesMigration: SchemaMigration = {
     let rewroteAnyKey = false
     for (const [storedKey, override] of Object.entries(overrides)) {
       const resolvedKey = roomKeyFor(storedKey, wallIds)
-      // Check the stored keys as well as `rekeyed`, so a current-form key holds its
-      // place even when the loop has not reached it yet.
+      // A key is taken when a stored entry holds it, even one the loop has not
+      // reached yet, or when an earlier dash key already moved to it.
       const isTaken = Object.hasOwn(overrides, resolvedKey) || Object.hasOwn(rekeyed, resolvedKey)
       const targetKey = isTaken ? storedKey : resolvedKey
       if (targetKey !== storedKey) rewroteAnyKey = true
