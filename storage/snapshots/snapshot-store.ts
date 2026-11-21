@@ -2,6 +2,7 @@ import { decodeDocument } from '../../core'
 import type { CodecOptions, DecodeResult, Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { encodeForWrite, openDecodedDocument } from '../documents/open-decoded'
+import { setAsideRefusedSnapshots } from './set-aside-refused'
 
 /**
  * The directory of recovery snapshots, a sidecar of the document. An export and an import leave
@@ -72,6 +73,20 @@ export class SnapshotStore {
   async restoreDecoded(): Promise<DecodeResult | undefined> {
     const bytes = await this.newestSnapshotBytes()
     return bytes === undefined ? undefined : decodeDocument(bytes, this.codec)
+  }
+
+  /**
+   * Moves each rolling snapshot that does not decode to the project's backups, writing the bytes
+   * there before the snapshot is removed. The session-start snapshot and a snapshot that decodes
+   * stay. Resolves with the count moved; a failed backup write rejects and keeps that snapshot.
+   */
+  async setAsideRefused(): Promise<number> {
+    const names = await this.rollingSnapshotNames()
+    return setAsideRefusedSnapshots(
+      this.directory,
+      this.codec,
+      names.map((name) => `${AUTOSAVE_DIRECTORY}/${name}`),
+    )
   }
 
   private async newestSnapshotBytes(): Promise<Uint8Array | undefined> {

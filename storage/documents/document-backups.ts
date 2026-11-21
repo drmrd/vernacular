@@ -1,3 +1,5 @@
+import { CURRENT_SCHEMA_VERSION } from '../../core'
+import type { DecodeResult } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 
 /**
@@ -7,8 +9,10 @@ import type { DirectoryPort } from '../fs/directory-port'
 export const BACKUP_DIRECTORY = '.house-backups'
 
 /** Why a copy of a stored file is kept. */
-export type BackupKind = 'pre-migration' | 'last-valid'
+export type BackupKind = 'pre-migration' | 'last-valid' | 'pre-repair' | 'refused-snapshot'
 
+/** The version of bytes that carry no readable schema version. */
+const UNKNOWN_VERSION = 0
 const HEX_RADIX = 16
 const HEX_BYTE_WIDTH = 2
 
@@ -39,5 +43,24 @@ export async function writeBackup(
   const path = `${BACKUP_DIRECTORY}/${kind}-v${stored.version}-${digest}.json`
   if ((await directory.readFile(path)) === undefined) {
     await directory.writeFile(path, stored.bytes)
+  }
+}
+
+/** The schema version to name a backup by, from the decode of the bytes it holds. */
+export function storedVersionOf(decoded: DecodeResult): number {
+  if (decoded.ok) {
+    return decoded.value.migratedFrom ?? CURRENT_SCHEMA_VERSION
+  }
+  const failure = decoded.failure
+  switch (failure.kind) {
+    case 'format-rules':
+      return failure.migratedFrom ?? CURRENT_SCHEMA_VERSION
+    case 'newer-version':
+      return failure.version
+    case 'migration-failed':
+      return failure.fromVersion
+    case 'not-json':
+    case 'not-a-project':
+      return UNKNOWN_VERSION
   }
 }
