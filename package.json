@@ -39,7 +39,7 @@
     "lhci:collect": "lhci collect --config=./lighthouserc.json",
     "perf:report": "node scripts/performance/report-times.mjs",
     "mutate": "stryker run",
-    "mutate:check": "stryker run --dryRun",
+    "mutate:check": "stryker run --dryRunOnly",
     "prepare": "husky"
   },
   "engines": {

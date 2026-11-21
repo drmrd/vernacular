@@ -1,0 +1,7 @@
+// The type-checking project for mutation runs (the Stryker `typescript` checker).
+// It is the root project without `references`: a project with references puts the checker in
+// build mode, which turns on `declaration` and rejects files that type-check fine with `--noEmit`.
+// Keep it general; mutation runs over any application folder reuse it.
+{
+  "extends": "./tsconfig.json"
+}

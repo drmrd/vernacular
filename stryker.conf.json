@@ -2,11 +2,12 @@
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "packageManager": "pnpm",
   "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner", "@stryker-mutator/typescript-checker"],
   "vitest": {
-    "configFile": "vite.config.ts"
+    "configFile": "vitest.stryker.config.ts"
   },
   "checkers": ["typescript"],
-  "tsconfigFile": "tsconfig.json",
+  "tsconfigFile": "tsconfig.stryker.json",
   "mutate": ["core/**/*.ts", "!core/**/*.test.ts", "!core/**/*.spec.ts"],
   "reporters": ["progress", "clear-text", "html"],
   "htmlReporter": {
@@ -17,6 +18,7 @@
     "low": 60,
     "break": 50
   },
+  "dryRunTimeoutMinutes": 30,
   "tempDirName": ".stryker-tmp",
   "cleanTempDir": true,
   "logLevel": "info"
