@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
+import { isCacheHeld } from '../scene/dispose-object'
 import { NeutralMaterialProvider } from './neutral-material-provider'
 import type { SurfaceRole } from './material-provider'
 
@@ -43,5 +44,26 @@ describe('NeutralMaterialProvider', () => {
     expect(leaf.name).toBe('leaf')
     expect(leaf.transparent).toBe(false)
     expect(leaf.side).toBe(THREE.DoubleSide)
+  })
+
+  it('holds each material it returns and frees each one exactly once on dispose', () => {
+    const provider = new NeutralMaterialProvider()
+    const materials = NAMED_ROLES.map((role) => provider.material(role))
+    const disposals = materials.map((material) => {
+      const counter = { count: 0 }
+      material.addEventListener('dispose', () => {
+        counter.count += 1
+      })
+      return counter
+    })
+
+    expect(materials.every((material) => isCacheHeld(material))).toBe(true)
+
+    // dispose() is not on the provider yet; the cast keeps the file type-checking.
+    const owner = provider as unknown as { dispose(): void }
+    owner.dispose()
+    owner.dispose()
+
+    expect(disposals.map((counter) => counter.count)).toEqual(materials.map(() => 1))
   })
 })
