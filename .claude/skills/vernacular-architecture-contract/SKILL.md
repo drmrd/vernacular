@@ -7,7 +7,7 @@ description: 'Use when deciding which layer new code belongs in (core, storage, 
 
 ## Overview
 
-Vernacular is a six-layer DAG with one mutation boundary, one derived intermediate representation, and a small set of load-bearing conventions that lint and tests only partially enforce. This skill states each load-bearing decision, why it holds, where it is enforced, and where the structure is known to be weak, so you do not bend an invariant by accident.
+Vernacular is a seven-layer DAG with one mutation boundary, one derived intermediate representation, and a small set of load-bearing conventions that lint and tests only partially enforce. This skill states each load-bearing decision, why it holds, where it is enforced, and where the structure is known to be weak, so you do not bend an invariant by accident.
 
 ## When to use
 
@@ -28,7 +28,7 @@ Vernacular is a six-layer DAG with one mutation boundary, one derived intermedia
 
 | Fact                              | Value                                                                       | Where                                               |
 | --------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------- |
-| Layer order (low to high)         | core, storage, engine, bridge, editor, app                                  | `eslint.config.js` lines 9-29                       |
+| Layer order (low to high)         | core, storage, session, engine, bridge, editor, app                         | `eslint.config.js` lines 9-37                       |
 | Lint rule enforcing the DAG       | `boundaries/dependencies`, default disallow                                 | `eslint.config.js` line 119                         |
 | Fitness test for the lint rule    | `tests/architecture/layer-boundaries.test.ts`                               | runs real ESLint in Vitest                          |
 | Only Three.js value importer      | `engine/` (convention, NOT lint-enforced)                                   | `.claude/rules.md` invariant 1                      |
@@ -42,13 +42,13 @@ Vernacular is a six-layer DAG with one mutation boundary, one derived intermedia
 | Plan coordinates                  | y-up in the format and the 2D renderer                                      | ADR-0099                                            |
 | Period (era) resolution           | `room ?? floor ?? project`, never stored                                    | `core/architecture-era/resolve-period.ts`           |
 
-## The six-layer DAG and its enforcement
+## The seven-layer DAG and its enforcement
 
-Each layer imports only downward. `core` imports nothing from the other layers; `storage` may import `core`; `engine` may import `core` and `storage`; `bridge` adds `engine`; `editor` adds `bridge`; `app` may import all five. `src/` is the bootstrap, not a layer: `src/main.tsx` mounts `App` from `app/` and wires the IndexedDB recent-project store, OPFS crash-recovery snapshots, and the service worker. Files outside the six layer globs (including `src/`, `tests/`, `e2e/`, `scripts/`) are not classified by the boundaries plugin, so the lint rule does not police them.
+Each layer imports only from the layers its allow list names. `core` imports nothing from the other layers; `storage` may import `core`; `session` may import `core` and `storage`; `engine` may import only `core`; `bridge` may import `core`, `session`, and `engine`; `editor` may import `core`, `session`, and `bridge`; `app` may import all six. `src/` is the bootstrap, not a layer: `src/main.tsx` mounts `App` from `app/` and wires the IndexedDB recent-project store, OPFS crash-recovery snapshots, and the service worker. Files outside the seven layer globs (including `src/`, `tests/`, `e2e/`, `scripts/`) are not classified by the boundaries plugin, so the lint rule does not police them.
 
 Three enforcement mechanisms, in order of strength:
 
-1. **eslint-plugin-boundaries** (`eslint.config.js`): `layerElements` maps each layer to a `<layer>/**` glob, `layerRules` encodes the allow lists, and `boundaries/dependencies` runs with `default: 'disallow'`. `settings['boundaries/include']` restricts classification to the six layer globs, and `import/resolver` is configured for TypeScript extensions. All three details are load-bearing: ADR-0017 records that the original ADR-0012 config was a silent no-op for months because the globs matched one directory level too shallow (`core/*`), no import resolver was set, and the rule used the removed v5 form (`boundaries/element-types`). An illegal `core -> storage` import passed lint cleanly the whole time.
+1. **eslint-plugin-boundaries** (`eslint.config.js`): `layerElements` maps each layer to a `<layer>/**` glob, `layerRules` encodes the allow lists, and `boundaries/dependencies` runs with `default: 'disallow'`. `settings['boundaries/include']` restricts classification to the seven layer globs, and `import/resolver` is configured for TypeScript extensions. All three details are load-bearing: ADR-0017 records that the original ADR-0012 config was a silent no-op for months because the globs matched one directory level too shallow (`core/*`), no import resolver was set, and the rule used the removed v5 form (`boundaries/element-types`). An illegal `core -> storage` import passed lint cleanly the whole time.
 2. **The architecture fitness test** (`tests/architecture/layer-boundaries.test.ts`): runs ESLint programmatically against two synthetic samples, asserting a `core/` file importing `../storage` produces a `boundaries/dependencies` message and a `storage/` file importing `../core` does not. This exists precisely because of the ADR-0017 incident: a configured guard with no test can regress silently. The test is coupled to the exact rule id; a plugin upgrade that renames the rule must update config and test together.
 3. **Convention, enforced only by review**: `engine/` is the only layer that value-imports `three`. The package `three` is not a boundaries element, so no lint rule fires on a stray import. Verified 2026-07-05: production source outside `engine/` contains zero `from 'three'` imports (two bridge test files value-import it for assertions). React Three Fiber usage lives in `bridge/react/`; `bridge` is the only layer that touches both React state and Three.js scene state (rules.md invariant 1). `engine/loaders/` is the only consumer of Three.js loaders. Additionally, `three/webgpu` must stay off the app startup path: `engine/testing/import-guards.ts` backs source-scan tests that keep it behind dynamic import (the ADR-0148 bundling regression).
 
@@ -122,7 +122,7 @@ The format defines plan `Point` y increasing upward, and since ADR-0099 the inte
 - **Treating `-darwin` scene baselines as CI-verified.** Only the `-linux` family gates on CI, and only since 2026-07-05.
 - **Modifying `docs/specs/` without a corresponding ADR.** Repo rule; the spec is the source of truth and every change to it carries its reasoning.
 - **Adding a static `three/webgpu` import in `engine/`.** It belongs behind dynamic import; the import-guard tests will fail, and if you route around them you regress startup bundling (ADR-0148).
-- **Assuming the boundaries rule protects non-layer directories.** `boundaries/include` covers only the six layer globs; `src/`, `scripts/`, and test trees are unclassified.
+- **Assuming the boundaries rule protects non-layer directories.** `boundaries/include` covers only the seven layer globs; `src/`, `scripts/`, and test trees are unclassified.
 
 ## Provenance and maintenance
 
