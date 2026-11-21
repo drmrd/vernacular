@@ -123,9 +123,11 @@ Project
 │   ├── walls[]
 │   ├── openings[]            (doors, windows, transoms, sidelights)
 │   ├── rooms[]               (derived polygons; purpose, eraOverride?, subPurpose?)
-│   ├── trim[]                (paths along walls/ceilings; profile reference)
+│   ├── trim[]                (hand-placed runs: paths along wall faces; profile reference;
+│   │                          room-owned runs come from the room, ADR-0223)
 │   ├── wallFeatures[]        (built-ins, columns, arches, half-walls, alcoves)
-│   ├── ceilingFeatures[]     (medallions, beams, tin ceiling zones)
+│   ├── ceilingFeatures[]     (placed pieces: medallions, single beams, tin ceiling zones;
+│   │                          beside a room's beam or coffer treatment, ADR-0223)
 │   ├── floorFeatures[]       (per-zone floor materials, rugs)
 │   ├── furniture[]           (placed instances)
 │   └── underlays[]           (calibrated image/PDF/scene references)
@@ -147,7 +149,7 @@ Project
 
 **Building shell is _typed_ at the element level, not subclassed.** A door, transom, pocket door are all `Opening` records with a `type` field pointing to `ElementTypeRegistry`. Rendering rules and parameters live in the registry, not the data. Adding a new opening type is a registry addition, not a schema change.
 
-**Trim is path-based.** A crown molding instance is a path along walls/ceilings with a reference to a `TrimProfile` (cross-section shape, also in a registry).
+**Trim is room-owned or path-based.** A room owns its usual runs. It sets one `TrimProfile` (cross-section shape, also in a registry) for each trim type, such as baseboard or crown molding. The runs follow the room's wall faces through wall edits, and one wall face can differ. For a special case, such as a partial run or trim outside a closed room, the user places a run by hand: a path along wall faces with a reference to a `TrimProfile`. See ADR-0223.
 
 **Stairs are NOT openings.** They are a distinct top-level entity that spans two floors with parametric geometry (treads, risers, runs, landings, railings, balusters, newels). Wall openings around a stairwell remain regular openings; the stair itself is its own entity.
 
@@ -1183,10 +1185,12 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 - Full opening type vocabulary in `ElementTypeRegistry`: pocket, sliding, French, dutch, bifold, barn doors; transoms; sidelights; bay/bow windows; arched/half-round windows; casement variants
 - 2D plan rendering rules per opening type (correct architectural plan symbols)
-- Trim system (path-based, multi-segment)
+- Trim system: room-owned runs that follow wall edits, and hand-placed runs (path-based, multi-segment) for special cases (ADR-0223)
 - `TrimProfileRegistry` starter set: crown (3), baseboard (3), chair rail (2), picture rail (1), plate rail (1), wainscoting cap (1), beadboard panel (1), cornice (2)
 - Wall features (archways, half-walls, columns, alcoves, built-in shelving; atomic in MVP)
-- Ceiling features (medallions x3, decorative beam paths, coved ceiling zones, tin ceiling zones)
+- Wall feature band between two heights along a room's wall faces (wainscot, beadboard, full-height paneling); a rectangle on one face comes after the beta as the same kind of object (ADR-0223, issue #973)
+- 3D builders for baseboard, door and window casing, wainscot, and ceiling beams (ADR-0223)
+- Ceiling features: a room ceiling treatment that lays out beams or coffers by rule, and placed pieces (medallions x3, single beams, coved ceiling zones, tin ceiling zones) (ADR-0223)
 - Wall construction profiles (plaster 6", lath-plaster 5", drywall 4.5", brick variants, stone)
 - `EraRegistry` populated: Victorian, Edwardian, Craftsman, Mid-Century, Contemporary, Mixed/Uncertain
 - Era tagging (project default + per-floor override + per-room override)
@@ -1211,12 +1215,12 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 **Deliverables:**
 
 - Multiple floors (add/remove/reorder/name, elevation entry, default ceiling height per floor)
-- Stair entities (straight run, L-turn, U-turn, winder, spiral)
-- Stair geometry (treads, risers, runs, landings, railings, balusters, newels; parametric)
+- Stair entities: the straight run. The L-turn, U-turn, winder, and spiral runs come after the beta (ADR-0222, issue #976)
+- Stair geometry (treads, risers, stringers, handrail, balusters, newels; plain forms; parametric). The balustrade also guards the stair well. Landings and period balustrade and newel types come after the beta (ADR-0222)
 - Stair placement (connect two floors, position on each plan)
-- Floor-by-floor view in 2D and 3D
-- Cutaway preview with adjustable transparency on floors above
-- Vertical relationships (stair wells punch openings in floors above)
+- Floor-by-floor view in 2D and 3D. The 3D floor view draws the active floor and the floors below it, and hides the floors above (ADR-0222)
+- Cutaway preview as a level cut: the view hides everything above a height that a slider sets, and a change of floor moves that height. The cut is one general clip plane with caps, level in the beta; standing the same plane upright on a line drawn in the plan is a later mode (ADR-0222, issue #974)
+- Vertical relationships (a stair cuts its stair well in the floor above over its footprint, and the user can change the outline; ADR-0222)
 - Per-room ceiling height override
 - Complete underlay layer (image, PDF via pdf.js, glTF/glb scene; all calibrated)
 - Trace mode (wall tool snaps to underlay features; basic; no auto-trace)
@@ -1225,9 +1229,9 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 **Acceptance:**
 
-- 4-story old house (basement + 3 floors + attic) drawn with stairs connecting all levels
+- 4-story old house (basement + 3 floors + attic) drawn with straight-run stairs connecting all levels (ADR-0222)
 - Floor-by-floor view performance smooth
-- Cutaway preview visually intelligible
+- Level cut and floor view visually intelligible (ADR-0222)
 - Underlay calibration sub-1% accuracy
 - An externally-exported glTF loads as an underlay and supports trace mode
 - Beta announcement; community channels active

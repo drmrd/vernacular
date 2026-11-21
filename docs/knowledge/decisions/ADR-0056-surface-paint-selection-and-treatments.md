@@ -27,6 +27,7 @@ related:
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0049-integration-acceptance-gate,
     decisions/ADR-0086-near-wall-transparency,
+    decisions/ADR-0224-one-3d-pick-gives-the-selection-and-the-paint-target,
   ]
 sourceFiles:
   [
@@ -51,7 +52,7 @@ sourceFiles:
     e2e/tests/journeys/edit-color.spec.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-20
 ---
 
 # ADR-0056: Surface selection, 2D paint rendering, and the surface-treatment union
@@ -210,3 +211,14 @@ Not decided here:
   target, and a line hit on the edge overlay of a faded wall. Issue #742 tracks these.
 - Whether the fade itself should depend on the camera's distance from the wall. The owner proposed
   it, and issue #744 tracks it.
+
+## Amendment 2026-11-20: the click on furniture, door parts, glass, and junction fills
+
+ADR-0224 decides the click on furniture, on a door leaf or frame, on glass, and on a junction fill,
+the first case in the list above. Every object that is not faded now stops the click, and one hit
+gives both the selection and the paint target. Furniture and glass clear the paint
+target, and so does a door leaf or frame, which has no paintable face. A junction fill gives
+no paint target and no selection. The rule "a wall decides at its first hit" now holds for every object. A faded object still does not take a click.
+
+Two points in the list above stay open: a line hit on the edge overlay of a faded wall (#742), and
+the fade that depends on the camera's distance (#744).
