@@ -1,6 +1,6 @@
 # GREEN commit proof
 
-Status: draft for owner approval, 2026-11-20. Decision record: ADR-0225 (number reserved, confirm before landing).
+Status: approved by the owner, 2026-11-20. Decision record: ADR-0225.
 
 ## Why
 

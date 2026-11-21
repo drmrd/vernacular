@@ -78,7 +78,9 @@ For each GREEN commit the script runs the unit tests of its RED commits:
    form for the changed source files and maps it to the added lines of the diff. An added line with
    a coverage entry and a count of zero blocks. Lines with no entry (types, imports, comments,
    blank lines) are exempt, and so are files on the coverage `exclude` list, which are listed as
-   notes.
+   notes. Vitest reads coverage settings only from the root config, so `vitest.config.ts` reuses
+   the coverage block of `vite.config.ts`; before this change the exclude list never applied to
+   `pnpm test` runs.
 4. **Mutation.** Stryker mutates the covered added lines and runs only the RED tests against each
    mutant. A mutant that survives is a warning.
 
@@ -166,7 +168,10 @@ change.
 ### Worktree and install policy
 
 Each cycle runs in one temporary git worktree under `os.tmpdir()`, removed on exit, including after
-a failure and after a Ctrl-C (SIGINT) or SIGTERM, which stops the running child process, so the worktree is removed and the process exits 2. Each distinct
+a failure and after a Ctrl-C (SIGINT). Ctrl-C stops the running child process, the worktree is
+removed, and the process exits 2. This holds because a terminal Ctrl-C reaches the whole process
+group. A SIGINT or SIGTERM sent only to the `green:proof` process is ignored until the run ends.
+Each distinct
 `pnpm-lock.yaml` in the range gets one `pnpm install --frozen-lockfile`, and cycles with the same
 lockfile reuse that install. The script never links the main clone's `node_modules`: on
 2026-11-20 the main clone held Vitest 4.1.8 while the lockfile pinned 4.1.12, so a link could prove
@@ -230,7 +235,14 @@ run that is cancelled or times out still saves its partial file, so the next wee
 
 - A pull request with GREEN commits gains a CI job. The first measurement ran checks 1 to 3 over the
   28 GREEN commits of one earlier pull request in 3 to 6 minutes on the owner's machine, and
-  uncapped mutation would have added about 47 more. With the 15-minute cap, that range took 29 min 43 s under heavy load, and the cap was never reached.
+  uncapped mutation would have added about 47 more. With the 15-minute cap, that range took
+  29 min 43 s under heavy load, and the cap was never reached. That reading is weak: 27 of the 28
+  Stryker runs stopped at start, because those commits predate the Stryker 10 upgrade, so the
+  mutation time there is not a real measure. The cap and the 60-minute job timeout rest on this
+  pull request's own range, which changes only tooling under `scripts/`. No range with application
+  code has been measured yet. One synthetic 6-line change in `core/` spent 399 s in the mutation
+  check on a loaded machine. The cap and the warn-only status of check 4 keep the job inside its
+  timeout.
   The 16 GREEN commits of this decision's own pull request took 12 min 16 s: mutation 17 s median and
   64 s at most per commit, 33 surviving mutants, all 16 commits reached.
 - Check 4 cannot run on commits made before the Stryker 10 upgrade and its `plugins` line. Their own

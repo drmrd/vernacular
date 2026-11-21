@@ -110,8 +110,8 @@ annotation format of `scripts/policy-check/report.mjs`.
    still remove the worktree and the temporary folder. Cycle 9 and cycle 11 test it.
 3. A RED test file renamed or deleted by a later RED commit before the GREEN commit: only files
    that exist at the GREEN commit count. Cycle 4 tests it.
-4. lcov `SF:` paths are absolute paths inside the temporary worktree; they must map back to
-   repository paths, and a file with no record must not count as covered. Cycle 6 tests it.
+4. lcov `SF:` paths are repository-relative (the code also handles absolute paths inside the
+   temporary worktree); they must map back to repository paths, and a file with no record must not count as covered. Cycle 6 tests it.
 5. A branch that merged `main` into itself: main's GREEN commits must not be checked. The log uses
    `--no-merges` and the two-dot range `<base>..<head>`. Cycle 11 asserts the git arguments.
 
@@ -1079,7 +1079,7 @@ annotation and never changes the exit code; the report order is the range order;
 
 ### Task 18: the CI job (no RED)
 
-- [ ] In `.github/workflows/ci.yml` add, after `policy`:
+- [x] In `.github/workflows/ci.yml` add, after `policy`:
 
 ```yaml
 green-proof:
@@ -1102,16 +1102,16 @@ green-proof:
 
 The 15 min budget caps only check 4 (Cycle 16a); checks 1 to 3 run on every GREEN commit.
 
-- [ ] Add `green-proof` to the `ci-complete` `needs` list, to its echo line
+- [x] Add `green-proof` to the `ci-complete` `needs` list, to its echo line
       (`green-proof=${{ needs.green-proof.result }}`), and to its `for result in` loop.
-- [ ] `pnpm exec prettier --check .github/workflows/ci.yml` exits 0.
+- [x] `pnpm exec prettier --check .github/workflows/ci.yml` exits 0.
 - [ ] Commit `ci: prove each GREEN commit on pull requests`. After the push, read the job log on
       this pull request: it must prove this branch's own cycles, and its time must agree with
       Task 17 within reason.
 
 ### Task 19: ADR-0225 and the workflow line (no RED)
 
-- [ ] Write `docs/knowledge/decisions/ADR-0225-green-commits-are-proven-by-their-red-tests.md`
+- [x] Write `docs/knowledge/decisions/ADR-0225-green-commits-are-proven-by-their-red-tests.md`
       with the frontmatter of ADR-0221 (`slug`, `title`, `type: decision`, `tags`, `related`
       with `decisions/ADR-0025-rgb-audit-and-foundation-acceptance` and
       `decisions/ADR-0221-deterministic-policy-is-checked-in-ci`, `sourceFiles`,
@@ -1126,15 +1126,15 @@ The 15 min budget caps only check 4 (Cycle 16a); checks 1 to 3 run on every GREE
       pull request with the Task 17 numbers, equivalent mutants as noise kept to warnings,
       end-to-end-only cycles unproven); Alternatives considered (the spec's approaches 2 and 3);
       References (spec, plan, #487, PR #961 measurement).
-- [ ] In `CLAUDE.md` "Workflow" step 6, add: the main thread runs `pnpm green:proof --commit HEAD`
+- [x] In `CLAUDE.md` "Workflow" step 6, add: the main thread runs `pnpm green:proof --commit HEAD`
       in the background during the review; the RED, GREEN, and refactor agents never run it.
-- [ ] Run the `humanizer` skill on the ADR prose, then `grep -c $'\u2014'` on both files prints 0
+- [x] Run the `humanizer` skill on the ADR prose, then `grep -c $'\u2014'` on both files prints 0
       and `pnpm knowledge:index` exits 0.
-- [ ] Commit `docs: record the decision to prove GREEN commits with their RED tests`.
+- [x] Commit `docs: record the decision to prove GREEN commits with their RED tests`.
 
 ### Task 20: verify the branch
 
-- [ ] `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`, checking each
+- [x] `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`, checking each
       command's own exit code.
 - [ ] `pnpm rgb:audit --range origin/main..HEAD` prints the clean line; `pnpm policy:check` exits
       0; `pnpm green:proof --range origin/main..HEAD` exits 0 (sandbox off).
@@ -1246,3 +1246,7 @@ The full Stryker seed run used all cores during both runs, so the times are high
 - The capped run ends within checks 1 to 3 plus the 15-minute budget plus one mutation run in
   both runs, because the mutation total stayed under the budget.
 - Job timeout: twice the longer run (29 min 43 s), rounded up to 5 minutes: 60 minutes.
+
+**Whole-branch review finding (2026-11-21).** The review found the coverage exclude list unused:
+the root Vitest config had no coverage block. Commits 2732fdd3 (test) and bfc5ec01 (fix) fixed it,
+verified with the proof's own Vitest command: an excluded file gets no lcov record.
