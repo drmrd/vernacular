@@ -7,7 +7,7 @@ import { AssetRegistry } from '../../storage'
 import { createSelectionStore } from '../selection/selection-store'
 import { AssetRegistryProvider } from './asset-registry-context'
 import { SelectionProvider } from './selection-provider'
-import { useSceneProxies } from './webgpu-scene-view'
+import { useSceneProxies } from './use-scene-proxies'
 
 afterEach(cleanup)
 
@@ -74,6 +74,9 @@ function SceneProxiesProbe({
   return null
 }
 
+// This test stays in this file on purpose: it imports AssetRegistry from storage, and the
+// lint exception that allows that (eslint.config.js, issue 717) is keyed to this file name.
+// Moving it would mean editing shared lint config.
 describe('useSceneProxies', () => {
   it('joins injected screen positions with catalog-resolved labels', async () => {
     const stubSource: AssetSource = {
