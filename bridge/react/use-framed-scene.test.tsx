@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { renderHook, act, cleanup } from '@testing-library/react'
 
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
-import { useEdgeOverlay } from './use-framed-scene'
+import { useEdgeOverlay, useFramedScene } from './use-framed-scene'
+import { containsEdgeLines, framedSceneEnvironment } from './use-framed-scene-test-support'
 
 afterEach(cleanup)
 
@@ -60,5 +61,28 @@ describe('useEdgeOverlay inside a scene session provider', () => {
     const secondMount = renderEdgeOverlayOn(store)
 
     expect(secondMount.result.current.edgeOverlay).toBe(EDGE_OVERLAY_ON)
+  })
+})
+
+describe('useFramedScene overlay setting', () => {
+  it('reframes from a fresh reconciler with edge lines when the overlay flips on, and drops them when it flips back', () => {
+    const { wrapper } = framedSceneEnvironment()
+    const { result, rerender } = renderHook(() => useFramedScene(), { wrapper })
+    const plain = result.current.framed
+    expect(containsEdgeLines(plain.root)).toBe(false)
+
+    rerender()
+    expect(result.current.framed).toBe(plain)
+
+    act(() => result.current.toggleEdgeOverlay())
+    const outlined = result.current.framed
+    expect(outlined).not.toBe(plain)
+    expect(containsEdgeLines(outlined.root)).toBe(true)
+
+    act(() => result.current.toggleEdgeOverlay())
+    const plainAgain = result.current.framed
+    expect(plainAgain).not.toBe(plain)
+    expect(plainAgain).not.toBe(outlined)
+    expect(containsEdgeLines(plainAgain.root)).toBe(false)
   })
 })
