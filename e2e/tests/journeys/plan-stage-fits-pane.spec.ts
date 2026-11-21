@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import {
+  boxOf,
   canvasBox,
   drawWall,
   drawWallAndWaitForSave,
@@ -10,14 +11,15 @@ import {
 
 // Issue #646: the plan stage takes the size of its pane. The canvas fills the plan area,
 // nothing in the main pane scrolls for it, and a resize keeps the drawing under the same
-// canvas-relative point (a resize never moves the viewport's scale or offset). Every
-// reading here is a box or an accessible state a person can see, never an internal size.
+// canvas-relative point (a resize never moves the viewport's scale or offset). Each reading
+// is a box, an accessible state, or the scroll state of a box that must not scroll.
 
 const WINDOW_NOMINAL = { width: 1280, height: 720 }
 const WINDOW_SHORT = { width: 1280, height: 560 }
 const WINDOW_NARROW = { width: 1000, height: 600 }
 const WINDOW_LARGE = { width: 1400, height: 900 }
-const WINDOW_TINY = { width: 1280, height: 380 }
+// Short enough that the plan area is smaller than the minimum stage, so the stage clamps.
+const WINDOW_TINY = { width: 1280, height: 300 }
 
 // The smallest stage the plan keeps (the stage never shrinks below it).
 const MIN_STAGE = { width: 160, height: 120 }
@@ -34,58 +36,45 @@ const viewportRegion = (page: Page) => page.getByRole('main', { name: 'Viewport'
 const zoomReadout = (page: Page) => page.getByRole('button', { name: 'Reset zoom to 100%' })
 const thicknessField = (page: Page) => page.getByRole('textbox', { name: /thickness/i })
 
-async function boxOf(
-  locator: Locator,
-): Promise<{ x: number; y: number; width: number; height: number }> {
-  const box = await locator.boundingBox()
-  if (box === null) {
-    throw new Error('the element has no bounding box')
-  }
-  return box
+interface Box {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
-interface Scroll {
-  top: number
-  scrollHeight: number
-  clientHeight: number
+// Passes when the inner box lies within the outer box, give or take the slack in pixels.
+function expectBoxInside(inner: Box, outer: Box, slack = 0): void {
+  expect(inner.x).toBeGreaterThanOrEqual(outer.x - slack)
+  expect(inner.y).toBeGreaterThanOrEqual(outer.y - slack)
+  expect(inner.x + inner.width).toBeLessThanOrEqual(outer.x + outer.width + slack)
+  expect(inner.y + inner.height).toBeLessThanOrEqual(outer.y + outer.height + slack)
 }
 
-async function scrollOfViewport(page: Page): Promise<Scroll> {
-  return viewportRegion(page).evaluate((el) => ({
+async function expectNoScroll(box: Locator): Promise<void> {
+  const scroll = await box.evaluate((el) => ({
     top: el.scrollTop,
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
     scrollHeight: el.scrollHeight,
     clientHeight: el.clientHeight,
   }))
-}
-
-async function expectNoScroll(page: Page): Promise<void> {
-  const scroll = await scrollOfViewport(page)
+  expect(scroll.scrollWidth).toBe(scroll.clientWidth)
   expect(scroll.scrollHeight).toBe(scroll.clientHeight)
   expect(scroll.top).toBe(0)
 }
 
-async function expectCanvasInsideViewportRegion(page: Page): Promise<void> {
-  const canvas = await boxOf(selectors.planCanvas(page))
-  const region = await boxOf(viewportRegion(page))
-  expect(canvas.x).toBeGreaterThanOrEqual(region.x)
-  expect(canvas.y).toBeGreaterThanOrEqual(region.y)
-  expect(canvas.x + canvas.width).toBeLessThanOrEqual(region.x + region.width + 1)
-  expect(canvas.y + canvas.height).toBeLessThanOrEqual(region.y + region.height + 1)
-}
-
-async function expectBackingStoreIsCssSize(page: Page): Promise<void> {
-  const sizes = await selectors.planCanvas(page).evaluate((el) => {
+// The canvas has no CSS size of its own, so a stylesheet rule that stretched it would break
+// one backing pixel per rendered pixel. This guards that; the other tests prove the canvas
+// follows its pane.
+async function expectCanvasNotStretched(page: Page): Promise<void> {
+  const box = await canvasBox(page)
+  const backing = await selectors.planCanvas(page).evaluate((el) => {
     const canvas = el as HTMLCanvasElement
-    const style = getComputedStyle(canvas)
-    return {
-      backingWidth: canvas.width,
-      backingHeight: canvas.height,
-      cssWidth: parseFloat(style.width),
-      cssHeight: parseFloat(style.height),
-    }
+    return { width: canvas.width, height: canvas.height }
   })
-  expect(sizes.backingWidth).toBe(sizes.cssWidth)
-  expect(sizes.backingHeight).toBe(sizes.cssHeight)
+  expect(backing.width).toBe(Math.floor(box.width))
+  expect(backing.height).toBe(Math.floor(box.height))
 }
 
 // Draws the shared wall, switches to Select, and leaves nothing selected.
@@ -107,12 +96,12 @@ async function expectWallAtSamePoint(page: Page): Promise<void> {
   await expect(thicknessField(page)).toHaveCount(0)
 }
 
+// Every step of a sweep changes the window width, so the canvas width has a change to wait for.
 async function resizeTo(page: Page, size: { width: number; height: number }): Promise<void> {
+  const before = await canvasBox(page)
   await page.setViewportSize(size)
-  await expect
-    .poll(async () => (await boxOf(viewportRegion(page))).width)
-    .toBeLessThanOrEqual(size.width)
-  await expectBackingStoreIsCssSize(page)
+  await expect.poll(async () => (await canvasBox(page)).width).not.toBe(before.width)
+  await expectCanvasNotStretched(page)
 }
 
 test.describe('the canvas fits the viewport region', () => {
@@ -122,8 +111,8 @@ test.describe('the canvas fits the viewport region', () => {
     }) => {
       await page.setViewportSize(size)
       await gotoEditor(page)
-      await expectCanvasInsideViewportRegion(page)
-      await expectBackingStoreIsCssSize(page)
+      expectBoxInside(await canvasBox(page), await boxOf(viewportRegion(page)), 1)
+      await expectCanvasNotStretched(page)
     })
   }
 })
@@ -135,13 +124,13 @@ test.describe('the main pane does not scroll for the plan stage', () => {
     }) => {
       await page.setViewportSize(size)
       await gotoEditor(page)
-      await expectNoScroll(page)
+      await expectNoScroll(viewportRegion(page))
 
       await selectors.planCanvas(page).click({ position: EMPTY_POINT })
-      await expectNoScroll(page)
+      await expectNoScroll(viewportRegion(page))
 
       await selectors.planCanvas(page).evaluate((el) => el.scrollIntoView())
-      await expectNoScroll(page)
+      await expectNoScroll(viewportRegion(page))
       await expect(page.getByRole('group', { name: 'View mode' })).toBeInViewport()
     })
   }
@@ -169,22 +158,13 @@ test('fits the plan pane in split view and keeps the wall at the same canvas poi
 
   await selectors.viewModeButton(page, 'Split view').click()
   await expect(selectors.threeDRegion(page)).toBeVisible()
-  await expectBackingStoreIsCssSize(page)
+  await expectCanvasNotStretched(page)
 
   const pane = selectors
     .planCanvas(page)
     .locator('xpath=ancestor::*[contains(@class, "view-mode-viewport__pane")]')
-  const scroll = await pane.evaluate((el) => ({
-    scrollWidth: el.scrollWidth,
-    clientWidth: el.clientWidth,
-    scrollHeight: el.scrollHeight,
-    clientHeight: el.clientHeight,
-  }))
-  expect(scroll.scrollWidth).toBe(scroll.clientWidth)
-  expect(scroll.scrollHeight).toBe(scroll.clientHeight)
-  const paneBox = await boxOf(pane)
-  const canvas = await canvasBox(page)
-  expect(canvas.x + canvas.width).toBeLessThanOrEqual(paneBox.x + paneBox.width + 1)
+  await expectNoScroll(pane)
+  expectBoxInside(await canvasBox(page), await boxOf(pane), 1)
   await expectWallAtSamePoint(page)
 })
 
@@ -202,7 +182,7 @@ test('narrows the canvas with an ArrowLeft on the splitter and keeps the wall at
   await page.keyboard.press('ArrowLeft')
 
   await expect.poll(async () => (await canvasBox(page)).width).toBeLessThan(before.width)
-  await expectBackingStoreIsCssSize(page)
+  await expectCanvasNotStretched(page)
   await expectWallAtSamePoint(page)
 })
 
@@ -217,7 +197,7 @@ test('keeps the wall at the same canvas point through Plan, 3D, Plan', async ({ 
   await expect(selectors.planCanvas(page)).toHaveCount(0)
   await selectors.viewModeButton(page, 'Plan view').click()
   await expect(selectors.planCanvas(page)).toBeVisible()
-  await expectBackingStoreIsCssSize(page)
+  await expectCanvasNotStretched(page)
   await expectWallAtSamePoint(page)
 
   // The header zoom still answers while the plan stage is unmounted.
@@ -246,28 +226,28 @@ test('keeps every wall inside the canvas after a reload of a saved plan at 1280x
 
   const canvas = await canvasBox(page)
   for (const proxy of await selectors.wallProxies(page).all()) {
-    const box = await boxOf(proxy)
-    expect(box.x).toBeGreaterThanOrEqual(canvas.x)
-    expect(box.y).toBeGreaterThanOrEqual(canvas.y)
-    expect(box.x + box.width).toBeLessThanOrEqual(canvas.x + canvas.width)
-    expect(box.y + box.height).toBeLessThanOrEqual(canvas.y + canvas.height)
+    expectBoxInside(await boxOf(proxy), canvas)
   }
 })
 
-test('keeps the canvas visible at the minimum size and the floors navigation in view at 1280x380', async ({
+test('holds the canvas at the minimum size and keeps the floors navigation in view at 1280x300', async ({
   page,
 }) => {
   await page.setViewportSize(WINDOW_TINY)
   await gotoEditor(page)
-  const canvas = selectors.planCanvas(page)
-  await expect(canvas).toBeVisible()
-  const box = await boxOf(canvas)
+  await expect(selectors.planCanvas(page)).toBeVisible()
+  const box = await canvasBox(page)
   expect(box.width).toBeGreaterThanOrEqual(MIN_STAGE.width)
-  expect(box.height).toBeGreaterThanOrEqual(MIN_STAGE.height)
+  expect(box.height).toBe(MIN_STAGE.height)
+  await expectNoScroll(viewportRegion(page))
   await expect(page.getByRole('navigation', { name: 'Floors' })).toBeInViewport()
 })
 
-test('records the measured stage size in plan and split mode at 1280x720', async ({ page }) => {
+// The annotation keeps the measured sizes in the report, because the split-view coordinates in
+// scene-orbit-pivot-holds.spec.ts and close-openings-support.ts were chosen from them.
+test('gives the plan pane a narrower canvas in split view than in plan view at 1280x720', async ({
+  page,
+}) => {
   await page.setViewportSize(WINDOW_NOMINAL)
   await gotoEditor(page)
   const plan = await canvasBox(page)

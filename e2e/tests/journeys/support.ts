@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 // Every app selector the journeys depend on lives here, so that when a later
 // makeover slice restyles the shell only this module changes, not each spec.
@@ -78,14 +78,19 @@ export async function gotoEditor(page: Page): Promise<void> {
   await webFontsSettled(page)
 }
 
+// The bounding box of a locator, or a thrown error when it has none.
+export async function boxOf(locator: Locator) {
+  const box = await locator.boundingBox()
+  if (box === null) {
+    throw new Error('the element has no bounding box')
+  }
+  return box
+}
+
 // The plan canvas bounding box, or a thrown error when it has none, so drags and
 // clicks can resolve their screen coordinates against it.
 export async function canvasBox(page: Page) {
-  const box = await selectors.planCanvas(page).boundingBox()
-  if (box === null) {
-    throw new Error('plan canvas has no bounding box')
-  }
-  return box
+  return boxOf(selectors.planCanvas(page))
 }
 
 // A point on the plan canvas in page coordinates, from the canvas box read now. Aim a raw
