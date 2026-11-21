@@ -31,6 +31,11 @@ export const selectors = {
       .projectsPage(page)
       .getByRole('listitem')
       .filter({ has: page.getByRole('link', { name, exact: true }) }),
+  // The "..." control of a card, which opens the menu of the actions of its project.
+  cardActionsButton: (page: Page, name: string) =>
+    selectors.projectCard(page, name).getByRole('button', { name: `Actions for ${name}` }),
+  cardMenuItems: (page: Page) => page.getByRole('menuitem'),
+  cardMenuItem: (page: Page, name: string) => page.getByRole('menuitem', { name, exact: true }),
 }
 
 // Open the Project menu and choose the row with the given label.
