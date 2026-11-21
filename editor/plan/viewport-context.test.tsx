@@ -220,6 +220,28 @@ describe('viewport-context stage size', () => {
     expect(current().viewport).toBe(viewportBefore)
     expect(current().viewport).toEqual({ scale: DEFAULT_PLAN_SCALE })
   })
+
+  it('counts a first report at the opening size as the measurement, so a later resize keeps the viewport', () => {
+    const current = mountProvider(OPENED_WITH_CONTENT)
+    act(() => current().reportStageSize({ width: 800, height: 600 }))
+    const afterFirst = current().viewport
+
+    act(() => current().reportStageSize({ width: 1280, height: 505 }))
+
+    expect(current().stageSize).toEqual({ width: 1280, height: 505 })
+    expect(current().viewport).toBe(afterFirst)
+  })
+
+  it('counts a first report that floors to the opening size as the measurement', () => {
+    const current = mountProvider(OPENED_WITH_CONTENT)
+    act(() => current().reportStageSize({ width: 800.4, height: 600.7 }))
+    const afterFirst = current().viewport
+
+    act(() => current().reportStageSize({ width: 1280, height: 505 }))
+
+    expect(current().stageSize).toEqual({ width: 1280, height: 505 })
+    expect(current().viewport).toBe(afterFirst)
+  })
 })
 
 function probeValue(seen: readonly ViewportValue[], index: number): ViewportValue {
