@@ -170,4 +170,32 @@ describe('the saves that follow a restore of a recovery copy that cannot be read
     expect(saved).toEqual({ ok: true })
     expect(await refusedBackupsIn(ports.root, BACKUP_PATH)).toEqual(THE_REFUSED_BACKUP)
   })
+
+  it('a write that started before a restore whose move rejects leaves the copy when it ends', async () => {
+    let release = (): void => undefined
+    let gate = Promise.resolve()
+    const { ports, handle, log } = await openedLogging((store) =>
+      logSnapshotCalls(store, undefined, () => gate),
+    )
+    gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    vi.spyOn(handle.snapshots, 'setAsideRefused').mockRejectedValue(new Error(DISK_FULL))
+    log.length = 0
+    rename(handle, EDITED_AGAIN_NAME)
+    await vi.advanceTimersByTimeAsync(DEFAULT_AUTOSAVE_DELAY_MS)
+    await settle()
+    const writeStarted = [...log]
+
+    const result = await restoreSnapshot(handle)
+    release()
+    await settle()
+
+    expect(writeStarted).toEqual([`writeSnapshot:${PROJECT_ID}`])
+    expect(result).toEqual(DID_NOT_RESTORE)
+    expect(await ports.root.list(AUTOSAVE_PATH)).toContain(REFUSED_COPY_NAME)
+    expect(textOf(await ports.root.readFile(`${AUTOSAVE_PATH}/${REFUSED_COPY_NAME}`))).toBe(
+      REFUSED_TEXT,
+    )
+  })
 })

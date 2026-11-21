@@ -136,16 +136,23 @@ export function rejectSetAside(store: DocumentStore, error: Error): string[] {
 
 /**
  * Like `rejectSetAside`, except that `setAsideRefused` is the real one by default, or `setAside`
- * when given. Call this before the open.
+ * when given. Each `writeSnapshot` waits for the promise that `hold()` gives, when `hold` is given,
+ * before it writes. Call this before
+ * the open.
  */
-export function logSnapshotCalls(store: DocumentStore, setAside?: () => Promise<number>): string[] {
+export function logSnapshotCalls(
+  store: DocumentStore,
+  setAside?: () => Promise<number>,
+  hold?: () => Promise<unknown>,
+): string[] {
   const log: string[] = []
   const realSnapshots = store.snapshots.bind(store)
   store.snapshots = (id) => {
     const real = realSnapshots(id)
     return {
-      writeSnapshot: (project) => {
+      writeSnapshot: async (project) => {
         log.push(`writeSnapshot:${id}`)
+        await hold?.()
         return real.writeSnapshot(project)
       },
       prune: () => {
