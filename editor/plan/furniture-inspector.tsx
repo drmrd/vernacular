@@ -31,11 +31,7 @@ function NameField({ inputId, name, onCommit }: NameFieldProps): ReactElement {
   const [text, setText] = useState(name)
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === 'Enter') {
-      // An Enter inside a text composition belongs to the input method.
-      if (isComposingKey(event)) {
-        return
-      }
+    if (event.key === 'Enter' && !isComposingKey(event)) {
       onCommit(text)
     }
   }

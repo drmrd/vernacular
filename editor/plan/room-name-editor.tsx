@@ -17,11 +17,7 @@ export function RoomNameEditor({ roomKey, name, dispatch }: RoomNameEditorProps)
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      // An Enter inside a text composition belongs to the input method.
-      if (isComposingKey(event)) {
-        return
-      }
+    if (event.key === 'Enter' && !isComposingKey(event)) {
       commit()
     }
   }
