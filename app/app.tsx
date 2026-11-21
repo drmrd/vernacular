@@ -37,8 +37,6 @@ import { requestedDesignLanguage, searchParam } from './url-seams'
 import { useWorkspaceState } from './use-workspace-state'
 
 export type { BuiltSessionPorts } from './create-session-ports'
-// eslint-disable-next-line react-refresh/only-export-components -- re-exported only so design-language-preview.test.ts keeps its import; the reader lives in url-seams.ts
-export { requestedDesignLanguage } from './url-seams'
 
 // Test-only render-harness seam. When `?fixture=scene-harness` is present the app
 // mounts the deterministic three-dimensional render harness instead of the editor, so
