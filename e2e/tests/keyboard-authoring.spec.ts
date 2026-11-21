@@ -327,6 +327,7 @@ test.describe('Keyboard plan authoring across floors', () => {
     // One arrow key moves the candidate first: a focused radio owns the arrows, so it
     // goes before the chip takes focus.
     await page.keyboard.press('ArrowRight')
+    await expect(live).toHaveText(/^Candidate at /)
 
     // The armed chip stays checked and focusable (only aria-disabled) after the floor
     // switch. Focus it with focus() rather than a Tab path, then press Enter on it.
