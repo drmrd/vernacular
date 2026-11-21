@@ -110,9 +110,9 @@ function bestCandidate(candidates: FrontCandidate[]): FrontCandidate | undefined
 
 /** The door a building is entered by, how it was found, and the direction it faces. */
 export interface Entrance {
-  /** The entrance door; undefined when there is no exterior door (and, later, no mark). */
+  /** The entrance door; undefined when there is no exterior door. */
   readonly door: OpeningSceneNode | undefined
-  /** 'marked' arrives with the entrance mark (pull request 4); this change returns the other two. */
+  /** 'marked' is reserved for the entrance mark, which no code path returns yet. */
   readonly source: 'marked' | 'guessed' | 'none'
   readonly front: PlanDirection
 }
