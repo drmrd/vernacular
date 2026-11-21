@@ -9,6 +9,8 @@ import { SceneNavToolbar } from './scene-nav-toolbar'
 afterEach(cleanup)
 
 const CLOSE_LABEL = 'Close doors and windows'
+const NOTHING_TO_CLOSE_REASON =
+  'Nothing to close. Open a door or window in walk mode with the E key.'
 
 function baseProps() {
   return {
@@ -31,12 +33,22 @@ describe('SceneNavToolbar close doors and windows control', () => {
     expect(button).toHaveClass('scene-nav-toolbar__btn')
   })
 
-  it('disables the control and says how to open a door when the interactive-object props are omitted', () => {
+  it('marks the control unavailable and says how to open a door when the interactive-object props are omitted', () => {
     render(<SceneNavToolbar {...baseProps()} />)
 
     const button = screen.getByRole('button', { name: CLOSE_LABEL })
-    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     expect(button.getAttribute('title')).toMatch(/E key/)
+  })
+
+  it('keeps the unavailable control focusable and describes why there is nothing to close', () => {
+    render(<SceneNavToolbar {...baseProps()} />)
+
+    const button = screen.getByRole('button', { name: CLOSE_LABEL })
+    button.focus()
+
+    expect(button).toHaveFocus()
+    expect(button).toHaveAccessibleDescription(NOTHING_TO_CLOSE_REASON)
   })
 
   it('enables the control in orbit mode when something is open, names the R key, and resets on click', async () => {
@@ -51,6 +63,7 @@ describe('SceneNavToolbar close doors and windows control', () => {
 
     const button = screen.getByRole('button', { name: CLOSE_LABEL })
     expect(button).toBeEnabled()
+    expect(button).not.toHaveAttribute('aria-disabled')
     expect(button.getAttribute('title')).toMatch(/R key/)
     await userEvent.click(button)
 
@@ -60,7 +73,9 @@ describe('SceneNavToolbar close doors and windows control', () => {
   it('keeps the control enabled in walk mode when something is open, unlike the orbit-only controls', () => {
     render(<SceneNavToolbar {...baseProps()} mode="walk" interactiveObjectsAtDefault={false} />)
 
-    expect(screen.getByRole('button', { name: CLOSE_LABEL })).toBeEnabled()
+    const button = screen.getByRole('button', { name: CLOSE_LABEL })
+    expect(button).toBeEnabled()
+    expect(button).not.toHaveAttribute('aria-disabled')
   })
 
   it('does not call the handler when everything is already at its default', async () => {

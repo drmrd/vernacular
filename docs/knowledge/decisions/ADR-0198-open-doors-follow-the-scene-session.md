@@ -196,6 +196,8 @@ Known gaps:
   doors swing in both camera modes. No test asserts the order of the tick after the walk step.
 - A disabled control gives its reason only in its `title` attribute. Nothing visible in the toolbar
   says why the button is disabled. Issue #779 tracks this.
+  (Updated 2026-11-21: ADR-0227 resolves this for the 3D toolbar. Issue #1023 tracks the tool
+  chips.)
 
 ## Evidence
 

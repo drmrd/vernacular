@@ -129,7 +129,7 @@
     color var(--motion-duration);
 }
 
-.scene-nav-toolbar__btn:hover:not(:disabled) {
+.scene-nav-toolbar__btn:hover:not([aria-disabled='true']) {
   background: var(--color-surface-active);
   color: var(--color-on-surface-active);
 }
@@ -148,7 +148,7 @@
   outline-offset: 1px;
 }
 
-.scene-nav-toolbar__btn:disabled {
+.scene-nav-toolbar__btn[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -186,7 +186,7 @@
  * addendum ends on, which is that a rule cancelling a fill owes an answer about the
  * label.
  */
-[data-design-language='arris'] .scene-nav-toolbar__btn:hover:not(:disabled) {
+[data-design-language='arris'] .scene-nav-toolbar__btn:hover:not([aria-disabled='true']) {
   background: transparent;
   border-color: var(--color-text);
   color: var(--color-text);
@@ -197,7 +197,8 @@
    without this a hovered active toggle would read exactly like an inactive one. The
    shipped language reaches the same place by painting the same fill for both states;
    this restates it where the two have been pulled apart. */
-[data-design-language='arris'] .scene-nav-toolbar__btn[aria-pressed='true']:hover:not(:disabled) {
+[data-design-language='arris']
+  .scene-nav-toolbar__btn[aria-pressed='true']:hover:not([aria-disabled='true']) {
   background: var(--color-surface-active);
   border-color: var(--color-indicator);
   color: var(--color-on-surface-active);

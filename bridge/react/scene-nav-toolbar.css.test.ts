@@ -84,7 +84,7 @@ describe('scene-nav-toolbar.css', () => {
  */
 
 const ARRIS_SCOPE = "[data-design-language='arris']"
-const HOVERED_TOGGLE = `${ARRIS_SCOPE} .scene-nav-toolbar__btn:hover:not(:disabled)`
+const HOVERED_TOGGLE = `${ARRIS_SCOPE} .scene-nav-toolbar__btn:hover:not([aria-disabled='true'])`
 
 // Every rule in this stylesheet is introduced by a comment, and a comment reads as
 // part of the next rule's selector to any regex simple enough to live here.
@@ -94,12 +94,14 @@ const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
  * Every rule in the stylesheet, in source order.
  *
  * This is a reader, not a parser. It assumes what this stylesheet actually contains:
- * single ungrouped selectors, no ids, no pseudo-elements, and no at-rules. A grouped
+ * mostly single selectors, no ids, no pseudo-elements, and no at-rules. A grouped
  * selector or an id would be read or scored wrongly and nothing here would say so.
+ * Whitespace inside a selector collapses to one space, so a selector that prettier
+ * splits over two lines still reads as one.
  */
 function allRules(): { selector: string; body: string }[] {
   return [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
-    selector: (match[1] ?? '').trim(),
+    selector: (match[1] ?? '').replace(/\s+/g, ' ').trim(),
     body: match[2] ?? '',
   }))
 }
@@ -113,6 +115,16 @@ function declaredValue(body: string, property: string): string | undefined {
   const match = body.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`))
   return match?.[1]?.trim()
 }
+
+describe('the 3D navigation toolbar button states', () => {
+  it('styles an unavailable button by aria-disabled alone, never by the native disabled state', () => {
+    const disabledSelectors = allRules()
+      .map((rule) => rule.selector)
+      .filter((selector) => selector.includes('.scene-nav-toolbar__btn:disabled'))
+
+    expect(disabledSelectors).toEqual([])
+  })
+})
 
 describe('the Arris 3D navigation toolbar', () => {
   it('brightens the hovered button border instead of blooming its fill', () => {
@@ -174,10 +186,10 @@ function winning(applying: string[], property: string): string | undefined {
 // Every rule that applies to a toggle which is pressed and hovered at once.
 const PRESSED_AND_HOVERED = [
   '.scene-nav-toolbar__btn',
-  '.scene-nav-toolbar__btn:hover:not(:disabled)',
+  ".scene-nav-toolbar__btn:hover:not([aria-disabled='true'])",
   ".scene-nav-toolbar__btn[aria-pressed='true']",
   HOVERED_TOGGLE,
-  `${ARRIS_SCOPE} .scene-nav-toolbar__btn[aria-pressed='true']:hover:not(:disabled)`,
+  `${ARRIS_SCOPE} .scene-nav-toolbar__btn[aria-pressed='true']:hover:not([aria-disabled='true'])`,
 ]
 
 describe('an Arris toggle that is pressed and hovered at once', () => {

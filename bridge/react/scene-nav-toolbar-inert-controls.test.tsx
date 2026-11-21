@@ -31,6 +31,20 @@ describe('SceneNavToolbar color-temperature honesty', () => {
     expect(screen.getByText(/reference white/i)).toBeInTheDocument()
   })
 
+  it('gives the inert slider the note text as its accessible description, under realistic lighting and under the color check', () => {
+    const { rerender } = render(<SceneNavToolbar {...baseProps} lightingMode="realistic" />)
+
+    const slider = screen.getByRole('slider', { name: /color temperature/i })
+    expect(slider).toBeDisabled()
+    expect(slider).toHaveAccessibleDescription(/sun and sky/i)
+
+    rerender(<SceneNavToolbar {...baseProps} colorCheck />)
+
+    expect(screen.getByRole('slider', { name: /color temperature/i })).toHaveAccessibleDescription(
+      /reference white/i,
+    )
+  })
+
   it('keeps the slider live in schematic mode, the one mode whose rig it tints', () => {
     render(<SceneNavToolbar {...baseProps} lightingMode="schematic" />)
 
@@ -44,7 +58,7 @@ describe('SceneNavToolbar orbit-only toggles in walk mode', () => {
     render(<SceneNavToolbar {...baseProps} mode="walk" selectionEnabled />)
 
     const toggle = screen.getByRole('button', { name: 'Select' })
-    expect(toggle).toBeDisabled()
+    expect(toggle).toHaveAttribute('aria-disabled', 'true')
     expect(toggle.getAttribute('title')).toMatch(/orbit camera/i)
   })
 
@@ -52,7 +66,7 @@ describe('SceneNavToolbar orbit-only toggles in walk mode', () => {
     render(<SceneNavToolbar {...baseProps} mode="walk" revealInterior />)
 
     const toggle = screen.getByRole('button', { name: 'Reveal interior' })
-    expect(toggle).toBeDisabled()
+    expect(toggle).toHaveAttribute('aria-disabled', 'true')
     expect(toggle.getAttribute('title')).toMatch(/orbit camera/i)
   })
 
@@ -60,7 +74,11 @@ describe('SceneNavToolbar orbit-only toggles in walk mode', () => {
     render(<SceneNavToolbar {...baseProps} mode="orbit" />)
 
     expect(screen.getByRole('button', { name: 'Select' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Select' })).not.toHaveAttribute('aria-disabled')
     expect(screen.getByRole('button', { name: 'Reveal interior' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Reveal interior' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
   })
 })
 
@@ -81,7 +99,7 @@ describe('SceneNavToolbar camera controls in walk mode', () => {
 
     cameraControlNames.forEach((name) => {
       const button = screen.getByRole('button', { name })
-      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('aria-disabled', 'true')
       expect(button.getAttribute('title')).toMatch(/orbit camera/i)
     })
   })
@@ -97,6 +115,7 @@ describe('SceneNavToolbar camera controls in walk mode', () => {
 
     cameraControlNames.forEach((name) => {
       expect(screen.getByRole('button', { name })).toBeEnabled()
+      expect(screen.getByRole('button', { name })).not.toHaveAttribute('aria-disabled')
     })
   })
 })
@@ -113,6 +132,7 @@ describe('SceneNavToolbar doorway preset self-explanation', () => {
 
     const button = screen.getByRole('button', { name: 'Doorway' })
     expect(button).toBeEnabled()
+    expect(button).not.toHaveAttribute('aria-disabled')
     expect(button.getAttribute('title')).toMatch(/french door/)
   })
 
@@ -134,7 +154,7 @@ describe('SceneNavToolbar doorway preset self-explanation', () => {
     render(<SceneNavToolbar {...baseProps} mode="orbit" doorway={null} />)
 
     const button = screen.getByRole('button', { name: 'Doorway' })
-    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     expect(button.getAttribute('title')).toMatch(/no door/i)
   })
 })

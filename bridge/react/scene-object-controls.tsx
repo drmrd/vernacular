@@ -1,3 +1,5 @@
+import { ToolbarButton } from './toolbar-button'
+
 interface SceneObjectControlsProps {
   atDefault?: boolean | undefined
   onReset?: (() => void) | undefined
@@ -26,15 +28,12 @@ export function SceneObjectControls({
       aria-label="Scene objects"
       className="scene-nav-toolbar__objects scene-nav-toolbar__secondary"
     >
-      <button
-        type="button"
-        className="scene-nav-toolbar__btn"
-        disabled={atDefault}
-        title={atDefault ? NOTHING_TO_CLOSE_TITLE : CLOSE_TITLE}
-        onClick={onReset}
-      >
-        Close doors and windows
-      </button>
+      <ToolbarButton
+        label="Close doors and windows"
+        onActivate={onReset}
+        unavailableReason={atDefault ? NOTHING_TO_CLOSE_TITLE : undefined}
+        title={CLOSE_TITLE}
+      />
     </div>
   )
 }

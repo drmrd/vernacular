@@ -347,7 +347,7 @@ export const lintExceptions = [
     issue: 689,
     max: 218,
   },
-  { file: 'bridge/react/scene-nav-toolbar.test.tsx', rule: 'max-lines', issue: 689, max: 378 },
+  { file: 'bridge/react/scene-nav-toolbar.test.tsx', rule: 'max-lines', issue: 689, max: 377 },
   {
     file: 'bridge/react/scene-selection.tsx',
     rule: 'react-refresh/only-export-components',
