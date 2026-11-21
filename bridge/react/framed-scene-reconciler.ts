@@ -1,5 +1,11 @@
 import { type SceneGraph, type SceneNode, type SurfaceTreatment } from '../../core'
-import type { EdgeOverlayOptions } from '../../engine'
+import {
+  disposeObject,
+  isGroundPlane,
+  type EdgeOverlayOptions,
+  type PhysicalMaterialProvider,
+  type SceneRoot,
+} from '../../engine'
 import {
   buildFloorBuild,
   collectSubgroupGroups,
@@ -32,6 +38,59 @@ export interface FramedSceneReconciler {
     paint?: Record<string, SurfaceTreatment>,
     models?: FurnitureModelLookup,
   ): FramedScene
+  /** Frees what earlier reconciles replaced. Call it once the scene they returned is live. */
+  releaseRetired(): void
+}
+
+type RetiredObject = Parameters<typeof disposeObject>[0]
+
+/**
+ * What reconciles replaced and nothing draws any more: rebuilt sub-groups, ground planes of
+ * dropped scenes, superseded empty-graph scenes, and providers whose build lineage ended. They
+ * wait here rather than being freed at once, so reconcile stays free of side effects on the
+ * scene still on screen; releaseRetired frees them after the new scene commits.
+ */
+interface RetiredResources {
+  objects: Set<RetiredObject>
+  providers: Set<PhysicalMaterialProvider>
+}
+
+/** A floor build's sub-groups in assembly order: the wall first, then rooms, openings, furniture. */
+function buildGroups(build: CachedFloorBuild): SceneRoot[] {
+  return [build.wall, ...collectSubgroupGroups(build.rooms, build.openings, build.furniture)]
+}
+
+/**
+ * Retires every sub-group of a replaced floor build that its successor did not reuse, by
+ * identity, so a reused group is never freed. The provider retires only when the successor
+ * draws from a different one, which is the end of the floor's build lineage (a paint edit).
+ */
+function retireReplacedBuild(
+  replaced: CachedFloorBuild,
+  successor: CachedFloorBuild,
+  retired: RetiredResources,
+): void {
+  const kept = new Set(buildGroups(successor))
+  for (const group of buildGroups(replaced)) {
+    if (!kept.has(group)) retired.objects.add(group)
+  }
+  if (replaced.materials !== successor.materials) retired.providers.add(replaced.materials)
+}
+
+/**
+ * Retires the ground plane of a dropped scene, and nothing else of it: its floor groups'
+ * sub-groups belong to cached floor builds, which retire them when they are replaced.
+ */
+function retireGroundPlanes(framed: FramedScene, retired: RetiredResources): void {
+  for (const plane of framed.root.children.filter(isGroundPlane)) retired.objects.add(plane)
+}
+
+/** Frees every retired object and provider, then empties the queue. */
+function freeRetired(retired: RetiredResources): void {
+  for (const object of retired.objects) disposeObject(object)
+  for (const provider of retired.providers) provider.dispose()
+  retired.objects.clear()
+  retired.providers.clear()
 }
 
 /** Maps a cached floor build to the assembly input frameStackedScene stacks it from: its
@@ -41,7 +100,7 @@ export interface FramedSceneReconciler {
 function floorAssembly(build: CachedFloorBuild): FloorAssembly {
   return {
     node: build.floorNode,
-    subgroups: [build.wall, ...collectSubgroupGroups(build.rooms, build.openings, build.furniture)],
+    subgroups: buildGroups(build),
     entities: build.entities,
     roomPolygons: build.roomPolygons,
     topWorld: floorTopWorld(build.floorNode.elevation, build.entities.rooms),
@@ -56,6 +115,7 @@ interface ReconcilePass {
   models: FurnitureModelLookup
   view: EdgeOverlayOptions
   cache: Map<string, CachedFloorBuild>
+  retired: RetiredResources
 }
 
 /**
@@ -64,7 +124,7 @@ interface ReconcilePass {
  * build when only the paint reference is unchanged) and stores it under the floor id.
  */
 function reuseOrBuildFloor(node: SceneNode, pass: ReconcilePass): CachedFloorBuild {
-  const { graph, paint, models, view, cache } = pass
+  const { graph, paint, models, view, cache, retired } = pass
   const entities = floorEntities(graph, node)
   const request: FloorRequest = {
     floorNode: node,
@@ -79,6 +139,7 @@ function reuseOrBuildFloor(node: SceneNode, pass: ReconcilePass): CachedFloorBui
   // whole; otherwise the prior build's unchanged room sub-groups are reused.
   const prev = cached !== undefined && cached.paint === paint ? cached : undefined
   const build = buildFloorBuild({ ...request, entities, view, prev, models })
+  if (cached !== undefined) retireReplacedBuild(cached, build, retired)
   cache.set(node.id, build)
   return build
 }
@@ -99,14 +160,38 @@ interface AssembledScene {
  */
 function evictScenesSharingBuilds(
   scenes: Map<string, AssembledScene>,
-  keptKey: string,
-  builds: CachedFloorBuild[],
+  kept: { key: string; builds: CachedFloorBuild[] },
+  retired: RetiredResources,
 ): void {
   for (const [otherKey, scene] of scenes) {
-    if (otherKey !== keptKey && scene.builds.some((build) => builds.includes(build))) {
+    if (otherKey !== kept.key && scene.builds.some((build) => kept.builds.includes(build))) {
       scenes.delete(otherKey)
+      retireGroundPlanes(scene.framed, retired)
     }
   }
+}
+
+/**
+ * Stacks the pass's floors into a scene, returning the cached scene for the floor set when it
+ * holds the exact same builds. A scene this replaces or evicts retires its ground plane.
+ */
+function reconcileStackedScene(
+  pass: ReconcilePass,
+  scenes: Map<string, AssembledScene>,
+): FramedScene {
+  const { graph, retired } = pass
+  const builds = graph.nodes.map((node) => reuseOrBuildFloor(node, pass))
+  const key = graph.nodes.map((node) => node.id).join(FLOOR_SET_SEPARATOR)
+  const cached = scenes.get(key)
+  if (cached !== undefined && sameRefs(cached.builds, builds)) {
+    refreshGroundPlane(cached.framed.root, graph.gradeElevation)
+    return cached.framed
+  }
+  const framed = frameStackedScene(builds.map(floorAssembly), graph.gradeElevation)
+  evictScenesSharingBuilds(scenes, { key, builds }, retired)
+  if (cached !== undefined) retireGroundPlanes(cached.framed, retired)
+  scenes.set(key, { framed, builds })
+  return framed
 }
 
 /**
@@ -122,30 +207,32 @@ function evictScenesSharingBuilds(
  * reconciler's lifetime, so every cached sub-group was built with the same setting; the
  * scene view constructs a fresh reconciler when the toggle flips, which discards the
  * stale builds rather than reusing groups that baked the other setting in.
+ *
+ * What a reconcile replaces (a rebuilt sub-group, a floor build and provider a paint edit
+ * replaced, a dropped scene's ground plane, a superseded empty-graph scene) is retired, not
+ * freed, until the caller runs releaseRetired once the returned scene is live.
  */
 export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): FramedSceneReconciler {
   const buildsByFloorId = new Map<string, CachedFloorBuild>()
   const scenesByFloorSet = new Map<string, AssembledScene>()
+  const retired: RetiredResources = { objects: new Set(), providers: new Set() }
+  let emptyScene: FramedScene | undefined
 
   return {
     reconcile(graph, paint = {}, models = BOX_ONLY) {
+      if (emptyScene !== undefined) retired.objects.add(emptyScene.root)
+      emptyScene = undefined
       // No floors (a transient empty graph): build a throwaway scene without caching,
-      // since there is no floor id to key it by.
+      // since there is no floor id to key it by. The next reconcile supersedes and retires it.
       if (graph.nodes.length === 0) {
-        return buildFramedScene(graph, paint, view)
+        emptyScene = buildFramedScene(graph, paint, view)
+        return emptyScene
       }
-      const pass: ReconcilePass = { graph, paint, models, view, cache: buildsByFloorId }
-      const builds = graph.nodes.map((node) => reuseOrBuildFloor(node, pass))
-      const key = graph.nodes.map((node) => node.id).join(FLOOR_SET_SEPARATOR)
-      const cached = scenesByFloorSet.get(key)
-      if (cached !== undefined && sameRefs(cached.builds, builds)) {
-        refreshGroundPlane(cached.framed.root, graph.gradeElevation)
-        return cached.framed
-      }
-      const framed = frameStackedScene(builds.map(floorAssembly), graph.gradeElevation)
-      evictScenesSharingBuilds(scenesByFloorSet, key, builds)
-      scenesByFloorSet.set(key, { framed, builds })
-      return framed
+      const pass: ReconcilePass = { graph, paint, models, view, cache: buildsByFloorId, retired }
+      return reconcileStackedScene(pass, scenesByFloorSet)
+    },
+    releaseRetired() {
+      freeRetired(retired)
     },
   }
 }
