@@ -74,11 +74,12 @@ function constructSceneRenderer(
   // edges over the cheaper hard-edged basic map.
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFSoftShadowMap
-  // Color management: render output is sRGB. Creation seeds Khronos PBR Neutral as the
-  // tone-mapping operator through the shared applyToneMappingOperator helper, which owns
-  // the one domain-to-constant translation; the scene lighting calls the same helper to
-  // switch operators per mode at runtime: realistic daylight swaps in AgX, while schematic
-  // and the color check keep hue-preserving Neutral (ADR-0142). Exposure defaults to 1.
+  // Color management: render output is sRGB. Creation seeds Khronos PBR Neutral through the
+  // shared applyToneMappingOperator helper, which owns the one domain-to-constant
+  // translation. The seed holds only until the 3D library configures the canvas and writes
+  // its own value; the operator the canvas shows comes from the scene lighting, which calls
+  // the same helper per mode: realistic daylight swaps in AgX, while schematic and the
+  // color check keep hue-preserving Neutral (ADR-0142, ADR-0147). Exposure defaults to 1.
   renderer.outputColorSpace = SRGBColorSpace
   applyToneMappingOperator(renderer, 'neutral')
   renderer.toneMappingExposure = options.toneMappingExposure ?? 1

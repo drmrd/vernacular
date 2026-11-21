@@ -84,3 +84,64 @@ describe('PhysicalMaterialProvider', () => {
     expect(material).not.toBeInstanceOf(THREE.MeshPhysicalMaterial)
   })
 })
+
+const SECOND_PAINT_HEX = '#cc6633'
+const PINNED_SHEEN_ROUGHNESS = 1
+const UNREGISTERED_FINISH_ID = 'no-such-finish'
+const sheenBearingCases = finishCases.filter(([, finish]) => finish.sheen > 0)
+const sheenlessCases = [
+  ...finishCases.filter(([, finish]) => finish.sheen === 0),
+  [UNREGISTERED_FINISH_ID, { sheen: 0 }] as const,
+]
+
+function physicalPaint(
+  ref: typeof WALL_REF | typeof FLOOR_REF,
+  hex: string,
+  finishId: string,
+): Record<string, ReturnType<typeof solidTreatment>> {
+  return { [surfaceKey(ref)]: solidTreatment(colorFromHex(hex), finishId) }
+}
+
+describe('PhysicalMaterialProvider sheen', () => {
+  it.each(sheenBearingCases)(
+    'tints the sheen of a solid %s paint with its paint color',
+    (finishId, finish) => {
+      const paint = physicalPaint(WALL_REF, PAINT_HEX, finishId)
+      const provider = new PhysicalMaterialProvider({ lightColor: LIGHT_COLOR, paint })
+
+      const physical = provider.material('interiorFace', WALL_REF) as THREE.MeshPhysicalMaterial
+
+      expect(physical.sheen).toBe(finish.sheen)
+      expect(physical.sheenColor.equals(new THREE.Color(PAINT_HEX))).toBe(true)
+      expect(physical.sheenColor.equals(physical.color)).toBe(true)
+      expect(physical.sheenColor.getHex()).not.toBe(0x000000)
+      expect(physical.sheenRoughness).toBe(PINNED_SHEEN_ROUGHNESS)
+    },
+  )
+
+  it.each(sheenlessCases)('renders no sheen lobe for a solid %s paint', (finishId) => {
+    const paint = physicalPaint(WALL_REF, PAINT_HEX, finishId)
+    const provider = new PhysicalMaterialProvider({ lightColor: LIGHT_COLOR, paint })
+
+    const physical = provider.material('interiorFace', WALL_REF) as THREE.MeshPhysicalMaterial
+
+    const effectiveTint = physical.sheenColor.clone().multiplyScalar(physical.sheen)
+    expect(physical.sheen).toBe(0)
+    expect(effectiveTint.getHex()).toBe(0x000000)
+  })
+
+  it('gives each semi-gloss surface a sheen color from its own paint', () => {
+    const paint = {
+      ...physicalPaint(WALL_REF, PAINT_HEX, 'semi-gloss'),
+      ...physicalPaint(FLOOR_REF, SECOND_PAINT_HEX, 'semi-gloss'),
+    }
+    const provider = new PhysicalMaterialProvider({ lightColor: LIGHT_COLOR, paint })
+
+    const wall = provider.material('interiorFace', WALL_REF) as THREE.MeshPhysicalMaterial
+    const floor = provider.material('top', FLOOR_REF) as THREE.MeshPhysicalMaterial
+
+    expect(wall.sheenColor.equals(new THREE.Color(PAINT_HEX))).toBe(true)
+    expect(floor.sheenColor.equals(new THREE.Color(SECOND_PAINT_HEX))).toBe(true)
+    expect(wall.sheenColor.equals(floor.sheenColor)).toBe(false)
+  })
+})

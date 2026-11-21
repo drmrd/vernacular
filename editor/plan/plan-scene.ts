@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import type { OpeningSceneNode, SceneGraph, UnitPreferences, WallSceneNode } from '../../core'
 import { useViewOverlay, type ViewOverlayValue } from '../viewport/view-overlay-context'
 import type { DrawableDimension } from './draw-dimension'
@@ -6,6 +6,7 @@ import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan
 import type { DrawableFurniture } from './draw-furniture'
 import type { DrawableOpening } from './draw-opening'
 import type { PlanPalette } from './plan-palette'
+import { createPlanWallGraphMemo } from './plan-wall-graph'
 import type { DrawableUnderlay } from './draw-underlay'
 import type { SnapResult } from './snap'
 import type { Viewport } from './viewport'
@@ -133,7 +134,8 @@ export function buildDrawOptions(
  */
 export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: PlanPalette): void {
   const overlay = useViewOverlay()
-  const options = buildDrawOptions(scene, palette, overlay)
+  const [wallGraphFor] = useState(createPlanWallGraphMemo)
+  const options = { ...buildDrawOptions(scene, palette, overlay), wallGraphFor }
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
     if (ctx) {
@@ -165,5 +167,6 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: P
     overlay.showGrid,
     overlay.showDimensions,
     palette,
+    wallGraphFor,
   ])
 }

@@ -26,6 +26,7 @@ related:
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0044-mvp-delivery-tracks-and-parallel-resequencing,
     decisions/ADR-0029-schema-registry-migration-framework,
+    decisions/ADR-0157-color-accuracy-gate,
   ]
 sourceFiles:
   [
@@ -46,7 +47,7 @@ sourceFiles:
     editor/plan/room-finish-section.tsx,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-11-20
 ---
 
 # ADR-0130: Finishes system architecture
@@ -258,3 +259,39 @@ not code specific to `PaintMaterialProvider`; it lives in
 `engine/materials/surface-material-provider.ts` and is exercised today through
 `PhysicalMaterialProvider`, which the registry-aware `pattern` lookup this decision
 reserves for the wall slices will extend.
+
+## Update (2026-11-20): the sheen lobe takes the paint color
+
+The 2026-07-14 update says a solid paint's sheen comes from its finish entry. That held for the
+amount of sheen but not its color. three's `MeshPhysicalMaterial` leaves `sheenColor` black, and
+the renderer scales the lobe by `sheenColor * sheen`, so the registry's sheen did nothing for any
+finish (issue #629). `PhysicalMaterialProvider` now copies the surface's resolved paint color,
+the material's `color`, into `sheenColor`. Each surface's sheen follows its own paint, and a later
+change to how the color resolves keeps the two in step.
+
+The tint is the paint color and not white. Either tint darkens the base a little for energy
+conservation, but a white sheen also adds a gray haze at grazing angles, which washes out the
+paint. A sheen in the paint's own color keeps the hue and gives the surface a soft lift near grazing angles. The
+colorless gloss of the paint's binder is already carried by the specular lobe
+(`specularIntensity`).
+
+`sheenRoughness` is pinned at 1 in the engine (`SHEEN_ROUGHNESS`). That is three's default and
+its broadest lobe, the closest to a diffuse haze and the least likely to read as a cloth
+highlight. Pinning it means a three upgrade that changes the default cannot move the picture
+unnoticed. It stays out of the finish registry until a measured per-finish grazing response
+exists.
+
+Finishes with `sheen: 0` (flat, matte, and the matte fallback for an unregistered `finishId`)
+render as before. The color-accuracy gate ([[ADR-0157-color-accuracy-gate]]) does not move,
+because its swatches are matte.
+
+The finish-contrast state paints the floor semi-gloss, so its gates were re-derived by the
+two-probe midpoint method of ADR-0157's 2026-09-06 amendment. In
+`e2e/tests/scene-finish-contrast.spec.ts` the shipped reading rose from 0.010278 to 0.023911
+and the collapsed probe still reads 0, so `FINISH_CONTRAST_MINIMUM` rose from 0.0051 to 0.0119.
+These readings were measured on macOS. The Linux pixel baseline is refreshed on the CI runner
+([[ADR-0152-linux-scene-baseline-lane]]). The roughness-only probe (semi-gloss roughness set to
+0.9, sheen and specular kept) now reads 0.017105 and passes this gate, because the tinted sheen
+alone keeps the floor apart from the wall. The pixel-ratio gate in
+`e2e/tests/scene-solar.spec.ts` still catches that probe: re-derived against the new frame, it
+stays at threshold 0 with a ratio of 0.304.

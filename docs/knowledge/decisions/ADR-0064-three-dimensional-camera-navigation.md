@@ -57,7 +57,7 @@ sourceFiles:
     e2e/tests/journeys/walk-follows-the-active-floor.spec.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-20
 ---
 
 # ADR-0064: Camera navigation for the three-dimensional preview: orbit, walk, and reset as per-view state
@@ -289,6 +289,12 @@ walk follows the active floor in both.
 Three of these choices are working assumptions that the project owner has not
 decided: the plan position stays, the walk goes on across a change of floor, and
 the whole-building view follows the active floor.
+
+Decided on 2026-11-20 (#923): the project owner kept all three as built, and no
+follow-up change is needed.
+
+Issue #926 then fixed a fault inside the third decision. When the whole-building view hides the
+active floor's level, a walk still draws that floor, and leaving the walk hides it again.
 
 The E key had a related fault. An opening's height is measured on its own floor,
 and the reach test compared it with the walker's eye in world space. With the

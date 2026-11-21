@@ -26,6 +26,7 @@ related:
     decisions/ADR-0147-per-mode-tone-mapping,
     decisions/ADR-0158-millimeter-scale-shadow-and-occlusion-constants,
     decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
+    decisions/ADR-0205-opening-time-chosen-for-the-house,
   ]
 sourceFiles:
   [
@@ -36,6 +37,7 @@ sourceFiles:
     core/environment/environment-lighting.ts,
     core/environment/opening-instant.ts,
     core/environment/environment-state.ts,
+    core/environment/opening-conditions.test.ts,
     core/scene/front-direction.ts,
     bridge/react/effective-lighting-mode.ts,
     bridge/react/use-ambient-occlusion.ts,
@@ -43,6 +45,7 @@ sourceFiles:
     bridge/react/scene-lighting.tsx,
     bridge/react/webgpu-scene-view.tsx,
     bridge/react/scene-harness-view.tsx,
+    editor/shell/shell-providers.tsx,
     editor/environment/environment-panel.tsx,
     app/harness-environment.ts,
     tests/architecture/opening-instant-seam.test.ts,
@@ -51,7 +54,7 @@ sourceFiles:
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0193: Sample daylight for a project with no site location
@@ -339,3 +342,31 @@ whole, and with an 800 mm door added in the north wall the front turns from plan
 That flip came from a probe run in the branch review against the old function from `main`, and no
 committed test holds it. With no stored location or north bearing, the sample sun turns with the
 front.
+
+## Amendment (2026-11-19): the opening time chosen for the house
+
+The time a project opens at now depends on its site and its front
+([[ADR-0205-opening-time-chosen-for-the-house]]). Four passages of this record change.
+
+- "The opening instant seam" says that `openingInstant` is the one function that gives the instant
+  a session opens at. It still returns `DAYLIGHT_REFERENCE_INSTANT` for every input, located or
+  not, and keeps its signature and its three callers. But the time a project opens at now comes from
+  `openingConditions({ site, front })` in the same file. A site whose north is implied keeps the
+  fixed instant. A site whose north is set opens at the minute nearest 10:30 at which the sun is at
+  least 25 degrees up and meets the front at a cosine of at least 0.5, on 20 March, then on the
+  summer solstice of its hemisphere, else at the fixed instant.
+- The last paragraph of that section says that a rule that reads the site would need the session
+  state to be seeded for each project. It now is. The editor shell creates the environment store
+  once for each opened project, from `openingEnvironmentFor(site, sceneGraph)` in
+  `core/environment/environment-state.ts` (`editor/shell/shell-providers.tsx`). The architecture
+  test of the seam keeps its owners.
+- The consequence "Every session opens at 20 March 2026 at 10:30, located or not" now holds only
+  for a site whose north is implied, and for a front that finds no qualifying minute on either date.
+- The consequence "A located house whose front faces north opens with its front in shade in every
+  session" now holds only for a front that finds no qualifying minute. At latitude 40 that is a
+  front within about 23 degrees of north. Other located houses open at a time when the front takes
+  the sun. The true-sun rule does not change.
+
+ADR-0205 settles one half of the "Not decided" bullet on #737: the opening instant for a located
+house whose front faces away from the sun. The stored light is still open, and the pull request of
+the opening light amends this record again.

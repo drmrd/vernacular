@@ -102,11 +102,11 @@ export abstract class SurfaceMaterialProvider implements MaterialProvider {
 export function basePaintedParameters(
   role: SurfaceRole,
   treatment: SurfaceTreatment,
-): THREE.MeshStandardMaterialParameters {
+): Omit<THREE.MeshStandardMaterialParameters, 'color'> & { color: THREE.Color } {
   return {
+    ...(role === 'top' ? slabTopDepthBiasParameters() : {}),
     color: new THREE.Color(surfaceTintHex(treatment)),
     name: role,
-    ...(role === 'top' ? slabTopDepthBiasParameters() : {}),
   }
 }
 

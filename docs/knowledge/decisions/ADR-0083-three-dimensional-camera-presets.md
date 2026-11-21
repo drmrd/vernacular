@@ -29,7 +29,7 @@ sourceFiles:
     e2e/tests/scene-camera-presets.spec.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-20
 ---
 
 # ADR-0083: Camera viewpoint presets for the three-dimensional preview
@@ -184,6 +184,11 @@ planes and the fallback to the default pose. Issue #925 tracked the change.
 For a door between two rooms this changes the earlier behavior: the view went into the
 room that held the centre of the bounds, and the leaf had no effect. That such a door
 follows its leaf is a working assumption. The project owner has not decided it.
+
+Decided on 2026-11-20 (#929): the project owner chose this rule. A new door opens to the
+left of the direction in which its wall was drawn, so its first Doorway view can look into
+a hall until Flip swing turns it, and that is accepted. A door in an outside wall still
+looks into its room.
 
 Unit tests in `core/scene/camera-presets.test.ts` hold both rules, the angled wall, and
 that the floor view and the whole-building view agree. Three tests in

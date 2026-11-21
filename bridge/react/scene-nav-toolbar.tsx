@@ -235,7 +235,8 @@ function PrimaryCluster(props: PrimaryClusterProps) {
       {/*
         Shows or hides the building's below-grade levels (a basement). It applies only to the
         whole-building view, so it is disabled in the active-floor scope; a pressed toggle
-        means the underground levels are currently in the model.
+        means the underground levels are in the model. A walk also draws the active floor while
+        the toggle is off.
       */}
       <ToolbarToggle
         label="Underground levels"

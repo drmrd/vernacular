@@ -5,11 +5,14 @@ import {
   type SceneGraph,
   type SceneNode,
 } from '../../core'
+import type { SceneSessionState } from '../scene-session/scene-session-store'
 
 /** Options controlling which floors the whole-building view includes. */
 export interface BuildingViewOptions {
   /** Include floors below the model grade datum (`gradeElevation`), such as a basement. */
   includeUnderground: boolean
+  /** A floor drawn even when its level is hidden, such as the floor a walker stands on. */
+  standingFloorId?: string | null
 }
 
 function floorModelId(node: SceneNode): string {
@@ -18,22 +21,28 @@ function floorModelId(node: SceneNode): string {
 
 // The model ids of the floors hidden in this projection: none when underground
 // levels are shown, otherwise every floor seated below the model grade datum.
-// Basements and sub-basements are placed at elevations under that datum.
+// Basements and sub-basements are placed at elevations under that datum. The standing
+// floor is never hidden.
 function hiddenFloorIds(graph: SceneGraph, options: BuildingViewOptions): Set<string> {
   if (options.includeUnderground) {
     return new Set()
   }
   const grade = graph.gradeElevation ?? DEFAULT_GRADE_ELEVATION_MM
-  return new Set(
+  const hidden = new Set(
     graph.nodes.filter((node) => node.elevation < grade).map((node) => floorModelId(node)),
   )
+  if (options.standingFloorId != null) {
+    hidden.delete(options.standingFloorId)
+  }
+  return hidden
 }
 
 /**
  * Projects the whole building into one scene graph: every floor stacked at its own
  * elevation, the unified counterpart to `sceneGraphForFloor`. With `includeUnderground`
  * false it drops the below-grade floors (a basement) and all of their entities, so the
- * combined model shows only the above-grade massing.
+ * combined model shows only the above-grade massing, except the `standingFloorId` floor,
+ * which stays drawn even when its level is hidden.
  */
 export function sceneGraphForBuilding(graph: SceneGraph, options: BuildingViewOptions): SceneGraph {
   const hidden = hiddenFloorIds(graph, options)
@@ -60,17 +69,24 @@ export interface ViewSceneGraphInput {
   scope: SceneScope
   activeFloorId: string | null
   includeUnderground: boolean
+  /**
+   * A walk keeps the floor the walker stands on, even when the underground setting hides
+   * its level.
+   */
+  cameraMode: SceneSessionState['cameraMode']
 }
 
 /**
  * Selects the scene graph the 3D view renders: the active floor on its own in floor
  * scope, or the whole building stacked at its elevations in building scope (with the
- * underground floors dropped when `includeUnderground` is false).
+ * underground floors dropped when `includeUnderground` is false). While walking, the
+ * active floor stays in the building view even when that setting hides its level.
  */
 export function viewSceneGraph(input: ViewSceneGraphInput): SceneGraph {
   if (input.scope === 'building') {
     return sceneGraphForBuilding(input.rawGraph, {
       includeUnderground: input.includeUnderground,
+      standingFloorId: input.cameraMode === 'walk' ? input.activeFloorId : null,
     })
   }
   return sceneGraphForFloor(input.rawGraph, input.activeFloorId)

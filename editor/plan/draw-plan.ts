@@ -1,13 +1,10 @@
 /* eslint-disable max-lines -- the cohesive plan-drawing seam: one small routine per drawable layer (rooms, walls, openings, dimensions, stairs, underlays, handles). Splitting it would scatter the PlanDrawingContext seam this module defines. */
 import {
-  buildWallGraph,
   DEFAULT_METRIC_PREFERENCES,
   effectiveWallThickness,
-  WALL_NODE_PREFIX,
   wallFaceGeometry,
   wallFootprints,
   type OpeningSceneNode,
-  type PlanarGraph,
   type Point,
   type RoomSceneNode,
   type StairSceneNode,
@@ -31,6 +28,7 @@ import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { drawRulers } from './ruler'
 import { PLAN_INK_EMPHASIS, PLAN_INK_OVERLAY_WIDTH, PLAN_INK_WIDTH } from './plan-ink'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
+import { planWallGraph, strippedWallId, type PlanWallGraphResolver } from './plan-wall-graph'
 import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -108,6 +106,12 @@ export interface DrawPlanOptions {
   roomFillColor?: string
   /** The canvas color palette; defaults to the warm light-theme palette when absent. */
   palette?: PlanPalette
+  /**
+   * Resolves the planar graph of the drawn walls. A caller that redraws often passes a
+   * memoized resolver so the graph is reused between scene changes; absent, the graph is
+   * built on every draw.
+   */
+  wallGraphFor?: PlanWallGraphResolver
 }
 
 // Defined relative to the cut weight, not a literal, so a future retune of the
@@ -404,11 +408,11 @@ interface DrawableWallEdge {
 
 /** The mitred, opening-broken symbology of every wall edge on the plan. */
 function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
-  const graph = wallGraphOf(options.walls)
+  const graph = (options.wallGraphFor ?? planWallGraph)(options.walls)
   const wallByEdgeId = new Map(options.walls.map((wall) => [strippedWallId(wall), wall]))
-  // `wallGraphOf` builds every edge's `wallId` from this same `options.walls` list, so
-  // the lookup always hits and the `undefined` branch below is unreachable; it exists
-  // only to satisfy noUncheckedIndexedAccess.
+  // The graph comes from `options.wallGraphFor` when given, else `planWallGraph` builds it for
+  // this call, so every edge's `wallId` is in the lookup and the `undefined` branch below is
+  // unreachable; it exists only to satisfy noUncheckedIndexedAccess.
   const thicknessByEdge = graph.edges.map((edge) => {
     const wall = wallByEdgeId.get(edge.wallId)
     return wall === undefined ? 0 : effectiveWallThickness(wall)
@@ -436,26 +440,6 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
 /** The scene nodes behind the plan's drawable openings, the form both wall layers project onto their walls. */
 function openingNodesOf(options: DrawPlanOptions): OpeningSceneNode[] {
   return (options.openings ?? []).map((opening) => opening.node)
-}
-
-/**
- * The planar graph of the drawn walls. The scene-node prefix is stripped from each
- * id so that a graph edge's `wallId` matches the raw host id an opening carries.
- */
-function wallGraphOf(walls: readonly WallSceneNode[]): PlanarGraph {
-  return buildWallGraph(
-    walls.map((wall) => ({
-      id: strippedWallId(wall),
-      start: wall.start,
-      end: wall.end,
-      thickness: wall.thickness,
-    })),
-  )
-}
-
-/** The wall's raw model id, without the scene-node namespace. */
-function strippedWallId(wall: WallSceneNode): string {
-  return wall.id.slice(WALL_NODE_PREFIX.length)
 }
 
 /** Paint the surface-paint face bands and the active-surface highlight beneath the wall strokes. */

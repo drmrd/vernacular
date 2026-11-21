@@ -9,7 +9,20 @@ const overcastAfternoon: EnvironmentState = {
   colorCheck: true,
 }
 
+const earlySummerMorning: EnvironmentState = {
+  mode: 'schematic',
+  observedAt: { date: '2026-06-21', minutesSinceMidnight: 480 },
+  cloudCover: 0.4,
+  colorCheck: false,
+}
+
 describe('createEnvironmentSessionStore', () => {
+  it('starts from the state it is given', () => {
+    const seeded = createEnvironmentSessionStore(earlySummerMorning)
+
+    expect(seeded.getEnvironment()).toEqual(earlySummerMorning)
+  })
+
   it('starts at the default environment state', () => {
     const store = createEnvironmentSessionStore()
 
