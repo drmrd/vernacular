@@ -75,13 +75,11 @@ export function leavePage(memory: NavigationMemory): void {
   }
 }
 
-/** Starts a new project under a new id, once for each failure. It waits for the ports. */
+/**
+ * Starts a new project under a new id. It waits for the ports. A repeat call starts no
+ * second project: the busy start state and the open handle keep one start for each failure.
+ */
 export function startFresh(memory: NavigationMemory): void {
-  const { failure } = memory
-  if (memory.freshStartFor !== null && memory.freshStartFor.failure === failure) {
-    return
-  }
-  memory.freshStartFor = { failure }
   memory.busy.reading = null
   projectLeads(memory)
   showPage(memory, null)

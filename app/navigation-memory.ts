@@ -71,8 +71,6 @@ export interface NavigationMemory {
   given: { readonly ports: SessionPorts | null; readonly id: string } | null
   /** The ports whose index was reconciled already. */
   readonly reconciled: WeakSet<SessionPorts>
-  /** The failure that a new project was already started for. */
-  freshStartFor: { readonly failure: SwitchFailure | null } | null
 }
 
 /** The memory of a navigation that shows the page at once when its address names the page. */
@@ -97,7 +95,6 @@ export function newNavigationMemory(
     triedId: null,
     given: null,
     reconciled: new WeakSet(),
-    freshStartFor: null,
   }
 }
 
