@@ -80,4 +80,17 @@ describe('editor-shell.css', () => {
     expect(block).not.toBe('')
     expect(block).toMatch(/min-width:/)
   })
+
+  it('lets the plan area fill its pane and clip so the stage never scrolls the shell', () => {
+    // The plan area is the box the stage measures. It fills the pane (height 100%),
+    // may shrink below its content in a flex column (min-height and min-width 0), and
+    // clips so a stage larger than the pane (the 160 by 120 minimum in a tiny window)
+    // cuts off instead of growing a scrollbar.
+    const area = css.match(/\.editor-shell__plan-area\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(area).not.toBe('')
+    expect(area).toMatch(/(?<![-\w])height:\s*100%/)
+    expect(area).toMatch(/min-height:\s*0\b/)
+    expect(area).toMatch(/min-width:\s*0\b/)
+    expect(area).toMatch(/overflow:\s*clip\b/)
+  })
 })
