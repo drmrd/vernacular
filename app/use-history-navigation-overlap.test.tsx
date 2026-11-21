@@ -4,7 +4,6 @@ import { settle } from '../session/autosave/save-gate-test-kit'
 import { holdNextRead, rememberFolder } from '../session/handle/handle-test-kit'
 import { documentNamed, folderRecord } from '../session/projects/rebuild-test-kit'
 import { createMemoryAddressBar } from './address-bar'
-import { plantProject } from './app-test-support'
 import {
   FIRST_ID,
   MISSING_ID,
@@ -15,7 +14,6 @@ import {
   atTheFirstProject,
   durablePortsWith,
   editorOf,
-  nameOf,
   openId,
   pageOf,
   renderNavigation,
@@ -46,8 +44,8 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('a switch by address while the owner refuses another flow', () => {
-  it('keeps a switch by address running when the owner refuses another flow', async () => {
+describe('a move during a switch by address while the owner refuses another flow', () => {
+  it('follows the move made during the switch after it ends, and keeps the entries', async () => {
     const { ports, bar, result } = await atTheFirstProject()
     const letReadEnd = holdNextRead(ports.workspace)
     await visit(bar, SECOND_ADDRESS)
@@ -89,38 +87,40 @@ describe('a move to a project that does not open, reported twice', () => {
   })
 })
 
-describe('a retry with a project open', () => {
-  it('opens the project of the address at a retry after it did not open', async () => {
-    const { ports, bar, result } = await atTheFirstProject()
-    await visit(bar, MISSING_ADDRESS)
-    expect((await pageOf(result)).notice?.failure).toEqual(NOT_FOUND)
-    await plantProject(ports, MISSING_ID, nameOf(MISSING_ID))
-
-    act(() => result.current.retry())
-
-    await waitFor(() => expect(openId(result)).toBe(MISSING_ID))
-    expect(bar.entries()).toEqual([FIRST_ADDRESS, MISSING_ADDRESS])
-  })
-
-  it('asks for the folder inside the retry of a permission notice', async () => {
+describe('a second retry while the folder prompt waits', () => {
+  it('follows a move made while a folder retry waits, after a second retry was refused', async () => {
     const ports = await durablePortsWith(FIRST_ID)
     await rememberFolder(ports, FOLDER_ID, documentNamed(FOLDER_NAME))
     await ports.index.put(folderRecord(FOLDER_ID))
     ports.folders.setPermission(FOLDER_ID, 'prompt')
-    const reopen = vi.spyOn(ports.folders, 'reopen')
+    const original = ports.folders.reopen.bind(ports.folders)
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    vi.spyOn(ports.folders, 'reopen').mockImplementation(async (id) => {
+      await gate
+      return original(id)
+    })
     const bar = createMemoryAddressBar()
     const { result } = renderNavigation(ports, bar)
     await editorOf(result)
+    await waitFor(() => expect(bar.hash()).toBe(FIRST_ADDRESS))
+    await act(settle)
     await visit(bar, addressOf(FOLDER_ID))
-    expect((await pageOf(result)).notice).toStrictEqual({
-      id: FOLDER_ID,
-      failure: { kind: 'folder-permission' },
-    })
-    expect(reopen).not.toHaveBeenCalled()
+    await pageOf(result)
 
     act(() => result.current.retry())
+    await act(settle)
+    act(() => result.current.retry())
+    await act(settle)
+    await visit(bar, PROJECTS_ADDRESS)
+    await act(settle)
+    await act(async () => release())
 
     await waitFor(() => expect(openId(result)).toBe(FOLDER_ID))
-    expect(reopen).toHaveBeenCalledWith(FOLDER_ID)
+    await act(settle)
+    expect(result.current.screen).toStrictEqual({ kind: 'projects' })
+    expect(bar.entries()).toEqual([FIRST_ADDRESS, addressOf(FOLDER_ID), PROJECTS_ADDRESS])
   })
 })
