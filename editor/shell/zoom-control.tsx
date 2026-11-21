@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { CornersOut, MagnifyingGlassMinus, MagnifyingGlassPlus } from '@phosphor-icons/react'
-import { sceneGraphForFloor, type SceneGraph } from '../../core'
+import { sceneGraphForFloor } from '../../core'
 import { useActiveFloorId, useSceneGraph } from '../../bridge'
 import { IconButton } from '../design-system'
-import { computeFitViewport, contentBounds } from '../plan/fit'
+import { computeFitViewport, contentBounds, planContentPoints } from '../plan/fit'
 import { useViewport } from '../plan/viewport-context'
 import { DEFAULT_PLAN_SCALE, zoomAtCursor, zoomPercent, type ViewportSize } from '../plan/viewport'
 // Button zooms pivot about the stage center.
@@ -11,12 +11,6 @@ const stageCenter = (size: ViewportSize) => ({
   x: size.width / 2,
   y: size.height / 2,
 })
-
-// Wall ends and room corners that a fit must frame.
-const graphPoints = (graph: SceneGraph) => [
-  ...graph.walls.flatMap((wall) => [wall.start, wall.end]),
-  ...graph.rooms.flatMap((room) => room.polygon),
-]
 
 // Each button press scales by this factor; zooming out is its reciprocal.
 const ZOOM_STEP = 1.25
@@ -44,7 +38,7 @@ export function ZoomControl() {
     )
 
   const fitToContent = () => {
-    const bounds = contentBounds(graphPoints(graph))
+    const bounds = contentBounds(planContentPoints(graph.walls, graph.rooms))
     if (bounds) {
       setViewport(computeFitViewport(bounds, stageSize))
     }
