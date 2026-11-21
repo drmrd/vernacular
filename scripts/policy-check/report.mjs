@@ -33,7 +33,7 @@ function locationOf(finding) {
  * @param {string} sha
  * @returns {string}
  */
-function shortSha(sha) {
+export function shortSha(sha) {
   return sha.slice(0, SHORT_SHA_LENGTH)
 }
 

@@ -3,11 +3,14 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import { playwright } from '@vitest/browser-playwright'
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
+import viteConfig from './vite.config'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   test: {
+    // Vitest reads coverage only from the root config, so reuse the block from vite.config.ts.
+    coverage: viteConfig.test?.coverage ?? {},
     projects: [
       {
         extends: './vite.config.ts',

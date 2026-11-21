@@ -12,7 +12,7 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { GIT_OUTPUT_LIMIT_BYTES } from '../policy-check/git-input.mjs'
 import { severityOf as defaultSeverityOf } from '../policy-check/rule-severity.mjs'
-import { auditCommits, parseGitLog } from './cycle-audit.mjs'
+import { auditCommits, GIT_LOG_FORMAT, parseGitLog } from './cycle-audit.mjs'
 
 const EXIT_CLEAN = 0
 const EXIT_VIOLATIONS = 1
@@ -40,10 +40,7 @@ export async function runRgbAudit(argv, { runGit, log, severityOf = defaultSever
     '--reverse',
     '--no-merges',
     range,
-    // Per commit: record separator (%x1e), then SHA, subject, and the
-    // Infrastructure trailer value, each separated by a unit separator (%x1f);
-    // the --name-only changed filenames follow on subsequent lines.
-    '--pretty=format:%x1e%H%x1f%s%x1f%(trailers:key=Infrastructure,valueonly,separator=%x20)',
+    `--pretty=format:${GIT_LOG_FORMAT}`,
     '--name-only',
   ])
   const violations = auditCommits(parseGitLog(raw), {
