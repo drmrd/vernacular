@@ -1,11 +1,12 @@
 /**
- * Checks 1 and 2 of a GREEN proof for one cycle: the RED tests fail at the
- * GREEN commit's parent and pass at the GREEN commit.
+ * Checks 1 to 3 of a GREEN proof for one cycle: the RED tests fail at the GREEN commit's parent,
+ * pass at the GREEN commit, and run every line the GREEN commit adds.
  */
 
 import { join } from 'node:path'
 import { shortSha } from '../policy-check/report.mjs'
 import { severityOf } from '../policy-check/rule-severity.mjs'
+import { checkCoverage, coverageRequest } from './prove-coverage.mjs'
 import { redTestSet } from './test-set.mjs'
 import {
   declarationFiles,
@@ -16,7 +17,7 @@ import {
   typeCheckTargets,
   typeErrorsIn,
 } from './type-check.mjs'
-import { readVitestRun, vitestArgs } from './vitest-run.mjs'
+import { assertRanExactlyRedFiles, GENERATED_FOLDER, runVitest } from './vitest-worktree.mjs'
 
 /**
  * @typedef {import('../rgb-audit/cycle-pairing.mjs').GreenCycle} GreenCycle
@@ -31,11 +32,8 @@ import { readVitestRun, vitestArgs } from './vitest-run.mjs'
  * @typedef {{ sha: string, title: string, status: 'proven'|'skipped'|'failed', reason: string, notes: string[], findings: Finding[], timings: Partial<Record<Step, number>> }} CycleResult
  * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, session: { checkout(sha: string): { root: string, installMs: number } }, now: () => number }} CycleContext
  * @typedef {{ root: string, sha: string }} Checkout the worktree root and the commit checked out in it
- * @typedef {{ cycle: GreenCycle, context: CycleContext, set: RedTestSet, timings: CycleResult['timings'] }} Run
+ * @typedef {{ cycle: GreenCycle, context: CycleContext, set: RedTestSet, result: CycleResult, skipReason: string | null }} Run the cycle in progress; `set` and `skipReason` change during the run
  */
-
-const GENERATED_FOLDER = '.green-proof'
-const VITEST_REPORT = 'vitest-run.json'
 
 /**
  * @param {GreenCycle} cycle
@@ -60,11 +58,16 @@ function skipReason(cycle, set) {
   if (set.kind === 'other-only') {
     return `RED tests are only end-to-end, browser, or story tests: ${set.otherFiles.join(', ')}`
   }
-  if (set.kind === 'assets-only') {
-    return `no unit test imports the RED test assets: ${set.assetFiles.join(', ')}`
-  }
   if (set.kind === 'empty') return 'the RED commits leave no test file at this commit'
   return null
+}
+
+/**
+ * @param {RedTestSet} set
+ * @returns {string}
+ */
+function assetsSkipReason(set) {
+  return `no unit test imports the RED test assets: ${set.assetFiles.join(', ')}`
 }
 
 /**
@@ -77,7 +80,7 @@ function skipReason(cycle, set) {
 function measure(run, step, action) {
   const started = run.context.now()
   const value = action()
-  run.timings[step] = (run.timings[step] ?? 0) + run.context.now() - started
+  run.result.timings[step] = (run.result.timings[step] ?? 0) + run.context.now() - started
   return value
 }
 
@@ -88,39 +91,8 @@ function measure(run, step, action) {
  */
 function checkoutAt(run, sha) {
   const { root, installMs } = run.context.session.checkout(sha)
-  run.timings.install = (run.timings.install ?? 0) + installMs
+  run.result.timings.install = (run.result.timings.install ?? 0) + installMs
   return { root, sha }
-}
-
-/**
- * @param {Files} files
- * @param {string} path
- * @returns {string}
- */
-function readOrEmpty(files, path) {
-  try {
-    return files.readFile(path)
-  } catch {
-    return ''
-  }
-}
-
-/**
- * Vitest file filters match by substring, so a run can leave out a RED file or add an extra one.
- * @param {RedTestSet} set
- * @param {VitestOutcome} outcome
- * @param {string} sha
- */
-function assertRanExactlyRedFiles(set, outcome, sha) {
-  const expected = new Set(set.unitFiles)
-  const actual = new Set(outcome.testFiles)
-  const missing = set.unitFiles.filter((file) => !actual.has(file))
-  const extra = outcome.testFiles.filter((file) => !expected.has(file))
-  if (missing.length === 0 && extra.length === 0) return
-  throw new Error(
-    `Vitest ran a different set of test files than the RED files at ${shortSha(sha)}: ` +
-      `missing [${missing.join(', ')}], extra [${extra.join(', ')}]`,
-  )
 }
 
 /**
@@ -128,19 +100,30 @@ function assertRanExactlyRedFiles(set, outcome, sha) {
  * internal error, never a result about the RED tests.
  * @param {Run} run
  * @param {Checkout} checkout
+ * @param {{ include: string[], dir: string }} [coverage]
  * @returns {VitestOutcome}
  */
-function runRedTests(run, { root, sha }) {
-  const { files, runCommand } = run.context
-  const jsonFile = join(root, GENERATED_FOLDER, VITEST_REPORT)
-  files.removeFile(jsonFile)
-  const args = vitestArgs({ files: run.set.unitFiles, jsonFile })
-  const result = runCommand('pnpm', args, { cwd: root })
-  const outcome = readVitestRun(result.status, readOrEmpty(files, jsonFile), root)
-  if (outcome.outcome === 'empty' || outcome.outcome === 'error') {
-    throw new Error(`Vitest ${outcome.outcome} at ${shortSha(sha)}: ${outcome.detail}`)
+function runRedTests(run, checkout, coverage) {
+  const outcome = runVitest(run.context, checkout, { files: run.set.unitFiles, coverage })
+  if (outcome.outcome === 'empty') {
+    throw new Error(`Vitest empty at ${shortSha(checkout.sha)}: ${outcome.detail}`)
   }
-  assertRanExactlyRedFiles(run.set, outcome, sha)
+  assertRanExactlyRedFiles(run.set, outcome, checkout.sha)
+  return outcome
+}
+
+/**
+ * Runs the unit tests related to the RED test assets. Their test files replace the unit files of
+ * the cycle, so every later check runs exactly them.
+ * @param {Run} run
+ * @param {Checkout} checkout
+ * @returns {VitestOutcome}
+ */
+function runRelatedTests(run, checkout) {
+  const outcome = runVitest(run.context, checkout, { files: run.set.assetFiles, related: true })
+  if (outcome.outcome !== 'empty') {
+    run.set = { ...run.set, kind: 'unit', unitFiles: outcome.testFiles }
+  }
   return outcome
 }
 
@@ -185,20 +168,40 @@ function hasTypeError(run, checkout) {
 
 /**
  * @param {Run} run
- * @returns {Finding | null}
+ * @returns {Finding | null} null when the RED tests fail at the parent, or when the cycle is skipped
  */
 function checkParent(run) {
-  const { cycle, context, set } = run
+  const { cycle, context } = run
   const parent = context.runGit(['rev-parse', `${cycle.green.sha}^`]).trim()
   const checkout = checkoutAt(run, parent)
-  const outcome = measure(run, 'parent', () => runRedTests(run, checkout))
+  const outcome = measure(run, 'parent', () =>
+    run.set.kind === 'assets-only' ? runRelatedTests(run, checkout) : runRedTests(run, checkout),
+  )
+  if (outcome.outcome === 'empty') {
+    run.skipReason = assetsSkipReason(run.set)
+    return null
+  }
   if (outcome.outcome === 'failed') return null
   if (measure(run, 'typeCheck', () => hasTypeError(run, checkout))) return null
+  const { set } = run
   return {
     rule: set.kind === 'mixed' ? 'mixed-red-passes-before-green' : 'red-passes-before-green',
     sha: cycle.green.sha,
     message: `RED tests pass and type-check at the parent ${shortSha(parent)}: ${set.unitFiles.join(', ')}`,
   }
+}
+
+/**
+ * Check 3, run only after check 2 passed: findings and notes go straight into the result.
+ * @param {Run} run
+ * @param {string} root
+ */
+function checkAddedLines(run, root) {
+  const { cycle, context, set, result } = run
+  const request = { cycle, root, mixed: set.kind === 'mixed' }
+  const { findings, notes } = checkCoverage(request, context)
+  result.findings.push(...findings)
+  result.notes.push(...notes)
 }
 
 /**
@@ -208,8 +211,13 @@ function checkParent(run) {
 function checkGreen(run) {
   const sha = run.cycle.green.sha
   const checkout = checkoutAt(run, sha)
-  const outcome = measure(run, 'green', () => runRedTests(run, checkout))
-  if (outcome.outcome === 'passed') return null
+  const outcome = measure(run, 'green', () =>
+    runRedTests(run, checkout, coverageRequest(run.cycle, run.context.runGit)),
+  )
+  if (outcome.outcome === 'passed') {
+    checkAddedLines(run, checkout.root)
+    return null
+  }
   return {
     rule: 'red-fails-at-green',
     sha,
@@ -244,10 +252,12 @@ export function proveCycle(cycle, context) {
   const set = redTestSet(cycle, existsAtGreen(cycle, context.runGit))
   const reason = skipReason(cycle, set)
   if (reason !== null) return { ...result, status: 'skipped', reason }
-  const run = { cycle, context, set, timings: result.timings }
-  for (const finding of [checkParent(run), checkGreen(run)]) {
-    if (finding !== null) result.findings.push(finding)
-  }
+  const run = { cycle, context, set, result, skipReason: null }
+  const parentFinding = checkParent(run)
+  if (run.skipReason !== null) return { ...result, status: 'skipped', reason: run.skipReason }
+  if (parentFinding !== null) result.findings.push(parentFinding)
+  const greenFinding = checkGreen(run)
+  if (greenFinding !== null) result.findings.push(greenFinding)
   if (result.findings.some((finding) => severityOf(finding.rule) === 'fail')) {
     result.status = 'failed'
   }
