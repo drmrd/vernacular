@@ -10,6 +10,7 @@ related:
     decisions/ADR-0198-open-doors-follow-the-scene-session,
     decisions/ADR-0152-linux-scene-baseline-lane,
     decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
+    decisions/ADR-0227-an-unavailable-toolbar-control-stays-focusable-and-gives-its-reason,
   ]
 sourceFiles:
   [
@@ -23,9 +24,11 @@ sourceFiles:
     bridge/react/harness-fixtures.ts,
     engine/scene/opening-fill-builder.ts,
     engine/scene/opening-motion.ts,
+    editor/plan/opening-controls.tsx,
+    editor/plan/opening-inspector-context.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-21
 ---
 
 # ADR-0216: Hung-window sashes ride two tracks, and the lower sash rises inside its frame
@@ -281,8 +284,8 @@ given above.
 - The "Flip swing" button of the inspector never moved the sashes of a hung window before this
   change: the fill ignored `facing`, and both sashes sat on the centerline. It now decides their side
   only on a wall with two room sides or none. On a wall with a room on one side only, it changes the
-  stored `facing`, but the room side wins and the sashes stay. Issue #827 now covers only the label
-  of that button and what it should do for a hung window.
+  stored `facing`, but the room side wins and the sashes stay. The 2026-11-21 update below changes
+  the label and the behavior of that button.
 - An edit that opens or closes a room rebuilds the 3D group of each opening whose room side changes,
   doors included, although the fill of a door does not read the side. The new side gives the opening
   a new node, and the view rebuilds a group whose node is new. This happens once for such an edit. A
@@ -404,13 +407,30 @@ animation frames and once more after, does not change, so the sashes do not flic
 counts frames and not time, so a slow machine gets as many readings as a fast one. A second press
 of the open key from the pose that opened the window closes it again.
 
+## Update (2026-11-21): the facing button of a hung window
+
+The inspector button that changed `facing` was called "Flip swing" for every opening. For a hung
+window the name was wrong, because a window has no swing. It also did nothing visible on a wall
+with one room side, where the room side wins and the sashes stay put (issue #827).
+
+The button now has two forms. A door keeps "Flip swing". A hung window shows "Swap sash sides". On a
+wall between two rooms, or a free-standing wall, the button stays available and flips `facing`,
+which moves the sashes to the other side. On a wall with one room side the button is unavailable. It
+stays focusable and carries `aria-disabled`, the shared pattern of
+[[ADR-0227-an-unavailable-toolbar-control-stays-focusable-and-gives-its-reason]], and its reason reads "The room side sets which
+way the sashes face on this wall." The code is in `editor/plan/opening-controls.tsx` and
+`editor/plan/opening-inspector-context.ts`.
+
+The rule that finds the sash side did not change. Only the control now says what it does and
+declines to act where it has no effect.
+
 ## Limits
 
 - On a wall between two rooms, or a wall that bounds no room at the opening, `facing` still decides.
   It is a stored choice that defaults to `'positive'`, the wall's left-hand normal from its start to
-  its end, and only the "Flip swing" button of the inspector changes it. The label of that button
-  does not say that it moves the sash, and on a wall with one room side it does not move the sashes
-  of a hung window at all. Issue #827 covers both.
+  its end, and only the facing button of the inspector changes it. For a hung window that button
+  reads "Swap sash sides" and is unavailable on a wall with one room side (see the update of
+  2026-11-21).
 - A room counts as the room side only where its boundary runs along the wall centerline at the
   opening. ADR-0218 gives the limits of that rule.
 - The run-time cost of the room side and of the extra rebuilds was not timed. Each derived opening
@@ -441,7 +461,8 @@ of the open key from the pose that opened the window closes it again.
 ## References
 
 - Issue #792.
-- Issue #827: the label and the behavior of "Flip swing" for a hung window.
+- Issue #827: the label and the behavior of the facing button for a hung window. Resolved by the
+  2026-11-21 update.
 - Issue #674: rooms inset by the raw wall thickness.
 - ADR-0217: the library patch that uploads a moved mesh again, which this change needs.
 - [[ADR-0218-exterior-walls-follow-the-rooms-along-the-wall]]: the rule for the room side.

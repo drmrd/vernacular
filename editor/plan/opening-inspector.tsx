@@ -4,11 +4,9 @@ import {
   clampOpeningWidth,
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
-  flipOpening,
   formatAdaptiveLength,
   inchesToMillimeters,
   millimetersToInches,
-  removeOpening,
   resizeOpening,
   roundToDecimalPlaces,
   setOpeningType,
@@ -18,11 +16,11 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
-import { Button, Stack } from '../design-system'
+import { Stack } from '../design-system'
+import { OpeningControls } from './opening-controls'
 import { LengthField } from './length-field'
 import { OpeningOptionGroup } from './opening-type-chooser'
 import { groupedOpeningTypes } from './opening-type-options'
-import { RemoveControl } from './remove-control'
 
 // Decimal places the rounded millimeter value keeps after the whole-plus-fraction
 // inch conversion below, chosen to erase floating point noise (e.g. 774.6999999999999)
@@ -119,6 +117,8 @@ export interface OpeningInspectorProps {
   units: UnitSystem
   /** Openings on the same floor; used to clamp a widened opening against same-wall neighbors. */
   siblingOpenings?: readonly Opening[]
+  /** True when the opening's wall has a room along only one side, which sets a hung window's sashes. */
+  wallHasOneRoomSide?: boolean | undefined
   dispatch: (command: Command) => void
 }
 
@@ -230,42 +230,12 @@ function OpeningTypeField({ opening, onChangeType }: OpeningTypeFieldProps): Rea
   )
 }
 
-interface OpeningControlsProps {
-  floorId: string
-  openingId: string
-  dispatch: (command: Command) => void
-}
-
-function OpeningControls({ floorId, openingId, dispatch }: OpeningControlsProps): ReactElement {
-  return (
-    <Stack direction="horizontal" gap="space-3">
-      <Stack direction="horizontal" gap="space-2">
-        <Button
-          variant="neutral"
-          onClick={() => dispatch(flipOpening(floorId, openingId, 'hinge'))}
-        >
-          Flip hinge
-        </Button>
-        <Button
-          variant="neutral"
-          onClick={() => dispatch(flipOpening(floorId, openingId, 'facing'))}
-        >
-          Flip swing
-        </Button>
-      </Stack>
-      <RemoveControl
-        targetId={openingId}
-        onConfirm={() => dispatch(removeOpening(floorId, openingId))}
-      />
-    </Stack>
-  )
-}
-
 export function OpeningInspector({
   floorId,
   opening,
   units,
   siblingOpenings = [],
+  wallHasOneRoomSide = false,
   dispatch,
 }: OpeningInspectorProps): ReactElement {
   const preferences = PREFERENCES_BY_UNITS[units]
@@ -290,7 +260,12 @@ export function OpeningInspector({
           )
         }
       />
-      <OpeningControls floorId={floorId} openingId={opening.id} dispatch={dispatch} />
+      <OpeningControls
+        opening={opening}
+        floorId={floorId}
+        wallHasOneRoomSide={wallHasOneRoomSide}
+        dispatch={dispatch}
+      />
     </Stack>
   )
 }

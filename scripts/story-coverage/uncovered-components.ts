@@ -272,6 +272,12 @@ export const UNCOVERED_COMPONENTS: {
       'an invisible accessibility overlay proxy with no standalone visual to snapshot; its keyboard selection behavior is covered by entity-proxy.test.tsx, so it stays recorded here rather than forcing a contrived visual story (see ADR-0111).',
   },
   {
+    component: 'OpeningControls',
+    file: 'editor/plan/opening-controls.tsx',
+    reason:
+      'the flip hinge, facing (swap sash sides on a hung window), and remove buttons split out of opening-inspector.tsx to keep that module under its size budget; it is only rendered inside OpeningInspector, whose story shows it, and its DOM is exercised through the opening inspector tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
     component: 'PlanOverlay',
     file: 'editor/plan/plan-overlay.tsx',
     reason:

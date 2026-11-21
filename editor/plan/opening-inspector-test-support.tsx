@@ -39,9 +39,13 @@ export function buildOpeningOfWidth(width: number): Opening {
 export function renderInspector(
   dispatch: (command: unknown) => void,
   units: 'metric' | 'imperial' = UNITS,
-  overrides: { siblingOpenings?: readonly Opening[]; opening?: Opening } = {},
+  overrides: {
+    siblingOpenings?: readonly Opening[]
+    opening?: Opening
+    wallHasOneRoomSide?: boolean
+  } = {},
 ) {
-  const { siblingOpenings = [], opening = buildOpening() } = overrides
+  const { siblingOpenings = [], opening = buildOpening(), wallHasOneRoomSide } = overrides
   render(
     <OpeningInspector
       floorId={FLOOR_ID}
@@ -49,6 +53,7 @@ export function renderInspector(
       units={units}
       siblingOpenings={siblingOpenings}
       dispatch={dispatch as never}
+      wallHasOneRoomSide={wallHasOneRoomSide}
     />,
   )
 }

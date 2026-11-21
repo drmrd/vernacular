@@ -36,6 +36,7 @@ import './inspector.css'
 import { DimensionInspector } from '../plan/dimension-inspector'
 import { FurnitureInspector } from '../plan/furniture-inspector'
 import { OpeningInspector } from '../plan/opening-inspector'
+import { floorOpenings, openingWallHasOneRoomSide } from '../plan/opening-inspector-context'
 import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
 import { RoomNameEditor } from '../plan/room-name-editor'
 import { RoomPeriodEditor } from '../plan/room-period-editor'
@@ -61,12 +62,6 @@ const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
 // when the active id is null or no longer names a floor in the project.
 function activeFloor(project: Readonly<Project>, activeFloorId: string | null) {
   return project.floors.find((floor) => floor.id === activeFloorId) ?? project.floors[0]
-}
-
-// The openings on the given floor, or an empty list when the floor is gone; handed to
-// the opening inspector so it can clamp a widened opening against same-wall neighbors.
-function floorOpenings(project: Readonly<Project>, floorId: string): readonly Opening[] {
-  return project.floors.find((floor) => floor.id === floorId)?.openings ?? []
 }
 
 /**
@@ -384,9 +379,6 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   const project = session.getProject()
   const selectedOpening = singleSelectedOpening(selectedIds, project)
   if (selectedOpening !== null) {
-    // The openings on the selected opening's floor, so the inspector can clamp a
-    // widened opening against same-wall neighbors (filtered inside the component).
-    const siblingOpenings = floorOpenings(project, selectedOpening.floorId)
     return (
       // Key on the opening's editable values so the inspector remounts when the
       // selected opening changes or an undo restores different ones; its dimension
@@ -396,7 +388,8 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
         floorId={selectedOpening.floorId}
         opening={selectedOpening.opening}
         units={project.meta.units}
-        siblingOpenings={siblingOpenings}
+        siblingOpenings={floorOpenings(project, selectedOpening.floorId)}
+        wallHasOneRoomSide={openingWallHasOneRoomSide(graph, selectedOpening.opening.id)}
         dispatch={session.dispatch}
       />
     )
