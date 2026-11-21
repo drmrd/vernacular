@@ -28,6 +28,8 @@ const EXIT_INTERNAL = 2
 const EXIT_INTERRUPTED = 130
 const DEFAULT_BASE = 'origin/main'
 const DEFAULT_HEAD = 'HEAD'
+const RANGE_SEPARATOR = '..'
+const NOT_FOUND = -1
 const OPTION_KEYS = { '--range': 'range', '--commit': 'commit', '--base': 'base' }
 
 /**
@@ -53,19 +55,37 @@ function parseOptions(argv) {
 /**
  * @param {Options} options
  * @param {RunGit} runGit
- * @returns {{ range: string, onlySha: string | null }}
+ * @returns {{ range: string, onlySha: string | null, headSha: string }}
  */
 function resolveRange(options, runGit) {
   if (options.commit !== null) {
-    const resolved = runGit([
-      'rev-parse',
-      '--verify',
-      '--end-of-options',
-      `${options.commit}^{commit}`,
-    ]).trim()
-    return { range: `${options.base}..${resolved}`, onlySha: resolved }
+    const resolved = resolveCommit(options.commit, runGit)
+    return { range: `${options.base}..${resolved}`, onlySha: resolved, headSha: resolved }
   }
-  return { range: options.range ?? `${options.base}..${DEFAULT_HEAD}`, onlySha: null }
+  const range = options.range ?? `${options.base}..${DEFAULT_HEAD}`
+  return { range, onlySha: null, headSha: resolveCommit(rangeHead(range), runGit) }
+}
+
+/**
+ * The head of `A..B` and of `A...B` is B, an empty B means HEAD, and a range
+ * without dots names its head as the whole text.
+ * @param {string} range
+ * @returns {string} the revision the range ends at
+ */
+function rangeHead(range) {
+  const separatorIndex = range.lastIndexOf(RANGE_SEPARATOR)
+  if (separatorIndex === NOT_FOUND) return range
+  const head = range.slice(separatorIndex + RANGE_SEPARATOR.length)
+  return head === '' ? DEFAULT_HEAD : head
+}
+
+/**
+ * @param {string} revision
+ * @param {RunGit} runGit
+ * @returns {string} the full sha of the commit the revision names
+ */
+function resolveCommit(revision, runGit) {
+  return runGit(['rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`]).trim()
 }
 
 /**
@@ -123,14 +143,15 @@ function proveAll(cycles, deps) {
  */
 export async function runGreenProof(argv, deps) {
   try {
-    const { range, onlySha } = resolveRange(parseOptions(argv), deps.runGit)
+    const { range, onlySha, headSha } = resolveRange(parseOptions(argv), deps.runGit)
     const cycles = selectCycles(readCycles(range, deps.runGit), onlySha, range)
     if (cycles.length === 0) {
       deps.log(`green:proof: no GREEN commit in ${range}`)
       return EXIT_CLEAN
     }
     const results = proveAll(cycles, deps)
-    for (const line of reportLines(results, range, deps.githubActions)) deps.log(line)
+    for (const line of reportLines(results, { range, headSha, githubActions: deps.githubActions }))
+      deps.log(line)
     return hasFailingFinding(results) ? EXIT_FAILING : EXIT_CLEAN
   } catch (error) {
     deps.log(`green:proof: internal error: ${error instanceof Error ? error.message : error}`)
