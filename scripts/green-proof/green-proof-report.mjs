@@ -1,5 +1,5 @@
 /**
- * Output of the green:proof command: the header, one block per cycle, and the findings.
+ * Output of the green:proof command: the header, then one block per cycle with that cycle's findings.
  */
 
 import { formatAnnotation, formatPlainLine, shortSha } from '../policy-check/report.mjs'
@@ -8,6 +8,7 @@ import { severityOf } from '../policy-check/rule-severity.mjs'
 /**
  * @typedef {import('./prove-cycle.mjs').CycleResult} CycleResult
  * @typedef {import('../policy-check/rule-severity.mjs').Finding} Finding
+ * @typedef {{ range: string, headSha: string, githubActions: boolean }} ReportRun
  */
 
 const MILLISECONDS_PER_SECOND = 1000
@@ -75,7 +76,7 @@ function annotatedFinding(finding, result, headSha) {
 
 /**
  * @param {CycleResult} result
- * @param {{ headSha: string, githubActions: boolean }} run
+ * @param {ReportRun} run
  * @returns {string[]}
  */
 function findingLines(result, run) {
@@ -98,7 +99,7 @@ export function hasFailingFinding(results) {
 
 /**
  * @param {CycleResult[]} results
- * @param {{ range: string, headSha: string, githubActions: boolean }} run
+ * @param {ReportRun} run
  * @returns {string[]} the output lines
  */
 export function reportLines(results, run) {
