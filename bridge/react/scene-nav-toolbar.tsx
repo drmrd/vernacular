@@ -4,6 +4,7 @@ import { EnvironmentControls } from './environment-controls'
 import { SceneDisplayOptions } from './scene-display-options'
 import { ModeToggle, ScopeToggle } from './scene-nav-segmented-toggles'
 import { SceneObjectControls } from './scene-object-controls'
+import { ToolbarButton } from './toolbar-button'
 import type { SceneScope } from './view-scene-graph'
 
 import './scene-nav-toolbar.css'
@@ -62,35 +63,6 @@ interface SceneNavToolbarProps {
   onResetInteractiveObjects?: () => void
 }
 
-interface ToolbarToggleProps {
-  label: string
-  pressed: boolean
-  onToggle: () => void
-  disabled?: boolean
-  title?: string | undefined
-}
-
-/**
- * A single pressable toolbar action. The label doubles as the accessible name (button
- * content outranks `title` in the accessible-name calculation, so the hover text explains
- * without renaming), `pressed` drives `aria-pressed`, and an omitted `disabled` leaves the
- * button enabled.
- */
-function ToolbarToggle({ label, pressed, onToggle, disabled, title }: ToolbarToggleProps) {
-  return (
-    <button
-      type="button"
-      className="scene-nav-toolbar__btn"
-      aria-pressed={pressed}
-      disabled={disabled}
-      title={title}
-      onClick={onToggle}
-    >
-      {label}
-    </button>
-  )
-}
-
 /**
  * Whether the walk camera is the one driving the view. Walk mode rewrites the camera every
  * frame and treats a canvas click as mouse-look, so every control that steers the orbit
@@ -124,20 +96,32 @@ const ORBIT_ONLY_TITLES = {
 const NO_DOORWAY_TITLE =
   'No door in view to frame. Add a door, or show the floor its doors are on, to use this preset.'
 
+/** Shown when the underground toggle sits inert because the view holds one floor only. */
+const UNDERGROUND_WHOLE_BUILDING_ONLY =
+  'Applies to the whole-building view. Choose Whole building to show or hide the levels below grade.'
+
 /** No door in the view, the one state that disables the Doorway preset on its own. */
 function doorwayMissing(doorway: DoorwayChoice | null | undefined): doorway is null | undefined {
   return doorway === null || doorway === undefined
 }
 
 /**
- * What the Doorway preset will frame, or why it can frame nothing. Walk mode answers first
+ * Why the Doorway preset can frame nothing, or undefined when it can. Walk mode answers first
  * because it overrides every camera control; a missing door answers next because it is the
- * harder block to guess at; otherwise the text names the door so the user knows which of a
- * plan's doors the camera is about to stand in.
+ * harder block to guess at.
  */
-function doorwayTitle(doorway: DoorwayChoice | null | undefined, inertInWalk: boolean): string {
+function doorwayUnavailableReason(
+  doorway: DoorwayChoice | null | undefined,
+  inertInWalk: boolean,
+): string | undefined {
   if (inertInWalk) return ORBIT_ONLY_TITLES.preset
   if (doorwayMissing(doorway)) return NO_DOORWAY_TITLE
+  return undefined
+}
+
+/** What the available Doorway preset will frame, so the user knows which door it stands in. */
+function doorwayTitle(doorway: DoorwayChoice | null | undefined): string | undefined {
+  if (doorwayMissing(doorway)) return undefined
   if (doorway.selected) return `Frames the view from inside the ${doorway.name} you selected.`
   return `Frames the view from inside the first ${doorway.name} in view.`
 }
@@ -157,31 +141,24 @@ function CameraPresetButtons({ onPreset, doorway, mode }: CameraPresetButtonsPro
       className="scene-nav-toolbar__presets scene-nav-toolbar__secondary"
     >
       {PRESET_VIEW_BUTTONS.map(({ label, preset }) => (
-        <button
+        <ToolbarButton
           key={preset}
-          type="button"
-          className="scene-nav-toolbar__btn"
-          disabled={inertInWalk}
-          title={inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined}
-          onClick={() => onPreset?.(preset)}
-        >
-          {label}
-        </button>
+          label={label}
+          unavailableReason={inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined}
+          onActivate={() => onPreset?.(preset)}
+        />
       ))}
       {/* Doorway answers to two reasons rather than the five fixed presets' one: the walk
-          camera driving, and a view holding no door to stand in. Its hover text is resolved
-          alongside its own `disabled` so the two reasons stay paired with the text that
-          explains them, and it speaks even when enabled, because which door the preset picks
-          is not something the button's label can show. */}
-      <button
-        type="button"
-        className="scene-nav-toolbar__btn"
-        disabled={inertInWalk || doorwayMissing(doorway)}
-        title={doorwayTitle(doorway, inertInWalk)}
-        onClick={() => onPreset?.('doorway')}
-      >
-        Doorway
-      </button>
+          camera driving, and a view holding no door to stand in. Its reason is resolved
+          alongside its own availability so the two stay paired with the text that explains
+          them, and it speaks even when available, because which door the preset picks is not
+          something the button's label can show. */}
+      <ToolbarButton
+        label="Doorway"
+        unavailableReason={doorwayUnavailableReason(doorway, inertInWalk)}
+        title={doorwayTitle(doorway)}
+        onActivate={() => onPreset?.('doorway')}
+      />
     </div>
   )
 }
@@ -195,15 +172,11 @@ interface ResetViewButtonProps {
 function ResetViewButton({ mode, onReset }: ResetViewButtonProps) {
   const inertInWalk = walkCameraDriving(mode)
   return (
-    <button
-      type="button"
-      className="scene-nav-toolbar__btn"
-      disabled={inertInWalk}
-      title={inertInWalk ? ORBIT_ONLY_TITLES.resetView : undefined}
-      onClick={onReset}
-    >
-      Reset view
-    </button>
+    <ToolbarButton
+      label="Reset view"
+      unavailableReason={inertInWalk ? ORBIT_ONLY_TITLES.resetView : undefined}
+      onActivate={onReset}
+    />
   )
 }
 
@@ -238,29 +211,27 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         means the underground levels are in the model. A walk also draws the active floor while
         the toggle is off.
       */}
-      <ToolbarToggle
+      <ToolbarButton
         label="Underground levels"
         pressed={props.showUnderground}
-        onToggle={props.onToggleUnderground}
-        disabled={props.scope === 'floor'}
+        onActivate={props.onToggleUnderground}
+        unavailableReason={props.scope === 'floor' ? UNDERGROUND_WHOLE_BUILDING_ONLY : undefined}
       />
       <ModeToggle mode={props.mode} onModeChange={props.onModeChange} />
       {/* Click-to-select defaults on: a pressed toggle reflects whether selecting is currently on. */}
-      <ToolbarToggle
+      <ToolbarButton
         label="Select"
         pressed={props.selectionEnabled}
-        onToggle={props.onToggleSelection}
-        disabled={inertInWalk}
-        title={inertInWalk ? ORBIT_ONLY_TITLES.select : undefined}
+        onActivate={props.onToggleSelection}
+        unavailableReason={inertInWalk ? ORBIT_ONLY_TITLES.select : undefined}
       />
       {/* The near-wall fade defaults on because that is the expected-always-on state; a pressed
           toggle reflects whether it is currently on. */}
-      <ToolbarToggle
+      <ToolbarButton
         label="Reveal interior"
         pressed={props.revealInterior}
-        onToggle={props.onToggleRevealInterior}
-        disabled={inertInWalk}
-        title={inertInWalk ? ORBIT_ONLY_TITLES.revealInterior : undefined}
+        onActivate={props.onToggleRevealInterior}
+        unavailableReason={inertInWalk ? ORBIT_ONLY_TITLES.revealInterior : undefined}
       />
       <ResetViewButton mode={props.mode} onReset={props.onReset} />
     </div>

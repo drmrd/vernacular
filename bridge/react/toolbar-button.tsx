@@ -3,9 +3,9 @@ import { useId } from 'react'
 interface ToolbarButtonProps {
   label: string
   onActivate: () => void
-  unavailableReason?: string
+  unavailableReason?: string | undefined
   pressed?: boolean
-  title?: string
+  title?: string | undefined
   className?: string
 }
 
