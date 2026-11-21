@@ -62,16 +62,16 @@ function previewOf(record: ProjectRecord): ProjectCardPreview {
 function linesOf(
   id: string,
   openId: string | undefined,
-  held: { readonly elsewhere: boolean; readonly permission: boolean },
+  facts: { readonly openElsewhere: boolean; readonly needsPermission: boolean },
 ): ProjectCardStateLine[] {
   const lines: ProjectCardStateLine[] = []
   if (id === openId) {
     lines.push('open-here')
   }
-  if (held.elsewhere && id !== openId) {
+  if (facts.openElsewhere) {
     lines.push('open-elsewhere')
   }
-  if (held.permission) {
+  if (facts.needsPermission) {
     lines.push('needs-permission')
   }
   return lines
@@ -81,11 +81,12 @@ function actionsOf(record: ProjectRecord, openElsewhere: boolean): ProjectCardAc
   if (openElsewhere) {
     return ['export']
   }
-  const last: ProjectCardAction = record.location.kind === 'folder' ? 'remove-from-list' : 'delete'
+  const removal: ProjectCardAction =
+    record.location.kind === 'folder' ? 'remove-from-list' : 'delete'
   if (!record.lastOpen.opened) {
-    return ['export', last]
+    return ['export', removal]
   }
-  return ['rename', 'export', last]
+  return ['rename', 'export', removal]
 }
 
 /** The locks held and the project open here, which decide the state lines of every card. */
@@ -100,7 +101,7 @@ async function cardOf(
   locks: LockState,
 ): Promise<ProjectCardModel> {
   const { held, openId } = locks
-  const elsewhere = held.has(record.id) && record.id !== openId
+  const openElsewhere = held.has(record.id) && record.id !== openId
   const permission = await needsPermission(ports, record)
   return {
     id: record.id,
@@ -109,8 +110,8 @@ async function cardOf(
     floorCount: record.floorCount,
     location: locationOf(ports, record),
     preview: previewOf(record),
-    stateLines: linesOf(record.id, openId, { elsewhere, permission }),
-    actions: actionsOf(record, elsewhere),
+    stateLines: linesOf(record.id, openId, { openElsewhere, needsPermission: permission }),
+    actions: actionsOf(record, openElsewhere),
   }
 }
 
