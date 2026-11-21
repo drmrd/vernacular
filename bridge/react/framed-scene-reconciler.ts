@@ -39,15 +39,11 @@ const NO_PAINT: Paint = {}
 const FLOOR_SET_SEPARATOR = '|'
 
 export interface FramedSceneReconciler {
-  reconcile(
-    graph: SceneGraph,
-    paint?: Record<string, SurfaceTreatment>,
-    models?: FurnitureModelLookup,
-  ): FramedScene
+  reconcile(graph: SceneGraph, paint?: Paint, models?: FurnitureModelLookup): FramedScene
   /**
    * Frees what earlier reconciles replaced, but only when `displayed` is the scene the latest
-   * reconcile returned. A scene an older reconcile returned frees nothing, so a stale commit
-   * never frees resources the newest scene still needs.
+   * reconcile returned. For any other scene it frees nothing and keeps the queue for a later call:
+   * that older scene can still be drawn, and later reconciles may have retired parts of it.
    */
   releaseRetired(displayed: FramedScene): void
   /**
@@ -66,7 +62,7 @@ type RetiredObject = Parameters<typeof disposeObject>[0]
  * What reconciles replaced and nothing draws any more: rebuilt sub-groups, ground planes of
  * dropped scenes, superseded empty-graph scenes, and providers whose build lineage ended. They
  * wait here rather than being freed at once, so reconcile stays free of side effects on the
- * scene still on screen; releaseRetired frees them after the new scene commits. Disposing the
+ * scene still on screen; releaseRetired frees them once the scene the latest reconcile returned is the one drawn. Disposing the
  * reconciler routes everything it holds through the queue as well.
  */
 interface RetiredResources {
@@ -146,7 +142,7 @@ function floorAssembly(build: CachedFloorBuild): FloorAssembly {
  *  the argument limit. */
 interface ReconcilePass {
   graph: SceneGraph
-  paint: Record<string, SurfaceTreatment>
+  paint: Paint
   models: FurnitureModelLookup
   view: EdgeOverlayOptions
   cache: Map<string, CachedFloorBuild>
@@ -184,21 +180,17 @@ function reuseOrBuildFloor(node: SceneNode, pass: ReconcilePass): CachedFloorBui
 interface EmptyGraphScene {
   framed: FramedScene
   graph: SceneGraph
-  paint: Record<string, SurfaceTreatment>
+  paint: Paint
 }
 
 /** Whether the cached empty-graph scene was built from exactly this empty graph and paint. */
-function isSameEmptyGraph(
-  scene: EmptyGraphScene,
-  graph: SceneGraph,
-  paint: Record<string, SurfaceTreatment>,
-): boolean {
+function isSameEmptyGraph(scene: EmptyGraphScene, graph: SceneGraph, paint: Paint): boolean {
   return scene.graph === graph && scene.paint === paint
 }
 
 function buildEmptyGraphScene(
   graph: SceneGraph,
-  paint: Record<string, SurfaceTreatment>,
+  paint: Paint,
   view: EdgeOverlayOptions,
 ): EmptyGraphScene {
   return { framed: buildFramedScene(graph, paint, view), graph, paint }
@@ -291,7 +283,8 @@ function reconcileStackedScene(
  *
  * What a reconcile replaces (a rebuilt sub-group, a floor build and provider a paint edit
  * replaced, a dropped scene's ground plane, a superseded empty-graph scene) is retired, not
- * freed, until the caller runs releaseRetired once the returned scene is live. dispose frees
+ * freed, until the caller runs releaseRetired with the scene the latest
+ * reconcile returned, once that scene is the one drawn. dispose frees
  * everything still held, for the owner that drops the reconciler.
  */
 export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): FramedSceneReconciler {
@@ -330,6 +323,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
       buildsByFloorId.clear()
       scenesByFloorSet.clear()
       emptyScene = undefined
+      latest = undefined
       freeRetired(retired)
     },
   }
