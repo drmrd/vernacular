@@ -1,3 +1,5 @@
+import { expect } from 'vitest'
+
 // Counts the 'dispose' events of every geometry, material, and texture reachable from a scene
 // subtree, without importing three (bridge code and its tests stay off the renderer package).
 // Resources are read structurally: an object with a `geometry` and a `material` (a mesh, line,
@@ -100,4 +102,21 @@ export function sharedResources(a: ResourceTracker, b: ResourceTracker): object[
     .all()
     .map((entry) => entry.resource)
     .filter((resource) => inB.has(resource))
+}
+
+/** How many tracked resources have not been disposed yet. */
+export function liveOf(tracker: ResourceTracker): number {
+  return tracker.all().filter((entry) => entry.disposeCount === 0).length
+}
+
+/** Asserts the tracker found something and every resource it found was disposed exactly once. */
+export function expectEachDisposedOnce(tracker: ResourceTracker): void {
+  expect(tracker.all().length).toBeGreaterThan(0)
+  expect(tracker.all().map((entry) => entry.disposeCount)).toEqual(tracker.all().map(() => 1))
+}
+
+/** Asserts the tracker found something and none of it has been disposed. */
+export function expectNoneDisposed(tracker: ResourceTracker): void {
+  expect(tracker.all().length).toBeGreaterThan(0)
+  expect(liveOf(tracker)).toBe(tracker.all().length)
 }

@@ -12,6 +12,9 @@ import { isGroundPlane } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import type { Object3D } from '../../engine/testing'
 import {
+  expectEachDisposedOnce,
+  expectNoneDisposed,
+  liveOf,
   sharedResources,
   trackResources,
   type ResourceTracker,
@@ -73,20 +76,6 @@ function projectWith(floor: Floor): Project {
 
 function maxX(room: RoomSceneNode): number {
   return Math.max(...room.polygon.map((point) => point.x))
-}
-
-function liveOf(tracker: ResourceTracker): number {
-  return tracker.all().filter((entry) => entry.disposeCount === 0).length
-}
-
-function expectEachDisposedOnce(tracker: ResourceTracker): void {
-  expect(tracker.all().length).toBeGreaterThan(0)
-  expect(tracker.all().map((entry) => entry.disposeCount)).toEqual(tracker.all().map(() => 1))
-}
-
-function expectNoneDisposed(tracker: ResourceTracker): void {
-  expect(tracker.all().length).toBeGreaterThan(0)
-  expect(liveOf(tracker)).toBe(tracker.all().length)
 }
 
 function groundOf(framed: FramedScene): Object3D {
