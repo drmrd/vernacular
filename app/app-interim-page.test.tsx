@@ -1,4 +1,4 @@
-import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TestPorts } from '../session/handle/handle-test-kit'
@@ -25,6 +25,7 @@ import {
 
 const NOT_STORED_SENTENCE = 'This project is not stored in this browser.'
 const LIST_SENTENCE = 'The list of projects is not available yet.'
+const OPEN_FAILURE_PREFIX = /could not open the project/i
 const FLUSH_WAIT_MS = 300
 const releases: Array<() => void> = []
 
@@ -34,6 +35,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const release of releases.splice(0)) release()
   cleanup()
+  vi.useRealTimers()
   Reflect.deleteProperty(document, 'visibilityState')
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -55,6 +57,18 @@ function holdSaves(ports: TestPorts): void {
 /** Adds a floor to the open project and waits until the editor shows it. */
 async function addAFloor(): Promise<void> {
   await editTheProject()
+  await screen.findByRole('button', { name: /2nd floor/i })
+}
+
+/**
+ * Adds a floor while the timers are faked, then drops the fake clock: the autosave timer that the
+ * edit started is on that clock, so it never fires.
+ */
+async function addAFloorWithoutAutosave(): Promise<void> {
+  const addFloor = await screen.findByRole('button', { name: /add floor/i })
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  fireEvent.click(addFloor)
+  vi.useRealTimers()
   await screen.findByRole('button', { name: /2nd floor/i })
 }
 
@@ -90,7 +104,9 @@ describe('The interim page with a notice', () => {
 
     renderAppAt(ports, addressOf(MISSING_ID))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(NOT_STORED_SENTENCE)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(NOT_STORED_SENTENCE)
+    expect(alert).not.toHaveTextContent(OPEN_FAILURE_PREFIX)
     expect(screen.getByRole('main', { name: 'Error' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start a new project' })).toBeInTheDocument()
@@ -102,7 +118,9 @@ describe('The interim page with a notice', () => {
 
     await visit(bar, addressOf(MISSING_ID))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(NOT_STORED_SENTENCE)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(NOT_STORED_SENTENCE)
+    expect(alert).not.toHaveTextContent(OPEN_FAILURE_PREFIX)
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Return to the project' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Start a new project' })).not.toBeInTheDocument()
@@ -178,7 +196,7 @@ describe('The unsaved work of a project while the page shows', () => {
   it('saves the open project when the tab is hidden while the page shows', async () => {
     const { ports, bar } = await openFirstProject()
     const log = logSaves(ports.workspace)
-    await addAFloor()
+    await addAFloorWithoutAutosave()
     await visit(bar, PROJECTS_ADDRESS)
     await theProjectsPage()
     expect(log.saved).toEqual([])

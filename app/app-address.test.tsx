@@ -114,7 +114,9 @@ describe('The application at the start with a project in a folder', () => {
 
     renderAppAt(ports, BARE_ADDRESS)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(NO_PERMISSION_SENTENCE)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(NO_PERMISSION_SENTENCE)
+    expect(alert).not.toHaveTextContent(/could not open the project/i)
     expect(lockedIds(ports)).toEqual([])
     expect(screen.getByRole('button', { name: 'Start a new project' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
@@ -136,11 +138,19 @@ describe('The address that the application follows', () => {
     await settleForAWhile()
     const second = createTestPorts({ durable: true })
 
+    const historyLength = window.history.length
+
     renderApp(second)
 
     await expectOpenProject(NEW_PROJECT_NAME)
+    await editTheProject()
+    await waitFor(async () => expect(await storedIds(second)).toHaveLength(1), {
+      timeout: AUTOSAVE_TIMEOUT_MS,
+    })
+    await settleForAWhile()
     expect(lockedIds(second)).not.toEqual([firstId])
     expect(window.location.hash).toBe(BARE_ADDRESS)
+    expect(window.history.length).toBe(historyLength)
   })
 
   it('uses the address of the window when it builds its own ports', async () => {
