@@ -43,6 +43,7 @@ This work replaces that reading with a script. It is one item of the 2026-11-19 
 | Folders that incremental Stryker mutates                     | `core/`, `storage/`, `session/`, `scripts/`.              |
 | Shape                                                        | A new script and a new CI job (approach 1 below).         |
 | Lines that a GREEN commit only moves                         | Exempt from coverage and mutation.                        |
+| Uncovered line in a script's direct-invocation block         | Warning only; uncovered lines outside it still block.     |
 
 ## Approaches
 
@@ -70,13 +71,37 @@ The RED test set of a GREEN commit is the union of test files that its RED commi
 1. **RED fails at the parent.** At the GREEN commit's parent, run the RED unit test files. At least one test must fail. A run that fails because a file does not load (a missing module or export) counts as a fail. Vitest strips types and does not type-check, so a RED test can fail only on a type error (a new parameter or field). When the run passes, the script type-checks the RED files at the parent with the repository TypeScript config; a type error in a RED file counts as a fail. A run that passes and type-checks clean blocks. _(Orchestrator's call: `tsc` runs only in this case, so its cost is rare.)_
 2. **RED passes at GREEN.** At the GREEN commit, run the same files. Every test must pass. A failure blocks.
 3. **Diff coverage.** In the same run, collect V8 coverage for the source files the GREEN commit changed. Map it to the added lines of the GREEN diff. A line is executable if the coverage report has a line entry for it. An executable added line with a count of zero blocks. Added lines with no entry (types, imports, comments, blank lines) are exempt. Moved lines are exempt: an added line whose text, with leading and trailing whitespace removed, matches a line that the same GREEN commit removes in any file. Each removed line can exempt one added line only. `commit-diff.mjs` splits a diff into file sections but does not read hunk line numbers, so the script needs a new hunk parser that gives the new-file line number of each added line.
-4. **Incremental mutation.** For added lines in `core/`, `storage/`, `session/`, and `scripts/`, run Stryker with line ranges (`--mutate path:start-end`) and only the RED unit tests. Each surviving mutant becomes a warning annotation on its line. Mutants with no coverage are already covered by check 3 and are not reported twice.
+
+   The direct-invocation block of a script is the exception. It is the top-level `if` that runs the command only when Node starts the file itself, so no unit test can reach its body. An uncovered added line inside that block is a warning (`uncovered-guard-line`), not a failure. The script finds the block by its text in the GREEN commit's version of the file, with no marker comment. The block starts at a line that begins at column 0 with `if (`, ends with `{`, and has a condition that contains `import.meta.url` or the name of a top-level `const` whose initializer contains `import.meta.url`. It ends at the next line that begins with `}` at column 0. A file without such a block gets no exemption, and neither does a guard of another shape: an indented `if`, an `if` without braces, a condition split over several lines, or a block with no closing brace at column 0. Their uncovered lines block as before. So do uncovered lines outside the block, such as a wrapper that starts a real process. Command wiring therefore goes inside the block or in a module of default dependencies that the RED tests run.
+
+4. **Incremental mutation.** For added lines in `core/`, `storage/`, `session/`, and `scripts/`, run Stryker with line ranges (`--mutate path:start-end`) and only the RED unit tests. Each surviving mutant becomes a warning, placed as described under "Report and exit code". Mutants with no coverage are already covered by check 3 and are not reported twice.
 
 Files out of scope for checks 3 and 4: files that are not JavaScript or TypeScript source, and files in the coverage `exclude` list of `vite.config.ts`. Coverage must reach `scripts/**/*.mjs`, which the current coverage `include` list leaves out, so the script passes its own include list for the changed files.
 
+### Finding kinds
+
+The severities live in the shared table `scripts/policy-check/rule-severity.mjs`.
+
+| Rule                            | Severity | When                                                                |
+| ------------------------------- | -------- | ------------------------------------------------------------------- |
+| `red-passes-before-green`       | fail     | The RED unit tests pass and type-check at the parent (check 1).     |
+| `red-fails-at-green`            | fail     | A RED unit test does not pass at the GREEN commit (check 2).        |
+| `uncovered-added-line`          | fail     | The RED tests do not run an executable added line (check 3).        |
+| `uncovered-guard-line`          | warning  | The same, for a line inside the direct-invocation block (check 3).  |
+| `mixed-red-passes-before-green` | warning  | Check 1 fails for a mixed set.                                      |
+| `mixed-uncovered-added-line`    | warning  | Check 3 fails for a mixed set, outside the direct-invocation block. |
+| `surviving-mutant`              | warning  | A mutant on an added line survives the RED tests (check 4).         |
+| `mutation-run-failed`           | warning  | Stryker exits nonzero for a group of mutants (check 4).             |
+
 ### Report and exit code
 
-The script reuses the finding and annotation format of `scripts/policy-check/report.mjs`: each finding has a rule, a file, a line, a severity, and a message, and CI prints GitHub annotations. Blocking findings make the exit code nonzero. The summary lists each GREEN commit with its result: proven, skipped with reason, or failed.
+The script reuses the finding format of `scripts/policy-check/report.mjs`. Each finding has a rule, the sha of its GREEN commit, and a message, and most also have a file and a line. That line number belongs to the GREEN commit's version of the file, which can differ from the head of the pull request.
+
+The report starts with a count of proven, skipped, and failed GREEN commits. Then it lists each GREEN commit with its result (proven, skipped with its reason, or failed), its notes, its step times, and its own findings, indented under it. Within a commit, failing findings come before warnings.
+
+In CI each finding becomes a GitHub annotation, and the message starts with the short sha of the GREEN commit. GitHub puts an annotation on that line of the pull request's head. A line number from an earlier GREEN commit would point at the wrong line there, so an annotation names the line only when its GREEN commit is the head commit of the run. For an earlier commit it names only the file. The policy check shares `report.mjs`, and its output does not change.
+
+Blocking findings make the exit code nonzero. Warnings never do, and a GREEN commit whose only findings are warnings counts as proven.
 
 ### Interfaces
 

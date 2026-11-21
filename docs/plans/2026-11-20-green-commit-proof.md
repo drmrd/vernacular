@@ -46,10 +46,10 @@ annotation format of `scripts/policy-check/report.mjs`.
   `git commit --allow-empty -m "refactor: mark the <name> cycle blue"`.
   A `refactor:` commit never changes a `*.test.*` file. Tasks 1, 2, 13, 17, 18, 19, and 20
   are exempt commit types (`build:`, `ci:`, `docs:`) and have no RED.
-- After each GREEN commit from cycle 14 on, also run `pnpm green:proof --commit HEAD` and paste its
+- After each GREEN commit from cycle 13a on, also run `pnpm green:proof --commit HEAD` and paste its
   summary into the BLUE review request. Once the tool works, it checks its own cycles.
 - Model routing: test-author and implementer on `sonnet` at medium effort; clean-code-reviewer on
-  `opus` at high effort for cycles 9 to 12 and 16 (process and file system work), `sonnet` at
+  `opus` at high effort for cycles 9 to 12, 13b, and 16 (process and file system work), `sonnet` at
   medium otherwise; refactorer on `sonnet` at medium; the final `/review` on `opus` at high.
 - ADR-0225 is pre-assigned. `origin/main` has no ADR-0225 (checked 2026-11-20 on `ad3e66f2`).
   Check again before landing.
@@ -130,6 +130,8 @@ annotation format of `scripts/policy-check/report.mjs`.
 | `scripts/green-proof/mutation.mjs`                 | ranges, groups, generated Stryker and Vitest configs              |
 | `scripts/green-proof/mutation-report.mjs`          | surviving mutants from the Stryker JSON report                    |
 | `scripts/green-proof/green-proof.mjs`              | CLI shell: options, git reads, report, exit code, default deps    |
+| `scripts/green-proof/green-proof-report.mjs`       | header, one block per cycle with its own findings, annotations    |
+| `scripts/green-proof/guard-block.mjs`              | the direct-invocation block of a script, found by its text        |
 | `scripts/green-proof/green-proof-test-support.mjs` | fake git, fake command runner, fake files for the tests           |
 | `scripts/policy-check/rule-severity.mjs` (modify)  | the new rule ids                                                  |
 | `stryker.conf.json`, `package.json` (modify)       | #487 fix; `green:proof` script                                    |
@@ -164,7 +166,7 @@ Tests sit beside their module as `*.test.mjs`; run one cycle's tests with
 Rule ids (exact strings, added to `RULE_SEVERITY` in cycle 10): `red-passes-before-green` (fail),
 `red-fails-at-green` (fail), `uncovered-added-line` (fail), `mixed-red-passes-before-green`
 (warn), `mixed-uncovered-added-line` (warn), `surviving-mutant` (warn), `mutation-run-failed`
-(warn).
+(warn). Cycle 13b adds `uncovered-guard-line` (warn).
 
 Skip reasons (exact strings): `no RED commit before this GREEN commit`;
 `RED tests are only end-to-end, browser, or story tests: <comma-joined files>`;
@@ -266,6 +268,7 @@ The seed is one full run on the owner's Mac, an estimated 270 minutes. Run it in
 
 ```sh
 cd /Users/dan/workspace/vernacular.wt/green-proof
+mkdir -p reports
 rm -f reports/stryker-incremental.json
 pnpm mutate > reports/stryker-seed.log 2>&1; echo "exit $?"
 ```
@@ -627,6 +630,208 @@ it('skips the cycle when no unit test imports the changed assets')
 - [ ] Projection: total time plus 28 times the spike's per-file Stryker time. If a pull request of
       this size would take more than about 20 minutes, stop and bring the numbers to the main
       thread; the owner decides the shape of a time budget before cycle 14.
+- [ ] The first run (2026-11-20) gave 24 proven, 0 skipped, 4 failed, with 17
+      `uncovered-added-line` findings. A hand check found all 17 true and no defect in the proof,
+      but two gaps in the contract: the report does not say which GREEN commit a finding belongs
+      to (Cycle 13a), and the direct-invocation block of a script can never be run by a unit test
+      (Cycle 13b). Do not record that run. After Cycles 13a and 13b land, repeat the run with the
+      sandbox off and record the measurement and the projection from that repeated run, then
+      commit the "Measurement results" section.
+
+### Cycle 13a: report each finding under its GREEN commit
+
+**Behavior:** a finding's line number is a line of its GREEN commit's version of the file, not of
+HEAD. Today `cycleLines` in `scripts/green-proof/green-proof-report.mjs` prints only the status,
+notes, and time lines of a cycle, and `reportLines` prints all findings after the last cycle;
+`formatPlainLine` drops the sha whenever a finding has a file. In CI, `formatAnnotation`
+(`scripts/policy-check/report.mjs:45`) sends `file=` and `line=` and drops the sha, so GitHub puts
+the annotation of an earlier GREEN commit on the wrong line of the pull request head. After this
+cycle each cycle's findings print under its own status line, and an annotation names the line
+only for a finding of the head commit.
+
+**Files:** modify `scripts/green-proof/green-proof-report.mjs` and
+`scripts/green-proof/green-proof.mjs`; test `scripts/green-proof/green-proof-report.test.mjs`
+(create) and `scripts/green-proof/green-proof.test.mjs` (modify). Do not modify
+`scripts/policy-check/report.mjs` or any file under `scripts/policy-check/`: the policy check
+shares `report.mjs`, and its output stays the same.
+
+**Interfaces:** `reportLines(results: CycleResult[], run: { range: string, headSha: string,
+githubActions: boolean }): string[]` replaces the three-parameter form. `headSha` is the full sha
+of the run's head commit. `resolveRange` returns `{ range, onlySha, headSha }`: with `--commit`,
+`headSha` is the sha it already resolves; otherwise it runs
+`git rev-parse --verify --end-of-options <head>^{commit}` (trimmed), where `<head>` is the text
+after the last `..` of the range (`origin/main..HEAD` gives `HEAD`,
+`35f8101b^1..35f8101b^2` gives `35f8101b^2`).
+
+Plain output: the header is unchanged. For each cycle, in order: the status line, its `note:`
+lines, its `time:` line (all as today), then that cycle's own findings, failing before warnings,
+each group in finding order. A finding line is `formatPlainLine(finding, severity)` with two more
+leading spaces, for example
+`    [fail] [uncovered-added-line] core/a.ts:7: added line is not run by the RED tests`. Nothing
+prints after the last cycle block.
+
+GitHub Actions output: the same per-cycle lines, but each finding is a
+`formatAnnotation(annotated, severity)` line, at column 0, right after its cycle's lines. For a
+finding with no `file`, `annotated` is the finding unchanged (`formatAnnotation` already prefixes
+`<short sha> `). For a finding with a `file`, `annotated` is
+``{ ...finding, message: `${shortSha(result.sha)} ${finding.message}`, line: result.sha === headSha ? finding.line : undefined }``,
+so the head commit gives
+`::error file=core/a.ts,line=7,title=uncovered-added-line::g2000000 added line is not run by the RED tests`
+and an earlier GREEN commit gives
+`::error file=core/a.ts,title=uncovered-added-line::g1000000 added line is not run by the RED tests`.
+The property order, the escaping, and the `<short sha> ` prefix are those `formatAnnotation`
+already writes for a commit finding; nothing else changes. `hasFailingFinding` is unchanged. The
+surviving-mutant findings of Cycle 16 take the same path.
+
+- [ ] **Step 1: Write the failing tests**
+
+```js
+// scripts/green-proof/green-proof-report.test.mjs (new; builds CycleResult objects directly)
+it('prints each finding indented under the cycle it belongs to')
+// failed cycles g1 and g2, one uncovered-added-line each at core/a.ts:7 -> exact lines in order:
+// header, g1 status, g1 time, '    [fail] [uncovered-added-line] core/a.ts:7: ...', g2 status, g2 time, g2 finding
+it('puts failing findings before warnings within one cycle')
+// one cycle with mixed-uncovered-added-line then uncovered-added-line -> the fail line, then the warn line, both under it
+it('annotates a finding of the head commit with its file, line, and short sha')
+// headSha = g2 -> '::error file=core/a.ts,line=7,title=uncovered-added-line::g2000000 added line is not run by the RED tests'
+it('annotates a finding of an earlier GREEN commit with its file and short sha but no line')
+// headSha = g2, finding of g1 -> '::error file=core/a.ts,title=uncovered-added-line::g1000000 added line is not run by the RED tests'
+it('keeps the annotation of a finding with no file as the policy check writes it')
+// red-passes-before-green with only a sha -> '::error title=red-passes-before-green::g1000000 RED tests pass ...'
+
+// scripts/green-proof/green-proof.test.mjs (modify)
+// replace 'puts failing findings before warnings and counts each status in the header' with:
+it("prints each cycle's findings under that cycle and counts each status in the header")
+// g1 mixed (warn) then g2 (fail): the g1 warn line comes after g1's status line and before g2's;
+// the g2 fail line comes after g2's status line
+it('resolves the head of the range for the annotations')
+// --range main..topic -> calls contain ['rev-parse', '--verify', '--end-of-options', 'topic^{commit}']
+```
+
+- [ ] **Steps 2 to 5:** FAIL, implement, PASS, with `scripts/policy-check/report.test.mjs` and
+      `scripts/policy-check/policy-check-annotations.test.mjs` green and untouched; commits
+      `test: expect green:proof findings under the GREEN commit they belong to`,
+      `fix: report green:proof findings under their GREEN commit`, then BLUE.
+
+**Review focus:** `git diff` of the GREEN commit shows no change under `scripts/policy-check/`;
+`line=` appears only for a finding of the head commit; a fileless finding gets no second sha
+prefix; `reportLines` and `cycleLines` stay within 40 lines and 3 parameters.
+
+### Cycle 13b: warn on uncovered lines in the direct-invocation block
+
+**Behavior:** 12 of the 17 findings of the first run were command-line wiring that no unit test
+can run by design: the direct-invocation blocks of `scripts/policy-check/policy-check.mjs` and
+`scripts/rgb-audit/rgb-audit.mjs`, and the real-process wrapper `spawnCommitlint` above the first.
+Owner decision (2026-11-20): an uncovered added line inside the direct-invocation block is a
+warning under its own rule, `uncovered-guard-line`, and does not fail the cycle. An uncovered line
+outside the block, such as `spawnCommitlint`, still fails, so wiring goes in the block or in a
+default-dependencies module that the RED tests run. No marker comments.
+
+**Files:** create `scripts/green-proof/guard-block.mjs`; modify
+`scripts/green-proof/prove-coverage.mjs` and `scripts/policy-check/rule-severity.mjs` (add
+`'uncovered-guard-line': 'warn'` after `'uncovered-added-line'`); tests
+`scripts/green-proof/guard-block.test.mjs` (create),
+`scripts/green-proof/prove-cycle-coverage.test.mjs`,
+`scripts/green-proof/green-proof-report.test.mjs`, and
+`scripts/green-proof/green-proof-test-support.mjs` (modify).
+
+**Interfaces:** `guardBlockLines(source: string): Set<number>`, the 1-based numbers of every line
+in a direct-invocation block of `source`, the `if` line and the closing brace included; an empty
+set when there is none. The rule works on `source.split('\n')`:
+
+1. **Guard names.** A top-level const is a line that starts at column 0 with `const <name> =`
+   (`<name>` matches `[A-Za-z_$][\w$]*`). Its initializer is the text after `=` on that line plus
+   each following line that starts with a space, up to the first line that is blank or starts at
+   column 0. The const is a guard name when its initializer contains `import.meta.url`. There is
+   one level only: a const whose initializer names a guard name but not `import.meta.url` is not a
+   guard name.
+2. **Guard header.** A line that starts at column 0 with `if (`, whose text with trailing spaces
+   removed ends with `{`, and whose condition (the text between `if (` and the last `)` of the
+   line) contains `import.meta.url` or a guard name as a whole word.
+3. **Block end.** The first later line that starts with `}` at column 0. With none, the header
+   gives no block.
+
+Nothing else is a guard, and those lines fail as today: an indented `if`; a brace-less
+`if (isDirectInvocation) runFromCommandLine()` (its condition runs on import, so the line is not
+uncovered; the function it calls lies outside any block and needs coverage); a header whose
+condition spans lines; an `else` branch after the closing brace; a top-level `if` that tests
+something else, such as `if (process.argv.includes('--check')) {` in
+`scripts/schema/generate-schema.mjs`. The rule relies on Prettier's layout, which
+`pnpm format:check` enforces. The shapes in the repository today: seven scripts use
+`const invokedPath = process.argv[1]`, then
+`const isDirectInvocation =` with the continuation
+`  invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath`, then
+`if (isDirectInvocation) {`; `scripts/serve-static.mjs:73` uses
+`if (process.argv[1] === fileURLToPath(import.meta.url)) {`;
+`scripts/performance/report-times.mjs:344` uses `const invokedDirectly =` with the continuation
+`  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href`, then
+`if (invokedDirectly) {`. `scripts/green-proof/green-proof.mjs` uses the brace-less form.
+
+`splitGuardLines(lines: AddedLine[], readSource: (file: string) => string): { guard: AddedLine[],
+other: AddedLine[] }`: `readSource` is called once per distinct file of `lines`; a line is in
+`guard` when `guardBlockLines` of its file's source holds its line number; both lists keep the
+input order.
+
+In `checkCoverage`, after `splitByCoverage`: `splitGuardLines(uncovered, (file) =>
+files.readFile(join(root, file)))`. The worktree is checked out at the GREEN commit during check
+3, so this reads the GREEN commit's version; only files with an uncovered line are read, and a
+read that throws is an internal error. Findings:
+`uncoveredLineFindings(other, sha, rule)` (rule as today, `mixed-uncovered-added-line` for a mixed
+set) followed by `uncoveredLineFindings(guard, sha, 'uncovered-guard-line')` for both set kinds,
+with the same message. Because `uncovered-guard-line` is `warn`, a cycle whose only uncovered
+lines are in the block stays `proven`, and the Cycle 13a report prints the warning under it.
+
+Test support retrofit (in the RED commit): `scenario` gains `sources?: Record<string, string>`,
+each written to `<ROOT>/<file>` before the run; each file of `greenFiles` with no entry gets the
+one-line source `export const x = 1\n`, so the existing uncovered-line tests still expect
+`uncovered-added-line`.
+
+- [ ] **Step 1: Write the failing tests**
+
+```js
+// scripts/green-proof/guard-block.test.mjs (new)
+it('finds the block of a guard that names a const built from import.meta.url')
+// const invokedPath / const isDirectInvocation = + indented continuation / blank / 'if (isDirectInvocation) {'
+// at line 5 / body with '    .then((code) => {' and '    })' / '}' at line 12 -> Set {5..12}
+it('finds the block of a guard whose condition reads import.meta.url itself')
+// 'if (process.argv[1] === fileURLToPath(import.meta.url)) {' at line 3, '}' at line 6 -> Set {3..6}
+it('finds the block of a guard whose const initializer spans two lines and uses pathToFileURL')
+// 'const invokedDirectly =' + '  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href'
+// then 'if (invokedDirectly) {' with nested '    (code) => {' / '    },' / '  )' -> ends at the column-0 '}'
+it('ignores a top-level if that does not test how the script was started')
+// 'const root = fileURLToPath(new URL(".", import.meta.url))' and "if (process.argv.includes('--check')) {" -> empty Set
+it(
+  'gives no block for an indented guard, a brace-less guard, or a guard with no closing brace at column 0',
+)
+it('leaves the lines just before the if and just after its closing brace outside the block')
+// a process wrapper ending on the line above 'if', and a line after '}' -> neither in the Set
+it('splits lines into guard and other lines and reads each file once')
+// two lines of scripts/x.mjs (one in, one out of the block) and one of core/a.ts -> readSource called twice
+
+// scripts/green-proof/prove-cycle-coverage.test.mjs (modify)
+it('warns on an uncovered line inside the direct-invocation block and keeps the cycle proven')
+// greenFiles ['scripts/x.mjs'], sources with a guard at lines 10 to 14, diff adds line 11, DA 11,0
+// -> one finding uncovered-guard-line at scripts/x.mjs:11, status 'proven'
+it('still fails an uncovered line of a process wrapper outside the block')
+// same source, diff adds lines 4 (inside a function above the guard) and 11, both DA 0
+// -> uncovered-added-line at :4 and uncovered-guard-line at :11, status 'failed'
+
+// scripts/green-proof/green-proof-report.test.mjs (modify)
+it('prints a guard warning under a proven cycle without failing the run')
+// proven cycle with an uncovered-guard-line finding -> '    [warn] [uncovered-guard-line] scripts/x.mjs:11: ...'
+// under its status line; hasFailingFinding false
+```
+
+- [ ] **Steps 2 to 5:** FAIL, implement, PASS; commits
+      `test: expect uncovered direct-invocation lines to warn`,
+      `feat: warn on uncovered lines in the direct-invocation block`, then BLUE.
+
+**Review focus:** run `guardBlockLines` by hand over every `scripts/**/*.mjs`: it must find a block
+in exactly nine files (the seven `isDirectInvocation` scripts with braces, `serve-static.mjs`, and
+`report-times.mjs`), and none in `green-proof.mjs` or `generate-schema.mjs`. Lines one above the
+`if` and one below the closing brace stay outside. Every function in `guard-block.mjs` stays within
+40 lines, 3 parameters, complexity 10, and nesting depth 3; the regular expressions have no
+unbounded backtracking.
 
 ### Cycle 14: mutation ranges and generated configs
 
