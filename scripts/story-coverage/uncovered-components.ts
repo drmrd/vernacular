@@ -228,6 +228,12 @@ export const UNCOVERED_COMPONENTS: {
       'requires a live R3F Canvas and selection raycasting against the scene; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'SceneViewToolbar',
+    file: 'bridge/react/scene-view-toolbar.tsx',
+    reason:
+      "wires the live view's grouped session state into SceneNavToolbar; split out of webgpu-scene-view.tsx to keep that module under its size budget. It is only rendered inside WebGPUSceneView, which is itself recorded here, and the toolbar it renders has its own coverage through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).",
+  },
+  {
     component: 'SelectionProvider',
     file: 'bridge/react/selection-provider.tsx',
     reason:

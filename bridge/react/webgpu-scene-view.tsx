@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { type LightingMode, type Site } from '../../core'
+import { type Site } from '../../core'
 import { type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { effectiveLightingMode } from './effective-lighting-mode'
@@ -16,17 +16,15 @@ import { FrameCamera, PresetCamera, type DoorwayStand } from './scene-camera-eff
 import { initialCamera, orbitPivot } from './scene-camera-seed'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SceneLighting } from './scene-lighting'
-import { SceneNavToolbar } from './scene-nav-toolbar'
 import { ScenePaneShell } from './scene-pane-shell'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { sceneReadinessProps } from './scene-readiness'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
-import type { BuildingViewState } from './use-building-view-state'
-import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
+import { SceneViewToolbar } from './scene-view-toolbar'
+import { useDoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
-import { useInteractiveObjects } from './use-interactive-objects'
 import { useLiveViewReadiness, type LiveViewReadinessNotes } from './use-live-view-readiness'
 import { useFrontDirection } from './use-front-direction'
 import { useProjectSite } from './use-project-site'
@@ -205,61 +203,6 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
         <RendererMemoryProbe />
       </SceneRendererCanvas>
     </SceneReadinessBoundary>
-  )
-}
-
-interface SceneViewToolbarProps {
-  nav: SceneNavigationState
-  buildingView: BuildingViewState
-  edgeOverlay: boolean
-  onToggleEdgeOverlay: () => void
-  viewEnvironment: SceneEnvironmentState
-  doorway: DoorwayTarget | null
-  lightingMode: LightingMode
-}
-
-// Feeds the navigation toolbar from the view's grouped session state: the camera
-// navigation, the building-view scope, the edge-overlay display option, and the
-// view-local color temperature, plus whether the doorway preset has a target. The
-// toolbar's own props stay flat so it can be exercised in isolation. The shared
-// environment session (observation instant, cloud cover) is still written by the editor's
-// Environment panel; the toolbar sees only the two fields that decide whether the
-// color-temperature slider reaches the render, the effective lighting mode and the color
-// check.
-function SceneViewToolbar({
-  nav,
-  buildingView,
-  edgeOverlay,
-  onToggleEdgeOverlay,
-  viewEnvironment,
-  doorway,
-  lightingMode,
-}: SceneViewToolbarProps) {
-  const interactiveObjects = useInteractiveObjects()
-  return (
-    <SceneNavToolbar
-      mode={nav.mode}
-      onModeChange={nav.setMode}
-      lightingMode={lightingMode}
-      colorCheck={viewEnvironment.environment.colorCheck}
-      selectionEnabled={nav.selectionEnabled}
-      onToggleSelection={nav.toggleSelection}
-      revealInterior={nav.revealInterior}
-      onToggleRevealInterior={nav.toggleRevealInterior}
-      onReset={nav.resetView}
-      colorTemperatureK={viewEnvironment.colorTemperatureK}
-      onColorTemperatureChange={viewEnvironment.setColorTemperatureK}
-      onPreset={nav.applyPreset}
-      doorway={doorway}
-      scope={buildingView.scope}
-      onScopeChange={buildingView.setScope}
-      showUnderground={buildingView.showUnderground}
-      onToggleUnderground={buildingView.toggleUnderground}
-      edgeOverlay={edgeOverlay}
-      onToggleEdgeOverlay={onToggleEdgeOverlay}
-      interactiveObjectsAtDefault={interactiveObjects.atDefault}
-      onResetInteractiveObjects={interactiveObjects.reset}
-    />
   )
 }
 
