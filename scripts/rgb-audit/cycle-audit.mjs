@@ -77,7 +77,7 @@ function parseSubject(rawSubject) {
  * @param {ParsedCommit} commit
  * @returns {'red'|'green'|'blue'|'exempt'}
  */
-function classify(commit) {
+export function classify(commit) {
   if (commit.infra) {
     return 'exempt'
   }
