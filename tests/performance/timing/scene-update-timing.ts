@@ -41,6 +41,7 @@ export function createSceneUpdateBench(
         scope: 'building',
         activeFloorId: ACTIVE_FLOOR_ID,
         includeUnderground: true,
+        cameraMode: 'orbit',
       })
       scene = reconciler.reconcile(viewGraph, session.getProject().paint ?? {})
     },

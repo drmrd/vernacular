@@ -293,6 +293,9 @@ the whole-building view follows the active floor.
 Decided on 2026-11-20 (#923): the project owner kept all three as built, and no
 follow-up change is needed.
 
+Issue #926 then fixed a fault inside the third decision. When the whole-building view hides the
+active floor's level, a walk still draws that floor, and leaving the walk hides it again.
+
 The E key had a related fault. An opening's height is measured on its own floor,
 and the reach test compared it with the walker's eye in world space. With the
 eye on an upper floor or in a basement, the ray could pass above or below that

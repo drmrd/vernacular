@@ -111,6 +111,7 @@ describe('viewSceneGraph', () => {
       scope: 'floor',
       activeFloorId: 'ground',
       includeUnderground: true,
+      cameraMode: 'orbit',
     })
 
     expect(view.nodes.map((node) => node.id)).toEqual([`${FLOOR_NODE_PREFIX}ground`])
@@ -123,7 +124,46 @@ describe('viewSceneGraph', () => {
       scope: 'building',
       activeFloorId: 'ground',
       includeUnderground: false,
+      cameraMode: 'orbit',
     })
+
+    expect(view.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
+  })
+})
+
+describe('viewSceneGraph during a walk', () => {
+  const stacked = stack(
+    floorWithWall('subbasement', -2 * STOREY_RISE_MM),
+    floorWithWall('basement', -STOREY_RISE_MM),
+    floorWithWall('ground', 0),
+    floorWithWall('upper', STOREY_RISE_MM),
+  )
+
+  function buildingView(cameraMode: 'orbit' | 'walk', activeFloorId: string | null) {
+    return viewSceneGraph({
+      rawGraph: stacked,
+      scope: 'building',
+      activeFloorId,
+      includeUnderground: false,
+      cameraMode,
+    })
+  }
+
+  it('keeps the active floor that the underground setting hides, and only that floor', () => {
+    const view = buildingView('walk', 'basement')
+
+    expect(view.walls.map((wall) => wall.floorId)).toEqual(['basement', 'ground', 'upper'])
+    const nodeIds = view.nodes.map((node) => node.id)
+    expect(nodeIds).toContain(`${FLOOR_NODE_PREFIX}basement`)
+    expect(nodeIds).not.toContain(`${FLOOR_NODE_PREFIX}subbasement`)
+  })
+
+  it.each([
+    ['an orbit camera drops the hidden active floor', 'orbit', 'basement'],
+    ['a shown active floor adds nothing', 'walk', 'ground'],
+    ['no active floor adds nothing', 'walk', null],
+  ] as const)('%s', (_label, cameraMode, activeFloorId) => {
+    const view = buildingView(cameraMode, activeFloorId)
 
     expect(view.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
   })

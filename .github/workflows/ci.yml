@@ -345,7 +345,8 @@ jobs:
     # journey takes the walker's view of a shut door, rebuilds the scene in orbit mode, and
     # checks that the walker's view afterward matches the first one. The journey of the walker
     # and the active floor makes another floor active during a walk, and checks that the walker's
-    # view stays the same and that E opens the door of the upper floor in sight. All four
+    # view stays the same and that E opens the door of the upper floor in sight. A third test walks
+    # on a basement that the whole-building view hides and checks that the basement is drawn. All four
     # self-skip on the linux e2e runner, so this job is where they actually run, and each step
     # sets E2E_REQUIRE_WEBGPU so that a runner with no adapter fails it instead of skipping it.
     # The specs take the scene-webgl project's browser channel and GPU flags themselves, so they
@@ -406,8 +407,8 @@ jobs:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=chromium e2e/tests/journeys/walk-view-after-rebuild.spec.ts --reporter=list
       - name: Walker follows the active floor journey (chromium project)
-        # Two tests, each with a limit of two minutes and up to two retries.
-        timeout-minutes: 13
+        # Three tests, each with a limit of two minutes and up to two retries.
+        timeout-minutes: 19
         env:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=chromium e2e/tests/journeys/walk-follows-the-active-floor.spec.ts --reporter=list
