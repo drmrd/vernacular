@@ -1,4 +1,4 @@
-import type { RenameFailure } from '../session'
+import type { ExportFailure, RenameFailure } from '../session'
 import { openFailureReason } from './open-failure-text'
 
 const RENAME_FAILED = 'Could not rename the project: '
@@ -14,4 +14,17 @@ export function renameFailureText(failure: RenameFailure): string {
     default:
       return openFailureReason(failure)
   }
+}
+
+const UNCHECKED_COPY = 'This copy was not checked, because the project did not open.'
+const NO_ASSETS = 'It has the project file only, and no assets.'
+
+/** One sentence for an export that made no file. */
+export function exportFailureText(failure: ExportFailure): string {
+  return failure.kind === 'export-failed' ? failure.message : openFailureReason(failure)
+}
+
+/** The warning for a copy of a project that did not open, and what it holds. */
+export function uncheckedCopyText(includedAssets: number): string {
+  return includedAssets === 0 ? `${UNCHECKED_COPY} ${NO_ASSETS}` : UNCHECKED_COPY
 }

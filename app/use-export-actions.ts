@@ -29,7 +29,7 @@ function progressFraction(completed: number, total: number): number {
 
 /**
  * Wrap an async export in a promise toast: a pending toast while it runs, a success toast naming
- * the file, or an error toast whose Retry re-runs the export. The toast starts indeterminate and
+ * the file (the name that `run` resolves with, else `name`), or an error toast whose Retry re-runs the export. The toast starts indeterminate and
  * becomes a determinate bar once `run` reports progress through its `onProgress` argument.
  */
 export function runExportWithToast(
@@ -46,7 +46,7 @@ export function runExportWithToast(
       task,
       {
         pending: `Exporting ${name}...`,
-        success: () => `Exported ${name}`,
+        success: (made) => `Exported ${typeof made === 'string' ? made : name}`,
         error: (error) => ({
           message: failureMessage('Export', error),
           actions: [{ label: 'Retry', onAction: attempt }],

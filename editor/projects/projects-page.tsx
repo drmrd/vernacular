@@ -14,6 +14,7 @@ export interface OpenProjectLink {
 export interface ProjectCardActions {
   /** Resolves true when the name is stored, so the form closes. False keeps the form open. */
   readonly onRename?: (id: string, name: string) => Promise<boolean>
+  readonly onExport?: (id: string) => void
 }
 
 export interface ProjectsPageProps {
@@ -69,7 +70,28 @@ function offeredActions(
   card: ProjectCardModel,
   cardActions: ProjectCardActions | undefined,
 ): readonly ProjectCardAction[] {
-  return card.actions.filter((action) => action === 'rename' && cardActions?.onRename)
+  return card.actions.filter(
+    (action) =>
+      (action === 'rename' && cardActions?.onRename) ||
+      (action === 'export' && cardActions?.onExport),
+  )
+}
+
+/** The runner of a chosen action: the rename opens its form, the export calls its handler. */
+function actionRunner(
+  cardActions: ProjectCardActions | undefined,
+  startRename: (id: string) => void,
+): (id: string, action: ProjectCardAction) => void {
+  return (id, action) => {
+    switch (action) {
+      case 'rename':
+        startRename(id)
+        break
+      case 'export':
+        cardActions?.onExport?.(id)
+        break
+    }
+  }
 }
 
 function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): ReactElement {
@@ -81,6 +103,7 @@ function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): React
   if (cards.length === 0) {
     return <p className="projects-page__empty">{NO_PROJECTS}</p>
   }
+  const runAction = actionRunner(cardActions, setRenamingId)
   const renameOf = (id: string): CardRename | undefined =>
     renamingId === id && cardActions?.onRename
       ? {
@@ -98,7 +121,7 @@ function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): React
             card={{ ...card, actions }}
             href={hrefFor(card.id)}
             onOpen={onOpen}
-            onAction={actions.length === 0 ? undefined : () => setRenamingId(card.id)}
+            onAction={actions.length === 0 ? undefined : runAction}
             rename={renameOf(card.id)}
           />
         )

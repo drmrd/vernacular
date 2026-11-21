@@ -1,11 +1,18 @@
 import { useCallback, useMemo } from 'react'
 import type { ProjectCardActions } from '../editor/projects'
-import { renameProject } from '../session'
+import { renameProject, type ProjectCardModel, type SessionPorts } from '../session'
+import type { AssetCache } from '../storage'
+import { useCardExport } from './card-export'
 import { renameFailureText } from './card-action-text'
 import type { HistoryNavigation } from './use-history-navigation'
 
 export interface CardActionsParts {
   readonly navigation: HistoryNavigation
+  readonly ports: SessionPorts | null
+  /** The cards on the page, which name the projects that an export shows. */
+  readonly cards?: readonly ProjectCardModel[] | undefined
+  /** The library whose packs supply assets, for an export. */
+  readonly libraryAssets?: AssetCache | null | undefined
   /** The start of an action that runs clears the page's sentence. */
   readonly onActionStart: () => void
   /** The end of an action that ran: the sentence to show, or null. */
@@ -18,6 +25,9 @@ export interface CardActionsParts {
  */
 export function useCardActions({
   navigation,
+  ports,
+  cards,
+  libraryAssets,
   onActionStart,
   onActionEnd,
 }: CardActionsParts): ProjectCardActions {
@@ -38,5 +48,9 @@ export function useCardActions({
     },
     [runPageAction, onActionStart, onActionEnd],
   )
-  return useMemo(() => ({ onRename }), [onRename])
+  const onExport = useCardExport({ ports, handle: navigation.handle, cards, libraryAssets })
+  return useMemo(
+    () => ({ onRename, ...(onExport === undefined ? {} : { onExport }) }),
+    [onRename, onExport],
+  )
 }

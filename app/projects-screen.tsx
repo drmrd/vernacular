@@ -154,17 +154,12 @@ function usePageTries(pageTries: PageTries) {
 }
 
 /**
- * The Projects page in the application: the stored projects, a click that opens each, and the
- * actions that start, import, or open a project.
+ * The sentence of the last card action that failed. A try of the page clears it, and the start of
+ * a card action clears the sentence of a try. The end of an action reads the cards again.
  */
-export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
-  const { navigation, screen, ports, libraryAssets } = props
-  const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
-  // The sentence of the last card action that failed. A try of the page clears it, and the start
-  // of a card action clears the sentence of a try.
+function useActionNotice(refresh: () => void) {
   const [actionNotice, setActionNotice] = useState<string | null>(null)
   const clearActionNotice = useCallback(() => setActionNotice(null), [])
-  const tries = usePageTries({ navigation, screen, refresh, clearActionNotice })
   const onActionEnd = useCallback(
     (shown: string | null) => {
       setActionNotice(shown)
@@ -172,7 +167,26 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
     },
     [refresh],
   )
-  const cardActions = useCardActions({ navigation, onActionStart: tries.onTryStart, onActionEnd })
+  return { actionNotice, clearActionNotice, onActionEnd }
+}
+
+/**
+ * The Projects page in the application: the stored projects, a click that opens each, and the
+ * actions that start, import, or open a project.
+ */
+export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
+  const { navigation, screen, ports, libraryAssets } = props
+  const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
+  const { actionNotice, clearActionNotice, onActionEnd } = useActionNotice(refresh)
+  const tries = usePageTries({ navigation, screen, refresh, clearActionNotice })
+  const cardActions = useCardActions({
+    navigation,
+    ports,
+    cards,
+    libraryAssets,
+    onActionStart: tries.onTryStart,
+    onActionEnd,
+  })
   const actions = usePageActions({
     runActionFlow: tries.runActionFlow,
     onTryStart: tries.onTryStart,
