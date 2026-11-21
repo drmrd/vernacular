@@ -27,10 +27,8 @@ describe('SurfaceMaterialProvider ownership', () => {
     expect(isCacheHeld(neutral)).toBe(true)
     expect(isCacheHeld(painted)).toBe(true)
 
-    // dispose() is not on the provider yet; the cast keeps the file type-checking.
-    const owner = provider as unknown as { dispose(): void }
-    owner.dispose()
-    owner.dispose()
+    provider.dispose()
+    provider.dispose()
 
     expect(neutralDisposals.count).toBe(1)
     expect(paintedDisposals.count).toBe(1)

@@ -59,10 +59,8 @@ describe('NeutralMaterialProvider', () => {
 
     expect(materials.every((material) => isCacheHeld(material))).toBe(true)
 
-    // dispose() is not on the provider yet; the cast keeps the file type-checking.
-    const owner = provider as unknown as { dispose(): void }
-    owner.dispose()
-    owner.dispose()
+    provider.dispose()
+    provider.dispose()
 
     expect(disposals.map((counter) => counter.count)).toEqual(materials.map(() => 1))
   })
