@@ -43,12 +43,7 @@ function noticeIdOf(place: Place, request: OpenRequest | undefined): string {
 }
 
 /** Brings the application to a place. The promise never rejects. */
-export async function resolvePlace(
-  ports: SessionPorts,
-  place: Place,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a project that is open is not read yet
-  _current?: DocumentHandle,
-): Promise<Screen> {
+export async function resolvePlace(ports: SessionPorts, place: Place): Promise<Screen> {
   if (place.kind === 'projects') {
     return { kind: 'projects' }
   }
