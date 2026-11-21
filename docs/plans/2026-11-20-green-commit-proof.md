@@ -1030,4 +1030,32 @@ holds for `scripts/`.
 
 ## Measurement results
 
-(Tasks 13 and 17 fill this in.)
+All times come from the owner's development machine under uncontrolled conditions. Read them as
+estimates, not as a benchmark.
+
+**Task 13, repeated run after Cycles 13a and 13b (2026-11-20).** `time pnpm green:proof --range
+35f8101b^1..35f8101b^2`, sandbox off, at 7cb79878. A full Stryker seed run used all cores at the
+same time, so the times are high.
+
+- Total: 6 min 7 s wall (220 s user, 85 s system). The first run, with no other load, took
+  2 min 57 s.
+- Install: one install of 15.4 s; the other 27 cycles reuse it (0.0 s).
+- Per GREEN commit (28): parent step median 5.8 s, maximum 10.6 s; green step median 5.8 s,
+  maximum 8.0 s; type-check 0.0 s (no TypeScript in the range); mutation 0.0 s (not wired until
+  Cycle 14).
+- Counts: 25 proven, 0 skipped, 3 failed. No false failure.
+- Failures, all true (each line has a RED coverage count of 0):
+  - 8a3e81ec: 6 `uncovered-added-line` (`spawnCommitlint` in `policy-check.mjs` 122 to 128, a real
+    process wrapper outside the guard block; `locationOf` fallbacks in `report.mjs` 24 and 29)
+    and 8 `uncovered-guard-line` warnings (`policy-check.mjs` 138 to 152).
+  - e3ca5dfb: 1 `uncovered-added-line` (`report.mjs:27`, the plain-format branch; its RED tests
+    run only with GitHub Actions output).
+  - 90cb5194: 1 `uncovered-added-line` (`cycle-audit.mjs:221`, a rewrite inside the GREEN commit
+    that its `test:`-only RED test does not reach) and 1 `uncovered-guard-line` warning
+    (`rgb-audit.mjs:94`).
+  - 6656c27d failed in the first run on `rgb-audit.mjs:94` only; it is proven now with one guard
+    warning.
+- Projection: every GREEN commit in the range changes only `.mjs` scripts, so each mutation run
+  costs about the spike's 101 s for a script file. 28 times 101 s is about 47 min, so a pull
+  request of this size would take about 50 to 53 min. That is more than the 20 min limit: the
+  owner decides the shape of a time budget before Cycle 14.
