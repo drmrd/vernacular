@@ -77,9 +77,12 @@ annotation format of `scripts/policy-check/report.mjs`.
    Stryker config (same `path:start-end` form as `--mutate`), so the script can also set
    `thresholds.break: null`, the JSON reporter, and the checker per group.
 6. **Checker per folder group.** `core/`, `storage/`, `session/` mutants use the `typescript`
-   checker with `tsconfig.json`. `scripts/` mutants run with `checkers: []`: the scripts are `.mjs`
-   and `tsconfig.tooling.json` has no `checkJs`, so a checker cannot reject a mutant there. Task 1
-   confirms this.
+   checker with the committed `tsconfig.stryker.json`: the root project without `references`,
+   which would put the checker in build mode (spike result (a)). The weekly job uses the same
+   file. `scripts/` mutants run with `checkers: []`: the scripts are `.mjs` and
+   `tsconfig.tooling.json` has no `checkJs`, so a checker cannot reject a mutant there. Task 1
+   confirms this. The weekly job runs in incremental mode (Decision 10); a green proof run sets
+   `incremental: false`, so it never reads or writes the weekly incremental file.
 7. **Mutation targets are the added lines that check 3 found covered**, in the four folders. A
    file excluded from coverage then has no mutation target, and no-coverage mutants never repeat a
    check 3 finding.
@@ -87,6 +90,14 @@ annotation format of `scripts/policy-check/report.mjs`.
    Mutation is advisory, so its failure is advisory too.
 9. **Generated files** (`tsconfig`, Vitest config, Stryker config, reports) go in
    `<worktree>/.green-proof/`, which no commit tracks and the worktree removal deletes.
+10. **The weekly Stryker job runs in incremental mode** (owner decision, 2026-11-20). A full run
+    of `core/` cannot finish in one job: 9189 mutants at about 34 per minute with 8 runners is an
+    estimated 270 minutes on the owner's Mac and more than 800 minutes on a 4-vCPU hosted runner,
+    against the 360-minute job limit. The owner runs the first full run (the seed) on his Mac.
+    The incremental file lives on the orphan data branch `stryker-incremental`, which holds only
+    `stryker-incremental.json`. Each weekly run copies it to `reports/stryker-incremental.json`,
+    runs Stryker over the mutants that changed, and pushes the new file back to that branch
+    without force, also when the score is below the break threshold.
 
 ## Review Focus
 
@@ -201,21 +212,92 @@ tests, and record the facts later cycles rely on. Target: `core/units/format-are
 
 ### Task 2: the weekly Stryker job completes (#487, no RED)
 
-**Files:** modify `stryker.conf.json`, `package.json`; maybe `.github/workflows/mutation.yml`.
+**Files:** modify `stryker.conf.json`, `package.json`, `tsconfig.node.json`, `eslint.config.js`,
+`.gitignore`, `.github/workflows/mutation.yml`; create `tsconfig.stryker.json`,
+`vitest.stryker.config.ts`.
 
-- [ ] Add `"plugins": ["@stryker-mutator/vitest-runner", "@stryker-mutator/typescript-checker"]`
+- [x] Add `"plugins": ["@stryker-mutator/vitest-runner", "@stryker-mutator/typescript-checker"]`
       to `stryker.conf.json` (pnpm's layout hides the default `@stryker-mutator/*` glob from
       core; Task 1 (a) confirms the cause). Leave `mutate` as it is (non-goal).
-- [ ] Change `mutate:check` to `stryker run --dryRunOnly`.
-- [ ] `pnpm mutate:check` exits 0 and its log shows the checker loaded and the initial test run
-      time. If that time times the mutant count estimate passes the job's 90 minutes, raise
-      `timeout-minutes` in `mutation.yml` to a measured value (at most 360) and say why in the
-      commit body.
-- [ ] Commit `build: load the Stryker plugins by name and fix the dry-run flag` with `Refs #487`
-      in the body (not a closing keyword). After the first push, dispatch `mutation.yml` on the
-      branch (`gh workflow run mutation.yml --ref feat/green-commit-proof --repo drmrd/vernacular`)
-      and confirm it completes before the pull request lands; then the body of the pull request
-      may close #487.
+- [x] Point `tsconfigFile` at `tsconfig.stryker.json` (`{ "extends": "./tsconfig.json" }`, so no
+      `references`; spike result (a)).
+- [x] Point `vitest.configFile` at `vitest.stryker.config.ts`, which merges `vite.config.ts` and
+      excludes `**/*.browser.test.ts` (they need a real browser) and
+      `tests/format/current-schema-validator.test.ts` (the schema built from instrumented `core/`
+      looks like drift). `tsconfig.node.json` type-checks it; `.gitignore` and the ESLint ignore
+      list cover the `.js` and `.d.ts` files that `tsc -b` emits next to it.
+- [x] Change `mutate:check` to `stryker run --dryRunOnly` (`--dryRun` is not a Stryker flag).
+- [x] Set `dryRunTimeoutMinutes` to 30. Measured on the owner's Mac (M5 Pro): the initial test
+      run takes 7 min 29 s and 8 min 17 s in two runs for 6361 tests (net 76 to 83 s, the rest
+      overhead), and the default 5 minutes killed it. User CPU time about equals wall time, so
+      the run is mostly serial and the runner's single-core speed sets its length, not its 4
+      vCPUs. Allowing a hosted runner core up to 3 times slower gives about 25 minutes; 30 keeps
+      a margin, and a hung run still fails long before the job limit. The incremental mode
+      repeats this run every week.
+- [x] `pnpm mutate:check` exits 0 with the final config: 205 files, 9189 mutants, 9 checkers and
+      8 test runners, 9 min 20 s wall time.
+- [x] Commit `build: make the weekly Stryker run complete under Vitest 4` with `Refs #487` in the
+      body (not a closing keyword).
+- [x] Add `"incremental": true` and `"incrementalFile": "reports/stryker-incremental.json"` to
+      `stryker.conf.json` (`reports/` is gitignored). In `mutation.yml`: one concurrency group
+      `mutation-stryker-incremental` with `cancel-in-progress: false`;
+      `permissions: contents: write` only on the `stryker` job; `timeout-minutes: 360`. A step fetches
+      `stryker-incremental` and copies `stryker-incremental.json` to
+      `reports/stryker-incremental.json`; when the branch or the file is missing it fails at once
+      with an error that names the seed section below. After `pnpm mutate`, a step that runs
+      even when Stryker failed checks that the file is valid JSON, builds a commit on top of the
+      fetched data commit (`github-actions[bot]`, message
+      `chore: update the Stryker incremental file`), and pushes it without force; it skips the
+      push when the file is unchanged. Stryker writes the file also when the score is below the
+      break threshold, and saves a partial file when the job is cancelled or times out, so the
+      next run resumes from those results. The HTML report upload stays. Commit
+      `ci: run the weekly Stryker job in incremental mode` with `Refs #487`.
+- [ ] The owner (or the main thread) seeds the data branch (next section).
+- [ ] After the first push of this branch, dispatch `mutation.yml` on the branch
+      (`gh workflow run mutation.yml --ref feat/green-commit-proof --repo drmrd/vernacular`) and
+      confirm it completes and pushes to `stryker-incremental` before the pull request lands;
+      then the body of the pull request may close #487.
+
+### Seed the Stryker incremental file
+
+The seed is one full run on the owner's Mac, an estimated 270 minutes. Run it in
+`/Users/dan/workspace/vernacular.wt/green-proof` (or a checkout of `main` after this branch lands;
+`core/` and its tests are the same) with the sandbox off:
+
+```sh
+cd /Users/dan/workspace/vernacular.wt/green-proof
+rm -f reports/stryker-incremental.json
+pnpm mutate > reports/stryker-seed.log 2>&1; echo "exit $?"
+```
+
+Exit 0, or exit 1 when the score is below the break threshold of 50; in both cases the file is
+written. If the run stops early (Ctrl-C, sleep, a crash), Stryker saves the results so far; run
+`pnpm mutate` again without the `rm` and it resumes from them. Do not pass `--force`, which
+discards them. The file lands at `reports/stryker-incremental.json` (gitignored), with the HTML
+report at `reports/stryker/mutation.html`.
+
+Publish it from a separate temporary worktree, never from this one (`git switch --orphan` empties
+the working tree). Worktree commands need the sandbox off.
+
+```sh
+SEED=/Users/dan/workspace/vernacular.wt/green-proof/reports/stryker-incremental.json
+node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$SEED"
+git -C /Users/dan/workspace/vernacular worktree add --detach /Users/dan/workspace/vernacular.wt/stryker-seed
+cd /Users/dan/workspace/vernacular.wt/stryker-seed
+git switch --orphan stryker-incremental
+cp "$SEED" stryker-incremental.json
+git add stryker-incremental.json
+git commit -m "chore: seed the Stryker incremental file"
+git ls-tree HEAD   # one entry: stryker-incremental.json
+git push origin stryker-incremental
+cd /Users/dan/workspace/vernacular
+git worktree remove /Users/dan/workspace/vernacular.wt/stryker-seed
+git branch -D stryker-incremental
+```
+
+The push is a plain push of a new branch, never a force push. To reseed later (after a Stryker
+upgrade that changes mutant ids, say), run the seed again and push the new file as a normal commit
+on top of `origin/stryker-incremental` from a temporary worktree of that branch.
 
 ### Cycle 3: pair each GREEN commit with its RED pool
 
@@ -558,8 +640,9 @@ sorted by file then line, consecutive lines merged, as `<file>:<start>-<end>` (a
 `tooling`), empty groups omitted. Produces `strykerConfig(base: object, request: { group, ranges,
 vitestConfigFile: string, reportFile: string }): object`: `base` with `mutate: ranges`,
 `vitest: { configFile, related: false }`, `reporters: ['json']`, `jsonReporter: { fileName }`,
-`thresholds: { ...base.thresholds, break: null }`, and `checkers: ['typescript']` with
-`tsconfigFile: 'tsconfig.json'` for `app`, `checkers: []` for `tooling`. Produces
+`thresholds: { ...base.thresholds, break: null }`, `incremental: false` (the weekly job owns the
+incremental file; Decision 10), and `checkers: ['typescript']` with
+`tsconfigFile: 'tsconfig.stryker.json'` for `app`, `checkers: []` for `tooling`. Produces
 `redVitestConfigText(testFiles: string[]): string`, an ES module that imports `mergeConfig` from
 `vitest/config` and `../vite.config.ts`, and exports
 `mergeConfig(base, { test: { include: <files>, exclude: ['**/*.browser.test.ts'] } })`.
