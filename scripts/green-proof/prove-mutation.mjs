@@ -24,7 +24,7 @@ import { GENERATED_FOLDER } from './vitest-worktree.mjs'
  */
 
 const RED_CONFIG = join(GENERATED_FOLDER, 'vitest.red.config.mjs')
-const RULE = 'mutation-run-failed'
+const RUN_FAILED_RULE = 'mutation-run-failed'
 
 /**
  * @param {string} text
@@ -47,28 +47,29 @@ function lastOutputLine({ stdout, stderr }) {
 
 /**
  * @param {RangeGroup} target
- * @param {MutationProof} proof
- * @param {MutationTools} tools
+ * @param {object} base the parsed Stryker base config
+ * @param {{ proof: MutationProof, tools: MutationTools }} context
  * @returns {Finding[]}
  */
-function mutateGroup({ group, ranges }, { sha, root, redFiles }, { runCommand, files }) {
+function mutateGroup({ group, ranges }, base, { proof, tools }) {
+  const { sha, root } = proof
+  const { runCommand, files } = tools
   const configFile = join(GENERATED_FOLDER, `stryker-${group}.json`)
   const reportFile = join(GENERATED_FOLDER, `mutation-${group}.json`)
-  const base = JSON.parse(files.readFile(join(root, 'stryker.conf.json')))
   const config = strykerConfig(base, { group, ranges, vitestConfigFile: RED_CONFIG, reportFile })
   files.writeFile(join(root, configFile), JSON.stringify(config, null, 2))
   files.removeFile(join(root, reportFile))
   const run = runCommand('pnpm', ['exec', 'stryker', 'run', configFile], { cwd: root })
   if (run.status !== 0) {
     const message = `Stryker exited ${run.status} for the ${group} group: ${lastOutputLine(run)}`
-    return [{ rule: RULE, sha, message }]
+    return [{ rule: RUN_FAILED_RULE, sha, message }]
   }
   try {
     return survivorFindings(files.readFile(join(root, reportFile)), { sha, root })
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     const message = `Stryker report for the ${group} group is unreadable: ${reason}`
-    return [{ rule: RULE, sha, message }]
+    return [{ rule: RUN_FAILED_RULE, sha, message }]
   }
 }
 
@@ -83,8 +84,9 @@ export function checkMutation(covered, proof, tools) {
   if (targets.length === 0) return undefined
   const started = tools.now()
   tools.files.writeFile(join(proof.root, RED_CONFIG), redVitestConfigText(proof.redFiles))
+  const base = JSON.parse(tools.files.readFile(join(proof.root, 'stryker.conf.json')))
   const findings = strykerGroups(mutateRanges(targets)).flatMap((target) =>
-    mutateGroup(target, proof, tools),
+    mutateGroup(target, base, { proof, tools }),
   )
   return { findings, elapsed: tools.now() - started }
 }

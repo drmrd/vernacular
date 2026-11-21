@@ -1,6 +1,6 @@
 /**
- * Checks 1 to 3 of a GREEN proof for one cycle: the RED tests fail at the GREEN commit's parent,
- * pass at the GREEN commit, and run every line the GREEN commit adds.
+ * Checks 1 to 4 of a GREEN proof for one cycle: the RED tests fail at the GREEN commit's parent,
+ * pass at the GREEN commit, run every line the GREEN commit adds, and those lines survive mutation.
  */
 
 import { join } from 'node:path'
@@ -206,13 +206,13 @@ function checkGreen(run) {
     const message = `RED tests do not pass at the GREEN commit: ${outcome.detail}`
     return { findings: [{ rule: 'red-fails-at-green', sha, message }], notes: [] }
   }
-  const coverage = checkCoverage(
+  const { findings, notes, covered } = checkCoverage(
     lines,
     { sha, root: checkout.root, mixed: set.kind === 'mixed' },
     context.files,
   )
   const proof = { sha, root: checkout.root, redFiles: set.unitFiles }
-  return { ...coverage, mutation: checkMutation(coverage.covered, proof, context) }
+  return { findings, notes, mutation: checkMutation(covered, proof, context) }
 }
 
 /**
@@ -232,8 +232,8 @@ function newResult(green) {
 }
 
 /**
- * Checks 1 to 3: the RED tests fail at the GREEN commit's parent, pass at the GREEN commit, and run
- * every line it adds.
+ * Checks 1 to 4: the RED tests fail at the GREEN commit's parent, pass at the GREEN commit, run
+ * every line it adds, and those lines survive mutation.
  * @param {GreenCycle} cycle
  * @param {CycleContext} context
  * @returns {CycleResult}
