@@ -9,7 +9,11 @@ import {
   workspaceRequest,
 } from '../session/handle/handle-test-kit'
 import type { TestPorts } from '../session/handle/handle-test-kit'
-import { documentNamed, folderRecord } from '../session/projects/rebuild-test-kit'
+import {
+  NEW_PROJECT_ID_PATTERN,
+  documentNamed,
+  folderRecord,
+} from '../session/projects/rebuild-test-kit'
 import type { Place } from './address'
 import {
   FAILED_ID,
@@ -29,7 +33,6 @@ const START: Place = { kind: 'start' }
 const PROJECTS: Place = { kind: 'projects' }
 const FOLDER_ID = 'project-folder'
 const FOLDER_PROJECT_NAME = 'Kept in a folder'
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** Every handle that a test opened, so that the end of the test can close it. */
 let opened: DocumentHandle[] = []
@@ -98,7 +101,7 @@ describe('the start address', () => {
 
     const handle = editorHandleOf(await resolvePlace(ports, START))
 
-    expect(handle.id).toMatch(UUID_PATTERN)
+    expect(handle.id).toMatch(NEW_PROJECT_ID_PATTERN)
     expect(handle.session.getProject().meta.name).toBe(NEW_PROJECT_NAME)
     expect(lockedIds(ports)).toEqual([handle.id])
   })
@@ -198,23 +201,26 @@ describe('a project that does not open', () => {
 })
 
 describe('a project in a folder', () => {
-  it('shows the page with the notice of a folder that needs permission and asks the browser nothing', async () => {
-    const byAddress = await portsWithFolderProject('prompt')
-    const byStart = await portsWithFolderProject('prompt')
-    const askedByAddress = vi.spyOn(byAddress.folders, 'reopen')
-    const askedByStart = vi.spyOn(byStart.folders, 'reopen')
+  it.each(['prompt', 'denied'] as const)(
+    'shows the page with the notice of a folder that needs permission and asks the browser nothing when access is %s',
+    async (permission) => {
+      const byAddress = await portsWithFolderProject(permission)
+      const byStart = await portsWithFolderProject(permission)
+      const askedByAddress = vi.spyOn(byAddress.folders, 'reopen')
+      const askedByStart = vi.spyOn(byStart.folders, 'reopen')
 
-    const addressed = await resolvePlace(byAddress, projectPlace(FOLDER_ID))
-    const started = await resolvePlace(byStart, START)
+      const addressed = await resolvePlace(byAddress, projectPlace(FOLDER_ID))
+      const started = await resolvePlace(byStart, START)
 
-    const expected = pageAfterFailure(FOLDER_ID, { kind: 'folder-permission' })
-    expect(addressed).toStrictEqual(expected)
-    expect(started).toStrictEqual(expected)
-    expect(askedByAddress).not.toHaveBeenCalled()
-    expect(askedByStart).not.toHaveBeenCalled()
-    expect(lockedIds(byAddress)).toEqual([])
-    expect(lockedIds(byStart)).toEqual([])
-  })
+      const expected = pageAfterFailure(FOLDER_ID, { kind: 'folder-permission' })
+      expect(addressed).toStrictEqual(expected)
+      expect(started).toStrictEqual(expected)
+      expect(askedByAddress).not.toHaveBeenCalled()
+      expect(askedByStart).not.toHaveBeenCalled()
+      expect(lockedIds(byAddress)).toEqual([])
+      expect(lockedIds(byStart)).toEqual([])
+    },
+  )
 
   it('opens a folder project from its record when access is granted', async () => {
     const byAddress = await portsWithFolderProject()

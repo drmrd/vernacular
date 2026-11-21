@@ -4,6 +4,7 @@ import { soundProject } from '../../tests/storage/conformance/conformance-docume
 import { IN_FOLDER, IN_WORKSPACE } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
 import {
+  NEW_PROJECT_ID_PATTERN,
   folderRecord,
   idsOf,
   placeSound,
@@ -13,7 +14,6 @@ import {
 import { startProject } from './start'
 
 const FOLDER_ID = 'in-a-folder'
-const FRESH_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** Times of use, from the oldest to the latest. */
 const LONG_AGO = '2026-09-01T10:00:00.000Z'
@@ -59,7 +59,7 @@ describe('the request that the bare address opens', () => {
     const request = await startProject(ports, create)
 
     expect(request).toEqual({ id: request.id, location: IN_WORKSPACE, create })
-    expect(request.id).toMatch(FRESH_ID_PATTERN)
+    expect(request.id).toMatch(NEW_PROJECT_ID_PATTERN)
     expect(isValidProjectId(request.id)).toBe(true)
   })
 

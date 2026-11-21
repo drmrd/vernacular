@@ -101,10 +101,46 @@ describe('parseAddress', () => {
     expect(parseAddress('/projects')).toStrictEqual(START)
   })
 
+  it('reads an address that starts with a dash as the start', () => {
+    expect(parseAddress('#/project/-abc')).toStrictEqual(START)
+  })
+
+  it('returns a new object that holds only the kind and the id', () => {
+    const first = parseAddress('#/project/current')
+    const second = parseAddress('#/project/current')
+
+    expect(Object.keys(first).sort()).toEqual(['id', 'kind'])
+    expect(Object.keys(parseAddress('#/projects'))).toEqual(['kind'])
+    expect(Object.keys(parseAddress(''))).toEqual(['kind'])
+    expect(second).not.toBe(first)
+    expect(parseAddress('')).not.toBe(parseAddress(''))
+  })
+
+  it('never throws on a lone surrogate, a NUL character, or a very long text', () => {
+    const hostile = [
+      '#/project/\ud800',
+      '#/project/a\udc00b',
+      '\ud800',
+      '#/project/a\u0000b',
+      '\u0000',
+      `#/project/${'a'.repeat(1_000_000)}`,
+      `#/${'/'.repeat(1_000_000)}`,
+    ]
+
+    for (const hash of hostile) {
+      expect(() => parseAddress(hash)).not.toThrow()
+      expect(parseAddress(hash)).toStrictEqual(START)
+    }
+  })
+
   it('keeps the letter case of an id', () => {
     expect(parseAddress('#/project/AbC-123')).toStrictEqual({
       kind: 'project',
       id: 'AbC-123',
+    })
+    expect(parseAddress('#/project/CURRENT')).toStrictEqual({
+      kind: 'project',
+      id: 'CURRENT',
     })
   })
 })
