@@ -149,10 +149,10 @@ describe('a double press of Start a new project', () => {
     await pageOf(result)
     const locks = vi.spyOn(ports.locks, 'tryAcquire')
 
-    act(() => {
-      result.current.startFresh()
-      result.current.startFresh()
-    })
+    // Two presses in two renders: one `act` would batch both into one request for the owner.
+    act(() => result.current.startFresh())
+    await act(settle)
+    act(() => result.current.startFresh())
 
     const handle = await editorOf(result)
     await act(settle)

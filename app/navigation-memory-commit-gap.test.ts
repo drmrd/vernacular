@@ -2,8 +2,15 @@ import { describe, expect, it, vi } from 'vitest'
 import { settle } from '../session/autosave/save-gate-test-kit'
 import { openOrThrow, workspaceRequest } from '../session/handle/handle-test-kit'
 import { createMemoryAddressBar } from './address-bar'
-import { FIRST_ID, SECOND_ID, addressOf, durablePortsWith } from './history-navigation-test-support'
+import {
+  FIRST_ID,
+  SECOND_ID,
+  addressOf,
+  durablePortsWith,
+  switchTo,
+} from './history-navigation-test-support'
 import { afterRender, follow } from './follow-address'
+import { retryNotice, runFlowOf } from './navigation-actions'
 import { newNavigationMemory, takeCommitted } from './navigation-memory'
 import type { Flow, RunFlow } from './use-open-project'
 
@@ -48,5 +55,33 @@ describe('a history move made before the last move is committed', () => {
     expect(bar.hash()).toBe(addressOf(SECOND_ID))
     const opened = await forwardFlow?.(ports, first)
     expect(opened).toMatchObject({ ok: true, handle: { id: SECOND_ID } })
+  })
+
+  it('hands the project of the moved-to place to the owner when the browser moves after an editor flow gave another project', async () => {
+    const { flows, first, memory, ports } = await navigationAtTheSecondProject()
+    await runFlowOf(memory)(switchTo(FIRST_ID))
+    expect(flows).toHaveLength(1)
+
+    follow(memory)
+    expect(flows).toHaveLength(2)
+
+    takeCommitted(memory, { ports, handle: first, failure: null })
+    const opened = await flows[1]?.(ports, first)
+    expect(opened).toMatchObject({ ok: true, handle: { id: SECOND_ID } })
+  })
+})
+
+describe('the project that a flow opened, when nothing is open afterwards', () => {
+  it('retries the project that the flow opened, not the project before the flow, after a folder permission failure', async () => {
+    const { flows, first, memory, ports } = await navigationAtTheSecondProject()
+    await runFlowOf(memory)(switchTo(FIRST_ID))
+    takeCommitted(memory, { ports, handle: first, failure: null })
+    takeCommitted(memory, { ports, handle: null, failure: { kind: 'folder-permission' } })
+
+    retryNotice(memory)
+
+    expect(flows).toHaveLength(2)
+    const reopened = await flows[1]?.(ports, first)
+    expect(reopened).toMatchObject({ ok: true, handle: { id: FIRST_ID } })
   })
 })

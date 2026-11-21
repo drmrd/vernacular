@@ -8,7 +8,7 @@ import { readLayerSources } from './import-graph'
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
 
-// Reading about 1,500 source files outlasts the default limit under load.
+// Reading about 1,700 source files outlasts the default limit under load.
 const SOURCE_SCAN_TIMEOUT_MS = 30_000
 
 const ADDRESS_BAR = 'app/address-bar.ts'
@@ -19,8 +19,11 @@ const SOURCE_FILE_PATTERN = /\.tsx?$/
 const NOT_PRODUCTION_PATTERN =
   /\.(test|spec|stories)\.tsx?$|\.d\.ts$|-test-(support|kit)\.tsx?$|(^|\/)__tests__\//
 
-// The events and calls that move or read the browser history, and the `history` member of a window.
-const BROWSER_HISTORY_PATTERN = /\b(?:popstate|hashchange|pushState|replaceState)\b|\.history\b/
+// The events and calls that move or read the browser history, the `history` member of a window, the
+// global `history` with a member of the browser history, and a write of the hash, which adds an
+// entry. The bare word `history` is left out: undo history names it too.
+const BROWSER_HISTORY_PATTERN =
+  /\b(?:popstate|hashchange|pushState|replaceState)\b|\.history\b|\bhistory\.(?:back|forward|go|state|length)\b|\blocation\.hash\s*=/
 
 /**
  * Every `path:line` of a production file other than the address bar that names the browser
@@ -63,6 +66,11 @@ describe('the scan for the browser history outside the address bar', () => {
     ['a listener of hashchange', "window.addEventListener('hashchange', onMove)\n"],
     ['a call of pushState', "window.history.pushState(null, '', '#/projects')\n"],
     ['a call of replaceState', "view.history.replaceState(null, '', '')\n"],
+    ['a call of history.back', 'history.back()\n'],
+    ['a call of history.forward', 'history.forward()\n'],
+    ['a call of history.go', 'history.go(-1)\n'],
+    ['a read of history.state', 'const kept = history.state\n'],
+    ['a write of location.hash', "window.location.hash = '#/projects'\n"],
   ])('reports the path and line of a file with %s', (_label, text) => {
     const sources = plantedSource('editor/sample.ts', `export const a = 1\n${text}`)
 
