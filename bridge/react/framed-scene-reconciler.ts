@@ -40,6 +40,14 @@ export interface FramedSceneReconciler {
   ): FramedScene
   /** Frees what earlier reconciles replaced. Call it once the scene they returned is live. */
   releaseRetired(): void
+  /**
+   * Frees everything the reconciler still holds: every cached floor build and its provider, the
+   * ground planes of cached scenes, the current empty-graph scene, and the retired queue. Each
+   * resource is freed once, resources a long-lived owner holds (a model template) are left alone,
+   * and a second call frees nothing more. The caches are emptied, so a later reconcile rebuilds
+   * every floor from scratch.
+   */
+  dispose(): void
 }
 
 type RetiredObject = Parameters<typeof disposeObject>[0]
@@ -253,6 +261,18 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
       return reconcileStackedScene(pass, scenesByFloorSet)
     },
     releaseRetired() {
+      freeRetired(retired)
+    },
+    dispose() {
+      for (const build of buildsByFloorId.values()) {
+        for (const group of buildGroups(build)) retired.objects.add(group)
+        retired.providers.add(build.materials)
+      }
+      for (const scene of scenesByFloorSet.values()) retireGroundPlanes(scene.framed, retired)
+      if (emptyScene !== undefined) retired.objects.add(emptyScene.root)
+      buildsByFloorId.clear()
+      scenesByFloorSet.clear()
+      emptyScene = undefined
       freeRetired(retired)
     },
   }
