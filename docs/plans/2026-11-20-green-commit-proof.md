@@ -1065,7 +1065,7 @@ annotation and never changes the exit code; the report order is the range order;
 
 ### Task 17: the full measurement (no RED)
 
-- [ ] Rerun `time pnpm green:proof --range 35f8101b^1..35f8101b^2 --mutation-budget-minutes 15`
+- [x] Rerun `time pnpm green:proof --range 35f8101b^1..35f8101b^2 --mutation-budget-minutes 15`
       with the sandbox off, the same budget CI passes. Add to "Measurement results": the total
       time, the mutation step per cycle (median and maximum), the survivor count, and how many of
       the 28 GREEN commits the budget reached (28 minus the header's count of cycles the mutation
@@ -1218,3 +1218,29 @@ same time, so the times are high.
   request of this size would take about 50 to 53 min. The owner decided (2026-11-20) to cap the
   mutation check in CI at 15 min, newest GREEN commit first; checks 1 to 3 still run on every
   GREEN commit (Cycle 16a).
+
+**Task 17, full measurement with the 15-minute budget (2026-11-21).** Sandbox off, at 59dc0ecc.
+The full Stryker seed run used all cores during both runs, so the times are high.
+
+- `time pnpm green:proof --range 35f8101b^1..35f8101b^2 --mutation-budget-minutes 15`: 29 min
+  43 s wall (770 s user, 740 s system), exit 1. 25 proven, 0 skipped, 3 failed: the same three
+  true failures as Task 13. Install 15.8 s once; parent step median 23.0 s, maximum 64.9 s; green
+  step median 21.0 s, maximum 65.1 s; mutation step median 10.7 s, maximum 19.3 s, 322 s in all.
+  The budget reached all 28 GREEN commits (no count in the header). But check 4 could not run on
+  27 of them: they carry Stryker 8.7.1 and the old `stryker.conf.json`, from before the #487 fix,
+  so each gives a `mutation-run-failed` warning (`Stryker exited 1 for the tooling group: }`).
+  The warning is a true reading, so this is not a false failure. The last output line `}` tells
+  the reader little (follow-up).
+- Because of that, a second run proved this branch's own cycles: an autosquashed copy of the
+  branch rebased onto `origin/main` 66818720, `--range origin/main..HEAD`. The first such run
+  found two true failures in this branch (fc535c31 `prove-cycle.mjs:72`, the assets-only skip;
+  51ea3f28 `prove-cycle.mjs:109` and `vitest-worktree.mjs:66`, the empty and unreadable Vitest
+  throws). RED fixups in two new test files fixed them. The rerun: 12 min 16 s wall (640 s user,
+  289 s system), exit 0, 16 proven, 0 skipped, 0 failed. Install 21.1 s once (26 s in all);
+  parent step median 9.4 s, maximum 13.1 s; green step median 8.5 s, maximum 13.7 s; mutation
+  step median 17.3 s, maximum 64.3 s, 394 s in all. All 16 GREEN commits were reached. 33
+  surviving-mutant warnings; 10 `mutation-run-failed` warnings, on the cycles before the commit
+  that adds the Stryker `plugins` line.
+- The capped run ends within checks 1 to 3 plus the 15-minute budget plus one mutation run in
+  both runs, because the mutation total stayed under the budget.
+- Job timeout: twice the longer run (29 min 43 s), rounded up to 5 minutes: 60 minutes.
