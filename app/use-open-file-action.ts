@@ -39,7 +39,10 @@ function openFilePicker(onFile: (file: File) => void | Promise<void>): void {
   input.click()
 }
 
-/** What the import reads: the notices, the library of pack supplies, and the owner of the open project. */
+/**
+ * What the import reads: the notices, the library of pack supplies, and the owner of the open
+ * project.
+ */
 export type OpenFileContext = Pick<ProjectActionsContext, 'notifications' | 'packs' | 'runFlow'>
 
 // Shows the refusal of a file above the size limit of the archive reader, and says whether it did.

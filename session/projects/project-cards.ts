@@ -102,7 +102,7 @@ async function cardOf(
 ): Promise<ProjectCardModel> {
   const { held, openId } = locks
   const openElsewhere = held.has(record.id) && record.id !== openId
-  const permission = await needsPermission(ports, record)
+  const needsAccess = await needsPermission(ports, record)
   return {
     id: record.id,
     name: displayNameOf(record),
@@ -110,7 +110,7 @@ async function cardOf(
     floorCount: record.floorCount,
     location: locationOf(ports, record),
     preview: previewOf(record),
-    stateLines: linesOf(record.id, openId, { openElsewhere, needsPermission: permission }),
+    stateLines: linesOf(record.id, openId, { openElsewhere, needsPermission: needsAccess }),
     actions: actionsOf(record, openElsewhere),
   }
 }

@@ -10,7 +10,7 @@ import {
 } from './card-text'
 import { ProjectCardMenu } from './project-card-menu'
 
-export interface ProjectCardProps {
+interface ProjectCardProps {
   readonly card: ProjectCardModel
   readonly href: string
   /** A plain click. Without it the link alone acts. */

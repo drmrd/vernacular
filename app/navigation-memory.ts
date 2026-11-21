@@ -150,7 +150,10 @@ export function projectLeads(memory: NavigationMemory): void {
   memory.followed = null
 }
 
-/** The page shows over the open project for a move to its address: nothing waits, and that place is followed. */
+/**
+ * The page shows over the open project for a move to its address: nothing waits, and that place is
+ * followed.
+ */
 export function pageLeads(memory: NavigationMemory, place: Place): void {
   memory.addressLeads = false
   memory.followed = place

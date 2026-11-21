@@ -27,6 +27,9 @@ export interface ProjectsScreenProps {
   readonly libraryAssets?: AssetCache | null
 }
 
+/** The id of a page notice that sits under no card. */
+const UNDER_NO_CARD = ''
+
 /**
  * The notice of a try from the page. It stands while the screen shows the failure that it replaced
  * or its own failure; a newer failure of the screen replaces it.
@@ -105,7 +108,7 @@ function useActionTries(
         return result
       }
       // `shownNotice` compares this failure by identity, and `settleFlow` stores it as it is.
-      setTried((previous) => withNotice(previous, { id: '', failure }))
+      setTried((previous) => withNotice(previous, { id: UNDER_NO_CARD, failure }))
       return undefined
     },
     [runPageFlow, refresh, setTried],
