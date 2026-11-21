@@ -31,6 +31,9 @@ export const selectors = {
       .projectsPage(page)
       .getByRole('listitem')
       .filter({ has: page.getByRole('link', { name, exact: true }) }),
+  // The link of the card of the project with the given id, for projects that share a name.
+  projectCardLink: (page: Page, id: string) =>
+    selectors.projectsPage(page).locator(`a[href="#/project/${id}"]`),
   // The "..." control of a card, which opens the menu of the actions of its project.
   cardActionsButton: (page: Page, name: string) =>
     selectors.projectCard(page, name).getByRole('button', { name: `Actions for ${name}` }),

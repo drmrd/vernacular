@@ -64,6 +64,11 @@
       "id": "project-addresses",
       "title": "reloads on a project address and follows Back and Forward across two projects and the Projects page",
       "status": "required"
+    },
+    {
+      "id": "two-projects",
+      "title": "keeps two projects across a switch from the page, a reload, and the history",
+      "status": "required"
     }
   ]
 }
