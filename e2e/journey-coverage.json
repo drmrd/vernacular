@@ -57,7 +57,7 @@
     },
     {
       "id": "project-addresses",
-      "title": "reloads on a project address and follows Back and Forward between two projects",
+      "title": "reloads on a project address and follows Back and Forward across two projects and the page",
       "status": "required"
     }
   ]
