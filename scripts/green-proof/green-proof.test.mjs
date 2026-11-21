@@ -8,7 +8,7 @@ import {
   sha,
   textOf,
 } from './green-proof-cli-test-support.mjs'
-import { diffOf, lcovOf, ROOT } from './green-proof-test-support.mjs'
+import { CONTROL_RECORD, diffOf, lcovOf, ROOT } from './green-proof-test-support.mjs'
 import { runGreenProof } from './green-proof.mjs'
 
 const LOG_FORMAT = '%x1e%H%x1f%s%x1f%(trailers:key=Infrastructure,valueonly,separator=%x20)'
@@ -17,7 +17,8 @@ const short = (name) => sha(name).slice(0, SHORT)
 const ONE_CYCLE = [red('r1'), green('g1')]
 const FAILING = { g1: { parent: 'pass', green: 'pass' } }
 const ADDED_LINE = diffOf([['core/a.ts', { start: 7, added: ['const x = 1'] }]])
-const UNCOVERED_LINE = lcovOf([['core/a.ts', [[7, 0]]]]).replaceAll(ROOT, WORKTREE_ROOT)
+const UNCOVERED_LINE =
+  CONTROL_RECORD + lcovOf([['core/a.ts', [[7, 0]]]]).replaceAll(ROOT, WORKTREE_ROOT)
 const LCOV_PATH = `${WORKTREE_ROOT}/.green-proof/coverage/lcov.info`
 
 /** A scenario whose GREEN commits each add an executable line that the RED tests never run. */

@@ -1,6 +1,7 @@
 import { gitLog } from '../rgb-audit/cycle-audit-test-support.mjs'
 import { STRYKER_BASE, strykerAnswer } from './green-proof-stryker-test-support.mjs'
 import {
+  CONTROL_RECORD,
   ROOT,
   diffOf,
   fakeFiles,
@@ -40,7 +41,8 @@ function lsTree(args) {
 }
 
 const ADDED_LINE = diffOf([['core/a.ts', { start: 7, added: ['const x = 1'] }]])
-const COVERED_LINE = lcovOf([['core/a.ts', [[7, 1]]]]).replaceAll(ROOT, WORKTREE_ROOT)
+const COVERED_LINE =
+  CONTROL_RECORD + lcovOf([['core/a.ts', [[7, 1]]]]).replaceAll(ROOT, WORKTREE_ROOT)
 const LCOV_PATH = `${WORKTREE_ROOT}/.green-proof/coverage/lcov.info`
 
 /** The Vitest outcome of the commit that is checked out: `'pass'` or `'fail'`. */

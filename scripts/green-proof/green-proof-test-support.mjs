@@ -8,6 +8,10 @@ export const GREEN = 'green1234567890'
 export const PARENT = 'parent1234567890'
 const SHOW_CONFIG = JSON.stringify({ files: ['./src/vite-env.d.ts'] })
 export const LCOV_FILE = `${ROOT}/.green-proof/coverage/lcov.info`
+export const CONTROL_PATH = '.green-proof/coverage-control.mjs'
+export const CONTROL_FILE = `${ROOT}/${CONTROL_PATH}`
+/** The lcov record Vitest leaves for the control file: repository-relative `SF:`, never run. */
+export const CONTROL_RECORD = `SF:${CONTROL_PATH}\nDA:1,0\nend_of_record\n`
 const OUTPUT_FILE_FLAG = '--outputFile='
 const OCTAL_RADIX = 8
 const ASCII_LIMIT = 128
@@ -184,6 +188,15 @@ export function fakeFiles() {
   }
 }
 
+/** The control file text at this moment, or null when it has not been written. */
+function controlFileOf(files) {
+  try {
+    return files.readFile(CONTROL_FILE)
+  } catch {
+    return null
+  }
+}
+
 /** The Vitest exit status of a fake run: 0 only when every test passed. */
 function exitStatusOf(text) {
   let parsed
@@ -201,7 +214,9 @@ function exitStatusOf(text) {
  * `parent` and `green` are the Vitest reports of the two runs. A report of `{ exit }` writes no
  * report file and exits with that status. `gone` lists RED files absent at the GREEN commit.
  * `diff` answers the GREEN commit's `git show`, `lcov` is the coverage file a run that asks for
- * coverage leaves (none when undefined), `state.runs` records the files removed since the previous Vitest run, and
+ * coverage leaves (none when undefined; the control file's never-run record is prepended unless
+ * `controlRecord` is false), `state.runs` records, per Vitest run, the files removed since the previous run and the
+ * control file text then present (`controlFile`, null when absent), and
  * `greenFiles` lists the files the GREEN commit changes, and `sources` maps a file to its text at the
  * GREEN commit (a file with no entry reads as one line of code).
  * Files hold a base `/wt/stryker.conf.json` unless `strykerBase` (an object) replaces it. A
@@ -211,13 +226,14 @@ function exitStatusOf(text) {
  * `throws` is a message the call throws. A group with no entry exits 0 and writes `{"files":{}}`.
  * `strykerMs` (default 0) moves the fake clock by that many milliseconds on each stryker call.
  * `strykerCalls()` lists those calls. See `green-proof-stryker-test-support.mjs`.
- * @param {{ reds?: string[][], diff?: string, lcov?: string, greenFiles?: string[], parent?: string | { exit: number }, green?: string | { exit: number }, gone?: string[],
+ * @param {{ reds?: string[][], diff?: string, lcov?: string, controlRecord?: boolean, greenFiles?: string[], parent?: string | { exit: number }, green?: string | { exit: number }, gone?: string[],
  *   tsc?: { status?: number, stdout?: string }, showConfig?: string, sources?: Record<string, string>,
  *   strykerBase?: object, stryker?: Partial<Record<'app'|'tooling', { status?: number, stdout?: string, stderr?: string, report?: string | null, throws?: string }>>, strykerMs?: number }} setup
  */
 export function scenario(setup = {}) {
   const { reds = [['core/a.test.ts']], gone = [], tsc = {}, showConfig = SHOW_CONFIG } = setup
-  const { diff = '', lcov, greenFiles = ['core/a.ts'] } = setup
+  const { diff = '', greenFiles = ['core/a.ts'], controlRecord = true } = setup
+  const lcov = setup.lcov === undefined || !controlRecord ? setup.lcov : CONTROL_RECORD + setup.lcov
   const reports = { [PARENT]: setup.parent, [GREEN]: setup.green }
   const files = fakeFiles()
   const { sources = {} } = setup
@@ -257,7 +273,10 @@ export function scenario(setup = {}) {
       if (args[1] === 'vitest') {
         const flag = args.find((arg) => arg.startsWith(OUTPUT_FILE_FLAG))
         const planned = reports[state.current]
-        state.runs.push({ removedFiles: files.removedFiles.slice(removalsSeen) })
+        state.runs.push({
+          removedFiles: files.removedFiles.slice(removalsSeen),
+          controlFile: controlFileOf(files),
+        })
         removalsSeen = files.removedFiles.length
         if (lcov !== undefined && args.some((arg) => arg.startsWith('--coverage'))) {
           files.writeFile(LCOV_FILE, lcov)

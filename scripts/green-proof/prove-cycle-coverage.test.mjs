@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { GREEN, LCOV_FILE, diffOf, lcovOf, report, scenario } from './green-proof-test-support.mjs'
+import {
+  CONTROL_PATH,
+  GREEN,
+  LCOV_FILE,
+  diffOf,
+  lcovOf,
+  report,
+  scenario,
+} from './green-proof-test-support.mjs'
 
 const SHOW_ARGS = [
   '-c',
@@ -55,6 +63,7 @@ describe('proveCycle diff coverage', () => {
     test.run()
     const green = test.vitestCalls()[1].args
     expect(green).toContain('--coverage.include=core/a.ts')
+    expect(green).toContain(`--coverage.include=${CONTROL_PATH}`)
     expect(green).not.toContain('--coverage.include=docs/x.md')
     expect(green).toContain('--coverage.reportsDirectory=.green-proof/coverage')
   })
@@ -91,9 +100,64 @@ describe('proveCycle diff coverage', () => {
     expect(() => test.run()).toThrow(/wrote no lcov file/)
   })
 
-  it('stops with an error when the coverage run writes an lcov file with no records', () => {
-    const test = proving({ diff: ADDED, lcov: '' })
-    expect(() => test.run()).toThrow()
+  it('stops with an error naming the control file when the lcov file is empty', () => {
+    const test = proving({ diff: ADDED, lcov: '', controlRecord: false })
+    expect(() => test.run()).toThrow(/control/)
+  })
+
+  it('stops with an error when the lcov file has no record for the control file', () => {
+    const lcov = lcovOf([['core/a.ts', [[7, 1]]]])
+    const test = proving({ diff: ADDED, lcov, controlRecord: false })
+    expect(() => test.run()).toThrow(/control/)
+  })
+
+  it('proves a change to a file Vitest never instruments and notes it', () => {
+    const diff = diffOf([['vitest.config.ts', { start: 3, added: ['const x = 1'] }]])
+    const test = proving({ greenFiles: ['vitest.config.ts'], diff, lcov: '' })
+    const result = test.run()
+    expect(result).toMatchObject({ status: 'proven', findings: [] })
+    expect(result.notes).toContain('no coverage record (excluded from coverage): vitest.config.ts')
+    expect(test.strykerCalls()).toEqual([])
+  })
+
+  it('lists every unrecorded changed file in one note', () => {
+    const diff = diffOf([
+      ['vitest.config.ts', { start: 3, added: ['const x = 1'] }],
+      ['vite.config.ts', { start: 4, added: ['const y = 2'] }],
+    ])
+    const greenFiles = ['vitest.config.ts', 'vite.config.ts']
+    const result = proving({ greenFiles, diff, lcov: '' }).run()
+    expect(result.status).toBe('proven')
+    expect(result.notes).toContain(
+      'no coverage record (excluded from coverage): vitest.config.ts, vite.config.ts',
+    )
+  })
+
+  it('fails an uncovered line and notes an unrecorded file, never naming the control file', () => {
+    const diff = diffOf([
+      ['core/a.ts', { start: 7, added: ['const x = 1'] }],
+      ['core/b.ts', { start: 2, added: ['const y = 2'] }],
+    ])
+    const lcov = lcovOf([['core/a.ts', [[7, 0]]]])
+    const test = proving({ greenFiles: ['core/a.ts', 'core/b.ts'], diff, lcov })
+    const result = test.run()
+    expect(result.findings).toEqual([
+      expect.objectContaining({ rule: 'uncovered-added-line', file: 'core/a.ts', line: 7 }),
+    ])
+    expect(result.notes).toContain('no coverage record (excluded from coverage): core/b.ts')
+    expect(JSON.stringify(result)).not.toContain('coverage-control')
+  })
+
+  it('writes the control file before the GREEN coverage run and writes none otherwise', () => {
+    const withSource = proving({ diff: ADDED, lcov: lcovOf([['core/a.ts', [[7, 1]]]]) })
+    withSource.run()
+    const [parentRun, greenRun] = withSource.state.runs
+    expect(parentRun.controlFile).toBeNull()
+    expect(greenRun.controlFile).not.toBeNull()
+    const docsDiff = diffOf([['docs/x.md', { start: 1, added: ['some text'] }]])
+    const docsOnly = proving({ greenFiles: ['docs/x.md'], diff: docsDiff })
+    docsOnly.run()
+    expect(docsOnly.state.runs.every((run) => run.controlFile === null)).toBe(true)
   })
 
   it('never reads a stale lcov left by an earlier run', () => {
@@ -103,7 +167,8 @@ describe('proveCycle diff coverage', () => {
   })
 
   it('asks for no coverage at the parent or when GREEN changes no proof source', () => {
-    const withSource = proving({ diff: ADDED, lcov: lcovOf([['core/a.ts', [[7, 1]]]]) })
+    const lcov = lcovOf([['core/a.ts', [[7, 1]]]])
+    const withSource = proving({ diff: ADDED, lcov })
     withSource.run()
     expect(withSource.vitestCalls()[0].args.some(isCoverageArg)).toBe(false)
     const docsDiff = diffOf([['docs/x.md', { start: 1, added: ['some text'] }]])
