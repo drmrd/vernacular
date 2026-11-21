@@ -5,6 +5,7 @@ import { findByEntityId } from '../../engine/testing'
 import type { FramedScene } from './framed-scene'
 import {
   expectEachDisposedOnce,
+  expectEveryGeometryDisposedOnce,
   expectNoneDisposed,
   sharedResources,
   trackResources,
@@ -27,11 +28,20 @@ async function flushMicrotasks(): Promise<void> {
   await act(async () => {})
 }
 
-function expectEveryGeometryDisposedOnce(tracker: ResourceTracker): void {
-  expect(tracker.geometries().length).toBeGreaterThan(0)
-  expect(tracker.geometries().map((entry) => entry.disposeCount)).toEqual(
-    tracker.geometries().map(() => 1),
-  )
+type Environment = ReturnType<typeof framedSceneEnvironment>
+
+function trackRooms(env: Environment, framed: FramedScene): ResourceTracker[] {
+  return env.roomIds().map((id) => {
+    const group = findByEntityId(framed.root, id)
+    if (group === null) throw new Error(`expected the scene to draw room ${id}`)
+    return trackResources(group)
+  })
+}
+
+function trackFloor(framed: FramedScene): ResourceTracker {
+  const floor = findByEntityId(framed.root, FLOOR_NODE_ID)
+  if (floor === null) throw new Error('expected the scene to draw the floor')
+  return trackResources(floor)
 }
 
 describe('useFramedScene frees what it stops using', () => {
@@ -52,17 +62,13 @@ describe('useFramedScene frees what it stops using', () => {
   it('frees the geometry of a rebuilt room once the effect runs with no scene attached, and nothing the new scene draws', async () => {
     const env = framedSceneEnvironment()
     const { result } = renderHook(() => useFramedScene(), { wrapper: env.wrapper })
-    const oldRooms = env.roomIds().map((id) => {
-      const group = findByEntityId(result.current.framed.root, id)
-      if (group === null) throw new Error(`expected the first scene to draw room ${id}`)
-      return trackResources(group)
-    })
+    const oldRooms = trackRooms(env, result.current.framed)
     const before = result.current.framed
 
     act(() => env.movePartitionTo(MOVED_PARTITION_X_MM))
     await flushMicrotasks()
 
-    const live = trackResources(findByEntityId(result.current.framed.root, FLOOR_NODE_ID))
+    const live = trackFloor(result.current.framed)
     expect(result.current.framed).not.toBe(before)
     expect(oldRooms.length).toBeGreaterThan(0)
     oldRooms.forEach(expectEveryGeometryDisposedOnce)
@@ -105,7 +111,6 @@ describe('useFramedScene under StrictMode', () => {
 
 type Detach = () => void
 type HookResult = { current: FramedSceneState }
-type Environment = ReturnType<typeof framedSceneEnvironment>
 
 function attach(result: HookResult, scene: FramedScene = result.current.framed): Detach {
   let detach: Detach = () => {}
@@ -113,20 +118,6 @@ function attach(result: HookResult, scene: FramedScene = result.current.framed):
     detach = result.current.onSceneAttached(scene)
   })
   return detach
-}
-
-function trackRooms(env: Environment, framed: FramedScene): ResourceTracker[] {
-  return env.roomIds().map((id) => {
-    const group = findByEntityId(framed.root, id)
-    if (group === null) throw new Error(`expected the scene to draw room ${id}`)
-    return trackResources(group)
-  })
-}
-
-function trackFloor(framed: FramedScene): ResourceTracker {
-  const floor = findByEntityId(framed.root, FLOOR_NODE_ID)
-  if (floor === null) throw new Error('expected the scene to draw the floor')
-  return trackResources(floor)
 }
 
 describe('useFramedScene with a scene attached', () => {

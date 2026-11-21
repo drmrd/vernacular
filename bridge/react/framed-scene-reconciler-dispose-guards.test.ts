@@ -21,6 +21,7 @@ import { findByEntityId } from '../../engine/testing'
 import type { Object3D } from '../../engine/testing'
 import {
   expectEachDisposedOnce,
+  expectEveryGeometryDisposedOnce,
   expectNoneDisposed,
   sharedResources,
   trackResources,
@@ -128,10 +129,7 @@ describe('createFramedSceneReconciler releases only what a scene change dropped'
 
     reconciler.releaseRetired(second)
 
-    expect(chairOld.geometries().length).toBeGreaterThan(0)
-    expect(chairOld.geometries().map((entry) => entry.disposeCount)).toEqual(
-      chairOld.geometries().map(() => 1),
-    )
+    expectEveryGeometryDisposedOnce(chairOld)
     unchanged.forEach(expectNoneDisposed)
     expectNoneDisposed(secondFloor)
   })
@@ -273,9 +271,7 @@ describe('createFramedSceneReconciler releases only for the scene the latest rec
 
     reconciler.releaseRetired(second)
 
-    expect(oldRoom.geometries().map((entry) => entry.disposeCount)).toEqual(
-      oldRoom.geometries().map(() => 1),
-    )
+    expectEveryGeometryDisposedOnce(oldRoom)
     expectNoneDisposed(liveFloor)
   })
 })

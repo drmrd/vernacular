@@ -133,6 +133,14 @@ export function expectEachDisposedOnce(tracker: ResourceTracker): void {
   expect(tracker.all().map((entry) => entry.disposeCount)).toEqual(tracker.all().map(() => 1))
 }
 
+/** Asserts the tracker found a geometry and every geometry it found was disposed exactly once. */
+export function expectEveryGeometryDisposedOnce(tracker: ResourceTracker): void {
+  expect(tracker.geometries().length).toBeGreaterThan(0)
+  expect(tracker.geometries().map((entry) => entry.disposeCount)).toEqual(
+    tracker.geometries().map(() => 1),
+  )
+}
+
 /** Asserts the tracker found something and none of it has been disposed. */
 export function expectNoneDisposed(tracker: ResourceTracker): void {
   expect(tracker.all().length).toBeGreaterThan(0)

@@ -12,6 +12,7 @@ import { findByEntityId } from '../../engine/testing'
 import type { Object3D } from '../../engine/testing'
 import {
   expectEachDisposedOnce,
+  expectEveryGeometryDisposedOnce,
   expectNoneDisposed,
   liveOf,
   sharedResources,
@@ -109,9 +110,7 @@ describe('createFramedSceneReconciler retirement of replaced builds', () => {
     reconciler.releaseRetired(latest)
 
     // The rebuilt room's own geometry is freed once. The reused room's is untouched.
-    expect(movedOld.geometries().map((entry) => entry.disposeCount)).toEqual(
-      movedOld.geometries().map(() => 1),
-    )
+    expectEveryGeometryDisposedOnce(movedOld)
     expect(liveOf(keptOld)).toBe(keptOld.all().length)
   })
 
