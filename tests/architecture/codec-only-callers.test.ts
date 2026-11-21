@@ -113,6 +113,17 @@ describe('the files of core/repairs', () => {
     expect(findNamingsOutsideTheCodec(sources, 'checkCurrentSchema')).toEqual([])
   })
 
+  it('a file under core/repairs-extras that names checkCurrentSchema is reported', () => {
+    const sources = plantedSource(
+      'core/repairs-extras/x.ts',
+      'export const faults = checkCurrentSchema(document, mode)\n',
+    )
+
+    expect(findNamingsOutsideTheCodec(sources, 'checkCurrentSchema')).toEqual([
+      'core/repairs-extras/x.ts:1',
+    ])
+  })
+
   it('a file under core/repairs that names another codec function is reported', () => {
     const sources = plantedSource('core/repairs/find-repair-offer.ts', CALLING_SAMPLE)
 

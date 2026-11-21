@@ -3,6 +3,7 @@ import {
   atHigherRevision,
   fixtureDocument,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
+import { VERSION_FIXTURE_VERSIONS } from '../../tests/fixtures/projects/versions'
 import { findRepairOffer } from './repair-list'
 import type { RepairOffer } from './repair-list'
 import {
@@ -19,8 +20,8 @@ import {
 } from './repairs-test-kit'
 import type { Json } from './repairs-test-kit'
 
-/** The oldest format version that this build reads, so its file is migrated before the check. */
-const OLDEST_VERSION = 8
+/** The oldest fixture version, so its file is migrated before the check. */
+const OLDEST_VERSION = VERSION_FIXTURE_VERSIONS[0] as number
 
 const PAINT_SENTENCE = 'It removes the extra data from 2 paint entries.'
 const FIELDS_SENTENCE = 'It removes 2 fields that the format does not define.'
