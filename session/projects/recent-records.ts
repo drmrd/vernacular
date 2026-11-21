@@ -5,7 +5,7 @@ import type { ProjectRecord } from '../../storage'
  * every record with one, and equal times order by id. The times are ISO strings of one form, so
  * they order as text.
  */
-function compareUse(first: ProjectRecord, second: ProjectRecord): number {
+export function compareUse(first: ProjectRecord, second: ProjectRecord): number {
   const firstUse = first.lastUsedAt
   const secondUse = second.lastUsedAt
   if (firstUse !== secondUse) {
