@@ -225,8 +225,18 @@ describe('ProjectMenu order of the items', () => {
 
   it('leaves out an item that has no handler and keeps the order of the rest', async () => {
     const user = userEvent.setup()
-    render(<ProjectMenu onNewProject={vi.fn()} onSave={vi.fn()} />)
+    render(
+      <ProjectMenu
+        onNewProject={vi.fn()}
+        onOpenFolder={vi.fn()}
+        onSave={vi.fn()}
+        onRename={vi.fn()}
+        projectName="Eastmore Farmstead"
+        onOpenRecent={vi.fn()}
+        recentProjects={[{ id: 'hubbard', name: 'Hubbard House' }]}
+      />,
+    )
     await user.click(screen.getByRole('button', { name: /project/i }))
-    expect(itemNames()).toEqual(['New project', 'Save'])
+    expect(itemNames()).toEqual(['New project', 'Open folder', 'Save', 'Rename', 'Hubbard House'])
   })
 })

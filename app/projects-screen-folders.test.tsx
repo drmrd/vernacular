@@ -1,6 +1,8 @@
 import { waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { storedProject } from '../session/handle/handle-test-kit'
 import {
+  AUTOSAVE_TIMEOUT_MS,
   backToTheProject,
   clickCardOf,
   expectOpenProject,
@@ -53,6 +55,10 @@ describe('The card of a folder project that needs the permission again', () => {
     ports.folders.setPermission(FOLDER_ID, 'prompt')
     const { bar } = await openFirstProjectOn(ports)
     await addAFloor()
+    await waitFor(
+      async () => expect((await storedProject(ports.workspace, FIRST_ID)).floors).toHaveLength(2),
+      { timeout: AUTOSAVE_TIMEOUT_MS },
+    )
     await showThePageOn(bar)
     await findCardLink(FOLDER_NAME)
     const cardsBefore = await textOfTheCards()

@@ -1,19 +1,31 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import { ARCHIVE_LIMITS, InMemoryDirectory, InMemoryFolderAccess } from '../storage'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { AssetReference } from '../core'
+import {
+  ARCHIVE_LIMITS,
+  InMemoryDirectory,
+  InMemoryFolderAccess,
+  type LibraryItem,
+} from '../storage'
 import {
   DOCUMENT_FILE,
   pickFolder,
   rememberFolder,
   type TestPorts,
 } from '../session/handle/handle-test-kit'
-import { projectFileOf, unreadableFile } from './action-test-support'
+import {
+  furnitureItem,
+  projectFileOf,
+  projectFileReferring,
+  unreadableFile,
+} from './action-test-support'
 import {
   chooseFromTheProjectMenu,
   documentBytes,
   expectOpenProject,
   filesUnder,
   findCardLink,
+  findTheShell,
   findTheProjectsPage,
   lockedIds,
   namedProject,
@@ -48,8 +60,36 @@ import {
 
 const IMPORTED_NAME = 'Imported House'
 const DIRECTORY_NAME = 'Old house'
+const ONE_MISSING_SENTENCE =
+  'The file did not include 1 of the assets this project uses. It shows as missing.'
+const PACK_REFERENCE: AssetReference = {
+  scope: 'pack:vernacular-starter@1.0.0',
+  contentHash: 'd'.repeat(64),
+}
+
+/** What the library of the application lists now. A case sets it before it renders. */
+const library = vi.hoisted(() => ({ items: [] as LibraryItem[] }))
+
+vi.mock('./create-asset-library-registry', async () => {
+  const { AssetRegistry, InMemoryAssetCache, UserSource } = await import('../storage')
+  const userIndex = { list: () => Promise.resolve([]), add: () => Promise.resolve() }
+  const packSource = {
+    id: 'pack',
+    read: () => Promise.resolve(undefined),
+    list: () => Promise.resolve(library.items),
+  }
+  return {
+    createAssetLibrary: () => ({
+      registry: new AssetRegistry([{ kind: 'pack', source: packSource }]),
+      userSource: new UserSource(new InMemoryAssetCache(), userIndex),
+    }),
+  }
+})
 
 setUpProjectsScreenTests()
+afterEach(() => {
+  library.items = []
+})
 
 /** A directory that holds the document of a project named `name`. */
 async function directoryHolding(name: string): Promise<InMemoryDirectory> {
@@ -113,6 +153,20 @@ describe('Importing a file from the Projects page', () => {
     await expectTheImportOpenedACopy(ports)
   })
 
+  it('shows no missing-asset warning for an asset that a pack of the library supplies', async () => {
+    library.items = [furnitureItem(PACK_REFERENCE)]
+    const ports = await durablePortsWith(FIRST_ID)
+    await renderThePageOn(ports)
+    chooseInThePicker(projectFileReferring(PACK_REFERENCE))
+
+    await clickPageAction('Import file')
+
+    await waitFor(() => expect(lockedIds(ports)).toHaveLength(1))
+    await findTheShell()
+    await settleForAWhile()
+    expect(screen.queryByText(ONE_MISSING_SENTENCE)).not.toBeInTheDocument()
+  })
+
   it('shows the refusal of a file above the size limit as an alert, and keeps the page', async () => {
     const ports = await durablePortsWith(FIRST_ID)
     await renderThePageOn(ports)
@@ -166,6 +220,7 @@ describe('Opening a folder from the Projects page', () => {
     await clickPageAction('Open folder')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(FOLDER_EMPTY)
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
     expect(await findTheProjectsPage()).toBeInTheDocument()
     expect(await recordIds(ports)).toEqual(recordsBefore)
   })
