@@ -228,9 +228,9 @@ as the next step rather than trying to widen the step that is already there.
 ## Update (2026-11-21): a dash key stays in place when another entry holds the room's current key
 
 Issue #815. One document can hold a dash key and a pipe key for the same room: the dash key from
-the early build, the pipe key from an override set after the separator changed. The step first
-wrote both overrides to the pipe key, so whichever came later in the file replaced the other with
-no report.
+the early build, the pipe key from an override set after the separator changed. Until this fix,
+the step wrote both overrides to the pipe key, so whichever came later in the file replaced the
+other with no report.
 
 The step now moves a dash key only to a key that no other entry holds. When the pipe key is in the
 stored map, the dash key stays where it is, with its override. The same rule covers two dash keys
@@ -248,6 +248,7 @@ tried only for a document that fails validation, which a document with both keys
 report would never appear.
 
 The dead entry has a way out. The room records in the geometric kernel specification
-(`docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 5.6) turn a key whose
-walls do not exist into an unbound record. The list of unbound records planned there is where a
+(`docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 5.6) turn a key that names
+no wall into an unbound record. A dead dash key names no wall there, because that migration reads
+a key by splitting on `|` only. The list of unbound records planned there is where a
 user can see the old override and delete it.
