@@ -166,7 +166,7 @@ change.
 ### Worktree and install policy
 
 Each cycle runs in one temporary git worktree under `os.tmpdir()`, removed on exit, including after
-a failure and after SIGINT or SIGTERM (the process then exits 130). Each distinct
+a failure and after a Ctrl-C (SIGINT) or SIGTERM, which stops the running child process, so the worktree is removed and the process exits 2. Each distinct
 `pnpm-lock.yaml` in the range gets one `pnpm install --frozen-lockfile`, and cycles with the same
 lockfile reuse that install. The script never links the main clone's `node_modules`: on
 2026-11-20 the main clone held Vitest 4.1.8 while the lockfile pinned 4.1.12, so a link could prove

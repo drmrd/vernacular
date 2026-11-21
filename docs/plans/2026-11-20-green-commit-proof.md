@@ -623,6 +623,8 @@ it('skips the cycle when no unit test imports the changed assets')
       `package.json`, with the direct-invocation block and `defaultDeps()` (spawnSync with
       `maxBuffer: GIT_OUTPUT_LIMIT_BYTES`, `node:fs`, `os.tmpdir()`, `GITHUB_ACTIONS === 'true'`,
       `performance.now`; `writeFile` creates parent folders) and SIGINT and SIGTERM handlers that dispose the session and exit 130.
+      The shipped code keeps no-op listeners instead, because the handler body cannot run in a
+      synchronous run; the exit is 2 after the cleanup in the finally block.
       Commit `build: add the green:proof script`.
 - [ ] With the sandbox off, run `time pnpm green:proof --range 35f8101b^1..35f8101b^2` (28 GREEN
       commits: 17 `feat:`, 11 `fix:`; no lockfile change in the range, so one install).
