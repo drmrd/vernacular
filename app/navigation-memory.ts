@@ -51,7 +51,10 @@ export interface NavigationMemory {
   address: AddressBar
   readonly view: NavigationView
   readonly owner: OwnerControls
-  /** The ports, the open project, and the owner's failure of the latest commit. */
+  /**
+   * The ports and the owner's failure of the latest commit, and the open project: the handle of the
+   * latest resolved flow or commit.
+   */
   ports: SessionPorts | null
   handle: DocumentHandle | null
   failure: SwitchFailure | null
@@ -195,7 +198,12 @@ export async function runOwnerFlow<Refusal>(
 ): Promise<FlowResult<Refusal> | undefined> {
   memory.busy.flowsRunning += 1
   try {
-    return await memory.owner.runFlow(flow)
+    const result = await memory.owner.runFlow(flow)
+    if (result?.ok) {
+      memory.handle = result.handle
+      memory.triedId = result.handle.id
+    }
+    return result
   } finally {
     memory.busy.flowsRunning -= 1
   }
