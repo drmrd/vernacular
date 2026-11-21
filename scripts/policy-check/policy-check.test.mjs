@@ -112,6 +112,13 @@ describe('rule severity table', () => {
       'milestone-code': 'warn',
       'em-dash': 'warn',
       'e2e-timing-or-focus': 'warn',
+      'red-passes-before-green': 'fail',
+      'red-fails-at-green': 'fail',
+      'uncovered-added-line': 'fail',
+      'mixed-red-passes-before-green': 'warn',
+      'mixed-uncovered-added-line': 'warn',
+      'surviving-mutant': 'warn',
+      'mutation-run-failed': 'warn',
     })
   })
 
