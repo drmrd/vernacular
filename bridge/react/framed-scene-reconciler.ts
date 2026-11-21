@@ -61,9 +61,12 @@ type RetiredObject = Parameters<typeof disposeObject>[0]
 /**
  * What reconciles replaced and nothing draws any more: rebuilt sub-groups, ground planes of
  * dropped scenes, superseded empty-graph scenes, and providers whose build lineage ended. They
- * wait here rather than being freed at once, so reconcile stays free of side effects on the
- * scene still on screen; releaseRetired frees them once the scene the latest reconcile returned is the one drawn. Disposing the
- * reconciler routes everything it holds through the queue as well.
+ * wait here rather than being freed at once, because a render must not free what the scene on
+ * screen may still draw; releaseRetired frees them once the scene the latest reconcile returned
+ * is the one drawn. Disposing the reconciler routes everything it holds through the queue too.
+ * One free happens at once: a cache hit with a new grade swaps the cached scene's ground plane
+ * in place (refreshGroundPlane), and the old plane is detached in the same call, so no root
+ * can draw it after it is freed.
  */
 interface RetiredResources {
   objects: Set<RetiredObject>
@@ -283,9 +286,9 @@ function reconcileStackedScene(
  *
  * What a reconcile replaces (a rebuilt sub-group, a floor build and provider a paint edit
  * replaced, a dropped scene's ground plane, a superseded empty-graph scene) is retired, not
- * freed, until the caller runs releaseRetired with the scene the latest
- * reconcile returned, once that scene is the one drawn. dispose frees
- * everything still held, for the owner that drops the reconciler.
+ * freed, until the caller runs releaseRetired with the scene the latest reconcile returned,
+ * once that scene is the one drawn. dispose frees everything still held, for the owner that
+ * drops the reconciler.
  */
 export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): FramedSceneReconciler {
   const buildsByFloorId = new Map<string, CachedFloorBuild>()
