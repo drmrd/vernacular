@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  BACKUP_FOLDER,
-  AUTOSAVE_FOLDER,
   PROJECT_ID,
-  REFUSED_BACKUP_NAME,
   REFUSED_COPY_NAME,
-  REFUSED_TEXT,
+  THE_REFUSED_BACKUP,
+  autosaveFolderOf,
+  backupFolderOf,
   plantRefusedCopy,
   refusedBackupsIn,
 } from '../handle/handle-refused-snapshots-test-kit'
@@ -17,8 +16,8 @@ import { restoreSnapshot } from './restore-snapshot'
 const EDITED_NAME = 'Edited before the restore'
 const EDITED_AGAIN_NAME = 'Edited after the refused restore'
 const DISK_FULL = 'the disk is full'
-const AUTOSAVE_PATH = `${PROJECT_ID}/${AUTOSAVE_FOLDER}`
-const BACKUP_PATH = `${PROJECT_ID}/${BACKUP_FOLDER}`
+const AUTOSAVE_PATH = autosaveFolderOf(PROJECT_ID)
+const BACKUP_PATH = backupFolderOf(PROJECT_ID)
 
 const DID_NOT_RESTORE = {
   ok: false,
@@ -55,9 +54,7 @@ describe('a restore of a recovery copy that cannot be read', () => {
     const result = await restoreSnapshot(handle)
 
     expect(result).toEqual(DID_NOT_RESTORE)
-    expect(await refusedBackupsIn(ports.root, BACKUP_PATH)).toEqual([
-      { name: expect.stringMatching(REFUSED_BACKUP_NAME), text: REFUSED_TEXT },
-    ])
+    expect(await refusedBackupsIn(ports.root, BACKUP_PATH)).toEqual(THE_REFUSED_BACKUP)
     expect(await ports.root.list(AUTOSAVE_PATH)).not.toContain(REFUSED_COPY_NAME)
   })
 
@@ -101,5 +98,6 @@ describe('a restore of a recovery copy that cannot be read', () => {
     expect(setAside).toHaveBeenCalledTimes(1)
     expect(result).toEqual(DID_NOT_RESTORE)
     expect(await ports.locks.heldIds()).toEqual(new Set([PROJECT_ID]))
+    expect(await ports.root.list(AUTOSAVE_PATH)).toContain(REFUSED_COPY_NAME)
   })
 })

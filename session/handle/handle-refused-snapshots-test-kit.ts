@@ -1,3 +1,4 @@
+import { expect } from 'vitest'
 import { renamed, currentBytes } from '../../tests/storage/conformance/conformance-documents'
 import type { DirectoryPort, DocumentStore } from '../../storage'
 import {
@@ -28,6 +29,11 @@ export const REFUSED_TEXT = '{"this copy": is not json'
 
 /** The name that the store gives the backup of a copy that is no project: version 0, then the digest. */
 export const REFUSED_BACKUP_NAME = /^refused-snapshot-v0-[0-9a-f]{64}\.json$/
+
+/** The one backup that a copy with the text of `REFUSED_TEXT` leaves behind. */
+export const THE_REFUSED_BACKUP = [
+  { name: expect.stringMatching(REFUSED_BACKUP_NAME), text: REFUSED_TEXT },
+]
 
 /** The name of the recovered project that a copy that can be read holds. */
 export const READABLE_NAME = 'Recovered after a crash'

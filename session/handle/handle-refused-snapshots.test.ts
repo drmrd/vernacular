@@ -21,9 +21,9 @@ import {
   NEWEST_COPY_NAME,
   PROJECT_ID,
   READABLE_NAME,
-  REFUSED_BACKUP_NAME,
   REFUSED_COPY_NAME,
   REFUSED_TEXT,
+  THE_REFUSED_BACKUP,
   autosaveFolderOf,
   backupFolderOf,
   namesIn,
@@ -41,11 +41,6 @@ import {
 const RECOVERY_COPY_KEPT = 'recovery-copy-kept'
 const EDITED_NAME = 'Edited after the open'
 const DISK_FULL = 'the disk is full'
-
-/** The one backup that a copy with the text of `REFUSED_TEXT` leaves behind. */
-const THE_REFUSED_BACKUP = [
-  { name: expect.stringMatching(REFUSED_BACKUP_NAME), text: REFUSED_TEXT },
-]
 
 let consoleError: ReturnType<typeof vi.spyOn>
 
@@ -74,12 +69,12 @@ describe('an open of a project with a recovery copy that cannot be read', () => 
   it('the handle gives the notice recovery-copy-kept once, also to a listener that attaches later', async () => {
     const handle = await openProject(await portsWithRefusedCopy())
 
-    const first = noticesOf(handle)
-    const later = noticesOf(handle)
+    const firstListener = noticesOf(handle)
+    const laterListener = noticesOf(handle)
     await handle.save()
 
-    expect(first).toEqual([RECOVERY_COPY_KEPT])
-    expect(later).toEqual([])
+    expect(firstListener).toEqual([RECOVERY_COPY_KEPT])
+    expect(laterListener).toEqual([])
   })
 
   it('an open with only readable copies moves nothing and gives no notice', async () => {
@@ -149,7 +144,7 @@ describe('an open that does not set a recovery copy aside', () => {
 })
 
 describe('an open whose move of a recovery copy rejects', () => {
-  it('an open whose move rejects still opens, warns once, and its autosave writes and removes no snapshot', async () => {
+  it('an open whose move rejects still opens, logs one error, and its autosave writes and removes no snapshot', async () => {
     const ports = await portsWithRefusedCopy()
     const snapshotCalls = rejectSetAside(ports.workspace, new Error(DISK_FULL))
 
