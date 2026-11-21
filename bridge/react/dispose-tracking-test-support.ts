@@ -104,6 +104,17 @@ export function sharedResources(a: ResourceTracker, b: ResourceTracker): object[
     .filter((resource) => inB.has(resource))
 }
 
+/** The tracker's entries that the other tracker did not find, by identity (a held template's share is left out). */
+export function without(tracker: ResourceTracker, excluded: ResourceTracker): ResourceTracker {
+  const skipped = new Set(excluded.all().map((entry) => entry.resource))
+  const kept = tracker.all().filter((entry) => !skipped.has(entry.resource))
+  return {
+    all: () => kept,
+    geometries: () => kept.filter((entry) => entry.kind === 'geometry'),
+    materials: () => kept.filter((entry) => entry.kind === 'material'),
+  }
+}
+
 /** How many tracked resources have not been disposed yet. */
 export function liveOf(tracker: ResourceTracker): number {
   return tracker.all().filter((entry) => entry.disposeCount === 0).length
