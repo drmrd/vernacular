@@ -42,15 +42,30 @@ function noticeIdOf(place: Place, request: OpenRequest | undefined): string {
   return place.kind === 'project' ? place.id : ''
 }
 
-/** Brings the application to a place. The promise never rejects. */
-export async function resolvePlace(ports: SessionPorts, place: Place): Promise<Screen> {
+/** True when the place is the one that the open project already holds. */
+function isPlaceOf(current: DocumentHandle, place: Place): boolean {
+  return place.kind === 'start' || (place.kind === 'project' && place.id === current.id)
+}
+
+/**
+ * Brings the application to a place. With a project open, its own address and the start keep it,
+ * and another address switches to the other project. The promise never rejects.
+ */
+export async function resolvePlace(
+  ports: SessionPorts,
+  place: Place,
+  current?: DocumentHandle,
+): Promise<Screen> {
   if (place.kind === 'projects') {
     return { kind: 'projects' }
+  }
+  if (current !== undefined && isPlaceOf(current, place)) {
+    return { kind: 'editor', handle: current }
   }
   let request: OpenRequest | undefined
   try {
     request = await requestForPlace(ports, place)
-    return screenOf(request.id, await switchProject(ports, undefined, request))
+    return screenOf(request.id, await switchProject(ports, current, request))
   } catch (error) {
     const id = noticeIdOf(place, request)
     return { kind: 'projects', notice: { id, failure: storageUnavailableOf(error) } }
