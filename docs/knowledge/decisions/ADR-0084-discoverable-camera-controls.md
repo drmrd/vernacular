@@ -15,10 +15,11 @@ sourceFiles:
     docs/plans/2026-06-15-discoverable-camera-controls.md,
     bridge/react/camera-controls-hint.tsx,
     bridge/react/webgpu-scene-view.tsx,
+    bridge/react/scene-pane-shell.tsx,
     e2e/tests/scene-camera-controls.spec.ts,
   ]
 status: current
-updated: 2026-08-17
+updated: 2026-11-21
 ---
 
 # ADR-0084: Discoverable three-dimensional camera controls

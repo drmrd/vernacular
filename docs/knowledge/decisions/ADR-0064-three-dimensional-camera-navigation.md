@@ -46,6 +46,7 @@ sourceFiles:
     bridge/react/walk-camera-controls.tsx,
     bridge/react/scene-nav-toolbar.tsx,
     bridge/react/webgpu-scene-view.tsx,
+    bridge/react/scene-view-toolbar.tsx,
     e2e/tests/scene-navigation.spec.ts,
     bridge/react/walk-session.ts,
     bridge/react/walk-session.test.ts,
@@ -57,7 +58,7 @@ sourceFiles:
     e2e/tests/journeys/walk-follows-the-active-floor.spec.ts,
   ]
 status: current
-updated: 2026-11-20
+updated: 2026-11-21
 ---
 
 # ADR-0064: Camera navigation for the three-dimensional preview: orbit, walk, and reset as per-view state
