@@ -1,6 +1,6 @@
 ---
 name: vernacular-docs-and-writing
-description: 'Use when writing repo documents or outward text (ADRs, specs, plans, README, CHANGELOG, release notes, PR descriptions): ADR numbers and supersession, knowledge:index frontmatter errors, em-dash and naming rules, commit-message types, the humanizer pass.'
+description: 'Use when writing repo documents or outward text (ADRs, specs, plans, README, CHANGELOG, release notes, PR descriptions): ADR numbers and supersession, knowledge:index frontmatter errors, em-dash and naming rules, commit-message types, the humanizer pass, license or SemVer claims, stale committed docs.'
 ---
 
 # Vernacular docs and writing

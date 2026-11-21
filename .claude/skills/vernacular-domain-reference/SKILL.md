@@ -1,6 +1,6 @@
 ---
 name: vernacular-domain-reference
-description: 'Use for geometry, units, light, and file format facts: wall topology, room derivation, millimetres, y-up plan-to-world mapping, tone mapping, solar position, sky and AO, vernacular.json, .building archive, schema migrations, construction profiles, period terms (sash, muntin, transom).'
+description: 'Use for geometry, units, light, and file format facts: wall topology, room derivation, hole rings, winding, millimetres, y-up plan-to-world mapping, tone mapping, solar position, sky and AO, vernacular.json, .building archive, schema migrations, construction profiles, period terms (sash, muntin, transom).'
 ---
 
 # Vernacular domain reference

@@ -1,6 +1,6 @@
 ---
 name: vernacular-architecture-contract
-description: 'Use when deciding which layer new code belongs in (core, storage, session, engine, bridge, editor, app), on a boundaries/dependencies lint error, or when touching dispatch(command), undo/redo, scene assembly, the reconciler, schemas, or asset references.'
+description: 'Use when deciding which layer new code belongs in (core, storage, session, engine, bridge, editor, app), on a boundaries/dependencies lint error, or when touching dispatch(command), undo/redo, scene assembly, the reconciler, schemas, registries, asset references, or the .building format.'
 ---
 
 # Vernacular architecture contract
