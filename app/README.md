@@ -32,14 +32,19 @@ Where things happen:
   browser keeps it, and a project that a flow opens gets a new history entry.
 - `projects-screen.tsx` puts the Projects page of `editor/projects/` into the application.
   `use-project-cards.ts` reads its cards with `listProjectCards` of `session/` when the page mounts,
-  when the open project changes, after a try from the page that fails or is refused, and when the
-  tab becomes visible again. A plain click on a card opens that project. On the card of the open
-  project it returns to the editor instead. "New project", "Import file", a file dropped on the
-  page, and "Open folder" (where the browser can open folders) run their flows through `runPageFlow`
-  of the navigation, so a project that opens replaces the page. A failure to open shows in the
-  page's one notice. `page-notice-text.ts` gives its sentence and leaves it out when a card already
-  says it. "Switch projects" in the Project menu calls `showProjects` of the navigation, which shows
-  the page over the open project with a new history entry. While the page shows over an open
+  when the open project changes, after a try from the page that ends with no project, and when the
+  tab becomes visible again. A failed try, a refused one, and a cancelled folder pick all read the
+  cards again. A try that does not run because another try runs reads nothing. A plain click on a
+  card opens that project. On the card of the open project it returns to the editor instead. "New
+  project", "Import file", a file dropped on the page, and "Open folder" (where the browser can
+  open folders) run their flows through `runPageFlow` of the navigation, so a project that opens
+  replaces the page. The page fills the window, so a file dropped anywhere on it imports. A failure
+  to open shows in the page's one notice. `page-notice-text.ts` gives its sentence and leaves it
+  out when the card of the project that failed already says it. If that card lacks the line, the
+  notice shows the sentence. The notice of a page action belongs to no card, so when Open folder
+  picks a listed folder that another tab holds, the notice shows the sentence and the card keeps
+  its line. "Switch projects" in the Project menu calls `showProjects` of the navigation, which
+  shows the page over the open project with a new history entry. While the page shows over an open
   project, the editor is not mounted, and `App` keeps the guards of unsaved work mounted for that
   project. `App` also remembers the handles whose recovered work it offered, so each open handle
   offers it once. A return from the page does not offer it again. A reload offers it again until the

@@ -24,7 +24,7 @@ sourceFiles:
     docs/specs/2026-11-14-architecture-refactor-round.md,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-21
 ---
 
 # ADR-0187: The Projects page lands with document identity
@@ -47,6 +47,10 @@ prompt still stands.
 > own id, and Open file already makes a copy in the workspace and leaves the file alone, though the
 > menu entry still reads "Open file". No page lists projects yet, and the prompt for a recovered
 > copy stays.
+
+> Updated on 2026-11-21. The Projects page lists the stored projects, one card for each, and
+> `#/projects` shows it. "Switch projects" in the Project menu shows the page over the open
+> project. The menu entry that read "Open file" now reads "Import file".
 
 ## Context
 

@@ -81,7 +81,8 @@ holds the editor session, the project lock, autosave, and the recovery
 snapshots, and which saves the project. The flows in `session/flows/`
 open, switch, import, export, and restore a project, and a switch writes
 the open project before it opens the next one. The handle also writes the project index, the store
-of one record per project. The start and the recent list read it through `reconcileIndex`
+of one record per project. The start, the recent list, and the cards of the Projects page
+(`listProjectCards` in `session/projects/project-cards.ts`) read it through `reconcileIndex`
 (`session/projects/`), which rebuilds the index from the project store. In `app/`, one hook,
 `useOpenProject` in `app/use-open-project.ts`, holds the one open
 handle and runs one flow at a time. `app/create-session-ports.ts` is the

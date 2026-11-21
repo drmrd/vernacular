@@ -23,7 +23,7 @@ sourceFiles:
     core/export/svg/svg-plan-exporter.ts,
   ]
 status: current
-updated: 2026-11-20
+updated: 2026-11-21
 ---
 
 # ADR-0188: A project has a random id, an address, and a record in the project index
@@ -92,6 +92,10 @@ the recent-project store holds one entry at most.
 > address, and the record. It no longer says that switching backends is supported, because no
 > flow moves a project between browser storage and a folder today. The section now says that the
 > move is not built yet.
+
+> Updated on 2026-11-21. The Projects page exists, and `#/projects` shows it in place of the
+> interim view. The page lists the stored projects, one card for each. The menu entry that read
+> "Open file" now reads "Import file".
 
 ## Context
 

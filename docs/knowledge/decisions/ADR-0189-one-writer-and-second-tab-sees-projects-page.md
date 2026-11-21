@@ -65,13 +65,15 @@ takes a lock when it opens a project, and two tabs can write the same document.
 > the page where it used to show the failed-open view. `listProjectCards` in
 > `session/projects/project-cards.ts` reads `heldIds()` through the port, and the card of a project
 > that another tab holds says "Already open in another tab." The page's notice does not repeat it.
-> It reads "This project is open in another tab." only when that card lacks the line, for example
-> when the read of the held ids fails. A click on the card tries the open again; if it fails, the
-> page stays. From the page, the second tab can start a new project, import a file, or open another
-> project. In the card model, a project that another tab holds has one action, Export. The
-> application does not show the menu of actions of a card yet, so for now the card offers none. The
-> delete that holds the lock is not built yet. Section 5.6 of the design specification now
-> describes this behavior in place of the read-only prompt.
+> If the card lacks that line, for example when the read of the held ids fails, the notice reads
+> "This project is open in another tab." The notice of a page action belongs to no card. So when
+> Open folder picks a listed folder that another tab holds, the notice shows the sentence and the
+> card keeps its line. A click on the card tries the open again; if it fails, the page stays. From
+> the page, the second tab can start a new project, import a file, or open another project. In the
+> card model, a project that another tab holds has one action, Export. The application does not
+> show the menu of actions of a card yet, so for now the card offers none. The delete that holds the
+> lock is not built yet. Section 5.6 of the design specification now describes this behavior in
+> place of the read-only prompt.
 
 ## Context
 
