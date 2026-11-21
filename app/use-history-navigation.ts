@@ -103,7 +103,7 @@ function useFirstRead(memory: NavigationMemory, ports: SessionPorts | null): voi
     }
     beginRead(memory, ports, parseAddress(memory.address.hash()))
     return () => {
-      memory.reading = null
+      memory.busy.reading = null
     }
   }, [memory, ports])
 }

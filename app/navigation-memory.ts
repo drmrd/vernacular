@@ -36,6 +36,16 @@ export interface OwnerControls {
   readonly retry: () => void
 }
 
+/** What keeps the navigation from following the address now. */
+export interface NavigationBusy {
+  /** The read of a first request that runs, as a token that its end is checked against. */
+  reading: object | null
+  /** True from a first request that the owner opens until the owner shows what it gave. */
+  starting: boolean
+  /** How many flows were handed to the owner and have not ended yet. */
+  flowsRunning: number
+}
+
 /** What the navigation keeps between renders, read and written by its effects and callbacks. */
 export interface NavigationMemory {
   address: AddressBar
@@ -48,12 +58,7 @@ export interface NavigationMemory {
   page: ShownPage | null
   /** True while the hook's effects are set up. */
   live: boolean
-  /** The read of a first request that runs, as a token that its end is checked against. */
-  reading: object | null
-  /** True from a first request that the owner opens until the owner shows what it gave. */
-  starting: boolean
-  /** How many flows were handed to the owner and have not ended yet. */
-  flowsRunning: number
+  readonly busy: NavigationBusy
   /** True when the user moved while something ran, so the address is followed after it. */
   addressLeads: boolean
   /** True when the next address write adds a history entry. */
@@ -85,9 +90,7 @@ export function newNavigationMemory(
     failure: null,
     page: initialPage(address),
     live: false,
-    reading: null,
-    starting: false,
-    flowsRunning: 0,
+    busy: { reading: null, starting: false, flowsRunning: 0 },
     addressLeads: false,
     pushNext: false,
     followed: null,
@@ -134,22 +137,70 @@ export function showPage(memory: NavigationMemory, page: ShownPage | null): void
 /** True while a first request is read, the owner opens one, or a flow runs. */
 export function isBusy(memory: NavigationMemory): boolean {
   const ownerOpens = memory.handle === null && memory.failure === null && memory.given !== null
-  return memory.reading !== null || memory.starting || memory.flowsRunning > 0 || ownerOpens
+  const { reading, starting, flowsRunning } = memory.busy
+  return reading !== null || starting || flowsRunning > 0 || ownerOpens
+}
+
+/**
+ * The open project leads after a step of the user that is not a move: no move waits, and the next
+ * address write adds an entry.
+ */
+export function projectLeads(memory: NavigationMemory): void {
+  memory.addressLeads = false
+  memory.pushNext = true
+  memory.followed = null
+}
+
+/**
+ * A flow gave another project, so the next address write adds an entry. A move made while it ran
+ * still leads, which is why the address keeps leading.
+ */
+export function flowGaveProject(memory: NavigationMemory): void {
+  memory.pushNext = true
+  memory.followed = null
+}
+
+/** The user moved while something ran, so the address is followed when it ends. */
+export function moveWaits(memory: NavigationMemory): void {
+  memory.addressLeads = true
+}
+
+/**
+ * The owner refused the flow of a place, so the place is followed when the running step ends, as a
+ * place not followed yet.
+ */
+export function refusedPlaceWaits(memory: NavigationMemory): void {
+  memory.addressLeads = true
+  memory.followed = null
+}
+
+/** The address leads now, and the write that answers it replaces the present entry. */
+export function addressLeadsNow(memory: NavigationMemory): void {
+  memory.addressLeads = false
+  memory.pushNext = false
+}
+
+/** Marks the owner as starting, unless it refuses because a flow runs. */
+export function ownerRetries(memory: NavigationMemory): void {
+  if (memory.busy.flowsRunning === 0) {
+    memory.busy.starting = true
+  }
 }
 
 /**
  * Hands a flow to the owner and keeps the navigation busy until it ends. A flow that the owner
- * refuses ends at once and leaves a flow that still runs busy; a flow that throws ends too.
+ * refuses ends at once and leaves a flow that still runs busy. The count drops also when the owner
+ * rejects.
  */
 export async function runOwnerFlow<Refusal>(
   memory: NavigationMemory,
   flow: Flow<Refusal>,
 ): Promise<FlowResult<Refusal> | undefined> {
-  memory.flowsRunning += 1
+  memory.busy.flowsRunning += 1
   try {
     return await memory.owner.runFlow(flow)
   } finally {
-    memory.flowsRunning -= 1
+    memory.busy.flowsRunning -= 1
   }
 }
 
@@ -167,7 +218,7 @@ export function handFirstRequest(
   memory.given = { ports, id: request.id }
   memory.triedId = request.id
   if (isNew && memory.handle === null) {
-    memory.starting = true
+    memory.busy.starting = true
   }
   memory.view.setEntry({ ports, request })
 }
@@ -187,7 +238,7 @@ export function takeCommitted(memory: NavigationMemory, committed: Committed): v
     memory.triedId = handle.id
   }
   if (changed && (handle !== null || failure !== null)) {
-    memory.starting = false
+    memory.busy.starting = false
   }
   memory.ports = committed.ports
   memory.handle = handle

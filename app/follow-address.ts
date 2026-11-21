@@ -6,6 +6,9 @@ import {
   currentPlace,
   handFirstRequest,
   isBusy,
+  addressLeadsNow,
+  moveWaits,
+  refusedPlaceWaits,
   runOwnerFlow,
   samePlace,
   showPage,
@@ -41,13 +44,13 @@ async function readFirstRequest(
 /** Reads the first request of a place and hands it to the owner. A read that was replaced sets nothing. */
 export function beginRead(memory: NavigationMemory, ports: SessionPorts, place: Place): void {
   const token = {}
-  memory.reading = token
+  memory.busy.reading = token
   memory.followed = place
   void readFirstRequest(memory, ports, place).then((request) => {
-    if (memory.reading !== token) {
+    if (memory.busy.reading !== token) {
       return
     }
-    memory.reading = null
+    memory.busy.reading = null
     if (request === null) {
       showPage(memory, {})
     } else {
@@ -74,7 +77,8 @@ function noticeOf(id: string, failure: SwitchFailure | PageScreen): PageNotice |
 /**
  * Runs a flow that may open the project of the id. When a project stays open and the flow fails,
  * the page shows with the notice. When the owner runs something else, the address is followed
- * after it.
+ * after it. It does not reject: the owner gives storage-unavailable for a flow that throws, so the
+ * callers drop its promise.
  */
 async function runPlaceFlow(
   memory: NavigationMemory,
@@ -86,8 +90,7 @@ async function runPlaceFlow(
     return
   }
   if (result === undefined) {
-    memory.addressLeads = true
-    memory.followed = null
+    refusedPlaceWaits(memory)
     return
   }
   if (result.ok) {
@@ -142,11 +145,10 @@ function readyToFollow(memory: NavigationMemory): Place | null {
   }
   const place = currentPlace(memory.address)
   if (isBusy(memory)) {
-    memory.addressLeads = true
+    moveWaits(memory)
     return null
   }
-  memory.addressLeads = false
-  memory.pushNext = false
+  addressLeadsNow(memory)
   return place
 }
 

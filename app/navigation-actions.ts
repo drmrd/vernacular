@@ -2,7 +2,10 @@ import { newProjectId } from '../storage'
 import { createInitialProject } from './create-initial-project'
 import { beginRead, followAgain, reopenFolder } from './follow-address'
 import {
+  flowGaveProject,
   handFirstRequest,
+  ownerRetries,
+  projectLeads,
   runOwnerFlow,
   showPage,
   type NavigationMemory,
@@ -16,8 +19,7 @@ export function runFlowOf(memory: NavigationMemory): RunFlow {
       return await runOwnerFlow(memory, async (ports, current) => {
         const result = await flow(ports, current)
         if (result.ok && result.handle !== current) {
-          memory.pushNext = true
-          memory.followed = null
+          flowGaveProject(memory)
         }
         return result
       })
@@ -53,22 +55,19 @@ function retryWithNothingOpen(memory: NavigationMemory): void {
     reopenFolder(memory, triedId)
     return
   }
-  if (memory.flowsRunning === 0) {
-    memory.starting = true
-  }
+  ownerRetries(memory)
   memory.owner.retry()
 }
 
 /** Leaves the page: back to the open project with a new entry, or to the start. */
 export function leavePage(memory: NavigationMemory): void {
-  memory.addressLeads = false
   showPage(memory, null)
   if (memory.handle !== null) {
-    memory.pushNext = true
-    memory.followed = null
+    projectLeads(memory)
     memory.view.bump()
     return
   }
+  memory.addressLeads = false
   memory.address.push('')
   if (memory.ports !== null) {
     beginRead(memory, memory.ports, { kind: 'start' })
@@ -82,10 +81,8 @@ export function startFresh(memory: NavigationMemory): void {
     return
   }
   memory.freshStartFor = { failure }
-  memory.reading = null
-  memory.addressLeads = false
-  memory.pushNext = true
-  memory.followed = null
+  memory.busy.reading = null
+  projectLeads(memory)
   showPage(memory, null)
   const request = {
     id: newProjectId([]),
