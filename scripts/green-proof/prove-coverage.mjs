@@ -10,19 +10,15 @@ import { isProofSource, parseRemovedLines, provableAddedLines } from './diff-lin
 import { GENERATED_FOLDER, LCOV_FILE } from './vitest-worktree.mjs'
 
 /**
- * @typedef {import('../rgb-audit/cycle-pairing.mjs').GreenCycle} GreenCycle
  * @typedef {import('../policy-check/rule-severity.mjs').Finding} Finding
  * @typedef {import('./worktree.mjs').RunGit} RunGit
  * @typedef {import('./worktree.mjs').Files} Files
- */
-
-const COVERAGE_FOLDER = join(GENERATED_FOLDER, 'coverage')
-
-/**
  * @typedef {import('../policy-check/git-input.mjs').AddedLine} AddedLine
  * @typedef {{ include: string[], dir: string }} CoverageRequest the files whose coverage the run records
  * @typedef {{ request: CoverageRequest | undefined, lines: AddedLine[] }} CoveragePlan
  */
+
+const COVERAGE_FOLDER = join(GENERATED_FOLDER, 'coverage')
 
 /**
  * @param {RunGit} runGit
@@ -70,7 +66,7 @@ function lcovPath(root) {
 /**
  * @param {Files} files
  * @param {string} root
- * @returns {string} the lcov text; a missing file or one with no records throws, since the run asked for coverage
+ * @returns {string} the lcov text; a missing file throws, since the run asked for coverage
  */
 function readLcov(files, root) {
   const path = lcovPath(root)

@@ -22,7 +22,7 @@ export const LCOV_FILE = 'lcov.info'
  * @param {string} path
  * @returns {string} the file text, or '' when the file does not exist
  */
-export function readOrEmpty(files, path) {
+function readOrEmpty(files, path) {
   try {
     return files.readFile(path)
   } catch {

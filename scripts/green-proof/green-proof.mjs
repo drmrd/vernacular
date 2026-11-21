@@ -19,14 +19,13 @@ import { createWorktreeSession } from './worktree.mjs'
  * @typedef {import('./worktree.mjs').RunGit} RunGit
  * @typedef {import('./worktree.mjs').RunCommand} RunCommand
  * @typedef {import('./worktree.mjs').Files} Files
- * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, log: (line: string) => void, githubActions: boolean, now: () => number, onSession?: (session: { dispose(): void }) => void }} GreenProofDeps
+ * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, log: (line: string) => void, githubActions: boolean, now: () => number }} GreenProofDeps
  * @typedef {{ range: string | null, commit: string | null, base: string, mutationBudgetMinutes: number | null }} Options
  */
 
 const EXIT_CLEAN = 0
 const EXIT_FAILING = 1
 const EXIT_INTERNAL = 2
-const EXIT_INTERRUPTED = 130
 const DEFAULT_BASE = 'origin/main'
 const DEFAULT_HEAD = 'HEAD'
 const RANGE_SEPARATOR = '..'
@@ -137,7 +136,6 @@ function proveAll(cycles, deps, budgetMinutes) {
   const { runGit, runCommand, files, now } = deps
   const budget = createMutationBudget(budgetMinutes)
   const session = createWorktreeSession({ runGit, runCommand, files, now })
-  deps.onSession?.(session)
   try {
     const context = { runGit, runCommand, files, session, now, budget }
     return [...cycles]
@@ -179,20 +177,22 @@ const invokedPath = process.argv[1]
 const isDirectInvocation =
   invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath
 
+const KEEP_ALIVE_SIGNALS = ['SIGINT', 'SIGTERM']
+
 /**
- * Runs the command with the real dependencies. A signal that arrives during a synchronous step
- * is handled once that step ends; it removes the worktree and exits 130.
+ * Deliberately does nothing. Installing a listener replaces the default action of Node for the
+ * signal, so the process is not killed at once.
+ */
+function ignoreSignal() {}
+
+/**
+ * Runs the command with the real dependencies. The signal listeners replace the default action
+ * of Node, so a Ctrl-C stops only the running child process; the finally block then removes the
+ * worktree, and the exit code is 2.
  */
 function runFromCommandLine() {
-  /** @type {{ dispose(): void }[]} */
-  const sessions = []
-  const deps = { ...defaultDeps(), onSession: (session) => sessions.push(session) }
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.once(signal, () => {
-      for (const session of sessions) session.dispose()
-      process.exit(EXIT_INTERRUPTED)
-    })
-  }
+  for (const signal of KEEP_ALIVE_SIGNALS) process.on(signal, ignoreSignal)
+  const deps = defaultDeps()
   runGreenProof(process.argv.slice(2), deps)
     .then((code) => {
       process.exitCode = code

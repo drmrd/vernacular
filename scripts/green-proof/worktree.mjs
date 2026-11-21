@@ -38,12 +38,11 @@ export function createWorktreeSession(deps) {
 
 /**
  * @param {RunGit} runGit
- * @param {string} sha
- * @param {string} what
  * @param {readonly string[]} args
+ * @param {{ sha: string, what: string }} step
  * @returns {string}
  */
-function gitFor(runGit, sha, what, args) {
+function gitFor(runGit, args, { sha, what }) {
   try {
     return runGit(args)
   } catch (error) {
@@ -66,12 +65,21 @@ function moveTo(state, sha, deps) {
   }
   const worktree = state.worktree
   if (!worktree.added) {
-    gitFor(runGit, sha, 'git worktree add', ['worktree', 'add', '--detach', worktree.root, sha])
+    gitFor(runGit, ['worktree', 'add', '--detach', worktree.root, sha], {
+      sha,
+      what: 'git worktree add',
+    })
     worktree.added = true
     return worktree.root
   }
-  gitFor(runGit, sha, 'git checkout', ['-C', worktree.root, 'checkout', '--detach', '--force', sha])
-  gitFor(runGit, sha, 'git clean', ['-C', worktree.root, 'clean', '-fdx', '-e', 'node_modules'])
+  gitFor(runGit, ['-C', worktree.root, 'checkout', '--detach', '--force', sha], {
+    sha,
+    what: 'git checkout',
+  })
+  gitFor(runGit, ['-C', worktree.root, 'clean', '-fdx', '-e', 'node_modules'], {
+    sha,
+    what: 'git clean',
+  })
   return worktree.root
 }
 
@@ -84,7 +92,10 @@ function moveTo(state, sha, deps) {
  */
 function install(state, sha, deps) {
   const { runGit, runCommand, now } = deps
-  const blob = gitFor(runGit, sha, 'git rev-parse', ['rev-parse', `${sha}:${LOCKFILE}`]).trim()
+  const blob = gitFor(runGit, ['rev-parse', `${sha}:${LOCKFILE}`], {
+    sha,
+    what: 'git rev-parse',
+  }).trim()
   if (blob === state.lastInstalledBlob) return 0
   state.lastInstalledBlob = null
   const started = now()

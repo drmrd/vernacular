@@ -54,7 +54,7 @@ const files = {
   removeFile: (path) => rmSync(path, { force: true }),
 }
 
-/** @returns {Omit<import('./green-proof.mjs').GreenProofDeps, 'onSession'>} */
+/** @returns {import('./green-proof.mjs').GreenProofDeps} */
 export function defaultDeps() {
   return {
     runGit,
