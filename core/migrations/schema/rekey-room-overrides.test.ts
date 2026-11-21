@@ -177,4 +177,45 @@ describe('rekey-room-overrides schema migration', () => {
     expect(migrated.roomOverrides?.[soleDerivedRoomKey(parlorWalls)]).toEqual(PARLOR_OVERRIDE)
     expect(migrated.roomOverrides?.[dashEraKey(PARLOR_WALL_IDS)]).toBeUndefined()
   })
+
+  it.each([
+    { order: 'the dash key first', dashFirst: true },
+    { order: 'the pipe key first', dashFirst: false },
+  ])(
+    'keeps both overrides under their stored keys when a dash key and a pipe key name the same room, with $order',
+    ({ dashFirst }) => {
+      const walls = roomWalls({ x: 0, y: 0 }, PARLOR_WALL_IDS)
+      const pipeKey = soleDerivedRoomKey(walls)
+      const dashOverride = { name: 'Old Parlor', purpose: 'parlor' }
+      const pipeOverride = { name: 'New Parlor', purpose: 'sitting-room' }
+      const dashEntry: [string, unknown] = [dashEraKey(PARLOR_WALL_IDS), dashOverride]
+      const pipeEntry: [string, unknown] = [pipeKey, pipeOverride]
+      const entries = dashFirst ? [dashEntry, pipeEntry] : [pipeEntry, dashEntry]
+      const document = makeDocument([makeFloor('floor:ground', walls)], Object.fromEntries(entries))
+
+      const migrated = asDocument(rekeyRoomOverridesMigration.migrate(document))
+
+      expect(migrated.roomOverrides).toEqual({
+        [dashEraKey(PARLOR_WALL_IDS)]: dashOverride,
+        [pipeKey]: pipeOverride,
+      })
+    },
+  )
+
+  it('moves the first of two dash keys that name the same room and leaves the later one untouched', () => {
+    const walls = roomWalls({ x: 0, y: 0 }, PARLOR_WALL_IDS)
+    const laterDashKey = [...PARLOR_WALL_IDS].sort().reverse().join('-')
+    const laterOverride = { name: 'Second Parlor', purpose: 'sitting-room' }
+    const document = makeDocument([makeFloor('floor:ground', walls)], {
+      [dashEraKey(PARLOR_WALL_IDS)]: PARLOR_OVERRIDE,
+      [laterDashKey]: laterOverride,
+    })
+
+    const migrated = asDocument(rekeyRoomOverridesMigration.migrate(document))
+
+    expect(migrated.roomOverrides).toEqual({
+      [soleDerivedRoomKey(walls)]: PARLOR_OVERRIDE,
+      [laterDashKey]: laterOverride,
+    })
+  })
 })

@@ -27,7 +27,7 @@ sourceFiles:
     storage/documents/document-backups.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-21
 ---
 
 # ADR-0029: Schema-and-registry migration framework, pure core with storage-side atomicity
@@ -224,3 +224,31 @@ this era, but it cannot ride along in the same step: it is queued as the 17-to-1
 once this migration has merged and the version has advanced again. An author whose fix wants to land
 against a `from` version another migration already occupies should expect the same: sequence the fix
 as the next step rather than trying to widen the step that is already there.
+
+## Update (2026-11-21): a dash key stays in place when another entry holds the room's current key
+
+Issue #815. One document can hold a dash key and a pipe key for the same room: the dash key from
+the early build, the pipe key from an override set after the separator changed. Until this fix,
+the step wrote both overrides to the pipe key, so whichever came later in the file replaced the
+other with no report.
+
+The step now moves a dash key only to a key that no other entry holds. When the pipe key is in the
+stored map, the dash key stays where it is, with its override. The same rule covers two dash keys
+that name one room: the first in stored order moves and the later one stays.
+
+The pipe key wins because the room lookup reads only pipe keys. That was already true before the
+step ran, so the user has been seeing the pipe key's override since the separator changed, and the
+step leaves that as it is. The dash key's override stays as a dead entry, like an unmatched key. The
+step still loses no data, which [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]] requires
+of every step in the chain.
+
+The alternative was to drop the dash key's override and name it in the repair list from ADR-0190.
+It was not taken, for two reasons. A step in the chain may not remove data. And the repair list is
+tried only for a document that fails validation, which a document with both keys does not, so the
+report would never appear.
+
+The dead entry has a way out. The room records in the geometric kernel specification
+(`docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 5.6) turn a key that names
+no wall into an unbound record. A dead dash key names no wall there, because that migration reads
+a key by splitting on `|` only. The list of unbound records planned there is where a
+user can see the old override and delete it.
