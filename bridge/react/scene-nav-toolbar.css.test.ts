@@ -84,7 +84,7 @@ describe('scene-nav-toolbar.css', () => {
  */
 
 const ARRIS_SCOPE = "[data-design-language='arris']"
-const HOVERED_TOGGLE = `${ARRIS_SCOPE} .scene-nav-toolbar__btn:hover:not(:disabled)`
+const HOVERED_TOGGLE = `${ARRIS_SCOPE} .scene-nav-toolbar__btn:hover:not([aria-disabled='true'])`
 
 // Every rule in this stylesheet is introduced by a comment, and a comment reads as
 // part of the next rule's selector to any regex simple enough to live here.
@@ -174,10 +174,10 @@ function winning(applying: string[], property: string): string | undefined {
 // Every rule that applies to a toggle which is pressed and hovered at once.
 const PRESSED_AND_HOVERED = [
   '.scene-nav-toolbar__btn',
-  '.scene-nav-toolbar__btn:hover:not(:disabled)',
+  ".scene-nav-toolbar__btn:hover:not([aria-disabled='true'])",
   ".scene-nav-toolbar__btn[aria-pressed='true']",
   HOVERED_TOGGLE,
-  `${ARRIS_SCOPE} .scene-nav-toolbar__btn[aria-pressed='true']:hover:not(:disabled)`,
+  `${ARRIS_SCOPE} .scene-nav-toolbar__btn[aria-pressed='true']:hover:not([aria-disabled='true'])`,
 ]
 
 describe('an Arris toggle that is pressed and hovered at once', () => {

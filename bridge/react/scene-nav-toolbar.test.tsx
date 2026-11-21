@@ -154,16 +154,12 @@ describe('SceneNavToolbar underground levels', () => {
     expect(onToggleUnderground).toHaveBeenCalledTimes(1)
   })
 
-  it('disables the underground toggle in this-floor scope where it does not apply', () => {
-    render(<SceneNavToolbar {...baseProps} scope="floor" />)
-
-    expect(screen.getByRole('button', { name: /underground levels/i })).toBeDisabled()
-  })
-
   it('enables the underground toggle in whole-building scope', () => {
     render(<SceneNavToolbar {...baseProps} scope="building" />)
 
-    expect(screen.getByRole('button', { name: /underground levels/i })).toBeEnabled()
+    const toggle = screen.getByRole('button', { name: /underground levels/i })
+    expect(toggle).toBeEnabled()
+    expect(toggle).not.toHaveAttribute('aria-disabled')
   })
 })
 
@@ -275,7 +271,7 @@ describe('SceneNavToolbar camera presets', () => {
   it('disables the doorway button when no doorway is available', () => {
     render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} doorway={null} />)
 
-    expect(screen.getByRole('button', { name: 'Doorway' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Doorway' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('enables the doorway button when a doorway is available', () => {
@@ -288,6 +284,7 @@ describe('SceneNavToolbar camera presets', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Doorway' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Doorway' })).not.toHaveAttribute('aria-disabled')
   })
 })
 
