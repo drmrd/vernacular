@@ -36,7 +36,7 @@ export { assetsOf } from './handle/handle-assets'
 export { isStored } from './handle/handle-stored'
 export { reconcileIndex } from './projects/reconcile-index'
 export { displayNameOf, UNNAMED_PROJECT } from './projects/display-name'
-export { latestWorkspaceRecord, recentRecords } from './projects/recent-records'
+export { recentRecords } from './projects/recent-records'
 export type {
   AssetCache,
   ProjectIndex,

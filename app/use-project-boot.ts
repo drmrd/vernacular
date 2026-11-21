@@ -1,41 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '../session'
-import { InMemoryAssetCache, newProjectId, type AssetCache } from '../storage'
+import type { SessionPorts, SwitchFailure } from '../session'
+import { InMemoryAssetCache, type AssetCache } from '../storage'
 import type { AppProps } from './app'
-import { createInitialProject } from './create-initial-project'
+import { createBrowserAddressBar, createMemoryAddressBar, type AddressBar } from './address-bar'
 import {
   createSessionPorts,
   createTemporarySessionPorts,
   type BuiltSessionPorts,
 } from './create-session-ports'
 import { storageUnavailableOf } from './open-failure-text'
-import { useOpenProject, type RunFlow } from './use-open-project'
-import { useStartProjectId } from './use-start-project-id'
+import { useHistoryNavigation, type HistoryNavigation } from './use-history-navigation'
 
 export interface ProjectBoot {
-  /** The open project. Null while the start runs and after a start that failed. */
-  handle: DocumentHandle | null
-  /** Why no project is open: the ports did not resolve, or the open failed. */
-  failure: SwitchFailure | null
-  runFlow: RunFlow
+  /** What shows and the open project, following the address of the page. */
+  navigation: HistoryNavigation
+  /** Why the ports did not resolve; null while they resolve and after they did. */
+  portsFailure: SwitchFailure | null
   /** The ports that the owner uses; null until they are known. */
   ports: SessionPorts | null
   /** The pool of the user's library; null until the ports are known. */
   libraryAssets: AssetCache | null
-  /** Builds the ports again when they did not resolve; otherwise repeats the failed start. */
-  retryBoot: () => void
-  /** Leaves the project that failed alone and starts a new one under a new id. */
-  startFreshProject: () => void
+  /** Builds the ports again after they did not resolve. */
+  rebuildPorts: () => void
+  /** Puts ports in memory in place of the ports that did not resolve, and starts a new project. */
+  startInMemory: () => void
 }
 
 export type ProjectBootInputs = Pick<
   AppProps,
-  'ports' | 'resolvePorts' | 'libraryAssets' | 'projectId'
+  'ports' | 'resolvePorts' | 'libraryAssets' | 'address'
 >
-
-function startRequest(id: string): OpenRequest {
-  return { id, location: { kind: 'workspace' }, create: createInitialProject }
-}
 
 interface BootPorts {
   built: BuiltSessionPorts | null
@@ -82,26 +76,31 @@ function useLibraryAssets(inputs: ProjectBootInputs, built: BuiltSessionPorts | 
   return inputs.libraryAssets ?? built?.libraryAssets ?? injected
 }
 
-// Composes the start: the ports, the start request (the project used last, or a new project after
-// a failure), and the one owner of the open project. It holds no handle itself.
+// The address bar of the mount: the injected one, the window's when the application builds its
+// own ports, or one in memory under injected ports. Made once for each mount.
+function useAddressBar(inputs: ProjectBootInputs): AddressBar {
+  const [own] = useState<AddressBar>(() =>
+    inputs.ports === undefined ? createBrowserAddressBar(window) : createMemoryAddressBar(),
+  )
+  return inputs.address ?? own
+}
+
+// Composes the start: the ports, the address bar, and the navigation over the one owner of the
+// open project. It holds no handle itself.
 export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const bootPorts = useBootPorts(inputs)
   const ports = inputs.ports ?? bootPorts.built?.ports ?? null
-  const startId = useStartProjectId(ports, inputs.projectId)
-  const startAtBoot = useMemo(() => (startId === null ? null : startRequest(startId)), [startId])
-  const [freshRequest, setFreshRequest] = useState<OpenRequest | null>(null)
-  const owner = useOpenProject(ports, freshRequest ?? startAtBoot)
-  const failure = bootPorts.failure ?? owner.failure
+  const navigation = useHistoryNavigation(ports, useAddressBar(inputs))
   const answered = useRef<SwitchFailure | null>(null)
-  const startFreshProject = () => {
-    // A second call for the same failure, before the new project opened or failed, does nothing.
-    if (failure === null || answered.current === failure) return
-    answered.current = failure
-    if (bootPorts.failure !== null) bootPorts.fallBackToMemory()
-    setFreshRequest(startRequest(newProjectId([])))
+  const portsFailure = bootPorts.failure
+  const startInMemory = () => {
+    // A second call for the same failure, before the new project opened, does nothing.
+    if (portsFailure === null || answered.current === portsFailure) return
+    answered.current = portsFailure
+    bootPorts.fallBackToMemory()
+    navigation.startFresh()
   }
-  const retryBoot = () => (bootPorts.failure === null ? owner.retry() : bootPorts.rebuild())
   const libraryAssets = useLibraryAssets(inputs, bootPorts.built)
-  const { handle, runFlow } = owner
-  return { handle, failure, runFlow, ports, libraryAssets, retryBoot, startFreshProject }
+  const rebuildPorts = bootPorts.rebuild
+  return { navigation, portsFailure, ports, libraryAssets, rebuildPorts, startInMemory }
 }

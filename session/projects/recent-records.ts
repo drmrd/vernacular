@@ -29,11 +29,3 @@ export function recentRecords(records: readonly ProjectRecord[], openId?: string
   const others = records.filter((record) => record.id !== openId)
   return others.sort(compareUse).slice(0, RECENT_RECORD_LIMIT)
 }
-
-/** The workspace record with the latest use; undefined when there is none. */
-export function latestWorkspaceRecord(
-  records: readonly ProjectRecord[],
-): ProjectRecord | undefined {
-  const workspaceRecords = records.filter((record) => record.location.kind === 'workspace')
-  return workspaceRecords.sort(compareUse)[0]
-}

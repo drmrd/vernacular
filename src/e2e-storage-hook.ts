@@ -1,4 +1,3 @@
-import { DEFAULT_PROJECT_ID } from '../app'
 import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, type Project } from '../core'
 import {
   createOpfsProjectStore,
@@ -16,6 +15,10 @@ import {
 // drives them through this hook. It is loaded only via a dynamic import guarded
 // by the `e2e-storage` query parameter (see src/main.tsx), so it never ships in
 // a normal page load.
+
+// The id that earlier builds gave the project of an empty browser. The recovery checks plant
+// their files under it, as a browser that ran such a build still holds them.
+const EARLIER_START_PROJECT_ID = 'current'
 
 interface OpfsRoundTripResult {
   loadedName: string
@@ -160,7 +163,7 @@ async function plantRecoverySnapshot(): Promise<boolean> {
   } catch {
     return false
   }
-  await store.snapshots(DEFAULT_PROJECT_ID).writeSnapshot(sampleProject('Recovered House'))
+  await store.snapshots(EARLIER_START_PROJECT_ID).writeSnapshot(sampleProject('Recovered House'))
   return true
 }
 
@@ -177,11 +180,11 @@ async function plantProjectFromNewerBuild(): Promise<boolean> {
   const newer = { ...project, meta: { ...project.meta, schemaVersion: CURRENT_SCHEMA_VERSION + 1 } }
   const root = await opfsRoot()
   await root.writeFile(
-    `${DEFAULT_PROJECT_ID}/vernacular.json`,
+    `${EARLIER_START_PROJECT_ID}/vernacular.json`,
     new TextEncoder().encode(JSON.stringify(newer)),
   )
   const summaries = await (await createOpfsProjectStore()).list()
-  return summaries.some((summary) => summary.id === DEFAULT_PROJECT_ID)
+  return summaries.some((summary) => summary.id === EARLIER_START_PROJECT_ID)
 }
 
 // Every file below `prefix`, keyed by path. A listing of a file is empty and a
@@ -199,7 +202,7 @@ async function filesUnder(root: DirectoryPort, prefix: string): Promise<Record<s
 }
 
 async function storedFilesOfDefaultProject(): Promise<Record<string, string>> {
-  return filesUnder(await opfsRoot(), DEFAULT_PROJECT_ID)
+  return filesUnder(await opfsRoot(), EARLIER_START_PROJECT_ID)
 }
 
 /** Attach the durable-adapter test routines to window for the Playwright spec. */

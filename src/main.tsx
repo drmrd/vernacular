@@ -8,10 +8,10 @@ if (!rootElement) {
   throw new Error('Root element #root not found in index.html')
 }
 
-// The ports of the session layer are built by the application itself, after the
-// first paint. The start opens the project used last, as the project index tells,
-// under `?e2e-storage` as on any page; crash recovery reads the snapshots of the
-// open project.
+// The ports of the session layer and the address bar of the window are built by the
+// application itself, after the first paint. The start opens the project of the
+// page's address, or else the project used last, as the project index tells, under
+// `?e2e-storage` as on any page; crash recovery reads the snapshots of the open project.
 const isE2eStorage = new URLSearchParams(globalThis.location?.search ?? '').has('e2e-storage')
 
 createRoot(rootElement).render(

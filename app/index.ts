@@ -1,1 +1,1 @@
-export { App, DEFAULT_PROJECT_ID } from './app'
+export { App } from './app'
