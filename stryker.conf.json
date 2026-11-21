@@ -19,6 +19,8 @@
     "break": 50
   },
   "dryRunTimeoutMinutes": 30,
+  "incremental": true,
+  "incrementalFile": "reports/stryker-incremental.json",
   "tempDirName": ".stryker-tmp",
   "cleanTempDir": true,
   "logLevel": "info"
