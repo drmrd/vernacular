@@ -47,6 +47,14 @@ function collectResources(root: THREE.Object3D): Set<GpuResource> {
 }
 
 /**
+ * Marks held every geometry, material, and material texture of the meshes, lines, and points in
+ * an object tree. The owner of a template, such as the model cache, calls this once after a parse.
+ */
+export function markObjectHeld(root: THREE.Object3D): void {
+  for (const resource of collectResources(root)) markCacheHeld(resource)
+}
+
+/**
  * Frees the geometries, materials, and textures of the meshes, lines, and points in an object
  * tree. Each resource is freed once per call, however many objects share it. Resources a
  * long-lived owner holds (see markCacheHeld) are left alone.
