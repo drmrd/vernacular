@@ -68,6 +68,8 @@ describe('the address bar in memory', () => {
     bar.forward()
 
     expect(bar.position()).toBe(1)
+    expect(listener).not.toHaveBeenCalled()
+    expect(bar.entries()).toStrictEqual([PROJECTS, KITCHEN])
     bar.back()
     listener.mockClear()
     bar.back()
@@ -94,6 +96,29 @@ describe('the address bar in memory', () => {
     expect(bar.entries()).toStrictEqual([KITCHEN, CELLAR, ATTIC])
   })
 
+  it('tells its listeners of the present entry again and changes nothing', () => {
+    const bar = createMemoryAddressBar(PROJECTS)
+    bar.push(KITCHEN)
+    bar.push(CELLAR)
+    const listener = vi.fn()
+    const removed = vi.fn()
+    bar.onNavigate(listener)
+    bar.onNavigate(removed)()
+    bar.back()
+    listener.mockClear()
+    const hash = bar.hash()
+    const entries = bar.entries()
+    const position = bar.position()
+
+    bar.reportAgain()
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(removed).not.toHaveBeenCalled()
+    expect(bar.hash()).toBe(hash)
+    expect(bar.entries()).toStrictEqual(entries)
+    expect(bar.position()).toBe(position)
+  })
+
   it('stops telling a listener that was removed', () => {
     const bar = createMemoryAddressBar(PROJECTS)
     const listener = vi.fn()
@@ -108,6 +133,8 @@ describe('the address bar in memory', () => {
 })
 
 describe('the address bar of the window', () => {
+  // A push in one of these cases raises the length of the history for good, so no case
+  // depends on the absolute length; the length case compares against its own start.
   const PLAN_PATH = '/plan'
   let startAddress: string
   let startState: unknown
@@ -184,7 +211,7 @@ describe('the address bar of the window', () => {
     window.dispatchEvent(new PopStateEvent('popstate'))
     remove()
 
-    expect(listener).toHaveBeenCalled()
+    expect(listener).toHaveBeenCalledWith()
   })
 
   it('tells its listeners when the window reports a changed fragment', () => {
@@ -194,7 +221,19 @@ describe('the address bar of the window', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     remove()
 
-    expect(listener).toHaveBeenCalled()
+    expect(listener).toHaveBeenCalledWith()
+  })
+
+  it('calls no listener at a replace or a push', () => {
+    const listener = vi.fn()
+    const bar = createBrowserAddressBar(window)
+    const remove = bar.onNavigate(listener)
+
+    bar.replace(KITCHEN)
+    bar.push(CELLAR)
+    remove()
+
+    expect(listener).not.toHaveBeenCalled()
   })
 
   it('listens to nothing after the listener was removed', () => {
