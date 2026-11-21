@@ -5,6 +5,7 @@ import { callGuardedAsync } from '../guarded-call'
 import { createDocumentHandle } from '../handle/document-handle'
 import { type HandleInternals, internalsOf } from '../handle/handle-internals'
 import type { DocumentHandle } from '../handle/handle-types'
+import { setAsideRefusedCopies } from '../handle/set-aside-refused-copies'
 import type { OpenedProject } from '../handle/read-for-open'
 import { storageUnavailable } from '../handle/thrown-failures'
 import { type FlowResult, flushFailed } from './flow-result'
@@ -64,6 +65,8 @@ async function prepareRestore(current: DocumentHandle): Promise<Prepared> {
     }
     const opened = decideDocument(restored)
     if ('ok' in opened) {
+      // A copy that does not decode moves to the backups, so the prompt stops offering it.
+      await setAsideRefusedCopies(current.snapshots)
       return opened
     }
     return { ok: true, opened, session: createEditorSession(opened.project), internals }

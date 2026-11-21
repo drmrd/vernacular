@@ -27,6 +27,8 @@ export interface DocumentHandleParts {
   readonly snapshots?: ProjectSnapshots
   /** True: the autosave writes no recovery snapshot and removes none. `snapshots` is unchanged. */
   readonly leaveSnapshots?: boolean
+  /** True: the open moved a recovery copy that cannot be read to the backups; the handle says so. */
+  readonly recoveryCopyKept?: boolean
   /** The record writes of the project; a restore passes on those of the handle before it. */
   readonly records: RecordKeeper
   /**
@@ -135,6 +137,9 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
   const notices = createHandleNotices()
   if (opened.savedByNewerBuild) {
     notices.raise('saved-by-newer-build')
+  }
+  if (parts.recoveryCopyKept === true) {
+    notices.raise('recovery-copy-kept')
   }
   const snapshots = parts.snapshots ?? store.snapshots(request.id)
   const reportFaults = reportFaultsTo(notices, opened)

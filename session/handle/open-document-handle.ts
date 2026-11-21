@@ -1,4 +1,4 @@
-import type { ProjectLockHold } from '../../storage'
+import type { ProjectLockHold, ProjectSnapshots } from '../../storage'
 import { callGuardedAsync } from '../guarded-call'
 import type { SessionPorts } from '../ports'
 import { createDocumentHandle, type DocumentHandleParts } from './document-handle'
@@ -13,6 +13,7 @@ import type {
   OpenResult,
 } from './handle-types'
 import { readForOpen } from './read-for-open'
+import { setAsideRefusedCopies, type SetAsideOutcome } from './set-aside-refused-copies'
 import { markSession } from './session-mark'
 import { storageUnavailable } from './thrown-failures'
 
@@ -32,6 +33,22 @@ async function takeLock(ports: SessionPorts, id: string): Promise<TakenLock> {
 }
 
 /**
+ * What the open says about the recovery copies of the project. A copy that cannot be read moves to
+ * the backups first, so that no prune of the autosave can remove it. When that fails, the handle
+ * leaves the snapshots alone. With `leaveSnapshots` nothing moves.
+ */
+async function recoveryCopyParts(
+  parts: Omit<DocumentHandleParts, 'opened'>,
+  snapshots: ProjectSnapshots,
+): Promise<Pick<DocumentHandleParts, 'leaveSnapshots' | 'recoveryCopyKept'>> {
+  if (parts.leaveSnapshots === true) {
+    return { leaveSnapshots: true }
+  }
+  const outcome: SetAsideOutcome = await setAsideRefusedCopies(snapshots)
+  return { leaveSnapshots: outcome === 'failed', recoveryCopyKept: outcome === 'kept' }
+}
+
+/**
  * Reads the project and builds its handle, under a lock already taken. A project that the read
  * found in the store gets its record, written apart from the open. It never rejects.
  */
@@ -42,7 +59,15 @@ async function openUnderLock(parts: Omit<DocumentHandleParts, 'opened'>): Promis
   }
   let handle: DocumentHandle
   try {
-    handle = createDocumentHandle({ ...parts, opened: read.opened, stored: read.stored })
+    const snapshots = parts.snapshots ?? parts.store.snapshots(parts.request.id)
+    const recoveryCopies = await recoveryCopyParts(parts, snapshots)
+    handle = createDocumentHandle({
+      ...parts,
+      ...recoveryCopies,
+      snapshots,
+      opened: read.opened,
+      stored: read.stored,
+    })
   } catch (error) {
     return storageUnavailable(error)
   }
