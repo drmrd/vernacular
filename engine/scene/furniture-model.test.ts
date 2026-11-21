@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { furnitureFootprintCorners } from '../../core'
 import {
   buildFurnitureModelGroup,
-  disposeObject,
   hasUsableGeometry,
   normalizeModelIntoBox,
   parseFurnitureModel,
@@ -179,30 +178,5 @@ describe('buildFurnitureModelGroup', () => {
     expect(group.userData.entityId).toBe('x') // raw id, the 'furniture:' prefix stripped
     expect(group.getObjectByProperty('isMesh', true)).toBeInstanceOf(THREE.Mesh)
     expect(group.getObjectByProperty('isLineSegments', true)).toBeUndefined() // no box edge overlay on the real mesh
-  })
-})
-
-describe('disposeObject', () => {
-  it('disposes geometries and materials across the tree', () => {
-    const geometry = new THREE.BoxGeometry(1, 1, 1)
-    const material = new THREE.MeshStandardMaterial()
-    const geomSpy = vi.spyOn(geometry, 'dispose')
-    const matSpy = vi.spyOn(material, 'dispose')
-    const root = new THREE.Group()
-    root.add(new THREE.Mesh(geometry, material))
-    disposeObject(root)
-    expect(geomSpy).toHaveBeenCalled()
-    expect(matSpy).toHaveBeenCalled()
-  })
-
-  it('disposes textures attached to a material', () => {
-    const texture = new THREE.Texture()
-    const material = new THREE.MeshStandardMaterial()
-    material.map = texture
-    const texSpy = vi.spyOn(texture, 'dispose')
-    const root = new THREE.Group()
-    root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material))
-    disposeObject(root)
-    expect(texSpy).toHaveBeenCalled()
   })
 })

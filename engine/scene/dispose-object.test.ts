@@ -81,6 +81,32 @@ describe('disposeObject', () => {
     expect(counts.get(other)).toBe(1)
   })
 
+  it('frees an unheld texture on a material in the tree', () => {
+    const texture = new THREE.Texture()
+    const material = new THREE.MeshStandardMaterial({ map: texture })
+    const root = new THREE.Group()
+    root.add(new THREE.Mesh(triangle(), material))
+    const counts = countFrees([texture])
+
+    disposeObject(root)
+
+    expect(counts.get(texture)).toBe(1)
+  })
+
+  it('frees a texture shared by two materials exactly once', () => {
+    const texture = new THREE.Texture()
+    const root = new THREE.Group()
+    root.add(
+      new THREE.Mesh(triangle(), new THREE.MeshStandardMaterial({ map: texture })),
+      new THREE.Mesh(triangle(), new THREE.MeshStandardMaterial({ map: texture })),
+    )
+    const counts = countFrees([texture])
+
+    disposeObject(root)
+
+    expect(counts.get(texture)).toBe(1)
+  })
+
   it('leaves a held geometry, material, and texture alone', () => {
     const geometry = triangle()
     const texture = new THREE.Texture()
