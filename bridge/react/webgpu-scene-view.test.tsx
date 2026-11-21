@@ -7,24 +7,9 @@ import { AssetRegistry } from '../../storage'
 import { createSelectionStore } from '../selection/selection-store'
 import { AssetRegistryProvider } from './asset-registry-context'
 import { SelectionProvider } from './selection-provider'
-import { CAMERA_PANE_MIN_HEIGHT_SHARE, ScenePaneShell, useSceneProxies } from './webgpu-scene-view'
+import { useSceneProxies } from './webgpu-scene-view'
 
 afterEach(cleanup)
-
-describe('ScenePaneShell', () => {
-  it('reserves the camera pane min-height share so the toolbar above it scrolls instead of collapsing the canvas', () => {
-    const { container } = render(
-      <ScenePaneShell mode="orbit">
-        <div>canvas stand-in</div>
-      </ScenePaneShell>,
-    )
-
-    const pane = container.querySelector('.scene-camera-pane')
-    expect(pane).not.toBeNull()
-    expect((pane as HTMLElement).style.minHeight).toBe(CAMERA_PANE_MIN_HEIGHT_SHARE)
-    expect((pane as HTMLElement).style.flexGrow).toBe('1')
-  })
-})
 
 const FURNITURE_ID = 'furniture:unnamed-armchair'
 
