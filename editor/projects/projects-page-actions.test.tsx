@@ -1,11 +1,13 @@
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  acceptsExport,
   acceptsRename,
   actionsControlOf,
   cardNamed,
   cardOf,
   renderPage,
+  renderPageWithCardActions,
   renderRenamingPage,
 } from './projects-page-test-support'
 
@@ -127,5 +129,51 @@ describe('the rename form of a card', () => {
     expect(screen.queryByRole('textbox', { name: 'Project name' })).toBeNull()
     showCards([hubbard, queenAnne])
     expect(formOf(HUBBARD)).toBeNull()
+  })
+})
+
+describe('the actions that the card menu hands to the page', () => {
+  it('calls onExport with the id of the card at once when Export is chosen, also on a card that another tab holds', async () => {
+    const onExport = acceptsExport()
+    const user = renderPageWithCardActions([hubbard, heldElsewhere], { onExport })
+
+    await user.click(actionsControlOf(HUBBARD))
+    await user.click(screen.getByRole('menuitem', { name: 'Export' }))
+    await user.click(actionsControlOf('Held House'))
+    await user.click(screen.getByRole('menuitem', { name: 'Export' }))
+
+    expect(onExport.mock.calls).toEqual([['hubbard'], ['held']])
+  })
+
+  it('lists Export after Rename on a card, in the order of the card', async () => {
+    const user = renderPageWithCardActions([hubbard], {
+      onRename: acceptsRename(),
+      onExport: acceptsExport(),
+    })
+
+    await user.click(actionsControlOf(HUBBARD))
+
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Rename',
+      'Export',
+    ])
+  })
+
+  it('hands the chosen action to its own handler: Export calls only onExport, and Rename only opens the form', async () => {
+    const onRename = acceptsRename()
+    const onExport = acceptsExport()
+    const user = renderPageWithCardActions([hubbard], { onRename, onExport })
+
+    await user.click(actionsControlOf(HUBBARD))
+    await user.click(screen.getByRole('menuitem', { name: 'Export' }))
+    expect(onExport).toHaveBeenCalledOnce()
+    expect(onRename).not.toHaveBeenCalled()
+    expect(formOf(HUBBARD)).toBeNull()
+
+    await user.click(actionsControlOf(HUBBARD))
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }))
+    expect(formOf(HUBBARD)).toHaveValue(HUBBARD)
+    expect(onExport).toHaveBeenCalledOnce()
+    expect(onRename).not.toHaveBeenCalled()
   })
 })

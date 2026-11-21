@@ -55,6 +55,22 @@ export function renderRenamingPage(
   }
 }
 
+/** An export handler that records its calls. */
+export function acceptsExport() {
+  return vi.fn<NonNullable<ProjectCardActions['onExport']>>()
+}
+
+/** Renders the page with the given card actions, the address of each project being `#/project/<id>`, and gives a user. */
+export function renderPageWithCardActions(
+  cards: readonly ProjectCardModel[],
+  cardActions: ProjectCardActions,
+) {
+  render(
+    <ProjectsPage cards={cards} hrefFor={(id) => `#/project/${id}`} cardActions={cardActions} />,
+  )
+  return userEvent.setup()
+}
+
 /** The "..." control of the card of the project named `name`. */
 export const actionsControlOf = (name: string) =>
   screen.getByRole('button', { name: `Actions for ${name}` })

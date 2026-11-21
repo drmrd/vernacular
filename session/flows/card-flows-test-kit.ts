@@ -1,7 +1,15 @@
 import { CURRENT_SCHEMA_VERSION } from '../../core'
+import type { Project } from '../../core'
+import { ZipBundleProjectStore } from '../../storage'
 import type { DocumentStore, ProjectLockHold } from '../../storage'
+import { unzipFolder } from '../../storage/zip/zip-codec'
 import { renamed, soundProject } from '../../tests/storage/conformance/conformance-documents'
-import { createTestPorts, placeDocument } from '../handle/handle-test-kit'
+import {
+  IN_WORKSPACE,
+  createTestPorts,
+  placeDocument,
+  storedProject,
+} from '../handle/handle-test-kit'
 import type { TestPorts, TestPortsOptions } from '../handle/handle-test-kit'
 import { reconcileIndex } from '../projects/reconcile-index'
 
@@ -70,4 +78,55 @@ export function failTheNextSave(store: DocumentStore): void {
     store.save = realSave
     return Promise.reject(new Error(DISK_FULL))
   }
+}
+
+/** The id and the name of the stored project that this build cannot open, as `storeProjectThatDoesNotOpen` makes it. */
+export const NEWER_ID = 'from-a-newer-build'
+export const NEWER_NAME = 'Newer House'
+
+/** The recovery snapshot and the backup that `addRecoveryFiles` puts in a project, by path inside the project. */
+export const SNAPSHOT_PATH = '.house-autosave/crash.json'
+export const BACKUP_PATH = '.house-backups/before-migration.json'
+
+/**
+ * Stores a document that this build cannot open under `NEWER_ID`, with recovery files, and gives it
+ * a record that names it `NEWER_NAME` and lists `assetHashes`, as the index of a browser holds one.
+ */
+export async function storeProjectThatDoesNotOpen(
+  ports: TestPorts,
+  assetHashes: readonly string[] = [],
+): Promise<void> {
+  await placeProjectThatDoesNotOpen(ports, NEWER_ID)
+  await addRecoveryFiles(ports, NEWER_ID)
+  await ports.index.put({
+    id: NEWER_ID,
+    location: IN_WORKSPACE,
+    name: NEWER_NAME,
+    floorCount: undefined,
+    preview: undefined,
+    assetHashes,
+    assetListComplete: true,
+    lastChangedAt: undefined,
+    lastUsedAt: undefined,
+    lastOpen: { opened: false, build: ports.build, reason: 'schema-too-new' },
+  })
+}
+
+/** Puts a recovery snapshot and a backup into the directory of the project `id`, as a crash and a migration leave them. */
+export async function addRecoveryFiles(ports: TestPorts, id: string): Promise<void> {
+  const encoder = new TextEncoder()
+  await ports.root.writeFile(`${id}/${SNAPSHOT_PATH}`, encoder.encode('a snapshot after a crash'))
+  await ports.root.writeFile(`${id}/${BACKUP_PATH}`, encoder.encode('a backup before a migration'))
+}
+
+/** The files of an archive, by path. */
+export function filesOfArchive(archive: Uint8Array): ReadonlyMap<string, Uint8Array> {
+  return unzipFolder(archive)
+}
+
+const ARCHIVE_ID = 'archive'
+
+/** The project that an archive holds. */
+export async function projectOfArchive(archive: Uint8Array): Promise<Project> {
+  return storedProject(await ZipBundleProjectStore.fromBundle(ARCHIVE_ID, archive), ARCHIVE_ID)
 }
