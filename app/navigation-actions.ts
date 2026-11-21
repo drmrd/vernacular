@@ -6,6 +6,7 @@ import {
   flowGaveProject,
   handFirstRequest,
   ownerRetries,
+  pageLeads,
   projectLeads,
   runOwnerFlow,
   showPage,
@@ -51,8 +52,7 @@ export function runPageFlowOf(memory: NavigationMemory): RunFlow {
 export function showProjects(memory: NavigationMemory): void {
   const place = { kind: 'projects' } as const
   showPage(memory, {})
-  memory.addressLeads = false
-  memory.followed = place
+  pageLeads(memory, place)
   memory.address.push(addressFor(place))
   memory.view.bump()
 }

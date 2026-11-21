@@ -1,10 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { createNewProject, openRecent, type SessionPorts, type SwitchFailure } from '../session'
-import {
-  DESIGN_LANGUAGE_PREVIEW_PARAM,
-  ThemeProvider,
-  resolveDesignLanguage,
-} from '../editor/design-system'
+import { ThemeProvider } from '../editor/design-system'
 import { ProjectsPage, type OpenProjectLink } from '../editor/projects'
 import { addressFor } from './address'
 import { createInitialProject } from './create-initial-project'
@@ -12,6 +8,7 @@ import { pageNoticeText } from './page-notice-text'
 import type { PageNotice, PageScreen } from './resolve-place'
 import type { HistoryNavigation } from './use-history-navigation'
 import type { Flow } from './use-open-project'
+import { requestedDesignLanguage } from './url-seams'
 import { useProjectCards } from './use-project-cards'
 
 export interface ProjectsScreenProps {
@@ -25,7 +22,7 @@ export interface ProjectsScreenProps {
  * or its own failure; a newer failure of the screen replaces it.
  */
 interface TriedNotice {
-  readonly over: SwitchFailure | undefined
+  readonly replacedFailure: SwitchFailure | undefined
   readonly notice: PageNotice | undefined
 }
 
@@ -38,17 +35,12 @@ function shownNotice(
     return screenNotice
   }
   const shown = screenNotice?.failure
-  const stands = shown === tried.over || shown === tried.notice?.failure
+  const stands = shown === tried.replacedFailure || shown === tried.notice?.failure
   return stands ? tried.notice : screenNotice
 }
 
 function hrefFor(id: string): string {
   return addressFor({ kind: 'project', id })
-}
-
-function designLanguage() {
-  const search = new URLSearchParams(globalThis.location?.search ?? '')
-  return resolveDesignLanguage(search.get(DESIGN_LANGUAGE_PREVIEW_PARAM))
 }
 
 function openProjectLink(navigation: HistoryNavigation): OpenProjectLink | undefined {
@@ -72,13 +64,16 @@ function usePageTries({ navigation, screen, refresh }: PageTries) {
   // The notice clears while the try runs. A try that gives a project leaves the page, so only a
   // try that fails or is refused sets the notice again and reads the cards again.
   const runTry = (id: string, flow: Flow) => {
-    const over = screen.notice?.failure
-    setTried({ over, notice: undefined })
+    const replacedFailure = screen.notice?.failure
+    setTried({ replacedFailure, notice: undefined })
     void navigation.runPageFlow(flow).then((result) => {
       if (result?.ok === true) {
         return
       }
-      setTried({ over, notice: result === undefined ? undefined : { id, failure: result.failure } })
+      setTried({
+        replacedFailure,
+        notice: result === undefined ? undefined : { id, failure: result.failure },
+      })
       refresh()
     })
   }
@@ -104,7 +99,7 @@ export function ProjectsScreen({ navigation, screen, ports }: ProjectsScreenProp
   const openProject = openProjectLink(navigation)
   const notice = pageNoticeText(tries.notice, cards)
   return (
-    <ThemeProvider designLanguage={designLanguage()}>
+    <ThemeProvider designLanguage={requestedDesignLanguage()}>
       <ProjectsPage
         cards={cards}
         hrefFor={hrefFor}

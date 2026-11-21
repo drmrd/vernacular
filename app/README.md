@@ -30,7 +30,7 @@ Where things happen:
   address follows the open project, and the open project follows the address after the user moves
   through the history or edits it. A project gets its address once the store holds it and the
   browser keeps it, and a project that a flow opens gets a new history entry.
-- `interim-projects-view.tsx` is the page of projects until the list of projects exists. It says
+- `nothing-open-failure-view.tsx` is the page of projects until the list of projects exists. It says
   why a project did not open, or that the list is not available yet, and offers a way out. While
   it shows over an open project, the editor is not mounted, and `App` keeps the guards of unsaved
   work mounted for that project. `App` also remembers the handles whose recovered work it offered,
