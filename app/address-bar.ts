@@ -28,20 +28,28 @@ const NAVIGATION_EVENTS = ['popstate', 'hashchange'] as const
 
 /** The address bar of a window: its location fragment and its history entries. */
 export function createBrowserAddressBar(view: Window): AddressBar {
-  const write = (fragment: string, change: 'replaceState' | 'pushState'): void => {
+  const addressFor = (fragment: string): string => {
     const { pathname, search } = view.location
-    view.history[change](view.history.state, '', pathname + search + fragment)
+    return pathname + search + fragment
   }
   return {
     hash: () => view.location.hash,
-    replace: (fragment) => write(fragment, 'replaceState'),
-    push: (fragment) => write(fragment, 'pushState'),
+    replace: (fragment) => view.history.replaceState(view.history.state, '', addressFor(fragment)),
+    push: (fragment) => view.history.pushState(view.history.state, '', addressFor(fragment)),
     onNavigate(listener) {
-      for (const name of NAVIGATION_EVENTS) view.addEventListener(name, listener)
+      const call = (): void => listener()
+      for (const name of NAVIGATION_EVENTS) view.addEventListener(name, call)
       return () => {
-        for (const name of NAVIGATION_EVENTS) view.removeEventListener(name, listener)
+        for (const name of NAVIGATION_EVENTS) view.removeEventListener(name, call)
       }
     },
+  }
+}
+
+/** Calls each listener once, skipping one that an earlier listener removed in the same round. */
+function notifyListeners(listeners: ReadonlySet<() => void>): void {
+  for (const listener of [...listeners]) {
+    if (listeners.has(listener)) listener()
   }
 }
 
@@ -50,9 +58,6 @@ export function createMemoryAddressBar(initial = ''): MemoryAddressBar {
   let entries: string[] = [initial]
   let position = 0
   const listeners = new Set<() => void>()
-  const notify = (): void => {
-    for (const listener of [...listeners]) listener()
-  }
   const push = (fragment: string): void => {
     entries = [...entries.slice(0, position + 1), fragment]
     position = entries.length - 1
@@ -61,7 +66,7 @@ export function createMemoryAddressBar(initial = ''): MemoryAddressBar {
     const target = position + step
     if (target < 0 || target >= entries.length) return
     position = target
-    notify()
+    notifyListeners(listeners)
   }
   return {
     hash: () => entries[position] ?? '',
@@ -79,7 +84,7 @@ export function createMemoryAddressBar(initial = ''): MemoryAddressBar {
     forward: () => moveBy(1),
     visit(fragment) {
       push(fragment)
-      notify()
+      notifyListeners(listeners)
     },
     entries: () => [...entries],
     position: () => position,
