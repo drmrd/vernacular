@@ -5,8 +5,6 @@ import { parseGltfBytes } from '../loaders/gltf-loader'
 import { disposeObject } from './dispose-object'
 import { markShadowCasters } from './shadow-casters'
 
-export { disposeObject } from './dispose-object'
-
 /** The error a furniture model parse rejects with when the model has no usable geometry. */
 export class UnusableFurnitureModelError extends Error {
   constructor() {
