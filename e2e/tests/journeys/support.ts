@@ -86,6 +86,16 @@ export async function gotoEditor(page: Page): Promise<void> {
   await webFontsSettled(page)
 }
 
+// Reloads the page from a script and waits for the new document and the web fonts. Playwright's
+// `page.reload()` adds an entry to the history in Firefox, which `window.location.reload()` does
+// not, so a journey that follows Back and Forward past a reload reloads this way.
+export async function reloadByScript(page: Page): Promise<void> {
+  const loaded = page.waitForEvent('load')
+  await page.evaluate(() => window.location.reload())
+  await loaded
+  await webFontsSettled(page)
+}
+
 // The bounding box of a locator, or a thrown error when it has none.
 export async function boxOf(locator: Locator) {
   const box = await locator.boundingBox()
