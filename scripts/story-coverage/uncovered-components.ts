@@ -90,6 +90,12 @@ export const UNCOVERED_COMPONENTS: {
       'reports each drawn live-view frame through useFrame to the first-frame and readiness readers and renders no DOM (it returns null); it requires a live R3F Canvas and an already drawn frame, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'LiveSceneRoot',
+    file: 'bridge/react/live-scene-root.tsx',
+    reason:
+      'the library root of the live scene that reports when a new framed scene is attached so the retired build can be freed; it renders the R3F scene primitive and no DOM, and it only has meaning inside a live R3F Canvas, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111 and ADR-0226).',
+  },
+  {
     component: 'NearWallFade',
     file: 'bridge/react/near-wall-fade.tsx',
     reason:
@@ -124,6 +130,12 @@ export const UNCOVERED_COMPONENTS: {
     file: 'bridge/react/reason-description.tsx',
     reason:
       'renders only a hidden span that an unavailable control points at with aria-describedby, so an isolated story would show nothing; the toolbar button and tool chip stories and tests cover it where it is used (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
+    component: 'RendererMemoryProbe',
+    file: 'bridge/react/renderer-memory-probe.tsx',
+    reason:
+      'test-only probe that writes the live renderer geometry and texture counts onto the canvas through useFrame behind the ?e2e runtime flag and renders no DOM (it returns null); it requires a live R3F Canvas and renderer, so an isolated browser-mode story is not feasible, and the GPU check in e2e/tests/scene-edge-overlay-resources.spec.ts covers it (permanent allowlist candidate, see ADR-0111 and ADR-0226).',
   },
   {
     component: 'FrameCamera / PresetCamera',
