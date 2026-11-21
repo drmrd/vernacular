@@ -3,8 +3,7 @@ import { useEffect, useLayoutEffect, useMemo } from 'react'
 
 import {
   createSelectionOutlineGroup,
-  pickEntityIdAt,
-  pickSurfaceAt,
+  pickSceneAt,
   reconcileSelectionOutline,
   type SceneRoot,
 } from '../../engine'
@@ -29,9 +28,9 @@ import { useSurfaceSelection } from './surface-selection-context'
 // A drag of more than a few pixels is a camera move, not a selection click.
 const CLICK_TOLERANCE_PX = 6
 
-// pickEntityIdAt's argument carries the three camera and raycaster types, so reusing them
+// pickSceneAt's argument carries the three camera and raycaster types, so reusing them
 // here keeps this bridge module free of a direct three import (engine owns three).
-type PickContext = Parameters<typeof pickEntityIdAt>[0]
+type PickContext = Parameters<typeof pickSceneAt>[0]
 
 interface PointerSelectionDeps {
   domElement: HTMLCanvasElement
@@ -54,15 +53,16 @@ export function commitSelectionAt(event: PointerEvent, deps: PointerSelectionDep
     x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
     y: -((event.clientY - rect.top) / rect.height) * 2 + 1,
   }
-  const surface = pickSurfaceAt({ raycaster, camera, root, ndc })
-  if (surface !== null) {
+  const { entityId: id, surface } = pickSceneAt({ raycaster, camera, root, ndc })
+  if (surface === null) {
+    perceivedColor?.clear()
+  } else {
     surfaceSelection.select(surface)
     // The readout is an optional enhancement to click-to-select, not a required
     // dependency of it, so selection must keep working when no store is mounted
     // (isolated tests and any host that skips the perceived-color provider).
     perceivedColor?.requestSample(surface, ndc)
   }
-  const id = pickEntityIdAt({ raycaster, camera, root, ndc })
   const additive = event.shiftKey || event.metaKey || event.ctrlKey
   if (id === null) {
     if (!additive) selection.clear()

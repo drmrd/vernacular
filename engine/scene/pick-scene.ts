@@ -5,7 +5,6 @@ import { FLOOR_NODE_PREFIX, type SurfaceRef } from '../../core'
 import { entityIdOf } from './entity-id'
 import { isFadedForPicking } from './faded-for-picking'
 import { isGroundPlane } from './ground-plane'
-import { surfaceRefOf } from './pick-surface'
 import { surfaceTableOf } from './wall-surface-table'
 
 /** What one 3D click hits: the entity to select and the surface to paint, from the same hit. */
@@ -41,6 +40,24 @@ function decidingHit(hits: THREE.Intersection[]): THREE.Intersection | undefined
     next !== undefined &&
     next.distance - nearest.distance <= GROUND_TIE_TOLERANCE_MM
   return groundTies ? next : nearest
+}
+
+/**
+ * The surface ref carried on an object or its nearest ancestor (ADR-0056: a paintable
+ * surface mesh carries `userData.surface`), or null when none does. A wall is not found
+ * this way; it carries a table of surface refs by material group and is resolved from the
+ * triangle hit.
+ */
+function surfaceRefOf(object: THREE.Object3D): SurfaceRef | null {
+  let current: THREE.Object3D | null = object
+  while (current !== null) {
+    const surface = current.userData.surface
+    if (surface !== undefined && surface !== null) {
+      return surface as SurfaceRef
+    }
+    current = current.parent
+  }
+  return null
 }
 
 /**
