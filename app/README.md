@@ -12,10 +12,30 @@ Where things happen:
   project" gets the same ports in memory.
 - `app-settings.tsx` mounts the settings service of `session/` above the notifications and the
   workspace, over the browser's local storage unless a test passes another `SettingsPort`.
-- `use-project-boot.ts` chooses what opens at start: the workspace project used last, or a new id
-  after "Start a new project". `use-start-project-id.ts` reads the project index for the first, and
-  gives `current` when the index holds no workspace record. The boot's Retry builds the ports again
-  when they did not resolve, and otherwise repeats the failed start.
+- `use-project-boot.ts` puts the start together from the ports, the address bar, and
+  `useHistoryNavigation`. When the ports do not resolve, its Retry builds them again, and "Start a
+  new project" starts in memory.
+- `address.ts` reads and writes the address of a place. `parseAddress` reads the fragment of the
+  page address as the start, the page of projects (`#/projects`), or a project
+  (`#/project/<id>`), and anything that is not one of these exact forms is the start. `addressFor`
+  gives the fragment of a place.
+- `resolve-place.ts` brings the application to a place. The start and the address of the open
+  project keep it open, another project's address switches to that project, and a project that
+  does not open gives the page with a notice.
+- `address-bar.ts` is the port of the address bar. Its browser form reads the location of the
+  window and writes its history, and its memory form keeps the entries for tests and stories. No
+  other file names the browser history.
+- `use-history-navigation.ts` follows the address on top of the owner of the open project, with
+  its steps in `follow-address.ts`, `navigation-memory.ts`, and `navigation-actions.ts`. The
+  address follows the open project, and the open project follows the address after the user moves
+  through the history or edits it. A project gets its address once the store holds it and the
+  browser keeps it, and a project that a flow opens gets a new history entry.
+- `interim-projects-view.tsx` is the page of projects until the list of projects exists. It says
+  why a project did not open, or that the list is not available yet, and offers a way out. While
+  it shows over an open project, the editor is not mounted, and `App` keeps the guards of unsaved
+  work mounted for that project. `App` also remembers the handles whose recovered work it offered,
+  so each open handle offers it once: a return from the page does not offer it again, and a
+  reload does.
 - `use-open-project.ts` is the one owner of the open project. It holds the one open document
   handle, runs the start, and runs one flow at a time through `runFlow`, which resolves `undefined`
   while the start or another flow runs. It closes the handle when its effects are cleaned up.
