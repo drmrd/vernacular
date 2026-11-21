@@ -9,7 +9,7 @@ import {
   type SurfaceRef,
   type SurfaceTreatment,
 } from '../../core'
-import { markCacheHeld } from '../scene/dispose-object'
+import { HeldMaterialCache } from './held-material-cache'
 import type { MaterialProvider, SurfaceRole } from './material-provider'
 import { roleMaterialParameters, slabTopDepthBiasParameters } from './role-appearance'
 
@@ -29,8 +29,8 @@ export interface SurfaceMaterialOptions {
 export abstract class SurfaceMaterialProvider implements MaterialProvider {
   readonly lightColor: LinearRgb
   private readonly paint: Record<string, SurfaceTreatment>
-  private readonly neutralByRole = new Map<SurfaceRole, THREE.Material>()
-  private readonly paintedByKey = new Map<string, THREE.Material>()
+  private readonly neutralByRole = new HeldMaterialCache<SurfaceRole>()
+  private readonly paintedByKey = new HeldMaterialCache<string>()
 
   constructor(options: SurfaceMaterialOptions) {
     this.lightColor = options.lightColor
@@ -53,25 +53,14 @@ export abstract class SurfaceMaterialProvider implements MaterialProvider {
     key: string,
     treatment: SurfaceTreatment,
   ): THREE.Material {
-    const cached = this.paintedByKey.get(key)
-    if (cached) {
-      return cached
-    }
-    const created = this.createPaintedMaterial(role, treatment)
-    markCacheHeld(created)
-    this.paintedByKey.set(key, created)
-    return created
+    return this.paintedByKey.get(key, () => this.createPaintedMaterial(role, treatment))
   }
 
   private neutralMaterial(role: SurfaceRole): THREE.Material {
-    const cached = this.neutralByRole.get(role)
-    if (cached) {
-      return cached
-    }
-    const created = new THREE.MeshStandardMaterial(roleMaterialParameters(role))
-    markCacheHeld(created)
-    this.neutralByRole.set(role, created)
-    return created
+    return this.neutralByRole.get(
+      role,
+      () => new THREE.MeshStandardMaterial(roleMaterialParameters(role)),
+    )
   }
 
   /**
@@ -79,11 +68,8 @@ export abstract class SurfaceMaterialProvider implements MaterialProvider {
    * a scene tree walk never frees them. Safe to call twice: the second call finds nothing.
    */
   dispose(): void {
-    for (const material of [...this.neutralByRole.values(), ...this.paintedByKey.values()]) {
-      material.dispose()
-    }
-    this.neutralByRole.clear()
-    this.paintedByKey.clear()
+    this.neutralByRole.dispose()
+    this.paintedByKey.dispose()
   }
 
   /**
