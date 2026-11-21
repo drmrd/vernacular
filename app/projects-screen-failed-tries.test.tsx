@@ -1,9 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { DID_NOT_OPEN } from '../editor/projects'
-import { reconcileIndex } from '../session'
-import { failSaves, holdNextRead, type TestPorts } from '../session/handle/handle-test-kit'
+import { failSaves, holdNextRead } from '../session/handle/handle-test-kit'
 import {
   FAILED_ID,
   backToTheProject,
@@ -15,7 +13,6 @@ import {
   findThePageAlert,
   findTheProjectsPage,
   lockedIds,
-  plantFailedProject,
   renderAppAt,
   settleForAWhile,
 } from './app-test-support'
@@ -29,7 +26,9 @@ import {
 import {
   addAFloor,
   expectTheEditAndUndoIt,
+  findTheCardThatDidNotOpen,
   openFirstProject,
+  portsWithAProjectThatDoesNotOpen,
   releaseAfterTheTest,
   setUpProjectsScreenTests,
   showThePageOn,
@@ -38,26 +37,6 @@ import {
 const SAVE_FAILED_SENTENCE = 'The changes could not be saved, so the project stays open.'
 
 setUpProjectsScreenTests()
-
-/** Durable ports with a project that opens and, in the index, a project that did not open. */
-async function portsWithAProjectThatDoesNotOpen(): Promise<TestPorts> {
-  const ports = await durablePortsWith(FIRST_ID)
-  await plantFailedProject(ports)
-  await reconcileIndex(ports)
-  return ports
-}
-
-/** Waits for the card that says its project did not open, and gives its link. */
-async function findTheCardThatDidNotOpen(): Promise<HTMLElement> {
-  const page = await findTheProjectsPage()
-  return waitFor(() => {
-    const [card] = within(page)
-      .getAllByRole('link')
-      .filter((link) => link.textContent?.includes(DID_NOT_OPEN))
-    if (card === undefined) throw new Error('No card says that its project did not open')
-    return card
-  })
-}
 
 describe('A click on the card of a project that did not open', () => {
   it('shows the reason in the alert of the page, and keeps the page and its address', async () => {

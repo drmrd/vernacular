@@ -1,9 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { DocumentDecodeError, InMemoryDirectory } from '../storage'
+import { DID_NOT_OPEN } from '../editor/projects'
+import { ARCHIVE_LIMITS, DocumentDecodeError, InMemoryDirectory } from '../storage'
 import { failSaves, pickFolder, type TestPorts } from '../session/handle/handle-test-kit'
-import { projectFileOf } from './action-test-support'
+import { projectFileOf, unreadableFile } from './action-test-support'
+import { TOO_LARGE_SENTENCE } from './open-file-action-test-support'
 import {
   FAILED_ID,
   backToTheProject,
@@ -46,7 +48,6 @@ import {
 
 setUpProjectsScreenTests()
 
-const DID_NOT_OPEN_LINE = 'This project did not open.'
 const NOT_A_PROJECT_REASON = new DocumentDecodeError({ kind: 'not-a-project' }).message
 
 /** Renders the page with a notice up: the card of a project that did not open was clicked. */
@@ -81,7 +82,7 @@ describe('Open folder beside an open project, on a listed folder whose document 
     expect(await findThePageAlert()).toHaveTextContent(await theSentenceOfANewerBuildDocument())
     expect(screen.getAllByRole('alert')).toHaveLength(1)
     await waitFor(async () =>
-      expect(await findCardLink(FOLDER_NAME)).toHaveTextContent(DID_NOT_OPEN_LINE),
+      expect(await findCardLink(FOLDER_NAME)).toHaveTextContent(DID_NOT_OPEN),
     )
     expect(bar.hash()).toBe(PROJECTS_ADDRESS)
     await backToTheProject(nameOf(FIRST_ID))
@@ -116,6 +117,29 @@ describe('A page notice that is up when the user starts another try', () => {
     await settleForAWhile()
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('is gone when Import file is chosen and the picker is cancelled', async () => {
+    await renderThePageWithANotice(await portsWithAProjectThatDoesNotOpen())
+
+    await clickPageAction('Import file')
+    await settleForAWhile()
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('is replaced by the one toast of a dropped file above the size limit, with no cards read', async () => {
+    const ports = await portsWithAProjectThatDoesNotOpen()
+    await renderThePageWithANotice(ports)
+    const heldIds = vi.spyOn(ports.locks, 'heldIds')
+
+    await dropOnThePage(unreadableFile({ size: ARCHIVE_LIMITS.archiveBytes + 1 }).file)
+    await settleForAWhile()
+
+    const alerts = screen.getAllByRole('alert')
+    expect(alerts).toHaveLength(1)
+    expect(alerts[0]).toHaveTextContent(TOO_LARGE_SENTENCE)
+    expect(heldIds).not.toHaveBeenCalled()
   })
 
   it.each(['chosen in the picker', 'dropped on the page'] as const)(
