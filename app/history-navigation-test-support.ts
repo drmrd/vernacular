@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
+import { expect, vi } from 'vitest'
 import { openRecent, reconcileIndex, switchProject } from '../session'
+import { settle } from '../session/autosave/save-gate-test-kit'
 import type { DocumentHandle, FlowResult, SessionPorts } from '../session'
 import {
   createTestPorts,
@@ -10,6 +11,7 @@ import {
   type TestPorts,
 } from '../session/handle/handle-test-kit'
 import { addressFor } from './address'
+import { createMemoryAddressBar } from './address-bar'
 import type { AddressBar, MemoryAddressBar } from './address-bar'
 import { plantProject, usedLast } from './app-test-support'
 import type { Screen } from './resolve-place'
@@ -182,4 +184,32 @@ export async function runFlowIn<Refusal>(
     outcomes.push(await result.current.runFlow(flow))
   })
   return outcomes[0]
+}
+
+/** The navigation on durable ports with three projects, open on the first one at the bare address. */
+export async function atTheFirstProject() {
+  const ports = await durablePortsWith(FIRST_ID, SECOND_ID, THIRD_ID)
+  const bar = createMemoryAddressBar()
+  const rendered = renderNavigation(ports, bar)
+  const handle = await editorOf(rendered.result)
+  await waitFor(() => expect(bar.hash()).toBe(addressOf(FIRST_ID)))
+  await act(settle)
+  return { ports, bar, handle, ...rendered }
+}
+
+/** The same, after a switch to the second project: the entries are the first and the second. */
+export async function atTheSecondProject() {
+  const start = await atTheFirstProject()
+  await runFlowIn(start.result, switchTo(SECOND_ID))
+  await waitFor(() =>
+    expect(start.bar.entries()).toEqual([addressOf(FIRST_ID), addressOf(SECOND_ID)]),
+  )
+  const handle = await editorOf(start.result)
+  await act(settle)
+  return { ...start, handle }
+}
+
+/** The id of the project that is open now. */
+export function openId(result: NavigationResult): string | undefined {
+  return result.current.handle?.id
 }

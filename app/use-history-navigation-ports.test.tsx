@@ -33,7 +33,7 @@ afterEach(() => {
 })
 
 describe('the history when the ports change', () => {
-  it('gives no project of the old ports after the ports change, and then the project of the new ports', async () => {
+  it('reads the address again on new ports and opens their project', async () => {
     const oldPorts = createTestPorts({ durable: true })
     await plantFailedProject(oldPorts)
     const newPorts = await durablePortsWith(SECOND_ID)
@@ -100,6 +100,7 @@ describe('the history of two tabs and of a project asked for early', () => {
     expect(handle.session.getProject().meta.name).toBe(NEW_PROJECT_NAME)
     expect(lockedIds(ports)).toEqual([handle.id])
     await waitFor(() => expect(bar.hash()).toBe(''))
+    expect(bar.entries()).toEqual([FIRST_ADDRESS, ''])
     expect(await storedIds(ports)).toEqual([FIRST_ID])
     expect(await storedName(ports.workspace, FIRST_ID)).toBe(nameOf(FIRST_ID))
   })

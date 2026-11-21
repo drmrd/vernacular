@@ -12,7 +12,6 @@ import {
 import { documentNamed, folderRecord } from '../session/projects/rebuild-test-kit'
 import { createMemoryAddressBar } from './address-bar'
 import { lockedIds, plantProject } from './app-test-support'
-import type { NavigationResult } from './history-navigation-test-support'
 import {
   FIRST_ID,
   MISSING_ID,
@@ -20,17 +19,18 @@ import {
   SECOND_ID,
   THIRD_ID,
   addressOf,
+  atTheFirstProject,
+  atTheSecondProject,
   durablePortsWith,
   editorOf,
   goBack,
   nameOf,
+  openId,
   pageOf,
   renderNavigation,
   reportAgain,
-  runFlowIn,
   spiesOnEveryCall,
   startFlow,
-  switchTo,
   visit,
 } from './history-navigation-test-support'
 import { resolvePlace } from './resolve-place'
@@ -57,32 +57,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
 })
-
-/** The navigation on durable ports with three projects, open on the first one at the bare address. */
-async function atTheFirstProject() {
-  const ports = await durablePortsWith(FIRST_ID, SECOND_ID, THIRD_ID)
-  const bar = createMemoryAddressBar()
-  const rendered = renderNavigation(ports, bar)
-  const handle = await editorOf(rendered.result)
-  await waitFor(() => expect(bar.hash()).toBe(FIRST_ADDRESS))
-  await act(settle)
-  return { ports, bar, handle, ...rendered }
-}
-
-/** The same, after a switch to the second project: the entries are the first and the second. */
-async function atTheSecondProject() {
-  const start = await atTheFirstProject()
-  await runFlowIn(start.result, switchTo(SECOND_ID))
-  await waitFor(() => expect(start.bar.entries()).toEqual([FIRST_ADDRESS, SECOND_ADDRESS]))
-  const handle = await editorOf(start.result)
-  await act(settle)
-  return { ...start, handle }
-}
-
-/** The id of the project that is open now. */
-function openId(result: NavigationResult): string | undefined {
-  return result.current.handle?.id
-}
 
 describe('a move through the history with a project open', () => {
   it('switches to the project of the address after a move back', async () => {
