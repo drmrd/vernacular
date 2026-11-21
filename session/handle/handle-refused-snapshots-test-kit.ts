@@ -131,6 +131,14 @@ export function openProject(ports: TestPorts): Promise<DocumentHandle> {
  * its snapshots once, when it opens.
  */
 export function rejectSetAside(store: DocumentStore, error: Error): string[] {
+  return logSnapshotCalls(store, () => Promise.reject(error))
+}
+
+/**
+ * Like `rejectSetAside`, except that `setAsideRefused` is the real one by default, or `setAside`
+ * when given. Call this before the open.
+ */
+export function logSnapshotCalls(store: DocumentStore, setAside?: () => Promise<number>): string[] {
   const log: string[] = []
   const realSnapshots = store.snapshots.bind(store)
   store.snapshots = (id) => {
@@ -146,7 +154,7 @@ export function rejectSetAside(store: DocumentStore, error: Error): string[] {
       },
       isRecoverable: () => real.isRecoverable(),
       restore: () => real.restore(),
-      setAsideRefused: () => Promise.reject(error),
+      setAsideRefused: setAside ?? (() => real.setAsideRefused()),
     }
   }
   return log
