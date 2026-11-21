@@ -1,14 +1,18 @@
 // @vitest-environment node
 // Pure storage logic; node aligns TextEncoder/Uint8Array realms with serialization.
-import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { PassThroughDirectory } from '../documents/document-store-test-kit'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
+import {
+  AUTOSAVE_DIRECTORY,
+  BACKUP_DIRECTORY,
+  NOT_A_PROJECT_VERSION,
+  backupPathOf,
+  holding,
+  notJson,
+} from './snapshot-set-aside-test-kit'
 import { SnapshotStore } from './snapshot-store'
 
-const AUTOSAVE_DIRECTORY = '.house-autosave'
-const BACKUP_DIRECTORY = '.house-backups'
-const NOT_A_PROJECT_VERSION = 0
 const REFUSED_SNAPSHOT_COUNT = 3
 const FAILING_BACKUP_WRITE = 2
 
@@ -31,21 +35,6 @@ class NthBackupRefusingDirectory extends PassThroughDirectory {
     }
     return super.writeFile(path, bytes)
   }
-}
-
-function notJson(label = 'this is'): Uint8Array {
-  return new TextEncoder().encode(`{"${label}": not json`)
-}
-
-async function holding(files: Record<string, Uint8Array>): Promise<InMemoryDirectory> {
-  const directory = new InMemoryDirectory()
-  for (const [path, bytes] of Object.entries(files)) await directory.writeFile(path, bytes)
-  return directory
-}
-
-function backupPathOf(version: number, bytes: Uint8Array): string {
-  const digest = createHash('sha256').update(bytes).digest('hex')
-  return `${BACKUP_DIRECTORY}/refused-snapshot-v${version}-${digest}.json`
 }
 
 async function isHeld(directory: InMemoryDirectory, path: string): Promise<boolean> {
@@ -75,8 +64,10 @@ describe('SnapshotStore.setAsideRefused scope', () => {
     expect(await directory.readFile(backupPathOf(NOT_A_PROJECT_VERSION, bytes))).toEqual(bytes)
     expect(await directory.list(AUTOSAVE_DIRECTORY)).toEqual([])
   })
+})
 
-  it('when a later backup write fails, the earlier refused snapshots are moved, the failing one stays, and the call rejects', async () => {
+describe('SnapshotStore.setAsideRefused after a failed backup', () => {
+  it('stops at the first failed backup: the earlier snapshots are moved, the failing one and the rest stay, and the call rejects', async () => {
     const refused = Array.from({ length: REFUSED_SNAPSHOT_COUNT }, (_, index) => ({
       path: `${AUTOSAVE_DIRECTORY}/snapshot-${index + 1}.json`,
       bytes: notJson(`refused snapshot ${index + 1}`),
@@ -90,8 +81,8 @@ describe('SnapshotStore.setAsideRefused scope', () => {
       refused.map(({ bytes }) => isHeld(inner, backupPathOf(NOT_A_PROJECT_VERSION, bytes))),
     )
     const inPlace = await Promise.all(refused.map(({ path }) => isHeld(inner, path)))
-    expect(backedUp).toContain(true)
-    expect(inPlace).toContain(true)
+    expect(backedUp.filter(Boolean)).toHaveLength(FAILING_BACKUP_WRITE - 1)
+    expect(inPlace.filter(Boolean)).toHaveLength(REFUSED_SNAPSHOT_COUNT - FAILING_BACKUP_WRITE + 1)
     expect(inPlace).toEqual(backedUp.map((hasBackup) => !hasBackup))
     for (const [index, { bytes }] of refused.entries()) {
       if (backedUp[index])

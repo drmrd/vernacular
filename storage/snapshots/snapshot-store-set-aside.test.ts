@@ -1,6 +1,5 @@
 // @vitest-environment node
 // Pure storage logic; node aligns TextEncoder/Uint8Array realms with serialization.
-import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, decodeDocument } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
@@ -12,14 +11,20 @@ import {
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { PassThroughDirectory } from '../documents/document-store-test-kit'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
+import {
+  AUTOSAVE_DIRECTORY,
+  BACKUP_DIRECTORY,
+  NOT_A_PROJECT_VERSION,
+  backupNameOf,
+  backupPathOf,
+  holding,
+  notJson,
+} from './snapshot-set-aside-test-kit'
 import { SnapshotStore } from './snapshot-store'
 
-const AUTOSAVE_DIRECTORY = '.house-autosave'
-const BACKUP_DIRECTORY = '.house-backups'
 const SESSION_START_PATH = `${AUTOSAVE_DIRECTORY}/session-start.json`
 const OLDER_VERSION = 15
 const NEWER_VERSION = CURRENT_SCHEMA_VERSION + 1
-const NOT_A_PROJECT_VERSION = 0
 
 /** Test support: rejects each write under the backup directory and passes the rest through. */
 class BackupRefusingDirectory extends PassThroughDirectory {
@@ -28,10 +33,6 @@ class BackupRefusingDirectory extends PassThroughDirectory {
       return Promise.reject(new Error('the disk is full'))
     return super.writeFile(path, bytes)
   }
-}
-
-function notJson(): Uint8Array {
-  return new TextEncoder().encode('{"this is": not json')
 }
 
 function breakingTheFormatRules(version: number): Uint8Array {
@@ -46,21 +47,6 @@ function fromNewerBuild(): Uint8Array {
 
 function readable(): Uint8Array {
   return versionFixtureBytes(CURRENT_SCHEMA_VERSION)
-}
-
-async function holding(files: Record<string, Uint8Array>): Promise<InMemoryDirectory> {
-  const directory = new InMemoryDirectory()
-  for (const [path, bytes] of Object.entries(files)) await directory.writeFile(path, bytes)
-  return directory
-}
-
-function backupNameOf(version: number, bytes: Uint8Array): string {
-  const digest = createHash('sha256').update(bytes).digest('hex')
-  return `refused-snapshot-v${version}-${digest}.json`
-}
-
-function backupPathOf(version: number, bytes: Uint8Array): string {
-  return `${BACKUP_DIRECTORY}/${backupNameOf(version, bytes)}`
 }
 
 async function snapshotNames(directory: InMemoryDirectory): Promise<string[]> {
