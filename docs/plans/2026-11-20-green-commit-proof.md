@@ -913,6 +913,30 @@ write `.green-proof/vitest.red.config.mjs` (`redVitestConfigText(unitFiles)`), a
 `{ rule: 'mutation-run-failed', sha, message: 'Stryker exited <n> for the <group> group: <last stderr line>' }`
 and no survivor read. `timings.mutation` covers all groups.
 
+Refinements (main thread, 2026-11-21):
+
+- Paths: the RED Vitest config is written to `<root>/.green-proof/vitest.red.config.mjs` and
+  passed to `strykerConfig` as `vitestConfigFile: '.green-proof/vitest.red.config.mjs'`. The
+  Stryker config is written to `<root>/.green-proof/stryker-<group>.json` with
+  `reportFile: '.green-proof/mutation-<group>.json'`. The run is `runCommand('pnpm', ['exec',
+'stryker', 'run', '.green-proof/stryker-<group>.json'], { cwd: root })`. The report is read from
+  `<root>/.green-proof/mutation-<group>.json` and passed to
+  `survivorFindings(text, { sha: <GREEN sha>, root })`.
+- Before each Stryker run the cycle removes `<root>/.green-proof/mutation-<group>.json` with
+  `files.removeFile`, so a stale report never reads as this run's.
+- The groups run in the order `strykerGroups` gives. A failure of one group does not stop the
+  next group.
+- `<last output line>` in the exit message is the last non-blank line of stderr, else of stdout,
+  else `no output`.
+- A report that cannot be read (the file is missing, or `survivorFindings` throws) gives
+  `{ rule: 'mutation-run-failed', sha, message: 'Stryker report for the <group> group is unreadable: <error message>' }`.
+- Check 4 runs when check 2 passed, also when check 3 found uncovered lines, and also for a mixed
+  set. The RED files of the Vitest config are the `unitFiles` of the set that ran at GREEN.
+- A thrown `runCommand` propagates, as it does for Vitest.
+- Known limit (advisory, no test): the RED Vitest config extends `vite.config.ts`, so a RED set
+  that holds `tests/format/current-schema-validator.test.ts` fails the Stryker dry run on the
+  instrumented `core/` and gives `mutation-run-failed`.
+
 - [ ] **Step 1: Write the failing tests**
 
 ```js
