@@ -14,7 +14,7 @@ import type { ToolId } from '../tools/active-tool-context'
 import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
 import { isActivationPressAlreadyHandled } from './activation-keys'
-import { claimKeystroke, ownsKeystroke } from './keyboard-guard'
+import { buttonOwnsEnter, claimKeystroke, ownsKeystroke } from './keyboard-guard'
 import { useDiscardPointerWallRun } from './use-discard-pointer-wall-run'
 import { useHeldAltKey } from './use-held-alt-key'
 import { useSnapping, type Snapping } from './use-snapping'
@@ -181,16 +181,14 @@ function useReresolveOnFreeAngleToggle({
 
 /**
  * Escape abandons the run, Enter ends it, and Backspace undoes the last segment.
- * An Enter or Space that an entity proxy already handled (it selected the entity
- * and prevented the default) is not a run key, so it must not finish the run.
+ * An Enter or Space an entity proxy already handled, or an Enter a focused button
+ * owns, is not a run key, so it must not finish the run.
  *
- * The handlers are read through a ref that is refreshed every render, so the
- * window listener subscribes once per tool change rather than on every render.
- * A render-scoped subscription would re-add the listener mid-keystroke whenever
- * a sibling hook (such as the keyboard authoring hook) updates state inside the
- * same keydown, and the DOM drops a listener re-added during dispatch, which
- * would silently swallow this run-control key. The stable subscription keeps the
- * wall run controllable no matter what else listens on the window.
+ * The handlers are read through a ref refreshed every render, so the window listener
+ * subscribes once per tool change. A render-scoped subscription would re-add the
+ * listener mid-keystroke when a sibling hook updates state inside the same keydown,
+ * and the DOM drops a listener re-added during dispatch, silently swallowing this
+ * run-control key.
  */
 function useWallKeyboard({ tool, finish, backspace, cancel }: WallKeyboardDeps): void {
   const handlersRef = useRef({ finish, backspace, cancel })
@@ -200,7 +198,11 @@ function useWallKeyboard({ tool, finish, backspace, cancel }: WallKeyboardDeps):
       return
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (ownsKeystroke(event.target, event.key) || isActivationPressAlreadyHandled(event)) {
+      if (
+        ownsKeystroke(event.target, event.key) ||
+        buttonOwnsEnter(event.target, event.key) ||
+        isActivationPressAlreadyHandled(event)
+      ) {
         return
       }
       const handlers = handlersRef.current
@@ -236,13 +238,8 @@ interface WallSnappingDeps {
  * the object exactOptionalPropertyTypes-safe, only adding the optional candidate
  * sets when they are present and non-empty.
  */
-function wallSnappingInputs({
-  walls,
-  viewport,
-  toolState,
-  tracePoints,
-  freeAngle,
-}: WallSnappingDeps) {
+function wallSnappingInputs(deps: WallSnappingDeps) {
+  const { walls, viewport, toolState, tracePoints, freeAngle } = deps
   const openVertices = activeRunCorners(toolState)
   return {
     walls,
