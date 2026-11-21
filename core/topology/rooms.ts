@@ -1,5 +1,6 @@
 import { insetPolygon, outsetPolygon, pointInPolygon, polygonArea } from '../geometry/polygon'
 import type { Point, RoomOverride, Wall } from '../model/types'
+import { effectiveWallThickness } from '../scene/construction-profile'
 import { buildWallGraph } from './wall-graph'
 
 /** A bounded region of floor enclosed by walls, derived from the wall topology. */
@@ -9,13 +10,13 @@ export interface Room {
   /** Corner points of the room boundary, in floor-plan space. */
   polygon: Point[]
   /**
-   * The centerline `polygon` inset inward by each bounding wall's half-thickness:
-   * the thickness-aware clear floor area boundary, in floor-plan space.
+   * The centerline `polygon` inset inward by each bounding wall's half effective (construction-profile
+   * assembly) thickness: the thickness-aware clear floor area boundary, in floor-plan space.
    */
   clearPolygon: Point[]
   /**
    * The mirror of `clearPolygon`: the centerline `polygon` offset outward by each
-   * bounding wall's half-thickness, tracing the outer wall faces (the gross-area
+   * bounding wall's half effective thickness, tracing the outer wall faces (the gross-area
    * boundary), in floor-plan space.
    */
   outerPolygon: Point[]
@@ -126,7 +127,7 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
   const graph = buildWallGraph(walls, options)
   const halfEdges = buildHalfEdges(graph.edges)
   const faces = enumerateFaces(halfEdges, graph.vertices)
-  const thicknessByWallId = new Map(walls.map((wall) => [wall.id, wall.thickness]))
+  const thicknessByWallId = new Map(walls.map((wall) => [wall.id, effectiveWallThickness(wall)]))
   const faceOfHalfEdge = facesByHalfEdge(faces)
 
   const boundaries = faces.map((face) =>
@@ -376,12 +377,12 @@ function nextHalfEdge(
 
 /**
  * A face corner paired with the inward inset of the edge leaving it: the tail
- * vertex index and half the leaving edge's host-wall thickness.
+ * vertex index and half the leaving edge's host-wall effective thickness.
  */
 interface BoundaryCorner {
   /** Index into the graph's vertices of this corner. */
   vertexIndex: number
-  /** Half the thickness of the wall hosting the edge that leaves this corner. */
+  /** Half the effective thickness of the wall hosting the edge that leaves this corner. */
   halfThickness: number
   /**
    * Index of the face owning the leaving edge's twin; classifies the edge as
@@ -392,7 +393,7 @@ interface BoundaryCorner {
 
 /** Read-only inputs shared while building one face's boundary. */
 interface BoundaryContext {
-  /** Wall thickness, in millimeters, keyed by wall id. */
+  /** Effective wall thickness, in millimeters, keyed by wall id. */
   thicknessByWallId: ReadonlyMap<string, number>
   /** Face index that owns each half-edge, keyed by {@link halfEdgeKey}. */
   faceOfHalfEdge: ReadonlyMap<string, number>
@@ -438,7 +439,7 @@ function faceBoundary(
 }
 
 /**
- * Pair each face corner with half its leaving edge's host-wall thickness and the
+ * Pair each face corner with half its leaving edge's host-wall effective thickness and the
  * face owning that edge's twin (which classifies it shared or perimeter).
  */
 function toBoundaryCorners(face: readonly HalfEdge[], context: BoundaryContext): BoundaryCorner[] {
