@@ -1,10 +1,8 @@
+import { diffHunkLines } from '../policy-check/git-input.mjs'
 import { isTestAsset } from '../rgb-audit/test-files.mjs'
 
 /** @typedef {import('../policy-check/git-input.mjs').AddedLine} AddedLine */
 
-const DIFF_FILE_START = 'diff --git '
-const OLD_SIDE_HEADER = '--- a/'
-const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/
 const PROOF_SOURCE_EXTENSION = /\.(?:ts|tsx|mjs|js)$/
 
 /**
@@ -13,23 +11,9 @@ const PROOF_SOURCE_EXTENSION = /\.(?:ts|tsx|mjs|js)$/
  * @returns {string[]}
  */
 export function parseRemovedLines(raw) {
-  /** @type {string[]} */
-  const removedLines = []
-  let inHunk = false
-  let countsRemoved = false
-  for (const diffLine of raw.split('\n')) {
-    if (diffLine.startsWith(DIFF_FILE_START)) {
-      inHunk = false
-      countsRemoved = false
-    } else if (HUNK_HEADER.test(diffLine)) {
-      inHunk = true
-    } else if (inHunk) {
-      if (countsRemoved && diffLine.startsWith('-')) removedLines.push(diffLine.slice(1))
-    } else if (diffLine.startsWith(OLD_SIDE_HEADER)) {
-      countsRemoved = isProofSource(diffLine.slice(OLD_SIDE_HEADER.length))
-    }
-  }
-  return removedLines
+  return [...diffHunkLines(raw)]
+    .filter(({ sign, oldFile }) => sign === '-' && oldFile !== null && isProofSource(oldFile))
+    .map(({ text }) => text)
 }
 
 /**
@@ -55,6 +39,7 @@ export function provableAddedLines(added, removed) {
 }
 
 /**
+ * Whether a path is production source that the GREEN proof must cover: not a test asset or a declaration file.
  * @param {string} path
  * @returns {boolean}
  */

@@ -35,11 +35,72 @@ function parseCommitRecord(record) {
 /** @typedef {{ file: string, line: number, text: string }} AddedLine */
 /** @typedef {{ status: string, path: string, previousPath?: string }} ChangedFile */
 
+/**
+ * @typedef {object} DiffHunkLine
+ * @property {string | null} oldFile path from the `--- ` header, null for `/dev/null`
+ * @property {string | null} newFile path from the `+++ ` header, null for `/dev/null`
+ * @property {number} newLine new-file line number of a `+` line; for a `-` line, the new-file line the removal precedes
+ * @property {'+' | '-'} sign
+ * @property {string} text the line without its sign
+ */
+
 const DIFF_FILE_START = 'diff --git '
-const NEW_FILE_MARKER = '+++ '
 const NULL_FILE = '/dev/null'
-const NEW_FILE_PREFIX = 'b/'
+const FILE_HEADERS = [
+  { side: 'old', marker: '--- ', prefix: 'a/' },
+  { side: 'new', marker: '+++ ', prefix: 'b/' },
+]
 const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
+
+/**
+ * Walk `git diff --unified=0` output and yield every added or removed line with its file context.
+ * @param {string} raw
+ * @returns {Generator<DiffHunkLine>}
+ */
+export function* diffHunkLines(raw) {
+  let files = { old: null, new: null }
+  let inHunk = false
+  let newLine = 0
+  for (const diffLine of raw.split('\n')) {
+    const header = inHunk ? null : readFileHeader(diffLine)
+    if (diffLine.startsWith(DIFF_FILE_START)) {
+      files = { old: null, new: null }
+      inHunk = false
+    } else if (header !== null) {
+      files = { ...files, [header.side]: header.path }
+    } else if (HUNK_HEADER.test(diffLine)) {
+      inHunk = true
+      newLine = Number(HUNK_HEADER.exec(diffLine)[1])
+    } else if (inHunk) {
+      const sign = hunkLineSign(diffLine)
+      if (sign === null) continue
+      yield { oldFile: files.old, newFile: files.new, newLine, sign, text: diffLine.slice(1) }
+      if (sign === '+') newLine += 1
+    }
+  }
+}
+
+/**
+ * @param {string} diffLine
+ * @returns {{ side: 'old' | 'new', path: string | null } | null} the side a `--- ` or `+++ ` line names, or null for any other line
+ */
+function readFileHeader(diffLine) {
+  const header = FILE_HEADERS.find(({ marker }) => diffLine.startsWith(marker))
+  if (header === undefined) return null
+  const path = diffLine.slice(header.marker.length).replace(/\t$/, '')
+  if (path === NULL_FILE) return { side: header.side, path: null }
+  const stripped = path.startsWith(header.prefix) ? path.slice(header.prefix.length) : path
+  return { side: header.side, path: stripped }
+}
+
+/**
+ * @param {string} diffLine a line inside a hunk
+ * @returns {'+' | '-' | null} null for context and `\ No newline at end of file` lines
+ */
+function hunkLineSign(diffLine) {
+  const sign = diffLine[0]
+  return sign === '+' || sign === '-' ? sign : null
+}
 
 /**
  * Parse `git diff --unified=0` output into the lines it adds.
@@ -49,34 +110,10 @@ const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 export function parseUnifiedDiff(raw) {
   /** @type {AddedLine[]} */
   const addedLines = []
-  let file = null
-  let inHunk = false
-  let nextLine = 0
-  for (const diffLine of raw.split('\n')) {
-    if (diffLine.startsWith(DIFF_FILE_START)) {
-      file = null
-      inHunk = false
-    } else if (!inHunk && diffLine.startsWith(NEW_FILE_MARKER)) {
-      file = readNewFilePath(diffLine)
-    } else if (HUNK_HEADER.test(diffLine)) {
-      inHunk = true
-      nextLine = Number(HUNK_HEADER.exec(diffLine)[1])
-    } else if (inHunk && file !== null && diffLine.startsWith('+')) {
-      addedLines.push({ file, line: nextLine, text: diffLine.slice(1) })
-      nextLine += 1
-    }
+  for (const { newFile, newLine, sign, text } of diffHunkLines(raw)) {
+    if (sign === '+' && newFile !== null) addedLines.push({ file: newFile, line: newLine, text })
   }
   return addedLines
-}
-
-/**
- * @param {string} headerLine a `+++ ` line from a file header
- * @returns {string | null} the new path, or null for a deleted file
- */
-function readNewFilePath(headerLine) {
-  const path = headerLine.slice(NEW_FILE_MARKER.length).replace(/\t$/, '')
-  if (path === NULL_FILE) return null
-  return path.startsWith(NEW_FILE_PREFIX) ? path.slice(NEW_FILE_PREFIX.length) : path
 }
 
 /**
