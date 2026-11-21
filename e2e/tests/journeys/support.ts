@@ -141,6 +141,14 @@ export async function drawWallAndWaitForSave(page: Page): Promise<void> {
   await expect(selectors.savedStatus(page)).toBeVisible()
 }
 
+// Draw two walls on a plan that holds none and wait until the project is saved.
+export async function drawTwoWallsAndWaitForSave(page: Page): Promise<void> {
+  await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
+  await drawWall(page, { x: 120, y: 320 }, { x: 520, y: 320 })
+  await expectWallCount(page, 2)
+  await expect(selectors.savedStatus(page)).toBeVisible()
+}
+
 // Starts a new project and waits until it shows, unsaved: its status is not the saved one.
 export async function startNewProject(page: Page): Promise<void> {
   await chooseFromProjectMenu(page, 'New project')
