@@ -6,7 +6,6 @@ import {
   createFloor,
   createFurnitureInstance,
   createSceneGraphDeriver,
-  createWall,
   sceneGraphForFloor,
 } from '../../core'
 import type {
@@ -16,7 +15,6 @@ import type {
   RoomSceneNode,
   SceneGraph,
   SceneNode,
-  Wall,
 } from '../../core'
 import { isGroundPlane } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
@@ -27,6 +25,12 @@ import {
   sharedResources,
   trackResources,
 } from './dispose-tracking-test-support'
+import {
+  RIGHT_MM,
+  WIDENED_RIGHT_MM,
+  partitionedWalls,
+  widenedWalls,
+} from './partitioned-floor-test-support'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import type { FramedScene } from './framed-scene'
 
@@ -38,15 +42,10 @@ const FLOOR_ID = 'g'
 const FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${FLOOR_ID}`
 const UPPER_FLOOR_ID = 'u'
 const UPPER_FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${UPPER_FLOOR_ID}`
-const HEIGHT_MM = 3000
-const RIGHT_MM = 6000
-const WIDENED_RIGHT_MM = 9000
-const PARTITION_X_MM = 3000
 const UPPER_ELEVATION_MM = 3000
 const WALL_LENGTH_MM = 2000
 const WALL_THICKNESS_MM = 120
 const WALL_HEIGHT_MM = 2400
-const WIDENED_WALL_IDS = ['wall-right', 'wall-bottom', 'wall-top']
 const CHAIR_ID = 'chair-moved'
 const CHAIR_SIZE_MM = 500
 const CHAIR_HEIGHT_MM = 900
@@ -55,21 +54,6 @@ const CHAIR_MOVED_X_MM = 1500
 const CHAIR_Y_MM = 1000
 
 const emptyPaint = (): Record<string, never> => ({})
-
-// A rectangle split by a partition at PARTITION_X_MM, so the floor derives two rooms.
-function partitionedWalls(rightX: number): Wall[] {
-  return [
-    createWall({ x: 0, y: 0 }, { x: rightX, y: 0 }, { id: 'wall-bottom' }),
-    createWall({ x: 0, y: HEIGHT_MM }, { x: rightX, y: HEIGHT_MM }, { id: 'wall-top' }),
-    createWall({ x: 0, y: 0 }, { x: 0, y: HEIGHT_MM }, { id: 'wall-left' }),
-    createWall({ x: rightX, y: 0 }, { x: rightX, y: HEIGHT_MM }, { id: 'wall-right' }),
-    createWall(
-      { x: PARTITION_X_MM, y: 0 },
-      { x: PARTITION_X_MM, y: HEIGHT_MM },
-      { id: 'wall-partition' },
-    ),
-  ]
-}
 
 function chairAt(x: number): FurnitureInstance {
   return createFurnitureInstance({
@@ -256,15 +240,6 @@ describe('createFramedSceneReconciler frees a dropped scene ground plane and emp
     expectNoneDisposed(floorTree)
   })
 })
-
-// Widens only the right room: the three walls around it are replaced, the left wall and the
-// partition keep their references, so the left room's group is reused.
-function widenedWalls(walls: Wall[]): Wall[] {
-  const widened = partitionedWalls(WIDENED_RIGHT_MM)
-  return walls.map((wall) =>
-    WIDENED_WALL_IDS.includes(wall.id) ? (widened.find((w) => w.id === wall.id) ?? wall) : wall,
-  )
-}
 
 function rightmostRoom(graph: SceneGraph): RoomSceneNode {
   const [first, ...rest] = graph.rooms

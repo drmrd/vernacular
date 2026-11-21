@@ -4,10 +4,9 @@ import {
   createEmptyProject,
   createFloor,
   createSceneGraphDeriver,
-  createWall,
   sceneGraphForFloor,
 } from '../../core'
-import type { Floor, Project, RoomSceneNode, SceneGraph, SceneNode, Wall } from '../../core'
+import type { Floor, Project, RoomSceneNode, SceneGraph, SceneNode } from '../../core'
 import { isGroundPlane } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import type { Object3D } from '../../engine/testing'
@@ -19,6 +18,7 @@ import {
   trackResources,
   type ResourceTracker,
 } from './dispose-tracking-test-support'
+import { RIGHT_MM, partitionedWalls, widenedWalls } from './partitioned-floor-test-support'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import type { FramedScene } from './framed-scene'
 
@@ -28,41 +28,12 @@ import type { FramedScene } from './framed-scene'
 
 const FLOOR_ID = 'g'
 const FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${FLOOR_ID}`
-const HEIGHT_MM = 3000
-const RIGHT_MM = 6000
-const WIDENED_RIGHT_MM = 9000
-const PARTITION_X_MM = 3000
 const UPPER_ELEVATION_MM = 3000
 const WALL_LENGTH_MM = 2000
 const WALL_THICKNESS_MM = 120
 const WALL_HEIGHT_MM = 2400
-const WIDENED_WALL_IDS = ['wall-right', 'wall-bottom', 'wall-top']
 
 const emptyPaint = (): Record<string, never> => ({})
-
-// A rectangle split by a partition at PARTITION_X_MM, so the floor derives two rooms.
-function partitionedWalls(rightX: number): Wall[] {
-  return [
-    createWall({ x: 0, y: 0 }, { x: rightX, y: 0 }, { id: 'wall-bottom' }),
-    createWall({ x: 0, y: HEIGHT_MM }, { x: rightX, y: HEIGHT_MM }, { id: 'wall-top' }),
-    createWall({ x: 0, y: 0 }, { x: 0, y: HEIGHT_MM }, { id: 'wall-left' }),
-    createWall({ x: rightX, y: 0 }, { x: rightX, y: HEIGHT_MM }, { id: 'wall-right' }),
-    createWall(
-      { x: PARTITION_X_MM, y: 0 },
-      { x: PARTITION_X_MM, y: HEIGHT_MM },
-      { id: 'wall-partition' },
-    ),
-  ]
-}
-
-// Widens only the right room: the three walls around it are replaced, the left wall and the
-// partition keep their references, so the left room's slab and group are reused.
-function widenedWalls(walls: Wall[]): Wall[] {
-  const widened = partitionedWalls(WIDENED_RIGHT_MM)
-  return walls.map((wall) =>
-    WIDENED_WALL_IDS.includes(wall.id) ? (widened.find((w) => w.id === wall.id) ?? wall) : wall,
-  )
-}
 
 function projectWith(floor: Floor): Project {
   const base = createEmptyProject({

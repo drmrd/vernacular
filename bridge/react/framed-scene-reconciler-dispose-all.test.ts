@@ -8,10 +8,9 @@ import {
   createFloor,
   createFurnitureInstance,
   createSceneGraphDeriver,
-  createWall,
   sceneGraphForFloor,
 } from '../../core'
-import type { Floor, Project, Wall } from '../../core'
+import type { Floor, Project } from '../../core'
 import { isGroundPlane, parseFurnitureModel } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import type { Object3D } from '../../engine/testing'
@@ -23,6 +22,7 @@ import {
   type ResourceTracker,
 } from './dispose-tracking-test-support'
 import type { FurnitureModelLookup } from './floor-build'
+import { RIGHT_MM, WIDENED_RIGHT_MM, partitionedWalls } from './partitioned-floor-test-support'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 
 // dispose() ends a reconciler's life: it must free every geometry and material the reconciler
@@ -33,28 +33,12 @@ const CUBE_GLB = resolve(dirname(fileURLToPath(import.meta.url)), '../../e2e/fix
 const FLOOR_ID = 'g'
 const FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${FLOOR_ID}`
 const UPPER_ELEVATION_MM = 3000
-const HEIGHT_MM = 3000
-const RIGHT_MM = 6000
-const WIDENED_RIGHT_MM = 9000
-const PARTITION_X_MM = 3000
 const CHAIR_HASH = 'c'
 const CHAIR_SIZE_MM = 500
 const CHAIR_HEIGHT_MM = 900
 const CHAIR_POSITION_MM = { x: 1000, y: 1000 }
 
 const emptyPaint = (): Record<string, never> => ({})
-
-// A rectangle split by a partition at PARTITION_X_MM, so the floor derives two rooms.
-function partitionedWalls(rightX: number, idPrefix: string): Wall[] {
-  const id = (name: string): { id: string } => ({ id: `${idPrefix}${name}` })
-  return [
-    createWall({ x: 0, y: 0 }, { x: rightX, y: 0 }, id('bottom')),
-    createWall({ x: 0, y: HEIGHT_MM }, { x: rightX, y: HEIGHT_MM }, id('top')),
-    createWall({ x: 0, y: 0 }, { x: 0, y: HEIGHT_MM }, id('left')),
-    createWall({ x: rightX, y: 0 }, { x: rightX, y: HEIGHT_MM }, id('right')),
-    createWall({ x: PARTITION_X_MM, y: 0 }, { x: PARTITION_X_MM, y: HEIGHT_MM }, id('partition')),
-  ]
-}
 
 function groundFloor(rightX: number): Floor {
   return {
