@@ -91,7 +91,12 @@ const meta: Meta<typeof ProjectsPage> = {
     cards,
     hrefFor: (id: string) => `#/project/${id}`,
     onOpen: fn(),
-    cardActions: { onRename: fn(() => Promise.resolve(true)) },
+    cardActions: {
+      onRename: fn(() => Promise.resolve(true)),
+      onExport: fn(),
+      onDelete: fn(),
+      onRemoveFromList: fn(),
+    },
     onNewProject: fn(),
     onImportFile: fn(),
     onOpenFolder: fn(),

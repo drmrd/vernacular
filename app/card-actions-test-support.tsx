@@ -4,8 +4,7 @@ import { afterEach, beforeEach, vi } from 'vitest'
 import { reconcileIndex } from '../session'
 import { changeRecord, putInPool } from '../session/flows/delete-project-test-kit'
 import type { TestPorts } from '../session/handle/handle-test-kit'
-import { contentHashOf } from '../storage/zip/zip-test-kit'
-import { FAILED_ID, documentBytes, namedProject, plantFailedProject } from './app-test-support'
+import { documentBytes, namedProject, plantFailedProject } from './app-test-support'
 import { FIRST_ID, SECOND_ID, durablePortsWith } from './history-navigation-test-support'
 import {
   FOLDER_NAME,
@@ -91,19 +90,6 @@ export async function openTheMenuOfTheCardThatDidNotOpen(): Promise<void> {
 export async function exportTheCardThatDidNotOpen(): Promise<void> {
   await openTheMenuOfTheCardThatDidNotOpen()
   await userEvent.click(await screen.findByRole('menuitem', { name: 'Export' }))
-}
-
-/**
- * Gives the project that did not open an asset: the pool holds its bytes and its record lists it.
- * Call it once the card shows, so that no later read of the cards writes the record again.
- */
-export async function giveTheProjectThatDidNotOpenAnAsset(ports: TestPorts): Promise<void> {
-  const bytes = new TextEncoder().encode('the bytes of an image that the project used')
-  const hash = await contentHashOf(bytes)
-  await ports.workspace.assets(FAILED_ID).put(hash, bytes)
-  const record = await ports.index.get(FAILED_ID)
-  if (record === undefined) throw new Error('The project that did not open has no record')
-  await ports.index.put({ ...record, assetHashes: [hash] })
 }
 
 /** Chooses Delete on the card of `name`, then presses the button `answer` of the dialog that asks. */

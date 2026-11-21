@@ -2,10 +2,10 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { bundleFilename } from '../storage'
 import { contentHashOf, projectReferring } from '../storage/zip/zip-test-kit'
-import { findCardLink, findTheProjectsPage, renderAppAt } from './app-test-support'
+import { FAILED_ID, findCardLink, findTheProjectsPage, renderAppAt } from './app-test-support'
 import {
   exportTheCardThatDidNotOpen,
-  giveTheProjectThatDidNotOpenAnAsset,
+  givePoolAssetTo,
   openTheMenuOfTheCardThatDidNotOpen,
   portsWithCardsOfEveryKind,
   recordDownloads,
@@ -97,7 +97,7 @@ describe('Export on the cards of the Projects page', () => {
     const ports = await portsWithAProjectThatDoesNotOpen()
     renderAppAt(ports, PROJECTS_ADDRESS)
     await findTheCardThatDidNotOpen()
-    await giveTheProjectThatDidNotOpenAnAsset(ports)
+    await givePoolAssetTo(ports, FAILED_ID)
 
     await exportTheCardThatDidNotOpen()
 

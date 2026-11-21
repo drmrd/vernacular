@@ -1,6 +1,7 @@
 import { expect, vi } from 'vitest'
 import { createFurnitureInstance, placeFurniture } from '../../core'
 import type { InMemoryDirectory, ProjectRecord, WorkspaceDocumentStore } from '../../storage'
+import { ASSET_DIRECTORY_PREFIX, assetPathFor } from '../../storage/directory-asset-cache'
 import { treeOf } from '../../storage/documents/document-store-test-kit'
 import { AUTOSAVE_DIRECTORY } from '../../storage/snapshots/snapshot-store'
 import { contentHashOf, projectReferring } from '../../storage/zip/zip-test-kit'
@@ -15,7 +16,6 @@ import { FIRST_ID, SECOND_ID } from './card-flows-test-kit'
 
 /** Test support: the asset pool, projects that use given assets, and steps that fail, for the flows that remove a project. */
 
-const POOL_DIRECTORY = 'assets'
 const encoder = new TextEncoder()
 const PIECE_PLACE = { position: { x: 0, y: 0 }, footprint: { width: 600, depth: 600 } }
 const SETTLE_ROUNDS = 20
@@ -30,13 +30,13 @@ export const EMPTY_LIBRARY: ReadonlySet<string> = new Set()
 export async function putInPool(ports: TestPorts, label: string): Promise<string> {
   const bytes = encoder.encode(`the bytes of the asset ${label}`)
   const hash = await contentHashOf(bytes)
-  await ports.root.writeFile(`${POOL_DIRECTORY}/${hash}`, bytes)
+  await ports.root.writeFile(assetPathFor(hash), bytes)
   return hash
 }
 
 /** The content hash of every asset in the pool, in order. */
 export async function poolHashes(ports: TestPorts): Promise<string[]> {
-  return (await ports.root.list(POOL_DIRECTORY)).sort()
+  return (await ports.root.list(ASSET_DIRECTORY_PREFIX)).sort()
 }
 
 /** The hashes in order, as `poolHashes` gives them. */
@@ -183,7 +183,7 @@ export type PortStep =
   | 'removeAssets'
   | 'forgetFolder'
 
-/** The steps of a delete that can fail, in the order of the contract: the record, the lock, the users, then the removals. */
+/** The steps of a delete that can fail, in the order a delete runs them: the record, the lock, the users, then the removals. */
 export const STEPS_OF_A_DELETE: readonly PortStep[] = [
   'readRecord',
   'takeLock',

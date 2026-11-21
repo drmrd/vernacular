@@ -20,6 +20,7 @@ import {
   workspaceRequest,
 } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
+import { AUTOSAVE_DIRECTORY } from '../../storage/snapshots/snapshot-store'
 import { renamed } from '../../tests/storage/conformance/conformance-documents'
 import { folderRecord } from '../projects/rebuild-test-kit'
 import {
@@ -40,7 +41,7 @@ const NEW_NAME = 'Renamed House'
 const FOLDER_ID = 'in-a-folder'
 const FOLDER_NAME = 'Kept in a folder'
 const EDITED_NAME = 'Edited, not yet stored'
-const SNAPSHOT_FOLDER = '.house-autosave/'
+const SNAPSHOT_FOLDER = `${AUTOSAVE_DIRECTORY}/`
 
 beforeEach(() => {
   vi.useFakeTimers()

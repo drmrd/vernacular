@@ -2,6 +2,8 @@ import { CURRENT_SCHEMA_VERSION } from '../../core'
 import type { Project } from '../../core'
 import { ZipBundleProjectStore } from '../../storage'
 import type { DocumentStore, ProjectLockHold } from '../../storage'
+import { BACKUP_DIRECTORY } from '../../storage/documents/document-backups'
+import { AUTOSAVE_DIRECTORY } from '../../storage/snapshots/snapshot-store'
 import { unzipFolder } from '../../storage/zip/zip-codec'
 import { renamed, soundProject } from '../../tests/storage/conformance/conformance-documents'
 import {
@@ -85,8 +87,8 @@ export const NEWER_ID = 'from-a-newer-build'
 export const NEWER_NAME = 'Newer House'
 
 /** The recovery snapshot and the backup that `addRecoveryFiles` puts in a project, by path inside the project. */
-export const SNAPSHOT_PATH = '.house-autosave/crash.json'
-export const BACKUP_PATH = '.house-backups/before-migration.json'
+export const SNAPSHOT_PATH = `${AUTOSAVE_DIRECTORY}/crash.json`
+export const BACKUP_PATH = `${BACKUP_DIRECTORY}/before-migration.json`
 
 /**
  * Stores a document that this build cannot open under `NEWER_ID`, with recovery files, and gives it

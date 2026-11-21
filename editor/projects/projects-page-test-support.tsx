@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import type { ProjectCardModel } from '../../session'
-import { ProjectsPage, type ProjectCardActions, type ProjectsPageProps } from './projects-page'
+import type { ProjectCardActions } from './card-list'
+import { ProjectsPage, type ProjectsPageProps } from './projects-page'
 
 /** Test support: the cards and the rendering that the tests of the Projects page share. */
 
@@ -44,15 +45,7 @@ export function renderRenamingPage(
   cards: readonly ProjectCardModel[],
   onRename: ReturnType<typeof acceptsRename> = acceptsRename(),
 ) {
-  const pageOf = (shown: readonly ProjectCardModel[]) => (
-    <ProjectsPage cards={shown} hrefFor={(id) => `#/project/${id}`} cardActions={{ onRename }} />
-  )
-  const view = render(pageOf(cards))
-  return {
-    user: userEvent.setup(),
-    onRename,
-    showCards: (shown: readonly ProjectCardModel[]) => view.rerender(pageOf(shown)),
-  }
+  return { ...renderChangingPage(cards, { onRename }), onRename }
 }
 
 /** An export handler that records its calls. */
@@ -65,10 +58,7 @@ export function renderPageWithCardActions(
   cards: readonly ProjectCardModel[],
   cardActions: ProjectCardActions,
 ) {
-  render(
-    <ProjectsPage cards={cards} hrefFor={(id) => `#/project/${id}`} cardActions={cardActions} />,
-  )
-  return userEvent.setup()
+  return renderChangingPage(cards, cardActions).user
 }
 
 /** A delete handler that records its calls. */
