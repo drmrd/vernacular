@@ -14,6 +14,7 @@ import {
   handleOf,
   openOrThrow,
   placeDocument,
+  recordOf,
   recordingPorts,
   rememberFolder,
   rename,
@@ -244,4 +245,30 @@ describe('a recent project in a folder', () => {
 
     expect(result).toEqual({ ok: false, failure: { kind: 'folder-unavailable' } })
   })
+
+  it.each([
+    ['denied', 'folder-permission'],
+    ['missing', 'folder-unavailable'],
+  ] as const)(
+    'a refused request for access (%s) gives %s and leaves the open project as it was',
+    async (answer, kind) => {
+      const ports = createTestPorts()
+      const current = await openCurrent(ports)
+      await placeFolderProject(ports)
+      ports.folders.setPermission(FOLDER_ID, 'prompt')
+      const reopen = vi.spyOn(ports.folders, 'reopen').mockResolvedValue(answer)
+      const tryAcquire = vi.spyOn(ports.locks, 'tryAcquire')
+      const storedBefore = await storedName(ports.workspace, CURRENT_ID)
+      const recordBefore = await recordOf(ports, CURRENT_ID)
+      rename(current, 'Edited, not yet stored')
+
+      const result = await openRecent(ports, current, FOLDER_ID)
+
+      expect(result).toEqual({ ok: false, failure: { kind } })
+      expect(await storedName(ports.workspace, CURRENT_ID)).toBe(storedBefore)
+      expect(await recordOf(ports, CURRENT_ID)).toEqual(recordBefore)
+      expect(tryAcquire).not.toHaveBeenCalledWith(FOLDER_ID)
+      expect(reopen).toHaveBeenCalledTimes(1)
+    },
+  )
 })
