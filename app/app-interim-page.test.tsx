@@ -113,8 +113,9 @@ describe('The interim page with a notice', () => {
     expect(screen.queryByText(KEPT_PROJECT_TEXT)).not.toBeInTheDocument()
   })
 
-  it('shows Retry and Return to the project when a move leads to a project that does not open', async () => {
+  it('shows Retry and Return to the project when a move leads to a project that does not open, and Return keeps the undo history', async () => {
     const { bar } = await openFirstProject()
+    await addAFloor()
 
     await visit(bar, addressOf(MISSING_ID))
 
@@ -124,6 +125,12 @@ describe('The interim page with a notice', () => {
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Return to the project' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Start a new project' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Return to the project' }))
+    expect(await screen.findByRole('button', { name: /2nd floor/i })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /undo/i }))
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /2nd floor/i })).not.toBeInTheDocument(),
+    )
   })
 })
 

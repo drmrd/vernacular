@@ -13,9 +13,13 @@ import {
   usedLast,
 } from './app-test-support'
 import {
+  FIRST_ADDRESS,
   FIRST_ID,
+  MISSING_ADDRESS,
   MISSING_ID,
+  NOT_FOUND,
   PROJECTS_ADDRESS,
+  SECOND_ADDRESS,
   SECOND_ID,
   THIRD_ID,
   addressOf,
@@ -31,11 +35,7 @@ import {
 } from './history-navigation-test-support'
 import { unmountAndSettle } from './use-open-project-test-support'
 
-const FIRST_ADDRESS = addressOf(FIRST_ID)
-const SECOND_ADDRESS = addressOf(SECOND_ID)
 const THIRD_ADDRESS = addressOf(THIRD_ID)
-const MISSING_ADDRESS = addressOf(MISSING_ID)
-const NOT_FOUND = { kind: 'not-found' }
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -138,6 +138,28 @@ describe('the address of a new project', () => {
     await waitFor(() => expect(bar.entries()).toEqual([MISSING_ADDRESS, '']))
     expect(bar.position()).toBe(1)
     expect(lockedIds(ports)).toEqual([handle.id])
+  })
+})
+
+describe('a double press of Start a new project', () => {
+  it('starts one new project, takes one lock, and adds one entry when the notice is answered twice', async () => {
+    const ports = await durablePortsWith(FIRST_ID)
+    const bar = createMemoryAddressBar(MISSING_ADDRESS)
+    const { result, handles } = renderNavigation(ports, bar)
+    await pageOf(result)
+    const locks = vi.spyOn(ports.locks, 'tryAcquire')
+
+    act(() => {
+      result.current.startFresh()
+      result.current.startFresh()
+    })
+
+    const handle = await editorOf(result)
+    await act(settle)
+    expect(handles).toEqual([handle])
+    expect(locks).toHaveBeenCalledTimes(1)
+    expect(lockedIds(ports)).toEqual([handle.id])
+    expect(bar.entries()).toEqual([MISSING_ADDRESS, ''])
   })
 })
 

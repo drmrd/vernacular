@@ -5,9 +5,15 @@ import { holdNextRead, rememberFolder } from '../session/handle/handle-test-kit'
 import { documentNamed, folderRecord } from '../session/projects/rebuild-test-kit'
 import { createMemoryAddressBar } from './address-bar'
 import {
+  FIRST_ADDRESS,
   FIRST_ID,
+  FOLDER_ID,
+  FOLDER_NAME,
+  MISSING_ADDRESS,
   MISSING_ID,
+  NOT_FOUND,
   PROJECTS_ADDRESS,
+  SECOND_ADDRESS,
   SECOND_ID,
   THIRD_ID,
   addressOf,
@@ -28,13 +34,6 @@ vi.mock('./resolve-place', async (importOriginal) => {
   const original = await importOriginal<typeof import('./resolve-place')>()
   return { ...original, resolvePlace: vi.fn(original.resolvePlace) }
 })
-
-const FIRST_ADDRESS = addressOf(FIRST_ID)
-const SECOND_ADDRESS = addressOf(SECOND_ID)
-const MISSING_ADDRESS = addressOf(MISSING_ID)
-const NOT_FOUND = { kind: 'not-found' }
-const FOLDER_ID = 'project-folder'
-const FOLDER_NAME = 'Kept in a folder'
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)

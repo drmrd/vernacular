@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createTestPorts, rememberFolder, type TestPorts } from '../session/handle/handle-test-kit'
 import { folderRecord } from '../session/projects/rebuild-test-kit'
+import { START_ADDRESS } from './address'
 import { App } from './app'
 import {
   AUTOSAVE_TIMEOUT_MS,
@@ -34,7 +35,6 @@ import {
 const FOLDER_ID = 'project-folder'
 const FOLDER_NAME = 'Folder House'
 const NO_PERMISSION_SENTENCE = 'Vernacular has no permission to use this folder.'
-const BARE_ADDRESS = ''
 
 beforeEach(() => {
   stubCapableStorage()
@@ -66,12 +66,12 @@ describe('The application at the start', () => {
   it('starts a new project under a new id in an empty browser', async () => {
     const ports = createTestPorts({ durable: true })
 
-    const { bar } = renderAppAt(ports, BARE_ADDRESS)
+    const { bar } = renderAppAt(ports, START_ADDRESS)
 
     await expectOpenProject(NEW_PROJECT_NAME)
     expect(lockedIds(ports)).toHaveLength(1)
     expect(lockedIds(ports)).not.toContain(START_ID)
-    expect(bar.hash()).toBe(BARE_ADDRESS)
+    expect(bar.hash()).toBe(START_ADDRESS)
   })
 
   it('opens the project of the address in place of the project used last', async () => {
@@ -85,10 +85,10 @@ describe('The application at the start', () => {
 
   it('shows the address of a new project after its first save', async () => {
     const ports = createTestPorts({ durable: true })
-    const { bar } = renderAppAt(ports, BARE_ADDRESS)
+    const { bar } = renderAppAt(ports, START_ADDRESS)
     await expectOpenProject(NEW_PROJECT_NAME)
     const newId = theOnlyLockedId(ports)
-    expect(bar.hash()).toBe(BARE_ADDRESS)
+    expect(bar.hash()).toBe(START_ADDRESS)
 
     await editTheProject()
 
@@ -102,7 +102,7 @@ describe('The application at the start with a project in a folder', () => {
   it('opens a folder project that was used last when access is granted', async () => {
     const ports = await portsWithAFolderProjectUsedLast()
 
-    renderAppAt(ports, BARE_ADDRESS)
+    renderAppAt(ports, START_ADDRESS)
 
     await expectOpenProject(FOLDER_NAME)
     expect(lockedIds(ports)).toEqual([FOLDER_ID])
@@ -112,7 +112,7 @@ describe('The application at the start with a project in a folder', () => {
     const ports = await portsWithAFolderProjectUsedLast()
     ports.folders.setPermission(FOLDER_ID, 'prompt')
 
-    renderAppAt(ports, BARE_ADDRESS)
+    renderAppAt(ports, START_ADDRESS)
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(NO_PERMISSION_SENTENCE)
@@ -127,7 +127,7 @@ describe('The application at the start with a project in a folder', () => {
 describe('The address that the application follows', () => {
   it('gives each mount on injected ports its own address', async () => {
     const first = createTestPorts({ durable: true })
-    renderAppAt(first, BARE_ADDRESS)
+    renderAppAt(first, START_ADDRESS)
     await expectOpenProject(NEW_PROJECT_NAME)
     await editTheProject()
     await waitFor(async () => expect(await storedIds(first)).toHaveLength(1), {
@@ -149,7 +149,7 @@ describe('The address that the application follows', () => {
     })
     await settleForAWhile()
     expect(lockedIds(second)).not.toEqual([firstId])
-    expect(window.location.hash).toBe(BARE_ADDRESS)
+    expect(window.location.hash).toBe(START_ADDRESS)
     expect(window.history.length).toBe(historyLength)
   })
 
@@ -165,10 +165,10 @@ describe('The address that the application follows', () => {
 
   it('two tabs of an empty browser each start their own new project', async () => {
     const ports = createTestPorts({ durable: true })
-    renderAppAt(ports, BARE_ADDRESS)
+    renderAppAt(ports, START_ADDRESS)
     await expectOpenProject(NEW_PROJECT_NAME)
 
-    renderAppAt(secondTab(ports), BARE_ADDRESS)
+    renderAppAt(secondTab(ports), START_ADDRESS)
 
     await waitFor(() => expect(lockedIds(ports)).toHaveLength(2))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()

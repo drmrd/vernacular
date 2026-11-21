@@ -10,10 +10,16 @@ import {
   workspaceRequest,
 } from '../session/handle/handle-test-kit'
 import type { TestPorts } from '../session/handle/handle-test-kit'
-import type { Place } from './address'
 import { lockedIds, plantProject } from './app-test-support'
+import { spiesOnEveryCall } from './history-navigation-test-support'
 import { resolvePlace } from './resolve-place'
-import type { Screen } from './resolve-place'
+import {
+  PROJECTS,
+  START,
+  editorHandleOf,
+  pageAfterFailure,
+  projectPlace,
+} from './resolve-place-test-support'
 
 const CURRENT_ID = 'project-current'
 const CURRENT_NAME = 'Current House'
@@ -21,9 +27,7 @@ const OTHER_ID = 'project-other'
 const OTHER_NAME = 'Other House'
 const MISSING_ID = 'project-missing'
 const EDITED_NAME = 'Edited before the move'
-
-const START: Place = { kind: 'start' }
-const PROJECTS: Place = { kind: 'projects' }
+const STORAGE_MESSAGE = 'The disk went away'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -34,24 +38,6 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
-
-/** The place of the project under `id`. */
-function projectPlace(id: string): Place {
-  return { kind: 'project', id }
-}
-
-/** The handle of a screen that must show the editor. */
-function editorHandleOf(screen: Screen): DocumentHandle {
-  if (screen.kind !== 'editor') {
-    throw new Error(`Expected the editor, got ${JSON.stringify(screen)}`)
-  }
-  return screen.handle
-}
-
-/** The screen of the page that tells why the project under `id` did not open. */
-function pageAfterFailure(id: string, failure: unknown) {
-  return { kind: 'projects', notice: { id, failure } }
-}
 
 interface OpenProject {
   readonly ports: TestPorts
@@ -70,20 +56,6 @@ async function withCurrentProjectOpen(): Promise<OpenProject> {
   await settle()
   log.length = 0
   return { ports, log, current }
-}
-
-/** Spies on every call that reads, writes, locks, or asks the index. */
-function spiesOnEveryCall(ports: TestPorts) {
-  return [
-    vi.spyOn(ports.workspace, 'read'),
-    vi.spyOn(ports.workspace, 'list'),
-    vi.spyOn(ports.workspace, 'save'),
-    vi.spyOn(ports.index, 'get'),
-    vi.spyOn(ports.index, 'all'),
-    vi.spyOn(ports.index, 'put'),
-    vi.spyOn(ports.locks, 'tryAcquire'),
-    vi.spyOn(ports.folders, 'reopen'),
-  ]
 }
 
 describe('an address with a project open', () => {
@@ -143,6 +115,18 @@ describe('an address with a project open', () => {
     expect(lockedIds(ports)).toEqual([CURRENT_ID])
     expect(current.saveStatus()).toBe('error')
     expect(current.session.getProject().meta.name).toBe(EDITED_NAME)
+  })
+
+  it('shows the page with the notice of unavailable storage instead of rejecting when the switch throws', async () => {
+    const { ports, current } = await withCurrentProjectOpen()
+    vi.spyOn(current, 'flush').mockRejectedValue(new Error(STORAGE_MESSAGE))
+
+    const screen = await resolvePlace(ports, projectPlace(OTHER_ID), current)
+
+    expect(screen).toStrictEqual(
+      pageAfterFailure(OTHER_ID, { kind: 'storage-unavailable', message: STORAGE_MESSAGE }),
+    )
+    expect(lockedIds(ports)).toEqual([CURRENT_ID])
   })
 
   it('saves an unsaved edit of the current project before the other project opens', async () => {

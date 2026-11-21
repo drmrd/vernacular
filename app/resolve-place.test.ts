@@ -14,7 +14,6 @@ import {
   documentNamed,
   folderRecord,
 } from '../session/projects/rebuild-test-kit'
-import type { Place } from './address'
 import {
   FAILED_ID,
   NEW_PROJECT_NAME,
@@ -26,11 +25,17 @@ import {
   storedIds,
   usedLast,
 } from './app-test-support'
+import { spiesOnEveryCall } from './history-navigation-test-support'
 import { resolvePlace } from './resolve-place'
 import type { Screen } from './resolve-place'
+import {
+  PROJECTS,
+  START,
+  editorHandleOf,
+  pageAfterFailure,
+  projectPlace,
+} from './resolve-place-test-support'
 
-const START: Place = { kind: 'start' }
-const PROJECTS: Place = { kind: 'projects' }
 const FOLDER_ID = 'project-folder'
 const FOLDER_PROJECT_NAME = 'Kept in a folder'
 
@@ -47,23 +52,11 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-/** The place of the project under `id`. */
-function projectPlace(id: string): Place {
-  return { kind: 'project', id }
-}
-
-/** The handle of a screen that must show the editor. */
-function editorHandleOf(screen: Screen): DocumentHandle {
-  if (screen.kind !== 'editor') {
-    throw new Error(`Expected the editor, got ${JSON.stringify(screen)}`)
-  }
-  opened.push(screen.handle)
-  return screen.handle
-}
-
-/** The screen of the page that tells why the project under `id` did not open. */
-function pageAfterFailure(id: string, failure: unknown) {
-  return { kind: 'projects', notice: { id, failure } }
+/** The handle of a screen that must show the editor, which the end of the test closes. */
+function openedHandleOf(screen: Screen): DocumentHandle {
+  const handle = editorHandleOf(screen)
+  opened.push(handle)
+  return handle
 }
 
 /** Ports whose store holds two projects and whose index holds a record of each. */
@@ -89,7 +82,7 @@ describe('the start address', () => {
     const ports = await portsWithTwoProjects()
     await usedLast(ports, 'project-old')
 
-    const handle = editorHandleOf(await resolvePlace(ports, START))
+    const handle = openedHandleOf(await resolvePlace(ports, START))
 
     expect(handle.id).toBe('project-old')
     expect(handle.session.getProject().meta.name).toBe('Old Cottage')
@@ -99,7 +92,7 @@ describe('the start address', () => {
   it('opens a new project for the start address of an empty browser', async () => {
     const ports = createTestPorts()
 
-    const handle = editorHandleOf(await resolvePlace(ports, START))
+    const handle = openedHandleOf(await resolvePlace(ports, START))
 
     expect(handle.id).toMatch(NEW_PROJECT_ID_PATTERN)
     expect(handle.session.getProject().meta.name).toBe(NEW_PROJECT_NAME)
@@ -111,7 +104,7 @@ describe('a project address', () => {
   it('opens the stored project of a project address', async () => {
     const ports = await portsWithTwoProjects()
 
-    const handle = editorHandleOf(await resolvePlace(ports, projectPlace('project-second')))
+    const handle = openedHandleOf(await resolvePlace(ports, projectPlace('project-second')))
 
     expect(handle.id).toBe('project-second')
     expect(handle.session.getProject().meta.name).toBe('Second House')
@@ -138,16 +131,7 @@ describe('a project address', () => {
 describe('the projects address', () => {
   it('shows the page with no notice for the projects address and reads nothing', async () => {
     const ports = await portsWithTwoProjects()
-    const calls = [
-      vi.spyOn(ports.workspace, 'read'),
-      vi.spyOn(ports.workspace, 'list'),
-      vi.spyOn(ports.workspace, 'save'),
-      vi.spyOn(ports.index, 'get'),
-      vi.spyOn(ports.index, 'all'),
-      vi.spyOn(ports.index, 'put'),
-      vi.spyOn(ports.locks, 'tryAcquire'),
-      vi.spyOn(ports.folders, 'reopen'),
-    ]
+    const calls = spiesOnEveryCall(ports)
 
     const screen = await resolvePlace(ports, PROJECTS)
 
@@ -226,8 +210,8 @@ describe('a project in a folder', () => {
     const byAddress = await portsWithFolderProject()
     const byStart = await portsWithFolderProject()
 
-    const addressed = editorHandleOf(await resolvePlace(byAddress, projectPlace(FOLDER_ID)))
-    const started = editorHandleOf(await resolvePlace(byStart, START))
+    const addressed = openedHandleOf(await resolvePlace(byAddress, projectPlace(FOLDER_ID)))
+    const started = openedHandleOf(await resolvePlace(byStart, START))
 
     for (const handle of [addressed, started]) {
       expect(handle.id).toBe(FOLDER_ID)

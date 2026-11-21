@@ -10,12 +10,19 @@ import {
   storedName,
 } from '../session/handle/handle-test-kit'
 import { documentNamed, folderRecord } from '../session/projects/rebuild-test-kit'
+import { START_ADDRESS } from './address'
 import { createMemoryAddressBar } from './address-bar'
 import { lockedIds, plantProject } from './app-test-support'
 import {
+  FIRST_ADDRESS,
   FIRST_ID,
+  FOLDER_ID,
+  FOLDER_NAME,
+  MISSING_ADDRESS,
   MISSING_ID,
+  NOT_FOUND,
   PROJECTS_ADDRESS,
+  SECOND_ADDRESS,
   SECOND_ID,
   THIRD_ID,
   addressOf,
@@ -41,14 +48,8 @@ vi.mock('./resolve-place', async (importOriginal) => {
   return { ...original, resolvePlace: vi.fn(original.resolvePlace) }
 })
 
-const FIRST_ADDRESS = addressOf(FIRST_ID)
-const SECOND_ADDRESS = addressOf(SECOND_ID)
 const THIRD_ADDRESS = addressOf(THIRD_ID)
-const MISSING_ADDRESS = addressOf(MISSING_ID)
-const NOT_FOUND = { kind: 'not-found' }
 const EDITED_NAME = 'Edited before the move'
-const FOLDER_ID = 'project-folder'
-const FOLDER_NAME = 'Kept in a folder'
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -134,6 +135,18 @@ describe('a move through the history with a project open', () => {
     expect(result.current.screen).toEqual({ kind: 'editor', handle })
     expect(resolvePlace).not.toHaveBeenCalled()
     for (const call of calls) expect(call).not.toHaveBeenCalled()
+  })
+
+  it('puts the bare address back when a move leads to an address that is not exact, over a new project', async () => {
+    const bar = createMemoryAddressBar()
+    const { result } = renderNavigation(createTestPorts({ durable: true }), bar)
+    const handle = await editorOf(result)
+
+    await visit(bar, '#/project/../x')
+
+    await waitFor(() => expect(bar.hash()).toBe(START_ADDRESS))
+    expect(bar.entries()).toEqual([START_ADDRESS, START_ADDRESS])
+    expect(result.current.handle).toBe(handle)
   })
 
   it('leaves the project open and shows the notice when a move leads to a project that does not open', async () => {

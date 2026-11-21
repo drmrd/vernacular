@@ -5,8 +5,13 @@ import { documentNamed, folderRecord } from '../session/projects/rebuild-test-ki
 import { createMemoryAddressBar } from './address-bar'
 import { plantProject } from './app-test-support'
 import {
+  FIRST_ADDRESS,
   FIRST_ID,
+  FOLDER_ID,
+  FOLDER_NAME,
+  MISSING_ADDRESS,
   MISSING_ID,
+  NOT_FOUND,
   addressOf,
   atTheFirstProject,
   durablePortsWith,
@@ -17,12 +22,6 @@ import {
   renderNavigation,
   visit,
 } from './history-navigation-test-support'
-
-const FIRST_ADDRESS = addressOf(FIRST_ID)
-const MISSING_ADDRESS = addressOf(MISSING_ID)
-const NOT_FOUND = { kind: 'not-found' }
-const FOLDER_ID = 'project-folder'
-const FOLDER_NAME = 'Kept in a folder'
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)

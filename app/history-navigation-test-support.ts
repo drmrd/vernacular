@@ -14,17 +14,25 @@ import { addressFor } from './address'
 import { createMemoryAddressBar } from './address-bar'
 import type { AddressBar, MemoryAddressBar } from './address-bar'
 import { plantProject, usedLast } from './app-test-support'
-import type { Screen } from './resolve-place'
+import type { PageScreen } from './resolve-place'
 import { useHistoryNavigation } from './use-history-navigation'
 import type { HistoryNavigation } from './use-history-navigation'
 import type { Flow } from './use-open-project'
 
 /** Test support: renders the history navigation over ports in memory and follows what it shows. */
 
+/** The id of the project that the ports hold and that was used last. */
 export const FIRST_ID = 'project-first'
+/** The id of a second project that the ports hold. */
 export const SECOND_ID = 'project-second'
+/** The id of a third project that the ports hold. */
 export const THIRD_ID = 'project-third'
+/** An id that no project of the ports has. */
 export const MISSING_ID = 'project-missing'
+/** The id of a project that a folder holds. */
+export const FOLDER_ID = 'project-folder'
+/** The name of the project that a folder holds. */
+export const FOLDER_NAME = 'Kept in a folder'
 
 /** The fragment of the address of the project under `id`. */
 export function addressOf(id: string): string {
@@ -33,6 +41,15 @@ export function addressOf(id: string): string {
 
 /** The fragment of the address of the Projects page. */
 export const PROJECTS_ADDRESS = addressFor({ kind: 'projects' })
+
+/** The fragment of the address of the first project. */
+export const FIRST_ADDRESS = addressOf(FIRST_ID)
+/** The fragment of the address of the second project. */
+export const SECOND_ADDRESS = addressOf(SECOND_ID)
+/** The fragment of the address of the project that does not exist. */
+export const MISSING_ADDRESS = addressOf(MISSING_ID)
+/** What a switch reports for an id that no project has. */
+export const NOT_FOUND = { kind: 'not-found' }
 
 /** The name that `durablePortsWith` gives the project under `id`. */
 export function nameOf(id: string): string {
@@ -63,7 +80,7 @@ export function spiesOnEveryCall(ports: TestPorts) {
   ]
 }
 
-export interface NavigationProps {
+interface NavigationProps {
   readonly ports: SessionPorts | null
 }
 
@@ -110,9 +127,6 @@ export function editorOf(result: NavigationResult): Promise<DocumentHandle> {
     return screen.handle
   })
 }
-
-/** The screen of the Projects page. */
-export type PageScreen = Extract<Screen, { readonly kind: 'projects' }>
 
 /** Waits for the Projects page, and gives its screen. */
 export function pageOf(result: NavigationResult): Promise<PageScreen> {
@@ -167,11 +181,11 @@ export function startFlow<Refusal>(
   result: NavigationResult,
   flow: Flow<Refusal>,
 ): Promise<FlowResult<Refusal> | undefined> {
-  const running: Array<Promise<FlowResult<Refusal> | undefined>> = []
+  let running!: Promise<FlowResult<Refusal> | undefined>
   act(() => {
-    running.push(result.current.runFlow(flow))
+    running = result.current.runFlow(flow)
   })
-  return Promise.all(running).then(([outcome]) => outcome)
+  return running
 }
 
 /** Runs a flow through the navigation inside `act`, and gives what `runFlow` resolved with. */

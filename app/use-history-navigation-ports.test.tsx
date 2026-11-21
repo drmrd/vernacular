@@ -11,9 +11,9 @@ import {
   storedIds,
 } from './app-test-support'
 import {
+  FIRST_ADDRESS,
   FIRST_ID,
   SECOND_ID,
-  addressOf,
   durablePortsWith,
   editorOf,
   nameOf,
@@ -21,8 +21,6 @@ import {
   renderNavigation,
 } from './history-navigation-test-support'
 import { holdIndexReads } from './held-index-test-support'
-
-const FIRST_ADDRESS = addressOf(FIRST_ID)
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)
