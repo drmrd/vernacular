@@ -94,13 +94,17 @@ interface CrashRecoveryContext {
   offered: WeakSet<DocumentHandle> | undefined
 }
 
-/** Offers a recovery only while the snapshots still hold a copy that can be restored. */
+/**
+ * Offers a recovery only while the snapshots still hold a copy that can be restored. An answer
+ * that arrives after the open project changed does nothing.
+ */
 async function dismissUnlessRecoverable(
   snapshots: ProjectSnapshots,
   dismiss: () => void,
+  isLive: () => boolean,
 ): Promise<void> {
   try {
-    if (!(await snapshots.isRecoverable())) {
+    if (!(await snapshots.isRecoverable()) && isLive()) {
       dismiss()
     }
   } catch (error) {
@@ -138,7 +142,7 @@ function buildRecovery(context: RecoveryHandlersContext): Recovery {
           }
           notify(result, { action: 'Restore' })
           if (result.failure.kind === 'did-not-restore') {
-            await dismissUnlessRecoverable(snapshots, dismiss)
+            await dismissUnlessRecoverable(snapshots, dismiss, isLive)
           }
         },
       }),
