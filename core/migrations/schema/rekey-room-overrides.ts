@@ -14,7 +14,9 @@ const DASH_ERA_SEPARATOR = '-'
  * overrides the room lookup can no longer find. This migration recovers them by
  * segmenting each stored key against the document's wall ids, then re-joining the
  * segments the way `roomKey` does. A key that does not segment matches no wall and
- * is left untouched, so no user data is dropped. The orchestrator advances
+ * is left untouched. When a dash-era key and a key already in the current form name
+ * the same room, the current-form key wins in any key order and the dash override is
+ * dropped. The orchestrator advances
  * `meta.schemaVersion`, so the migration must not.
  */
 export const rekeyRoomOverridesMigration: SchemaMigration = {
@@ -28,7 +30,10 @@ export const rekeyRoomOverridesMigration: SchemaMigration = {
     let rewroteAnyKey = false
     for (const [storedKey, override] of Object.entries(overrides)) {
       const resolvedKey = roomKeyFor(storedKey, wallIds)
-      if (resolvedKey !== storedKey) rewroteAnyKey = true
+      if (resolvedKey !== storedKey) {
+        rewroteAnyKey = true
+        if (Object.hasOwn(overrides, resolvedKey)) continue
+      }
       rekeyed[resolvedKey] = override
     }
     return rewroteAnyKey ? { ...project, roomOverrides: rekeyed } : project
