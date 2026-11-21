@@ -11,10 +11,7 @@ export interface ProjectSnapshots {
   isRecoverable(): Promise<boolean>
   /** The codec's verdict on the newest snapshot; undefined when none exists. */
   restore(): Promise<DecodeResult | undefined>
-  /**
-   * Moves each rolling snapshot that does not decode to the project's backups: it writes the
-   * bytes there first, then removes the snapshot. Resolves with the count moved.
-   */
+  /** Moves each rolling snapshot that does not decode to the backups; resolves with the count. */
   setAsideRefused(): Promise<number>
 }
 

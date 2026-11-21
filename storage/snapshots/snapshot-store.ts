@@ -75,11 +75,7 @@ export class SnapshotStore {
     return bytes === undefined ? undefined : decodeDocument(bytes, this.codec)
   }
 
-  /**
-   * Moves each rolling snapshot that does not decode to the project's backups, writing the bytes
-   * there before the snapshot is removed. The session-start snapshot and a snapshot that decodes
-   * stay. Resolves with the count moved; a failed backup write rejects and keeps that snapshot.
-   */
+  /** Moves each rolling snapshot that does not decode to the backups; resolves with the count. */
   async setAsideRefused(): Promise<number> {
     const names = await this.rollingSnapshotNames()
     return setAsideRefusedSnapshots(
