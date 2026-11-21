@@ -43,9 +43,10 @@ interface PointerSelectionDeps {
 }
 
 // Picks the entity under the release point and writes the shared selection: a modifier
-// click toggles, a plain click selects, and a click on empty space clears. A pick that
-// lands on a paintable surface (a room floor today) also targets that surface, so the
-// active paint target stays consistent across the 2D plan and the 3D model (ADR-0056).
+// click toggles, a plain click selects, and a click on empty space clears. A click
+// paints the wall face or floor the pointer hits, so the active paint target stays
+// consistent across the 2D plan and the 3D model (ADR-0056). A pick with no surface
+// clears the perceived-color readout.
 export function commitSelectionAt(event: PointerEvent, deps: PointerSelectionDeps): void {
   const { domElement, camera, raycaster, root, selection, surfaceSelection, perceivedColor } = deps
   const rect = domElement.getBoundingClientRect()
