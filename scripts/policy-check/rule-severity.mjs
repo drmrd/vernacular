@@ -22,6 +22,7 @@ export const RULE_SEVERITY = Object.freeze({
   'red-passes-before-green': 'fail',
   'red-fails-at-green': 'fail',
   'uncovered-added-line': 'fail',
+  'uncovered-guard-line': 'warn',
   'mixed-red-passes-before-green': 'warn',
   'mixed-uncovered-added-line': 'warn',
   'surviving-mutant': 'warn',

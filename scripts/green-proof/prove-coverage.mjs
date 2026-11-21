@@ -5,6 +5,7 @@
 import { join } from 'node:path'
 import { parseUnifiedDiff } from '../policy-check/git-input.mjs'
 import { parseLcov, splitByCoverage, uncoveredLineFindings } from './coverage.mjs'
+import { splitGuardLines } from './guard-block.mjs'
 import { isProofSource, parseRemovedLines, provableAddedLines } from './diff-lines.mjs'
 import { GENERATED_FOLDER, LCOV_FILE } from './vitest-worktree.mjs'
 
@@ -98,5 +99,10 @@ export function checkCoverage(lines, { sha, root, mixed }, files) {
     unrecorded.length === 0
       ? []
       : [`no coverage record (excluded from coverage): ${unrecorded.join(', ')}`]
-  return { findings: uncoveredLineFindings(uncovered, sha, rule), notes }
+  const { guard, other } = splitGuardLines(uncovered, (file) => files.readFile(join(root, file)))
+  const findings = [
+    ...uncoveredLineFindings(other, sha, rule),
+    ...uncoveredLineFindings(guard, sha, 'uncovered-guard-line'),
+  ]
+  return { findings, notes }
 }
