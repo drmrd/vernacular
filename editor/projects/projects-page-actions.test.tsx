@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   acceptsRename,
@@ -80,6 +80,29 @@ describe('the rename form of a card', () => {
 
     await waitFor(() => expect(onRename).toHaveBeenCalledOnce())
     expect(formOf(HUBBARD)).toHaveValue(NEW_NAME)
+  })
+
+  it('keeps the form of another card open, with its typed text and its focus, when an earlier save resolves true', async () => {
+    let finishSave: (saved: boolean) => void = () => undefined
+    const slowFirstSave = acceptsRename()
+    slowFirstSave.mockImplementationOnce(
+      () => new Promise<boolean>((resolve) => (finishSave = resolve)),
+    )
+    const { user } = renderRenamingPage([hubbard, queenAnne], slowFirstSave)
+    await user.click(actionsControlOf(HUBBARD))
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }))
+    await user.clear(screen.getByRole('textbox', { name: 'Project name' }))
+    await user.type(screen.getByRole('textbox', { name: 'Project name' }), NEW_NAME)
+    await user.click(screen.getByRole('button', { name: 'Save name' }))
+    await user.click(actionsControlOf(QUEEN_ANNE))
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }))
+    await user.type(screen.getByRole('textbox', { name: 'Project name' }), ' Annex')
+
+    await act(async () => finishSave(true))
+
+    const form = formOf(QUEEN_ANNE)
+    expect(form).toHaveValue(`${QUEEN_ANNE} Annex`)
+    expect(form).toHaveFocus()
   })
 
   it('closes on Cancel, calls nothing, and focuses the "..." control', async () => {
