@@ -33,9 +33,11 @@ const NAVIGATION_EVENTS = ['popstate', 'hashchange'] as const
 
 /** The address bar of a window: its location fragment and its history entries. */
 export function createBrowserAddressBar(view: Window): AddressBar {
+  // A full URL, so a path that starts with two slashes is not read as another origin.
   const urlWith = (fragment: string): string => {
-    const { pathname, search } = view.location
-    return pathname + search + fragment
+    const url = new URL(view.location.href)
+    url.hash = fragment
+    return url.href
   }
   return {
     hash: () => view.location.hash,
