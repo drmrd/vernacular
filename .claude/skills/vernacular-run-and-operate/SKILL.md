@@ -1,6 +1,6 @@
 ---
 name: vernacular-run-and-operate
-description: 'Use when running or serving Vernacular locally or operating its machinery. Triggers: pnpm dev, preview, storybook, ports 5173/4173/6006/6107, the ?fixture=scene-harness deterministic 3D harness, data-harness-ready capture gating, scene or story baseline rendering, vernacular.json or .building project files, artifact dirs (dist, coverage, playwright-report, .lighthouseci), service worker or PWA behavior, or cutting a release with release-please (release PR, Release-As, ci-complete gate).'
+description: 'Use when running or serving the app locally: pnpm dev, preview, storybook (ports 5173/4173/6006/6107), ?fixture=scene-harness and data-harness-ready, vernacular.json and .building files, build artifacts, service worker, release-please releases (Release-As, ci-complete).'
 ---
 
 # Running and operating Vernacular

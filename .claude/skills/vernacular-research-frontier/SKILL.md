@@ -1,6 +1,6 @@
 ---
 name: vernacular-research-frontier
-description: 'Use when asking where Vernacular can advance the state of the art, scoping or prioritizing a research direction, drafting novelty or differentiation claims, or choosing the next frontier slice. Triggers: research frontier, novelty, state of the art, period-accurate construction, construction profiles, browser daylighting, color-accuracy gate, open interchange, VFPF, ifcJSON, IFC, derived geometry, DCEL, curved walls, what makes this project different.'
+description: 'Use when scoping where Vernacular can advance the state of the art: novelty claims, period-accurate construction profiles, browser daylighting, color-accuracy gate, open interchange (VFPF, ifcJSON, IFC), derived geometry (DCEL), curved walls.'
 ---
 
 # Vernacular research frontier

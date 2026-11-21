@@ -1,6 +1,6 @@
 ---
 name: vernacular-domain-reference
-description: Use when working on Vernacular geometry, units, light, or file format questions. Triggers - wall topology, room derivation, hole rings, millimetre units, unit conversion, y-up plan, plan-to-world mapping, winding, tone mapping, PBR Neutral, AgX, OKLab, NOAA solar position, sky dome, spherical harmonics, GTAO ambient occlusion, vernacular.json, .building archive, schema version, migration ladder, registries, construction profiles, and period terms such as sash, muntin, transom, reveal.
+description: 'Use for geometry, units, light, and file format facts: wall topology, room derivation, millimetres, y-up plan-to-world mapping, tone mapping, solar position, sky and AO, vernacular.json, .building archive, schema migrations, construction profiles, period terms (sash, muntin, transom).'
 ---
 
 # Vernacular domain reference

@@ -1,6 +1,6 @@
 ---
 name: vernacular-validation-and-qa
-description: 'Use when validating a Vernacular change: deciding what evidence must pass before merge, reading ci-complete or a skipped CI job, adding or running tests at any tier (vitest unit or storybook projects, playwright e2e, scene-webgl GPU harness, story visuals, tests/ architecture and format suites), refreshing app, scene, or story screenshot baselines, diagnosing a self-skipped spec or missing-snapshot failure, the journey-coverage gate, snapshot tolerances, or test-quality rules.'
+description: 'Use when deciding what evidence a change needs before merge: ci-complete and skipped CI jobs, every test tier (vitest, playwright e2e, scene-webgl, story visuals), refreshing screenshot baselines, self-skipped specs, the journey-coverage gate, snapshot tolerances.'
 ---
 
 # Vernacular validation and QA

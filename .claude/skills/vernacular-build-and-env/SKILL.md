@@ -1,6 +1,6 @@
 ---
 name: vernacular-build-and-env
-description: 'Use when setting up a Vernacular dev environment from scratch, creating a git worktree, or hitting environment failures. Symptoms: pnpm install blocked by the 30-day cooldown (minimum-release-age), a vite.config.ts edit that pnpm dev ignores (stale emitted vite.config.js), tsc -b not re-emitting (stale .tsbuildinfo), baseline mismatches across darwin, linux, arm64, amd64, scene-webgl GPU flags, or Playwright routing every spec into scene-webgl.'
+description: 'Use when setting up a dev environment or worktree, or on environment failures: pnpm install blocked by the cooldown (minimum-release-age), a stale vite.config.js or .tsbuildinfo, baseline mismatches across darwin/linux/arm64/amd64, scene-webgl GPU flags.'
 ---
 
 # Vernacular build and environment

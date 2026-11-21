@@ -1,6 +1,6 @@
 ---
 name: vernacular-debugging-playbook
-description: Use when triaging a Vernacular failure symptom, z-fighting flicker where 3D surfaces meet, a screenshot baseline diff failing, the live 3D preview missing content the harness renders, a blank or tiny 3D canvas, a test flaking under full-suite load, OPFS storage silently becoming IndexedDB, vite or vitest config edits not taking effect, pnpm test not filtering, piped commands hiding exit codes, every e2e spec routing into scene-webgl, or pnpm knowledge:index aborting on an ADR status.
+description: 'Use when triaging a failure symptom: z-fighting, baseline diff failures, live 3D preview missing content the harness renders, a blank canvas, load-only flakes, OPFS falling back to IndexedDB, config edits ignored, pnpm test not filtering, hidden exit codes, knowledge:index aborting.'
 ---
 
 # Vernacular debugging playbook

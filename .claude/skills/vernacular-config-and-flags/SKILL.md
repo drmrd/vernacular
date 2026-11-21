@@ -1,6 +1,6 @@
 ---
 name: vernacular-config-and-flags
-description: 'Use when locating, changing, or adding a Vernacular configuration axis: URL query params (fixture=scene-harness, temp, paint, scene, e2e, e2e-storage), import.meta.env PROD/DEV gates, localStorage/IndexedDB/OPFS keys, ci-coupling.json, CI labels and slash commands (run:e2e, run:visual, ci:full, ci:skip-heavy), screenshot diff tolerances, Stryker or Lighthouse thresholds, .npmrc cooldown, release-please knobs, Playwright env vars (CI, E2E_PORT, E2E_BASE_URL, PLAYWRIGHT_VERSION).'
+description: 'Use when finding or adding a configuration axis: URL query params (fixture=scene-harness, e2e, e2e-storage), import.meta.env gates, storage keys, ci-coupling.json, CI labels, screenshot tolerances, Stryker or Lighthouse thresholds, .npmrc cooldown, Playwright env vars.'
 ---
 
 # Vernacular configuration and flags

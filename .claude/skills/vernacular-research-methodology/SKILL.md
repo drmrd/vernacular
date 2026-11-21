@@ -1,6 +1,6 @@
 ---
 name: vernacular-research-methodology
-description: Use when turning a hunch, bug report, or feature idea into an accepted result in this repo. Triggers, judging whether evidence proves a mechanism, writing a root cause or postmortem, capturing raw observations, preparing a brainstorm or decision, scoping a spec or plan, parking or deferring an idea, or setting tolerances and budgets before an experiment. Keywords, hypothesis, evidence bar, negative observation, postmortem, triage, deferral, tracking issue, retire or resurrect.
+description: 'Use when turning a hunch, bug report, or idea into an accepted result: evidence bars, root causes and postmortems, raw observations, brainstorm and spec scoping, deferring ideas with tracking issues, setting tolerances before an experiment.'
 ---
 
 # Vernacular research methodology

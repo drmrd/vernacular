@@ -1,6 +1,6 @@
 ---
 name: vernacular-parallel-delivery
-description: Use when running two or more red-green-blue lanes at once. Triggers include creating or naming a git worktree for a parallel slice, writing a file-scope fence for a concurrent agent, assigning ADR numbers to parallel branches, choosing merge order for sibling slices, rebasing a lane after main moved, refreshing visual baselines during an integration, or a multi-branch integration failing pnpm rgb:audit. Keywords, worktree, lane, scope fence, ADR collision, cherry-pick rebuild, merge order.
+description: 'Use when running two or more red-green-blue lanes at once: worktree naming, file-scope fences, ADR number assignment, merge order, rebasing a lane after main moved, baseline refreshes during integration, pnpm rgb:audit failing on a multi-branch integration.'
 ---
 
 # Parallel delivery: worktrees, lanes, and integration

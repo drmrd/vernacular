@@ -1,6 +1,6 @@
 ---
 name: vernacular-architecture-contract
-description: 'Use when deciding where new code lives in the Vernacular layer stack (core, storage, engine, bridge, editor, app), when a boundaries/dependencies lint error fires, or when a change touches undo/redo, scene assembly, the live-view reconciler, schema versions, registries, asset references, or the .building format. Keywords: six-layer DAG, eslint-plugin-boundaries, dispatch(command), scene graph, framed-scene reconciler, WebGPU gate, finishId, y-up, ADR, layer boundaries, Three.js imports.'
+description: 'Use when deciding which layer new code belongs in (core, storage, session, engine, bridge, editor, app), on a boundaries/dependencies lint error, or when touching dispatch(command), undo/redo, scene assembly, the reconciler, schemas, or asset references.'
 ---
 
 # Vernacular architecture contract
