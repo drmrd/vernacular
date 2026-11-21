@@ -879,8 +879,15 @@ it('writes a Vitest config that includes only the RED test files')
 string }): Finding[]`, one per mutant with `status === 'Survived'` in `files[<path>].mutants`
 (path made relative to `root` if absolute): `{ rule: 'surviving-mutant', sha, file, line:
 location.start.line, message: '<mutatorName> mutant survives the RED tests: <replacement>' }`.
-`Killed`, `Timeout`, `NoCoverage`, `CompileError`, `RuntimeError`, `Ignored` give nothing.
-Text that is not JSON throws.
+`Killed`, `Timeout`, `CompileError`, `RuntimeError`, `Ignored`, `Pending` give nothing.
+A `NoCoverage` mutant also gives a `surviving-mutant` finding, with the message
+`'<mutatorName> mutant runs no RED test: <replacement>'`: it sits on a covered added line, so it
+shows the same test gap. When a reported mutant has no `replacement`, the message ends after
+`RED tests` or `RED test` with no `: ` suffix. A malformed report throws an `Error` whose message
+starts with `Stryker report: `: text that is not JSON, JSON that is not an object, a `files` value
+that is not a plain object (an array included), a file entry whose `mutants` is not an array, a
+mutant that is not an object, or a reported mutant whose `location.start.line` is not a positive
+integer. Cycle 16 catches the throw and reports `mutation-run-failed` for the group.
 
 - [ ] **Step 1: Write the failing tests**
 

@@ -85,16 +85,16 @@ Files out of scope for checks 3 and 4: files that are not JavaScript or TypeScri
 
 The severities live in the shared table `scripts/policy-check/rule-severity.mjs`.
 
-| Rule                            | Severity | When                                                                |
-| ------------------------------- | -------- | ------------------------------------------------------------------- |
-| `red-passes-before-green`       | fail     | The RED unit tests pass and type-check at the parent (check 1).     |
-| `red-fails-at-green`            | fail     | A RED unit test does not pass at the GREEN commit (check 2).        |
-| `uncovered-added-line`          | fail     | The RED tests do not run an executable added line (check 3).        |
-| `uncovered-guard-line`          | warning  | The same, for a line inside the direct-invocation block (check 3).  |
-| `mixed-red-passes-before-green` | warning  | Check 1 fails for a mixed set.                                      |
-| `mixed-uncovered-added-line`    | warning  | Check 3 fails for a mixed set, outside the direct-invocation block. |
-| `surviving-mutant`              | warning  | A mutant on an added line survives the RED tests (check 4).         |
-| `mutation-run-failed`           | warning  | Stryker exits nonzero for a group of mutants (check 4).             |
+| Rule                            | Severity | When                                                                             |
+| ------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| `red-passes-before-green`       | fail     | The RED unit tests pass and type-check at the parent (check 1).                  |
+| `red-fails-at-green`            | fail     | A RED unit test does not pass at the GREEN commit (check 2).                     |
+| `uncovered-added-line`          | fail     | The RED tests do not run an executable added line (check 3).                     |
+| `uncovered-guard-line`          | warning  | The same, for a line inside the direct-invocation block (check 3).               |
+| `mixed-red-passes-before-green` | warning  | Check 1 fails for a mixed set.                                                   |
+| `mixed-uncovered-added-line`    | warning  | Check 3 fails for a mixed set, outside the direct-invocation block.              |
+| `surviving-mutant`              | warning  | A mutant on an added line survives the RED tests or runs none of them (check 4). |
+| `mutation-run-failed`           | warning  | Stryker exits nonzero for a group of mutants (check 4).                          |
 
 A GREEN commit that the mutation budget did not reach gets the note `mutation check not reached: the time budget was spent`. A note is not a finding. It has no severity and no annotation, and it never changes the exit code.
 
