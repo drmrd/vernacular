@@ -1,11 +1,10 @@
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TestPorts } from '../session/handle/handle-test-kit'
 import {
   NEW_PROJECT_NAME,
   backToTheProject,
-  editTheProject,
   expectOpenProject,
   findCardLink,
   findThePageAlert,
@@ -16,7 +15,6 @@ import {
   renderAppAt,
   settleForAWhile,
   startNewProjectFromThePage,
-  stubCapableStorage,
 } from './app-test-support'
 import {
   FIRST_ID,
@@ -28,41 +26,24 @@ import {
   nameOf,
   visit,
 } from './history-navigation-test-support'
+import {
+  addAFloor,
+  changeVisibilityTo,
+  openFirstProject,
+  releaseAfterTheTest,
+  setUpProjectsScreenTests,
+} from './projects-screen-test-support'
 
 const NOT_STORED_SENTENCE = 'This project is not stored in this browser.'
 const OPEN_FAILURE_PREFIX = /could not open the project/i
 const FLUSH_WAIT_MS = 300
-const releases: Array<() => void> = []
 
-beforeEach(() => {
-  stubCapableStorage()
-})
-afterEach(() => {
-  for (const release of releases.splice(0)) release()
-  cleanup()
-  vi.useRealTimers()
-  Reflect.deleteProperty(document, 'visibilityState')
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
-})
-
-/** Renders the application at the address of the first project and waits for its editor. */
-async function openFirstProject() {
-  const ports = await durablePortsWith(FIRST_ID, SECOND_ID)
-  const rendered = renderAppAt(ports, addressOf(FIRST_ID))
-  await expectOpenProject(nameOf(FIRST_ID))
-  return { ports, ...rendered }
-}
+setUpProjectsScreenTests()
+afterEach(() => vi.useRealTimers())
 
 /** Keeps every later save of the ports waiting, so that an edit stays unsaved. */
 function holdSaves(ports: TestPorts): void {
-  releases.push(logSaves(ports.workspace).hold())
-}
-
-/** Adds a floor to the open project and waits until the editor shows it. */
-async function addAFloor(): Promise<void> {
-  await editTheProject()
-  await screen.findByRole('button', { name: /2nd floor/i })
+  releaseAfterTheTest(logSaves(ports.workspace).hold())
 }
 
 /**
@@ -87,14 +68,6 @@ function unloadIsVetoed(): boolean {
   const event = new Event('beforeunload', { cancelable: true })
   window.dispatchEvent(event)
   return event.defaultPrevented
-}
-
-/** Makes the tab look hidden, and tells the listeners of the document. */
-function hideTheTab(): void {
-  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
-  act(() => {
-    document.dispatchEvent(new Event('visibilitychange'))
-  })
 }
 
 describe('The Projects page with a notice', () => {
@@ -224,7 +197,7 @@ describe('The unsaved work of a project while the page shows', () => {
     await findTheProjectsPage()
     expect(log.saved).toEqual([])
 
-    hideTheTab()
+    changeVisibilityTo('hidden')
 
     await waitFor(() => expect(log.saved).toEqual([FIRST_ID]), { timeout: FLUSH_WAIT_MS })
   })

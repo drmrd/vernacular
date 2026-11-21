@@ -2,8 +2,9 @@ import { test, expect, type Page } from '@playwright/test'
 import { selectors } from './support'
 
 // A stored project this build cannot open shows the Projects page, with a notice and a card that
-// says the project did not open. Starting a new project from it must store the new one separately: after an edit and a save, a
-// reload opens the new project, and every stored file of the old one is unchanged.
+// says the project did not open. Starting a new project from it must store the new one separately:
+// after an edit and a save, a reload opens the new project, and every stored file of the old one
+// is unchanged.
 // The old project is planted and read through the query-parameter-guarded hook
 // installed by src/e2e-storage-hook.ts.
 

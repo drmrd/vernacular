@@ -1,36 +1,12 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import type { ProjectCardModel } from '../../session'
+import { screen, cleanup, within } from '@testing-library/react'
 import { previewSource } from './card-text'
-import { ProjectsPage, type ProjectsPageProps } from './projects-page'
+import { cardOf, linkNamed, renderPage } from './projects-page-test-support'
 
 afterEach(cleanup)
 
 const CHANGED_AT = '2026-03-04T10:15:00.000Z'
 const STORED_DRAWING = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="4" height="4"/></svg>'
-
-function cardOf(overrides: Partial<ProjectCardModel> = {}): ProjectCardModel {
-  return {
-    id: 'hubbard',
-    name: 'Hubbard House',
-    lastChangedAt: undefined,
-    floorCount: undefined,
-    location: 'browser',
-    preview: 'none',
-    stateLines: [],
-    actions: ['rename', 'export', 'delete'],
-    ...overrides,
-  }
-}
-
-function renderPage(props: Partial<ProjectsPageProps> = {}) {
-  const hrefFor = (id: string) => `#/project/${id}`
-  render(<ProjectsPage cards={[]} hrefFor={hrefFor} {...props} />)
-  return userEvent.setup()
-}
-
-const linkNamed = (name: string) => screen.getByRole('link', { name })
 
 describe('ProjectsPage card menu choices', () => {
   it('calls onCardAction with the id of the card whose menu was used and the chosen action', async () => {

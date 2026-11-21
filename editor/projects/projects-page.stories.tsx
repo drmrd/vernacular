@@ -133,11 +133,13 @@ export const OneCardOfEachKind: Story = {
 export const WithProjectOpenAndNotice: Story = {
   args: {
     openProject: { name: 'Hubbard House', onBack: fn() },
-    notice: 'That project did not open.',
+    notice: 'Could not open the project: The stored file is not a project document.',
   },
   play: async ({ canvasElement }) => {
     const screen = within(canvasElement)
-    await expect(screen.getByRole('alert')).toHaveTextContent('That project did not open.')
+    await expect(screen.getByRole('alert')).toHaveTextContent(
+      'Could not open the project: The stored file is not a project document.',
+    )
     await expect(screen.getByRole('button', { name: 'Back to Hubbard House' })).toBeInTheDocument()
   },
 }
