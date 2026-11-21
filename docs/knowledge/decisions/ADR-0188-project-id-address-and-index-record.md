@@ -89,7 +89,9 @@ the recent-project store holds one entry at most.
 > history, and Back and Forward switch projects with the same switch, which writes the open project
 > first. Until the Projects page exists, `#/projects` shows an interim view that says the list of
 > projects is not available yet. Section 5.3 of the design specification now describes the id, the
-> address, and the record.
+> address, and the record. It no longer says that switching backends is supported, because no
+> flow moves a project between browser storage and a folder today. The section now says that the
+> move is not built yet.
 
 ## Context
 

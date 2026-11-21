@@ -34,8 +34,8 @@ Where things happen:
   why a project did not open, or that the list is not available yet, and offers a way out. While
   it shows over an open project, the editor is not mounted, and `App` keeps the guards of unsaved
   work mounted for that project. `App` also remembers the handles whose recovered work it offered,
-  so each open handle offers it once: a return from the page does not offer it again, and a
-  reload does.
+  so each open handle offers it once. A return from the page does not offer it again. A reload
+  offers it again until the next save, because each save removes the recovery snapshots.
 - `use-open-project.ts` is the one owner of the open project. It holds the one open document
   handle, runs the start, and runs one flow at a time through `runFlow`, which resolves `undefined`
   while the start or another flow runs. It closes the handle when its effects are cleaned up.
