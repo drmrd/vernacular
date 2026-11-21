@@ -24,6 +24,10 @@ sourceFiles:
     editor/plan/activation-keys.ts,
     editor/plan/entity-proxy.tsx,
     editor/plan/use-plan-authoring.ts,
+    editor/plan/use-plan-authoring-focused-button-enter.test.tsx,
+    editor/plan/keyboard-guard.ts,
+    editor/plan/use-wall-keyboard.ts,
+    editor/plan/use-plan-interaction-focused-button-enter.test.tsx,
     editor/plan/use-plan-interaction.ts,
     editor/plan/use-plan-authoring-handled-keys.test.tsx,
     editor/plan/use-plan-interaction-handled-keys.test.tsx,
@@ -319,7 +323,8 @@ too. Issue #910 asks what it should do.
 
 One path of the same kind stays open. A focused button other than the chip of the armed tool does not
 own Enter. Under an authoring tool its Enter drops at the keyboard candidate, and the button does not
-activate. Issue #911 tracks it. Enter on the chip of the armed tool drops at the candidate by design.
+activate. Issue #911 tracks it. Enter on the chip of the armed tool drops at the candidate by
+design. The update of 2026-11-21 below closes issue #911.
 
 Tests: `editor/plan/use-plan-authoring-handled-keys.test.tsx` and
 `editor/plan/use-plan-interaction-handled-keys.test.tsx` go through the real listeners, the real
@@ -424,3 +429,34 @@ use that guard but act on other keys. The three rename fields and the angle form
 `editor/plan/selection-transform-panel.tsx`, an `input type="number"` that commits through its
 form's submit, commit by form submit. Whether a browser submits such a form on a composing Enter
 was not checked.
+
+## Update (2026-11-21): a focused button owns Enter while a tool is armed
+
+Issue #911 is decided. While an authoring tool is armed, every focused button owns Enter and
+activates on it. Enter on the Furniture button no longer drops a wall vertex, and Enter on the
+Underlay button no longer places a door. An open pointer wall run also stays open: the Enter
+activates the button and does not end the run.
+
+There is one exception. The chip of the armed tool keeps Enter for the tool. It is the checked
+`role="radio"` button inside the radiogroup labelled "Tools", so Enter on it still drops at the
+keyboard candidate or ends the run. The chip of any other tool is an ordinary button and owns Enter.
+So is a checked radio of another group, such as the "All" chip of the Edit layer group.
+
+The code lives in three places. `buttonOwnsEnter(target, key)` in `editor/plan/keyboard-guard.ts`
+returns true for Enter on a focused `<button>`, unless that button is the chip of the armed tool.
+The `listenForAuthoringKeys` listener in `editor/plan/use-plan-authoring.ts` returns early when
+`isTextEntry(event.target)` or `buttonOwnsEnter(event.target, event.key)` is true. The window
+listener of `useWallKeyboard` in `editor/plan/use-wall-keyboard.ts`, which ends, undoes, or cancels
+a pointer wall run, makes the same `buttonOwnsEnter` check. Escape and the other keys are
+unchanged, so a button still does not block cancelling a wall run.
+
+Tests: `editor/plan/use-plan-authoring-focused-button-enter.test.tsx` goes through the real
+authoring listener. It covers a plain button under the wall tool and under an opening tool, the
+armed chip that still drops a vertex, the chip of another tool, the checked chip of the Edit layer
+group, and Escape on a plain button still cancelling a run.
+`editor/plan/use-plan-interaction-focused-button-enter.test.tsx` draws a pointer wall run. Enter
+on a plain button leaves the run open, and Enter on the armed chip or on the plan ends it. Two
+journeys in `e2e/tests/keyboard-authoring.spec.ts`, in the describe 'Keyboard plan
+authoring on a focused button', press a real Enter. One focuses the Furniture button with the Wall
+tool armed and expects the library to open. The other focuses the Underlay button with the Door
+tool armed and expects its menu to open.

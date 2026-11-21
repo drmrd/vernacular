@@ -197,6 +197,47 @@ test.describe('Keyboard plan authoring', () => {
   })
 })
 
+test.describe('Keyboard plan authoring on a focused button', () => {
+  test('Enter on the focused Furniture button opens the library while the Wall tool is armed', async ({
+    page,
+  }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+    await armTool(page, 'Wall')
+
+    // A real Enter on the focused button activates it: the key does not drop a vertex.
+    await page.getByRole('button', { name: 'Furniture' }).focus()
+    await page.keyboard.press('Enter')
+
+    const library = page.getByRole('region', { name: 'Furniture library' })
+    await expect(library).toBeVisible()
+    await expect(live).not.toHaveText('Wall vertex dropped')
+    await expectWallCount(page, 0)
+
+    // A second Enter on the same button closes the library again.
+    await page.keyboard.press('Enter')
+    await expect(library).toBeHidden()
+    await expectWallCount(page, 0)
+  })
+
+  test('Enter on the focused Underlay button opens its menu while the Door tool is armed', async ({
+    page,
+  }) => {
+    await gotoEditor(page)
+    const live = selectors.liveRegion(page)
+    await armTool(page, 'Door')
+
+    // A real Enter on the focused button activates it: the key does not place a door.
+    await page.getByRole('button', { name: 'Underlay' }).focus()
+    await page.keyboard.press('Enter')
+
+    // Wait for the menu first: a zero count can hold before the key has had any effect.
+    await expect(page.getByRole('menuitem', { name: 'Load image' })).toBeVisible()
+    await expect(live).not.toHaveText('Door placed')
+    await expect(page.getByRole('option', { name: / wide$/ })).toHaveCount(0)
+  })
+})
+
 test.describe('Keyboard plan authoring announcements', () => {
   test('speaks the first vertex of a new keyboard wall run after a change of tool', async ({
     page,
