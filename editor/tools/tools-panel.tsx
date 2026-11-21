@@ -10,9 +10,9 @@ import {
   Stairs,
   Tag,
 } from '@phosphor-icons/react'
-import { useContext, useSyncExternalStore } from 'react'
+import { useContext, useId, useSyncExternalStore } from 'react'
 import { builtinElementTypes, openingKindOfType, type Floor } from '../../core'
-import { ActiveFloorContext } from '../../bridge'
+import { ActiveFloorContext, ReasonDescription } from '../../bridge'
 import { EditorSessionContext } from '../../bridge/react/editor-session-context'
 import { SectionLabel } from '../design-system'
 import { useActiveTool, type ToolId } from './active-tool-context'
@@ -70,20 +70,26 @@ function Chip(props: ChipProps) {
   const { tool, setTool } = useActiveTool()
   const isActive = toolId !== undefined && tool === toolId
   const IconComponent = icon
+  const reasonId = useId()
+  const reason = chipTitle(props)
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={isActive}
-      aria-disabled={unavailable || undefined}
-      tabIndex={isActive || fallbackTabStop ? 0 : -1}
-      className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-      title={chipTitle(props)}
-      onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
-    >
-      {IconComponent ? <IconComponent size={16} aria-hidden="true" /> : null}
-      {label}
-    </button>
+    <>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={isActive}
+        aria-disabled={unavailable || undefined}
+        tabIndex={isActive || fallbackTabStop ? 0 : -1}
+        className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
+        aria-describedby={reason ? reasonId : undefined}
+        title={reason}
+        onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
+      >
+        {IconComponent ? <IconComponent size={16} aria-hidden="true" /> : null}
+        {label}
+      </button>
+      <ReasonDescription id={reasonId} reason={reason} />
+    </>
   )
 }
 

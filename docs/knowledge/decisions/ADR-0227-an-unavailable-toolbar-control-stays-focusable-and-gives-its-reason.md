@@ -15,6 +15,8 @@ sourceFiles:
     bridge/react/scene-nav-toolbar.css,
     bridge/react/environment-controls.tsx,
     bridge/react/scene-object-controls.tsx,
+    bridge/react/reason-description.tsx,
+    editor/tools/tools-panel.tsx,
   ]
 status: current
 updated: 2026-11-21
@@ -24,8 +26,11 @@ updated: 2026-11-21
 
 ## Status
 
-Accepted on 2026-11-21 for issue #779. The 3D toolbar buttons follow it. The tools panel chips do
-not yet, and issue #1023 tracks them.
+Accepted on 2026-11-21 for issue #779. The 3D toolbar buttons follow it.
+
+Update, 2026-11-21: issue #1023 brought the tools panel chips under the same pattern. The toolbar
+button and the chip now share `ReasonDescription` (`bridge/react/reason-description.tsx`), which
+renders the hidden span. An empty reason renders no span, so the control gets no description.
 
 ## Context
 
@@ -74,8 +79,9 @@ The color-temperature slider stays natively disabled. It has a visible note alre
   Space.
 - The open consequence in ADR-0198, that a disabled control gives its reason only in `title`, is
   closed for the toolbar buttons.
-- The tools panel chips have the same defect. They are `aria-disabled` and focusable, but the
-  reason sits only in `title`. Issue #1023 asks for the same pattern there, a hidden span referenced by `aria-describedby` with the same text in `title`, either reused or extracted into a shared piece.
+- The tools panel chips had the same defect: they were `aria-disabled` and focusable, but the
+  reason sat only in `title`. Issue #1023 closed it. Each unavailable chip now points
+  `aria-describedby` at the shared `ReasonDescription` span and keeps the same text in `title`.
 
 ## Alternatives considered
 

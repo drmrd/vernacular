@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { ReasonDescription } from './reason-description'
 
 interface ToolbarButtonProps {
   label: string
@@ -44,11 +45,7 @@ export function ToolbarButton({
       >
         {label}
       </button>
-      {unavailable ? (
-        <span hidden id={reasonId}>
-          {unavailableReason}
-        </span>
-      ) : null}
+      <ReasonDescription id={reasonId} reason={unavailableReason} />
     </>
   )
 }
