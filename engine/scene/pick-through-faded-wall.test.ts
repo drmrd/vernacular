@@ -10,8 +10,7 @@ import {
   updateNearWallTransparency,
   type NearWallTarget,
 } from './near-wall-transparency'
-import { pickEntityId } from './pick-entity'
-import { pickSurface } from './pick-surface'
+import { pickScene } from './pick-scene'
 import { worldAt } from './wall-winding-test-support'
 
 // A click goes through a faded wall: the wall nearest to the camera is drawn at about 10
@@ -140,7 +139,28 @@ const FLOOR_REF = { kind: 'floor', floorId: FLOOR_ID }
 
 const pickBoth = (raycaster: THREE.Raycaster, { root }: Room) => {
   root.updateMatrixWorld(true)
-  return { surface: pickSurface(raycaster, root), entityId: pickEntityId(raycaster, root) }
+  return pickScene(raycaster, root)
+}
+
+/** The centre of a window's glass: a ray aimed here strikes glass, not the frame. */
+const glassCentre = ({ root }: Room): THREE.Vector3 => {
+  let centre: THREE.Vector3 | undefined
+  root.traverse((object) => {
+    if (centre === undefined && object.userData.openingFillRole === 'glass') {
+      centre = new THREE.Box3().setFromObject(object).getCenter(new THREE.Vector3())
+    }
+  })
+  if (centre === undefined) throw new Error('the scene has no window glass')
+  return centre
+}
+
+/** A ray from `from` through the glass centre, checked to meet glass before anything else. */
+const throughGlass = (room: Room, from: THREE.Vector3): THREE.Raycaster => {
+  room.root.updateMatrixWorld(true)
+  const raycaster = new THREE.Raycaster(from.clone(), glassCentre(room).sub(from).normalize())
+  const [nearest] = raycaster.intersectObject(room.root, true)
+  expect(nearest?.object.userData.openingFillRole).toBe('glass')
+  return raycaster
 }
 
 describe('a click through the faded near wall of a closed room', () => {
@@ -176,6 +196,25 @@ describe('a click at a near wall that is not faded', () => {
   it('is taken by the near wall for a ray aimed at the floor', () => {
     const room = roomWith()
     expect(pickBoth(onFloor(), room)).toEqual({ surface: NEAR_OUTER_FACE, entityId: NEAR_WALL })
+  })
+})
+
+describe('a click at window glass in a near wall', () => {
+  it('is taken by the window, with no paint target, while the wall is not faded', () => {
+    const room = roomWith([windowInNearWall])
+    expect(pickBoth(throughGlass(room, outsideEye), room)).toEqual({
+      entityId: WINDOW_ID,
+      surface: null,
+    })
+  })
+
+  it('goes on through the glass of the faded wall onto the far wall', () => {
+    const room = roomWith([windowInNearWall])
+    fadeForOutsideCamera(room)
+    expect(pickBoth(throughGlass(room, outsideEye), room)).toEqual({
+      entityId: FAR_WALL,
+      surface: FAR_FACE,
+    })
   })
 })
 

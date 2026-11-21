@@ -19,8 +19,7 @@ import {
   updateNearWallTransparency,
   type NearWallTarget,
 } from './near-wall-transparency'
-import { pickEntityId } from './pick-entity'
-import { pickSurface } from './pick-surface'
+import { pickScene } from './pick-scene'
 import { worldAt } from './wall-winding-test-support'
 
 // A click goes through a wall that is faded and through whatever fades with it: furniture
@@ -39,8 +38,8 @@ const FAR_FACE_PLAN_Y = ROOM_SIDE - WALL_THICKNESS / 2
 const FAR_FACE_AIM_HEIGHT = 1200
 const WARDROBE_SPAN = 300
 const OVERHEAD = 3000
-/** The id of the level group: a junction fill has no entity id of its own, so a hit on one reads as this. */
-const LEVEL_ID = 'floor:g'
+/** A junction fill is neither selected nor painted: it gives no entity id and no surface. */
+const NOTHING = { entityId: null, surface: null }
 
 const NEAR_WALL = 'wall:near'
 const FAR_WALL = 'wall:far'
@@ -88,7 +87,7 @@ const graphOf = (parts: Partial<SceneGraph>): SceneGraph => ({
 
 const pickBoth = (raycaster: THREE.Raycaster, root: THREE.Group) => {
   root.updateMatrixWorld(true)
-  return { surface: pickSurface(raycaster, root), entityId: pickEntityId(raycaster, root) }
+  return pickScene(raycaster, root)
 }
 
 const outsideEye = worldAt({ x: MIDDLE, y: -OUTSIDE_STANDOFF }, EYE_HEIGHT)
@@ -150,7 +149,7 @@ describe('a click through furniture that fades with its exterior wall', () => {
     const { root, targets } = wardrobeRoom(false)
     updateNearWallTransparency(targets, { x: outsideEye.x, z: outsideEye.z })
     expect(pickBoth(throughWardrobeOntoFarWall(), root)).toEqual({
-      surface: FAR_FACE,
+      surface: null,
       entityId: 'wardrobe',
     })
   })
@@ -227,13 +226,13 @@ describe('a click on a junction fill that is held opaque while its wall is faded
     expect(isFadedForPicking(fillMeshIn(root))).toBe(false)
   })
 
-  it('takes a ray from above as it does with no fade: the floor surface, the level as the entity', () => {
+  it('takes a ray from above as it does with no fade: no surface and no entity, not the floor under it', () => {
     const { root, targets } = tJunction()
     const before = pickBoth(downOnto(TEE), root)
     updateNearWallTransparency(targets, southOf(TEE))
     const after = pickBoth(downOnto(TEE), root)
     expect(after).toEqual(before)
-    expect(after).toEqual({ surface: FLOOR_REF, entityId: LEVEL_ID })
+    expect(after).toEqual(NOTHING)
   })
 
   it('stops the selection at the fill instead of passing on to the leg behind it', () => {
@@ -242,7 +241,7 @@ describe('a click on a junction fill that is held opaque while its wall is faded
     const eye = worldAt({ x: TEE.x, y: -OUTSIDE_STANDOFF }, EYE_HEIGHT)
     const aim = worldAt(TEE, FAR_FACE_AIM_HEIGHT)
     const raycaster = new THREE.Raycaster(eye.clone(), aim.sub(eye).normalize())
-    expect(pickBoth(raycaster, root).entityId).toBe(LEVEL_ID)
+    expect(pickBoth(raycaster, root)).toEqual(NOTHING)
   })
 })
 
@@ -273,7 +272,7 @@ describe('a click through a junction fill that fades with its wall', () => {
 
   it('goes on to what lies under the fill for the selection and the paint target', () => {
     const { root, targets } = cornerFill()
-    expect(pickBoth(downOnto(CORNER), root).entityId).toBe(LEVEL_ID)
+    expect(pickBoth(downOnto(CORNER), root)).toEqual(NOTHING)
     updateNearWallTransparency(targets, southOf(CORNER))
     expect(isFadedForPicking(fillMeshIn(root))).toBe(true)
     expect(pickBoth(downOnto(CORNER), root)).toEqual({ surface: FLOOR_REF, entityId: 'room:a' })
