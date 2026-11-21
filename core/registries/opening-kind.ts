@@ -16,11 +16,15 @@ const doorFamilies: ReadonlySet<OpeningFamily> = new Set<OpeningFamily>(DOOR_FAM
  * when the id is unknown or the type is not an opening.
  */
 export function openingKindOfType(typeId: string): OpeningKind | undefined {
-  const family = getEntry(builtinElementTypes, typeId)?.opening?.family
+  const family = openingFamilyOfType(typeId)
   if (family === undefined) {
     return undefined
   }
-  return doorFamilies.has(family) ? 'door' : 'window'
+  return isDoorFamily(family) ? 'door' : 'window'
+}
+
+function openingFamilyOfType(typeId: string): OpeningFamily | undefined {
+  return getEntry(builtinElementTypes, typeId)?.opening?.family
 }
 
 function isDoorFamily(family: OpeningFamily): family is DoorFamily {
@@ -29,7 +33,7 @@ function isDoorFamily(family: OpeningFamily): family is DoorFamily {
 
 /** The door family of a built-in opening type; undefined for a window type or an unknown id. */
 export function doorFamilyOfType(typeId: string): DoorFamily | undefined {
-  const family = getEntry(builtinElementTypes, typeId)?.opening?.family
+  const family = openingFamilyOfType(typeId)
   return family !== undefined && isDoorFamily(family) ? family : undefined
 }
 

@@ -12,7 +12,7 @@ export const PLAN_DOWN: PlanDirection = { x: 0, y: -1 }
 export type FrontDirectionInput = Pick<SceneGraph, 'walls' | 'rooms' | 'openings'> &
   Partial<Pick<SceneGraph, 'nodes' | 'gradeElevation'>>
 
-/** An exterior door and the outward normal of the wall that hosts it. */
+/** An exterior door, its host wall's outward normal, and its floor's elevation. */
 interface FrontCandidate {
   readonly opening: OpeningSceneNode
   readonly outward: PlanDirection
@@ -36,7 +36,7 @@ function hasHingedLeaf(candidate: FrontCandidate): boolean {
   return family === 'swing' || family === 'pivot'
 }
 
-/** True when `candidate` is a better front than `current`; see `frontDirection` for the rule. */
+/** True when `candidate` is a better front than `current`; see `entranceOf` for the rule. */
 function beats(candidate: FrontCandidate, current: FrontCandidate): boolean {
   if (hasHingedLeaf(candidate) !== hasHingedLeaf(current)) {
     return hasHingedLeaf(candidate)
@@ -81,7 +81,10 @@ function floorElevations(input: FrontDirectionInput): Map<string, number> {
   return elevations
 }
 
-/** True when `level` is tried before `other`: at or above grade from the lowest up, then below grade from the highest down. */
+/**
+ * True when `level` is tried before `other`: at or above grade from the lowest
+ * up, then below grade from the highest down.
+ */
 function levelPrecedes(level: number, other: number, grade: number): boolean {
   const levelAtOrAbove = level >= grade
   if (levelAtOrAbove !== other >= grade) {
