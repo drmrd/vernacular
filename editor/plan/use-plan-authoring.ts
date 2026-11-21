@@ -4,7 +4,7 @@ import type { LibraryItem } from '../../storage'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { isActivationPressAlreadyHandled } from './activation-keys'
-import { isTextEntry } from './keyboard-guard'
+import { buttonOwnsEnter, isTextEntry } from './keyboard-guard'
 import { IDLE_WALL_TOOL, type WallToolState } from './wall-tool'
 import { IDLE_DIMENSION_TOOL, type DimensionToolState } from './dimension-tool'
 import {
@@ -126,10 +126,14 @@ function buildAuthoringTools(
 // tool, with cleanup. Kept out of the hook body so usePlanAuthoring stays lean.
 // An entity proxy selects on Enter or Space and prevents the default, so the tool
 // must not act on the same press. Other handled keys such as Escape still reach
-// the tool, because the tool must still cancel a run.
+// the tool, because the tool must still cancel a run. A focused button owns Enter
+// (ADR-0155), except the armed tool's chip.
 function listenForAuthoringKeys(tools: AuthoringTools): () => void {
   const listener = (event: KeyboardEvent): void => {
-    if (!isTextEntry(event.target) && !isActivationPressAlreadyHandled(event)) {
+    if (isTextEntry(event.target) || buttonOwnsEnter(event.target, event.key)) {
+      return
+    }
+    if (!isActivationPressAlreadyHandled(event)) {
       routeAuthoringKey(tools, event)
     }
   }

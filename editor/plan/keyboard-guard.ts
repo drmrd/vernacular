@@ -54,6 +54,22 @@ export function ownsKeystroke(target: EventTarget | null, key: string): boolean 
   )
 }
 
+/**
+ * True when Enter landed on a focused button that activates on it. While an
+ * authoring tool is armed, every focused button owns Enter, so a tool never drops
+ * a vertex or places an opening on the press that clicks the button. The one
+ * exception is the chip of the armed tool, a checked radio, which keeps Enter for
+ * the tool (ADR-0115, ADR-0155). The chip of any other tool is an ordinary button.
+ */
+export function buttonOwnsEnter(target: EventTarget | null, key: string): boolean {
+  if (key !== 'Enter' || !(target instanceof HTMLElement) || target.tagName !== 'BUTTON') {
+    return false
+  }
+  return !(
+    target.getAttribute('role') === 'radio' && target.getAttribute('aria-checked') === 'true'
+  )
+}
+
 // The keystrokes a tool has already answered. Held weakly, so an event is
 // forgotten as soon as the browser is done with it.
 const claimedKeystrokes = new WeakSet<KeyboardEvent>()
