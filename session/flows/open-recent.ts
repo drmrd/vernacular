@@ -1,4 +1,5 @@
 import type { ProjectRecord } from '../../storage'
+import { folderRefusal } from '../handle/find-document-store'
 import type { DocumentHandle, OpenFailed, OpenRequest } from '../handle/handle-types'
 import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
@@ -50,11 +51,8 @@ async function recentTarget(ports: SessionPorts, id: string): Promise<RecentTarg
   const request = await requestFor(ports, id)
   if (request.location.kind === 'folder' && (await wouldAskUser(ports, id))) {
     const answer = await ports.folders.reopen(id)
-    if (answer === 'denied') {
-      return { ok: false, failure: { kind: 'folder-permission' } }
-    }
-    if (answer === 'missing') {
-      return { ok: false, failure: { kind: 'folder-unavailable' } }
+    if (answer === 'denied' || answer === 'missing') {
+      return folderRefusal(answer)
     }
   }
   return { ok: true, request }
