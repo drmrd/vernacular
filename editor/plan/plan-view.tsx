@@ -492,7 +492,7 @@ export function PlanView() {
         height={stageSize.height}
         aria-label="Floor plan"
         className="plan-view"
-        style={{ position: 'absolute', top: 0, left: 0, touchAction: 'none', cursor }}
+        style={{ touchAction: 'none', cursor }}
         onPointerDown={pointerHandlers.onPointerDown}
         onPointerMove={(event) => {
           reportPointer(screenToWorld(eventToCanvas(event, event.currentTarget), overlay.viewport))

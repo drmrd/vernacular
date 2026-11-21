@@ -30,6 +30,12 @@
   overflow: clip;
 }
 
+.plan-stage > .plan-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 /*
  * The overlay layer fills the plan stage and is transparent to the pointer so the
  * Canvas underneath keeps its hit-test; only the focusable proxies (which need
