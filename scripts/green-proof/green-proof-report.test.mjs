@@ -81,4 +81,10 @@ describe('reportLines', () => {
     )
     expect(hasFailingFinding([proven])).toBe(false)
   })
+
+  it('keeps the header unchanged when every cycle that needed mutation was reached', () => {
+    const reached = { ...cycle(FIRST, []), status: 'proven', notes: ['no covered line'] }
+    const lines = reportLines([reached], run(FIRST))
+    expect(lines[0]).toBe('green:proof: 1 proven, 0 skipped, 0 failed in main..topic')
+  })
 })

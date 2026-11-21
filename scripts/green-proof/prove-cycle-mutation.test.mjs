@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { redVitestConfigText } from './mutation.mjs'
+import { MUTATION_NOT_REACHED_NOTE } from './mutation-budget.mjs'
 import { GREEN, diffOf, lcovOf, report, scenario } from './green-proof-test-support.mjs'
 
 const ROOT = '/wt'
@@ -47,6 +48,20 @@ const mutating = (setup) =>
   })
 
 const writtenJson = (test, path) => JSON.parse(test.context.files.readFile(`${ROOT}/${path}`))
+/** A budget that records its calls and answers `canStart` with `allowed`. */
+function fakeBudget(allowed) {
+  const calls = []
+  return {
+    calls,
+    canStart() {
+      calls.push(['canStart'])
+      return allowed
+    },
+    spend(ms) {
+      calls.push(['spend', ms])
+    },
+  }
+}
 const rules = (result) => result.findings.map((finding) => finding.rule)
 
 describe('proveCycle mutation check', () => {
@@ -269,5 +284,43 @@ describe('proveCycle mutation check', () => {
     expect(test.strykerCalls()).toEqual([])
     expect(result.timings).not.toHaveProperty('mutation')
     expect(result.status).toBe('proven')
+  })
+
+  it('notes a cycle the budget did not reach and runs no Stryker', () => {
+    const test = mutating()
+    const budget = fakeBudget(false)
+    test.context.budget = budget
+    const result = test.run()
+    expect(test.strykerCalls()).toEqual([])
+    expect(() => test.context.files.readFile(`${ROOT}/.green-proof/stryker-app.json`)).toThrow()
+    expect(() => test.context.files.readFile('/wt/.green-proof/vitest.red.config.mjs')).toThrow()
+    expect(result.notes).toContain(MUTATION_NOT_REACHED_NOTE)
+    expect(result.timings).not.toHaveProperty('mutation')
+    expect(result.status).toBe('proven')
+    expect(budget.calls).toEqual([['canStart']])
+  })
+
+  it('spends the time of every group of a started cycle', () => {
+    const test = mutating({
+      greenFiles: ['core/a.ts', 'scripts/x.mjs'],
+      diff: SCRIPT_DIFF,
+      lcov: BOTH_COVERED,
+      strykerMs: 1000,
+    })
+    const budget = fakeBudget(true)
+    test.context.budget = budget
+    const result = test.run()
+    expect(test.strykerCalls()).toHaveLength(2)
+    expect(result.notes).toEqual([])
+    expect(budget.calls).toEqual([['canStart'], ['spend', result.timings.mutation]])
+  })
+
+  it('does not ask the budget when the RED tests fail at GREEN', () => {
+    const test = mutating({ green: report('fail') })
+    const budget = fakeBudget(true)
+    test.context.budget = budget
+    const result = test.run()
+    expect(budget.calls).toEqual([])
+    expect(result.notes).not.toContain(MUTATION_NOT_REACHED_NOTE)
   })
 })
