@@ -75,17 +75,14 @@ export class SnapshotStore {
     return bytes === undefined ? undefined : decodeDocument(bytes, this.codec)
   }
 
-  /**
-   * Moves each snapshot file (`snapshot-<anything>.json`) that does not decode to the backups;
-   * resolves with the count. A foreign name such as `snapshot-notes.txt` stays where it is.
-   */
+  /** Moves each rolling snapshot file that does not decode to the backups; resolves with the count. */
   async setAsideRefused(): Promise<number> {
-    const names = await this.rollingSnapshotNames()
+    const names = await this.directory.list(AUTOSAVE_DIRECTORY)
     return setAsideRefusedSnapshots(
       this.directory,
       this.codec,
       names
-        .filter((name) => name.endsWith(SNAPSHOT_SUFFIX))
+        .filter((name) => this.isRollingSnapshotFile(name))
         .map((name) => `${AUTOSAVE_DIRECTORY}/${name}`),
     )
   }
@@ -110,18 +107,24 @@ export class SnapshotStore {
   }
 
   /**
-   * Whether prune deletes the file: the session-start snapshot or a name of the exact form
-   * `snapshot-<anything>.json`. This is narrower than the rolling rule below on purpose, so that a
-   * foreign file such as `snapshot-notes.txt` survives a prune.
+   * Whether prune deletes the file: the session-start snapshot or a rolling snapshot file.
    */
   private isSnapshotFile(name: string): boolean {
-    return (
-      name === SESSION_START_FILE ||
-      (name.startsWith(SNAPSHOT_PREFIX) && name.endsWith(SNAPSHOT_SUFFIX))
-    )
+    return name === SESSION_START_FILE || this.isRollingSnapshotFile(name)
   }
 
-  /** The names with the snapshot prefix, which is the rule that isRecoverable counts by. */
+  /**
+   * Whether the name has the exact form `snapshot-<anything>.json`, so that a foreign file such as
+   * `snapshot-notes.txt` is neither pruned nor set aside.
+   */
+  private isRollingSnapshotFile(name: string): boolean {
+    return name.startsWith(SNAPSHOT_PREFIX) && name.endsWith(SNAPSHOT_SUFFIX)
+  }
+
+  /**
+   * The names with the snapshot prefix. isRecoverable uses this wide rule as
+   * it is; restore and prune narrow it to names with a timestamp.
+   */
   private async rollingSnapshotNames(): Promise<string[]> {
     const names = await this.directory.list(AUTOSAVE_DIRECTORY)
     return names.filter((name) => name.startsWith(SNAPSHOT_PREFIX))
