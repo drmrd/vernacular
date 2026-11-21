@@ -246,3 +246,28 @@ describe('PlanOverlay placement refusals', () => {
     expect(container.querySelector('.plan-overlay__refusal')).toBeNull()
   })
 })
+
+// A keyboard user places geometry at the candidate, so a creative tool has to show
+// where that candidate sits. Without the marker the user places blind.
+describe('PlanOverlay keyboard candidate marker', () => {
+  it.each(['draw-wall', 'place-opening', 'place-stair'] as const)(
+    'paints the candidate marker under the %s tool',
+    (tool) => {
+      render(
+        <PlanOverlay
+          viewport={VIEWPORT}
+          graph={graphWithOneOfEach()}
+          selectedIds={EMPTY_SELECTION}
+          selection={createSelectionStore()}
+          preferences={DEFAULT_METRIC_PREFERENCES}
+          snap={null}
+          tool={tool}
+          layer="all"
+          authoringCandidate={{ x: 10, y: 10 }}
+        />,
+      )
+
+      expect(screen.getByTestId('plan-authoring-candidate')).toBeInTheDocument()
+    },
+  )
+})
