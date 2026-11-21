@@ -73,13 +73,31 @@ function floorElevations(input: FrontDirectionInput): Map<string, number> {
   return elevations
 }
 
-/** True when level `a` is tried before level `b`: at or above grade from the lowest up, then below grade from the highest down. */
-function levelPrecedes(a: number, b: number, grade: number): boolean {
-  const aAtOrAbove = a >= grade
-  if (aAtOrAbove !== b >= grade) {
-    return aAtOrAbove
+/** True when `level` is tried before `other`: at or above grade from the lowest up, then below grade from the highest down. */
+function levelPrecedes(level: number, other: number, grade: number): boolean {
+  const levelAtOrAbove = level >= grade
+  if (levelAtOrAbove !== other >= grade) {
+    return levelAtOrAbove
   }
-  return aAtOrAbove ? a < b : a > b
+  return levelAtOrAbove ? level < other : level > other
+}
+
+/** The first level, in `levelPrecedes` order, that has a candidate door. */
+function entranceLevel(candidates: FrontCandidate[], grade: number): number | undefined {
+  return candidates.reduce<number | undefined>(
+    (current, { elevation }) =>
+      current === undefined || levelPrecedes(elevation, current, grade) ? elevation : current,
+    undefined,
+  )
+}
+
+/** The candidate that beats all the others, or undefined when there are none. */
+function bestCandidate(candidates: FrontCandidate[]): FrontCandidate | undefined {
+  return candidates.reduce<FrontCandidate | undefined>(
+    (current, candidate) =>
+      current === undefined || beats(candidate, current) ? candidate : current,
+    undefined,
+  )
 }
 
 /**
@@ -89,8 +107,7 @@ function levelPrecedes(a: number, b: number, grade: number): boolean {
  * highest down. On that level the widest door wins. Equal widths prefer the
  * direction nearer plan-down (directions within a rounding tolerance are equally
  * near), then the opening id that sorts first as a string (so `opening:10` comes
- * before `opening:9`), then the floor listed first in the walls. With no
- * exterior door it is plan-down.
+ * before `opening:9`). With no exterior door it is plan-down.
  */
 export function frontDirection(input: FrontDirectionInput): PlanDirection {
   const grade = input.gradeElevation ?? DEFAULT_GRADE_ELEVATION_MM
@@ -99,15 +116,7 @@ export function frontDirection(input: FrontDirectionInput): PlanDirection {
   const candidates = floorIds.flatMap((floorId) =>
     exteriorDoorsOnFloor(input, floorId, elevations.get(floorId) ?? grade),
   )
-  const firstLevel = candidates.reduce<number | undefined>(
-    (current, { elevation }) =>
-      current === undefined || levelPrecedes(elevation, current, grade) ? elevation : current,
-    undefined,
-  )
-  const best = candidates
-    .filter(({ elevation }) => elevation === firstLevel)
-    .reduce<
-      FrontCandidate | undefined
-    >((current, candidate) => (current === undefined || beats(candidate, current) ? candidate : current), undefined)
+  const level = entranceLevel(candidates, grade)
+  const best = bestCandidate(candidates.filter(({ elevation }) => elevation === level))
   return best === undefined ? PLAN_DOWN : best.outward
 }
