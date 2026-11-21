@@ -56,7 +56,8 @@ type RetiredObject = Parameters<typeof disposeObject>[0]
  * What reconciles replaced and nothing draws any more: rebuilt sub-groups, ground planes of
  * dropped scenes, superseded empty-graph scenes, and providers whose build lineage ended. They
  * wait here rather than being freed at once, so reconcile stays free of side effects on the
- * scene still on screen; releaseRetired frees them after the new scene commits.
+ * scene still on screen; releaseRetired frees them after the new scene commits. Disposing the
+ * reconciler routes everything it holds through the queue as well.
  */
 interface RetiredResources {
   objects: Set<RetiredObject>
@@ -91,6 +92,22 @@ function retireReplacedBuild(
  */
 function retireGroundPlanes(framed: FramedScene, retired: RetiredResources): void {
   for (const plane of framed.root.children.filter(isGroundPlane)) retired.objects.add(plane)
+}
+
+/**
+ * Retires everything the caches still hold: every cached build's sub-groups and provider, and
+ * every cached scene's ground plane. The caller empties the caches afterwards.
+ */
+function retireEverything(
+  builds: Map<string, CachedFloorBuild>,
+  scenes: Map<string, AssembledScene>,
+  retired: RetiredResources,
+): void {
+  for (const build of builds.values()) {
+    for (const group of buildGroups(build)) retired.objects.add(group)
+    retired.providers.add(build.materials)
+  }
+  for (const scene of scenes.values()) retireGroundPlanes(scene.framed, retired)
 }
 
 /** Frees every retired object and provider, then empties the queue. */
@@ -239,7 +256,8 @@ function reconcileStackedScene(
  *
  * What a reconcile replaces (a rebuilt sub-group, a floor build and provider a paint edit
  * replaced, a dropped scene's ground plane, a superseded empty-graph scene) is retired, not
- * freed, until the caller runs releaseRetired once the returned scene is live.
+ * freed, until the caller runs releaseRetired once the returned scene is live. dispose frees
+ * everything still held, for the owner that drops the reconciler.
  */
 export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): FramedSceneReconciler {
   const buildsByFloorId = new Map<string, CachedFloorBuild>()
@@ -264,11 +282,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
       freeRetired(retired)
     },
     dispose() {
-      for (const build of buildsByFloorId.values()) {
-        for (const group of buildGroups(build)) retired.objects.add(group)
-        retired.providers.add(build.materials)
-      }
-      for (const scene of scenesByFloorSet.values()) retireGroundPlanes(scene.framed, retired)
+      retireEverything(buildsByFloorId, scenesByFloorSet, retired)
       if (emptyScene !== undefined) retired.objects.add(emptyScene.root)
       buildsByFloorId.clear()
       scenesByFloorSet.clear()
