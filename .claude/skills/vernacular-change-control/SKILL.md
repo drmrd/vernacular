@@ -1,6 +1,6 @@
 ---
 name: vernacular-change-control
-description: Use when committing, branching, or merging any change in the Vernacular repo. Triggers - choosing a commit type or branch name, running the red-green-blue TDD cycle, a failing rgb:audit or ping-pong CI job (ordering, independence, blue violations), deciding whether a change needs an ADR, opening a PR and gating on ci-complete, CI slash-command labels (run:e2e, ci:full), Infrastructure trailer questions, or checking a hard rule and its rationale before acting.
+description: 'Use when committing, branching, or merging: commit types, branch names, the red-green-blue cycle, rgb:audit or ping-pong CI failures, whether a change needs an ADR, PRs gated on ci-complete, CI labels (run:e2e, ci:full), Infrastructure trailers.'
 ---
 
 # Vernacular change control

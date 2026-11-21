@@ -1,6 +1,6 @@
 ---
 name: vernacular-proof-and-analysis-toolkit
-description: Use when about to tweak an epsilon, tolerance, depth bias, or lighting constant instead of deriving it; when a new surface z-fights (polygonOffset, depth-bias ladder); when the live 3D view diverges from the harness scene (reconciler parity); when a pixel test flakes and renderer nondeterminism is suspected (WebGL2 probe); when a screenshot races async work (readiness gate); when reading a Stryker mutation report; or when proving a schema migration safe for old documents.
+description: 'Use before tweaking an epsilon, tolerance, depth bias, or lighting constant; for new z-fighting (polygonOffset), reconciler parity with the harness, renderer nondeterminism (WebGL2 probe), screenshot readiness races, Stryker reports, or schema migration safety.'
 ---
 
 # Vernacular proof and analysis toolkit

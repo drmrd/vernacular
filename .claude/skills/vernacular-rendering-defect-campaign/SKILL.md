@@ -1,6 +1,6 @@
 ---
 name: vernacular-rendering-defect-campaign
-description: 'Use when a 3D rendering defect appears in Vernacular. Symptoms: z-fighting or flicker at surface contacts, wrong lighting or sky or ambient occlusion, geometry in the scene harness but missing in the live 3D pane (or the reverse), flaky scene screenshot captures, scene-webgl visual-regression failures, darwin versus linux baseline mismatches. Keywords: scene harness, framed-scene reconciler, depth-bias ladder, polygon offset, data-harness-ready, WebGPU, WebGL 2.'
+description: 'Use when a 3D rendering defect appears: z-fighting, wrong lighting, sky, or AO, geometry in the scene harness but not the live 3D pane (or the reverse), flaky scene captures (data-harness-ready), scene-webgl failures, darwin vs linux baseline mismatch.'
 ---
 
 # Rendering defect campaign

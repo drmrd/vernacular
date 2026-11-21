@@ -1,6 +1,6 @@
 ---
 name: vernacular-failure-archaeology
-description: 'Use when a Vernacular defect looks like a re-fight of a settled battle: z-fighting or depth-bias shimmer, cross-platform visual-baseline drift (darwin vs linux, arm64 vs amd64, SwiftShader), scene-harness screenshot flake, near-wall fade oddities, duplicate or missing ADR numbers, superseded ADRs, walk-mode wall tunneling, release-please gate stalls, or a failure that smells like environment drift. Keywords: z-fight, depth bias ladder, baseline, renumber, supersede, Release-As, flex-basis.'
+description: 'Use when a defect looks like a settled battle: z-fighting or depth-bias shimmer, cross-platform baseline drift (darwin vs linux, arm64 vs amd64), harness screenshot flake, near-wall fade, ADR number collisions or supersession, walk-mode tunneling, release-please stalls.'
 ---
 
 # Vernacular failure archaeology

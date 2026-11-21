@@ -1,6 +1,6 @@
 ---
 name: vernacular-diagnostics-and-tooling
-description: Use when a Vernacular diagnostic command must be run or its output decoded; rgb:audit ping-pong violations (ordering, independence, blue), integration:audit journey gaps, CI test selection (select-tests.mjs, decide.mjs), schema:check drift, knowledge:index frontmatter errors, story-coverage allowlist failures, webgl2-probe JSON, Stryker mutation scores, lhci budgets, jscpd duplication, coverage runs, or when unsure which tool answers a question or what an exit code means.
+description: 'Use when running or decoding a diagnostic: rgb:audit, integration:audit, CI test selection (select-tests.mjs, decide.mjs), schema:check, knowledge:index, story-coverage allowlist, webgl2-probe, Stryker, lhci, jscpd, coverage, or an unclear exit code.'
 ---
 
 # Vernacular diagnostics and tooling
