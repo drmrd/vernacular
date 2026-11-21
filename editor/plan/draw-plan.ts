@@ -5,7 +5,6 @@ import {
   wallFaceGeometry,
   wallFootprints,
   type OpeningSceneNode,
-  type PlanarGraph,
   type Point,
   type RoomSceneNode,
   type StairSceneNode,
@@ -29,7 +28,7 @@ import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { drawRulers } from './ruler'
 import { PLAN_INK_EMPHASIS, PLAN_INK_OVERLAY_WIDTH, PLAN_INK_WIDTH } from './plan-ink'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
-import { planWallGraph, strippedWallId } from './plan-wall-graph'
+import { planWallGraph, strippedWallId, type PlanWallGraphResolver } from './plan-wall-graph'
 import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -112,7 +111,7 @@ export interface DrawPlanOptions {
    * memoized resolver so the graph is reused between scene changes; absent, the graph is
    * built on every draw.
    */
-  wallGraphFor?: (walls: readonly WallSceneNode[]) => PlanarGraph
+  wallGraphFor?: PlanWallGraphResolver
 }
 
 // Defined relative to the cut weight, not a literal, so a future retune of the
@@ -411,9 +410,9 @@ interface DrawableWallEdge {
 function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
   const graph = (options.wallGraphFor ?? planWallGraph)(options.walls)
   const wallByEdgeId = new Map(options.walls.map((wall) => [strippedWallId(wall), wall]))
-  // `wallGraphFor` is handed this same `options.walls` and builds every edge's `wallId` from this same `options.walls` list, so
-  // the lookup always hits and the `undefined` branch below is unreachable; it exists
-  // only to satisfy noUncheckedIndexedAccess.
+  // The graph comes from `options.wallGraphFor` when given, else `planWallGraph` builds it for
+  // this call, so every edge's `wallId` is in the lookup and the `undefined` branch below is
+  // unreachable; it exists only to satisfy noUncheckedIndexedAccess.
   const thicknessByEdge = graph.edges.map((edge) => {
     const wall = wallByEdgeId.get(edge.wallId)
     return wall === undefined ? 0 : effectiveWallThickness(wall)

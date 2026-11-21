@@ -20,12 +20,15 @@ export function planWallGraph(walls: readonly WallSceneNode[]): PlanarGraph {
   )
 }
 
+/** Maps the drawn walls to their planar graph. */
+export type PlanWallGraphResolver = (walls: readonly WallSceneNode[]) => PlanarGraph
+
 /**
  * A single-entry cache over `planWallGraph`. It keeps the last walls array it saw,
  * compared by reference, and that array's graph, so redraws between two scene
  * changes (pan, zoom, hover, snap) reuse the graph and a new walls array rebuilds it.
  */
-export function createPlanWallGraphMemo(): (walls: readonly WallSceneNode[]) => PlanarGraph {
+export function createPlanWallGraphMemo(): PlanWallGraphResolver {
   let lastWalls: readonly WallSceneNode[] | undefined
   let lastGraph: PlanarGraph | undefined
   return (walls) => {
