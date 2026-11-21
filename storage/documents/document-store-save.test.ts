@@ -60,7 +60,7 @@ describe('saving a valid project through the store', () => {
 
     const report = await store.save('a', project)
 
-    expect(report).toEqual({ faults: [], backedUp: false })
+    expect(report).toEqual({ faults: [], backedUp: false, lastChangedAt: expect.any(String) })
     expect(report.graftDropped).toBeUndefined()
     expect(await root.readFile(DOCUMENT_PATH)).toBeDefined()
     const read = await store.read('a')

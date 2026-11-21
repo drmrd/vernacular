@@ -5,13 +5,14 @@ import {
   createOpening,
   createWall,
 } from '../../model/factories'
-import type { Project, Wall } from '../../model/types'
+import type { Floor, Point, Project, Wall } from '../../model/types'
 import {
   deriveSceneGraph,
   type DimensionSceneNode,
   type OpeningSceneNode,
   type RoomSceneNode,
 } from '../../scene/scene-graph'
+import { roomKey } from '../../topology/rooms'
 
 // The one wall length, room depth, and dimension offset every exporter fixture
 // shares. Held as named constants so the fixture geometry reads as intent rather
@@ -177,4 +178,114 @@ export function createSingleDimensionProject(): Project {
 /** The sole derived dimension scene node for the single-dimension fixture above. */
 export function soleDerivedDimension(project: Project): DimensionSceneNode {
   return soleNode(deriveSceneGraph(project).dimensions, 'dimension')
+}
+
+/** The ids, room names, and distances of the two-floor fixture below. */
+export const FIRST_FLOOR_ID = 'floor-first'
+export const SECOND_FLOOR_ID = 'floor-second'
+export const FIRST_FLOOR_ROOM_NAME = 'Parlor'
+export const SECOND_FLOOR_ROOM_NAME = 'Attic'
+/** How far the second floor sits from the first, so that it widens a view that counts it. */
+export const SECOND_FLOOR_DISTANCE_MM = 50000
+/** The first-floor dimension lies this far off its line, outside the room whichever side it takes. */
+export const FIRST_FLOOR_DIMENSION_OFFSET_MM = 5000
+/** The drawn content of the first floor: its wall loop, 4000 mm wide and 3000 mm deep. */
+export const FIRST_FLOOR_WIDTH_MM = WALL_LENGTH_MM
+export const FIRST_FLOOR_DEPTH_MM = ROOM_DEPTH_MM
+/**
+ * The door on the first wall of each fixture room is drawn across the full thickness of
+ * its wall, so it lies half of the default wall thickness (114 mm) beyond the wall line.
+ */
+export const FIRST_FLOOR_DOOR_OVERHANG_MM = 57
+/** The margin that the exporter leaves on each side when no `marginMm` is given. */
+export const DEFAULT_MARGIN_MM = 100
+/** The `data-layer` values of the shapes, and of the annotations, that the exporter writes. */
+export const SHAPE_LAYERS = ['rooms', 'walls', 'openings']
+export const ANNOTATION_LAYERS = ['room-labels', 'dimensions']
+const FIRST_FLOOR_DIMENSION_LENGTH_MM = WALL_LENGTH_MM
+const SECOND_FLOOR_DIMENSION_LENGTH_MM = WALL_LENGTH_MM / 2
+
+const WALL_LETTERS = ['a', 'b', 'c', 'd'] as const
+
+interface RoomFloorSpec {
+  id: string
+  name: string
+  wallPrefix: string
+  origin: Point
+  dimensionLength: number
+  dimensionOffset: number
+}
+
+/** The four-wall loop of the fixture room, its walls named `<prefix>-wall-a` to `-d`. */
+function prefixedRoomLoop(prefix: string, origin: Point): Wall[] {
+  const corner = (dx: number, dy: number): Point => ({ x: origin.x + dx, y: origin.y + dy })
+  const corners = [
+    corner(0, 0),
+    corner(WALL_LENGTH_MM, 0),
+    corner(WALL_LENGTH_MM, ROOM_DEPTH_MM),
+    corner(0, ROOM_DEPTH_MM),
+  ]
+  return corners.map((start, index) =>
+    createWall(start, corners[(index + 1) % corners.length] ?? start, {
+      id: `${prefix}-wall-${WALL_LETTERS[index % WALL_LETTERS.length]}`,
+    }),
+  )
+}
+
+/** One floor with a closed room, a door on its first wall, and one dimension. */
+function roomFloor(spec: RoomFloorSpec): Floor {
+  const { origin } = spec
+  const walls = prefixedRoomLoop(spec.wallPrefix, origin)
+  const opening = createOpening({
+    type: 'single-swing-door',
+    hostWallId: `${spec.wallPrefix}-wall-a`,
+    position: OPENING_CENTER_MM,
+    id: `${spec.wallPrefix}-door`,
+  })
+  const dimension = createDimension({
+    start: origin,
+    end: { x: origin.x + spec.dimensionLength, y: origin.y },
+    offset: spec.dimensionOffset,
+    id: `${spec.wallPrefix}-dimension`,
+  })
+  const floor = createFloor(spec.name, { id: spec.id, walls })
+  return { ...floor, openings: [opening], dimensions: [dimension] }
+}
+
+/** The override key of the room that the four walls of `prefix` enclose. */
+function roomKeyOf(prefix: string): string {
+  return roomKey({ wallIds: WALL_LETTERS.map((letter) => `${prefix}-wall-${letter}`) })
+}
+
+/**
+ * Build a deterministic project of two floors. Each floor has one named room, a door
+ * in it, and one dimension, so each has room labels and dimensions. The second floor
+ * lies far from the first, and the first floor's dimension lies outside its room, so
+ * a view that counts either one is wider than the first floor's walls.
+ */
+export function createTwoFloorProject(): Project {
+  const first = roomFloor({
+    id: FIRST_FLOOR_ID,
+    name: 'Ground Floor',
+    wallPrefix: 'first',
+    origin: { x: 0, y: 0 },
+    dimensionLength: FIRST_FLOOR_DIMENSION_LENGTH_MM,
+    dimensionOffset: FIRST_FLOOR_DIMENSION_OFFSET_MM,
+  })
+  const second = roomFloor({
+    id: SECOND_FLOOR_ID,
+    name: 'Upper Floor',
+    wallPrefix: 'second',
+    origin: { x: SECOND_FLOOR_DISTANCE_MM, y: SECOND_FLOOR_DISTANCE_MM },
+    dimensionLength: SECOND_FLOOR_DIMENSION_LENGTH_MM,
+    dimensionOffset: DIMENSION_OFFSET_MM,
+  })
+  return {
+    ...projectWithFloor(first),
+    floors: [first, second],
+    roomOverrides: {
+      [roomKeyOf('first')]: { name: FIRST_FLOOR_ROOM_NAME },
+      [roomKeyOf('second')]: { name: SECOND_FLOOR_ROOM_NAME },
+    },
+  }
 }

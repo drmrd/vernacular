@@ -21,6 +21,15 @@ export const selectors = {
   viewModeButton: (page: Page, name: string) => page.getByRole('button', { name }),
   liveRegion: (page: Page) => page.locator('.plan-overlay__live'),
   drawReadout: (page: Page) => page.locator('.plan-overlay__readout'),
+  projectMenu: (page: Page) => page.getByRole('button', { name: 'Project', exact: true }),
+  projectMenuItem: (page: Page, name: string) => page.getByRole('menuitem', { name, exact: true }),
+  failureView: (page: Page) => page.getByRole('main', { name: 'Error' }),
+}
+
+// Open the Project menu and choose the row with the given label.
+export async function chooseFromProjectMenu(page: Page, label: string): Promise<void> {
+  await selectors.projectMenu(page).click()
+  await selectors.projectMenuItem(page, label).click()
 }
 
 // How long the web fonts get to load before the wait fails. It is shorter than the test

@@ -17,12 +17,11 @@ sourceFiles:
   [
     app/app.tsx,
     app/use-project-actions.ts,
-    storage/recent/recent-project-store.ts,
     storage/filesystem/directory-handle-store.ts,
     core/export/svg/svg-plan-exporter.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0188: A project has a random id, an address, and a record in the project index
@@ -47,6 +46,27 @@ the recent-project store holds one entry at most.
 > project on the IndexedDB fallback still gets no recent entry. On that fallback, once the project
 > made by New project or Open file is saved, the earlier project stays stored, but nothing in the
 > application opens it again.
+
+> Updated on 2026-11-19. The project index exists. `ProjectIndex` in `storage/project-index/` has
+> `all`, `get`, `put`, and `remove`, with an IndexedDB form and an in-memory form. The browser
+> build wraps the IndexedDB form in `withMemoryFallback`, which answers from memory when the first
+> index cannot be read or gives no answer within ten seconds. A record holds the id and the
+> location, then the three parts named above: the facts of the document, the time of the last
+> change from the store, and the time of the last use with the result of the last open. The
+> document handle writes the record. It writes after an open that read the stored project and
+> after a save that the store accepted, and never ahead of the store. A project that was never
+> stored has no record. A failed open adds its result to the record that is already there.
+> `reconcileIndex` in `session/projects/` rebuilds the index from the stored projects. It drops the
+> record of a workspace project that is gone and keeps a folder record as it is. It keeps a record
+> whose time of change still matches the store, and rebuilds every other record from the stored
+> document. It never rejects, and overlapping calls share one run. The same run turns the id that
+> the older build remembered into the latest use of that project. It also forgets the folder that
+> the older build stored under `'current'`, without reopening it. A new project id is now a bare
+> UUID from `newProjectId`. The form `project-<uuid>` and the id `'current'` stay valid. The
+> Project menu lists the five records used last, apart from the open project, through
+> `recentRecords`. The start opens the workspace record used last, and opens `'current'` when there
+> is none. The recent-project store and the port of the remembered id are deleted. The addresses
+> and the Projects page are not built yet.
 
 ## Context
 

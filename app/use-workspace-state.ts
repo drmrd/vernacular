@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createActiveFloorStore, createSelectionStore } from '../bridge'
 import {
+  displayNameOf,
   guardDestructive,
+  reconcileIndex,
+  recentRecords,
   restoreSnapshot,
   type DocumentHandle,
   type FlowResult,
   type ProjectSnapshots,
   type RestoreRefusal,
   type SaveStatus,
+  type SessionPorts,
 } from '../session'
-import { orderRecentProjects, type RecentProjectStore } from '../storage'
 import { useNotifications } from '../editor/design-system'
 import type { EditorWorkspaceProps } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
@@ -18,7 +21,6 @@ import { useDiscardConfirmation } from './use-discard-confirmation'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 import { useHandleNotices } from './use-handle-notices'
 import { useLatest } from './use-latest'
-import type { RecentEntry } from './project-action-helpers'
 import type { RunFlow } from './use-open-project'
 import { useProjectActions } from './use-project-actions'
 import { useSwitchNotices } from './use-switch-notices'
@@ -40,6 +42,12 @@ export interface WorkspaceState {
   resolveDiscard: ReturnType<typeof useDiscardConfirmation>['resolveDiscard']
 }
 
+/** What the Project menu shows for one recent project. */
+export interface RecentEntry {
+  id: string
+  name: string
+}
+
 export interface Recovery {
   // Callers fire-and-forget (both are wired straight to an onClick); the Promise
   // arm only lets hook-level tests await the restore or the prune.
@@ -47,29 +55,26 @@ export interface Recovery {
   onDiscard: () => void | Promise<void>
 }
 
-// The most-recently-opened list, read for each store and again for each open project, since a
-// flow that opened a project records entries.
-function useRecentEntries(
-  recentProjects: RecentProjectStore,
-  handle: DocumentHandle,
-): RecentEntry[] {
+async function readRecentEntries(ports: SessionPorts, openId: string): Promise<RecentEntry[]> {
+  const records = recentRecords(await reconcileIndex(ports), openId)
+  return records.map((record) => ({ id: record.id, name: displayNameOf(record) }))
+}
+
+// The projects used last, apart from the open one, read from the index for each pair of ports and
+// handle. Both runs of the effect under StrictMode share one rebuild, because overlapping calls of
+// `reconcileIndex` share a run. A read that ends after its ports or its handle were replaced sets
+// nothing. The rebuild never rejects.
+function useRecentEntries(ports: SessionPorts, handle: DocumentHandle): RecentEntry[] {
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
   useEffect(() => {
     let cancelled = false
-    void recentProjects.list().then(
-      (entries) => {
-        if (!cancelled) {
-          setRecentEntries(
-            orderRecentProjects(entries).map(({ id, name, backend }) => ({ id, name, backend })),
-          )
-        }
-      },
-      (error: unknown) => console.error('reading the recent projects failed', error),
-    )
+    void readRecentEntries(ports, handle.id).then((entries) => {
+      if (!cancelled) setRecentEntries(entries)
+    })
     return () => {
       cancelled = true
     }
-  }, [recentProjects, handle])
+  }, [ports, handle])
   return recentEntries
 }
 
@@ -178,18 +183,8 @@ function isUnsaved(status: SaveStatus): boolean {
   return status === 'pending' || status === 'error'
 }
 
-// Reports the handle each time its save status becomes saved.
-function useReportSaved(props: EditorWorkspaceProps, saveStatus: SaveStatus): void {
-  const { handle, onProjectSaved } = props
-  useEffect(() => {
-    if (saveStatus === 'saved') {
-      onProjectSaved?.(handle)
-    }
-  }, [saveStatus, handle, onProjectSaved])
-}
-
 export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
-  const { handle, runFlow, libraryAssets, recentProjects, capabilities } = props
+  const { handle, runFlow, libraryAssets, ports, capabilities } = props
   const session = handle.session
   // A selection names walls and openings inside one project, so the store belongs to
   // one session: New, Open, and restore all bring a new handle with a new session, in
@@ -206,9 +201,8 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   useUnsavedChangesGuard(handle)
   useFlushOnHidden(handle)
   useHandleNotices(handle)
-  useReportSaved(props, saveStatus)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
-  const recentEntries = useRecentEntries(recentProjects, handle)
+  const recentEntries = useRecentEntries(ports, handle)
   const recovery = useCrashRecovery({ handle, runFlow, confirmDiscard })
   const notifications = useNotifications()
   // The asset library (starter pack + user imports), assembled once for the pool of the library.
@@ -216,7 +210,6 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   const actions = useProjectActions({
     handle,
     runFlow,
-    recentProjects,
     capabilities,
     notifications,
     packs: assetLibrary.registry,

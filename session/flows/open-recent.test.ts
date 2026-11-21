@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from '../../core'
+import { sampleRecord } from '../../storage/project-index/project-record-test-kit'
 import {
   bytesOf,
   fixtureDocument,
@@ -7,6 +8,7 @@ import {
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { currentBytes } from '../../tests/storage/conformance/conformance-documents'
 import {
+  IN_FOLDER,
   IN_WORKSPACE,
   createTestPorts,
   handleOf,
@@ -19,6 +21,7 @@ import {
   workspaceRequest,
 } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
+import { folderRecord } from '../projects/rebuild-test-kit'
 import { openRecent } from './open-recent'
 import { switchProject } from './switch-project'
 
@@ -33,11 +36,22 @@ async function openCurrent(ports: TestPorts) {
   return openOrThrow(ports, workspaceRequest(CURRENT_ID))
 }
 
-/** Remembers a folder under `FOLDER_ID` whose document is named `FOLDER_PROJECT_NAME`. */
-async function rememberProjectFolder(ports: TestPorts): Promise<void> {
+/** Remembers a folder under `id` whose document is named `FOLDER_PROJECT_NAME`. */
+async function rememberProjectFolder(ports: TestPorts, id = FOLDER_ID): Promise<void> {
   const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
   metaOf(document).name = FOLDER_PROJECT_NAME
-  await rememberFolder(ports, FOLDER_ID, bytesOf(document))
+  await rememberFolder(ports, id, bytesOf(document))
+}
+
+/** Puts a record of `FOLDER_ID` into the index whose location is the folder `IN_FOLDER`. */
+function putFolderRecord(ports: TestPorts): Promise<void> {
+  return ports.index.put(folderRecord(FOLDER_ID, { location: IN_FOLDER }))
+}
+
+/** Remembers the folder of `FOLDER_ID` and puts its folder record into the index. */
+async function placeFolderProject(ports: TestPorts): Promise<void> {
+  await rememberProjectFolder(ports)
+  await putFolderRecord(ports)
 }
 
 beforeEach(() => {
@@ -99,16 +113,6 @@ describe('a recent project of the workspace', () => {
     expect(permission).not.toHaveBeenCalled()
   })
 
-  it('a folder access that rejects its permission counts as no folder', async () => {
-    const ports = createTestPorts()
-    await placeDocument(ports, CURRENT_ID, currentBytes())
-    vi.spyOn(ports.folders, 'permission').mockRejectedValue(new Error('The handle store failed'))
-
-    const handle = handleOf(await openRecent(ports, undefined, CURRENT_ID))
-
-    expect(handle.location).toEqual(IN_WORKSPACE)
-  })
-
   it('a project that another tab holds gives open-elsewhere', async () => {
     const ports = createTestPorts()
     await placeDocument(ports, CURRENT_ID, currentBytes())
@@ -119,22 +123,76 @@ describe('a recent project of the workspace', () => {
 
     expect(result).toEqual({ ok: false, failure: { kind: 'open-elsewhere' } })
   })
+
+  it('a folder remembered under an id whose record names the workspace is not used', async () => {
+    const ports = createTestPorts()
+    await placeDocument(ports, CURRENT_ID, currentBytes())
+    await rememberProjectFolder(ports, CURRENT_ID)
+    await ports.index.put(sampleRecord({ id: CURRENT_ID, location: IN_WORKSPACE }))
+
+    const handle = handleOf(await openRecent(ports, undefined, CURRENT_ID))
+
+    expect(handle.location).toEqual(IN_WORKSPACE)
+    expect(handle.session.getProject().meta.name).not.toBe(FOLDER_PROJECT_NAME)
+  })
+
+  it('an id with no record opens from the workspace, also when a folder is remembered under it', async () => {
+    const ports = createTestPorts()
+    await placeDocument(ports, CURRENT_ID, currentBytes())
+    await rememberProjectFolder(ports, CURRENT_ID)
+
+    const handle = handleOf(await openRecent(ports, undefined, CURRENT_ID))
+
+    expect(handle.location).toEqual(IN_WORKSPACE)
+    expect(handle.session.getProject().meta.name).not.toBe(FOLDER_PROJECT_NAME)
+  })
+
+  it('a project stored under an id of an earlier build opens from the workspace', async () => {
+    const ports = createTestPorts()
+    const earlierId = 'project-3f2b8c1e-6d4a-4b7e-9a15-0c8d2e7f1a64'
+    await placeDocument(ports, earlierId, currentBytes())
+    await ports.index.put(sampleRecord({ id: earlierId, location: IN_WORKSPACE }))
+
+    const handle = handleOf(await openRecent(ports, undefined, earlierId))
+
+    expect(handle.id).toBe(earlierId)
+    expect(handle.location).toEqual(IN_WORKSPACE)
+  })
+
+  it('an index whose get rejects opens from the workspace', async () => {
+    const ports = createTestPorts()
+    await placeDocument(ports, CURRENT_ID, currentBytes())
+    vi.spyOn(ports.index, 'get').mockRejectedValue(new Error('The index failed'))
+
+    const handle = handleOf(await openRecent(ports, undefined, CURRENT_ID))
+
+    expect(handle.location).toEqual(IN_WORKSPACE)
+  })
 })
 
 describe('a recent project in a folder', () => {
-  it('an id with a remembered folder opens from the folder', async () => {
+  it('an id whose record names a folder opens from the folder', async () => {
     const ports = createTestPorts()
-    await rememberProjectFolder(ports)
+    await placeFolderProject(ports)
 
     const handle = handleOf(await openRecent(ports, undefined, FOLDER_ID))
 
-    expect(handle.location).toEqual({ kind: 'folder', folderName: '' })
+    expect(handle.location.kind).toBe('folder')
     expect(handle.session.getProject().meta.name).toBe(FOLDER_PROJECT_NAME)
+  })
+
+  it('the opened handle carries the folder name of the record', async () => {
+    const ports = createTestPorts()
+    await placeFolderProject(ports)
+
+    const handle = handleOf(await openRecent(ports, undefined, FOLDER_ID))
+
+    expect(handle.location).toEqual(IN_FOLDER)
   })
 
   it('a folder whose permission is prompt is asked for access, then opens', async () => {
     const ports = createTestPorts()
-    await rememberProjectFolder(ports)
+    await placeFolderProject(ports)
     ports.folders.setPermission(FOLDER_ID, 'prompt')
     const reopen = vi.spyOn(ports.folders, 'reopen')
 
@@ -146,7 +204,7 @@ describe('a recent project in a folder', () => {
 
   it('a request for access that rejects gives storage-unavailable with the message', async () => {
     const ports = createTestPorts()
-    await rememberProjectFolder(ports)
+    await placeFolderProject(ports)
     ports.folders.setPermission(FOLDER_ID, 'prompt')
     vi.spyOn(ports.folders, 'reopen').mockRejectedValue(new Error('The prompt failed'))
 
@@ -160,11 +218,30 @@ describe('a recent project in a folder', () => {
 
   it('a folder whose access is denied gives folder-permission', async () => {
     const ports = createTestPorts()
-    await rememberProjectFolder(ports)
+    await placeFolderProject(ports)
     ports.folders.setPermission(FOLDER_ID, 'denied')
 
     const result = await openRecent(ports, undefined, FOLDER_ID)
 
     expect(result).toEqual({ ok: false, failure: { kind: 'folder-permission' } })
+  })
+
+  it('a folder access that rejects its permission gives storage-unavailable for a folder record', async () => {
+    const ports = createTestPorts()
+    await placeFolderProject(ports)
+    vi.spyOn(ports.folders, 'permission').mockRejectedValue(new Error('The handle store failed'))
+
+    const result = await openRecent(ports, undefined, FOLDER_ID)
+
+    expect(result).toMatchObject({ ok: false, failure: { kind: 'storage-unavailable' } })
+  })
+
+  it('a folder record whose folder is no longer remembered gives folder-unavailable', async () => {
+    const ports = createTestPorts()
+    await putFolderRecord(ports)
+
+    const result = await openRecent(ports, undefined, FOLDER_ID)
+
+    expect(result).toEqual({ ok: false, failure: { kind: 'folder-unavailable' } })
   })
 })
