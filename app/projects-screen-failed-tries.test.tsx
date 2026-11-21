@@ -11,6 +11,7 @@ import {
   expectOpenProject,
   failedOpenSentence,
   filesUnder,
+  findCardLink,
   findThePageAlert,
   findTheProjectsPage,
   lockedIds,
@@ -29,6 +30,7 @@ import {
   addAFloor,
   expectTheEditAndUndoIt,
   openFirstProject,
+  releaseAfterTheTest,
   setUpProjectsScreenTests,
   showThePageOn,
 } from './projects-screen-test-support'
@@ -125,6 +127,43 @@ describe('A click on the card of a project that did not open', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     letTheReadGo()
     expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
+  })
+})
+
+describe('The cards after a try that ends with no change on the page', () => {
+  it('are not read again when a try that fails ends after the page is gone', async () => {
+    const ports = await portsWithAProjectThatDoesNotOpen()
+    const { unmount } = renderAppAt(ports, PROJECTS_ADDRESS)
+    const card = await findTheCardThatDidNotOpen()
+    const heldIds = vi.spyOn(ports.locks, 'heldIds')
+    const readsBefore = heldIds.mock.calls.length
+    const letTheReadGo = holdNextRead(ports.workspace)
+    releaseAfterTheTest(letTheReadGo)
+    await userEvent.click(card)
+    await settleForAWhile()
+
+    unmount()
+    letTheReadGo()
+    await settleForAWhile()
+
+    expect(heldIds).toHaveBeenCalledTimes(readsBefore)
+  })
+
+  it('show no notice and are not read again when a try is refused because another try runs', async () => {
+    const ports = await durablePortsWith(FIRST_ID, SECOND_ID)
+    const { bar } = renderAppAt(ports, PROJECTS_ADDRESS)
+    await findCardLink(nameOf(FIRST_ID))
+    releaseAfterTheTest(holdNextRead(ports.workspace))
+    await clickCardOf(nameOf(SECOND_ID))
+    await settleForAWhile()
+    const heldIds = vi.spyOn(ports.locks, 'heldIds')
+
+    await clickCardOf(nameOf(FIRST_ID))
+    await settleForAWhile()
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(heldIds).not.toHaveBeenCalled()
+    expect(bar.hash()).toBe(PROJECTS_ADDRESS)
   })
 })
 

@@ -1,39 +1,15 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { screen, cleanup, fireEvent, within } from '@testing-library/react'
 import type { ProjectCardModel } from '../../session'
-import { ProjectsPage, type ProjectsPageProps } from './projects-page'
+import { cardOf, linkNamed, renderPage } from './projects-page-test-support'
 
 afterEach(cleanup)
 
 const CHANGED_AT = '2026-03-04T10:15:00.000Z'
 const TWO_FLOORS = 2
 const TWO_CARDS = 2
-const MIDDLE_BUTTON = 1
 const STORED_MARKER = 'stored-drawing-marker'
 const STORED_DRAWING = `<svg xmlns="http://www.w3.org/2000/svg"><rect id="${STORED_MARKER}" width="4" height="4"/></svg>`
-
-function cardOf(overrides: Partial<ProjectCardModel> = {}): ProjectCardModel {
-  return {
-    id: 'hubbard',
-    name: 'Hubbard House',
-    lastChangedAt: undefined,
-    floorCount: undefined,
-    location: 'browser',
-    preview: 'none',
-    stateLines: [],
-    actions: ['rename', 'export', 'delete'],
-    ...overrides,
-  }
-}
-
-function renderPage(props: Partial<ProjectsPageProps> = {}) {
-  const hrefFor = (id: string) => `#/project/${id}`
-  render(<ProjectsPage cards={[]} hrefFor={hrefFor} {...props} />)
-  return userEvent.setup()
-}
-
-const linkNamed = (name: string) => screen.getByRole('link', { name })
 
 describe('ProjectsPage landmarks and cards', () => {
   it('is a main landmark named Projects with a first-level heading Projects', () => {
@@ -159,48 +135,6 @@ describe('ProjectsPage state lines', () => {
   })
 })
 
-describe('ProjectsPage clicks on a card', () => {
-  it('calls onOpen once with the id and stops the browser move on a plain click', () => {
-    const onOpen = vi.fn()
-    renderPage({ cards: [cardOf()], onOpen })
-    const notPrevented = fireEvent.click(linkNamed('Hubbard House'))
-    expect(onOpen.mock.calls).toEqual([['hubbard']])
-    expect(notPrevented).toBe(false)
-  })
-
-  it.each([{ metaKey: true }, { ctrlKey: true }, { shiftKey: true }, { altKey: true }])(
-    'leaves a click with %o to the browser',
-    (modifier) => {
-      const onOpen = vi.fn()
-      renderPage({ cards: [cardOf()], onOpen })
-      const notPrevented = fireEvent.click(linkNamed('Hubbard House'), modifier)
-      expect(onOpen).not.toHaveBeenCalled()
-      expect(notPrevented).toBe(true)
-    },
-  )
-
-  it('leaves a click of a button other than the primary one to the browser', () => {
-    const onOpen = vi.fn()
-    renderPage({ cards: [cardOf()], onOpen })
-    const notPrevented = fireEvent.click(linkNamed('Hubbard House'), { button: MIDDLE_BUTTON })
-    expect(onOpen).not.toHaveBeenCalled()
-    expect(notPrevented).toBe(true)
-  })
-
-  it('treats Enter on the focused link as a plain click', async () => {
-    const onOpen = vi.fn()
-    const user = renderPage({ cards: [cardOf()], onOpen })
-    await user.tab()
-    await user.keyboard('{Enter}')
-    expect(onOpen.mock.calls).toEqual([['hubbard']])
-  })
-
-  it('stops nothing when no onOpen is given', () => {
-    renderPage({ cards: [cardOf()] })
-    expect(fireEvent.click(linkNamed('Hubbard House'))).toBe(true)
-  })
-})
-
 describe('ProjectsPage empty and loading states', () => {
   it('says there are no saved projects and still offers the page actions', () => {
     renderPage({ cards: [], onNewProject: vi.fn() })
@@ -295,5 +229,20 @@ describe('ProjectsPage card actions control', () => {
   it('shows no control without onCardAction', () => {
     renderPage({ cards: [cardOf()] })
     expect(screen.queryByRole('button', control)).toBeNull()
+  })
+})
+
+describe('ProjectsPage file drop', () => {
+  it('calls onDropFile once with the first file that is dropped on the page', () => {
+    const onDropFile = vi.fn()
+    const first = new File(['first'], 'first.building')
+    const second = new File(['second'], 'second.building')
+    renderPage({ onDropFile })
+    const heading = screen.getByRole('heading', { level: 1, name: 'Projects' })
+
+    fireEvent.dragEnter(heading, { dataTransfer: { types: ['Files'] } })
+    fireEvent.drop(heading, { dataTransfer: { files: [first, second] } })
+
+    expect(onDropFile.mock.calls).toEqual([[first]])
   })
 })

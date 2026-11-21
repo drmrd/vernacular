@@ -1,4 +1,4 @@
-import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, vi } from 'vitest'
 import { rememberFolder, type TestPorts } from '../session/handle/handle-test-kit'
@@ -114,4 +114,36 @@ export async function portsWithAFolderProject(): Promise<TestPorts> {
   await ports.index.put(folderRecord(FOLDER_ID, { name: FOLDER_NAME }))
   await usedLast(ports, FOLDER_ID)
   return ports
+}
+
+/** Makes the file picker that Import file opens choose `file`, as a user does who picks one. */
+export function chooseInThePicker(file: File): void {
+  vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (
+    this: HTMLInputElement,
+  ) {
+    Object.defineProperty(this, 'files', { value: [file] })
+    this.dispatchEvent(new Event('change'))
+  })
+}
+
+/** Drops `file` on the Projects page, as a user does who drags a file over it and lets go. */
+export async function dropOnThePage(file: File): Promise<void> {
+  const page = await findTheProjectsPage()
+  const heading = within(page).getByRole('heading', { level: 1, name: 'Projects' })
+  fireEvent.dragEnter(heading, { dataTransfer: { types: ['Files'] } })
+  fireEvent.drop(heading, { dataTransfer: { files: [file] } })
+}
+
+/** Clicks the page action named `name`, once the page shows. */
+export async function clickPageAction(name: string): Promise<void> {
+  const page = await findTheProjectsPage()
+  await userEvent.click(within(page).getByRole('button', { name }))
+}
+
+/** The names of the buttons of the Projects page, in the order the page lists them. */
+export async function namesOfThePageButtons(): Promise<Array<string | null>> {
+  const page = await findTheProjectsPage()
+  return within(page)
+    .getAllByRole('button')
+    .map((button) => button.textContent)
 }

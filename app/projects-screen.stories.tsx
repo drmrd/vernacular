@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { NotificationProvider } from '../editor/design-system'
 import { createTestPorts } from '../session/handle/handle-test-kit'
 import { addressFor } from './address'
 import { createMemoryAddressBar } from './address-bar'
@@ -34,5 +35,9 @@ function DemoScreen() {
 }
 
 export const Default: Story = {
-  render: () => <DemoScreen />,
+  render: () => (
+    <NotificationProvider>
+      <DemoScreen />
+    </NotificationProvider>
+  ),
 }

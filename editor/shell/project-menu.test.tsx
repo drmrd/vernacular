@@ -56,13 +56,23 @@ describe('ProjectMenu', () => {
     expect(onSave).toHaveBeenCalledOnce()
   })
 
-  it('opens the menu and calls Open file from its item', async () => {
+  it('opens the menu and calls Import file from its item', async () => {
     const user = userEvent.setup()
-    const onOpenFile = vi.fn()
-    render(<ProjectMenu onNewProject={vi.fn()} onOpenFile={onOpenFile} />)
+    const onImportFile = vi.fn()
+    render(<ProjectMenu onNewProject={vi.fn()} onImportFile={onImportFile} />)
     await user.click(screen.getByRole('button', { name: /project/i }))
-    await user.click(screen.getByRole('menuitem', { name: /open file/i }))
-    expect(onOpenFile).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole('menuitem', { name: /import file/i }))
+    expect(onImportFile).toHaveBeenCalledOnce()
+  })
+
+  it('opens the menu, calls Switch projects from its item, and closes the menu', async () => {
+    const user = userEvent.setup()
+    const onSwitchProjects = vi.fn()
+    render(<ProjectMenu onNewProject={vi.fn()} onSwitchProjects={onSwitchProjects} />)
+    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('menuitem', { name: 'Switch projects' }))
+    expect(onSwitchProjects).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('lists recent projects as menu items and opens the chosen one', async () => {
@@ -175,5 +185,48 @@ describe('ProjectMenu recent projects beside the actions', () => {
     expect(onOpenRecent.mock.calls).toEqual([['recent-1']])
     expect(onNewProject).toHaveBeenCalledOnce()
     expect(logged).not.toHaveBeenCalled()
+  })
+})
+
+describe('ProjectMenu order of the items', () => {
+  const itemNames = () => screen.getAllByRole('menuitem').map((item) => item.textContent)
+
+  it('lists New project, Switch projects, Import file, Open folder, Save, Rename, then the recent projects', async () => {
+    const user = userEvent.setup()
+    render(
+      <ProjectMenu
+        onNewProject={vi.fn()}
+        onSwitchProjects={vi.fn()}
+        onImportFile={vi.fn()}
+        onOpenFolder={vi.fn()}
+        onSave={vi.fn()}
+        onRename={vi.fn()}
+        projectName="Eastmore Farmstead"
+        onOpenRecent={vi.fn()}
+        recentProjects={[
+          { id: 'hubbard', name: 'Hubbard House' },
+          { id: 'queen-anne', name: 'Queen Anne Cottage' },
+        ]}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /project/i }))
+    expect(itemNames()).toEqual([
+      'New project',
+      'Switch projects',
+      'Import file',
+      'Open folder',
+      'Save',
+      'Rename',
+      'Hubbard House',
+      'Queen Anne Cottage',
+    ])
+    expect(screen.queryByRole('menuitem', { name: /open file/i })).not.toBeInTheDocument()
+  })
+
+  it('leaves out an item that has no handler and keeps the order of the rest', async () => {
+    const user = userEvent.setup()
+    render(<ProjectMenu onNewProject={vi.fn()} onSave={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /project/i }))
+    expect(itemNames()).toEqual(['New project', 'Save'])
   })
 })

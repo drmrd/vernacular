@@ -8,7 +8,8 @@ const meta: Meta<typeof ProjectMenu> = {
   tags: ['autodocs'],
   args: {
     onNewProject: fn(),
-    onOpenFile: fn(),
+    onSwitchProjects: fn(),
+    onImportFile: fn(),
     onOpenFolder: fn(),
     onOpenRecent: fn(),
     recentProjects: [{ id: 'hubbard', name: 'Hubbard House' }],
