@@ -5,14 +5,14 @@ import { useActiveFloorId, useSceneGraph } from '../../bridge'
 import { IconButton } from '../design-system'
 import { computeFitViewport, contentBounds } from '../plan/fit'
 import { useViewport } from '../plan/viewport-context'
-import { DEFAULT_PLAN_SCALE, zoomAtCursor, zoomPercent } from '../plan/viewport'
-
+import { DEFAULT_PLAN_SCALE, zoomAtCursor, zoomPercent, type ViewportSize } from '../plan/viewport'
 // Button zooms pivot about the stage center.
-const stageCenter = (size: { width: number; height: number }) => ({
+const stageCenter = (size: ViewportSize) => ({
   x: size.width / 2,
   y: size.height / 2,
 })
 
+// Wall ends and room corners that a fit must frame.
 const graphPoints = (graph: SceneGraph) => [
   ...graph.walls.flatMap((wall) => [wall.start, wall.end]),
   ...graph.rooms.flatMap((room) => room.polygon),
