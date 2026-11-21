@@ -24,6 +24,8 @@ sourceFiles:
     editor/plan/activation-keys.ts,
     editor/plan/entity-proxy.tsx,
     editor/plan/use-plan-authoring.ts,
+    editor/plan/authoring-tool-handlers.ts,
+    editor/plan/use-plan-authoring-stair-keys.test.tsx,
     editor/plan/use-plan-authoring-focused-button-enter.test.tsx,
     editor/plan/keyboard-guard.ts,
     editor/plan/use-wall-keyboard.ts,
@@ -54,6 +56,8 @@ sourceFiles:
     editor/plan/length-field-composing.test.tsx,
     editor/plan/angle-field-composing.test.tsx,
     editor/plan/underlay-menu-composing.test.tsx,
+    editor/plan/plan-overlay.tsx,
+    editor/plan/compose-pointer-handlers.ts,
   ]
 status: current
 updated: 2026-11-21
@@ -460,3 +464,16 @@ journeys in `e2e/tests/keyboard-authoring.spec.ts`, in the describe 'Keyboard pl
 authoring on a focused button', press a real Enter. One focuses the Furniture button with the Wall
 tool armed and expects the library to open. The other focuses the Underlay button with the Door
 tool armed and expects its menu to open.
+
+## Update (2026-11-21): the stair tool takes the keyboard candidate
+
+Issue #904 found that the stair tool could be placed only with the pointer. It now takes the keyboard
+candidate as the wall, opening, dimension, and furniture tools do. The arrow keys move the candidate
+one grid step, and Enter places a stair at it. `handleStairKey` in `editor/plan/authoring-tool-handlers.ts`
+does this, and `routeAuthoringKey` in `editor/plan/use-plan-authoring.ts` routes the key to it. Enter
+builds the command with `stairPlacementCommand`, the same builder the pointer path in
+`editor/plan/use-stair-placement.ts` uses, so both paths share the floor-above check. With no floor
+above, Enter places nothing and sets the `no-floor-above` refusal. The notice "Add a floor above to
+place stairs" then shows and is announced, and a placement is announced as "Stair placed". Tests are in
+`editor/plan/use-plan-authoring-stair-keys.test.tsx`.
+The overlay in `editor/plan/plan-overlay.tsx` also paints the candidate marker under the stair tool now, since `'place-stair'` is in `CREATIVE_AUTHORING_TOOLS`, so the stair tool shows the candidate as the other tools do. A pointer down now clears the keyboard authoring announcement, as a pointer move already did, in `editor/plan/compose-pointer-handlers.ts`. A click with no move first can therefore no longer leave a stale "Candidate at ..." in the live region over a refusal from the stair or opening tool.

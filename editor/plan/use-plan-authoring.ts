@@ -11,6 +11,7 @@ import {
   handleDimensionKey,
   handleFurnitureKey,
   handleOpeningKey,
+  handleStairKey,
   handleWallKey,
   type AuthoringRun,
   type DimensionKeyContext,
@@ -49,14 +50,15 @@ export interface PlanAuthoringResult {
 }
 
 // Only the creative tools that drop free points on the canvas are wired here.
-type AuthoringTool = 'draw-wall' | 'dimension' | 'place-opening' | 'place-furniture'
+type AuthoringTool = 'draw-wall' | 'dimension' | 'place-opening' | 'place-furniture' | 'place-stair'
 
 function isAuthoringTool(tool: ToolId): tool is AuthoringTool {
   return (
     tool === 'draw-wall' ||
     tool === 'dimension' ||
     tool === 'place-opening' ||
-    tool === 'place-furniture'
+    tool === 'place-furniture' ||
+    tool === 'place-stair'
   )
 }
 
@@ -84,7 +86,7 @@ interface ToolStateSlot<State> {
   setState: (state: State) => void
 }
 
-// The graph and placement values that only the opening and furniture
+// The graph and placement values that only the opening, furniture, and stair
 // branches read, grouped so the call site can pass them as one line.
 interface AuthoringPlacementDeps {
   graph: SceneGraph | undefined
@@ -174,12 +176,15 @@ function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
     case 'place-furniture':
       handleFurnitureKey({ ...run, event, armed: tools.armed, rotation: tools.rotation })
       return
+    case 'place-stair':
+      handleStairKey({ ...run, event, setPlacementRefusal: tools.setPlacementRefusal })
+      return
     default:
       return
   }
 }
 
-// The placement values the opening and furniture branches read, with the optional
+// The placement values the opening, furniture, and stair branches read, with the optional
 // deps defaulted and the placement notice setter taken from the opening-tool
 // context. Memoized so the keydown listener is only reinstalled when one of them
 // actually changes.
@@ -225,10 +230,10 @@ function useClearKeyboardAnnouncement(
 
 /**
  * Binds the creative-tool authoring keystrokes to the window. While the
- * draw-wall, dimension, place-opening, or place-furniture tool is active, arrow
- * keys nudge a keyboard-reachable candidate point by a grid step and Enter drops
- * a wall vertex, a dimension endpoint, an opening, or the armed furniture at the
- * candidate by dispatching the same commands the pointer path dispatches. Inert
+ * draw-wall, dimension, place-opening, place-furniture, or place-stair tool is
+ * active, arrow keys nudge a keyboard-reachable candidate point by a grid step and
+ * Enter drops a wall vertex, a dimension endpoint, an opening, the armed furniture,
+ * or a stair at the candidate by dispatching the same commands the pointer path dispatches. Inert
  * under any other tool and ignored while a form control is focused, mirroring the
  * selection and furniture keyboard hooks.
  */

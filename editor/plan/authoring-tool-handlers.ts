@@ -13,7 +13,8 @@ import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import type { PlacementRefusal } from './overlay-announce'
 import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
-import { selectPlacedEntity, selectPlacedOpening } from './select-placed-entity'
+import { stairPlacementCommand } from './place-stair'
+import { selectPlacedEntity, selectPlacedOpening, selectPlacedStair } from './select-placed-entity'
 import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
 import {
   advanceDimensionTool,
@@ -66,6 +67,13 @@ export interface FurnitureKeyContext extends AuthoringRun {
   event: KeyboardEvent
   armed: LibraryItem | null
   rotation: number
+}
+
+// One keystroke while the place-stair tool is active: the shared run plus the
+// event and the placement notice setter a refused Enter reports through.
+export interface StairKeyContext extends AuthoringRun {
+  event: KeyboardEvent
+  setPlacementRefusal: (refusal: PlacementRefusal | null) => void
 }
 
 // The floor the dropped entity lands on: the active floor when one is selected,
@@ -286,5 +294,38 @@ export function handleFurnitureKey(ctx: FurnitureKeyContext): void {
   }
   if (ctx.event.key === 'Enter') {
     dropFurniture(ctx)
+  }
+}
+
+// Drop a stair at the candidate by dispatching the command the pointer path builds
+// through the same builder. With no floor above the active floor nothing is
+// dispatched; the refusal goes to the placement notice and clears the authoring
+// announcement, so the live region speaks the refusal through its own entry.
+function dropStair(ctx: StairKeyContext): void {
+  ctx.event.preventDefault()
+  const command = stairPlacementCommand(
+    ctx.session.getProject().floors,
+    ctx.activeFloorId,
+    ctx.candidate,
+  )
+  if (command === null) {
+    ctx.setPlacementRefusal('no-floor-above')
+    ctx.setAnnouncement('')
+    return
+  }
+  ctx.setPlacementRefusal(null)
+  ctx.session.dispatch(command)
+  selectPlacedStair(ctx.selection, command.params.stair.id)
+  ctx.setAnnouncement('Stair placed')
+}
+
+// Handle one keystroke while the place-stair tool is active: arrow keys move the
+// candidate, Enter places a stair at the candidate, any other key falls through.
+export function handleStairKey(ctx: StairKeyContext): void {
+  if (handleNudge(ctx, ctx.event)) {
+    return
+  }
+  if (ctx.event.key === 'Enter') {
+    dropStair(ctx)
   }
 }

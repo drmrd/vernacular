@@ -70,6 +70,7 @@ const CREATIVE_AUTHORING_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>([
   'dimension',
   'place-opening',
   'place-furniture',
+  'place-stair',
 ])
 
 function isCreativeAuthoringTool(tool: ToolId): boolean {
