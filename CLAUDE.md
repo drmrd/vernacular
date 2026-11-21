@@ -8,27 +8,7 @@ Vernacular is an open-source floor planner for power users, with first-class sup
 
 ## Repository layout
 
-```
-.
-├── app/              top-level routes, providers, state
-├── editor/           React UI: shell, tools, panels, gizmos
-├── bridge/           R3F glue and the React adapters over `session/`
-├── engine/           Three.js scene mgmt, renderers, loaders
-├── session/          application state and logic. No React. No Three.js.
-├── storage/          ProjectStore, LibraryStore, AssetCache
-├── core/             Pure-TS domain. No React. No Three.js.
-├── docs/
-│   ├── specs/        authoritative design specifications
-│   ├── plans/        implementation plans
-│   └── knowledge/    decision records (ADRs) and glossary
-├── scripts/          repo-level scripts
-└── .claude/
-    ├── rules.md      hard invariants and Clean Code rubric
-    ├── agents/       project subagent definitions
-    └── commands/     project slash commands
-```
-
-All seven source layers are live: `core/`, `storage/`, `session/`, `engine/`, `bridge/`, `editor/`, and `app/` each carry substantial production code and tests. `src/` holds the Vite entry points (bootstrap, service worker, test setup). New work lands in the appropriate layer; see `ARCHITECTURE.md` for where things live.
+Seven source layers are live, each with substantial production code and tests: `core/`, `storage/`, `session/`, `engine/`, `bridge/`, `editor/`, and `app/`. `src/` holds the Vite entry points (bootstrap, service worker, test setup). `ARCHITECTURE.md` says where things live and which layer may import which; specs, plans, and decision records sit under `docs/`.
 
 ## Hard invariants
 
@@ -77,29 +57,6 @@ The knowledge graph at `docs/knowledge/` is a Claude-side workspace. Architectur
 
 Before proposing an architectural change, check whether an ADR captures relevant prior reasoning. After landing a meaningful architectural change, write or refresh an ADR (committed with the change) so future sessions and contributors can pick up the context. Use `pnpm knowledge:index` to regenerate the local indices when useful.
 
-## Slash commands
-
-- `/knowledge [query]`: search the knowledge graph index.
-- `/adr <slug> "Title"`: scaffold a new Architecture Decision Record.
-- `/test-first <behavior>`: dispatch the test-author for a failing test.
-- `/implement`: dispatch the implementer for the minimal implementation.
-- `/refactor`: dispatch the refactorer for the BLUE phase.
-- `/clean-code-review`: dispatch the clean-code-reviewer.
-- `/review`: dispatch the pr-reviewer for a full PR audit.
-
-## Subagents
-
-Defined in `.claude/agents/`. The full roster:
-
-- `test-author`: writes failing tests; cannot read implementation source.
-- `implementer`: writes minimal implementations; cannot read tests.
-- `refactorer`: applies refactors while keeping tests green.
-- `clean-code-reviewer`: audits diffs against `.claude/rules.md`.
-- `pr-reviewer`: end-of-branch audit; verifies RGB cycle.
-- `knowledge-curator`: proposes knowledge graph updates.
-
-The pack-validator and migration-author agents land alongside the pack tooling.
-
 ## Common shell commands
 
 - `pnpm install --frozen-lockfile`: install dependencies (honors the 30-day cooldown).
@@ -109,18 +66,13 @@ The pack-validator and migration-author agents land alongside the pack tooling.
 
 ## Things never to do
 
+These add to the invariants and policies above.
+
 - Skip the BLUE phase of a TDD cycle.
-- Add a `Co-Authored-By: Claude` trailer to any commit.
-- Add an em-dash to newly composed prose.
-- Commit AI-voiced prose in Markdown or other text files without a `humanizer` pass.
 - Push directly to `main`.
 - Force-push `main` without an explicit user authorization for that specific operation.
-- Install a dependency younger than 30 days; pin to an older version or wait.
-- Use a version range (`^`/`~`) for any dependency; pin the exact version.
 - Modify the design specification in `docs/specs/` without a corresponding ADR explaining the change.
 - Touch a test file from the `implementer` agent role; touch implementation source from the `test-author` agent role.
-- Use cryptic internal identifiers (such as milestone codes) in branch names, commit messages, or persisted document text.
-- Refer to other floor-planner products or other commercial tools by name.
 - Recreate a committed roadmap file, or open a roadmap-status pull request. Delivery status is tracked GitHub-native (issues, the Projects v2 board, and milestones); only the durable strategy narrative is committed, in `docs/delivery-strategy.md`. Update issue and board status on GitHub rather than in the repository.
 
 ## Pointers
