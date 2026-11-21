@@ -3,7 +3,7 @@ import { useId } from 'react'
 interface ToolbarButtonProps {
   label: string
   onActivate: () => void
-  unavailableReason?: string | null
+  unavailableReason?: string
   pressed?: boolean
   title?: string
   className?: string
@@ -24,7 +24,7 @@ export function ToolbarButton({
   className = 'scene-nav-toolbar__btn',
 }: ToolbarButtonProps) {
   const reasonId = useId()
-  const unavailable = typeof unavailableReason === 'string' && unavailableReason !== ''
+  const unavailable = Boolean(unavailableReason)
 
   const handleClick = () => {
     if (unavailable) return
