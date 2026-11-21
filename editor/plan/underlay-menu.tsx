@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FC, type RefObject } from 'react'
 
-import { Button } from '../design-system'
+import { Button, isComposingKey } from '../design-system'
 import { UnderlayRow, type UnderlayPanelProps } from './underlay-panel'
 import '../design-system/menu-surface.css'
 import './underlay-menu.css'
@@ -19,7 +19,8 @@ function useDismissOnEscape({ active, close }: DismissOnEscapeOptions): void {
       return
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      // An Escape inside a text composition belongs to the input method.
+      if (event.key === 'Escape' && !isComposingKey(event)) {
         close()
       }
     }
