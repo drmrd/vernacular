@@ -28,9 +28,11 @@ import {
 
 const BOX_ONLY: FurnitureModelLookup = { get: () => undefined }
 
+type Paint = Record<string, SurfaceTreatment>
+
 // The paint a reconcile uses when the caller passes none, shared so repeated paint-less
 // reconciles see the same reference.
-const NO_PAINT: Record<string, SurfaceTreatment> = {}
+const NO_PAINT: Paint = {}
 
 // Joins the floor node ids into the key a stacked scene is cached under, so a scene is
 // reused only when the exact same floors, in the same order, are reconciled again.
@@ -42,8 +44,12 @@ export interface FramedSceneReconciler {
     paint?: Record<string, SurfaceTreatment>,
     models?: FurnitureModelLookup,
   ): FramedScene
-  /** Frees what earlier reconciles replaced. Call it once the scene they returned is live. */
-  releaseRetired(): void
+  /**
+   * Frees what earlier reconciles replaced, but only when `displayed` is the scene the latest
+   * reconcile returned. A scene an older reconcile returned frees nothing, so a stale commit
+   * never frees resources the newest scene still needs.
+   */
+  releaseRetired(displayed: FramedScene): void
   /**
    * Frees everything the reconciler still holds: every cached floor build and its provider, the
    * ground planes of cached scenes, the current empty-graph scene, and the retired queue. Each
@@ -293,25 +299,30 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
   const scenesByFloorSet = new Map<string, AssembledScene>()
   const retired: RetiredResources = { objects: new Set(), providers: new Set() }
   let emptyScene: EmptyGraphScene | undefined
+  let latest: FramedScene | undefined
+
+  function reconcileGraph(graph: SceneGraph, paint: Paint, models: FurnitureModelLookup) {
+    if (emptyScene !== undefined) {
+      if (isSameEmptyGraph(emptyScene, graph, paint)) return emptyScene.framed
+      retired.objects.add(emptyScene.framed.root)
+    }
+    emptyScene = undefined
+    // No floors: no floor id to key a build by, so the scene is kept by graph and paint alone.
+    if (graph.nodes.length === 0) {
+      emptyScene = buildEmptyGraphScene(graph, paint, view)
+      return emptyScene.framed
+    }
+    const pass: ReconcilePass = { graph, paint, models, view, cache: buildsByFloorId, retired }
+    return reconcileStackedScene(pass, scenesByFloorSet)
+  }
 
   return {
     reconcile(graph, paint = NO_PAINT, models = BOX_ONLY) {
-      if (emptyScene !== undefined) {
-        if (isSameEmptyGraph(emptyScene, graph, paint)) return emptyScene.framed
-        retired.objects.add(emptyScene.framed.root)
-      }
-      emptyScene = undefined
-      // No floors (a transient empty graph): there is no floor id to key a build by, so the
-      // scene is kept by graph and paint alone. The next different reconcile retires it.
-      if (graph.nodes.length === 0) {
-        emptyScene = buildEmptyGraphScene(graph, paint, view)
-        return emptyScene.framed
-      }
-      const pass: ReconcilePass = { graph, paint, models, view, cache: buildsByFloorId, retired }
-      return reconcileStackedScene(pass, scenesByFloorSet)
+      latest = reconcileGraph(graph, paint, models)
+      return latest
     },
-    releaseRetired() {
-      freeRetired(retired)
+    releaseRetired(displayed) {
+      if (displayed === latest) freeRetired(retired)
     },
     dispose() {
       retireEverything(buildsByFloorId, scenesByFloorSet, retired)

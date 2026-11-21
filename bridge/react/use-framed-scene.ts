@@ -85,7 +85,7 @@ export function useFramedScene(): FramedSceneState {
   )
   // What the reconcile replaced is freed only once the scene it returned has committed.
   useEffect(() => {
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(framed)
   }, [reconciler, framed])
   return {
     graph,
