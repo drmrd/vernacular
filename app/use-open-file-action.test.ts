@@ -2,13 +2,14 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, cleanup, waitFor } from '@testing-library/react'
 import type { AssetReference } from '../core'
 import { ARCHIVE_LIMITS, DocumentDecodeError } from '../storage'
-import { storedName } from '../session/handle/handle-test-kit'
+import { failSaves, storedName } from '../session/handle/handle-test-kit'
 import {
   closeOpenedHandles,
   packListing,
   projectFileOf,
   projectFileReferring,
   READ_FAILURE,
+  recentIds,
   recordUnhandledRejections,
   settleTheAction,
   shownMessages,
@@ -17,7 +18,7 @@ import {
   STORED_PROJECT_NAME,
   unreadableFile,
   waitForOtherProject,
-  waitForRecentEntry,
+  waitForRecord,
 } from './action-test-support'
 import { namedProject } from './app-test-support'
 import { renderOpenFileAction, TOO_LARGE_SENTENCE } from './open-file-action-test-support'
@@ -41,8 +42,8 @@ afterEach(async () => {
 })
 
 describe('useOpenFileAction on a dropped file', () => {
-  it('activates, persists, and records a dropped project file, under a new id', async () => {
-    const { ports, handle, recentProjects, result } = await renderOpenFileAction()
+  it('activates, persists, and records a dropped project file, under a new id, and its record is in the index', async () => {
+    const { ports, handle, result } = await renderOpenFileAction()
 
     await act(async () => {
       await result.current.actions.onImportDroppedFile(projectFileOf(namedProject(HOUSE_NAME)))
@@ -52,7 +53,22 @@ describe('useOpenFileAction on a dropped file', () => {
     expect(opened.id).not.toBe(CURRENT_ID)
     expect(await storedName(ports.workspace, opened.id)).toBe(HOUSE_NAME)
     expect(await storedName(ports.workspace, CURRENT_ID)).toBe(DRAFT_NAME)
-    expect(await waitForRecentEntry(recentProjects, opened.id)).toMatchObject({ name: HOUSE_NAME })
+    expect(await waitForRecord(ports, opened.id)).toMatchObject({ name: HOUSE_NAME })
+  })
+
+  it('an import whose first save fails leaves no entry in the recent list', async () => {
+    const { ports, handle, result } = await renderOpenFileAction()
+    failSaves(ports.workspace)
+
+    await act(async () => {
+      await result.current.actions.onImportDroppedFile(projectFileOf(namedProject(HOUSE_NAME)))
+    })
+
+    const opened = await waitForOtherProject(result, handle)
+    await waitFor(() => expect(opened.saveStatus()).toBe('error'))
+    await settleTheAction()
+    expect(await recentIds(ports, CURRENT_ID)).not.toContain(opened.id)
+    expect(await recentIds(ports, opened.id)).toEqual([CURRENT_ID])
   })
 
   it('emits an error toast naming the file when import fails', async () => {

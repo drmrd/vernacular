@@ -1,22 +1,25 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act, cleanup, waitFor } from '@testing-library/react'
-import { InMemoryDirectory, InMemoryRecentProjectStore } from '../storage'
+import { InMemoryDirectory } from '../storage'
+import { failingIndex } from '../storage/project-index/project-record-test-kit'
 import {
   DOCUMENT_FILE,
   createTestPorts,
   failSaves,
   holdNextRead,
   pickFolder,
+  recordOf,
 } from '../session/handle/handle-test-kit'
 import {
   closeOpenedHandles,
   openStoredProject,
+  recentIds,
   recordUnhandledRejections,
   renderActions,
   settleTheAction,
   shownMessages,
   waitForOtherProject,
-  waitForRecentEntry,
+  waitForRecord,
 } from './action-test-support'
 import {
   NEW_PROJECT_NAME,
@@ -35,7 +38,7 @@ const DRAFT_NAME = 'Drafthouse'
 const OTHER_NAME = 'Other house'
 const FOLDER_PROJECT_NAME = 'Folder house'
 const PICKED_FOLDER_NAME = 'Old house'
-const RECENT_FAILURE = 'The recent list cannot be written.'
+const INDEX_FAILURE = 'The index cannot be reached.'
 
 afterEach(async () => {
   cleanup()
@@ -51,18 +54,17 @@ async function openDrafthouse() {
 }
 
 describe('useProjectActions Save', () => {
-  it('Save stores the project and records it in the recent list', async () => {
+  it('Save stores the project, and its record is in the index', async () => {
     const { ports, handle } = await openDrafthouse()
-    const recentProjects = new InMemoryRecentProjectStore()
     const save = vi.spyOn(ports.workspace, 'save')
-    const { result } = renderActions({ ports, handle, recentProjects }, useProjectActions)
+    const { result } = renderActions({ ports, handle }, useProjectActions)
 
     await act(async () => {
       result.current.actions.onSave()
     })
 
-    const entry = await waitForRecentEntry(recentProjects, CURRENT_ID)
-    expect(entry).toMatchObject({ name: DRAFT_NAME, backend: 'opfs' })
+    const record = await waitForRecord(ports, CURRENT_ID)
+    expect(record).toMatchObject({ name: DRAFT_NAME, location: { kind: 'workspace' } })
     expect(save).toHaveBeenCalledWith(
       CURRENT_ID,
       expect.objectContaining({ meta: expect.objectContaining({ name: DRAFT_NAME }) }),
@@ -100,32 +102,32 @@ describe('useProjectActions New project and Open folder', () => {
     expect(confirm).not.toHaveBeenCalled()
   })
 
-  it('New project lists no entry for the project it opened, which is not stored', async () => {
+  it('a new project that is left with no edit is not in the recent list', async () => {
     const { ports, handle } = await openDrafthouse()
-    const recentProjects = new InMemoryRecentProjectStore()
-    const { result } = renderActions({ ports, handle, recentProjects }, useProjectActions)
-
+    await plantProject(ports, OTHER_ID, OTHER_NAME)
+    const { result } = renderActions({ ports, handle }, useProjectActions)
     await act(async () => {
       await result.current.actions.onNewProject()
     })
+    const fresh = await waitForOtherProject(result, handle)
 
-    const opened = await waitForOtherProject(result, handle)
-    // The entry of the project that was left proves that the recording ran, so its absence below means something.
-    await waitForRecentEntry(recentProjects, CURRENT_ID)
+    await act(async () => {
+      result.current.actions.onOpenRecent(OTHER_ID)
+    })
+
+    await waitForOtherProject(result, fresh)
     await settleTheAction()
-    const listed = (await recentProjects.list()).map((entry) => entry.id)
-    expect(listed).not.toContain(opened.id)
-    expect(await storedIds(ports)).not.toContain(opened.id)
+    expect(await recentIds(ports, OTHER_ID)).toEqual([CURRENT_ID])
+    expect(await storedIds(ports)).not.toContain(fresh.id)
   })
 
-  it('Open folder opens the picked folder and records it as a folder project', async () => {
+  it('Open folder opens the picked folder, and its record names the folder', async () => {
     const { ports, handle } = await openDrafthouse()
     const folder = new InMemoryDirectory()
     await folder.writeFile(DOCUMENT_FILE, documentBytes(namedProject(FOLDER_PROJECT_NAME)))
     pickFolder(ports, folder, PICKED_FOLDER_NAME)
-    const recentProjects = new InMemoryRecentProjectStore()
     const capabilities = { ...capableCapabilities(), fileSystemAccess: true }
-    const rig = { ports, handle, recentProjects, capabilities }
+    const rig = { ports, handle, capabilities }
     const { result } = renderActions(rig, useProjectActions)
 
     await act(async () => {
@@ -134,8 +136,10 @@ describe('useProjectActions New project and Open folder', () => {
 
     const opened = await waitForOtherProject(result, handle)
     expect(opened.location.kind).toBe('folder')
-    const entry = await waitForRecentEntry(recentProjects, opened.id)
-    expect(entry).toMatchObject({ name: FOLDER_PROJECT_NAME, backend: 'file-system-folder' })
+    expect(await waitForRecord(ports, opened.id)).toMatchObject({
+      name: FOLDER_PROJECT_NAME,
+      location: { kind: 'folder', folderName: PICKED_FOLDER_NAME },
+    })
   })
 })
 
@@ -158,29 +162,28 @@ describe('useProjectActions recent list', () => {
     expect((await waitForOtherProject(result, handle)).id).toBe(OTHER_ID)
   })
 
-  it('a flow that opened records the project that was left', async () => {
+  it('after a flow the project that was left is in the recent list, and the one that opened is not', async () => {
     const { ports, handle } = await openDrafthouse()
     await plantProject(ports, OTHER_ID, OTHER_NAME)
-    const recentProjects = new InMemoryRecentProjectStore()
-    const { result } = renderActions({ ports, handle, recentProjects }, useProjectActions)
+    const { result } = renderActions({ ports, handle }, useProjectActions)
 
     await act(async () => {
       result.current.actions.onOpenRecent(OTHER_ID)
     })
 
-    await waitForOtherProject(result, handle)
-    const left = await waitForRecentEntry(recentProjects, CURRENT_ID)
-    expect(left).toMatchObject({ name: DRAFT_NAME, backend: 'opfs' })
+    const opened = await waitForOtherProject(result, handle)
+    await settleTheAction()
+    expect(await recentIds(ports, opened.id)).toEqual([CURRENT_ID])
   })
 })
 
 describe('useProjectActions while a flow runs and after it', () => {
-  it('a second action while one runs does nothing, shows nothing, and records nothing', async () => {
+  it('a second action while one runs does nothing, shows nothing, and writes no record', async () => {
     const { ports, handle } = await openDrafthouse()
     await plantProject(ports, OTHER_ID, OTHER_NAME)
-    const recentProjects = new InMemoryRecentProjectStore()
-    const record = vi.spyOn(recentProjects, 'record')
-    const { result } = renderActions({ ports, handle, recentProjects }, useProjectActions)
+    await recordOf(ports, CURRENT_ID)
+    const put = vi.spyOn(ports.index, 'put')
+    const { result } = renderActions({ ports, handle }, useProjectActions)
     const letTheFirstEnd = holdNextRead(ports.workspace)
     await act(async () => {
       result.current.actions.onOpenRecent(OTHER_ID)
@@ -191,7 +194,7 @@ describe('useProjectActions while a flow runs and after it', () => {
     })
     await settleTheAction()
 
-    expect(record).not.toHaveBeenCalled()
+    expect(put).not.toHaveBeenCalled()
     expect(shownMessages(result)).toEqual([])
     letTheFirstEnd()
     expect((await waitForOtherProject(result, handle)).id).toBe(OTHER_ID)
@@ -215,22 +218,23 @@ describe('useProjectActions while a flow runs and after it', () => {
     expect(save.mock.calls.map(([id]) => id)).toEqual([OTHER_ID])
   })
 
-  it('a recent entry store that rejects leaves the action resolved and logs nothing unhandled', async () => {
+  it('an index that rejects leaves the action resolved and logs nothing unhandled', async () => {
     const unhandled = recordUnhandledRejections()
-    const { ports, handle } = await openDrafthouse()
+    const index = failingIndex(new Error(INDEX_FAILURE))
+    const ports = createTestPorts({ index })
+    const handle = await openStoredProject(ports, CURRENT_ID, DRAFT_NAME)
     await plantProject(ports, OTHER_ID, OTHER_NAME)
-    const recentProjects = new InMemoryRecentProjectStore()
-    const record = vi.spyOn(recentProjects, 'record').mockRejectedValue(new Error(RECENT_FAILURE))
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const { result } = renderActions({ ports, handle, recentProjects }, useProjectActions)
+    const { result } = renderActions({ ports, handle }, useProjectActions)
 
     try {
       await act(async () => {
         result.current.actions.onOpenRecent(OTHER_ID)
       })
       await waitForOtherProject(result, handle)
-      await waitFor(() => expect(record).toHaveBeenCalled())
+      await settleTheAction()
+      expect(index.calls()).toBeGreaterThan(0)
       expect(await unhandled.read()).toEqual([])
     } finally {
       unhandled.stop()

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ActiveFloorProvider,
   EditorSessionProvider,
@@ -22,14 +22,7 @@ import {
   resolveDesignLanguage,
   type DesignLanguage,
 } from '../editor/design-system'
-import {
-  InMemoryRecentProjectStore,
-  probeStorageCapabilities,
-  type ActiveProjectIdStore,
-  type AssetCache,
-  type RecentProjectStore,
-  type StorageCapabilities,
-} from '../storage'
+import { probeStorageCapabilities, type AssetCache, type StorageCapabilities } from '../storage'
 import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
 import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
@@ -42,7 +35,7 @@ import { useDiscardPrompt } from './use-discard-prompt'
 import type { RunFlow } from './use-open-project'
 import { useWorkspaceState } from './use-workspace-state'
 
-export { DEFAULT_PROJECT_ID } from './use-active-project-id'
+export { DEFAULT_PROJECT_ID } from './use-start-project-id'
 export type { BuiltSessionPorts } from './create-session-ports'
 
 // Test-only render-harness seam. When `?fixture=scene-harness` is present the app
@@ -92,11 +85,8 @@ export interface AppProps {
   resolvePorts?: () => Promise<BuiltSessionPorts>
   /** The pool of the user's library. Defaults to the built one, or in memory under `ports`. */
   libraryAssets?: AssetCache
-  /** An override for tests; when set, the remembered id is not read. */
+  /** An override for tests; when set, the index is not asked which project opens at start. */
   projectId?: string
-  /** Remembers which project opens at start; defaults to in memory, nothing remembered. */
-  activeProjectIds?: ActiveProjectIdStore
-  recentProjects?: RecentProjectStore
   /** The port of the user settings (tests). Defaults to the settings that this browser keeps. */
   settings?: AppSettingsProps['port']
 }
@@ -131,19 +121,14 @@ export function App(props: AppProps) {
 
 function AppWorkspace(props: AppProps) {
   const boot = useProjectBoot(props)
-  const { handle, failure, libraryAssets } = boot
-  const providedRecentProjects = props.recentProjects
-  const recentProjects = useMemo(
-    () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
-    [providedRecentProjects],
-  )
+  const { handle, failure, libraryAssets, ports } = boot
   const capabilities = useStorageCapabilities()
   useDegradedStorageBanner(capabilities)
 
   if (failure !== null) {
     return bootErrorView(failure, boot.retryBoot, boot.startFreshProject)
   }
-  if (handle === null || libraryAssets === null || capabilities === null) {
+  if (handle === null || ports === null || libraryAssets === null || capabilities === null) {
     return bootLoadingView()
   }
 
@@ -152,9 +137,8 @@ function AppWorkspace(props: AppProps) {
       handle={handle}
       runFlow={boot.runFlow}
       libraryAssets={libraryAssets}
-      recentProjects={recentProjects}
+      ports={ports}
       capabilities={capabilities}
-      onProjectSaved={boot.rememberSavedProject}
     />
   )
 }
@@ -220,10 +204,9 @@ export interface EditorWorkspaceProps {
   handle: DocumentHandle
   runFlow: RunFlow
   libraryAssets: AssetCache
-  recentProjects: RecentProjectStore
+  /** The ports of the latest render, for the list of recent projects. */
+  ports: SessionPorts
   capabilities: StorageCapabilities
-  /** Called each time the save status of the handle becomes `saved`. */
-  onProjectSaved?: (handle: DocumentHandle) => void
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {

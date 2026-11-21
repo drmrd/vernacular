@@ -564,6 +564,7 @@ export type { PlanBounds, SvgView, SvgViewOptions } from './export/svg/svg-view'
 export { createSvgView, planContentBounds } from './export/svg/svg-view'
 export type { SvgPlanExportOptions } from './export/svg/svg-plan-exporter'
 export { SvgPlanExporter } from './export/svg/svg-plan-exporter'
+export { createPlanPreview } from './export/svg/plan-preview'
 export type { LinearRgb, OkLab, Srgb } from './color/oklab'
 export { linearToSrgb, okLabToSrgb, srgbToLinear, srgbToOkLab } from './color/oklab'
 export {
@@ -794,4 +795,4 @@ export type {
 } from './format/codec/codec-types'
 export { decodeDocument } from './format/codec/decode-document'
 export { encodeDocument } from './format/codec/encode-document'
-export { bestEffortProjectName } from './format/best-effort-read'
+export { bestEffortProjectName, readStoredFacts } from './format/best-effort-read'

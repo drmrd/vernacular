@@ -57,8 +57,8 @@ export function useOpenFileAction(context: ProjectActionsContext): {
   onImportDroppedFile: (file: File) => Promise<void>
   onOpenFile: () => void
 } {
-  const { notifications, packs } = context
-  const runSwitch = useSwitchFlow(context)
+  const { notifications, packs, runFlow } = context
+  const runSwitch = useSwitchFlow(runFlow)
   const importAndActivate = useCallback(
     async (file: File) => {
       if (refuseLargeFile(file, notifications)) {

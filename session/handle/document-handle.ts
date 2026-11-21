@@ -4,8 +4,10 @@ import { createEditorSession, type EditorSession } from '../editor-session/edito
 import { callGuarded, callGuardedAsync } from '../guarded-call'
 import { type HandOver, registerHandle } from './handle-internals'
 import { createHandleNotices, type HandleNotices } from './handle-notices'
+import type { RecordKeeper } from './handle-record'
 import type { DocumentHandle, OpenRequest, SaveOutcome, SaveStatus } from './handle-types'
 import type { OpenedProject } from './read-for-open'
+import { markSession } from './session-mark'
 import { messageOf } from './thrown-failures'
 
 /** What an open found, from which a handle is built. */
@@ -22,6 +24,8 @@ export interface DocumentHandleParts {
    * snapshots object, which is safe because that object holds no state of a session.
    */
   readonly snapshots?: ProjectSnapshots
+  /** The record writes of the project; a restore passes on those of the handle before it. */
+  readonly records: RecordKeeper
 }
 
 interface SaveStatusCell {
@@ -72,6 +76,7 @@ function failedWith(error: unknown): SaveOutcome {
 interface SavePathParts {
   readonly autosave: Autosave
   readonly hold: ProjectLockHold
+  readonly records: RecordKeeper
 }
 
 interface SavePath {
@@ -120,17 +125,36 @@ async function handOverWith(
   return outcome.ok ? { ok: true, hold } : outcome
 }
 
+/** What a handle does with its lock at the end of a close and at the end of a hand-over. */
+interface LockEnds {
+  readonly releaseLock: () => Promise<void>
+  readonly keepLock: () => Promise<void>
+}
+
+function lockEnds(hold: ProjectLockHold, records: RecordKeeper): LockEnds {
+  // The keeper hears of it first: once another handle can take the lock, no record is built here.
+  // A hand-over keeps the lock for the restored handle, which shares the keeper: it says nothing.
+  return {
+    releaseLock: () => {
+      records.lockReleased()
+      return callGuardedAsync(() => hold.release())
+    },
+    keepLock: () => Promise.resolve(),
+  }
+}
+
 /**
  * The save, the flush, the close, and the hand-over of a handle. A close flushes again while
  * autosave has work left: a write is needed, or a write of the handle runs or waits, whoever asked
  * for it, so no store save runs after the lock is freed. Then it marks the handle closed and stops
- * autosave with no wait in between, then frees the lock. A hand-over does the same and keeps the
- * lock for its caller. A flush that fails leaves the handle open, the lock held, and autosave
- * armed. A close called while another close runs, also while that close frees the lock, gets the
- * same attempt, so the lock is freed once.
+ * autosave with no wait in between, then waits for the record writes of the handle, at most
+ * `RECORD_WAIT_MS`, then tells the keeper and frees the lock. A hand-over does the same, except
+ * that it keeps the lock for its caller and does not tell the keeper. A flush that fails leaves the
+ * handle open, the lock held, and autosave armed. A close called while another close runs, also
+ * while that close frees the lock, gets the same attempt, so the lock is freed once.
  */
 function createSavePath(parts: SavePathParts): SavePath {
-  const { autosave, hold } = parts
+  const { autosave, hold, records } = parts
   const state: EndState = { closed: false, ending: undefined }
 
   const save = (): Promise<SaveOutcome> =>
@@ -148,6 +172,7 @@ function createSavePath(parts: SavePathParts): SavePath {
     }
     state.closed = true
     autosave.dispose()
+    await records.settled()
     await afterEnd()
     return SAVED
   }
@@ -158,8 +183,7 @@ function createSavePath(parts: SavePathParts): SavePath {
     })
     return state.ending
   }
-  const releaseLock = (): Promise<void> => callGuardedAsync(() => hold.release())
-  const keepLock = (): Promise<void> => Promise.resolve()
+  const { releaseLock, keepLock } = lockEnds(hold, records)
 
   return {
     save,
@@ -184,13 +208,53 @@ function reportFaultsTo(
   }
 }
 
+/** What the autosave of a handle tells: each status, and what each store save found. */
+interface WriteListeners {
+  onStatusChange(next: SaveStatus): void
+  onReport(report: SaveReport): void
+}
+
+/** What the listeners of the writes of a handle report to. */
+interface WriteListenerParts {
+  readonly session: EditorSession
+  readonly status: SaveStatusCell
+  readonly reportFaults: (report: SaveReport) => void
+  readonly records: RecordKeeper
+}
+
+/**
+ * Sets each status, and once a write reported saved, asks for the record of the session's project:
+ * no change arrived since that write started, so it is the stored project. The session is marked,
+ * so the keeper makes no record once a later change arrives. A store save always reports before
+ * its write reports saved, so the last report is that of the write.
+ */
+function listenToWrites(parts: WriteListenerParts): WriteListeners {
+  const { session, status, reportFaults, records } = parts
+  let lastReport: SaveReport | undefined
+  return {
+    onReport(report) {
+      lastReport = report
+      reportFaults(report)
+    },
+    onStatusChange(next) {
+      // The mark is taken before the status listeners run, so an edit that one of them makes
+      // keeps the record from being made.
+      const stored = next === 'saved' ? markSession(session) : undefined
+      status.set(next)
+      if (stored !== undefined && lastReport !== undefined) {
+        records.saved(stored, lastReport)
+      }
+    },
+  }
+}
+
 /**
  * Builds the handle of an opened project: its session, its autosave, its status, its notices, and
  * its save, flush, and close. It records the store and the hand-over of the handle in the internal
  * lookup of the session layer, so that the handle keeps only its public members.
  */
 export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle {
-  const { request, store, hold, opened } = parts
+  const { request, store, hold, opened, records } = parts
   const session = parts.session ?? createEditorSession(opened.project)
   const status = createSaveStatusCell()
   const notices = createHandleNotices()
@@ -198,15 +262,15 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     notices.raise('saved-by-newer-build')
   }
   const snapshots = parts.snapshots ?? store.snapshots(request.id)
+  const reportFaults = reportFaultsTo(notices, opened)
   const autosave = createAutosave({
     session,
     store,
     projectId: request.id,
     snapshots,
-    onStatusChange: status.set,
-    onReport: reportFaultsTo(notices, opened),
+    ...listenToWrites({ session, status, reportFaults, records }),
   })
-  const savePath = createSavePath({ autosave, hold })
+  const savePath = createSavePath({ autosave, hold, records })
   const handle: DocumentHandle = {
     id: request.id,
     location: request.location,
@@ -220,6 +284,6 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     flush: savePath.flush,
     close: savePath.close,
   }
-  registerHandle(handle, { request, store, handOver: savePath.handOver })
+  registerHandle(handle, { request, store, records, handOver: savePath.handOver })
   return handle
 }

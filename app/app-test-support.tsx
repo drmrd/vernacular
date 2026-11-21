@@ -12,10 +12,7 @@ import {
 import { NotificationProvider, type NotificationApi } from '../editor/design-system'
 import type { DocumentHandle } from '../session'
 import {
-  InMemoryActiveProjectIdStore,
   InMemoryAssetCache,
-  InMemoryRecentProjectStore,
-  type ActiveProjectIdStore,
   type DirectoryPort,
   type DocumentStore,
   type SaveReport,
@@ -42,7 +39,7 @@ export { lockCalls } from './use-open-project-test-support'
 
 /** Test support: the shared set-up of the tests that render the whole application. */
 
-/** The id that the start opens when nothing is remembered. */
+/** The id that the start opens when the index holds no workspace record. */
 export const START_ID = 'current'
 
 /** The id of the project that fails to open, in the cases where the start fails. It is the start id. */
@@ -51,7 +48,7 @@ export const FAILED_ID = 'current'
 /** Autosave waits before it writes, so a wait for a save is generous. */
 export const AUTOSAVE_TIMEOUT_MS = 3000
 
-/** Time for whatever follows a late save (such as a write of the remembered id) to run. */
+/** Time for whatever follows a late save (such as a write of its record) to run. */
 const SETTLE_MS = 300
 
 /** The name that a new project starts with. */
@@ -136,15 +133,16 @@ export function plantFailedProject(ports: TestPorts): Promise<void> {
   return placeDocument(ports, FAILED_ID, projectFromANewerBuild())
 }
 
-/** The ports of a second tab of the same browser: the same files and the same locks. */
+/** The ports of a second tab of the browser: the same files, index, and locks. */
 export function secondTab(ports: TestPorts): TestPorts {
-  const { root, lockRegistry } = ports
-  return createTestPorts({ root, lockRegistry, durable: ports.workspace.durable })
+  const { root, lockRegistry, index } = ports
+  return createTestPorts({ root, lockRegistry, index, durable: ports.workspace.durable })
 }
 
-/** The ports after a reload of the page: the same files, and no lock of the old page. */
+/** The ports after a reload of the page: the same files and index, and no lock of the old page. */
 export function reloadOf(ports: TestPorts): TestPorts {
-  return createTestPorts({ root: ports.root, durable: ports.workspace.durable })
+  const { root, index } = ports
+  return createTestPorts({ root, index, durable: ports.workspace.durable })
 }
 
 /** What a builder of the ports resolves with, around `ports`. */
@@ -160,7 +158,10 @@ export function renderApp(ports: TestPorts, props: Omit<AppProps, 'ports'> = {})
 /** The `runFlow` of an owner that is busy: it calls nothing and resolves undefined. */
 export const runNothing: RunFlow = () => Promise.resolve(undefined)
 
-/** The properties of the workspace around `handle`, with no owner behind it unless one is given. */
+/**
+ * The properties of the workspace around `handle`, with no owner behind it unless one is given.
+ * The ports are new in-memory ports unless a test gives the ones that opened `handle`.
+ */
 export function workspaceProps(
   handle: DocumentHandle,
   overrides: Partial<EditorWorkspaceProps> = {},
@@ -169,7 +170,7 @@ export function workspaceProps(
     handle,
     runFlow: runNothing,
     libraryAssets: new InMemoryAssetCache(),
-    recentProjects: new InMemoryRecentProjectStore(),
+    ports: createTestPorts(),
     capabilities: capableCapabilities(),
     ...overrides,
   }
@@ -193,36 +194,30 @@ export async function failedOpenSentence(ports: TestPorts, id = FAILED_ID): Prom
   return `Could not open the project: ${openFailureReason(failure)}`
 }
 
-/** A port of the remembered id that holds `id`. */
-export async function rememberedId(id: string): Promise<ActiveProjectIdStore> {
-  const port = new InMemoryActiveProjectIdStore()
-  await port.write(id)
-  return port
+/** A time of use one millisecond after another, so that the two never tie. */
+const NEXT_USE_STEP_MS = 1
+
+/**
+ * Puts the record of `id` again with a time of use later than that of every other record and than
+ * the clock of the ports. The index must already hold a record of `id`.
+ */
+export async function usedLast(ports: TestPorts, id: string): Promise<void> {
+  const records = await ports.index.all()
+  const record = records.find((each) => each.id === id)
+  if (record === undefined) throw new Error(`the index holds no record of ${id}`)
+  const times = records
+    .map((each) => Date.parse(each.lastUsedAt ?? ''))
+    .filter((time) => Number.isFinite(time))
+  const latest = Math.max(ports.now().getTime(), ...times)
+  await ports.index.put({
+    ...record,
+    lastUsedAt: new Date(latest + NEXT_USE_STEP_MS).toISOString(),
+  })
 }
 
-/** A port of the remembered id that records every write, and whose first `failures` writes reject. */
-export class RecordingActiveProjectIdStore implements ActiveProjectIdStore {
-  readonly writes: string[] = []
-  private remembered: string | undefined
-  private failuresLeft: number
-
-  constructor(failures = 0) {
-    this.failuresLeft = failures
-  }
-
-  read(): Promise<string | undefined> {
-    return Promise.resolve(this.remembered)
-  }
-
-  write(id: string): Promise<void> {
-    this.writes.push(id)
-    if (this.failuresLeft > 0) {
-      this.failuresLeft -= 1
-      return Promise.reject(new Error('storage is full'))
-    }
-    this.remembered = id
-    return Promise.resolve()
-  }
+/** The ids of every record that the index of `ports` holds, ordered by id. */
+export async function recordIds(ports: TestPorts): Promise<string[]> {
+  return (await ports.index.all()).map((record) => record.id)
 }
 
 export interface SaveLog {

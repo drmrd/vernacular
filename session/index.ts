@@ -32,4 +32,13 @@ export { openRecent } from './flows/open-recent'
 export { exportArchive } from './flows/export-archive'
 export { restoreSnapshot } from './flows/restore-snapshot'
 export { assetsOf } from './handle/handle-assets'
-export type { AssetCache, ProjectLocation, ProjectSnapshots } from '../storage'
+export { reconcileIndex } from './projects/reconcile-index'
+export { displayNameOf, UNNAMED_PROJECT } from './projects/display-name'
+export { latestWorkspaceRecord, recentRecords } from './projects/recent-records'
+export type {
+  AssetCache,
+  ProjectIndex,
+  ProjectLocation,
+  ProjectRecord,
+  ProjectSnapshots,
+} from '../storage'

@@ -43,6 +43,7 @@ export { FileSystemDirectory } from './fs/file-system-directory'
 export { SubdirectoryPort } from './fs/subdirectory-port'
 export type { ProjectFiles, RemovableProjectFiles } from './project-files/project-files'
 export type { ProjectLocation } from './project-files/project-location'
+export { PROJECT_FILE } from './project-files/project-file-name'
 export { InvalidProjectIdError } from './project-files/project-id-guard'
 export { WorkspaceFiles } from './project-files/workspace-files'
 export { FolderFiles } from './project-files/folder-files'
@@ -75,19 +76,14 @@ export type { FolderAccess, FolderHandles, RememberedFolder } from './filesystem
 export { BrowserFolderAccess, InMemoryFolderAccess } from './filesystem/folder-access'
 export { SnapshotStore } from './snapshots/snapshot-store'
 export type { SnapshotStoreOptions } from './snapshots/snapshot-store'
-export { InMemoryRecentProjectStore } from './recent/recent-project-store'
-export type {
-  RecentProjectStore,
-  RecentProjectEntry,
-  ProjectBackend,
-} from './recent/recent-project-store'
-export { IndexedDbRecentProjectStore } from './recent/indexeddb-recent-project-store'
 export { InMemoryProjectLockPort, WebLocksProjectLockPort } from './locks/project-lock'
 export type { ProjectLockHold, ProjectLockPort } from './locks/project-lock'
 export { selectProjectStoreBackend } from './select-project-store'
-export type { ProjectStoreBackend, SelectProjectStoreOptions } from './select-project-store'
-export { orderRecentProjects, recentEntryFor } from './recent/recent-projects'
-export type { RecentEntryInput } from './recent/recent-projects'
+export type {
+  ProjectBackend,
+  ProjectStoreBackend,
+  SelectProjectStoreOptions,
+} from './select-project-store'
 export { bundleFilename } from './zip/bundle-filename'
 export { svgPlanFilename } from './download/svg-plan-filename'
 export { pngPlanFilename } from './download/png-plan-filename'
@@ -105,10 +101,12 @@ export type { SvgPlanToPdfOptions } from './download/pdf-plan-document'
 export { downloadBytes, downloadText } from './download/download-blob'
 export { importProjectFile } from './import/import-project-file'
 export type { ProjectFileRead, ProjectFileFailure } from './import/import-project-file'
+export { isValidProjectId, newProjectId } from './active-project/project-id'
 export {
-  InMemoryActiveProjectIdStore,
-  LocalStorageActiveProjectIdStore,
-  isValidProjectId,
-  newProjectId,
-} from './active-project/active-project-id-store'
-export type { ActiveProjectIdStore } from './active-project/active-project-id-store'
+  readLegacyActiveProjectId,
+  removeLegacyActiveProjectId,
+} from './active-project/legacy-active-project-id'
+export type { ProjectRecord, ProjectIndex } from './project-index/project-index'
+export { InMemoryProjectIndex } from './project-index/in-memory-project-index'
+export { IndexedDbProjectIndex } from './project-index/indexeddb-project-index'
+export { hasSwitchedToMemory, withMemoryFallback } from './project-index/with-memory-fallback'

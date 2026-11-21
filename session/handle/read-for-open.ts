@@ -12,14 +12,27 @@ export interface OpenedProject {
 }
 
 /** The project to open, or why it did not open. */
-export type ReadForOpen = { readonly ok: true; readonly opened: OpenedProject } | OpenFailed
+export type ReadForOpen =
+  | {
+      readonly ok: true
+      readonly opened: OpenedProject
+      /** False when the project comes from `create`. */
+      readonly stored: boolean
+      /** From the read; undefined for `create` and for a read that could not tell. */
+      readonly lastChangedAt: string | undefined
+    }
+  | OpenFailed
 
-function openedOn(
+function openedProject(
   project: Project,
   flags: Partial<Omit<OpenedProject, 'project'>> = {},
-): ReadForOpen {
-  const opened = { project, savedByNewerBuild: false, openedDespiteFaults: false, ...flags }
-  return { ok: true, opened }
+): OpenedProject {
+  return { project, savedByNewerBuild: false, openedDespiteFaults: false, ...flags }
+}
+
+/** A project that the read found in the store. */
+function foundStored(opened: OpenedProject, lastChangedAt: string | undefined): ReadForOpen {
+  return { ok: true, opened, stored: true, lastChangedAt }
 }
 
 /** A document that failed to decode opens only under the interim rule for format faults. */
@@ -32,18 +45,24 @@ async function openFailedDecode(
     return { ok: false, failure: { kind: 'did-not-open', decode } }
   }
   const project = await store.openDespiteFormatFaults(id, decode)
-  return openedOn(project, { openedDespiteFaults: true })
+  return foundStored(openedProject(project, { openedDespiteFaults: true }), undefined)
 }
 
 async function readStored(store: DocumentStore, request: OpenRequest): Promise<ReadForOpen> {
   const read = await store.read(request.id)
   if (read.ok) {
-    return openedOn(read.value.project, { savedByNewerBuild: read.value.savedByNewerBuild })
+    const { project, savedByNewerBuild } = read.value
+    return foundStored(openedProject(project, { savedByNewerBuild }), read.lastChangedAt)
   }
   if (read.failure.kind === 'not-found') {
     return request.create === undefined
       ? { ok: false, failure: { kind: 'not-found' } }
-      : openedOn(request.create())
+      : {
+          ok: true,
+          opened: openedProject(request.create()),
+          stored: false,
+          lastChangedAt: undefined,
+        }
   }
   return openFailedDecode(store, request.id, read.failure.decode)
 }

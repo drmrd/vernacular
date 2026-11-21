@@ -1,14 +1,9 @@
 import { useCallback } from 'react'
 import { createNewProject, openFolder, openRecent, type DocumentHandle } from '../session'
-import type { RecentProjectStore, StorageCapabilities } from '../storage'
+import type { StorageCapabilities } from '../storage'
 import { type NotificationApi } from '../editor/design-system'
 import { createInitialProject } from './create-initial-project'
-import {
-  recentInputOf,
-  recordProject,
-  useSwitchFlow,
-  type RunSwitch,
-} from './project-action-helpers'
+import { useSwitchFlow, type RunSwitch } from './project-action-helpers'
 import {
   useExportBundleAction,
   useExportImageAction,
@@ -24,7 +19,6 @@ export interface ProjectActionsContext {
   handle: DocumentHandle
   /** Runs a flow through the one owner of the open project. */
   runFlow: RunFlow
-  recentProjects: RecentProjectStore
   capabilities: StorageCapabilities
   notifications: NotificationApi
   /** The library whose packs supply assets by themselves, so that those assets do not count as missing. */
@@ -45,7 +39,7 @@ export interface ProjectActions {
 }
 
 export function useProjectActions(context: ProjectActionsContext): ProjectActions {
-  const runSwitch = useSwitchFlow(context)
+  const runSwitch = useSwitchFlow(context.runFlow)
   return {
     onSave: useSaveAction(context),
     onOpenRecent: useOpenRecentAction(runSwitch),
@@ -60,30 +54,18 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
 }
 
 // Save stores the open project now. A failed save shows itself through the save status, which
-// raises the one toast of the shell, so this action raises none. A stored project is recorded in
-// the recent list.
+// raises the one toast of the shell, so this action raises none.
 function useSaveAction(context: ProjectActionsContext): () => void {
-  const { handle, recentProjects, capabilities } = context
+  const { handle } = context
   return useCallback(() => {
-    void handle.save().then((outcome) => {
-      if (outcome.ok) {
-        recordProject(recentProjects, recentInputOf(handle, capabilities))
-      }
-    })
-  }, [handle, recentProjects, capabilities])
+    void handle.save()
+  }, [handle])
 }
 
-// New project asks nothing: the switch stores an unsaved change of the open project first. The new
-// project is not stored yet, so it gets no recent entry now: opening that entry would find nothing.
-// Its first save records it. A new project that the user leaves with no edit is recorded as the
-// project that was left although it is not stored, so that entry cannot be opened; the project
-// index that comes later replaces the recent list.
+// New project asks nothing: the switch stores an unsaved change of the open project first.
 function useNewProjectAction(runSwitch: RunSwitch): () => Promise<void> {
   return useCallback(
-    () =>
-      runSwitch((ports, current) => createNewProject(ports, current, createInitialProject), {
-        recordOpened: false,
-      }),
+    () => runSwitch((ports, current) => createNewProject(ports, current, createInitialProject)),
     [runSwitch],
   )
 }

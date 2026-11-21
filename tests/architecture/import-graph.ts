@@ -198,7 +198,7 @@ export function filesImportingLayer(
 }
 
 const STORE_LAYER = 'storage'
-const MEMBER_OF_PORTS = 'workspace'
+const MEMBERS_OF_PORTS: readonly string[] = ['workspace', 'index']
 const EVERYTHING = '*'
 const NOT_PRODUCTION_PATTERN = /\.(test|spec|stories)\.tsx?$|-test-support\.tsx?$|(^|\/)__tests__\//
 
@@ -258,30 +258,31 @@ function reportedNamesOf(
     .filter((name) => names.includes(name))
 }
 
-function isMemberAccess(node: ts.Node): boolean {
-  return ts.isPropertyAccessExpression(node) && node.name.text === MEMBER_OF_PORTS
-}
-
-function isElementAccess(node: ts.Node): boolean {
-  return (
-    ts.isElementAccessExpression(node) &&
-    ts.isStringLiteralLike(node.argumentExpression) &&
-    node.argumentExpression.text === MEMBER_OF_PORTS
-  )
-}
-
 function boundPropertyName(element: ts.BindingElement): string | undefined {
   const property = element.propertyName ?? element.name
   return ts.isIdentifier(property) || ts.isStringLiteralLike(property) ? property.text : undefined
 }
 
-function isDestructuring(node: ts.Node): boolean {
-  return ts.isBindingElement(node) && boundPropertyName(node) === MEMBER_OF_PORTS
+/** The property that `node` reads: a member access, a string element access, or a destructuring. */
+function propertyRead(node: ts.Node): string | undefined {
+  if (ts.isPropertyAccessExpression(node)) return node.name.text
+  if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
+    return node.argumentExpression.text
+  }
+  return ts.isBindingElement(node) ? boundPropertyName(node) : undefined
 }
 
-function reachesMemberOfPorts(node: ts.Node): boolean {
-  if (isMemberAccess(node) || isElementAccess(node) || isDestructuring(node)) return true
-  return ts.forEachChild(node, reachesMemberOfPorts) ?? false
+function collectMembersOfPorts(node: ts.Node, reached: Set<string>): void {
+  const property = propertyRead(node)
+  if (property !== undefined && MEMBERS_OF_PORTS.includes(property)) reached.add(property)
+  ts.forEachChild(node, (child) => collectMembersOfPorts(child, reached))
+}
+
+/** Each member of the ports in `MEMBERS_OF_PORTS` that the code of `sourceFile` reads. */
+function membersOfPortsReached(sourceFile: ts.SourceFile): string[] {
+  const reached = new Set<string>()
+  collectMembersOfPorts(sourceFile, reached)
+  return [...reached]
 }
 
 function reportedNamesOfFile(path: string, text: string, names: readonly string[]): string[] {
@@ -289,8 +290,8 @@ function reportedNamesOfFile(path: string, text: string, names: readonly string[
   const imported = sourceFile.statements.flatMap((statement) =>
     reportedNamesOf(path, statement, names),
   )
-  const member = reachesMemberOfPorts(sourceFile) ? [`.${MEMBER_OF_PORTS}`] : []
-  return [...new Set([...imported, ...member])]
+  const members = membersOfPortsReached(sourceFile).map((member) => `.${member}`)
+  return [...new Set([...imported, ...members])]
 }
 
 /**
@@ -304,14 +305,14 @@ function reportedNamesOfFile(path: string, text: string, names: readonly string[
  *   (`import { DocumentStore as Store }` reports `DocumentStore`).
  * - A file is reported with `*` when a namespace import (`import * as`) or an `export *` (also
  *   `export * as`) has a relative path that resolves into `storage/`.
- * - A file is reported with `.workspace` when its code reads the property `workspace` of an object
- *   in one of three ways: the member access (`ports.workspace`, `ports?.workspace`), an element
- *   access with a string literal (`ports['workspace']`), or a destructuring that binds the property
- *   (`const { workspace } = ports`, `const { workspace: store } = ports`, and the same in a
- *   parameter list). A comment, a string that is not an element access, the indexed type
- *   `SessionPorts['workspace']`, and a property of an object literal (`{ workspace: store }`, which
- *   builds ports) do not count. An assignment to a destructuring pattern and a computed key that is
- *   not a string literal are not seen.
+ * - A file is reported with `.workspace` or `.index` when its code reads the property `workspace`
+ *   or `index` of an object (the store and the project index of the ports) in one of three ways:
+ *   the member access (`ports.workspace`, `ports?.index`), an element access with a string literal
+ *   (`ports['workspace']`), or a destructuring that binds the property (`const { index } = ports`,
+ *   `const { workspace: store } = ports`, and the same in a parameter list). A comment, a string
+ *   that is not an element access, the indexed type `SessionPorts['workspace']`, and a property of
+ *   an object literal (`{ workspace: store }`, which builds ports) do not count. An assignment to a
+ *   destructuring pattern and a computed key that is not a string literal are not seen.
  *
  * Each pair of a file and a name is reported once. A dynamic `import()` is not seen.
  */

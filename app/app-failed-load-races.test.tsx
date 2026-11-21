@@ -1,15 +1,21 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { screen, cleanup, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ActiveProjectIdStore } from '../storage'
+import { reconcileIndex } from '../session'
 import { settle } from '../session/autosave/save-gate-test-kit'
-import { createTestPorts, holdNextRead, recordingPorts } from '../session/handle/handle-test-kit'
+import { failingIndex } from '../storage/project-index/project-record-test-kit'
+import {
+  createTestPorts,
+  holdNextRead,
+  recordOf,
+  recordingPorts,
+  type TestPorts,
+} from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
   LOADING_TEXT,
   NEW_PROJECT_NAME,
-  RecordingActiveProjectIdStore,
   chooseFromTheProjectMenu,
   editTheProject,
   expectOpenProject,
@@ -38,6 +44,13 @@ function newProjectLockCalls(log: readonly string[]): string[] {
   return lockCalls(log).filter((call) => !failed.includes(call))
 }
 
+// The id of the record with the latest time of use, of any location.
+async function idUsedLast(ports: TestPorts): Promise<string | undefined> {
+  const records = await ports.index.all()
+  const latestFirst = records.sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? ''))
+  return latestFirst[0]?.id
+}
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -49,6 +62,7 @@ describe('A new project that opens after a failed start', () => {
     stubCapableStorage()
     const ports = createTestPorts()
     await plantProject(ports, FAILED_ID, KEPT_NAME)
+    await reconcileIndex(ports)
     vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
     renderApp(ports)
     await screen.findByRole('alert')
@@ -67,13 +81,12 @@ describe('A new project that opens after a failed start', () => {
 })
 
 describe('A save that finishes after another new project started', () => {
-  it('remembers exactly the id of the project that was saved', async () => {
+  it('the project that was saved is the one with the latest use', async () => {
     stubCapableStorage()
     const ports = createTestPorts({ durable: true })
     await plantFailedProject(ports)
     const saves = logSaves(ports.workspace)
-    const remembered = new RecordingActiveProjectIdStore()
-    renderApp(ports, { activeProjectIds: remembered })
+    renderApp(ports)
     await startNewProjectFromTheFailureView()
     const letTheSavesGo = saves.hold()
     await editTheProject()
@@ -85,27 +98,25 @@ describe('A save that finishes after another new project started', () => {
     await chooseFromTheProjectMenu(/new project/i)
     letTheSavesGo()
     await waitFor(() => expect(saves.saved).toContain(firstId), { timeout: AUTOSAVE_TIMEOUT_MS })
-    await waitFor(() => expect(remembered.writes).toContain(firstId))
     await waitFor(() => expect(lockedIds(ports)).not.toContain(firstId))
     await settleForAWhile()
 
     expect(firstId).not.toBe(FAILED_ID)
-    expect(remembered.writes).toEqual([firstId])
-    expect(await remembered.read()).toBe(firstId)
+    expect(await idUsedLast(ports)).toBe(firstId)
+    const [secondId = ''] = lockedIds(ports)
+    expect(secondId).not.toBe('')
+    expect(await recordOf(ports, secondId)).toBeUndefined()
   })
 })
 
-describe('A port that rejects its read', () => {
+describe('An index that rejects its reads', () => {
   it('opens the project stored under current instead of staying on the loading view', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const ports = createTestPorts({ index: failingIndex(new Error('storage is unavailable')) })
     await plantProject(ports, FAILED_ID, KEPT_NAME)
-    const port: ActiveProjectIdStore = {
-      read: () => Promise.reject(new Error('storage is unavailable')),
-      write: () => Promise.resolve(),
-    }
 
-    renderApp(ports, { activeProjectIds: port })
+    renderApp(ports)
 
     expect(await openProjectName()).toBe(KEPT_NAME)
   })

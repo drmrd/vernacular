@@ -26,7 +26,7 @@ sourceFiles:
     editor/design-system/tokens.css,
   ]
 status: current
-updated: 2026-09-07
+updated: 2026-11-20
 ---
 
 # ADR-0160: Plan walls draw as poche between two face lines
@@ -304,6 +304,18 @@ One consequence is new. A zero-length wall used to export a round dot, since a `
 endpoints and a round cap still paints. `wallFaceGeometry` treats a run that short as having no
 direction and returns no stretches, so such a wall now exports nothing. Neither the canvas nor the
 export has ever drawn a zero-length wall on purpose.
+
+## Update (2026-11-20): derived rooms inset by the resolved thickness
+
+The room derivation in `core/topology/rooms.ts` now reads `effectiveWallThickness`, so both the
+clear boundary and the outer boundary of a room sit on the drawn assembly faces. Where the profile
+total differs from the raw figure, both polygons used to sit off the drawn faces; they now meet
+them. The 2026-08-15 update said `rooms.ts` reads the raw figure on purpose. That no longer holds:
+the thickness map behind the inset and the outset was the only raw reader in the file, and the
+wall graph that nodes the arrangement reads no thickness at all.
+
+The fallback rule is the same as for the other readers: a wall with no profile, or a profile id
+the registry does not carry, resolves to its raw thickness. Issue #674 closes with this change.
 
 ## References
 

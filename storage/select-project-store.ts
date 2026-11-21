@@ -1,5 +1,7 @@
 import type { StorageCapabilities } from './storage-capabilities'
-import type { ProjectBackend } from './recent/recent-project-store'
+
+/** A durable backend that a project can be kept in, apart from the IndexedDB default. */
+export type ProjectBackend = 'opfs' | 'file-system-folder' | 'zip-bundle'
 
 /** The durable backend the running app should construct, before instantiation. */
 export type ProjectStoreBackend = 'indexeddb' | ProjectBackend

@@ -7,20 +7,20 @@ import {
   type Notification,
   type NotificationApi,
 } from '../editor/design-system'
-import type { DocumentHandle, SessionPorts } from '../session'
+import {
+  reconcileIndex,
+  recentRecords,
+  type DocumentHandle,
+  type ProjectRecord,
+  type SessionPorts,
+} from '../session'
 import {
   createTestPorts,
   openOrThrow,
   workspaceRequest,
   type TestPorts,
 } from '../session/handle/handle-test-kit'
-import {
-  InMemoryRecentProjectStore,
-  type LibraryItem,
-  type RecentProjectEntry,
-  type RecentProjectStore,
-  type StorageCapabilities,
-} from '../storage'
+import type { LibraryItem, StorageCapabilities } from '../storage'
 import { projectReferring } from '../storage/zip/zip-test-kit'
 import {
   capableCapabilities,
@@ -66,7 +66,6 @@ export function actionsContext(
   return {
     handle,
     runFlow: runNothing,
-    recentProjects: new InMemoryRecentProjectStore(),
     capabilities: capableCapabilities(),
     notifications,
   }
@@ -111,7 +110,6 @@ export interface ActionRig {
   readonly ports: TestPorts
   /** The project that is open when the case starts. */
   readonly handle: DocumentHandle
-  readonly recentProjects?: RecentProjectStore
   readonly capabilities?: StorageCapabilities
   /** The library whose listing tells which pack assets an installed pack brings by itself. */
   readonly packs?: LibraryLister
@@ -131,7 +129,6 @@ export function renderActions<Actions>(
   rig: ActionRig,
   useAdapter: (context: ProjectActionsContext) => Actions,
 ) {
-  const recentProjects = rig.recentProjects ?? new InMemoryRecentProjectStore()
   const capabilities = rig.capabilities ?? capableCapabilities()
   const { packs } = rig
   return renderHook(
@@ -142,7 +139,6 @@ export function renderActions<Actions>(
       const context = {
         handle,
         runFlow,
-        recentProjects,
         capabilities,
         notifications,
         ...(packs === undefined ? {} : { packs }),
@@ -170,16 +166,18 @@ export function waitForOtherProject(
   })
 }
 
-/** Waits until the recent list holds an entry for `id`, and gives it. */
-export function waitForRecentEntry(
-  recentProjects: RecentProjectStore,
-  id: string,
-): Promise<RecentProjectEntry> {
+/** Waits until the index of `ports` holds a record of `id`, and gives it. */
+export function waitForRecord(ports: SessionPorts, id: string): Promise<ProjectRecord> {
   return waitFor(async () => {
-    const entry = (await recentProjects.list()).find((listed) => listed.id === id)
-    if (entry === undefined) throw new Error(`The recent list holds no entry for ${id}`)
-    return entry
+    const record = await ports.index.get(id)
+    if (record === undefined) throw new Error(`The index holds no record of ${id}`)
+    return record
   })
+}
+
+/** The ids that the recent list of the Project menu would show while the project `openId` is open. */
+export async function recentIds(ports: SessionPorts, openId: string): Promise<string[]> {
+  return recentRecords(await reconcileIndex(ports), openId).map((record) => record.id)
 }
 
 /** A rendered hook that holds the notifications that show now. */
@@ -279,8 +277,7 @@ export async function renderOnAStoredProject<Actions>(
 ) {
   const ports = createTestPorts()
   const handle = await openStoredProject(ports, STORED_PROJECT_ID, STORED_PROJECT_NAME)
-  const recentProjects = new InMemoryRecentProjectStore()
-  const rig = { ports, handle, recentProjects, ...(packs === undefined ? {} : { packs }) }
+  const rig = { ports, handle, ...(packs === undefined ? {} : { packs }) }
   const { result } = renderActions(rig, useAdapter)
-  return { ports, handle, recentProjects, result }
+  return { ports, handle, result }
 }

@@ -168,7 +168,7 @@ function reloadBrowserPage(): void {
 }
 
 /** The Canvas props a scene canvas takes: everything but the renderer, which it builds. */
-export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
+export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl' | 'flat'> &
   Pick<SceneRendererOptions, 'forceWebGL'> & {
     /**
      * Called once when the user presses Reload page in the could-not-load alert. The default
@@ -214,7 +214,10 @@ export function SceneRendererCanvas({
   if (createRenderer === null) return <canvas style={LOADING_CANVAS_STYLE} />
   const initialized = status === 'ready'
   return (
-    <Canvas {...canvasProps} frameloop={initialized ? frameloop : 'never'} gl={createRenderer}>
+    // The library still writes toneMapping once while it configures the canvas. flat makes that
+    // write the identity operator. SceneLighting's layout effect sets the visible operator, and
+    // it runs after, because the library renders the children only once configure has resolved.
+    <Canvas {...canvasProps} flat frameloop={initialized ? frameloop : 'never'} gl={createRenderer}>
       {initialized ? children : null}
     </Canvas>
   )

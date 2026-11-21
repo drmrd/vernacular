@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 // Validates the durable browser-storage adapters (OPFS-backed project store via
-// FileSystemDirectory, the IndexedDB recent list, and the Web Locks manager) in a
+// FileSystemDirectory, the IndexedDB project index, and the Web Locks manager) in a
 // real browser, which jsdom cannot exercise. The adapters are reached through the
 // query-parameter-guarded hook installed by src/e2e-storage-hook.ts.
 
@@ -32,11 +32,11 @@ test.describe('Durable storage adapters', () => {
     expect(name).toBe('Persisted House')
   })
 
-  test('records and removes a recent project in IndexedDB', async ({ page }) => {
+  test('keeps and removes a record in the project index of the browser', async ({ page }) => {
     await waitForHook(page)
-    const result = await page.evaluate(() => window.vernacularE2eStorage!.recentRoundTrip())
-    expect(result.recordedName).toBe('Recent House')
-    expect(result.recordedBackend).toBe('opfs')
+    const result = await page.evaluate(() => window.vernacularE2eStorage!.indexRoundTrip())
+    expect(result.readName).toBe('Indexed House')
+    expect(result.readFloorCount).toBe(1)
     expect(result.removedGone).toBe(true)
   })
 

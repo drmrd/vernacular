@@ -48,6 +48,10 @@ export interface SvgPlanExportOptions {
   marginMm?: number
   /** Unit preferences for area and length text. Defaults to the project's units. */
   preferences?: UnitPreferences
+  /** The ids of the floors to draw. Default: every floor. */
+  floorIds?: readonly string[]
+  /** False leaves out the room labels and the dimensions. Default true. */
+  annotations?: boolean
 }
 
 /** Collaborators every render function needs, bundled to keep parameter lists small. */
@@ -61,24 +65,47 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
   readonly media = 'image/svg+xml'
 
   export(project: Project, options?: SvgPlanExportOptions): ExportResult {
-    const graph = deriveSceneGraph(project)
+    const graph = narrowGraph(deriveSceneGraph(project), options)
     const bounds = planContentBounds(graph)
     const view = createSvgView(bounds, options)
     const preferences = options?.preferences ?? preferencesForUnits(project.meta.units)
     const context: SvgPlanContext = { view, preferences }
+    const annotationLayers =
+      options?.annotations === false
+        ? []
+        : [
+            renderRoomLabels(graph, context),
+            // Dimensions are annotation overlays painted above the plan.
+            renderDimensions(graph, context),
+          ]
     const body = svgGroup(
       [
         renderRooms(graph, context),
         renderWalls(graph, context),
         // Openings paint no fill of their own; see `renderOpening`.
         renderOpenings(graph, context),
-        renderRoomLabels(graph, context),
-        // Dimensions are annotation overlays painted above the plan.
-        renderDimensions(graph, context),
+        ...annotationLayers,
       ],
       {},
     )
     return { media: 'image/svg+xml', extension: 'svg', content: svgDocument(view, body) }
+  }
+}
+
+/**
+ * The graph the plan draws: only the nodes of the listed floors, and no dimensions
+ * when annotations are off, so neither widens the view.
+ */
+function narrowGraph(graph: SceneGraph, options: SvgPlanExportOptions | undefined): SceneGraph {
+  const floorIds = options?.floorIds
+  const onListedFloor = (node: { floorId: string }): boolean =>
+    floorIds === undefined || floorIds.includes(node.floorId)
+  return {
+    ...graph,
+    walls: graph.walls.filter(onListedFloor),
+    rooms: graph.rooms.filter(onListedFloor),
+    openings: graph.openings.filter(onListedFloor),
+    dimensions: options?.annotations === false ? [] : graph.dimensions.filter(onListedFloor),
   }
 }
 

@@ -1,10 +1,15 @@
+import { version as appVersion } from '../package.json'
 import type { SessionPorts } from '../session'
 import {
   BrowserFolderAccess,
   InMemoryAssetCache,
+  InMemoryProjectIndex,
   InMemoryProjectStore,
+  IndexedDbProjectIndex,
   WebLocksProjectLockPort,
+  withMemoryFallback,
   type AssetCache,
+  type ProjectIndex,
   type WorkspaceDocumentStore,
 } from '../storage'
 import { resolveProjectStorage } from './resolve-project-store'
@@ -15,24 +20,43 @@ export interface BuiltSessionPorts {
   readonly libraryAssets: AssetCache
 }
 
-// The lock, folder, and clock ports are the same whichever store holds the workspace.
-function portsOver(workspace: WorkspaceDocumentStore, assets: AssetCache): BuiltSessionPorts {
-  const ports: SessionPorts = {
-    workspace,
-    locks: new WebLocksProjectLockPort(),
-    folders: new BrowserFolderAccess(undefined, { shared: assets }),
-    now: () => new Date(),
-  }
-  return { ports, libraryAssets: assets }
+/** The stores that differ between the durable and the temporary ports. */
+interface PortStores {
+  readonly workspace: WorkspaceDocumentStore
+  readonly assets: AssetCache
+  readonly index: ProjectIndex
 }
 
-/** The ports over the durable storage of this browser. Rejects when the storage does not resolve. */
+// The lock, folder, clock, and build ports are the same whichever store holds the workspace.
+function portsOver(stores: PortStores): BuiltSessionPorts {
+  const ports: SessionPorts = {
+    workspace: stores.workspace,
+    locks: new WebLocksProjectLockPort(),
+    folders: new BrowserFolderAccess(undefined, { shared: stores.assets }),
+    now: () => new Date(),
+    index: stores.index,
+    build: appVersion,
+  }
+  return { ports, libraryAssets: stores.assets }
+}
+
+/**
+ * The ports over the durable storage of this browser. Rejects when the storage does not resolve.
+ */
 export async function createSessionPorts(): Promise<BuiltSessionPorts> {
   const { store, assets } = await resolveProjectStorage()
-  return portsOver(store, assets)
+  return portsOver({
+    workspace: store,
+    assets,
+    index: withMemoryFallback(new IndexedDbProjectIndex()),
+  })
 }
 
 /** Ports that keep everything in memory, for a project started after the storage did not resolve. */
 export function createTemporarySessionPorts(): BuiltSessionPorts {
-  return portsOver(new InMemoryProjectStore(), new InMemoryAssetCache())
+  return portsOver({
+    workspace: new InMemoryProjectStore(),
+    assets: new InMemoryAssetCache(),
+    index: new InMemoryProjectIndex(),
+  })
 }

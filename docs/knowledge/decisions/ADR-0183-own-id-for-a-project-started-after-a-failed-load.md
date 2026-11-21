@@ -18,14 +18,11 @@ sourceFiles:
     app/use-workspace-state.ts,
     session/handle/read-for-open.ts,
     storage/project-store.ts,
-    storage/active-project/active-project-id-store.ts,
-    app/use-active-project-id.ts,
     app/use-open-project.ts,
     app/use-project-boot.ts,
-    app/use-remember-saved-project.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # ADR-0183: A project started after a failed load gets its own id
@@ -56,6 +53,17 @@ that id after the project's first successful save.
 > read that project and write nothing over it. The remembered id now follows the last workspace
 > project saved on a durable store (`app/use-remember-saved-project.ts`), whether or not it was
 > started after a failed load.
+
+> Updated on 2026-11-19. The port of the remembered id, `ActiveProjectIdStore`, is deleted, and
+> so are the hooks that read and wrote it. The project index decides the start: the application
+> opens the workspace record used last, and opens `'current'` when the index holds none. A project
+> started after a failed load still gets its own id, now a bare UUID from `newProjectId`. A small
+> reader of the old `localStorage` key stays in `storage/active-project/`. The rebuild of the index
+> reads the key on a durable workspace for as long as it is stored. When the index holds no record
+> of the remembered project, the rebuild gives that project the latest use, and it removes the key
+> only once that marked record is stored. If the clock fails, no marked record is stored and the
+> key stays for the next rebuild. The rebuild also removes a key whose project the store does not
+> hold.
 
 ## Context
 

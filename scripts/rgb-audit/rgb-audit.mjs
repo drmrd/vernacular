@@ -2,12 +2,16 @@
 // scripts/rgb-audit/rgb-audit.mjs
 //
 // rgb-audit CLI: map a branch's commit range to a red-green-blue cycle verdict.
-// The dependency-injected shell reads `git log` for a range, delegates parsing
-// and rule checks to ./cycle-audit.mjs, and reports either a clean line or one
-// line per violation. Exit code 0 means clean; 1 means at least one violation.
+// The dependency-injected shell reads `git log` for a range (and `git show` for
+// each BLUE commit that touches a test file), delegates parsing and rule checks
+// to ./cycle-audit.mjs, and reports either a clean line or one line per violation.
+// Exit code 0 means clean, or only warning violations; 1 means at least one failing
+// violation; 2 means an internal error.
 
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { GIT_OUTPUT_LIMIT_BYTES } from '../policy-check/git-input.mjs'
+import { severityOf as defaultSeverityOf } from '../policy-check/rule-severity.mjs'
 import { auditCommits, parseGitLog } from './cycle-audit.mjs'
 
 const EXIT_CLEAN = 0
@@ -15,10 +19,13 @@ const EXIT_VIOLATIONS = 1
 const EXIT_INTERNAL = 2
 const DEFAULT_RANGE = 'main..HEAD'
 
+/** @typedef {import('../policy-check/rule-severity.mjs').Severity} Severity */
+
 /**
  * @typedef {object} RgbAuditDeps
  * @property {(args: readonly string[]) => string} runGit
  * @property {(line: string) => void} log
+ * @property {(rule: string) => Severity} [severityOf] defaults to the policy severity table
  */
 
 /**
@@ -26,7 +33,7 @@ const DEFAULT_RANGE = 'main..HEAD'
  * @param {RgbAuditDeps} deps
  * @returns {Promise<number>} the process exit code
  */
-export async function runRgbAudit(argv, { runGit, log }) {
+export async function runRgbAudit(argv, { runGit, log, severityOf = defaultSeverityOf }) {
   const range = resolveRange(argv)
   const raw = runGit([
     'log',
@@ -39,16 +46,21 @@ export async function runRgbAudit(argv, { runGit, log }) {
     '--pretty=format:%x1e%H%x1f%s%x1f%(trailers:key=Infrastructure,valueonly,separator=%x20)',
     '--name-only',
   ])
-  const violations = auditCommits(parseGitLog(raw))
+  const violations = auditCommits(parseGitLog(raw), {
+    readCommitDiff: (sha) => runGit(['show', '-M', '--format=', '--unified=0', sha]),
+  })
   if (violations.length === 0) {
     log(`rgb:audit: clean (${range})`)
     return EXIT_CLEAN
   }
   log(`rgb:audit: ${violations.length} violation(s) in ${range}`)
+  let anyFailure = false
   for (const violation of violations) {
-    log(`  [${violation.rule}] ${violation.message}`)
+    const isWarning = severityOf(violation.rule) === 'warn'
+    anyFailure ||= !isWarning
+    log(`  [${violation.rule}] ${isWarning ? '(warning) ' : ''}${violation.message}`)
   }
-  return EXIT_VIOLATIONS
+  return anyFailure ? EXIT_VIOLATIONS : EXIT_CLEAN
 }
 
 /**
@@ -73,11 +85,17 @@ const invokedPath = process.argv[1]
 const isDirectInvocation =
   invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath
 
-if (isDirectInvocation) {
-  runRgbAudit(process.argv.slice(2), {
-    runGit: (args) => execFileSync('git', args, { encoding: 'utf8' }),
+/** @returns {RgbAuditDeps} the real git and console */
+export function defaultDeps() {
+  return {
+    runGit: (args) =>
+      execFileSync('git', args, { encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT_BYTES }),
     log: (line) => console.log(line),
-  })
+  }
+}
+
+if (isDirectInvocation) {
+  runRgbAudit(process.argv.slice(2), defaultDeps())
     .then((code) => {
       // Set, don't exit: let queued async work and beforeExit handlers drain.
       process.exitCode = code

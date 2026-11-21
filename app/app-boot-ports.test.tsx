@@ -2,11 +2,16 @@ import { StrictMode } from 'react'
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { App, type BuiltSessionPorts } from './app'
-import { createTestPorts, recordingPorts, type TestPorts } from '../session/handle/handle-test-kit'
+import { reconcileIndex } from '../session'
+import {
+  createTestPorts,
+  recordOf,
+  recordingPorts,
+  type TestPorts,
+} from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
-  RecordingActiveProjectIdStore,
   START_ID,
   builtPorts,
   editTheProject,
@@ -33,35 +38,31 @@ afterEach(() => {
 
 /**
  * Asserts that a new project, started after a failed open, lives on `ports`: its lock is in their
- * lock registry, an edit is stored in their workspace, and its id is the remembered one.
+ * lock registry, an edit is stored in their workspace, and their index holds its record.
  */
-async function expectNewProjectOnThesePorts(
-  ports: TestPorts,
-  remembered: RecordingActiveProjectIdStore,
-): Promise<void> {
-  const [newId] = lockedIds(ports)
-  expect(newId).toBeDefined()
+async function expectNewProjectOnThesePorts(ports: TestPorts): Promise<void> {
+  const [newId = ''] = lockedIds(ports)
+  expect(newId).not.toBe('')
   expect(newId).not.toBe(FAILED_ID)
   await editTheProject()
   await waitFor(async () => expect(await storedIds(ports)).toContain(newId), {
     timeout: AUTOSAVE_TIMEOUT_MS,
   })
-  await waitFor(() => expect(remembered.writes).toEqual([newId]))
+  await waitFor(async () => expect(await recordOf(ports, newId)).toMatchObject({ id: newId }))
 }
 
 describe('A new project after a failed open on ports that were resolved', () => {
-  it('stays on the resolved ports: its lock, its stored edit, and its remembered id', async () => {
+  it('stays on the resolved ports: its lock, its stored edit, and its record', async () => {
     stubCapableStorage()
     const ports = createTestPorts({ durable: true })
     await plantFailedProject(ports)
-    const remembered = new RecordingActiveProjectIdStore()
     const resolvePorts = () => Promise.resolve(builtPorts(ports))
-    render(<App resolvePorts={resolvePorts} activeProjectIds={remembered} />)
+    render(<App resolvePorts={resolvePorts} />)
 
     await startNewProjectFromTheFailureView()
     await findTheShell()
 
-    await expectNewProjectOnThesePorts(ports, remembered)
+    await expectNewProjectOnThesePorts(ports)
   })
 })
 
@@ -119,6 +120,7 @@ describe('Retry clicked twice in one batch', () => {
     const log: string[] = []
     const ports = recordingPorts(log)
     await plantProject(ports, START_ID, KEPT_NAME)
+    await reconcileIndex(ports)
     const read = vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
     render(<App ports={ports} />)
 
@@ -174,5 +176,21 @@ describe('The application under StrictMode that resolves its ports', () => {
     const { log } = await renderStrictAndSettle()
 
     expect(lockCalls(log)).toEqual([`lock:${START_ID}`])
+  })
+
+  it('reads the index once for the start and once for the recent entries', async () => {
+    stubCapableStorage()
+    const ports = createTestPorts()
+    const all = vi.spyOn(ports.index, 'all')
+    render(
+      <StrictMode>
+        <App resolvePorts={() => Promise.resolve(builtPorts(ports))} />
+      </StrictMode>,
+    )
+
+    await findTheShell()
+    await settleForAWhile()
+
+    expect(all).toHaveBeenCalledTimes(2)
   })
 })

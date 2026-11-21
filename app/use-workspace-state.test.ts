@@ -204,19 +204,6 @@ describe('useWorkspaceState save status', () => {
     })
     expect(result.current.saveStatus).toBe('saved')
   })
-
-  it('a status that becomes saved reports the handle', async () => {
-    const handle = await openProject(createTestPorts(), CURRENT_ID, 'Drafthouse')
-    const onProjectSaved = vi.fn()
-    renderWorkspaceState(workspaceProps(handle, { onProjectSaved }))
-
-    await addASecondFloor(handle)
-    await act(async () => {
-      await handle.save()
-    })
-
-    expect(onProjectSaved).toHaveBeenCalledWith(handle)
-  })
 })
 
 describe('useWorkspaceState discard confirmation of the recovered copy', () => {

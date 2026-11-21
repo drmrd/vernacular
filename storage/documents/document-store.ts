@@ -37,6 +37,8 @@ export interface SaveReport {
   readonly backedUp: boolean
   /** Why this save wrote with no graft; undefined when it grafted or had no previous file. */
   readonly graftDropped?: GraftDropped
+  /** The time of last change of the document file after the write; absent when the store cannot tell. */
+  readonly lastChangedAt?: string
 }
 
 /** One listed project: its id and when its document file last changed. */
@@ -149,8 +151,14 @@ export class DocumentStore {
     const backedUp = await this.backUpLastValid(directory, previous, encoded.faults)
     warnAboutEncodeProblems(encoded)
     await directory.writeFile(PROJECT_FILE, encoded.bytes)
+    const lastChangedAt = await this.changedAt(id)
     const { faults, graftDropped } = encoded
-    return { faults, backedUp, ...(graftDropped === undefined ? {} : { graftDropped }) }
+    return {
+      faults,
+      backedUp,
+      ...(graftDropped === undefined ? {} : { graftDropped }),
+      ...(lastChangedAt === undefined ? {} : { lastChangedAt }),
+    }
   }
 
   /**

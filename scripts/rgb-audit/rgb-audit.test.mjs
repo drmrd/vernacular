@@ -1,17 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { runRgbAudit } from './rgb-audit.mjs'
-
-const RECORD_SEPARATOR = '\x1e'
-const UNIT_SEPARATOR = '\x1f'
-
-function record({ sha, subject, infra = '', files = [] }) {
-  const header = [sha, subject, infra].join(UNIT_SEPARATOR)
-  return [header, ...files].join('\n')
-}
-
-function gitLog(records) {
-  return records.map(record).join(RECORD_SEPARATOR)
-}
+import { gitLog } from './cycle-audit-test-support.mjs'
 
 function compliantLog() {
   return gitLog([
