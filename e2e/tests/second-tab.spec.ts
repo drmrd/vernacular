@@ -12,10 +12,11 @@ import {
 // A project is open in one tab at a time. This spec opens the editor in one tab, saves a
 // wall there, and then opens a second tab of the same browser context, so both share
 // storage and locks. The second tab starts in the stored project, at the bare address or
-// at the project's own address, and must refuse to open it and show no plan. The work of
-// the first tab must be what is stored, and what comes back after a reload.
+// at the project's own address, and must show the Projects page, with the project marked as
+// open in another tab, and no plan. The work of the first tab must be what is stored, and
+// what comes back after a reload.
 
-const OPEN_IN_OTHER_TAB = 'This project is open in another tab.'
+const OPEN_IN_OTHER_TAB = 'Already open in another tab.'
 const DEFAULT_NAME = 'Untitled project'
 const UPPER_FLOOR = '2nd Floor'
 
@@ -45,8 +46,8 @@ async function openFirstTabThenSecondTab(
 }
 
 async function expectRefused(second: Page): Promise<void> {
-  const failure = selectors.failureView(second)
-  await expect(failure.getByRole('alert')).toHaveText(OPEN_IN_OTHER_TAB)
+  await expect(selectors.projectsPage(second)).toBeVisible()
+  await expect(selectors.projectCard(second, DEFAULT_NAME)).toContainText(OPEN_IN_OTHER_TAB)
   await expect(selectors.planCanvas(second)).toHaveCount(0)
 }
 
@@ -116,9 +117,8 @@ test.describe('A second tab', () => {
   }) => {
     const { first, second } = await openFirstTabThenSecondTab(context)
 
-    const failure = selectors.failureView(second)
-    await expect(failure.getByRole('alert')).toHaveText(OPEN_IN_OTHER_TAB)
-    await failure.getByRole('button', { name: 'Start a new project' }).click()
+    await expectRefused(second)
+    await selectors.projectsPage(second).getByRole('button', { name: 'New project' }).click()
     await expect(selectors.planCanvas(second)).toBeVisible()
     await selectors.addFloorButton(second).click()
     await expect(selectors.floorButton(second, UPPER_FLOOR)).toBeVisible()
