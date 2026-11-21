@@ -25,6 +25,8 @@ export interface DocumentHandleParts {
    * snapshots object, which is safe because that object holds no state of a session.
    */
   readonly snapshots?: ProjectSnapshots
+  /** True: the autosave writes no recovery snapshot and removes none. `snapshots` is unchanged. */
+  readonly leaveSnapshots?: boolean
   /** The record writes of the project; a restore passes on those of the handle before it. */
   readonly records: RecordKeeper
   /**
@@ -276,7 +278,7 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     session,
     store,
     projectId: request.id,
-    snapshots,
+    ...(parts.leaveSnapshots === true ? {} : { snapshots }),
     ...listenToWrites({ session, status, reportFaults, records, storedFlag }),
   })
   const { save, flush, close, handOver } = createSavePath({ autosave, hold, records })

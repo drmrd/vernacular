@@ -39,7 +39,7 @@ export async function requestFor(ports: SessionPorts, id: string): Promise<OpenR
 }
 
 /** The request to open, or why the folder cannot be used. */
-type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | OpenFailed
+export type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | OpenFailed
 
 /**
  * Where the project of the id is kept: its request, or why the folder cannot be used. For a folder,
@@ -47,7 +47,7 @@ type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | OpenF
  * refusal or a missing folder ends the open before anything is stored. Rejects when that request
  * rejects.
  */
-async function recentTarget(ports: SessionPorts, id: string): Promise<RecentTarget> {
+export async function recentTarget(ports: SessionPorts, id: string): Promise<RecentTarget> {
   const request = await requestFor(ports, id)
   if (request.location.kind === 'folder' && (await wouldAskUser(ports, id))) {
     const answer = await ports.folders.reopen(id)

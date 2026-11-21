@@ -45,6 +45,12 @@ export interface DocumentHandle {
   close(): Promise<SaveOutcome>
 }
 
+/** How a handle is opened, beyond which project. */
+export interface OpenOptions {
+  /** True for a handle that no editor shows: its saves write no recovery snapshot and remove none. */
+  readonly leaveSnapshots?: boolean
+}
+
 /** An open that failed, with the reason. */
 export interface OpenFailed {
   readonly ok: false

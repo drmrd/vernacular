@@ -5,7 +5,13 @@ import { createDocumentHandle, type DocumentHandleParts } from './document-handl
 import { recordFailedOpen } from './failed-open-record'
 import { findDocumentStore } from './find-document-store'
 import { createRecordKeeper } from './handle-record'
-import type { DocumentHandle, OpenFailed, OpenRequest, OpenResult } from './handle-types'
+import type {
+  DocumentHandle,
+  OpenFailed,
+  OpenOptions,
+  OpenRequest,
+  OpenResult,
+} from './handle-types'
 import { readForOpen } from './read-for-open'
 import { markSession } from './session-mark'
 import { storageUnavailable } from './thrown-failures'
@@ -50,11 +56,13 @@ async function openUnderLock(parts: Omit<DocumentHandleParts, 'opened'>): Promis
  * Opens a project: finds its store, takes its lock, reads it, and builds its session and
  * autosave. Each failure is typed, a failure frees the lock it took, and the promise never
  * rejects. A stored project that did not open has that noted in its record, if it has one, before
- * the lock is freed; the open waits for that note at most `RECORD_WAIT_MS`.
+ * the lock is freed; the open waits for that note at most `RECORD_WAIT_MS`. With `leaveSnapshots`
+ * the handle saves without a recovery snapshot and without a prune.
  */
 export async function openDocumentHandle(
   ports: SessionPorts,
   request: OpenRequest,
+  options: OpenOptions = {},
 ): Promise<OpenResult> {
   const found = await findDocumentStore(ports, request)
   if (!found.ok) {
@@ -65,7 +73,13 @@ export async function openDocumentHandle(
     return lock
   }
   const records = createRecordKeeper(ports, request)
-  const result = await openUnderLock({ request, store: found.store, hold: lock.hold, records })
+  const result = await openUnderLock({
+    request,
+    store: found.store,
+    hold: lock.hold,
+    records,
+    ...(options.leaveSnapshots === true ? { leaveSnapshots: true } : {}),
+  })
   if (!result.ok) {
     if (result.failure.kind === 'did-not-open') {
       await recordFailedOpen(ports, request.id, result.failure.decode)

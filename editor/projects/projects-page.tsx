@@ -1,8 +1,8 @@
-import { useId, type DragEvent, type ReactElement } from 'react'
+import { useId, useState, type DragEvent, type ReactElement } from 'react'
 import { Button } from '../design-system'
 import type { ProjectCardAction, ProjectCardModel } from '../../session'
 import { NO_PROJECTS, backText } from './card-text'
-import { ProjectCard } from './project-card'
+import { ProjectCard, type CardRename } from './project-card'
 import './projects-page.css'
 
 export interface OpenProjectLink {
@@ -10,12 +10,18 @@ export interface OpenProjectLink {
   readonly onBack: () => void
 }
 
+/** The actions that a card offers. A menu entry shows only when its handler is given. */
+export interface ProjectCardActions {
+  /** Resolves true when the name is stored, so the form closes. False keeps the form open. */
+  readonly onRename?: (id: string, name: string) => Promise<boolean>
+}
+
 export interface ProjectsPageProps {
   /** The cards in the order to show. Undefined until the first read ends. */
   readonly cards: readonly ProjectCardModel[] | undefined
   readonly hrefFor: (id: string) => string
   readonly onOpen?: (id: string) => void
-  readonly onCardAction?: (id: string, action: ProjectCardAction) => void
+  readonly cardActions?: ProjectCardActions
   /** The project open in this tab. With it the page shows "Back to <name>". */
   readonly openProject?: OpenProjectLink
   /** One sentence that says why a project did not open. */
@@ -55,24 +61,48 @@ interface CardListProps {
   readonly cards: readonly ProjectCardModel[]
   readonly hrefFor: ProjectsPageProps['hrefFor']
   readonly onOpen?: ProjectsPageProps['onOpen'] | undefined
-  readonly onCardAction?: ProjectsPageProps['onCardAction'] | undefined
+  readonly cardActions?: ProjectCardActions | undefined
 }
 
-function CardList({ cards, hrefFor, onOpen, onCardAction }: CardListProps): ReactElement {
+/** The actions of the card that have a handler, in the card's order. */
+function offeredActions(
+  card: ProjectCardModel,
+  cardActions: ProjectCardActions | undefined,
+): readonly ProjectCardAction[] {
+  return card.actions.filter((action) => action === 'rename' && cardActions?.onRename)
+}
+
+function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): ReactElement {
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  // A card that left the list takes its form with it, also when it comes back.
+  if (renamingId !== null && !cards.some(({ id }) => id === renamingId)) {
+    setRenamingId(null)
+  }
   if (cards.length === 0) {
     return <p className="projects-page__empty">{NO_PROJECTS}</p>
   }
+  const renameOf = (id: string): CardRename | undefined =>
+    renamingId === id && cardActions?.onRename
+      ? {
+          onSave: (name) => cardActions.onRename?.(id, name) ?? Promise.resolve(false),
+          onClose: () => setRenamingId(null),
+        }
+      : undefined
   return (
     <ul className="projects-page__cards">
-      {cards.map((card) => (
-        <ProjectCard
-          key={card.id}
-          card={card}
-          href={hrefFor(card.id)}
-          onOpen={onOpen}
-          onAction={onCardAction}
-        />
-      ))}
+      {cards.map((card) => {
+        const actions = offeredActions(card, cardActions)
+        return (
+          <ProjectCard
+            key={card.id}
+            card={{ ...card, actions }}
+            href={hrefFor(card.id)}
+            onOpen={onOpen}
+            onAction={actions.length === 0 ? undefined : () => setRenamingId(card.id)}
+            rename={renameOf(card.id)}
+          />
+        )
+      })}
     </ul>
   )
 }
@@ -98,7 +128,7 @@ export function ProjectsPage({
   cards,
   hrefFor,
   onOpen,
-  onCardAction,
+  cardActions,
   openProject,
   notice,
   onNewProject,
@@ -126,7 +156,7 @@ export function ProjectsPage({
         onOpenFolder={onOpenFolder}
       />
       {cards ? (
-        <CardList cards={cards} hrefFor={hrefFor} onOpen={onOpen} onCardAction={onCardAction} />
+        <CardList cards={cards} hrefFor={hrefFor} onOpen={onOpen} cardActions={cardActions} />
       ) : null}
     </main>
   )
