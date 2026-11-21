@@ -25,21 +25,26 @@ async function wouldAskUser(ports: SessionPorts, id: string): Promise<boolean> {
   }
 }
 
+/** The request of a project address: its folder when its record names one, else the workspace. */
+export async function requestFor(ports: SessionPorts, id: string): Promise<OpenRequest> {
+  const record = await recordOf(ports, id)
+  if (record?.location.kind === 'folder') {
+    return { id, location: record.location }
+  }
+  return { id, location: { kind: 'workspace' } }
+}
+
 /**
- * Where the project of the id is kept: the folder that its record names, and the workspace when it
- * has no record or a workspace record. For a folder, when the browser would ask the user, the access
- * is requested here, inside the user's gesture; its answer is left to the open. Rejects when that
- * request rejects.
+ * Where the project of the id is kept: the request of its address. For a folder, when the browser
+ * would ask the user, the access is requested here, inside the user's gesture; its answer is left
+ * to the open. Rejects when that request rejects.
  */
 async function recentTarget(ports: SessionPorts, id: string): Promise<OpenRequest> {
-  const record = await recordOf(ports, id)
-  if (record?.location.kind !== 'folder') {
-    return { id, location: { kind: 'workspace' } }
-  }
-  if (await wouldAskUser(ports, id)) {
+  const request = await requestFor(ports, id)
+  if (request.location.kind === 'folder' && (await wouldAskUser(ports, id))) {
     await ports.folders.reopen(id)
   }
-  return { id, location: record.location }
+  return request
 }
 
 /**
