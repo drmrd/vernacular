@@ -76,6 +76,21 @@ function discover(root: unknown): Map<object, ResourceKind> {
   return found
 }
 
+function trackerOf(entries: TrackedResource[]): ResourceTracker {
+  const ofKind = (kind: ResourceKind): TrackedResource[] =>
+    entries.filter((entry) => entry.kind === kind)
+  return {
+    all: () => entries,
+    geometries: () => ofKind('geometry'),
+    materials: () => ofKind('material'),
+  }
+}
+
+/** One tracker over the entries of several, so one assertion covers them all. */
+export function mergedTrackers(trackers: ResourceTracker[]): ResourceTracker {
+  return trackerOf(trackers.flatMap((tracker) => tracker.all()))
+}
+
 /** Starts counting dispose events on everything under `root` as it is now. */
 export function trackResources(root: unknown): ResourceTracker {
   const tracked: TrackedResource[] = []
@@ -86,13 +101,7 @@ export function trackResources(root: unknown): ResourceTracker {
     })
     tracked.push(entry)
   }
-  const ofKind = (kind: ResourceKind): TrackedResource[] =>
-    tracked.filter((entry) => entry.kind === kind)
-  return {
-    all: () => tracked,
-    geometries: () => ofKind('geometry'),
-    materials: () => ofKind('material'),
-  }
+  return trackerOf(tracked)
 }
 
 /** The resources both trackers found, by identity. A disjoint pair means two builds share nothing. */
@@ -104,15 +113,13 @@ export function sharedResources(a: ResourceTracker, b: ResourceTracker): object[
     .filter((resource) => inB.has(resource))
 }
 
-/** The tracker's entries that the other tracker did not find, by identity (a held template's share is left out). */
+/**
+ * The tracker's entries that the other tracker did not find, by identity (a held template's
+ * share is left out).
+ */
 export function without(tracker: ResourceTracker, excluded: ResourceTracker): ResourceTracker {
   const skipped = new Set(excluded.all().map((entry) => entry.resource))
-  const kept = tracker.all().filter((entry) => !skipped.has(entry.resource))
-  return {
-    all: () => kept,
-    geometries: () => kept.filter((entry) => entry.kind === 'geometry'),
-    materials: () => kept.filter((entry) => entry.kind === 'material'),
-  }
+  return trackerOf(tracker.all().filter((entry) => !skipped.has(entry.resource)))
 }
 
 /** How many tracked resources have not been disposed yet. */

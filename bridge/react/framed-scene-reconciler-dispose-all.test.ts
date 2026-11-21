@@ -17,6 +17,7 @@ import type { Object3D } from '../../engine/testing'
 import {
   expectEachDisposedOnce,
   expectNoneDisposed,
+  mergedTrackers,
   trackResources,
   without,
   type ResourceTracker,
@@ -81,11 +82,6 @@ function groupOf(root: Object3D, entityId: string): Object3D {
   return group
 }
 
-function everyTreeResource(trackers: ResourceTracker[], held: ResourceTracker): ResourceTracker {
-  const all = trackers.flatMap((tracker) => without(tracker, held).all())
-  return { all: () => all, geometries: () => [], materials: () => [] }
-}
-
 describe('createFramedSceneReconciler dispose', () => {
   it('frees every resource it holds once, leaves a held model template alone, and is idempotent', async () => {
     const template = await parseFurnitureModel(new Uint8Array(readFileSync(CUBE_GLB)))
@@ -115,7 +111,7 @@ describe('createFramedSceneReconciler dispose', () => {
 
     reconciler.dispose()
 
-    const owned = everyTreeResource([...trackers, retiredFloor], heldTemplate)
+    const owned = without(mergedTrackers([...trackers, retiredFloor]), heldTemplate)
     expectEachDisposedOnce(owned)
     expectNoneDisposed(heldTemplate)
 
