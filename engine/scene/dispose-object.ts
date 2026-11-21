@@ -9,6 +9,8 @@ const heldResources = new WeakSet<GpuResource>()
  * Marks a resource as held by a long-lived owner such as a material provider or an asset cache.
  * A scene tree walk skips held resources; only the owner frees them. The mark lives in a
  * module-level set, not in userData, because a clone must not inherit it.
+ * Marking a material does not hold the textures it carries, and `Material.clone`
+ * shares those textures, so an owner marks each texture it keeps as well.
  */
 export function markCacheHeld(resource: GpuResource): void {
   heldResources.add(resource)
