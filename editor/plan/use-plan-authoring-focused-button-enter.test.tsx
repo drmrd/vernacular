@@ -41,7 +41,8 @@ interface PlanProps {
 }
 
 // The real authoring hook beside the buttons a plan screen carries: a plain
-// button, the chip of the armed tool, and the chip of another tool.
+// button, the chip of the armed tool, the chip of another tool, and the checked
+// chip of the Edit layer group, which looks like a tool chip but is not one.
 function Plan({ session, tool }: PlanProps) {
   const [selection] = useState(createSelectionStore)
   const { announcement } = usePlanAuthoring({
@@ -62,6 +63,14 @@ function Plan({ session, tool }: PlanProps) {
         </button>
         <button type="button" role="radio" aria-checked="false">
           Other chip
+        </button>
+      </div>
+      <div role="radiogroup" aria-label="Edit layer">
+        <button type="button" role="radio" aria-checked="true">
+          All
+        </button>
+        <button type="button" role="radio" aria-checked="false">
+          Walls only
         </button>
       </div>
       <output data-testid="announcement">{announcement}</output>
@@ -126,6 +135,16 @@ describe('Enter on a focused button while an authoring tool is armed', () => {
     const { dispatch } = renderPlan('draw-wall')
 
     const prevented = press(screen.getByRole('radio', { name: 'Other chip' }), ENTER)
+
+    expect(announcement()).not.toContain(VERTEX_DROPPED)
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(prevented).toBe(false)
+  })
+
+  it('leaves the checked chip of the Edit layer group to activate and drops no wall vertex', () => {
+    const { dispatch } = renderPlan('draw-wall')
+
+    const prevented = press(screen.getByRole('radio', { name: 'All' }), ENTER)
 
     expect(announcement()).not.toContain(VERTEX_DROPPED)
     expect(dispatch).not.toHaveBeenCalled()
