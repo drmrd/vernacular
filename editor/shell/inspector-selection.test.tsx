@@ -186,3 +186,31 @@ describe('Inspector with a dimension selected', () => {
     expect(screen.queryByRole('button', { name: 'Confirm remove' })).toBeNull()
   })
 })
+
+describe('Inspector with a hung window in an exterior wall selected', () => {
+  it('shows "Swap sash sides" unavailable, since the one room side sets the sashes', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }),
+      createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
+    ]
+    const [exteriorWall] = walls
+    if (exteriorWall === undefined) throw new Error('expected the room loop to hold four walls')
+    const window = createOpening({
+      type: 'double-hung-window',
+      hostWallId: exteriorWall.id,
+      position: 2000,
+    })
+    const { selection } = renderInspector({ walls, openings: [window] })
+    act(() => {
+      selection.select(`${OPENING_NODE_PREFIX}${window.id}`)
+    })
+
+    const button = screen.getByRole('button', { name: 'Swap sash sides' })
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(button).toHaveAccessibleDescription(
+      'The room side sets which way the sashes face on this wall.',
+    )
+  })
+})
