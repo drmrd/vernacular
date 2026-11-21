@@ -1,6 +1,7 @@
 /** @typedef {import('./worktree.mjs').CommandResult} CommandResult */
 
 import { proveCycle } from './prove-cycle.mjs'
+import { STRYKER_BASE, strykerAnswer } from './green-proof-stryker-test-support.mjs'
 
 export const ROOT = '/wt'
 export const GREEN = 'green1234567890'
@@ -203,8 +204,16 @@ function exitStatusOf(text) {
  * coverage leaves (none when undefined), `state.runs` records the files removed since the previous Vitest run, and
  * `greenFiles` lists the files the GREEN commit changes, and `sources` maps a file to its text at the
  * GREEN commit (a file with no entry reads as one line of code).
+ * Files hold a base `/wt/stryker.conf.json` unless `strykerBase` (an object) replaces it. A
+ * `pnpm exec stryker run <config>` call is answered from `stryker[<group>]` (`app` or `tooling`,
+ * the group in the config file name): `{ status, stdout, stderr, report }` where `report` is the
+ * text written to the `jsonReporter.fileName` of the written config (`null` writes none) and
+ * `throws` is a message the call throws. A group with no entry exits 0 and writes `{"files":{}}`.
+ * `strykerMs` (default 0) moves the fake clock by that many milliseconds on each stryker call.
+ * `strykerCalls()` lists those calls. See `green-proof-stryker-test-support.mjs`.
  * @param {{ reds?: string[][], diff?: string, lcov?: string, greenFiles?: string[], parent?: string | { exit: number }, green?: string | { exit: number }, gone?: string[],
- *   tsc?: { status?: number, stdout?: string }, showConfig?: string, sources?: Record<string, string> }} setup
+ *   tsc?: { status?: number, stdout?: string }, showConfig?: string, sources?: Record<string, string>,
+ *   strykerBase?: object, stryker?: Partial<Record<'app'|'tooling', { status?: number, stdout?: string, stderr?: string, report?: string | null, throws?: string }>>, strykerMs?: number }} setup
  */
 export function scenario(setup = {}) {
   const { reds = [['core/a.test.ts']], gone = [], tsc = {}, showConfig = SHOW_CONFIG } = setup
@@ -212,6 +221,7 @@ export function scenario(setup = {}) {
   const reports = { [PARENT]: setup.parent, [GREEN]: setup.green }
   const files = fakeFiles()
   const { sources = {} } = setup
+  files.writeFile(`${ROOT}/stryker.conf.json`, JSON.stringify(setup.strykerBase ?? STRYKER_BASE))
   for (const file of greenFiles) {
     files.writeFile(`${ROOT}/${file}`, sources[file] ?? DEFAULT_SOURCE)
   }
@@ -235,6 +245,13 @@ export function scenario(setup = {}) {
       return { stdout: paths.map((path) => `${quoted(path)}\n`).join('') }
     },
   })
+  let clock = 0
+  const stryker = {
+    root: ROOT,
+    files,
+    strykerMs: setup.strykerMs ?? 0,
+    advance: (ms) => (clock += ms),
+  }
   const runCommand = fakeRunner({
     respond(command, args) {
       if (args[1] === 'vitest') {
@@ -250,10 +267,10 @@ export function scenario(setup = {}) {
         files.writeFile(flag.slice(OUTPUT_FILE_FLAG.length), planned)
         return { status: exitStatusOf(planned) }
       }
+      if (args[1] === 'stryker') return strykerAnswer(args[3], setup.stryker ?? {}, stryker)
       return args.includes('--showConfig') ? { stdout: showConfig } : tsc
     },
   })
-  let clock = 0
   const context = { runGit, runCommand, files, session, now: () => (clock += 1) }
   const cycle = {
     green: commit(GREEN, 'feat', greenFiles),
@@ -262,5 +279,14 @@ export function scenario(setup = {}) {
   const tscCalls = () =>
     runCommand.calls.filter((c) => c.args[1] === 'tsc' && !c.args.includes('--showConfig'))
   const vitestCalls = () => runCommand.calls.filter((c) => c.args[1] === 'vitest')
-  return { cycle, context, state, tscCalls, vitestCalls, run: () => proveCycle(cycle, context) }
+  const strykerCalls = () => runCommand.calls.filter((c) => c.args[1] === 'stryker')
+  return {
+    cycle,
+    context,
+    state,
+    tscCalls,
+    vitestCalls,
+    strykerCalls,
+    run: () => proveCycle(cycle, context),
+  }
 }
