@@ -32,6 +32,7 @@ import {
   type BuiltSessionPorts,
   type EditorWorkspaceProps,
 } from './app'
+import { createMemoryAddressBar, type MemoryAddressBar } from './address-bar'
 import { openFailureReason } from './open-failure-text'
 import type { RunFlow } from './use-open-project'
 
@@ -39,10 +40,10 @@ export { lockCalls } from './use-open-project-test-support'
 
 /** Test support: the shared set-up of the tests that render the whole application. */
 
-/** The id that the start opens when the index holds no workspace record. */
+/** The id under which a test stores the project that it expects the start to find. */
 export const START_ID = 'current'
 
-/** The id of the project that fails to open, in the cases where the start fails. It is the start id. */
+/** The id of the stored project that fails to open, in the cases where the start finds it. */
 export const FAILED_ID = 'current'
 
 /** Autosave waits before it writes, so a wait for a save is generous. */
@@ -128,7 +129,7 @@ export async function plantProject(ports: TestPorts, id: string, name: string): 
   await ports.workspace.save(id, namedProject(name))
 }
 
-/** Stores, under the id the start opens, a document that this build cannot open. */
+/** Stores a document that this build cannot open, under `FAILED_ID`. */
 export function plantFailedProject(ports: TestPorts): Promise<void> {
   return placeDocument(ports, FAILED_ID, projectFromANewerBuild())
 }
@@ -153,6 +154,24 @@ export function builtPorts(ports: TestPorts): BuiltSessionPorts {
 /** Renders the application on injected ports. */
 export function renderApp(ports: TestPorts, props: Omit<AppProps, 'ports'> = {}): RenderResult {
   return render(<App ports={ports} {...props} />)
+}
+
+/** The application that `renderAppAt` rendered, and the address bar that it follows. */
+export type RenderedApp = RenderResult & { readonly bar: MemoryAddressBar }
+
+/** Renders the application on injected ports, over a new address bar that holds `fragment`. */
+export function renderAppAt(
+  ports: TestPorts,
+  fragment: string,
+  props: Omit<AppProps, 'ports' | 'address'> = {},
+): RenderedApp {
+  const bar = createMemoryAddressBar(fragment)
+  return { ...renderApp(ports, { ...props, address: bar }), bar }
+}
+
+/** Takes the fragment out of the address of the window, where an application on its own ports writes. */
+export function resetWindowAddress(): void {
+  window.history.replaceState(null, '', window.location.pathname + window.location.search)
 }
 
 /** The `runFlow` of an owner that is busy: it calls nothing and resolves undefined. */

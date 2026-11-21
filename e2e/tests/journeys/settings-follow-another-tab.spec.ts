@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { gotoEditor, selectors } from './support'
+import { drawWallAndWaitForSave, gotoEditor, selectors } from './support'
 
 // The themed wrapper exposes the resolved theme as an attribute, so the spec reads that
 // rather than a color.
@@ -12,8 +12,9 @@ async function chooseTheme(page: Page, name: 'Light' | 'Dark'): Promise<void> {
     .click()
 }
 
-// A project is open in one tab at a time, so a second tab offers to start a new project
-// instead. That tab then shows the editor, and its settings are the same stored settings.
+// The first tab's saved project is the one used last. A project is open in one tab at a time,
+// so the second tab finds it open and offers to start a new project instead. That tab then
+// shows the editor, and its settings are the same stored settings.
 async function openEditorInSecondTab(page: Page): Promise<void> {
   await page.goto('/')
   await page
@@ -32,6 +33,7 @@ test('shows a theme chosen in one tab in the other open tab without a reload', a
   // browser do. Each page is ready and shows the light theme before anything changes.
   const firstTab = await context.newPage()
   await gotoEditor(firstTab)
+  await drawWallAndWaitForSave(firstTab)
   const secondTab = await context.newPage()
   await openEditorInSecondTab(secondTab)
   await expect(themedShell(firstTab)).toHaveAttribute('data-theme', 'light')

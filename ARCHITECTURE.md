@@ -87,6 +87,13 @@ of one record per project. The start and the recent list read it through `reconc
 handle and runs one flow at a time. `app/create-session-ports.ts` is the
 one production file of `app/` that names a store (ADR-0212).
 
+The address of a project lives in `app/`. `app/address.ts` reads and
+writes the fragment of the page address, `app/use-history-navigation.ts`
+follows it, and `app/address-bar.ts` is the only place that names the
+browser history. `session/` knows no address: the start and a switch
+take an open request, which `startProject` and `requestFor` build from
+the project index (ADR-0188).
+
 ## Where to find things
 
 | Topic                             | Where to look                                                                                                |

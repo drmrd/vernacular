@@ -36,7 +36,7 @@ async function openUnderLock(parts: Omit<DocumentHandleParts, 'opened'>): Promis
   }
   let handle: DocumentHandle
   try {
-    handle = createDocumentHandle({ ...parts, opened: read.opened })
+    handle = createDocumentHandle({ ...parts, opened: read.opened, stored: read.stored })
   } catch (error) {
     return storageUnavailable(error)
   }

@@ -1,5 +1,12 @@
 import { test, expect, type Page } from '@playwright/test'
-import { chooseFromProjectMenu, drawWall, expectWallCount, gotoEditor, selectors } from './support'
+import {
+  chooseFromProjectMenu,
+  drawWallAndWaitForSave,
+  expectWallCount,
+  gotoEditor,
+  selectors,
+  startNewProject,
+} from './support'
 
 // The Project menu lists the stored projects used last, apart from the open one, as the
 // project index of the browser holds them. A new project has the same default name as the
@@ -9,19 +16,6 @@ import { chooseFromProjectMenu, drawWall, expectWallCount, gotoEditor, selectors
 
 const DEFAULT_NAME = 'Untitled project'
 const UPPER_FLOOR = '2nd Floor'
-
-async function drawWallAndWaitForSave(page: Page): Promise<void> {
-  await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
-  await expectWallCount(page, 1)
-  await expect(selectors.savedStatus(page)).toBeVisible()
-}
-
-// Starts a new project and waits until it shows, unsaved: its status is not the saved one.
-async function startNewProject(page: Page): Promise<void> {
-  await chooseFromProjectMenu(page, 'New project')
-  await expect(selectors.planCanvas(page)).toBeVisible()
-  await expect(selectors.savedStatus(page)).toHaveCount(0)
-}
 
 async function expectFirstProjectOpen(page: Page): Promise<void> {
   await expect(selectors.planCanvas(page)).toBeVisible()

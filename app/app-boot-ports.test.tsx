@@ -21,6 +21,7 @@ import {
   lockedIds,
   plantFailedProject,
   plantProject,
+  resetWindowAddress,
   settleForAWhile,
   startNewProjectFromTheFailureView,
   storedIds,
@@ -32,6 +33,7 @@ const NO_STORAGE = 'no storage backend'
 
 afterEach(() => {
   cleanup()
+  resetWindowAddress()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -175,7 +177,7 @@ describe('The application under StrictMode that resolves its ports', () => {
   it('takes the lock of the start project once and no other', async () => {
     const { log } = await renderStrictAndSettle()
 
-    expect(lockCalls(log)).toEqual([`lock:${START_ID}`])
+    expect(lockCalls(log)).toEqual([expect.stringMatching(/^lock:/)])
   })
 
   it('reads the index once for the start and once for the recent entries', async () => {

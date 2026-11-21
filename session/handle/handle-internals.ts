@@ -15,6 +15,8 @@ export interface HandleInternals {
   readonly records: RecordKeeper
   /** Ends the handle as a close does, keeps the lock, and gives it to the caller. */
   handOver(): Promise<HandOver>
+  /** Whether the store holds the project of the handle. Reads memory only. */
+  readonly stored: () => boolean
 }
 
 const internalsByHandle = new WeakMap<DocumentHandle, HandleInternals>()
@@ -24,9 +26,14 @@ export function registerHandle(handle: DocumentHandle, internals: HandleInternal
   internalsByHandle.set(handle, internals)
 }
 
+/** What the session layer keeps of a handle, or undefined when it did not build the handle. */
+export function findInternals(handle: DocumentHandle): HandleInternals | undefined {
+  return internalsByHandle.get(handle)
+}
+
 /** What the session layer keeps of the handle. Throws when the session layer did not build it. */
 export function internalsOf(handle: DocumentHandle): HandleInternals {
-  const internals = internalsByHandle.get(handle)
+  const internals = findInternals(handle)
   if (internals === undefined) {
     throw new Error('This project handle was not opened by the session layer.')
   }

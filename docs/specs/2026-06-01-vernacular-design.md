@@ -393,7 +393,7 @@ Adding a future `CloudSyncProjectStore` is purely additive.
 - **`OPFSProjectStore`**: universal; logical model identical, persistence backend differs.
 - **`ZipBundleProjectStore`**: universal `.house.zip` import/export; contents expand to OPFS during editing.
 
-User picks a backend per project at creation time; choice is remembered with the recent-project entry. Switching backends is supported.
+The user picks a backend for each project when it is made. A new project gets a random id, and a project that an older build stored keeps the id `current`. Each project has an address in the fragment of the page address and a record in the project index. The record says whether the project lives in the browser or in a folder (ADR-0188). Moving a project from one backend to the other is not built yet.
 
 ### 5.4 Autosave and crash recovery
 

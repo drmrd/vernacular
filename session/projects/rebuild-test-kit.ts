@@ -31,6 +31,10 @@ export const EARLIER_CHANGE = '2026-10-01T08:00:00.000Z'
 /** A time of use that a record of the index holds. */
 export const USED_AT = '2026-10-15T18:30:00.000Z'
 
+/** The shape of a project id that the start makes for a new project: a random UUID. */
+export const NEW_PROJECT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
 /** The clock of the ports. No rebuilt record takes this time. */
 const PORTS_NOW = '2026-11-05T12:00:00.000Z'
 

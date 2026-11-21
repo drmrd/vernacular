@@ -16,12 +16,14 @@ related:
 sourceFiles:
   [
     app/app.tsx,
+    app/address.ts,
     app/use-project-actions.ts,
+    session/flows/start.ts,
     storage/filesystem/directory-handle-store.ts,
     core/export/svg/svg-plan-exporter.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-20
 ---
 
 # ADR-0188: A project has a random id, an address, and a record in the project index
@@ -67,6 +69,29 @@ the recent-project store holds one entry at most.
 > `recentRecords`. The start opens the workspace record used last, and opens `'current'` when there
 > is none. The recent-project store and the port of the remembered id are deleted. The addresses
 > and the Projects page are not built yet.
+
+> Updated on 2026-11-20. The addresses exist. An address is the fragment of the page address, in
+> one of three forms: no fragment for the start, `#/projects` for the page of projects, and
+> `#/project/<id>` for a project whose id passes `isValidProjectId`. `parseAddress` and
+> `addressFor` in `app/address.ts` read and write them. `parseAddress` decodes nothing, and any
+> other fragment is the start: one with a percent sign, a trailing slash, a tail, or other letter
+> case. The application then replaces it with the exact address. A project address never makes a
+> project. Its request, from `requestFor`, carries no first document, so an id that no store holds
+> shows the page with "This project is not stored in this browser." and stores nothing. The
+> application writes the address of the open project once the store holds it and the browser
+> keeps it. A new project gets its address at its first save, and a project in temporary storage
+> gets none. The start (`startProject` in `session/flows/`) opens the project used last, from the
+> browser or from a folder. A folder project opens with no click only when the browser still
+> reports access as granted. Otherwise the start shows the permission sentence with Retry, which
+> asks for access inside the click, and "Start a new project" stays beside it. With no record, the
+> start makes a new project under a new random id, so the id `current` belongs only to a project
+> that an older build stored. A project that a flow of the editor opens adds a step to the browser
+> history, and Back and Forward switch projects with the same switch, which writes the open project
+> first. Until the Projects page exists, `#/projects` shows an interim view that says the list of
+> projects is not available yet. Section 5.3 of the design specification now describes the id, the
+> address, and the record. It no longer says that switching backends is supported, because no
+> flow moves a project between browser storage and a folder today. The section now says that the
+> move is not built yet.
 
 ## Context
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createActiveFloorStore, createSelectionStore } from '../bridge'
 import {
   displayNameOf,
@@ -90,9 +90,11 @@ interface CrashRecoveryContext {
   handle: DocumentHandle
   runFlow: RunFlow
   confirmDiscard: () => Promise<boolean>
+  /** The handles whose recovered work was offered already, by any mount of the editor. */
+  offered: WeakSet<DocumentHandle> | undefined
 }
 
-interface RecoveryHandlersContext extends Omit<CrashRecoveryContext, 'handle'> {
+interface RecoveryHandlersContext extends Omit<CrashRecoveryContext, 'handle' | 'offered'> {
   snapshots: ProjectSnapshots
   dismiss: () => void
   isLive: () => boolean
@@ -152,15 +154,19 @@ interface RecoveryAnswer {
 
 // Asks the snapshots of the open project once whether a recovered copy exists and, when one
 // does, publishes the prompt's handlers. A project with other snapshots asks again and drops the
-// old answer. A restore keeps the snapshots of its project, so it does not ask again.
+// old answer. A restore keeps the snapshots of its project, so it does not ask again. A handle
+// whose recovered work an earlier mount of the editor offered is not offered again.
 function useCrashRecovery(context: CrashRecoveryContext): Recovery | null {
-  const { handle, runFlow, confirmDiscard } = context
+  const { handle, runFlow, confirmDiscard, offered } = context
+  const offeredHere = useRef<DocumentHandle | null>(null)
   const notify = useSwitchNotices()
   const [answer, setAnswer] = useState<RecoveryAnswer | null>(null)
   // Set in a layout effect, so a restore before the passive effects reads the committed handle.
   const latestHandle = useLatest(handle)
   const snapshots = handle.snapshots
   useEffect(() => {
+    const current = latestHandle.current
+    if (offered?.has(current) === true && offeredHere.current !== current) return
     let cancelled = false
     const isLive = () => !cancelled
     const dismiss = () => setAnswer({ snapshots, recovery: null })
@@ -168,14 +174,17 @@ function useCrashRecovery(context: CrashRecoveryContext): Recovery | null {
     const handlers = { snapshots, runFlow, confirmDiscard, dismiss, isLive, readUnsaved, notify }
     void snapshots.isRecoverable().then(
       (recoverable) => {
-        if (isLive() && recoverable) setAnswer({ snapshots, recovery: buildRecovery(handlers) })
+        if (!isLive() || !recoverable) return
+        offered?.add(current)
+        offeredHere.current = current
+        setAnswer({ snapshots, recovery: buildRecovery(handlers) })
       },
       (error: unknown) => console.error('checking for a recovered copy failed', error),
     )
     return () => {
       cancelled = true
     }
-  }, [snapshots, latestHandle, runFlow, confirmDiscard, notify])
+  }, [snapshots, latestHandle, runFlow, confirmDiscard, notify, offered])
   return answer?.snapshots === snapshots ? answer.recovery : null
 }
 
@@ -203,7 +212,8 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   useHandleNotices(handle)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
   const recentEntries = useRecentEntries(ports, handle)
-  const recovery = useCrashRecovery({ handle, runFlow, confirmDiscard })
+  const offered = props.offeredRecovery
+  const recovery = useCrashRecovery({ handle, runFlow, confirmDiscard, offered })
   const notifications = useNotifications()
   // The asset library (starter pack + user imports), assembled once for the pool of the library.
   const assetLibrary = useMemo(() => createAssetLibrary(libraryAssets), [libraryAssets])

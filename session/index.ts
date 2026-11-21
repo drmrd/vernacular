@@ -28,13 +28,15 @@ export type { RestoreRefusal } from './flows/restore-snapshot'
 export { createNewProject } from './flows/create-new-project'
 export { importFile } from './flows/import-file'
 export { openFolder } from './flows/open-folder'
-export { openRecent } from './flows/open-recent'
+export { openRecent, requestFor } from './flows/open-recent'
+export { newProjectRequest, startProject } from './flows/start'
 export { exportArchive } from './flows/export-archive'
 export { restoreSnapshot } from './flows/restore-snapshot'
 export { assetsOf } from './handle/handle-assets'
+export { isStored } from './handle/handle-stored'
 export { reconcileIndex } from './projects/reconcile-index'
 export { displayNameOf, UNNAMED_PROJECT } from './projects/display-name'
-export { latestWorkspaceRecord, recentRecords } from './projects/recent-records'
+export { recentRecords } from './projects/recent-records'
 export type {
   AssetCache,
   ProjectIndex,

@@ -6,7 +6,10 @@ Application state and logic that needs no React. The editor session lives here:
 and switch projects, the discard guard, and autosave. `createSettingsService` (`session/settings/`)
 keeps the user settings over a `SettingsPort`, with typed keys, defaults, a check of each stored
 value, and change notification. `reconcileIndex` (`session/projects/`) rebuilds the project index
-from the project store, and the recent list and the start read the records that it gives. The layer imports no React and no Three.js and uses no DOM global.
+from the project store, and the recent list and the start read the records that it gives.
+`startProject` (`session/flows/`) gives the request that the start opens: the project used last,
+or a new project under a new id. `isStored` (`session/handle/`) says whether the store holds the
+project of a handle. Addresses belong to `app/`, and nothing here reads one. The layer imports no React and no Three.js and uses no DOM global.
 Depends on `core/` and `storage/`. The `session/testing` entry gives in-memory store doubles, the
 session constructor, and the helpers of the handle and save gate kits to test and story files, and
 lint rejects it in production files. See ADR-0175 and ADR-0180.

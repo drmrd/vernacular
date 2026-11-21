@@ -27,15 +27,19 @@ import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
 import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
-import { OPEN_ELSEWHERE, openFailureReason } from './open-failure-text'
+import type { AddressBar } from './address-bar'
+import { interimProjectsView, nothingOpenFailureView } from './interim-projects-view'
+import type { PageScreen } from './resolve-place'
+import { useUnsavedChangesGuard } from './use-before-unload-guard'
+import { useFlushOnHidden } from './use-flush-on-hidden'
+import type { HistoryNavigation } from './use-history-navigation'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
-import { useProjectBoot } from './use-project-boot'
+import { useProjectBoot, type ProjectBoot } from './use-project-boot'
 import { useSessionKey } from './use-session-key'
 import { useDiscardPrompt } from './use-discard-prompt'
 import type { RunFlow } from './use-open-project'
 import { useWorkspaceState } from './use-workspace-state'
 
-export { DEFAULT_PROJECT_ID } from './use-start-project-id'
 export type { BuiltSessionPorts } from './create-session-ports'
 
 // Test-only render-harness seam. When `?fixture=scene-harness` is present the app
@@ -85,8 +89,8 @@ export interface AppProps {
   resolvePorts?: () => Promise<BuiltSessionPorts>
   /** The pool of the user's library. Defaults to the built one, or in memory under `ports`. */
   libraryAssets?: AssetCache
-  /** An override for tests; when set, the index is not asked which project opens at start. */
-  projectId?: string
+  /** The address bar. Defaults to the one of the window, or one in memory under `ports`. */
+  address?: AddressBar
   /** The port of the user settings (tests). Defaults to the settings that this browser keeps. */
   settings?: AppSettingsProps['port']
 }
@@ -121,26 +125,67 @@ export function App(props: AppProps) {
 
 function AppWorkspace(props: AppProps) {
   const boot = useProjectBoot(props)
-  const { handle, failure, libraryAssets, ports } = boot
+  const { navigation, libraryAssets, ports } = boot
+  const { screen } = navigation
   const capabilities = useStorageCapabilities()
   useDegradedStorageBanner(capabilities)
+  // Lives above the editor, which unmounts while the page shows over the open project.
+  const [offeredRecovery] = useState(() => new WeakSet<DocumentHandle>())
 
-  if (failure !== null) {
-    return bootErrorView(failure, boot.retryBoot, boot.startFreshProject)
+  if (boot.portsFailure !== null) {
+    return portsFailureView(boot.portsFailure, boot)
   }
-  if (handle === null || ports === null || libraryAssets === null || capabilities === null) {
+  if (screen?.kind === 'projects') {
+    return pageOverProjectView(navigation, screen)
+  }
+  if (screen === null || ports === null || libraryAssets === null || capabilities === null) {
     return bootLoadingView()
   }
 
   return (
     <EditorWorkspace
-      handle={handle}
-      runFlow={boot.runFlow}
+      handle={screen.handle}
+      runFlow={navigation.runFlow}
       libraryAssets={libraryAssets}
       ports={ports}
       capabilities={capabilities}
+      offeredRecovery={offeredRecovery}
     />
   )
+}
+
+// The page in place of the editor. A project that stays open under it keeps its guards of unsaved
+// work, since the editor that mounts them otherwise is not mounted.
+function pageOverProjectView(navigation: HistoryNavigation, screen: PageScreen) {
+  const { handle } = navigation
+  return (
+    <>
+      {handle === null ? null : <UnsavedWorkGuards handle={handle} />}
+      {interimProjectsView({
+        failure: screen.notice?.failure ?? null,
+        handle,
+        onRetry: navigation.retry,
+        onStartFresh: navigation.startFresh,
+        onLeave: navigation.leavePage,
+      })}
+    </>
+  )
+}
+
+// Warns before the tab closes with unsaved changes, and writes when the tab is hidden.
+function UnsavedWorkGuards({ handle }: { readonly handle: DocumentHandle }) {
+  useUnsavedChangesGuard(handle)
+  useFlushOnHidden(handle)
+  return null
+}
+
+// The ports did not resolve, so no project can open: build them again, or start in memory.
+function portsFailureView(failure: SwitchFailure, boot: ProjectBoot) {
+  return nothingOpenFailureView({
+    failure,
+    onRetry: boot.rebuildPorts,
+    onStartFresh: boot.startInMemory,
+  })
 }
 
 // Storage capabilities are a fixed property of the host environment, so probe
@@ -172,34 +217,6 @@ function bootLoadingView() {
   )
 }
 
-// Why the start failed, in one sentence. Another tab that holds the project says so alone; every
-// other failure names its reason after a fixed opening.
-function bootFailureText(failure: SwitchFailure): string {
-  if (failure.kind === 'open-elsewhere') {
-    return OPEN_ELSEWHERE
-  }
-  return `Could not open the project: ${openFailureReason(failure)}`
-}
-
-// The pre-shell failure notice: why the boot failed and the two ways out of it.
-// A stored document that fails every load (corrupt bytes, a broken migration)
-// would otherwise lock the user out on every reload. Plain elements, because this
-// renders above the editor's provider tree.
-function bootErrorView(failure: SwitchFailure, onRetry: () => void, onStartFresh: () => void) {
-  return (
-    <main aria-label="Error">
-      <p role="alert">{bootFailureText(failure)}</p>
-      <button type="button" onClick={onRetry}>
-        Retry
-      </button>
-      <button type="button" onClick={onStartFresh}>
-        Start a new project
-      </button>
-      <p>The saved project is kept unchanged. A new project is stored separately.</p>
-    </main>
-  )
-}
-
 export interface EditorWorkspaceProps {
   handle: DocumentHandle
   runFlow: RunFlow
@@ -207,6 +224,8 @@ export interface EditorWorkspaceProps {
   /** The ports of the latest render, for the list of recent projects. */
   ports: SessionPorts
   capabilities: StorageCapabilities
+  /** The handles whose recovered work was offered already; each is offered once over remounts. */
+  offeredRecovery?: WeakSet<DocumentHandle>
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {

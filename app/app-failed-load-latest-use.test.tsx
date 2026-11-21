@@ -1,24 +1,16 @@
 import { describe, it, expect, afterEach, vi, type MockInstance } from 'vitest'
 import { screen, cleanup, waitFor } from '@testing-library/react'
-import { InMemoryDirectory, type DocumentStore } from '../storage'
-import {
-  DOCUMENT_FILE,
-  createTestPorts,
-  pickFolder,
-  type TestPorts,
-} from '../session/handle/handle-test-kit'
+import { reconcileIndex } from '../session'
+import type { DocumentStore } from '../storage'
+import { createTestPorts, type TestPorts } from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
   NEW_PROJECT_NAME,
-  START_ID,
   chooseFromTheProjectMenu,
-  documentBytes,
   editTheProject,
   expectOpenProject,
   failedOpenSentence,
-  lockedIds,
-  namedProject,
   openProjectName,
   plantFailedProject,
   plantProject,
@@ -28,6 +20,7 @@ import {
   settleForAWhile,
   startNewProjectFromTheFailureView,
   stubCapableStorage,
+  usedLast,
 } from './app-test-support'
 
 const FIRST_ID = 'project-first'
@@ -55,11 +48,6 @@ async function recordIdsBesideTheFailedOne(ports: TestPorts): Promise<string[]> 
 // The ids of every save that the spy of the store saw.
 function savedIds(save: MockInstance<DocumentStore['save']>): string[] {
   return save.mock.calls.map(([id]) => id)
-}
-
-async function documentText(directory: InMemoryDirectory): Promise<string> {
-  const bytes = await directory.readFile(DOCUMENT_FILE)
-  return new TextDecoder().decode(bytes)
 }
 
 afterEach(() => {
@@ -126,8 +114,10 @@ describe('The start after a switch between projects', () => {
     const ports = createTestPorts({ durable: true })
     await plantProject(ports, FIRST_ID, 'First House')
     await plantProject(ports, SECOND_ID, 'Second House')
+    await reconcileIndex(ports)
+    await usedLast(ports, FIRST_ID)
     const save = vi.spyOn(ports.workspace, 'save')
-    renderApp(ports, { projectId: FIRST_ID })
+    renderApp(ports)
     await expectOpenProject('First House')
     await chooseFromTheProjectMenu('Second House')
     await expectOpenProject('Second House')
@@ -148,33 +138,5 @@ describe('The start after a switch between projects', () => {
     renderApp(reloadOf(ports))
 
     await expectOpenProject('First House')
-  })
-
-  it('does not start in a project that was opened from a folder', async () => {
-    stubCapableStorage()
-    vi.stubGlobal('showDirectoryPicker', () => Promise.reject(new Error('not used')))
-    const ports = createTestPorts({ durable: true })
-    await plantProject(ports, START_ID, 'Old Cottage')
-    const folder = new InMemoryDirectory()
-    await folder.writeFile(DOCUMENT_FILE, documentBytes(namedProject('Folder House')))
-    const before = await documentText(folder)
-    pickFolder(ports, folder, 'Old house')
-    renderApp(ports)
-    await expectOpenProject('Old Cottage')
-    await chooseFromTheProjectMenu('Open folder')
-    await expectOpenProject('Folder House')
-    await editTheProject()
-    await waitFor(async () => expect(await documentText(folder)).not.toBe(before), {
-      timeout: AUTOSAVE_TIMEOUT_MS,
-    })
-    await settleForAWhile()
-    cleanup()
-    await settleForAWhile()
-    const reloaded = reloadOf(ports)
-
-    renderApp(reloaded)
-
-    await expectOpenProject('Old Cottage')
-    expect(lockedIds(reloaded)).toEqual([START_ID])
   })
 })

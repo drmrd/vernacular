@@ -103,6 +103,7 @@ export async function restoreSnapshot(current: DocumentHandle): Promise<RestoreR
       session,
       snapshots: current.snapshots,
       records,
+      stored: internals.stored(),
     })
   } catch (error) {
     // Defence in depth: the builder calls no store method here, so nothing in it is known to throw.

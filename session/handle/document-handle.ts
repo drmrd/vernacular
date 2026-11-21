@@ -5,6 +5,7 @@ import { callGuarded, callGuardedAsync } from '../guarded-call'
 import { type HandOver, registerHandle } from './handle-internals'
 import { createHandleNotices, type HandleNotices } from './handle-notices'
 import type { RecordKeeper } from './handle-record'
+import { createStoredFlag, type StoredFlag } from './handle-stored'
 import type { DocumentHandle, OpenRequest, SaveOutcome, SaveStatus } from './handle-types'
 import type { OpenedProject } from './read-for-open'
 import { markSession } from './session-mark'
@@ -26,6 +27,11 @@ export interface DocumentHandleParts {
   readonly snapshots?: ProjectSnapshots
   /** The record writes of the project; a restore passes on those of the handle before it. */
   readonly records: RecordKeeper
+  /**
+   * True when the store held the project at the open; a restore passes on the answer of the handle
+   * before it. Absent means false.
+   */
+  readonly stored?: boolean
 }
 
 interface SaveStatusCell {
@@ -220,6 +226,7 @@ interface WriteListenerParts {
   readonly status: SaveStatusCell
   readonly reportFaults: (report: SaveReport) => void
   readonly records: RecordKeeper
+  readonly storedFlag: StoredFlag
 }
 
 /**
@@ -229,7 +236,7 @@ interface WriteListenerParts {
  * its write reports saved, so the last report is that of the write.
  */
 function listenToWrites(parts: WriteListenerParts): WriteListeners {
-  const { session, status, reportFaults, records } = parts
+  const { session, status, reportFaults, records, storedFlag } = parts
   let lastReport: SaveReport | undefined
   return {
     onReport(report) {
@@ -240,6 +247,7 @@ function listenToWrites(parts: WriteListenerParts): WriteListeners {
       // The mark is taken before the status listeners run, so an edit that one of them makes
       // keeps the record from being made.
       const stored = next === 'saved' ? markSession(session) : undefined
+      storedFlag.noteStatus(next)
       status.set(next)
       if (stored !== undefined && lastReport !== undefined) {
         records.saved(stored, lastReport)
@@ -263,14 +271,15 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
   }
   const snapshots = parts.snapshots ?? store.snapshots(request.id)
   const reportFaults = reportFaultsTo(notices, opened)
+  const storedFlag = createStoredFlag(parts.stored ?? false)
   const autosave = createAutosave({
     session,
     store,
     projectId: request.id,
     snapshots,
-    ...listenToWrites({ session, status, reportFaults, records }),
+    ...listenToWrites({ session, status, reportFaults, records, storedFlag }),
   })
-  const savePath = createSavePath({ autosave, hold, records })
+  const { save, flush, close, handOver } = createSavePath({ autosave, hold, records })
   const handle: DocumentHandle = {
     id: request.id,
     location: request.location,
@@ -280,10 +289,10 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     saveStatus: status.get,
     subscribe: status.subscribe,
     onNotice: notices.onNotice,
-    save: savePath.save,
-    flush: savePath.flush,
-    close: savePath.close,
+    save,
+    flush,
+    close,
   }
-  registerHandle(handle, { request, store, records, handOver: savePath.handOver })
+  registerHandle(handle, { request, store, records, handOver, stored: storedFlag.get })
   return handle
 }

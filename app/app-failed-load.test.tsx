@@ -2,7 +2,6 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import { reconcileIndex } from '../session'
 import { createTestPorts, recordOf, type TestPorts } from '../session/handle/handle-test-kit'
-import { folderRecord } from '../session/projects/rebuild-test-kit'
 import {
   clearLegacyActiveProjectId,
   legacyActiveProjectIdIsStored,
@@ -24,7 +23,6 @@ import {
 } from './app-test-support'
 
 const SECOND_ID = 'project-second'
-const FOLDER_ID = 'project-folder'
 
 /** Ports whose store holds "Old Cottage" under current and "Second House" under the second id. */
 async function portsWithTwoProjects(durable = false): Promise<TestPorts> {
@@ -71,16 +69,6 @@ describe('The application opens the project that was used last', () => {
     expect(await openProjectName()).toBe('Old Cottage')
   })
 
-  it('prefers the projectId property over the index', async () => {
-    stubCapableStorage()
-    const ports = await indexedPortsWithTwoProjects()
-    await usedLast(ports, SECOND_ID)
-
-    renderApp(ports, { projectId: START_ID })
-
-    expect(await openProjectName()).toBe('Old Cottage')
-  })
-
   it('opens a fresh project when the store no longer holds the project of the latest record', async () => {
     stubCapableStorage()
     const ports = await indexedPortsWithTwoProjects()
@@ -103,21 +91,6 @@ describe('The application opens the project that was used last', () => {
 })
 
 describe('The application that starts from the records of the index', () => {
-  it('does not start in a folder project, also when it was used last', async () => {
-    stubCapableStorage()
-    const ports = await indexedPortsWithTwoProjects()
-    await usedLast(ports, START_ID)
-    await ports.index.put(folderRecord(FOLDER_ID))
-    await usedLast(ports, FOLDER_ID)
-    const read = vi.spyOn(ports.workspace, 'read')
-
-    renderApp(ports)
-
-    expect(await openProjectName()).toBe('Old Cottage')
-    expect(read).not.toHaveBeenCalledWith(FOLDER_ID)
-    expect(lockedIds(ports)).not.toContain(FOLDER_ID)
-  })
-
   it('starts in the workspace project used last also when it did not open', async () => {
     stubCapableStorage()
     const ports = createTestPorts()

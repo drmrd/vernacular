@@ -10,17 +10,18 @@ test with the listed title. A `pending` capability is tracked but not yet
 enforced; the slice that builds it flips it to `required` in the same change that
 adds the journey test.
 
-| Capability         | Journey test title                                        | Status   |
-| ------------------ | --------------------------------------------------------- | -------- |
-| draw-wall          | draws a wall and shows it on the plan                     | required |
-| cancel-wall        | cancels a half-drawn wall with the cancel key             | pending  |
-| undo-redo          | undoes and redoes a wall                                  | pending  |
-| delete-selection   | deletes the selected entities                             | pending  |
-| switch-floor       | switches floors and the canvas changes                    | pending  |
-| edit-color         | edits a surface color and it applies                      | pending  |
-| toggle-three-d     | toggles between the two- and three-dimensional views      | pending  |
-| edit-endpoint      | re-edits a wall endpoint after placement                  | pending  |
-| snap-along-wall    | snaps a new wall onto an existing wall                    | pending  |
-| opening-host-guard | a wall cannot host on an opening                          | pending  |
-| donut-room         | derives a room with an interior void                      | pending  |
-| recent-projects    | switches between two stored projects from the recent list | required |
+| Capability         | Journey test title                                                                         | Status   |
+| ------------------ | ------------------------------------------------------------------------------------------ | -------- |
+| draw-wall          | draws a wall and shows it on the plan                                                      | required |
+| cancel-wall        | cancels a half-drawn wall with the cancel key                                              | pending  |
+| undo-redo          | undoes and redoes a wall                                                                   | pending  |
+| delete-selection   | deletes the selected entities                                                              | pending  |
+| switch-floor       | switches floors and the canvas changes                                                     | pending  |
+| edit-color         | edits a surface color and it applies                                                       | pending  |
+| toggle-three-d     | toggles between the two- and three-dimensional views                                       | pending  |
+| edit-endpoint      | re-edits a wall endpoint after placement                                                   | pending  |
+| snap-along-wall    | snaps a new wall onto an existing wall                                                     | pending  |
+| opening-host-guard | a wall cannot host on an opening                                                           | pending  |
+| donut-room         | derives a room with an interior void                                                       | pending  |
+| recent-projects    | switches between two stored projects from the recent list                                  | required |
+| project-addresses  | reloads on a project address and follows Back and Forward across two projects and the page | required |

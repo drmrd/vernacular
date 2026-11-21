@@ -59,6 +59,11 @@
       "id": "opening-time-for-the-house",
       "title": "opens a house whose front faces west at the time its front takes the sun",
       "status": "required"
+    },
+    {
+      "id": "project-addresses",
+      "title": "reloads on a project address and follows Back and Forward across two projects and the page",
+      "status": "required"
     }
   ]
 }
