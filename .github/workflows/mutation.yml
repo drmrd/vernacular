@@ -6,18 +6,50 @@ on:
     - cron: '30 3 * * 0'
   workflow_dispatch: {}
 
+# Every run reads and then advances the one incremental file on the stryker-incremental branch, so
+# runs queue instead of cancelling each other: a cancelled run would throw away hours of results.
 concurrency:
-  group: mutation-${{ github.ref }}
-  cancel-in-progress: true
+  group: mutation-stryker-incremental
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DATA_BRANCH: stryker-incremental
+  DATA_FILE: stryker-incremental.json
+  INCREMENTAL_FILE: reports/stryker-incremental.json
 
 jobs:
   stryker:
     name: Stryker
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    # A full run of core/ is estimated at more than 800 minutes on this runner, so the job runs in
+    # incremental mode from a seed made on a developer machine. Each run still repeats the initial
+    # test run (7.5 minutes on that machine, allowed 30 here); the rest is the mutants of the files
+    # that changed since the last run.
+    timeout-minutes: 360
+    permissions:
+      # Pushes the updated incremental file to the stryker-incremental branch.
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Restore the incremental file
+        id: restore
+        run: |
+          if ! git fetch --depth=1 origin "refs/heads/$DATA_BRANCH"; then
+            echo "::error::The $DATA_BRANCH branch is missing. A full Stryker run cannot finish in one job; seed it on a local machine first (docs/plans/2026-11-20-green-commit-proof.md, section 'Seed the Stryker incremental file')."
+            exit 1
+          fi
+          if ! git cat-file -e "FETCH_HEAD:$DATA_FILE"; then
+            echo "::error::The $DATA_BRANCH branch has no $DATA_FILE. A full Stryker run cannot finish in one job; seed it on a local machine first (docs/plans/2026-11-20-green-commit-proof.md, section 'Seed the Stryker incremental file')."
+            exit 1
+          fi
+          mkdir -p "$(dirname "$INCREMENTAL_FILE")"
+          git show "FETCH_HEAD:$DATA_FILE" > "$INCREMENTAL_FILE"
+          echo "parent=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
@@ -33,22 +65,40 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Skip if core/ is empty
-        id: guard
-        run: |
-          if [ -d core ] && find core -name '*.ts' -not -name '*.test.ts' -not -name '*.spec.ts' | grep -q .; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
-            echo "core/ is empty or absent; mutation scaffold present, skipping run."
-          fi
-
       - name: Run Stryker
-        if: steps.guard.outputs.should_run == 'true'
         run: pnpm mutate
 
+      # Runs also when the score falls below the break threshold, when Stryker still writes the
+      # whole file, and after a timeout or a cancel, when Stryker saves the results it has so far.
+      # The next run then starts from these results.
+      - name: Push the updated incremental file
+        if: ${{ always() && steps.restore.outcome == 'success' }}
+        env:
+          PARENT: ${{ steps.restore.outputs.parent }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          if [ ! -f "$INCREMENTAL_FILE" ]; then
+            echo "Stryker wrote no incremental file; nothing to push."
+            exit 0
+          fi
+          if ! node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$INCREMENTAL_FILE"; then
+            echo "::error::$INCREMENTAL_FILE is not valid JSON (Stryker may have stopped while writing it); not pushing it."
+            exit 1
+          fi
+          blob=$(git hash-object -w "$INCREMENTAL_FILE")
+          tree=$(printf '100644 blob %s\t%s\n' "$blob" "$DATA_FILE" | git mktree)
+          if [ "$tree" = "$(git rev-parse "$PARENT^{tree}")" ]; then
+            echo "The incremental file is unchanged; nothing to push."
+            exit 0
+          fi
+          commit=$(git commit-tree "$tree" -p "$PARENT" -m "chore: update the Stryker incremental file")
+          git push origin "$commit:refs/heads/$DATA_BRANCH"
+
       - name: Upload Stryker HTML report
-        if: always() && steps.guard.outputs.should_run == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: stryker-report

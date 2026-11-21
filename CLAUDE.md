@@ -65,7 +65,7 @@ For every non-trivial change, follow:
 3. **Branch** with `feat/<short-name>` or `fix/<short-slug>`.
 4. **RED:** `/test-first <behavior>` invokes the `test-author` subagent for a failing test.
 5. **GREEN:** `/implement` invokes the `implementer` subagent for the minimal passing implementation.
-6. **BLUE-review:** `/clean-code-review` invokes the `clean-code-reviewer` subagent.
+6. **BLUE-review:** `/clean-code-review` invokes the `clean-code-reviewer` subagent. While it runs, the main thread runs `pnpm green:proof --commit HEAD` in the background (sandbox off) and reads the summary before dispatching `/refactor`. The RED, GREEN, and refactor agents never run it. See ADR-0225.
 7. **BLUE-refactor:** `/refactor` invokes the `refactorer` subagent. An empty marker commit lands if no actionable findings.
 8. **Repeat** RED-GREEN-BLUE for each behavior in the feature.
 9. **PR-level review:** `/review` invokes the `pr-reviewer` subagent before merge.

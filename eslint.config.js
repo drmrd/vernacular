@@ -531,6 +531,8 @@ export function buildConfig(exceptions = lintExceptions) {
         'vite.config.d.ts',
         'vitest.config.js',
         'vitest.config.d.ts',
+        'vitest.stryker.config.js',
+        'vitest.stryker.config.d.ts',
       ],
     },
     {
@@ -610,7 +612,7 @@ export function buildConfig(exceptions = lintExceptions) {
       },
     },
     {
-      files: ['vite.config.ts', 'vitest.config.ts', 'eslint.config.js'],
+      files: ['vite.config.ts', 'vitest.config.ts', 'vitest.stryker.config.ts', 'eslint.config.js'],
       languageOptions: {
         ecmaVersion: 2022,
         globals: globals.node,

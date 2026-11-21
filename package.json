@@ -25,6 +25,7 @@
     "pack:validate": "node scripts/pack/vernacular-pack.mjs validate",
     "rgb:audit": "node scripts/rgb-audit/rgb-audit.mjs",
     "policy:check": "node scripts/policy-check/policy-check.mjs",
+    "green:proof": "node scripts/green-proof/green-proof.mjs",
     "integration:audit": "node scripts/integration-audit/integration-audit.mjs",
     "dup": "jscpd --silent .",
     "storybook": "storybook dev -p 6006 --no-open",
@@ -39,7 +40,7 @@
     "lhci:collect": "lhci collect --config=./lighthouserc.json",
     "perf:report": "node scripts/performance/report-times.mjs",
     "mutate": "stryker run",
-    "mutate:check": "stryker run --dryRun",
+    "mutate:check": "stryker run --dryRunOnly",
     "prepare": "husky"
   },
   "engines": {
@@ -80,9 +81,9 @@
     "@storybook/addon-a11y": "10.6.2",
     "@storybook/addon-vitest": "10.6.2",
     "@storybook/react-vite": "10.6.2",
-    "@stryker-mutator/core": "8.7.1",
-    "@stryker-mutator/typescript-checker": "8.7.1",
-    "@stryker-mutator/vitest-runner": "8.7.1",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/typescript-checker": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
@@ -136,8 +137,7 @@
       "baseline-browser-mapping@2": "2.11.29",
       "source-map-js@1": "1.2.2",
       "compression@1": "1.8.2",
-      "qs@6": "6.16.1",
-      "@stryker-mutator/instrumenter>@babel/core@7": "7.29.7"
+      "qs@6": "6.16.1"
     },
     "patchedDependencies": {
       "three@0.184.0": "patches/three@0.184.0.patch"
