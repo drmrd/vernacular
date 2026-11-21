@@ -210,6 +210,12 @@ export const UNCOVERED_COMPONENTS: {
       'DOM overlay positioned from the live scene projection; it requires the R3F scene context, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'SceneReadinessBoundary',
+    file: 'bridge/react/scene-readiness-boundary.tsx',
+    reason:
+      "the wrapper that carries the live view's readiness attributes around the canvas; split out of webgpu-scene-view.tsx to keep that module under its size budget. It is only rendered inside WebGPUSceneView, which is itself recorded here, and it draws nothing of its own, so an isolated story would show an empty box (see ADR-0111).",
+  },
+  {
     component: 'SceneSessionProvider',
     file: 'bridge/react/scene-session-provider.tsx',
     reason:
