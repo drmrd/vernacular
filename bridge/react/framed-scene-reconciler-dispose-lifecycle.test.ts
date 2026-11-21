@@ -61,7 +61,7 @@ describe('createFramedSceneReconciler dispose edges', () => {
     expectEachDisposedOnce(emptyTree)
 
     reconciler.dispose()
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(empty)
     expectEachDisposedOnce(emptyTree)
   })
 
@@ -75,7 +75,7 @@ describe('createFramedSceneReconciler dispose edges', () => {
       const scene = reconciler.reconcile(graph, paint)
       const tree = trackResources(scene.root)
       freed.forEach((earlier) => expect(sharedResources(earlier, tree)).toEqual([]))
-      reconciler.releaseRetired()
+      reconciler.releaseRetired(scene)
       expectNoneDisposed(tree)
 
       reconciler.dispose()
@@ -96,7 +96,7 @@ describe('createFramedSceneReconciler reconciling the same inputs twice', () => 
     const first = reconciler.reconcile(graph, paint)
     const second = reconciler.reconcile(graph, paint)
     const tree = trackResources(first.root)
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(second)
 
     expect(second).toBe(first)
     expectNoneDisposed(tree)
@@ -110,7 +110,7 @@ describe('createFramedSceneReconciler reconciling the same inputs twice', () => 
     const first = reconciler.reconcile(graph, paint)
     const tree = trackResources(first.root)
     const second = reconciler.reconcile(graph, paint)
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(second)
 
     expect(second).toBe(first)
     expectNoneDisposed(tree)
@@ -124,7 +124,7 @@ describe('createFramedSceneReconciler reconciling the same inputs twice', () => 
     const firstTree = trackResources(first.root)
     const second = reconciler.reconcile(graphOf([]), paint)
     const secondTree = trackResources(second.root)
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(second)
 
     expect(second).not.toBe(first)
     expect(sharedResources(firstTree, secondTree)).toEqual([])

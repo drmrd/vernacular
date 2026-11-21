@@ -91,6 +91,7 @@ interface RoomEdit {
   movedOld: ResourceTracker
   keptOld: ResourceTracker
   secondFloor: ResourceTracker
+  latest: FramedScene
 }
 
 // Builds a two-room floor, then widens the right room so the left room's group is reused,
@@ -123,18 +124,18 @@ function editOneRoom(): RoomEdit {
   expect(findByEntityId(second.root, moved.id)).not.toBe(movedFirstGroup)
   expect(findByEntityId(second.root, kept.id)).toBe(keptFirstGroup)
   const secondFloor = trackResources(findByEntityId(second.root, FLOOR_NODE_ID))
-  return { reconciler, movedOld, keptOld, secondFloor }
+  return { reconciler, movedOld, keptOld, secondFloor, latest: second }
 }
 
 describe('createFramedSceneReconciler retirement of replaced builds', () => {
   it('frees the geometry of a rebuilt room only when releaseRetired runs', () => {
-    const { reconciler, movedOld, keptOld } = editOneRoom()
+    const { reconciler, movedOld, keptOld, latest } = editOneRoom()
 
     // Reconciling is part of render, so it frees nothing yet.
     expect(movedOld.geometries().length).toBeGreaterThan(0)
     expect(liveOf(movedOld)).toBe(movedOld.all().length)
 
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(latest)
 
     // The rebuilt room's own geometry is freed once. The reused room's is untouched.
     expect(movedOld.geometries().map((entry) => entry.disposeCount)).toEqual(
@@ -144,9 +145,9 @@ describe('createFramedSceneReconciler retirement of replaced builds', () => {
   })
 
   it('keeps the reused groups and the provider materials they draw with live after release', () => {
-    const { reconciler, secondFloor } = editOneRoom()
+    const { reconciler, secondFloor, latest } = editOneRoom()
 
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(latest)
 
     // Every geometry and material the new floor draws, wall, reused room, and the shared
     // provider materials among them, is still live: a disposed material on a live floor
@@ -168,7 +169,7 @@ describe('createFramedSceneReconciler retirement of replaced builds', () => {
     const secondFloor = trackResources(findByEntityId(second.root, FLOOR_NODE_ID))
 
     expect(sharedResources(firstFloor, secondFloor)).toEqual([])
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(second)
 
     // Every old geometry and every old provider material is freed exactly once.
     expectEachDisposedOnce(firstFloor)
@@ -233,7 +234,7 @@ describe('createFramedSceneReconciler retirement of replaced scenes', () => {
     const wholeFloor = trackResources(findByEntityId(whole.root, FLOOR_NODE_ID))
     expect(sharedResources(activeFloor, wholeFloor).length).toBeGreaterThan(0)
 
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(whole)
 
     expectEachDisposedOnce(activeGround)
     expectNoneDisposed(activeFloor)
@@ -252,7 +253,7 @@ describe('createFramedSceneReconciler retirement of replaced scenes', () => {
     expect(second).not.toBe(first)
     expectNoneDisposed(firstTree)
 
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(second)
 
     expectEachDisposedOnce(firstTree)
     expectNoneDisposed(secondTree)

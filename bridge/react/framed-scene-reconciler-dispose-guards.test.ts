@@ -9,7 +9,15 @@ import {
   createWall,
   sceneGraphForFloor,
 } from '../../core'
-import type { Floor, FurnitureInstance, Project, SceneGraph, SceneNode, Wall } from '../../core'
+import type {
+  Floor,
+  FurnitureInstance,
+  Project,
+  RoomSceneNode,
+  SceneGraph,
+  SceneNode,
+  Wall,
+} from '../../core'
 import { isGroundPlane } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import type { Object3D } from '../../engine/testing'
@@ -38,6 +46,7 @@ const UPPER_ELEVATION_MM = 3000
 const WALL_LENGTH_MM = 2000
 const WALL_THICKNESS_MM = 120
 const WALL_HEIGHT_MM = 2400
+const WIDENED_WALL_IDS = ['wall-right', 'wall-bottom', 'wall-top']
 const CHAIR_ID = 'chair-moved'
 const CHAIR_SIZE_MM = 500
 const CHAIR_HEIGHT_MM = 900
@@ -133,7 +142,7 @@ describe('createFramedSceneReconciler releases only what a scene change dropped'
     })
     expect(unchanged.length).toBeGreaterThan(walls.length)
 
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(second)
 
     expect(chairOld.geometries().length).toBeGreaterThan(0)
     expect(chairOld.geometries().map((entry) => entry.disposeCount)).toEqual(
@@ -200,7 +209,7 @@ describe('createFramedSceneReconciler frees a dropped scene ground plane and emp
     const singleFloor = trackResources(groupOf(single, FLOOR_NODE_ID))
     expect(sharedResources(wholeGround, singleGround)).toEqual([])
 
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(single)
 
     expectNoneDisposed(wholeUpper)
     expectNoneDisposed(singleGround)
@@ -222,8 +231,8 @@ describe('createFramedSceneReconciler frees a dropped scene ground plane and emp
     expect(second).not.toBe(first)
     expect(sharedResources(firstGround, secondGround)).toEqual([])
 
-    reconciler.releaseRetired()
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(second)
+    reconciler.releaseRetired(second)
 
     expectEachDisposedOnce(firstGround)
     expectNoneDisposed(secondGround)
@@ -240,10 +249,58 @@ describe('createFramedSceneReconciler frees a dropped scene ground plane and emp
     expect(sharedResources(emptyTree, floorTree)).toEqual([])
     expectNoneDisposed(emptyTree)
 
-    reconciler.releaseRetired()
-    reconciler.releaseRetired()
+    reconciler.releaseRetired(floor)
+    reconciler.releaseRetired(floor)
 
     expectEachDisposedOnce(emptyTree)
     expectNoneDisposed(floorTree)
+  })
+})
+
+// Widens only the right room: the three walls around it are replaced, the left wall and the
+// partition keep their references, so the left room's group is reused.
+function widenedWalls(walls: Wall[]): Wall[] {
+  const widened = partitionedWalls(WIDENED_RIGHT_MM)
+  return walls.map((wall) =>
+    WIDENED_WALL_IDS.includes(wall.id) ? (widened.find((w) => w.id === wall.id) ?? wall) : wall,
+  )
+}
+
+function rightmostRoom(graph: SceneGraph): RoomSceneNode {
+  const [first, ...rest] = graph.rooms
+  if (first === undefined) {
+    throw new Error('expected the partitioned floor to derive rooms')
+  }
+  const maxX = (room: RoomSceneNode): number => Math.max(...room.polygon.map((point) => point.x))
+  return rest.reduce((best, room) => (maxX(room) > maxX(best) ? room : best), first)
+}
+
+describe('createFramedSceneReconciler releases only for the scene the latest reconcile returned', () => {
+  it('frees nothing for the scene from before an edit and frees the old room once for the edit scene', () => {
+    const derive = createSceneGraphDeriver()
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const walls = partitionedWalls(RIGHT_MM)
+    const floor = createFloor('Ground', { id: FLOOR_ID, walls })
+    const firstGraph = activeFloorGraph(derive, floor)
+    const first = reconciler.reconcile(firstGraph, paint)
+    const rebuiltRoomId = rightmostRoom(firstGraph).id
+    const oldRoom = trackResources(groupOf(first, rebuiltRoomId))
+    const edited: Floor = { ...floor, walls: widenedWalls(walls) }
+    const second = reconciler.reconcile(activeFloorGraph(derive, edited), paint)
+    const liveFloor = trackResources(groupOf(second, FLOOR_NODE_ID))
+    expect(groupOf(second, rebuiltRoomId)).not.toBe(groupOf(first, rebuiltRoomId))
+    expect(oldRoom.geometries().length).toBeGreaterThan(0)
+
+    reconciler.releaseRetired(first)
+
+    expectNoneDisposed(oldRoom)
+
+    reconciler.releaseRetired(second)
+
+    expect(oldRoom.geometries().map((entry) => entry.disposeCount)).toEqual(
+      oldRoom.geometries().map(() => 1),
+    )
+    expectNoneDisposed(liveFloor)
   })
 })

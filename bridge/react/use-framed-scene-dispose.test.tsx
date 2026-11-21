@@ -32,7 +32,7 @@ function expectEveryGeometryDisposedOnce(tracker: ResourceTracker): void {
 }
 
 describe('useFramedScene frees what it stops using', () => {
-  it('frees the superseded reconciler resources once when the overlay flips, and none of the live scene', () => {
+  it('frees the superseded reconciler resources once when the overlay flips with no scene attached, and none of the live scene', () => {
     const { wrapper } = framedSceneEnvironment()
     const { result } = renderHook(() => useFramedScene(), { wrapper })
     const superseded = trackResources(result.current.framed.root)
@@ -46,7 +46,7 @@ describe('useFramedScene frees what it stops using', () => {
     expectNoneDisposed(live)
   })
 
-  it('frees the geometry of a rebuilt room once the effect runs, and nothing the new scene draws', async () => {
+  it('frees the geometry of a rebuilt room once the effect runs with no scene attached, and nothing the new scene draws', async () => {
     const env = framedSceneEnvironment()
     const { result } = renderHook(() => useFramedScene(), { wrapper: env.wrapper })
     const oldRooms = env.roomIds().map((id) => {
