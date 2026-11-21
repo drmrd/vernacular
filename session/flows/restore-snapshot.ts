@@ -54,7 +54,9 @@ function decideDocument(restored: DecodeResult): OpenedProject | Refused {
 
 /**
  * Reads the newest snapshot and builds the new session, before the current handle gives anything
- * up. Every failure here leaves the current handle as it was.
+ * up. A failure here leaves the current handle open and its project unchanged. One step can still
+ * change it: when a refused copy cannot be moved to the backups, the handle stops its snapshot
+ * writes and prunes, so that the copy outlives its saves.
  */
 async function prepareRestore(current: DocumentHandle): Promise<Prepared> {
   try {

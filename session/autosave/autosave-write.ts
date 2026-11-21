@@ -77,9 +77,9 @@ export function flushWrites(queue: TrackedWriteQueue, progress: WriteProgress): 
 }
 
 /**
- * Writes ahead to a snapshot when snapshots are set and not left, saves, then prunes. A prune that rejects goes
- * to console.error and does not fail the write, because the project is stored by then; the next
- * write that succeeds prunes again.
+ * Writes ahead to a snapshot when snapshots are set and not left, saves, then prunes. A prune that
+ * rejects goes to console.error and does not fail the write, because the project is stored by
+ * then; the next write that succeeds prunes again, unless the handle leaves its snapshots.
  */
 async function storeProject(
   config: AutosaveConfig,
