@@ -136,9 +136,8 @@ export function rejectSetAside(store: DocumentStore, error: Error): string[] {
 
 /**
  * Like `rejectSetAside`, except that `setAsideRefused` is the real one by default, or `setAside`
- * when given. Each `writeSnapshot` waits for the promise that `hold()` gives, when `hold` is given,
- * before it writes. Call this before
- * the open.
+ * when given. When `hold` is given, each `writeSnapshot` waits for the promise that `hold()` gives
+ * before it writes; `hold` gates only `writeSnapshot`. Call this before the open.
  */
 export function logSnapshotCalls(
   store: DocumentStore,

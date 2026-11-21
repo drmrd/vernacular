@@ -182,13 +182,17 @@ describe('the saves that follow a restore of a recovery copy that cannot be read
     })
     vi.spyOn(handle.snapshots, 'setAsideRefused').mockRejectedValue(new Error(DISK_FULL))
     log.length = 0
-    rename(handle, EDITED_AGAIN_NAME)
-    await vi.advanceTimersByTimeAsync(DEFAULT_AUTOSAVE_DELAY_MS)
-    await settle()
-    const writeStarted = [...log]
-
-    const result = await restoreSnapshot(handle)
-    release()
+    let writeStarted: string[]
+    let result: Awaited<ReturnType<typeof restoreSnapshot>>
+    try {
+      rename(handle, EDITED_AGAIN_NAME)
+      await vi.advanceTimersByTimeAsync(DEFAULT_AUTOSAVE_DELAY_MS)
+      await settle()
+      writeStarted = [...log]
+      result = await restoreSnapshot(handle)
+    } finally {
+      release()
+    }
     await settle()
 
     expect(writeStarted).toEqual([`writeSnapshot:${PROJECT_ID}`])
