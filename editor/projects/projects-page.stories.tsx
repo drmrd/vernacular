@@ -9,6 +9,8 @@ const DRAWING =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60">' +
   '<rect x="5" y="5" width="90" height="50" fill="none" stroke="#444" stroke-width="2"/></svg>'
 
+const PIXEL_TOLERANCE = 1
+
 const WORKSPACE_ACTIONS: ProjectCardModel['actions'] = ['rename', 'export', 'delete']
 const FOLDER_ACTIONS: ProjectCardModel['actions'] = ['rename', 'export', 'remove-from-list']
 
@@ -116,6 +118,16 @@ export const Empty: Story = {
     await expect(screen.getByText('There are no saved projects yet.')).toBeInTheDocument()
     await expect(screen.getByRole('button', { name: 'New project' })).toBeInTheDocument()
     await expect(screen.queryAllByRole('link')).toHaveLength(0)
+  },
+}
+
+export const EmptyListFillsTheWindow: Story = {
+  args: { cards: [] },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    const main = screen.getByRole('main', { name: 'Projects' })
+    const height = main.getBoundingClientRect().height
+    await expect(height).toBeGreaterThanOrEqual(window.innerHeight - PIXEL_TOLERANCE)
   },
 }
 
