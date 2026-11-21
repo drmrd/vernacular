@@ -75,13 +75,18 @@ export class SnapshotStore {
     return bytes === undefined ? undefined : decodeDocument(bytes, this.codec)
   }
 
-  /** Moves each rolling snapshot that does not decode to the backups; resolves with the count. */
+  /**
+   * Moves each snapshot file (`snapshot-<anything>.json`) that does not decode to the backups;
+   * resolves with the count. A foreign name such as `snapshot-notes.txt` stays where it is.
+   */
   async setAsideRefused(): Promise<number> {
     const names = await this.rollingSnapshotNames()
     return setAsideRefusedSnapshots(
       this.directory,
       this.codec,
-      names.map((name) => `${AUTOSAVE_DIRECTORY}/${name}`),
+      names
+        .filter((name) => name.endsWith(SNAPSHOT_SUFFIX))
+        .map((name) => `${AUTOSAVE_DIRECTORY}/${name}`),
     )
   }
 
