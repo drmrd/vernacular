@@ -79,7 +79,7 @@ function walkCameraDriving(mode: NavMode): boolean {
  * Hover text for the controls that only reach the render under the orbit camera. Each names
  * what it steers, so a walk-mode user reads why it sits inert instead of assuming it broke.
  */
-const ORBIT_ONLY_TITLES = {
+const ORBIT_ONLY_REASONS = {
   select: 'Picks with the orbit camera. A walk-mode click engages mouse-look instead.',
   revealInterior:
     'Thins the walls between the orbit camera and the rooms. Walk mode is already inside them.',
@@ -93,7 +93,7 @@ const ORBIT_ONLY_TITLES = {
  * inward, which only reads as a doorway for a door, so a plan of windows leaves it nothing
  * to frame. It names the fix rather than only reporting the block.
  */
-const NO_DOORWAY_TITLE =
+const NO_DOORWAY_REASON =
   'No door in view to frame. Add a door, or show the floor its doors are on, to use this preset.'
 
 /** Shown when the underground toggle sits inert because the view holds one floor only. */
@@ -114,8 +114,8 @@ function doorwayUnavailableReason(
   doorway: DoorwayChoice | null | undefined,
   inertInWalk: boolean,
 ): string | undefined {
-  if (inertInWalk) return ORBIT_ONLY_TITLES.preset
-  if (doorwayMissing(doorway)) return NO_DOORWAY_TITLE
+  if (inertInWalk) return ORBIT_ONLY_REASONS.preset
+  if (doorwayMissing(doorway)) return NO_DOORWAY_REASON
   return undefined
 }
 
@@ -144,7 +144,7 @@ function CameraPresetButtons({ onPreset, doorway, mode }: CameraPresetButtonsPro
         <ToolbarButton
           key={preset}
           label={label}
-          unavailableReason={inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined}
+          unavailableReason={inertInWalk ? ORBIT_ONLY_REASONS.preset : undefined}
           onActivate={() => onPreset?.(preset)}
         />
       ))}
@@ -174,7 +174,7 @@ function ResetViewButton({ mode, onReset }: ResetViewButtonProps) {
   return (
     <ToolbarButton
       label="Reset view"
-      unavailableReason={inertInWalk ? ORBIT_ONLY_TITLES.resetView : undefined}
+      unavailableReason={inertInWalk ? ORBIT_ONLY_REASONS.resetView : undefined}
       onActivate={onReset}
     />
   )
@@ -223,7 +223,7 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         label="Select"
         pressed={props.selectionEnabled}
         onActivate={props.onToggleSelection}
-        unavailableReason={inertInWalk ? ORBIT_ONLY_TITLES.select : undefined}
+        unavailableReason={inertInWalk ? ORBIT_ONLY_REASONS.select : undefined}
       />
       {/* The near-wall fade defaults on because that is the expected-always-on state; a pressed
           toggle reflects whether it is currently on. */}
@@ -231,7 +231,7 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         label="Reveal interior"
         pressed={props.revealInterior}
         onActivate={props.onToggleRevealInterior}
-        unavailableReason={inertInWalk ? ORBIT_ONLY_TITLES.revealInterior : undefined}
+        unavailableReason={inertInWalk ? ORBIT_ONLY_REASONS.revealInterior : undefined}
       />
       <ResetViewButton mode={props.mode} onReset={props.onReset} />
     </div>
