@@ -44,6 +44,7 @@ This work replaces that reading with a script. It is one item of the 2026-11-19 
 | Shape                                                        | A new script and a new CI job (approach 1 below).         |
 | Lines that a GREEN commit only moves                         | Exempt from coverage and mutation.                        |
 | Uncovered line in a script's direct-invocation block         | Warning only; uncovered lines outside it still block.     |
+| Mutation check time in CI                                    | Capped at 15 min, newest GREEN commit first.              |
 
 ## Approaches
 
@@ -76,6 +77,8 @@ The RED test set of a GREEN commit is the union of test files that its RED commi
 
 4. **Incremental mutation.** For added lines in `core/`, `storage/`, `session/`, and `scripts/`, run Stryker with line ranges (`--mutate path:start-end`) and only the RED unit tests. Each surviving mutant becomes a warning, placed as described under "Report and exit code". Mutants with no coverage are already covered by check 3 and are not reported twice.
 
+   Check 4 has a time budget. The script runs it newest GREEN commit first and starts no new mutation run once the budget is spent. A run that has started finishes, so the check can go over the budget by one GREEN commit's mutation time. Only mutation time counts against the budget. Checks 1 to 3 still run on every GREEN commit and still block. The budget is the option `--mutation-budget-minutes <n>`, a whole number of minutes greater than 0. Without it there is no cap, so a local run mutates every cycle it checks. A GREEN commit that the budget did not reach gets a note in its block of the report.
+
 Files out of scope for checks 3 and 4: files that are not JavaScript or TypeScript source, and files in the coverage `exclude` list of `vite.config.ts`. Coverage must reach `scripts/**/*.mjs`, which the current coverage `include` list leaves out, so the script passes its own include list for the changed files.
 
 ### Finding kinds
@@ -93,11 +96,13 @@ The severities live in the shared table `scripts/policy-check/rule-severity.mjs`
 | `surviving-mutant`              | warning  | A mutant on an added line survives the RED tests (check 4).         |
 | `mutation-run-failed`           | warning  | Stryker exits nonzero for a group of mutants (check 4).             |
 
+A GREEN commit that the mutation budget did not reach gets the note `mutation check not reached: the time budget was spent`. A note is not a finding. It has no severity and no annotation, and it never changes the exit code.
+
 ### Report and exit code
 
 The script reuses the finding format of `scripts/policy-check/report.mjs`. Each finding has a rule, the sha of its GREEN commit, and a message, and most also have a file and a line. That line number belongs to the GREEN commit's version of the file, which can differ from the head of the pull request.
 
-The report starts with a count of proven, skipped, and failed GREEN commits. Then it lists each GREEN commit with its result (proven, skipped with its reason, or failed), its notes, its step times, and its own findings, indented under it. Within a commit, failing findings come before warnings.
+The report starts with a count of proven, skipped, and failed GREEN commits. When the mutation budget ran out, the same line also gives the number of GREEN commits that the mutation check did not reach. Then it lists each GREEN commit with its result (proven, skipped with its reason, or failed), its notes, its step times, and its own findings, indented under it. Within a commit, failing findings come before warnings.
 
 In CI each finding becomes a GitHub annotation, and the message starts with the short sha of the GREEN commit. GitHub puts an annotation on that line of the pull request's head. A line number from an earlier GREEN commit would point at the wrong line there, so an annotation names the line only when its GREEN commit is the head commit of the run. For an earlier commit it names only the file. The policy check shares `report.mjs`, and its output does not change.
 
@@ -106,8 +111,9 @@ Blocking findings make the exit code nonzero. Warnings never do, and a GREEN com
 ### Interfaces
 
 - `pnpm green:proof --range <base>..<head>` checks every GREEN commit in a range.
-- `pnpm green:proof --commit <sha>` checks one GREEN commit; the orchestrator runs it right after a GREEN commit, before the BLUE step.
-- New CI job `GREEN proof` on `pull_request`, after `check`, with full history (`fetch-depth: 0`). `ci-complete` lists it as required. It exits quickly when the range has no GREEN commit.
+- `pnpm green:proof --commit <sha>` checks one GREEN commit. After each GREEN commit the orchestrator runs it in the background while the BLUE review runs, so the proof adds little time to the cycle. The RED, GREEN, and refactor agents never run it.
+- `--mutation-budget-minutes <n>` caps check 4 (see check 4). Local runs leave it out.
+- New CI job `GREEN proof` on `pull_request`, after `check`, with full history (`fetch-depth: 0`). `ci-complete` lists it as required. It passes `--mutation-budget-minutes 15`, so check 4 spends at most about 15 min plus the run already started. It exits quickly when the range has no GREEN commit.
 
 ### Weekly Stryker fix (#487)
 
@@ -127,7 +133,7 @@ The Stryker config type-checks mutants with `tsconfig.json`, which does not incl
 
 ## Open until measured
 
-The CI time is not known. After the Stryker spike, an early plan task runs the check on the 28 GREEN commits of PR #961 (`35f8101b^1..35f8101b^2`: 17 `feat:`, 11 `fix:`) and records the time per GREEN commit for each step. If a large pull request takes more than about 20 minutes, the plan adds a time budget; the owner decides its shape then.
+The first measurement ran checks 1 to 3 on the 28 GREEN commits of PR #961 (`35f8101b^1..35f8101b^2`: 17 `feat:`, 11 `fix:`) in 3 to 6 min. One mutation run of a script file costs about 101 s, so check 4 on all 28 would add about 47 min. The owner decided on 2026-11-20 to cap check 4 in CI at 15 min, as described under check 4. Still open: how many of the 28 GREEN commits that budget reaches. The plan's full measurement records it and sets the job timeout from the capped run.
 
 ## Left to the builder
 

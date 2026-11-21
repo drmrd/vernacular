@@ -46,10 +46,13 @@ annotation format of `scripts/policy-check/report.mjs`.
   `git commit --allow-empty -m "refactor: mark the <name> cycle blue"`.
   A `refactor:` commit never changes a `*.test.*` file. Tasks 1, 2, 13, 17, 18, 19, and 20
   are exempt commit types (`build:`, `ci:`, `docs:`) and have no RED.
-- After each GREEN commit from cycle 13a on, also run `pnpm green:proof --commit HEAD` and paste its
-  summary into the BLUE review request. Once the tool works, it checks its own cycles.
+- After each GREEN commit from cycle 13a on, the main thread runs `pnpm green:proof --commit HEAD`
+  (sandbox off) in the background while the `/clean-code-review` agent reviews the cycle, so the
+  proof does not lengthen the loop. Before it dispatches `/refactor`, it reads the summary and adds
+  it to the refactor brief; a failing finding goes to the main thread first. The RED, GREEN, and
+  refactor agents never run `pnpm green:proof`. Once the tool works, it checks its own cycles.
 - Model routing: test-author and implementer on `sonnet` at medium effort; clean-code-reviewer on
-  `opus` at high effort for cycles 9 to 12, 13b, and 16 (process and file system work), `sonnet` at
+  `opus` at high effort for cycles 9 to 12, 13b, 16, and 16a (process, file system, and timing work), `sonnet` at
   medium otherwise; refactorer on `sonnet` at medium; the final `/review` on `opus` at high.
 - ADR-0225 is pre-assigned. `origin/main` has no ADR-0225 (checked 2026-11-20 on `ad3e66f2`).
   Check again before landing.
@@ -129,6 +132,7 @@ annotation format of `scripts/policy-check/report.mjs`.
 | `scripts/green-proof/prove-cycle.mjs`              | checks 1 to 4 for one cycle; the cycle result                     |
 | `scripts/green-proof/mutation.mjs`                 | ranges, groups, generated Stryker and Vitest configs              |
 | `scripts/green-proof/mutation-report.mjs`          | surviving mutants from the Stryker JSON report                    |
+| `scripts/green-proof/mutation-budget.mjs`          | the check 4 time budget and its option value                      |
 | `scripts/green-proof/green-proof.mjs`              | CLI shell: options, git reads, report, exit code, default deps    |
 | `scripts/green-proof/green-proof-report.mjs`       | header, one block per cycle with its own findings, annotations    |
 | `scripts/green-proof/guard-block.mjs`              | the direct-invocation block of a script, found by its text        |
@@ -627,9 +631,9 @@ it('skips the cycle when no unit test imports the changed assets')
       failed. Read every failure and every skip by hand: a false failure is a defect, fixed with
       its own `test:` and `fix:` cycle before cycle 14. Commit
       `docs: record the first green proof measurement in the plan`.
-- [ ] Projection: total time plus 28 times the spike's per-file Stryker time. If a pull request of
-      this size would take more than about 20 minutes, stop and bring the numbers to the main
-      thread; the owner decides the shape of a time budget before cycle 14.
+- [ ] Projection: total time plus 28 times the spike's per-file Stryker time. The projection came
+      to about 50 to 53 min, and the owner decided (2026-11-20) to cap the mutation check in CI
+      at 15 min, newest GREEN commit first (Cycle 16a).
 - [ ] The first run (2026-11-20) gave 24 proven, 0 skipped, 4 failed, with 17
       `uncovered-added-line` findings. A hand check found all 17 true and no defect in the proof,
       but two gaps in the contract: the report does not say which GREEN commit a finding belongs
@@ -915,13 +919,116 @@ it('runs no Stryker when the RED tests fail at GREEN')
 - [ ] **Steps 2 to 5:** FAIL, implement, PASS; commits `test: expect the GREEN proof to mutate added lines`,
       `feat: mutate the added lines of each GREEN commit`, then BLUE.
 
+### Cycle 16a: cap the mutation check with a time budget
+
+**Behavior:** the Task 13 projection puts check 4 at about 101 s per GREEN commit, so about 50 to
+53 min for a pull request of 28 GREEN commits. Owner decision (2026-11-20): cap check 4 in CI.
+Checks 1 to 3 still run on every GREEN commit and still block. Check 4 runs newest GREEN commit
+first and starts no new mutation run once the budget is spent; a run that has started finishes.
+CI passes a 15 min budget. With no budget option there is no cap, so a local
+`pnpm green:proof --commit HEAD` mutates its one cycle as Cycle 16 does. A cycle the budget did not
+reach gets a note, not a finding: it fails nothing, adds no annotation, and the header counts it.
+The cap belongs after Cycle 16 because it gates the check 4 that Cycle 16 wires in.
+
+**Files:** create `scripts/green-proof/mutation-budget.mjs`; modify
+`scripts/green-proof/green-proof.mjs`, `scripts/green-proof/green-proof-report.mjs`, and the
+module that runs check 4 (`scripts/green-proof/prove-cycle.mjs`, or the module Cycle 16 moved
+check 4 into); tests `scripts/green-proof/mutation-budget.test.mjs` (create),
+`scripts/green-proof/green-proof-budget.test.mjs` (create),
+`scripts/green-proof/prove-cycle-mutation.test.mjs`,
+`scripts/green-proof/green-proof-report.test.mjs`, and
+`scripts/green-proof/green-proof-cli-test-support.mjs` (modify). No change to
+`scripts/policy-check/rule-severity.mjs`: a note has no rule id.
+
+**Interfaces:** `mutation-budget.mjs` produces:
+
+- `MUTATION_NOT_REACHED_NOTE`, the exact note text
+  `mutation check not reached: the time budget was spent`.
+- `parseBudgetMinutes(value: string): number`: a whole number of minutes greater than 0 written
+  as digits only (`/^[1-9]\d*$/`); anything else throws
+  `--mutation-budget-minutes needs a whole number of minutes greater than 0, got <value>`.
+- `createMutationBudget(minutes: number | null): MutationBudget`, with
+  `MutationBudget = { canStart(): boolean, spend(ms: number): void }`. `canStart()` is true while
+  the milliseconds passed to `spend` add up to less than `minutes * 60000`; with `null` it is
+  always true. The budget counts only check 4 time, never install or checks 1 to 3.
+
+`CycleContext` (the deps of `proveCycle`) gains an optional `budget?: MutationBudget`; with none,
+check 4 runs as in Cycle 16, so no existing construction site changes. Where Cycle 16 starts
+check 4 (check 2 passed and `mutationTargets(covered)` is not empty), the cycle first asks
+`budget.canStart()`. False: push `MUTATION_NOT_REACHED_NOTE` to `result.notes`, write no Stryker
+config, run no Stryker, record no `timings.mutation`, and leave the status that checks 1 to 3
+gave. True: run every group of that cycle as Cycle 16 does, then call
+`budget.spend(result.timings.mutation)`. The budget is asked once per cycle, so both groups of a
+started cycle run. A cycle that check 4 would not run anyway (skipped, check 2 failed, no
+mutation target) never asks the budget and gets no note.
+
+`parseOptions` in `green-proof.mjs` accepts `--mutation-budget-minutes <n>` through the same
+`OPTION_KEYS` loop as the other options (an unknown option and a missing value throw as today),
+then passes the value through `parseBudgetMinutes`. `Options` gains
+`mutationBudgetMinutes: number | null`, default `null`. A thrown option error takes the existing
+path: `green:proof: internal error: <message>` and exit 2. `proveAll` creates one budget for the
+run and proves the cycles newest first (`[...cycles].reverse()`), then reverses the results, so
+the report keeps range order. Every cycle still runs checks 1 to 3.
+
+`reportLines` header: when `n`, the number of results whose `notes` include
+`MUTATION_NOT_REACHED_NOTE`, is above 0, the header becomes
+`green:proof: <p> proven, <s> skipped, <f> failed in <range>; cycles the mutation check did not reach: <n>`.
+With `n` 0 the header is unchanged. The note prints as `    note: <text>` under its cycle like any
+other note.
+
+Test support retrofit (in the RED commit): `cliScenario` may gain a way for the fake clock to jump
+by a set number of milliseconds on each `stryker` call, so a test can spend the budget. Existing
+CLI tests keep their output.
+
+- [ ] **Step 1: Write the failing tests**
+
+```js
+// scripts/green-proof/mutation-budget.test.mjs (new)
+it('accepts a whole number of minutes greater than 0') // '15' -> 15
+it('rejects zero, a negative number, a fraction, and text') // '0', '-5', '1.5', '15m', '' -> throws with the value
+it('allows new runs until the spent time reaches the budget') // 1 min: spend 59999 -> canStart true; spend 1 -> false
+it('always allows a new run without a budget') // null: spend 10 h -> canStart true
+
+// scripts/green-proof/prove-cycle-mutation.test.mjs (modify)
+it('notes a cycle the budget did not reach and runs no Stryker') // canStart false -> no stryker call, note, status 'proven'
+it('spends the time of every group of a started cycle') // app and tooling groups -> one canStart, spend(timings.mutation)
+it('does not ask the budget when the RED tests fail at GREEN') // canStart never called, no note
+
+// scripts/green-proof/green-proof-budget.test.mjs (new)
+it('mutates the newest GREEN commit first and lets a started run finish')
+// g1, g2, g3 each with a covered core/a.ts line; each stryker call moves the clock 10 min;
+// --mutation-budget-minutes 15 -> stryker runs for g3 then g2, not g1; g1 has the note
+it('still runs checks 1 to 3 on a cycle the budget did not reach') // g1 parent and green vitest calls happen
+it('prints the cycles in range order and counts the unreached cycles in the header')
+// header ends '; cycles the mutation check did not reach: 1'; block order g1, g2, g3
+it('exits 2 when the budget is not a whole number of minutes greater than 0') // '0' and 'x'
+it('mutates every cycle when no budget is given') // three stryker calls, header without the suffix
+
+// scripts/green-proof/green-proof-report.test.mjs (modify)
+it('keeps the header unchanged when every cycle that needed mutation was reached')
+```
+
+- [ ] **Steps 2 to 5:** FAIL, implement, PASS; commits
+      `test: expect a time budget to cap the mutation check`,
+      `feat: cap the mutation check with a time budget, newest GREEN commit first`, then BLUE.
+
+**Review focus:** checks 1 to 3 run on every cycle whatever the budget; the budget counts only
+check 4 time; a started cycle runs all its groups; the note never becomes a finding, so it adds no
+annotation and never changes the exit code; the report order is the range order; `parseOptions`,
+`proveAll`, and `reportLines` stay within 40 lines, 3 parameters, and complexity 10, and
+`green-proof.mjs` stays under 300 lines.
+
 ### Task 17: the full measurement (no RED)
 
-- [ ] Rerun `time pnpm green:proof --range 35f8101b^1..35f8101b^2` with the sandbox off. Add the
-      mutation step and survivor count to "Measurement results". Same rule as Task 13: a false
-      failure gets its own cycle; more than about 20 minutes goes to the main thread for the
-      owner's call. The total sets the job's `timeout-minutes` (twice the measured time, rounded
-      up to 5 minutes, at least 20). Commit `docs: record the full green proof measurement`.
+- [ ] Rerun `time pnpm green:proof --range 35f8101b^1..35f8101b^2 --mutation-budget-minutes 15`
+      with the sandbox off, the same budget CI passes. Add to "Measurement results": the total
+      time, the mutation step per cycle (median and maximum), the survivor count, and how many of
+      the 28 GREEN commits the budget reached (28 minus the header's count of cycles the mutation
+      check did not reach). Same rule as Task 13: a false failure gets its own cycle. The capped
+      run must end within the checks 1 to 3 time plus the 15 min budget plus one mutation run; a
+      longer run is a defect in the cap, fixed with its own `test:` and `fix:` cycle. The total
+      sets the job's `timeout-minutes` (twice the measured time, rounded up to 5 minutes, at
+      least 20). Commit `docs: record the full green proof measurement`.
 
 ### Task 18: the CI job (no RED)
 
@@ -943,8 +1050,10 @@ green-proof:
     - name: Prove each GREEN commit with its RED tests
       env:
         PROOF_RANGE: origin/${{ github.base_ref }}..${{ github.event.pull_request.head.sha }}
-      run: pnpm green:proof --range "$PROOF_RANGE"
+      run: pnpm green:proof --range "$PROOF_RANGE" --mutation-budget-minutes 15
 ```
+
+The 15 min budget caps only check 4 (Cycle 16a); checks 1 to 3 run on every GREEN commit.
 
 - [ ] Add `green-proof` to the `ci-complete` `needs` list, to its echo line
       (`green-proof=${{ needs.green-proof.result }}`), and to its `for result in` loop.
@@ -963,12 +1072,15 @@ green-proof:
       reading checked minimal GREEN commits; `rgb:audit` runs no test; the weekly job never
       completed); Decision (the three proofs and mutation, which tests count, skips and mixed
       sets, moved lines, the four mutated folders, the rule ids and their severities, the
-      worktree and install policy, the CI job and its place in `ci-complete`, `--commit` after
-      each GREEN, the #487 cause and fix, the Stryker version); Consequences (minutes of CI per
+      worktree and install policy, the CI job and its place in `ci-complete`, the 15 min
+      mutation budget in CI, newest GREEN commit first, `--commit` run by the main thread in the
+      background during each BLUE review, the #487 cause and fix, the Stryker version);
+      Consequences (minutes of CI per
       pull request with the Task 17 numbers, equivalent mutants as noise kept to warnings,
       end-to-end-only cycles unproven); Alternatives considered (the spec's approaches 2 and 3);
       References (spec, plan, #487, PR #961 measurement).
-- [ ] In `CLAUDE.md` "Workflow" step 5, add: then run `pnpm green:proof --commit HEAD`.
+- [ ] In `CLAUDE.md` "Workflow" step 6, add: the main thread runs `pnpm green:proof --commit HEAD`
+      in the background during the review; the RED, GREEN, and refactor agents never run it.
 - [ ] Run the `humanizer` skill on the ADR prose, then `grep -c $'\u2014'` on both files prints 0
       and `pnpm knowledge:index` exits 0.
 - [ ] Commit `docs: record the decision to prove GREEN commits with their RED tests`.
@@ -989,8 +1101,9 @@ green-proof:
 
 ## Follow-up (do not edit here; the main thread files one issue)
 
-`.claude/` files are not writable from the sandbox. The owner adds `pnpm green:proof --commit HEAD`
-after the GREEN step to `.claude/commands/implement.md` and to "The red-green-blue cycle" of
+`.claude/` files are not writable from the sandbox. The owner adds `pnpm green:proof --commit HEAD`,
+run by the main thread in the background during the BLUE review and never by the RED, GREEN, or
+refactor agent, to `.claude/commands/clean-code-review.md` and to "The red-green-blue cycle" of
 `.claude/skills/vernacular-change-control/SKILL.md`; adds `pnpm green:proof` and its rule ids to
 `.claude/skills/vernacular-diagnostics-and-tooling/SKILL.md`; adds the `green-proof` job to the CI
 job table of `.claude/skills/vernacular-validation-and-qa/SKILL.md`; and trims the minimal-GREEN
@@ -1057,5 +1170,6 @@ same time, so the times are high.
     warning.
 - Projection: every GREEN commit in the range changes only `.mjs` scripts, so each mutation run
   costs about the spike's 101 s for a script file. 28 times 101 s is about 47 min, so a pull
-  request of this size would take about 50 to 53 min. That is more than the 20 min limit: the
-  owner decides the shape of a time budget before Cycle 14.
+  request of this size would take about 50 to 53 min. The owner decided (2026-11-20) to cap the
+  mutation check in CI at 15 min, newest GREEN commit first; checks 1 to 3 still run on every
+  GREEN commit (Cycle 16a).
