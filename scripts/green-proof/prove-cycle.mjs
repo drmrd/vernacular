@@ -25,17 +25,18 @@ import { assertRanExactlyRedFiles, GENERATED_FOLDER, runVitest } from './vitest-
  * @typedef {import('../rgb-audit/cycle-audit.mjs').ParsedCommit} ParsedCommit
  * @typedef {import('../policy-check/rule-severity.mjs').Finding} Finding
  * @typedef {import('./test-set.mjs').RedTestSet} RedTestSet
+ * @typedef {import('./mutation-budget.mjs').MutationBudget} MutationBudget
  * @typedef {import('./vitest-run.mjs').VitestOutcome} VitestOutcome
  * @typedef {import('./worktree.mjs').RunGit} RunGit
  * @typedef {import('./worktree.mjs').RunCommand} RunCommand
  * @typedef {import('./worktree.mjs').Files} Files
  * @typedef {'install'|'parent'|'typeCheck'|'green'|'mutation'} Step
  * @typedef {{ sha: string, title: string, status: 'proven'|'skipped'|'failed', reason: string, notes: string[], findings: Finding[], timings: Partial<Record<Step, number>> }} CycleResult
- * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, session: { checkout(sha: string): { root: string, installMs: number } }, now: () => number }} CycleContext
+ * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, session: { checkout(sha: string): { root: string, installMs: number } }, now: () => number, budget?: MutationBudget }} CycleContext
  * @typedef {{ root: string, sha: string }} Checkout the worktree root and the commit checked out in it
  * @typedef {{ cycle: GreenCycle, context: CycleContext, set: RedTestSet, result: CycleResult }} Run the cycle in progress; `set` is the RED test set the next check runs
  * @typedef {{ findings: Finding[], notes: string[] }} CheckReport what a check found and what it noted
- * @typedef {CheckReport & { mutation?: { findings: Finding[], elapsed: number } }} GreenReport checks 2 to 4
+ * @typedef {CheckReport & { mutation?: { findings: Finding[], notes: string[], elapsed?: number } }} GreenReport checks 2 to 4
  * @typedef {{ skip: string } | { set: RedTestSet, findings: Finding[] }} ParentOutcome either why the cycle is skipped, or the RED test set that ran and the findings
  */
 

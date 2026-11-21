@@ -3,8 +3,8 @@
  */
 
 import { formatAnnotation, formatPlainLine, shortSha } from '../policy-check/report.mjs'
-import { MUTATION_NOT_REACHED_NOTE } from './mutation-budget.mjs'
 import { severityOf } from '../policy-check/rule-severity.mjs'
+import { MUTATION_NOT_REACHED_NOTE } from './mutation-budget.mjs'
 
 /**
  * @typedef {import('./prove-cycle.mjs').CycleResult} CycleResult

@@ -8,9 +8,9 @@ import { fileURLToPath } from 'node:url'
 import { shortSha } from '../policy-check/report.mjs'
 import { GIT_LOG_FORMAT, parseGitLog } from '../rgb-audit/cycle-audit.mjs'
 import { pairGreenCycles } from '../rgb-audit/cycle-pairing.mjs'
-import { createMutationBudget, parseBudgetMinutes } from './mutation-budget.mjs'
 import { defaultDeps } from './default-deps.mjs'
 import { hasFailingFinding, reportLines } from './green-proof-report.mjs'
+import { createMutationBudget, parseBudgetMinutes } from './mutation-budget.mjs'
 import { proveCycle } from './prove-cycle.mjs'
 import { createWorktreeSession } from './worktree.mjs'
 
@@ -127,9 +127,10 @@ function selectCycles(cycles, onlySha, range) {
 }
 
 /**
+ * Proves the cycles newest first, so the budget goes to the newest GREEN commits, and returns the results in range order.
  * @param {import('../rgb-audit/cycle-pairing.mjs').GreenCycle[]} cycles
  * @param {GreenProofDeps} deps
- * @param {number | null} budgetMinutes
+ * @param {number | null} budgetMinutes null means no cap
  * @returns {CycleResult[]}
  */
 function proveAll(cycles, deps, budgetMinutes) {
