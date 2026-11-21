@@ -48,17 +48,59 @@ interface SceneReleaseState {
   mounted: boolean
 }
 
-function disposeSupersededExcept(release: SceneReleaseState, current: FramedSceneReconciler) {
-  for (const superseded of release.superseded) {
+function disposeSupersededExcept(state: SceneReleaseState, current: FramedSceneReconciler) {
+  for (const superseded of state.superseded) {
     if (superseded === current) continue
     superseded.dispose()
-    release.superseded.delete(superseded)
+    state.superseded.delete(superseded)
+  }
+}
+
+// The release rule: what the current reconciler replaced, and every reconciler a flip
+// replaced, is freed once `scene` is the one drawn or nothing draws.
+function releaseReplaced(
+  state: SceneReleaseState,
+  reconciler: FramedSceneReconciler,
+  scene: FramedScene,
+) {
+  disposeSupersededExcept(state, reconciler)
+  reconciler.releaseRetired(scene)
+}
+
+function adoptReconciler(state: SceneReleaseState, reconciler: FramedSceneReconciler) {
+  state.mounted = true
+  state.superseded.delete(reconciler)
+}
+
+// A cleanup that no setup follows before the microtask is an unmount, not a flip or a
+// StrictMode remount; then every waiting reconciler is disposed.
+function retireReconciler(state: SceneReleaseState, reconciler: FramedSceneReconciler) {
+  state.mounted = false
+  state.superseded.add(reconciler)
+  queueMicrotask(() => disposeAllIfUnmounted(state))
+}
+
+function disposeAllIfUnmounted(state: SceneReleaseState) {
+  if (state.mounted) return
+  for (const waiting of state.superseded) waiting.dispose()
+  state.superseded.clear()
+}
+
+function attachScene(
+  state: SceneReleaseState,
+  reconciler: FramedSceneReconciler,
+  scene: FramedScene,
+): () => void {
+  state.attached = true
+  releaseReplaced(state, reconciler, scene)
+  return () => {
+    state.attached = false
   }
 }
 
 interface ReconcilerLifetime {
   reconciler: FramedSceneReconciler
-  release: RefObject<SceneReleaseState>
+  releaseState: RefObject<SceneReleaseState>
 }
 
 /**
@@ -72,53 +114,36 @@ interface ReconcilerLifetime {
  */
 function useFramedSceneReconciler(edgeOverlay: boolean): ReconcilerLifetime {
   const reconciler = useMemo(() => createFramedSceneReconciler({ edgeOverlay }), [edgeOverlay])
-  const release = useRef<SceneReleaseState>({
+  const releaseState = useRef<SceneReleaseState>({
     superseded: new Set(),
     attached: false,
     mounted: false,
   })
   useEffect(() => {
-    const state = release.current
-    state.mounted = true
-    state.superseded.delete(reconciler)
-    return () => {
-      state.mounted = false
-      state.superseded.add(reconciler)
-      queueMicrotask(() => {
-        if (state.mounted) return
-        for (const waiting of state.superseded) waiting.dispose()
-        state.superseded.clear()
-      })
-    }
+    const state = releaseState.current
+    adoptReconciler(state, reconciler)
+    return () => retireReconciler(state, reconciler)
   }, [reconciler])
-  return { reconciler, release }
+  return { reconciler, releaseState }
 }
 
-// Frees what the reconcile replaced once it is no longer drawn. While no scene is attached
-// (the renderer is loading, starting, or could not start), nothing draws, so the effect frees
-// after its own commit. While one is attached, the release waits for onSceneAttached, which the
-// renderer's React root calls in the commit that swaps the scene root.
+/**
+ * Frees what the reconcile replaced once it is no longer drawn. While no scene is attached (the
+ * renderer is loading, starting, or could not start, or the hook runs without a Canvas), nothing
+ * draws, so the effect frees after its own commit. While one is attached, the release waits for
+ * onSceneAttached, which the renderer's React root calls in the commit that swaps the scene root.
+ */
 function useSceneRelease(
-  { reconciler, release }: ReconcilerLifetime,
+  { reconciler, releaseState }: ReconcilerLifetime,
   framed: FramedScene,
 ): (scene: FramedScene) => () => void {
   useEffect(() => {
-    const state = release.current
-    if (state.attached) return
-    disposeSupersededExcept(state, reconciler)
-    reconciler.releaseRetired(framed)
-  }, [reconciler, release, framed])
+    const state = releaseState.current
+    if (!state.attached) releaseReplaced(state, reconciler, framed)
+  }, [reconciler, releaseState, framed])
   return useCallback(
-    (scene: FramedScene) => {
-      const state = release.current
-      state.attached = true
-      disposeSupersededExcept(state, reconciler)
-      reconciler.releaseRetired(scene)
-      return () => {
-        state.attached = false
-      }
-    },
-    [reconciler, release],
+    (scene: FramedScene) => attachScene(releaseState.current, reconciler, scene),
+    [reconciler, releaseState],
   )
 }
 
