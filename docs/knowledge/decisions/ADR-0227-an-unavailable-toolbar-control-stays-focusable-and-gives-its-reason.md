@@ -14,6 +14,7 @@ sourceFiles:
     bridge/react/scene-nav-toolbar.tsx,
     bridge/react/scene-nav-toolbar.css,
     bridge/react/environment-controls.tsx,
+    bridge/react/scene-object-controls.tsx,
   ]
 status: current
 updated: 2026-11-21
@@ -30,7 +31,7 @@ not yet, and issue #1023 tracks them.
 
 Several 3D toolbar controls cannot act in some states. The camera presets, Reset view, Select, and
 Reveal interior need the orbit camera, Doorway needs a door in view, the underground levels toggle
-applies to the whole-building view, and Close doors and windows needs an open door.
+applies to the whole-building view, and Close doors and windows needs an open door or window.
 
 Each was a native `disabled` button whose reason sat in a `title` or nowhere. A native disabled
 button cannot take focus, so a keyboard user never lands on it, and a `title` is not reliably announced.
@@ -74,7 +75,7 @@ The color-temperature slider stays natively disabled. It has a visible note alre
 - The open consequence in ADR-0198, that a disabled control gives its reason only in `title`, is
   closed for the toolbar buttons.
 - The tools panel chips have the same defect. They are `aria-disabled` and focusable, but the
-  reason sits only in `title`. Issue #1023 moves them onto `ToolbarButton`.
+  reason sits only in `title`. Issue #1023 asks for the same pattern there, a hidden span referenced by `aria-describedby` with the same text in `title`, either reused or extracted into a shared piece.
 
 ## Alternatives considered
 
