@@ -219,10 +219,29 @@ CI runs Lighthouse on pushes to `main` and on tag pushes; the per-PR loop intent
 
 Local commands:
 
-- `pnpm mutate:check` verifies the Stryker config without running mutants.
-- `pnpm mutate` runs the full mutation suite. This is slow; expect it to take many minutes.
+- `pnpm mutate:check` checks the Stryker config and runs the initial test run without mutating anything.
+- `pnpm mutate` runs the mutation suite. With no incremental file it tests all of `core/`, which took about 14 hours on a recent laptop.
 
-CI runs Stryker on a weekly schedule (`.github/workflows/mutation.yml`) and on manual dispatch.
+CI runs Stryker on a weekly schedule (`.github/workflows/mutation.yml`) and on manual dispatch. A run from scratch does not fit in the job's 360-minute limit, so the job runs in incremental mode. It reads `stryker-incremental.json` from the `stryker-incremental` branch, tests only the mutants whose source or tests changed since the last run, and pushes the updated file back as a new commit on that branch. A repository ruleset blocks deleting or force-pushing the branch. If the file is lost, seed it again on a local machine with the steps in "Seed the Stryker incremental file" in `docs/plans/2026-11-20-green-commit-proof.md`.
+
+### Upgrading Stryker
+
+A new Stryker version can change the mutants it generates, and Stryker cannot reuse a stored result for a mutant that changed. An upgrade can therefore turn the next weekly run into a run from scratch, which the job cannot finish. To upgrade:
+
+1. Keep the three `@stryker-mutator/*` packages on one exact version, and upgrade them in a pull request of their own.
+2. Read the release notes for changes to mutators and to incremental mode.
+3. Before you merge, copy the current file into place and start a run:
+
+   ```sh
+   mkdir -p reports
+   git fetch origin stryker-incremental
+   git show FETCH_HEAD:stryker-incremental.json > reports/stryker-incremental.json
+   pnpm mutate
+   ```
+
+   After the initial test run, Stryker logs `N of M mutant result(s) are reused`. Stop the run once that line appears.
+
+4. If nearly all results are reused, merge. If not, reseed on a local machine right after the merge and push the new file as a normal commit on top of `origin/stryker-incremental`.
 
 ## Working with Claude Code
 
