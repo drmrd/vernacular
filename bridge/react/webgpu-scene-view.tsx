@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { type LightingMode, type SceneGraph, type Site } from '../../core'
+import { useEffect, type ReactNode } from 'react'
+import { type LightingMode, type Site } from '../../core'
 import { type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { effectiveLightingMode } from './effective-lighting-mode'
-import { entityLabels } from './entity-labels'
-import { useCatalogNames } from './use-catalog-names'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
@@ -25,7 +23,6 @@ import { SceneProxyProjector } from './scene-proxies'
 import { sceneReadinessProps } from './scene-readiness'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
-import { useSelection, useSelectionIds } from './selection-context'
 import type { BuildingViewState } from './use-building-view-state'
 import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
@@ -33,30 +30,10 @@ import { useInteractiveObjects } from './use-interactive-objects'
 import { useLiveViewReadiness, type LiveViewReadinessNotes } from './use-live-view-readiness'
 import { useFrontDirection } from './use-front-direction'
 import { useProjectSite } from './use-project-site'
+import { useSceneProxies } from './use-scene-proxies'
 import { useSceneEnvironment, type SceneEnvironmentState } from './use-scene-environment'
 import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
 import { WalkCameraControls } from './walk-camera-controls'
-
-// The accessibility proxy state: the live projected screen positions (fed by the in-canvas
-// projector), joined with entity labels, plus the shared selection the proxies read and
-// write. The positions are session view state, like the camera and color temperature.
-// eslint-disable-next-line react-refresh/only-export-components -- the hook ships beside the component that calls it and this slice's test imports useSceneProxies from ./webgpu-scene-view.
-export function useSceneProxies(graph: SceneGraph) {
-  const [positions, setPositions] = useState<EntityScreenPosition[]>([])
-  const selection = useSelection()
-  const selectedIds = useSelectionIds()
-  const catalogNames = useCatalogNames()
-  const labels = useMemo(() => entityLabels(graph, catalogNames), [graph, catalogNames])
-  const proxies = useMemo(
-    () => positions.map((p) => ({ id: p.id, x: p.x, y: p.y, label: labels.get(p.id) ?? p.id })),
-    [positions, labels],
-  )
-  const onSelect = useCallback(
-    (id: string, additive: boolean) => (additive ? selection.toggle(id) : selection.select(id)),
-    [selection],
-  )
-  return { proxies, selectedIds, onSelect, setPositions }
-}
 
 interface SceneCameraRigProps {
   nav: SceneNavigationState
