@@ -2,14 +2,13 @@
 //
 // Which files of a GREEN commit's RED commits count as unit tests.
 
-import { isTestAsset, isTestFile } from '../rgb-audit/test-files.mjs'
+import { isSpecFile, isStoryFile, isTestAsset, isTestFile } from '../rgb-audit/test-files.mjs'
 
 /** @typedef {import('../rgb-audit/cycle-pairing.mjs').GreenCycle} GreenCycle */
 /** @typedef {'unit'|'mixed'|'other-only'|'assets-only'|'empty'} RedSetKind */
 /** @typedef {{ kind: RedSetKind, unitFiles: string[], otherFiles: string[], assetFiles: string[] }} RedTestSet */
 
 const BROWSER_TEST_PATTERN = /\.browser\.test\.ts$/
-const OTHER_TEST_PATTERNS = [/\.spec\.tsx?$/, /\.stories\.tsx$/]
 
 /**
  * True when the path is a unit test file: a test file that is neither an
@@ -24,11 +23,12 @@ export function isUnitTestFile(path) {
 
 /**
  * @param {string} path
- * @returns {boolean}
+ * @returns {'unit'|'other'|'asset'|null}
  */
-function isOtherTestFile(path) {
-  if (isUnitTestFile(path)) return false
-  return isTestFile(path) || OTHER_TEST_PATTERNS.some((pattern) => pattern.test(path))
+function roleOf(path) {
+  if (isUnitTestFile(path)) return 'unit'
+  if (isTestFile(path) || isSpecFile(path) || isStoryFile(path)) return 'other'
+  return isTestAsset(path) ? 'asset' : null
 }
 
 /**
@@ -54,11 +54,10 @@ function classifyKind(unitFiles, otherFiles, assetFiles) {
 export function redTestSet(cycle, existsAtGreen) {
   const paths = new Set(cycle.reds.flatMap((red) => red.files))
   const present = [...paths].filter(existsAtGreen).sort()
-  const unitFiles = present.filter(isUnitTestFile)
-  const otherFiles = present.filter(isOtherTestFile)
-  const assetFiles = present.filter(
-    (path) => isTestAsset(path) && !isUnitTestFile(path) && !isOtherTestFile(path),
-  )
+  const withRole = (role) => present.filter((path) => roleOf(path) === role)
+  const unitFiles = withRole('unit')
+  const otherFiles = withRole('other')
+  const assetFiles = withRole('asset')
   return {
     kind: classifyKind(unitFiles, otherFiles, assetFiles),
     unitFiles,
