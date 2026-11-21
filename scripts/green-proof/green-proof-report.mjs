@@ -2,7 +2,7 @@
  * Output of the green:proof command: the header, one block per cycle, and the findings.
  */
 
-import { formatAnnotation, formatPlainLine } from '../policy-check/report.mjs'
+import { formatAnnotation, formatPlainLine, shortSha } from '../policy-check/report.mjs'
 import { severityOf } from '../policy-check/rule-severity.mjs'
 
 /**
@@ -10,7 +10,6 @@ import { severityOf } from '../policy-check/rule-severity.mjs'
  * @typedef {import('../policy-check/rule-severity.mjs').Finding} Finding
  */
 
-const SHORT_SHA_LENGTH = 8
 const MILLISECONDS_PER_SECOND = 1000
 const TIMED_STEPS = /** @type {const} */ ([
   ['install', 'install'],
@@ -19,14 +18,6 @@ const TIMED_STEPS = /** @type {const} */ ([
   ['green', 'green'],
   ['mutation', 'mutation'],
 ])
-
-/**
- * @param {string} sha
- * @returns {string}
- */
-export function shortSha(sha) {
-  return sha.slice(0, SHORT_SHA_LENGTH)
-}
 
 /**
  * @param {CycleResult} result
@@ -72,7 +63,9 @@ function sortedFindings(results) {
  * @returns {boolean} true when a finding fails the run
  */
 export function hasFailingFinding(results) {
-  return sortedFindings(results).some((entry) => entry.severity === 'fail')
+  return results.some((result) =>
+    result.findings.some((finding) => severityOf(finding.rule) === 'fail'),
+  )
 }
 
 /**

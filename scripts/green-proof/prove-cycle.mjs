@@ -4,6 +4,7 @@
  */
 
 import { join } from 'node:path'
+import { shortSha } from '../policy-check/report.mjs'
 import { severityOf } from '../policy-check/rule-severity.mjs'
 import { redTestSet } from './test-set.mjs'
 import {
@@ -33,17 +34,8 @@ import { readVitestRun, vitestArgs } from './vitest-run.mjs'
  * @typedef {{ cycle: GreenCycle, context: CycleContext, set: RedTestSet, timings: CycleResult['timings'] }} Run
  */
 
-const SHORT_SHA_LENGTH = 8
 const GENERATED_FOLDER = '.green-proof'
 const VITEST_REPORT = 'vitest-run.json'
-
-/**
- * @param {string} sha
- * @returns {string}
- */
-function shortSha(sha) {
-  return sha.slice(0, SHORT_SHA_LENGTH)
-}
 
 /**
  * @param {GreenCycle} cycle

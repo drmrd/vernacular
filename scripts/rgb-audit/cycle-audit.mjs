@@ -21,6 +21,14 @@ import { isTestFile } from './test-files.mjs'
 
 const RECORD_SEPARATOR = '\x1e'
 const UNIT_SEPARATOR = '\x1f'
+
+/**
+ * The `git log --pretty` format that parseGitLog reads: per commit, a record
+ * separator (%x1e), then SHA, subject, and the Infrastructure trailer value, each
+ * separated by a unit separator (%x1f). Pass `--name-only` to append changed files.
+ */
+export const GIT_LOG_FORMAT =
+  '%x1e%H%x1f%s%x1f%(trailers:key=Infrastructure,valueonly,separator=%x20)'
 const CONVENTIONAL_COMMIT_PATTERN = /^(\w+)(?:\(([^)]*)\))?!?:\s*(.*)$/
 
 /**

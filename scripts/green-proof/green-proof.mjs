@@ -4,9 +4,10 @@
  * Exit code 0 means no failing finding, 1 means at least one, 2 means an internal error.
  */
 
-import { parseGitLog } from '../rgb-audit/cycle-audit.mjs'
+import { shortSha } from '../policy-check/report.mjs'
+import { GIT_LOG_FORMAT, parseGitLog } from '../rgb-audit/cycle-audit.mjs'
 import { pairGreenCycles } from '../rgb-audit/cycle-pairing.mjs'
-import { hasFailingFinding, reportLines, shortSha } from './green-proof-report.mjs'
+import { hasFailingFinding, reportLines } from './green-proof-report.mjs'
 import { proveCycle } from './prove-cycle.mjs'
 import { createWorktreeSession } from './worktree.mjs'
 
@@ -25,7 +26,6 @@ const EXIT_INTERNAL = 2
 const DEFAULT_BASE = 'origin/main'
 const DEFAULT_HEAD = 'HEAD'
 const OPTION_KEYS = { '--range': 'range', '--commit': 'commit', '--base': 'base' }
-const LOG_FORMAT = '%x1e%H%x1f%s%x1f%(trailers:key=Infrastructure,valueonly,separator=%x20)'
 
 /**
  * @param {readonly string[]} argv
@@ -76,7 +76,7 @@ function readCycles(range, runGit) {
     '--reverse',
     '--no-merges',
     range,
-    `--pretty=format:${LOG_FORMAT}`,
+    `--pretty=format:${GIT_LOG_FORMAT}`,
     '--name-only',
   ])
   return pairGreenCycles(parseGitLog(raw))
