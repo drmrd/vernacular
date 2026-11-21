@@ -136,7 +136,7 @@ function AppWorkspace(props: AppProps) {
     return portsFailureView(boot.portsFailure, boot)
   }
   if (screen?.kind === 'projects') {
-    return pageView(navigation, screen)
+    return pageOverProjectView(navigation, screen)
   }
   if (screen === null || ports === null || libraryAssets === null || capabilities === null) {
     return bootLoadingView()
@@ -156,7 +156,7 @@ function AppWorkspace(props: AppProps) {
 
 // The page in place of the editor. A project that stays open under it keeps its guards of unsaved
 // work, since the editor that mounts them otherwise is not mounted.
-function pageView(navigation: HistoryNavigation, screen: PageScreen) {
+function pageOverProjectView(navigation: HistoryNavigation, screen: PageScreen) {
   const { handle } = navigation
   return (
     <>
@@ -186,7 +186,6 @@ function portsFailureView(failure: SwitchFailure, boot: ProjectBoot) {
     handle: null,
     onRetry: boot.rebuildPorts,
     onStartFresh: boot.startInMemory,
-    onLeave: boot.rebuildPorts,
   })
 }
 

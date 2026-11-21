@@ -15,8 +15,11 @@ export interface InterimProjectsInputs {
   readonly onRetry: () => void
   /** Starts a new project. Offered only when no project is open. */
   readonly onStartFresh: () => void
-  /** Leaves the page: back to the open project, or to the project used last. */
-  readonly onLeave: () => void
+  /**
+   * Leaves the page: back to the open project, or to the project used last. Left out when a failure
+   * with no project open offers no way back.
+   */
+  readonly onLeave?: () => void
 }
 
 // Why the project did not open, in one sentence. A failure with a fixed text shows it alone; every
