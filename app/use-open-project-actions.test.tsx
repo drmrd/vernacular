@@ -8,28 +8,29 @@ import {
   rename,
   workspaceRequest,
 } from '../session/handle/handle-test-kit'
-import type { Flow } from './use-open-project'
 import {
   ACTION_RESULT,
   closesTheProject,
   gatedAction,
-  gatedFlow,
   keepsTheProject,
+  settleRunAction,
+  startAction,
+} from './owner-action-test-support'
+import type { Flow, OwnerAction } from './use-open-project'
+import {
+  gatedFlow,
   lockCalls,
   MISSING_ID,
   renderOwner,
   renderOwnerInActivity,
   resolvesWith,
   runFlowIn,
-  settleRunAction,
   START_ID,
-  startAction,
   startRequest,
   unmountAndSettle,
   waitForFailure,
   waitForHandle,
 } from './use-open-project-test-support'
-import type { TestAction } from './use-open-project-test-support'
 
 const CANCELLED: FlowResult<FolderRefusal> = { ok: false, failure: { kind: 'cancelled' } }
 const DISK_GONE = 'The disk is gone.'
@@ -47,7 +48,7 @@ describe('an action of a card that runs through the owner of the open project', 
     const ports = createTestPorts()
     const { result, unmount } = renderOwner(ports, startRequest())
     const handle = await waitForHandle(result)
-    const action = vi.fn<TestAction<string>>(keepsTheProject())
+    const action = vi.fn<OwnerAction<string>>(keepsTheProject())
 
     const settled = await settleRunAction(result, action)
 
@@ -63,7 +64,7 @@ describe('an action of a card that runs through the owner of the open project', 
     const ports = createTestPorts()
     const { result, unmount } = renderOwner(ports, workspaceRequest(MISSING_ID))
     await waitForFailure(result)
-    const action = vi.fn<TestAction<string>>(keepsTheProject())
+    const action = vi.fn<OwnerAction<string>>(keepsTheProject())
 
     await settleRunAction(result, action)
 
@@ -79,7 +80,7 @@ describe('an action of a card that runs through the owner of the open project', 
     act(() => {
       flowEnd = result.current.runFlow(running.flow)
     })
-    const action = vi.fn<TestAction<string>>(keepsTheProject())
+    const action = vi.fn<OwnerAction<string>>(keepsTheProject())
 
     const settled = await settleRunAction(result, action)
     running.letEnd()
@@ -150,10 +151,31 @@ describe('the open project after an action of a card', () => {
     await unmountAndSettle(owner.unmount)
   })
 
+  it('shows no project and no failure, and opens nothing again, when the owner is hidden while an action ends the project', async () => {
+    const log: string[] = []
+    const ports = recordingPorts(log)
+    const owner = renderOwnerInActivity(ports, startRequest())
+    await waitForHandle(owner.result)
+    const running = gatedAction(closesTheProject())
+    const actionEnd = startAction(owner.result, running.action)
+    owner.hide()
+
+    running.letEnd()
+    await act(() => actionEnd)
+    owner.show()
+    await act(settle)
+
+    expect(owner.result.current.handle).toBeNull()
+    expect(owner.result.current.failure).toBeNull()
+    expect(lockCalls(log).filter((call) => call === `lock:${START_ID}`)).toHaveLength(1)
+    expect(await ports.locks.heldIds()).toEqual(new Set())
+    await unmountAndSettle(owner.unmount)
+  })
+
   it('frees the owner for the next flow when an action rejects, and the caller sees the rejection', async () => {
     const { result, unmount } = renderOwner(createTestPorts(), startRequest())
     await waitForHandle(result)
-    const rejecting: TestAction<string> = () => Promise.reject(new Error(DISK_GONE))
+    const rejecting: OwnerAction<string> = () => Promise.reject(new Error(DISK_GONE))
     const flow = vi.fn<Flow<FolderRefusal>>(resolvesWith(CANCELLED))
 
     const settled = await settleRunAction(result, rejecting)

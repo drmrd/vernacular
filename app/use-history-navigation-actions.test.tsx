@@ -18,14 +18,9 @@ import {
   startPageAction,
   switchTo,
 } from './history-navigation-test-support'
-import {
-  ACTION_RESULT,
-  closesTheProject,
-  gatedFlow,
-  keepsTheProject,
-  resolvesWith,
-} from './use-open-project-test-support'
-import type { TestAction } from './use-open-project-test-support'
+import { ACTION_RESULT, closesTheProject, keepsTheProject } from './owner-action-test-support'
+import type { OwnerAction } from './use-open-project'
+import { gatedFlow, resolvesWith } from './use-open-project-test-support'
 
 const CANCELLED: FlowResult<FolderRefusal> = { ok: false, failure: { kind: 'cancelled' } }
 
@@ -122,7 +117,7 @@ describe('an action that runs from the Projects page', () => {
     const { result } = await onThePageOverTheFirstProject()
     const running = gatedFlow<FolderRefusal>(resolvesWith(CANCELLED))
     const flowEnd = startFlow(result, running.flow)
-    const action = vi.fn<TestAction<string>>(keepsTheProject())
+    const action = vi.fn<OwnerAction<string>>(keepsTheProject())
 
     const settled = await startPageAction(result, action)
     running.letEnd()

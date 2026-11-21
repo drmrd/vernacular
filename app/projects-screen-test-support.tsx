@@ -184,10 +184,23 @@ export async function clickPageAction(name: string): Promise<void> {
   await userEvent.click(within(page).getByRole('button', { name }))
 }
 
-/** The names of the buttons of the Projects page, in the order the page lists them. */
+/** The names of the buttons of the Projects page outside its cards, in the order the page lists them. */
 export async function namesOfThePageButtons(): Promise<Array<string | null>> {
   const page = await findTheProjectsPage()
   return within(page)
     .getAllByRole('button')
+    .filter((button) => button.closest('li') === null)
     .map((button) => button.textContent)
+}
+
+/** Opens the "..." menu of the card of the project named `name`, once the card shows. */
+export async function openTheMenuOf(name: string): Promise<void> {
+  const page = await findTheProjectsPage()
+  await userEvent.click(await within(page).findByRole('button', { name: `Actions for ${name}` }))
+}
+
+/** Opens the menu of the card of the project named `name` and chooses the entry `action`. */
+export async function chooseAnActionOf(name: string, action: string): Promise<void> {
+  await openTheMenuOf(name)
+  await userEvent.click(await screen.findByRole('menuitem', { name: action }))
 }

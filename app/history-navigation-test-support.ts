@@ -17,8 +17,7 @@ import { plantProject, usedLast } from './app-test-support'
 import type { PageScreen } from './resolve-place'
 import { useHistoryNavigation } from './use-history-navigation'
 import type { HistoryNavigation } from './use-history-navigation'
-import type { Flow } from './use-open-project'
-import type { TestAction, TestActionOutcome } from './use-open-project-test-support'
+import type { ActionOutcome, Flow, OwnerAction } from './use-open-project'
 
 /** Test support: renders the history navigation over ports in memory and follows what it shows. */
 
@@ -232,9 +231,9 @@ export function openId(result: NavigationResult): string | undefined {
 /** Starts a page action through the navigation inside `act`, and gives the promise of `runPageAction`. */
 export function startPageAction<Result>(
   result: NavigationResult,
-  action: TestAction<Result>,
-): Promise<TestActionOutcome<Result> | undefined> {
-  let running!: Promise<TestActionOutcome<Result> | undefined>
+  action: OwnerAction<Result>,
+): Promise<ActionOutcome<Result> | undefined> {
+  let running!: Promise<ActionOutcome<Result> | undefined>
   act(() => {
     running = result.current.runPageAction(action)
   })
@@ -244,9 +243,9 @@ export function startPageAction<Result>(
 /** Runs a page action through the navigation inside `act`, and gives what it resolved with. */
 export async function runPageActionIn<Result>(
   result: NavigationResult,
-  action: TestAction<Result>,
-): Promise<TestActionOutcome<Result> | undefined> {
-  const outcomes: Array<TestActionOutcome<Result> | undefined> = []
+  action: OwnerAction<Result>,
+): Promise<ActionOutcome<Result> | undefined> {
+  const outcomes: Array<ActionOutcome<Result> | undefined> = []
   await act(async () => {
     outcomes.push(await result.current.runPageAction(action))
   })
@@ -254,7 +253,7 @@ export async function runPageActionIn<Result>(
 }
 
 /** An action that ends the open project as a delete does: it closes it, then removes its files. */
-export function deletesTheOpenProject(): TestAction<string> {
+export function deletesTheOpenProject(): OwnerAction<string> {
   return async (ports, current) => {
     if (current === undefined) throw new Error('No project is open to delete')
     await current.close()
