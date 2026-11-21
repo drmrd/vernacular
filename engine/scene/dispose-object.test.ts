@@ -1,6 +1,12 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { disposeObject, isCacheHeld, markCacheHeld, releaseCachedObject } from './dispose-object'
+import {
+  disposeObject,
+  isCacheHeld,
+  markCacheHeld,
+  markObjectHeld,
+  releaseCachedObject,
+} from './dispose-object'
 
 type Resource = THREE.BufferGeometry | THREE.Material | THREE.Texture
 
@@ -138,6 +144,57 @@ describe('disposeObject', () => {
     expect(isCacheHeld(clone)).toBe(false)
     expect(counts.get(clone)).toBe(1)
     expect(counts.get(held)).toBe(0)
+  })
+})
+
+describe('markObjectHeld', () => {
+  it('holds the geometry and material of a line, so disposing a clone frees neither', () => {
+    const geometry = triangle()
+    const material = new THREE.LineBasicMaterial()
+    const root = new THREE.Group()
+    root.add(new THREE.Line(geometry, material))
+    const counts = countFrees([geometry, material])
+
+    markObjectHeld(root)
+    disposeObject(root.clone(true))
+
+    expect(isCacheHeld(geometry)).toBe(true)
+    expect(isCacheHeld(material)).toBe(true)
+    expect(counts.get(geometry)).toBe(0)
+    expect(counts.get(material)).toBe(0)
+  })
+
+  it('holds the geometry and material of a point cloud, so disposing a clone frees neither', () => {
+    const geometry = triangle()
+    const material = new THREE.PointsMaterial()
+    const root = new THREE.Group()
+    root.add(new THREE.Points(geometry, material))
+    const counts = countFrees([geometry, material])
+
+    markObjectHeld(root)
+    disposeObject(root.clone(true))
+
+    expect(isCacheHeld(geometry)).toBe(true)
+    expect(isCacheHeld(material)).toBe(true)
+    expect(counts.get(geometry)).toBe(0)
+    expect(counts.get(material)).toBe(0)
+  })
+
+  it('holds the texture of a mesh material, so disposing a clone frees none of the three', () => {
+    const geometry = triangle()
+    const texture = new THREE.Texture()
+    const material = new THREE.MeshStandardMaterial({ map: texture })
+    const root = new THREE.Group()
+    root.add(new THREE.Mesh(geometry, material))
+    const counts = countFrees([geometry, material, texture])
+
+    markObjectHeld(root)
+    disposeObject(root.clone(true))
+
+    expect(isCacheHeld(texture)).toBe(true)
+    expect(counts.get(geometry)).toBe(0)
+    expect(counts.get(material)).toBe(0)
+    expect(counts.get(texture)).toBe(0)
   })
 })
 

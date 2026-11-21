@@ -55,6 +55,48 @@ function flatTriangleBytes(): Uint8Array {
   })
 }
 
+const GLTF_POINTS_MODE = 0
+const GLTF_LINES_MODE = 1
+const TETRAHEDRON_VERTEX_COUNT = 4
+
+/** A glTF whose one mesh has a LINES primitive and a POINTS primitive over the corners of a tetrahedron, so it spans all three axes. */
+function lineAndPointBytes(): Uint8Array {
+  const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+  const base64 = Buffer.from(positions.buffer).toString('base64')
+  const attributes = { [POSITION_ATTRIBUTE]: 0 }
+  return gltfBytes({
+    asset: GLTF_ASSET,
+    scene: 0,
+    scenes: [{ nodes: [0] }],
+    nodes: [{ mesh: 0 }],
+    meshes: [
+      {
+        primitives: [
+          { attributes, mode: GLTF_LINES_MODE },
+          { attributes, mode: GLTF_POINTS_MODE },
+        ],
+      },
+    ],
+    accessors: [
+      {
+        bufferView: 0,
+        componentType: FLOAT_COMPONENT_TYPE,
+        count: TETRAHEDRON_VERTEX_COUNT,
+        type: 'VEC3',
+        min: [0, 0, 0],
+        max: [1, 1, 1],
+      },
+    ],
+    bufferViews: [{ buffer: 0, byteLength: positions.length * FLOAT_BYTES }],
+    buffers: [
+      {
+        byteLength: positions.length * FLOAT_BYTES,
+        uri: `data:application/octet-stream;base64,${base64}`,
+      },
+    ],
+  })
+}
+
 function nodeFor({
   width,
   depth,
@@ -136,11 +178,13 @@ describe('hasUsableGeometry', () => {
   })
 })
 
-/** Every geometry, material, and texture the meshes of a model reach. */
+/** Every geometry, material, and texture that the meshes, lines, and points of a model reach. */
 function gpuResourcesOf(model: THREE.Object3D): GpuResource[] {
   const found = new Set<GpuResource>()
   model.traverse((object) => {
-    if (!(object instanceof THREE.Mesh)) return
+    const isDrawable =
+      object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points
+    if (!isDrawable) return
     found.add(object.geometry)
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     for (const material of materials) {
@@ -174,6 +218,24 @@ describe('parseFurnitureModel', () => {
     disposeObject(template.clone(true))
 
     expect(resources.length).toBeGreaterThan(0)
+    expect(resources.every((resource) => isCacheHeld(resource))).toBe(true)
+    expect(freed).toBe(0)
+  })
+
+  it('holds the line and point resources of a parsed model, so disposing a clone frees none of them', async () => {
+    const template = await parseFurnitureModel(lineAndPointBytes())
+    const resources = gpuResourcesOf(template)
+    let freed = 0
+    for (const resource of resources) {
+      resource.addEventListener('dispose', () => {
+        freed += 1
+      })
+    }
+
+    disposeObject(template.clone(true))
+
+    expect(template.getObjectByProperty('isLine', true)).toBeDefined()
+    expect(template.getObjectByProperty('isPoints', true)).toBeDefined()
     expect(resources.every((resource) => isCacheHeld(resource))).toBe(true)
     expect(freed).toBe(0)
   })
