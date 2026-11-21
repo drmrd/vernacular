@@ -13,10 +13,9 @@ import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
-import { isActivationPressAlreadyHandled } from './activation-keys'
-import { buttonOwnsEnter, claimKeystroke, ownsKeystroke } from './keyboard-guard'
 import { useDiscardPointerWallRun } from './use-discard-pointer-wall-run'
 import { useHeldAltKey } from './use-held-alt-key'
+import { useWallKeyboard } from './use-wall-keyboard'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
@@ -130,14 +129,6 @@ export interface PlanInteraction {
   onPointerLeave: () => void
 }
 
-interface WallKeyboardDeps {
-  tool: ToolId
-  finish: () => void
-  backspace: () => void
-  // Abandons a run in progress; reports whether there was one to abandon.
-  cancel: () => boolean
-}
-
 /**
  * Tracks the Alt (Option on a Mac) key as the held free-angle modifier while the wall
  * tool is active. Holding it suppresses the default angle lock so the cursor draws a
@@ -179,51 +170,6 @@ function useReresolveOnFreeAngleToggle({
   }, [])
 }
 
-/**
- * Escape abandons the run, Enter ends it, and Backspace undoes the last segment.
- * An Enter or Space an entity proxy already handled, or an Enter a focused button
- * owns, is not a run key, so it must not finish the run.
- *
- * The handlers are read through a ref refreshed every render, so the window listener
- * subscribes once per tool change. A render-scoped subscription would re-add the
- * listener mid-keystroke when a sibling hook updates state inside the same keydown,
- * and the DOM drops a listener re-added during dispatch, silently swallowing this
- * run-control key.
- */
-function useWallKeyboard({ tool, finish, backspace, cancel }: WallKeyboardDeps): void {
-  const handlersRef = useRef({ finish, backspace, cancel })
-  handlersRef.current = { finish, backspace, cancel }
-  useEffect(() => {
-    if (tool !== 'draw-wall') {
-      return
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        ownsKeystroke(event.target, event.key) ||
-        buttonOwnsEnter(event.target, event.key) ||
-        isActivationPressAlreadyHandled(event)
-      ) {
-        return
-      }
-      const handlers = handlersRef.current
-      if (event.key === 'Escape') {
-        // Claim the key only when there was a run to abandon; at rest the ladder
-        // moves on and Escape returns to the select tool.
-        if (handlers.cancel()) {
-          claimKeystroke(event)
-        }
-      } else if (event.key === 'Enter') {
-        handlers.finish()
-      } else if (event.key === 'Backspace') {
-        event.preventDefault()
-        handlers.backspace()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [tool])
-}
-
 interface WallSnappingDeps {
   walls: DrawPlanOptions['walls']
   viewport: Viewport
@@ -238,8 +184,13 @@ interface WallSnappingDeps {
  * the object exactOptionalPropertyTypes-safe, only adding the optional candidate
  * sets when they are present and non-empty.
  */
-function wallSnappingInputs(deps: WallSnappingDeps) {
-  const { walls, viewport, toolState, tracePoints, freeAngle } = deps
+function wallSnappingInputs({
+  walls,
+  viewport,
+  toolState,
+  tracePoints,
+  freeAngle,
+}: WallSnappingDeps) {
   const openVertices = activeRunCorners(toolState)
   return {
     walls,
