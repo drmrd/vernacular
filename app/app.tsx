@@ -28,7 +28,8 @@ import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
 import type { AddressBar } from './address-bar'
-import { interimProjectsView, nothingOpenFailureView } from './interim-projects-view'
+import { nothingOpenFailureView } from './interim-projects-view'
+import { ProjectsScreen } from './projects-screen'
 import type { PageScreen } from './resolve-place'
 import { useUnsavedChangesGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
@@ -136,7 +137,7 @@ function AppWorkspace(props: AppProps) {
     return portsFailureView(boot.portsFailure, boot)
   }
   if (screen?.kind === 'projects') {
-    return pageOverProjectView(navigation, screen)
+    return pageOverProjectView(navigation, screen, ports)
   }
   if (screen === null || ports === null || libraryAssets === null || capabilities === null) {
     return bootLoadingView()
@@ -156,18 +157,16 @@ function AppWorkspace(props: AppProps) {
 
 // The page in place of the editor. A project that stays open under it keeps its guards of unsaved
 // work, since the editor that mounts them otherwise is not mounted.
-function pageOverProjectView(navigation: HistoryNavigation, screen: PageScreen) {
+function pageOverProjectView(
+  navigation: HistoryNavigation,
+  screen: PageScreen,
+  ports: SessionPorts | null,
+) {
   const { handle } = navigation
   return (
     <>
       {handle === null ? null : <UnsavedWorkGuards handle={handle} />}
-      {interimProjectsView({
-        failure: screen.notice?.failure ?? null,
-        handle,
-        onRetry: navigation.retry,
-        onStartFresh: navigation.startFresh,
-        onLeave: navigation.leavePage,
-      })}
+      <ProjectsScreen navigation={navigation} screen={screen} ports={ports} />
     </>
   )
 }

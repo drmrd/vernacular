@@ -4,7 +4,14 @@ import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
 import { parseAddress } from './address'
 import type { AddressBar } from './address-bar'
 import { afterRender, beginRead, follow } from './follow-address'
-import { leavePage, retryNotice, runFlowOf, startFresh } from './navigation-actions'
+import {
+  leavePage,
+  retryNotice,
+  runFlowOf,
+  runPageFlowOf,
+  showProjects,
+  startFresh,
+} from './navigation-actions'
 import {
   initialPage,
   newNavigationMemory,
@@ -31,6 +38,10 @@ export interface HistoryNavigation {
   readonly leavePage: () => void
   /** Starts a new project under a new id and leaves every stored project alone. */
   readonly startFresh: () => void
+  /** Shows the page over the open project and adds a history entry. */
+  readonly showProjects: () => void
+  /** Runs a flow from the page. When it gives a project, the page goes and the project leads. */
+  readonly runPageFlow: RunFlow
 }
 
 interface ScreenParts {
@@ -142,6 +153,8 @@ export function useHistoryNavigation(
       retry: () => retryNotice(memory),
       leavePage: () => leavePage(memory),
       startFresh: () => startFresh(memory),
+      showProjects: () => showProjects(memory),
+      runPageFlow: runPageFlowOf(memory),
     }),
     [memory],
   )
