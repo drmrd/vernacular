@@ -70,8 +70,12 @@ annotation format of `scripts/policy-check/report.mjs`.
 2. **Added-line parsing reuses `parseUnifiedDiff`** from `scripts/policy-check/git-input.mjs`,
    which already gives each added line its new-file number. Only removed lines need a new parser.
 3. **Coverage comes from the lcov reporter** (`lcovonly`), read as `SF:` and `DA:<line>,<count>`.
-   A changed source file with no `SF:` record (a file in the coverage `exclude` list) is out of
-   scope and listed as a note, not a finding.
+   A changed source file with no `SF:` record (a file in the coverage `exclude` list, or one Vitest
+   never instruments, such as its own config files) is out of scope and listed as a note, not a
+   finding. The script keeps no copy of either list. A control file the script writes at
+   `.green-proof/coverage-control.mjs` is also included in every coverage run, so its record
+   proves the run recorded coverage; without it, or without an lcov file, the run is an internal
+   error.
 4. **Mixed RED sets:** check 1 and check 3 findings become warnings under their own rule ids.
    Check 2 (RED passes at GREEN) still blocks: a unit test that fails at GREEN is broken whatever
    other tests the set holds.
@@ -592,12 +596,15 @@ it('writes GitHub annotations when running in GitHub Actions') // '::error file=
 **Files:** modify `scripts/green-proof/prove-cycle.mjs`; test `scripts/green-proof/prove-cycle-coverage.test.mjs`.
 
 **Interfaces:** the GREEN run of cycle 10 gains `coverage: { include, dir: '.green-proof/coverage' }`,
-where `include` lists the GREEN commit's changed files that pass `isProofSource`. Added lines come
+where `include` lists the GREEN commit's changed files that pass `isProofSource`, plus the control
+file `.green-proof/coverage-control.mjs` (written into the worktree before the run). Added lines come
 from `git -c core.quotePath=false show --format= --unified=0 --no-color --no-ext-diff -M <green>`
 through `parseUnifiedDiff`, `parseRemovedLines`, `provableAddedLines`, and `isProofSource`.
 `splitByCoverage` over `parseLcov(<root>/.green-proof/coverage/lcov.info, root)` gives
 `uncovered-added-line` findings (`mixed-uncovered-added-line` for a mixed set) and a note
-`no coverage record (excluded from coverage): <files>` for `unrecorded`. Coverage is read only when
+`no coverage record (excluded from coverage): <files>` for `unrecorded`, after dropping the control
+record; an lcov file with no control record is an internal error, as is a missing lcov file. The
+control file never appears in a note, finding, or mutation target. Coverage is read only when
 check 2 passed. An `assets-only` set runs `vitestArgs({ files: assetFiles, related: true, ... })`
 at the parent; its `testFiles` become the unit files for the rest of the cycle; `empty` there gives
 `skipped` with the assets reason.
@@ -1248,5 +1255,12 @@ The full Stryker seed run used all cores during both runs, so the times are high
 - Job timeout: twice the longer run (29 min 43 s), rounded up to 5 minutes: 60 minutes.
 
 **Whole-branch review finding (2026-11-21).** The review found the coverage exclude list unused:
-the root Vitest config had no coverage block. Commits 2732fdd3 (test) and bfc5ec01 (fix) fixed it,
-verified with the proof's own Vitest command: an excluded file gets no lcov record.
+the root Vitest config had no coverage block. The commits `test: expect the root Vitest config to
+apply the coverage exclude list` and `fix: apply the coverage exclude list in the root Vitest
+config` fixed it, verified with the proof's own Vitest command: an excluded file gets no lcov
+record.
+
+**Empty lcov finding (2026-11-21).** A commit whose changed files were all unrecorded left an empty
+lcov file, which the script treated as an internal error. The commits `test: expect a coverage
+control record instead of an empty lcov failure` and `fix: prove commits whose changed files have
+no coverage record` add the control file and make such a commit pass on checks 1 and 2.

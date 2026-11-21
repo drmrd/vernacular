@@ -77,10 +77,20 @@ For each GREEN commit the script runs the unit tests of its RED commits:
 3. **RED runs every executable line the GREEN commit adds.** The run collects V8 coverage in lcov
    form for the changed source files and maps it to the added lines of the diff. An added line with
    a coverage entry and a count of zero blocks. Lines with no entry (types, imports, comments,
-   blank lines) are exempt, and so are files on the coverage `exclude` list, which are listed as
-   notes. Vitest reads coverage settings only from the root config, so `vitest.config.ts` reuses
+   blank lines) are exempt. So are files with no record at all: those on the coverage `exclude`
+   list, and files Vitest never instruments (its own `vitest.config.*` and `vite.config.*`, setup
+   files, test files), which it adds to `coverage.exclude` where a user config cannot override
+   them. The script keeps no copy of either list. A changed source with no record is listed as a
+   note. Vitest reads coverage settings only from the root config, so `vitest.config.ts` reuses
    the coverage block of `vite.config.ts`; before this change the exclude list never applied to
    `pnpm test` runs.
+
+   "No record" must really mean excluded, so the run also includes a control file the script
+   writes at `.green-proof/coverage-control.mjs`. No test loads it. Vitest gives an included file
+   that nothing loaded a zero-count record, and the control pins that on every run. A missing lcov
+   file, or an lcov file with no record for the control, is an internal error (exit 2). The
+   control file never shows up in a note, a finding, or a mutation target.
+
 4. **Mutation.** Stryker mutates the covered added lines and runs only the RED tests against each
    mutant. A mutant that survives is a warning.
 
@@ -170,7 +180,7 @@ change.
 Each cycle runs in one temporary git worktree under `os.tmpdir()`, removed on exit, including after
 a failure and after a Ctrl-C (SIGINT). Ctrl-C stops the running child process, the worktree is
 removed, and the process exits 2. This holds because a terminal Ctrl-C reaches the whole process
-group. A SIGINT or SIGTERM sent only to the `green:proof` process is ignored until the run ends.
+group. A SIGINT or SIGTERM sent only to the `green:proof` process is ignored.
 Each distinct
 `pnpm-lock.yaml` in the range gets one `pnpm install --frozen-lockfile`, and cycles with the same
 lockfile reuse that install. The script never links the main clone's `node_modules`: on
