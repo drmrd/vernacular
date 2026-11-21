@@ -1,152 +1,24 @@
-import { describe, expect, it } from 'vitest'
-import type { Point } from '../model/types'
+import { describe, it } from 'vitest'
+import { PLAN_DOWN, type FrontDirectionInput } from './front-direction'
 import {
-  frontDirection,
-  PLAN_DOWN,
-  type FrontDirectionInput,
-  type PlanDirection,
-} from './front-direction'
-import {
-  WALL_NODE_PREFIX,
-  type OpeningSceneNode,
-  type RoomSceneNode,
-  type WallSceneNode,
-} from './scene-graph'
-
-const GROUND_FLOOR = 'ground'
-const UPPER_FLOOR = 'upper'
-const WALL_THICKNESS = 200
-const ROOM_SIZE = 4000
-const DEFAULT_DOOR_WIDTH = 900
-const DOOR_TYPE = 'single-swing-door'
-const WINDOW_TYPE = 'double-hung-window'
-const DIRECTION_DECIMAL_PLACES = 9
-
-const EAST: PlanDirection = { x: 1, y: 0 }
-const WEST: PlanDirection = { x: -1, y: 0 }
-const SOUTH: PlanDirection = { x: 0, y: -1 }
-
-interface Box {
-  readonly room: RoomSceneNode
-  readonly south: WallSceneNode
-  readonly east: WallSceneNode
-  readonly north: WallSceneNode
-  readonly west: WallSceneNode
-}
-
-interface BoxSpec {
-  readonly name: string
-  readonly floorId: string
-  readonly min: Point
-  readonly max: Point
-}
-
-interface DoorSpec {
-  readonly id: string
-  readonly type?: string
-  readonly width?: number
-  /** Which way the opening's own normal points: into the room by default. */
-  readonly normal?: 'inward' | 'outward'
-}
-
-function point(x: number, y: number): Point {
-  return { x, y }
-}
-
-function wall(id: string, floorId: string, edge: readonly [Point, Point]): WallSceneNode {
-  const [start, end] = edge
-  return {
-    id: `${WALL_NODE_PREFIX}${id}`,
-    kind: 'wall',
-    floorId,
-    start,
-    end,
-    thickness: WALL_THICKNESS,
-  }
-}
-
-/** A counter-clockwise rectangular room with its four walls, y-up: south is the lowest-y wall. */
-function box({ name, floorId, min, max }: BoxSpec): Box {
-  const [southWest, southEast, northEast, northWest]: readonly [Point, Point, Point, Point] = [
-    point(min.x, min.y),
-    point(max.x, min.y),
-    point(max.x, max.y),
-    point(min.x, max.y),
-  ]
-  const ring = [southWest, southEast, northEast, northWest]
-  return {
-    room: {
-      id: `room:${name}`,
-      kind: 'room',
-      floorId,
-      polygon: ring,
-      clearPolygon: ring,
-      area: 1,
-    },
-    south: wall(`${name}-south`, floorId, [southWest, southEast]),
-    east: wall(`${name}-east`, floorId, [southEast, northEast]),
-    north: wall(`${name}-north`, floorId, [northEast, northWest]),
-    west: wall(`${name}-west`, floorId, [northWest, southWest]),
-  }
-}
-
-function singleRoom(): Box {
-  return box({
-    name: 'room',
-    floorId: GROUND_FLOOR,
-    min: point(0, 0),
-    max: point(ROOM_SIZE, ROOM_SIZE),
-  })
-}
-
-function wallsOf(...boxes: Box[]): WallSceneNode[] {
-  return boxes.flatMap((each) => [each.south, each.east, each.north, each.west])
-}
-
-/**
- * An opening centred on `host`. Counter-clockwise walls have the room on their
- * left, so the left-hand normal points into the room.
- */
-function openingOn(host: WallSceneNode, spec: DoorSpec): OpeningSceneNode {
-  const length = Math.hypot(host.end.x - host.start.x, host.end.y - host.start.y)
-  const along = point((host.end.x - host.start.x) / length, (host.end.y - host.start.y) / length)
-  const inward = point(-along.y, along.x)
-  const sign = spec.normal === 'outward' ? -1 : 1
-  return {
-    id: `opening:${spec.id}`,
-    kind: 'opening',
-    floorId: host.floorId,
-    type: spec.type ?? DOOR_TYPE,
-    center: point((host.start.x + host.end.x) / 2, (host.start.y + host.end.y) / 2),
-    along,
-    normal: point(inward.x * sign, inward.y * sign),
-    width: spec.width ?? DEFAULT_DOOR_WIDTH,
-    height: 2032,
-    sillHeight: 0,
-    hostThickness: WALL_THICKNESS,
-    orientation: { hinge: 'start', facing: 'positive' },
-    hostWallId: host.id.slice(WALL_NODE_PREFIX.length),
-  }
-}
-
-function sceneOf(boxes: Box[], openings: OpeningSceneNode[]): FrontDirectionInput {
-  return {
-    walls: wallsOf(...boxes),
-    rooms: boxes.map((each) => each.room),
-    openings,
-  }
-}
-
-function unitFrontDirection(input: FrontDirectionInput): PlanDirection {
-  const front = frontDirection(input)
-  expect(Math.hypot(front.x, front.y)).toBeCloseTo(1, DIRECTION_DECIMAL_PLACES)
-  return front
-}
-
-function expectDirection(actual: PlanDirection, expected: PlanDirection): void {
-  expect(actual.x).toBeCloseTo(expected.x, DIRECTION_DECIMAL_PLACES)
-  expect(actual.y).toBeCloseTo(expected.y, DIRECTION_DECIMAL_PLACES)
-}
+  box,
+  EAST,
+  expectDirection,
+  GROUND_FLOOR,
+  openingOn,
+  point,
+  ROOM_SIZE,
+  sceneOf,
+  singleRoom,
+  SOUTH,
+  UPPER_FLOOR,
+  unitFrontDirection,
+  wall,
+  wallsOf,
+  WEST,
+  WINDOW_TYPE,
+} from './front-direction-test-support'
+import type { OpeningSceneNode, RoomSceneNode } from './scene-graph'
 
 describe('frontDirection', () => {
   it('faces plan-down for a room whose only door is in its south wall', () => {
