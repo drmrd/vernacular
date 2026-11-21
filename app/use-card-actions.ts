@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import type { ProjectCardActions } from '../editor/projects/projects-page'
+import type { ProjectCardActions } from '../editor/projects'
 import { renameProject } from '../session'
 import { renameFailureText } from './card-action-text'
 import type { HistoryNavigation } from './use-history-navigation'

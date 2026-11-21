@@ -78,7 +78,7 @@ export async function openDocumentHandle(
     store: found.store,
     hold: lock.hold,
     records,
-    ...(options.leaveSnapshots === true ? { leaveSnapshots: true } : {}),
+    ...options,
   })
   if (!result.ok) {
     if (result.failure.kind === 'did-not-open') {
