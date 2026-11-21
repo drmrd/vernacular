@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DeleteProjectDialog } from './delete-project-dialog'
@@ -78,5 +78,23 @@ describe('the dialog that asks before a project is deleted', () => {
 
     expect(onCancel).toHaveBeenCalledOnce()
     expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('calls onCancel once when Escape is pressed on the shade, and no wrapper around the dialog sees it', () => {
+    const onCancel = vi.fn()
+    const onWrapperKeyDown = vi.fn()
+    render(
+      // The wrapper only listens: it stands for whatever surrounds the dialog on a page.
+      <div onKeyDown={onWrapperKeyDown}>
+        <DeleteProjectDialog name={NAME} onConfirm={vi.fn()} onCancel={onCancel} />
+      </div>,
+    )
+    const shade = screen.getByRole('alertdialog').parentElement
+    if (shade === null) throw new Error('The dialog has no shade around it')
+
+    fireEvent.keyDown(shade, { key: 'Escape' })
+
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(onWrapperKeyDown).not.toHaveBeenCalled()
   })
 })

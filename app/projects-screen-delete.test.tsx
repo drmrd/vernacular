@@ -254,6 +254,22 @@ describe('Remove from list on the card of a folder project', () => {
     expect(await findCardLink(FOLDER_NAME)).toBeInTheDocument()
     expect(await ports.folders.permission(FOLDER_ID)).toBe('granted')
   })
+
+  it('opens another card by a click after the open folder project was removed from the list', async () => {
+    const ports = await durablePortsWith(FIRST_ID)
+    await listFolderProject(ports, documentBytes(namedProject(FOLDER_NAME)))
+    const { bar } = renderAppAt(ports, PROJECTS_ADDRESS)
+    await clickCardOf(FOLDER_NAME)
+    await expectOpenProject(FOLDER_NAME)
+    await showThePageOn(bar)
+    await findCardLink(FOLDER_NAME)
+    await chooseAnActionOf(FOLDER_NAME, 'Remove from list')
+    await waitForNoCardNamed(FOLDER_NAME)
+
+    await clickCardOf(FIRST_NAME)
+
+    await expectOpenProject(FIRST_NAME)
+  })
 })
 
 describe('The menus of the cards on the Projects page, with every action in place', () => {

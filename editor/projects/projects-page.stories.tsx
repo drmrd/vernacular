@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { within, expect, fn } from 'storybook/test'
+import { within, expect, userEvent, fn } from 'storybook/test'
 import type { ProjectCardModel } from '../../session'
 import { ProjectsPage } from './projects-page'
 
@@ -153,5 +153,32 @@ export const WithProjectOpenAndNotice: Story = {
       'Could not open the project: The stored file is not a project document.',
     )
     await expect(screen.getByRole('button', { name: 'Back to Hubbard House' })).toBeInTheDocument()
+  },
+}
+
+export const RenamingACard: Story = {
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for Hubbard House' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }))
+    await expect(await screen.findByRole('textbox', { name: 'Project name' })).toHaveValue(
+      'Hubbard House',
+    )
+    await expect(screen.getByRole('button', { name: 'Save name' })).toBeInTheDocument()
+    await expect(screen.getByRole('link', { name: 'Queen Anne Cottage' })).toBeInTheDocument()
+  },
+}
+
+export const AskingBeforeADelete: Story = {
+  args: { cardActions: { onRename: fn(() => Promise.resolve(true)), onDelete: fn() } },
+  play: async ({ canvasElement, args }) => {
+    const screen = within(canvasElement)
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for Hubbard House' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    await expect(
+      await screen.findByRole('alertdialog', { name: 'Delete "Hubbard House"?' }),
+    ).toBeVisible()
+    await expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus()
+    await expect(args.cardActions?.onDelete).not.toHaveBeenCalled()
   },
 }
