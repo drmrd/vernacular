@@ -335,7 +335,7 @@ textures in a cache that outlives every scene rebuild and survives StrictMode.
 
 **Public names.** `decodeImageTexture(bytes, { mediaType, colorSpace }, decode?)` and
 `ImageTextureDecodeError` (`engine/loaders/image-texture-loader.ts`); `markCacheHeld(texture)`
-(`engine/scene/furniture-model.ts`); `describe(contentHash)` on `AssetSource` (optional) and
+(`engine/scene/dispose-object.ts`); `describe(contentHash)` on `AssetSource` (optional) and
 `describe(reference)` on `AssetRegistry`, both returning core `AssetDescription | undefined`;
 `TextureSource` (`{ resolve(reference), describe(reference) }`, core-typed, in
 `bridge/react/texture-cache.ts`); `createTextureCache({ source, decode, dispose })` with
@@ -363,10 +363,12 @@ TextureAppearance }`) in `bridge/react/texture-cache.ts`. Pull request 4 uses al
    `engine/loaders/image-texture-loader.ts`, with `createImageBitmap` as the default decoder.
 2. **"a decode failure rejects with ImageTextureDecodeError and keeps the cause".** Fails today: no
    such error class. Implementation: `image-texture-loader.ts`.
-3. **`engine/scene/furniture-model.test.ts`: "disposeObject frees the textures an object owns and
+3. **`engine/scene/dispose-object.test.ts`: "disposeObject frees the textures an object owns and
    leaves the textures a cache holds".** Setup: a mesh whose material has `map` (owned) and
    `emissiveMap` (marked with `markCacheHeld`), each with a `dispose` spy. Assert only the owned one
-   is freed. Fails today: no `markCacheHeld`. Implementation: `furniture-model.ts`.
+   is freed. Already satisfied by ADR-0226: `markCacheHeld` and the held-skip in `disposeObject`
+   exist in `engine/scene/dispose-object.ts`, with tests in `dispose-object.test.ts`. No RED
+   commit is needed for this item.
 4. **`storage/assets/pack-source.test.ts`: "describes an asset of its manifest".** Assert
    `describe(textureHash)` gives a `TextureDescription` with every field listed above,
    `describe(modelHash)` a `ModelDescription`, and an unknown hash `undefined`. Fails today: no

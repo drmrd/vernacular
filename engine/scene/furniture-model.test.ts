@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url'
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
 import { furnitureFootprintCorners } from '../../core'
+import { countFrees, totalFrees } from './dispose-count-test-support'
+import { disposeObject, isCacheHeld, type GpuResource } from './dispose-object'
 import {
   buildFurnitureModelGroup,
-  disposeObject,
   hasUsableGeometry,
   normalizeModelIntoBox,
   parseFurnitureModel,
@@ -43,6 +44,48 @@ function flatTriangleBytes(): Uint8Array {
         type: 'VEC3',
         min: [0, 0, 0],
         max: [1, 1, 0],
+      },
+    ],
+    bufferViews: [{ buffer: 0, byteLength: positions.length * FLOAT_BYTES }],
+    buffers: [
+      {
+        byteLength: positions.length * FLOAT_BYTES,
+        uri: `data:application/octet-stream;base64,${base64}`,
+      },
+    ],
+  })
+}
+
+const GLTF_POINTS_MODE = 0
+const GLTF_LINES_MODE = 1
+const TETRAHEDRON_VERTEX_COUNT = 4
+
+/** A glTF whose one mesh has a LINES primitive and a POINTS primitive over the corners of a tetrahedron, so it spans all three axes. */
+function lineAndPointBytes(): Uint8Array {
+  const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+  const base64 = Buffer.from(positions.buffer).toString('base64')
+  const attributes = { [POSITION_ATTRIBUTE]: 0 }
+  return gltfBytes({
+    asset: GLTF_ASSET,
+    scene: 0,
+    scenes: [{ nodes: [0] }],
+    nodes: [{ mesh: 0 }],
+    meshes: [
+      {
+        primitives: [
+          { attributes, mode: GLTF_LINES_MODE },
+          { attributes, mode: GLTF_POINTS_MODE },
+        ],
+      },
+    ],
+    accessors: [
+      {
+        bufferView: 0,
+        componentType: FLOAT_COMPONENT_TYPE,
+        count: TETRAHEDRON_VERTEX_COUNT,
+        type: 'VEC3',
+        min: [0, 0, 0],
+        max: [1, 1, 1],
       },
     ],
     bufferViews: [{ buffer: 0, byteLength: positions.length * FLOAT_BYTES }],
@@ -136,11 +179,56 @@ describe('hasUsableGeometry', () => {
   })
 })
 
+/** Every geometry, material, and texture that the meshes, lines, and points of a model reach. */
+function gpuResourcesOf(model: THREE.Object3D): GpuResource[] {
+  const found = new Set<GpuResource>()
+  model.traverse((object) => {
+    const isDrawable =
+      object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points
+    if (!isDrawable) return
+    found.add(object.geometry)
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    for (const material of materials) {
+      found.add(material)
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) found.add(value)
+      }
+    }
+  })
+  return [...found]
+}
+
 describe('parseFurnitureModel', () => {
   it('resolves to a THREE.Object3D when given a valid GLB', async () => {
     const bytes = new Uint8Array(readFileSync(CUBE_GLB))
     const model = await parseFurnitureModel(bytes)
     expect(model).toBeInstanceOf(THREE.Object3D)
+  })
+
+  it('holds the geometries and materials of a parsed model, so disposing a clone frees none of them', async () => {
+    // cube.glb carries no texture, so the held texture case is not exercised by this fixture.
+    const template = await parseFurnitureModel(new Uint8Array(readFileSync(CUBE_GLB)))
+    const resources = gpuResourcesOf(template)
+    const counts = countFrees(resources)
+
+    disposeObject(template.clone(true))
+
+    expect(resources.length).toBeGreaterThan(0)
+    expect(resources.every((resource) => isCacheHeld(resource))).toBe(true)
+    expect(totalFrees(counts)).toBe(0)
+  })
+
+  it('holds the line and point resources of a parsed model, so disposing a clone frees none of them', async () => {
+    const template = await parseFurnitureModel(lineAndPointBytes())
+    const resources = gpuResourcesOf(template)
+    const counts = countFrees(resources)
+
+    disposeObject(template.clone(true))
+
+    expect(template.getObjectByProperty('isLine', true)).toBeDefined()
+    expect(template.getObjectByProperty('isPoints', true)).toBeDefined()
+    expect(resources.every((resource) => isCacheHeld(resource))).toBe(true)
+    expect(totalFrees(counts)).toBe(0)
   })
 
   it('rejects when given bytes that are not a valid GLB', async () => {
@@ -179,30 +267,5 @@ describe('buildFurnitureModelGroup', () => {
     expect(group.userData.entityId).toBe('x') // raw id, the 'furniture:' prefix stripped
     expect(group.getObjectByProperty('isMesh', true)).toBeInstanceOf(THREE.Mesh)
     expect(group.getObjectByProperty('isLineSegments', true)).toBeUndefined() // no box edge overlay on the real mesh
-  })
-})
-
-describe('disposeObject', () => {
-  it('disposes geometries and materials across the tree', () => {
-    const geometry = new THREE.BoxGeometry(1, 1, 1)
-    const material = new THREE.MeshStandardMaterial()
-    const geomSpy = vi.spyOn(geometry, 'dispose')
-    const matSpy = vi.spyOn(material, 'dispose')
-    const root = new THREE.Group()
-    root.add(new THREE.Mesh(geometry, material))
-    disposeObject(root)
-    expect(geomSpy).toHaveBeenCalled()
-    expect(matSpy).toHaveBeenCalled()
-  })
-
-  it('disposes textures attached to a material', () => {
-    const texture = new THREE.Texture()
-    const material = new THREE.MeshStandardMaterial()
-    material.map = texture
-    const texSpy = vi.spyOn(texture, 'dispose')
-    const root = new THREE.Group()
-    root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material))
-    disposeObject(root)
-    expect(texSpy).toHaveBeenCalled()
   })
 })

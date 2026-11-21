@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { SceneGraph } from '../../core'
-import { disposeObject, parseFurnitureModel } from '../../engine'
+import { parseFurnitureModel, releaseCachedObject } from '../../engine'
 
 import { useAssetRegistry } from './asset-registry-context'
 import type { FurnitureModelLookup } from './floor-build'
@@ -31,7 +31,7 @@ export function useFurnitureModelCache(graph: SceneGraph): {
         return result.outcome === 'resolved' ? result.bytes : undefined
       },
       parse: parseFurnitureModel,
-      dispose: disposeObject,
+      dispose: releaseCachedObject,
     })
   }
   const cache = cacheRef.current

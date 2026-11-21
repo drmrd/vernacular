@@ -83,6 +83,10 @@ export interface CachedFloorBuild extends FloorRequest {
   openings: Map<string, SubgroupBuild<OpeningSceneNode>>
   furniture: Map<string, FurnitureSubgroupBuild>
   roomPolygons: readonly (readonly Point[])[]
+  // The provider every sub-group of this build draws from. A build that reuses a prior one's
+  // sub-groups keeps the prior provider, so one provider serves a floor's whole build lineage
+  // and retires only with the last build that uses it.
+  materials: PhysicalMaterialProvider
 }
 
 export interface FloorEntities {
@@ -297,10 +301,12 @@ interface FloorBuildInput extends FloorRequest {
  */
 export function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
   const { floorNode, entities, paint, view, prev, models, readySignature } = input
-  const materials = new PhysicalMaterialProvider({
-    lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
-    paint,
-  })
+  const materials =
+    prev?.materials ??
+    new PhysicalMaterialProvider({
+      lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
+      paint,
+    })
   const context: SubgroupBuildContext = { materials, view, prev }
   const wallOpeningNodes = entities.openings.filter((opening) => opening.hostWallId !== undefined)
   const wall = reuseOrBuildWall({ entities, wallOpeningNodes, ...context })
@@ -318,6 +324,7 @@ export function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
     openings,
     furniture,
     roomPolygons: entities.rooms.map((room) => room.polygon),
+    materials,
   }
 }
 

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
+import { countFrees } from '../scene/dispose-count-test-support'
+import { isCacheHeld } from '../scene/dispose-object'
 import { NeutralMaterialProvider } from './neutral-material-provider'
 import type { SurfaceRole } from './material-provider'
 
@@ -43,5 +45,18 @@ describe('NeutralMaterialProvider', () => {
     expect(leaf.name).toBe('leaf')
     expect(leaf.transparent).toBe(false)
     expect(leaf.side).toBe(THREE.DoubleSide)
+  })
+
+  it('holds each material it returns and frees each one exactly once on dispose', () => {
+    const provider = new NeutralMaterialProvider()
+    const materials = NAMED_ROLES.map((role) => provider.material(role))
+    const counts = countFrees(materials)
+
+    expect(materials.every((material) => isCacheHeld(material))).toBe(true)
+
+    provider.dispose()
+    provider.dispose()
+
+    expect([...counts.values()]).toEqual(materials.map(() => 1))
   })
 })

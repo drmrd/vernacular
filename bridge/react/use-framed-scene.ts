@@ -1,9 +1,16 @@
-import { useMemo, useSyncExternalStore } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  type RefObject,
+} from 'react'
 
 import type { SceneGraph } from '../../core'
 
 import type { FramedScene } from './framed-scene'
-import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import { createFramedSceneReconciler, type FramedSceneReconciler } from './framed-scene-reconciler'
 import { sceneSessionToggle, useSceneSessionStoreOrLocal } from './scene-session-context'
 import type { BuildingViewState } from './use-building-view-state'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
@@ -29,6 +36,117 @@ export function useEdgeOverlay(): EdgeOverlayState {
   return { edgeOverlay: session.edgeOverlay, toggleEdgeOverlay }
 }
 
+/**
+ * What waits to be freed and whether the renderer's React root draws a scene now. React Three
+ * Fiber commits the Canvas children in its own React root, at least one task after react-dom
+ * commits, and the frame loop keeps drawing the replaced scene root until then. So while a scene
+ * is attached, retired resources are freed only when that root reports the new scene.
+ */
+interface SceneReleaseState {
+  superseded: Set<FramedSceneReconciler>
+  attached: boolean
+  mounted: boolean
+}
+
+function disposeSupersededExcept(state: SceneReleaseState, current: FramedSceneReconciler) {
+  for (const superseded of state.superseded) {
+    if (superseded === current) continue
+    superseded.dispose()
+    state.superseded.delete(superseded)
+  }
+}
+
+// The release rule: what the current reconciler replaced, and every reconciler a flip
+// replaced, is freed once `scene` is the one drawn or nothing draws.
+function releaseReplaced(
+  state: SceneReleaseState,
+  reconciler: FramedSceneReconciler,
+  scene: FramedScene,
+) {
+  disposeSupersededExcept(state, reconciler)
+  reconciler.releaseRetired(scene)
+}
+
+function adoptReconciler(state: SceneReleaseState, reconciler: FramedSceneReconciler) {
+  state.mounted = true
+  state.superseded.delete(reconciler)
+}
+
+// A cleanup that no setup follows before the microtask is an unmount, not a flip or a
+// StrictMode remount; then every waiting reconciler is disposed.
+function retireReconciler(state: SceneReleaseState, reconciler: FramedSceneReconciler) {
+  state.mounted = false
+  state.superseded.add(reconciler)
+  queueMicrotask(() => disposeAllIfUnmounted(state))
+}
+
+function disposeAllIfUnmounted(state: SceneReleaseState) {
+  if (state.mounted) return
+  for (const waiting of state.superseded) waiting.dispose()
+  state.superseded.clear()
+}
+
+function attachScene(
+  state: SceneReleaseState,
+  reconciler: FramedSceneReconciler,
+  scene: FramedScene,
+): () => void {
+  state.attached = true
+  releaseReplaced(state, reconciler, scene)
+  return () => {
+    state.attached = false
+  }
+}
+
+interface ReconcilerLifetime {
+  reconciler: FramedSceneReconciler
+  releaseState: RefObject<SceneReleaseState>
+}
+
+/**
+ * One reconciler per overlay setting; it reuses an unchanged floor's built scene instead of
+ * rebuilding on every edit (foundation spec 5.5). Flipping the edge overlay constructs a fresh
+ * reconciler, since every cached sub-group baked the previous setting in. Nothing is freed
+ * during render: the flipped-away reconciler waits in the release state until useSceneRelease
+ * frees it. On unmount the live reconciler and every waiting one are disposed a microtask later,
+ * and a StrictMode remount, which runs the effect again at once, cancels that disposal. Activity
+ * hiding counts as an unmount here; see useFramedScene.
+ */
+function useFramedSceneReconciler(edgeOverlay: boolean): ReconcilerLifetime {
+  const reconciler = useMemo(() => createFramedSceneReconciler({ edgeOverlay }), [edgeOverlay])
+  const releaseState = useRef<SceneReleaseState>({
+    superseded: new Set(),
+    attached: false,
+    mounted: false,
+  })
+  useEffect(() => {
+    const state = releaseState.current
+    adoptReconciler(state, reconciler)
+    return () => retireReconciler(state, reconciler)
+  }, [reconciler])
+  return { reconciler, releaseState }
+}
+
+/**
+ * Frees what the reconcile replaced once it is no longer drawn. While no scene is attached (the
+ * renderer is loading, starting, or could not start, or the hook runs without a Canvas), nothing
+ * draws, so the effect frees after its own commit. While one is attached, the release waits for
+ * onSceneAttached, which the renderer's React root calls in the commit that swaps the scene root.
+ */
+function useSceneRelease(
+  { reconciler, releaseState }: ReconcilerLifetime,
+  framed: FramedScene,
+): (scene: FramedScene) => () => void {
+  useEffect(() => {
+    const state = releaseState.current
+    if (!state.attached) releaseReplaced(state, reconciler, framed)
+  }, [reconciler, releaseState, framed])
+  return useCallback(
+    (scene: FramedScene) => attachScene(releaseState.current, reconciler, scene),
+    [reconciler, releaseState],
+  )
+}
+
 /** The framed scene together with the session state that shapes it. */
 export interface FramedSceneState {
   graph: SceneGraph
@@ -37,6 +155,11 @@ export interface FramedSceneState {
   toggleEdgeOverlay: () => void
   framed: FramedScene
   modelsVersion: number
+  /**
+   * Reports that the renderer's React root now draws `scene`; frees what it replaced. The
+   * returned function reports that the root no longer draws it and frees nothing.
+   */
+  onSceneAttached: (scene: FramedScene) => () => void
 }
 
 /**
@@ -45,21 +168,23 @@ export interface FramedSceneState {
  * paint and each furniture instance's loaded model, and reconciles the result into a
  * framed scene. The edge-overlay toggle lives here because the reconciler is keyed
  * on it.
+ *
+ * Not safe under Activity hiding: a hidden subtree runs the effect cleanup with no setup, so the
+ * live reconciler is disposed while its scene can still be shown again. Unmount the view
+ * instead of hiding it.
  */
 export function useFramedScene(): FramedSceneState {
   const { graph, buildingView } = useShownSceneGraph()
   const paint = useProjectPaint()
   const { edgeOverlay, toggleEdgeOverlay } = useEdgeOverlay()
-  // One reconciler per overlay setting; it reuses an unchanged floor's built scene
-  // instead of rebuilding on every edit (foundation spec 5.5). Flipping the edge
-  // overlay constructs a fresh reconciler, since every cached sub-group baked the
-  // previous setting in.
-  const reconciler = useMemo(() => createFramedSceneReconciler({ edgeOverlay }), [edgeOverlay])
+  const lifetime = useFramedSceneReconciler(edgeOverlay)
+  const { reconciler } = lifetime
   const models = useFurnitureModelCache(graph)
   const framed = useMemo(
     () => reconciler.reconcile(graph, paint, models.lookup),
     [reconciler, graph, paint, models],
   )
+  const onSceneAttached = useSceneRelease(lifetime, framed)
   return {
     graph,
     buildingView,
@@ -67,5 +192,6 @@ export function useFramedScene(): FramedSceneState {
     toggleEdgeOverlay,
     framed,
     modelsVersion: models.version,
+    onSceneAttached,
   }
 }

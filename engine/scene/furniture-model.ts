@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { FurnitureSceneNode, Point } from '../../core'
 import { FURNITURE_NODE_PREFIX } from '../../core'
 import { parseGltfBytes } from '../loaders/gltf-loader'
+import { disposeObject, markObjectHeld } from './dispose-object'
 import { markShadowCasters } from './shadow-casters'
 
 /** The error a furniture model parse rejects with when the model has no usable geometry. */
@@ -26,29 +27,12 @@ export async function parseFurnitureModel(bytes: Uint8Array): Promise<THREE.Obje
     disposeObject(model)
     throw new UnusableFurnitureModelError()
   }
+  markObjectHeld(model)
   return model
 }
 
 function edgeLength(a: Point, b: Point): number {
   return Math.hypot(b.x - a.x, b.y - a.y)
-}
-
-function toMaterialArray(material: THREE.Material | THREE.Material[]): THREE.Material[] {
-  return Array.isArray(material) ? material : [material]
-}
-
-/** Frees the geometries, materials, and textures of an object tree. */
-export function disposeObject(object: THREE.Object3D): void {
-  object.traverse((child) => {
-    if (!(child instanceof THREE.Mesh)) return
-    child.geometry.dispose()
-    for (const material of toMaterialArray(child.material)) {
-      for (const value of Object.values(material)) {
-        if (value instanceof THREE.Texture) value.dispose()
-      }
-      material.dispose()
-    }
-  })
 }
 
 /** The world-space box of a model, or null when it is empty or flat along any axis. */

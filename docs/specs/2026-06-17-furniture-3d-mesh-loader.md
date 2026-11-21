@@ -79,7 +79,9 @@ layer that imports Three.js.
   `buildFurnitureSubgroup`. It carries the same group name and `userData.entityId` as the box,
   so the existing 3D pick and the selection outline keep working with no selection-layer change.
   It sets the shadow flags and omits the box edge overlay.
-- `disposeObject(object)` frees the geometries, materials, and textures of a model template.
+- `releaseCachedObject(object)` frees the geometries, materials, and textures of a model template.
+  `parseFurnitureModel` marks every resource of a template held, so `disposeObject` skips them
+  and frees nothing on a template (ADR-0226).
 
 ### The content-hash model cache (bridge)
 
@@ -100,7 +102,8 @@ It keys entries by `contentHash`: `{ status: 'loading' | 'ready' | 'failed', tem
 - A concurrency limit caps how many models parse at once, so loading fifteen uncached models on
   one floor does not lock the main thread; pieces become meshes in a staggered order instead.
 - A bounded, reference-aware eviction policy disposes templates that no live instance references
-  once the cache passes its cap, calling `disposeObject` on the evicted template. Eviction is
+  once the cache passes its cap, calling `releaseCachedObject` on the evicted template (ADR-0226;
+  `disposeObject` skips held resources). Eviction is
   conservative to avoid reloading a piece the user toggles on and off.
 - In-flight loads are cancelled through an `AbortController` tied to the cache teardown, and a
   disposed guard drops a late completion so it cannot mutate a torn-down cache.
@@ -137,9 +140,10 @@ which is the wanted behavior and the memory saving: furniture is never a paint t
 3D selection is a separate outline overlay rather than a material change, so a shared material is
 safe across clones. Because clones share the template's buffers, a clone is never disposed; that
 would corrupt the template and its siblings. Only the template owns the buffers, and only the
-template is disposed, on eviction and on teardown. When a later feature edits a material per
-instance through the `customizations` bag, it clones the material before mutating it, the pattern
-the near-wall transparency fade already uses.
+template is released, on eviction and on teardown. A retired clone is still walked by
+`disposeObject`, but the template's resources are marked held, so the walk skips them. When a
+later feature edits a material per instance through the `customizations` bag, it clones the
+material before mutating it, the pattern the near-wall transparency fade already uses.
 
 ### Optional pre-compile
 

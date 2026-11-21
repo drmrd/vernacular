@@ -2,13 +2,7 @@ import { useLayoutEffect, useRef } from 'react'
 
 import { FURNITURE_NODE_PREFIX } from '../../core'
 import type { SceneRoot } from '../../engine'
-
-// Whether the end-to-end model-swap signal is enabled. Off by default; the end-to-end test turns
-// it on with `?e2e` in the URL. It is a runtime flag (not a build-time gate), so it survives the
-// production preview build the end-to-end test runs against, which a dev-only gate would strip.
-function signalsEnabled(): boolean {
-  return new URLSearchParams(window.location.search).has('e2e')
-}
+import { e2eRuntimeFlagSet } from './e2e-runtime-flag'
 
 // The raw entity ids of furniture groups now showing their real model: a furniture-named group
 // whose subtree has a mesh and is not flagged as a placeholder massing box. The massing box sets
@@ -35,7 +29,7 @@ function loadedFurnitureEntityIds(root: SceneRoot): string[] {
  * runtime flag is set, so it is inert in normal use.
  */
 export function FurnitureModelSignals({ root, version }: { root: SceneRoot; version: number }) {
-  const enabled = signalsEnabled()
+  const enabled = e2eRuntimeFlagSet(window.location.search)
   const signalRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     if (!enabled) return
