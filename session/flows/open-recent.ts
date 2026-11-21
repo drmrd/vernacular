@@ -6,7 +6,10 @@ import type { SessionPorts } from '../ports'
 import { type SwitchResult, switchProject } from './switch-project'
 
 /** The record of the id in the index. A `get` that rejects counts as no record. */
-async function recordOf(ports: SessionPorts, id: string): Promise<ProjectRecord | undefined> {
+export async function recordOf(
+  ports: SessionPorts,
+  id: string,
+): Promise<ProjectRecord | undefined> {
   try {
     return await ports.index.get(id)
   } catch {

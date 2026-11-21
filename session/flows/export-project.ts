@@ -1,5 +1,5 @@
 import type { Project } from '../../core'
-import type { PackSupplies, ProjectRecord } from '../../storage'
+import type { PackSupplies } from '../../storage'
 import { bundleFilename, buildUncheckedCopy, exportProjectBundle } from '../../storage'
 import type { DocumentStore } from '../../storage'
 import { findDocumentStore } from '../handle/find-document-store'
@@ -9,7 +9,7 @@ import { messageOf } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import { UNNAMED_PROJECT, displayNameOf } from '../projects/display-name'
 import { exportArchive } from './export-archive'
-import { recentTarget } from './open-recent'
+import { recentTarget, recordOf } from './open-recent'
 
 export interface ExportRequest {
   readonly id: string
@@ -44,6 +44,11 @@ function exportFailed(message: string): ExportProjectResult {
   return { ok: false, failure: { kind: 'export-failed', message } }
 }
 
+/** Fails to compile when a kind of read failure has no case in `failedWith`. */
+function unhandled(failure: never): never {
+  throw new Error(`Unhandled read failure: ${JSON.stringify(failure)}`)
+}
+
 /** The failure of a step that reads the project. Only the fixed kinds pass through as they are. */
 function failedWith(failure: OpenFailure): ExportProjectResult {
   switch (failure.kind) {
@@ -53,17 +58,12 @@ function failedWith(failure: OpenFailure): ExportProjectResult {
       return { ok: false, failure: { kind: failure.kind } }
     case 'storage-unavailable':
       return exportFailed(failure.message)
+    case 'open-elsewhere':
+      return exportFailed('The project could not be read (open-elsewhere).')
+    case 'did-not-open':
+      return exportFailed('The project could not be read (did-not-open).')
     default:
-      return exportFailed(`The project could not be read (${failure.kind}).`)
-  }
-}
-
-/** The record of the id. An index that rejects counts as no record. */
-async function recordOf(ports: SessionPorts, id: string): Promise<ProjectRecord | undefined> {
-  try {
-    return await ports.index.get(id)
-  } catch {
-    return undefined
+      return unhandled(failure)
   }
 }
 

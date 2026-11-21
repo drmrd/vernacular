@@ -103,7 +103,7 @@ function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): React
   if (cards.length === 0) {
     return <p className="projects-page__empty">{NO_PROJECTS}</p>
   }
-  const runAction = actionRunner(cardActions, setRenamingId)
+  const chooseAction = actionRunner(cardActions, setRenamingId)
   const renameOf = (id: string): CardRename | undefined =>
     renamingId === id && cardActions?.onRename
       ? {
@@ -121,7 +121,7 @@ function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): React
             card={{ ...card, actions }}
             href={hrefFor(card.id)}
             onOpen={onOpen}
-            onAction={actions.length === 0 ? undefined : runAction}
+            onAction={actions.length === 0 ? undefined : chooseAction}
             rename={renameOf(card.id)}
           />
         )
