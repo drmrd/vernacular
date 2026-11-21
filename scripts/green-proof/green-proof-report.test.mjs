@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { reportLines } from './green-proof-report.mjs'
+import { hasFailingFinding, reportLines } from './green-proof-report.mjs'
 
 const FIRST = 'g1000000'.padEnd(40, '0')
 const SECOND = 'g2000000'.padEnd(40, '0')
@@ -71,5 +71,14 @@ describe('reportLines', () => {
     const finding = { rule: 'red-passes-before-green', message: 'RED tests pass', sha: FIRST }
     const lines = reportLines([cycle(FIRST, [finding])], run(SECOND, true))
     expect(lines).toContain('::error title=red-passes-before-green::g1000000 RED tests pass')
+  })
+
+  it('prints a guard warning under a proven cycle without failing the run', () => {
+    const proven = { ...cycle(FIRST, [uncovered('uncovered-guard-line')]), status: 'proven' }
+    const lines = reportLines([proven], run(FIRST))
+    expect(lines[lines.length - 1]).toBe(
+      `    [warn] [uncovered-guard-line] core/a.ts:7: ${MESSAGE}`,
+    )
+    expect(hasFailingFinding([proven])).toBe(false)
   })
 })

@@ -6,6 +6,7 @@ const SHOW_CONFIG = JSON.stringify({ files: ['./src/vite-env.d.ts'] })
 const OUTPUT_FILE_FLAG = '--outputFile='
 const CLOCK_STEP_MS = 1000
 const SHA_LENGTH = 12
+const SOURCE_TEXT = 'export const x = 1\n'
 
 /** A fake full sha for a short name, so `sha('g1')` is `g10000000000`. */
 export const sha = (name) => name.padEnd(SHA_LENGTH, '0')
@@ -39,6 +40,7 @@ function lsTree(args) {
 export function cliScenario(setup) {
   const { commits, outcomes = {}, crashVitest = false, githubActions = false } = setup
   const files = fakeFiles()
+  files.writeFile(`${WORKTREE_ROOT}/core/a.ts`, SOURCE_TEXT)
   const lines = []
   const state = { current: '' }
   const outcomeAt = (current) => {

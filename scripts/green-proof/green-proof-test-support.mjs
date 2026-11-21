@@ -10,6 +10,7 @@ export const LCOV_FILE = `${ROOT}/.green-proof/coverage/lcov.info`
 const OUTPUT_FILE_FLAG = '--outputFile='
 const OCTAL_RADIX = 8
 const ASCII_LIMIT = 128
+const DEFAULT_SOURCE = 'export const x = 1\n'
 
 /** @returns {{ sha: string, type: string, scope: string, subject: string, files: string[], infra: boolean }} */
 export const commit = (sha, type, files) => ({
@@ -200,15 +201,20 @@ function exitStatusOf(text) {
  * report file and exits with that status. `gone` lists RED files absent at the GREEN commit.
  * `diff` answers the GREEN commit's `git show`, `lcov` is the coverage file a run that asks for
  * coverage leaves (none when undefined), `state.runs` records the files removed since the previous Vitest run, and
- * `greenFiles` lists the files the GREEN commit changes.
+ * `greenFiles` lists the files the GREEN commit changes, and `sources` maps a file to its text at the
+ * GREEN commit (a file with no entry reads as one line of code).
  * @param {{ reds?: string[][], diff?: string, lcov?: string, greenFiles?: string[], parent?: string | { exit: number }, green?: string | { exit: number }, gone?: string[],
- *   tsc?: { status?: number, stdout?: string }, showConfig?: string }} setup
+ *   tsc?: { status?: number, stdout?: string }, showConfig?: string, sources?: Record<string, string> }} setup
  */
 export function scenario(setup = {}) {
   const { reds = [['core/a.test.ts']], gone = [], tsc = {}, showConfig = SHOW_CONFIG } = setup
   const { diff = '', lcov, greenFiles = ['core/a.ts'] } = setup
   const reports = { [PARENT]: setup.parent, [GREEN]: setup.green }
   const files = fakeFiles()
+  const { sources = {} } = setup
+  for (const file of greenFiles) {
+    files.writeFile(`${ROOT}/${file}`, sources[file] ?? DEFAULT_SOURCE)
+  }
   const state = { current: '', checkouts: [], runs: [] }
   let removalsSeen = 0
   const session = {

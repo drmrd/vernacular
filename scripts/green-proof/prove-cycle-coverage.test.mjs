@@ -152,4 +152,60 @@ describe('proveCycle with assets-only RED commits', () => {
     })
     expect(test.vitestCalls()).toHaveLength(1)
   })
+
+  describe('in a direct-invocation block', () => {
+    const GUARDED = [
+      'export const a = 1',
+      'export const b = 2',
+      'export function wrap() {',
+      '  return 1',
+      '}',
+      'const c = 3',
+      'const d = 4',
+      'const e = 5',
+      'const f = 6',
+      'if (process.argv[1] === fileURLToPath(import.meta.url)) {',
+      '  run()',
+      '  done()',
+      '  stop()',
+      '}',
+      '',
+    ].join('\n')
+    const sources = { 'scripts/x.mjs': GUARDED }
+    const guarded = (added, hits) =>
+      proving({
+        greenFiles: ['scripts/x.mjs'],
+        sources,
+        diff: diffOf(added.map((line) => ['scripts/x.mjs', { start: line, added: ['x'] }])),
+        lcov: lcovOf([['scripts/x.mjs', hits]]),
+      })
+
+    it('warns on an uncovered line inside the direct-invocation block and keeps the cycle proven', () => {
+      const result = guarded([11], [[11, 0]]).run()
+      expect(result.status).toBe('proven')
+      expect(result.findings).toEqual([
+        expect.objectContaining({ rule: 'uncovered-guard-line', file: 'scripts/x.mjs', line: 11 }),
+      ])
+    })
+
+    it('still fails an uncovered line of a process wrapper outside the block', () => {
+      const result = guarded(
+        [4, 11],
+        [
+          [4, 0],
+          [11, 0],
+        ],
+      ).run()
+      expect(result.status).toBe('failed')
+      expect(result.findings).toEqual([
+        expect.objectContaining({ rule: 'uncovered-added-line', line: 4 }),
+        expect.objectContaining({ rule: 'uncovered-guard-line', line: 11 }),
+      ])
+    })
+
+    it('fails an uncovered line in a file with no direct-invocation block', () => {
+      const result = proving({ diff: ADDED, lcov: UNCOVERED }).run()
+      expect(result.status).toBe('failed')
+    })
+  })
 })
