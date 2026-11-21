@@ -14,6 +14,9 @@ const SNAPSHOT_FAILURE = 'The snapshot store failed'
 const SNAPSHOT_DIRECTORY = `${PROJECT_ID}/.house-autosave`
 const BACKUP_DIRECTORY = `${PROJECT_ID}/.house-backups`
 const START_FILE = 'session-start.json'
+/** Bytes unlike any snapshot, so that a backup of the wrong file would not match the copy. */
+const START_BYTES = new TextEncoder().encode('{}')
+const SNAPSHOT_PREFIX = 'snapshot-'
 const OLDER_VERSION = 8
 
 beforeEach(() => {
@@ -32,7 +35,10 @@ describe('a restore of a snapshot that breaks the format rules', () => {
   async function restoreFaulty() {
     const opened = await openStored()
     await opened.handle.snapshots.writeSnapshot(faultyProject())
-    const [name] = await opened.ports.root.list(SNAPSHOT_DIRECTORY)
+    const names = await opened.ports.root.list(SNAPSHOT_DIRECTORY)
+    const name = names.find((candidate) => candidate.startsWith(SNAPSHOT_PREFIX))
+    if (name === undefined) throw new Error(`Expected a snapshot file under ${SNAPSHOT_DIRECTORY}`)
+    await opened.ports.root.writeFile(`${SNAPSHOT_DIRECTORY}/${START_FILE}`, START_BYTES)
     const copy = await opened.ports.root.readFile(`${SNAPSHOT_DIRECTORY}/${name}`)
     return { ...opened, copy, result: await restoreSnapshot(opened.handle) }
   }

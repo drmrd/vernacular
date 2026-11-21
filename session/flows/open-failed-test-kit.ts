@@ -1,6 +1,4 @@
 import { withMixedPaintEntries, withoutRequiredField } from '../../core/repairs/repairs-test-kit'
-import type { DirectoryPort } from '../../storage'
-import { treeOf } from '../../storage/documents/document-store-test-kit'
 import { bytesOf } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { IN_FOLDER, placeDocument, rememberFolder } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
@@ -35,16 +33,14 @@ export function placeInWorkspace(ports: TestPorts, bytes: Uint8Array): Promise<v
 }
 
 /** Remembers a folder as the project `a`, with `bytes` as its document. Gives the folder's directory. */
-export function placeInFolder(ports: TestPorts, bytes: Uint8Array) {
+export function placeInFolder(
+  ports: TestPorts,
+  bytes: Uint8Array,
+): ReturnType<typeof rememberFolder> {
   return rememberFolder(ports, PROJECT_ID, bytes)
 }
 
 /** The request to open the project `a` from the folder that `placeInFolder` remembered. */
 export function folderRequest(): OpenRequest {
   return { id: PROJECT_ID, location: IN_FOLDER }
-}
-
-/** Every file under `prefix` of `root`, keyed by its path, with its bytes. */
-export function filesOf(root: DirectoryPort, prefix = ''): Promise<Record<string, number[]>> {
-  return treeOf(root, prefix)
 }

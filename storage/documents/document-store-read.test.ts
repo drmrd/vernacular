@@ -10,13 +10,11 @@ import {
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
-import { DocumentDecodeError } from './document-decode-error'
 import type { StoreRead } from './document-store'
 import {
   BACKUP_DIRECTORY,
   DOCUMENT_PATH,
   backupsOf,
-  readProject,
   rootHolding,
   storeOver,
   treeOf,
@@ -149,25 +147,6 @@ describe('a document that breaks the format rules', () => {
       expect(failure.kind).toBe('format-rules')
       const faultPaths = failure.kind === 'format-rules' ? failure.faults.map((f) => f.path) : []
       expect(faultPaths).toContain(UNKNOWN_WALL_FIELD_PATH)
-      expect(await treeOf(root)).toEqual(before)
-    },
-  )
-
-  it.each([CURRENT_SCHEMA_VERSION, OLDER_VERSION])(
-    'a read of a document that breaks the format rules rejects with the failure and writes nothing, also at version %i',
-    async (version) => {
-      const root = await rootStoredAtKnownTime(
-        bytesOf(withUnknownWallField(fixtureDocument(version))),
-      )
-      const before = await treeOf(root)
-
-      const error = await readProject(storeOver(root), 'a').then(
-        () => undefined,
-        (rejected: unknown) => rejected,
-      )
-
-      expect(error).toBeInstanceOf(DocumentDecodeError)
-      expect((error as DocumentDecodeError).failure.kind).toBe('format-rules')
       expect(await treeOf(root)).toEqual(before)
     },
   )

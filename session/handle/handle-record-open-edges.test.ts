@@ -29,6 +29,11 @@ function rejectCallsOf(index: ProjectIndex, method: 'get' | 'put'): Error {
   return error
 }
 
+/** How many warnings named `error`. */
+function warningsAbout(error: Error): number {
+  return consoleWarn.mock.calls.filter((call: unknown[]) => call.includes(error)).length
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
   consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -97,5 +102,22 @@ describe('the time of change of an open whose read gives none', () => {
       lastChangedAt: RECORDED_CHANGE,
       assetListComplete: true,
     })
+  })
+
+  it('a sound open whose index read rejects opens, writes no record, and warns once', async () => {
+    const ports = createTestPorts()
+    await placeDocument(ports, PROJECT_ID, currentBytes())
+    hideTimesOfChange(ports)
+    const refusal = rejectCallsOf(ports.index, 'get')
+    const get = vi.spyOn(ports.index, 'get')
+    const put = vi.spyOn(ports.index, 'put')
+
+    const opened = await openDocumentHandle(ports, workspaceRequest(PROJECT_ID))
+    await settle()
+
+    expect(get).toHaveBeenCalled()
+    expect(opened.ok).toBe(true)
+    expect(put).not.toHaveBeenCalled()
+    expect(warningsAbout(refusal)).toBe(1)
   })
 })

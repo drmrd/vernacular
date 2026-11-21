@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renameProject } from '../../core'
+import { treeOf } from '../../storage/documents/document-store-test-kit'
 import { sampleRecord } from '../../storage/project-index/project-record-test-kit'
 import {
   bytesOf,
@@ -21,7 +22,6 @@ import {
   BACKUP_FOLDER,
   PROJECT_ID,
   TWO_PAINT_ENTRIES_SENTENCE,
-  filesOf,
   folderRequest,
   missingRequiredFieldBytes,
   mixedPaintBytes,
@@ -66,11 +66,11 @@ describe('a project that breaks the format rules', () => {
   it('the refused open writes no file of the project: its directory is byte-identical', async () => {
     const ports = createTestPorts()
     await placeInWorkspace(ports, mixedPaintBytes())
-    const before = await filesOf(ports.root, PROJECT_ID)
+    const before = await treeOf(ports.root, PROJECT_ID)
 
     await failureOf(ports, workspaceRequest(PROJECT_ID))
 
-    expect(await filesOf(ports.root, PROJECT_ID)).toEqual(before)
+    expect(await treeOf(ports.root, PROJECT_ID)).toEqual(before)
   })
 
   it('the lock is free after the refused open, and the record says that the project did not open', async () => {
@@ -91,12 +91,12 @@ describe('a project that breaks the format rules', () => {
   it('a folder project that breaks the format rules does not open, and its folder is byte-identical', async () => {
     const ports = createTestPorts()
     const folder = await placeInFolder(ports, mixedPaintBytes())
-    const before = await filesOf(folder)
+    const before = await treeOf(folder)
 
     const failure = await failureOf(ports, folderRequest())
 
     expect(failure).toMatchObject(REFUSED)
-    expect(await filesOf(folder)).toEqual(before)
+    expect(await treeOf(folder)).toEqual(before)
   })
 
   it('an older document that breaks the format rules writes no migration backup when it is refused', async () => {
