@@ -87,7 +87,7 @@ The column "First stated in" says where a call comes from. "The options" marks a
 | 1   | The sample site is 40 N at the March equinox, 10:30 solar time. The front direction is the entrance, else the widest exterior door, else plan-down.                                                                          | the options     | 6.1     |
 | 2   | North is implied from the front only when the site has no location and no north bearing. A bearing set by the user is kept, also when it leaves the front in shade. The plan compass and the site editor do not change.      | this document   | 6.1     |
 | 3   | A site with a real location shows the true sun, also when the front is in shade. With no north bearing it keeps plan-up as north, as today, and that is not a sample.                                                        | this document   | 6.1     |
-| 4   | A located site opens at the same date and at 10:30 civil time.                                                                                                                                                               | this document   | 6.1     |
+| 4   | A site whose north is set opens at a time chosen for the house, as the owner chose on 18 November 2026 (ADR-0205). A site with an implied north opens at the fixed instant.                                                  | this document   | 6.1     |
 | 5   | Daylight is calibrated on the relative scale in `core/`, from three stated targets, with exposure fixed at 1 and one photometric anchor.                                                                                     | the options     | 6.2     |
 | 6   | The sunlit white level holds at the reference instant only, so the solve gives one sun scale. The sun changes with its height through the ratio curve and the existing fade.                                                 | this document   | 6.2     |
 | 7   | The color check's sun is pinned at 1.6 with no fade, as ADR-0156 says, and the code is corrected to match.                                                                                                                   | this document   | 6.2     |
@@ -110,7 +110,7 @@ The column "First stated in" says where a call comes from. "The options" marks a
 | 24  | The wording of every notice and hint in section 6, except the sample daylight notice, which came with the options.                                                                                                           | this document   | 6       |
 | 25  | The order of work in section 7 and the record scopes in section 8.                                                                                                                                                           | the options     | 7, 8    |
 | 26  | The slices of the main sequence merge in order. The daylight field core math and the lighting hook spike are independent of that sequence. The record amendments of the winding fix land with that fix.                      | this document   | 7       |
-| 27  | The opening instant comes from one function, so a stored or computed opening light can replace it without touching the callers.                                                                                              | this document   | 6.1     |
+| 27  | `openingInstant` keeps the fixed instant for its callers. `openingConditions` reads the site and the front, and the shell seeds the session light from it once for each opened project (ADR-0205).                           | this document   | 6.1     |
 
 ## 5. Approaches considered
 
@@ -220,7 +220,7 @@ function frontDirection(input: FrontDirectionInput): PlanDirection
 | No `latLong`, no `northBearing`  | The sample place | Implied, so that the front faces due south                                    | `'location-and-north'` |
 
 - The sample place is latitude 40 N, with a longitude and offset chosen so that the clock reads solar time.
-- A site with a real location shows the true sun, also when that leaves the front in shade at the default instant. A true location must give true light, and a sun turned to flatter the entrance would be wrong for the address the user typed. A located house whose front faces north therefore opens with a shaded front in every session. #737 covers the default instant for such a house, for example an instant at which the front takes the sun. The true-sun rule itself does not change.
+- A site with a real location shows the true sun, also when that leaves the front in shade at the default instant. A true location must give true light, and a sun turned to flatter the entrance would be wrong for the address the user typed. A located house opens at a time when its front takes the sun, on 20 March or on the summer solstice of its hemisphere, where one exists (ADR-0205). At latitude 40, a front within about 23 degrees of north has none and opens in shade at the fixed instant. The true-sun rule itself does not change.
 - A site with a location and no bearing is not a sample. The site editor and the plan compass already show plan-up as its north (`editor/plan/compass.tsx:28`), and the sun agrees with them.
 - A bearing set by the user is kept without a location too, and then the front can be in shade. North is implied from the front only in the last row.
 - The plan compass and the site editor do not change. They show the stored bearing. The implied north exists only inside the sun computation, and the sample notice discloses it.
@@ -233,7 +233,7 @@ The default observation instant moves from the June solstice at noon (`core/envi
 function openingInstant(input: OpeningInstantInput): ObservationInstant
 ```
 
-It returns the fixed instant for now. #737 can later make it return a stored or computed instant, and no caller changes.
+It returns the fixed instant for every input, and its callers stay as they are. The time a project opens at comes from `openingConditions` in the same file, which also reads the front. The editor shell seeds the session store from it once for each opened project (ADR-0205).
 
 At the default instant, at the sample site with an implied north, the sun is about 45 degrees up and 33 degrees east of the front, so the front takes sun at a cosine of about 0.59, one side at a grazing 0.38, and the other side and the back are in shade. Those figures are hand arithmetic. The slice asserts them in a Node test.
 

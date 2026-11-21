@@ -583,8 +583,12 @@ export {
   observationInstantToIso,
   parseObservationInstant,
 } from './environment/observation-time'
-export type { OpeningInstantInput } from './environment/opening-instant'
-export { openingInstant } from './environment/opening-instant'
+export type {
+  OpeningConditions,
+  OpeningConditionsInput,
+  OpeningInstantInput,
+} from './environment/opening-instant'
+export { openingConditions, openingInstant } from './environment/opening-instant'
 export type { SolarAngles, SolarPositionInput } from './environment/solar-position'
 export { solarPosition } from './environment/solar-position'
 export { utcOffsetMinutesFor } from './environment/timezone-offset'
@@ -642,6 +646,7 @@ export type {
 } from './environment/environment-state'
 export {
   DEFAULT_ENVIRONMENT_STATE,
+  openingEnvironmentFor,
   captureEnvironmentScene,
   applyEnvironmentScene,
 } from './environment/environment-state'

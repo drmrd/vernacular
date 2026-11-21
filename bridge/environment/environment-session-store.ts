@@ -6,8 +6,15 @@ export interface EnvironmentSessionStore {
   setEnvironment(next: EnvironmentState): void
 }
 
-export function createEnvironmentSessionStore(): EnvironmentSessionStore {
-  let environment: EnvironmentState = DEFAULT_ENVIRONMENT_STATE
+/**
+ * Creates the session store of the environment. `startState` is the state it
+ * opens with: the opening conditions of the project, or the default state when
+ * none is given.
+ */
+export function createEnvironmentSessionStore(
+  startState: EnvironmentState = DEFAULT_ENVIRONMENT_STATE,
+): EnvironmentSessionStore {
+  let environment: EnvironmentState = startState
   const listeners = new Set<() => void>()
 
   const notify = (): void => {

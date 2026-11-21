@@ -15,7 +15,7 @@ import {
   useSelection,
   useSettingsService,
 } from '../../bridge'
-import { sceneGraphForFloor } from '../../core'
+import { openingEnvironmentFor, sceneGraphForFloor } from '../../core'
 import {
   CommandPalette,
   CommandPaletteProvider,
@@ -86,7 +86,13 @@ interface ProviderLayerProps {
  */
 function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
   const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
-  const environmentSession = useMemo(() => createEnvironmentSessionStore(), [])
+  const session = useEditorSession()
+  // Created one time for each opened project: a later edit of the site must not move the light.
+  const [environmentSession] = useState(() =>
+    createEnvironmentSessionStore(
+      openingEnvironmentFor(session.getProject().site, session.getSceneGraph()),
+    ),
+  )
   const perceivedColor = useMemo(() => createPerceivedColorStore(), [])
   const sceneSession = useMemo(() => createSceneSessionStore(), [])
   return (
