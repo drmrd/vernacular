@@ -13,6 +13,9 @@ export type { Json }
 export const OLD_FIELD = 'x-old'
 export const OLDER_FIELD = 'x-older'
 
+/** The hash of an asset that no document holds, for an underlay source. */
+const ASSET = { scope: 'project', contentHash: 'sha256-0' }
+
 /** A value that is a number and no map, for a place that holds a map. */
 const NOT_A_MAP = 7
 
@@ -72,7 +75,11 @@ export function soundDocument(): Json {
   return document
 }
 
-/** The keys of two solid paint entries of the sound document, in ascending order. */
+/**
+ * The keys of two solid paint entries of the sound document, in ascending order. It skips the
+ * second solid key on purpose: the document order of these two keys then differs from their sorted
+ * order, so a repair that lists pointers in document order fails the ascending-order case.
+ */
 export function twoSolidPaintKeys(): readonly [string, string] {
   const keys = paintKeysOfKind(soundDocument(), 'solid')
   const [first, , third] = keys
@@ -143,6 +150,28 @@ export function withWrongShapedValues(document: Json = soundDocument()): Json {
   document.floors = 'none'
   document.roomOverrides = NOT_A_MAP
   document.site = null
+  return document
+}
+
+/** The document, whose first floor holds an underlay with a source of kind raster that also has the fields of a document source. */
+export function withMixedUnderlaySource(document: Json = soundDocument()): Json {
+  firstFloorOf(document).underlays = [
+    {
+      id: 'underlay-mixed',
+      source: { kind: 'raster', image: ASSET, document: ASSET, page: 1 },
+      width: 1,
+      height: 1,
+      placement: { offset: { x: 0, y: 0 }, millimetersPerPixel: 1, rotation: 0 },
+      opacity: 1,
+      visible: true,
+    },
+  ]
+  return document
+}
+
+/** The document, in which the list of floors holds an item that is no floor. */
+export function withWrongShapedItems(document: Json = soundDocument()): Json {
+  document.floors = ['x']
   return document
 }
 

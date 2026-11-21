@@ -16,9 +16,11 @@ import {
   twoSolidPaintKeys,
   withFaultLikeExtensions,
   withMixedPaintEntries,
+  withMixedUnderlaySource,
   withPaintEntry,
   withPaintEntryFields,
   withUndefinedFields,
+  withWrongShapedItems,
   withWrongShapedPaintEntries,
   withWrongShapedValues,
 } from './repairs-test-kit'
@@ -89,6 +91,14 @@ describe('the repair of mixed paint entries', () => {
     expect(paintRepair.apply(unnamed).removed).toEqual([])
   })
 
+  it('leaves an underlay source that mixes two kinds alone', () => {
+    const mixed = withMixedUnderlaySource()
+
+    expect(paintRepair.recognizes(mixed)).toBe(false)
+    expect(paintRepair.apply(mixed).removed).toEqual([])
+    expect(paintRepair.apply(mixed).document).toStrictEqual(withMixedUnderlaySource())
+  })
+
   it('leaves an undefined field of a paint entry to the other repair', () => {
     const [key] = twoSolidPaintKeys()
     const document = withPaintEntryFields(soundDocument(), key, { [OLD_FIELD]: 1 })
@@ -99,6 +109,13 @@ describe('the repair of mixed paint entries', () => {
 })
 
 describe('the repair of undefined fields', () => {
+  it('keeps the keys of an underlay source that mixes two kinds', () => {
+    const mixed = withMixedUnderlaySource()
+
+    expect(fieldsRepair.recognizes(mixed)).toBe(false)
+    expect(fieldsRepair.apply(mixed).removed).toEqual([])
+  })
+
   it('recognizes a document with x-old on a floor and x-older in the meta', () => {
     expect(fieldsRepair.recognizes(withUndefinedFields())).toBe(true)
   })
@@ -119,7 +136,7 @@ describe('the repair of undefined fields', () => {
 
   it('says "It removes 1 field that the format does not define." for one field', () => {
     const document = soundDocument()
-    firstFloorOf(document)['x-old'] = 1
+    firstFloorOf(document)[OLD_FIELD] = 1
     const { removed } = fieldsRepair.apply(document)
 
     expect(removed).toEqual(['/floors/0/x-old'])
@@ -139,8 +156,10 @@ describe('the repair of undefined fields', () => {
     const document = soundDocument()
     const rooms = roomOverridesOf(document)
     const [roomKey] = Object.keys(rooms)
+    const room = roomKey === undefined ? undefined : rooms[roomKey]
+    if (room === undefined) throw new Error('The sound document holds no room override')
     firstWallOf(document)['x-wall'] = 1
-    ;(rooms[roomKey ?? ''] as Json)['x-room'] = 2
+    room['x-room'] = 2
     rooms['x-not-a-field'] = { name: 'Kept' }
     const applied = fieldsRepair.apply(document)
 
@@ -210,7 +229,12 @@ describe.each(REPAIRS_AND_THEIR_FAULTS)('the repair $id', ({ id, faulty }) => {
   })
 
   it('does not throw for a value of the wrong shape, and removes nothing there', () => {
-    const shapes = [withWrongShapedValues(), withWrongShapedPaintEntries(), ...NON_DOCUMENTS]
+    const shapes = [
+      withWrongShapedValues(),
+      withWrongShapedItems(),
+      withWrongShapedPaintEntries(),
+      ...NON_DOCUMENTS,
+    ]
 
     for (const shape of shapes) {
       const before = structuredClone(shape)
