@@ -137,7 +137,7 @@ export function useHistoryNavigation(
   const bump = useCallback(() => setStep((step) => step + 1), [])
   const owner = useOpenProject(ports, firstRequestOf(entry, ports))
   const memoryRef = useRef<NavigationMemory | null>(null)
-  // The owner keeps both controls stable, so the first render's pair serves every render.
+  // The owner keeps all three controls stable, so the first render's controls serve every render.
   const controls = { runFlow: owner.runFlow, runAction: owner.runAction, retry: owner.retry }
   memoryRef.current ??= newNavigationMemory(address, { setPage, setEntry, bump }, controls)
   const memory = memoryRef.current

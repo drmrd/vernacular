@@ -57,7 +57,7 @@ export function runPageActionOf(memory: NavigationMemory): RunAction {
   return async (action) => {
     memory.busy.flowsRunning += 1
     try {
-      const outcome = await memory.owner.runAction?.(action)
+      const outcome = await memory.owner.runAction(action)
       if (outcome?.currentClosed === true) {
         memory.handle = null
         memory.given = null

@@ -33,7 +33,7 @@ export interface NavigationView {
 /** What the owner of the open project lends the navigation. */
 export interface OwnerControls {
   readonly runFlow: RunFlow
-  readonly runAction?: RunAction
+  readonly runAction: RunAction
   readonly retry: () => void
 }
 

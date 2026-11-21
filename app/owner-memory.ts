@@ -178,7 +178,8 @@ export function launchRetry(memory: OwnerMemory): void {
 
 /**
  * The start that is due: the latest ports and request, when the effects are set up, no project is
- * open, nothing runs, and no start was launched for this ports and request yet. Otherwise null.
+ * open, nothing runs, the request is not the one an action retired, and no start was launched for
+ * this ports and request yet. Otherwise null.
  */
 function dueTarget(memory: OwnerMemory): StartTarget | null {
   if (!memory.live || memory.handle !== null || isBusy(memory)) {
