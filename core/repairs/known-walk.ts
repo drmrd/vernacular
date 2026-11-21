@@ -7,7 +7,7 @@ export interface KnownObject {
   readonly pointer: string
   readonly value: Record<string, unknown>
   /** The type of the object. For a union entry, the type of the variant that its tag names. */
-  readonly own: KnownType
+  readonly ownType: KnownType
   /** The types whose keys count as defined here: the own type, or every variant at a union. */
   readonly defined: readonly KnownType[]
 }
@@ -35,31 +35,42 @@ function removeKeys(object: KnownObject, walk: Walk): void {
   }
 }
 
-function walkTyped(
-  value: unknown,
-  place: { pointer: string; typeName: string; definedTypeNames: readonly string[] },
-  walk: Walk,
-): void {
-  const own = knownTypeOf(place.typeName)
-  if (own === undefined || !isPlainObject(value)) {
+/** A place whose object has one named type, and whose keys are defined by `definedTypeNames`. */
+interface TypedPlace {
+  readonly pointer: string
+  readonly typeName: string
+  readonly definedTypeNames: readonly string[]
+}
+
+/** A place that holds a tagged union, whose tag names the variant of the entry. */
+interface UnionPlace {
+  readonly pointer: string
+  readonly union: KnownUnion
+}
+
+/** A place with the value that the table of known keys expects there. */
+interface KnownPlace {
+  readonly pointer: string
+  readonly expected: KnownValue
+}
+
+function walkTyped(value: unknown, place: TypedPlace, walk: Walk): void {
+  const ownType = knownTypeOf(place.typeName)
+  if (ownType === undefined || !isPlainObject(value)) {
     return
   }
   const defined = place.definedTypeNames.flatMap((name) => knownTypeOf(name) ?? [])
-  removeKeys({ pointer: place.pointer, value, own, defined }, walk)
+  removeKeys({ pointer: place.pointer, value, ownType, defined }, walk)
   for (const key of Object.keys(value)) {
-    const at = Object.hasOwn(own.keys, key) ? own.keys[key] : undefined
-    if (at !== undefined) {
-      walkAt(value[key], { pointer: childPointer(place.pointer, key), at }, walk)
+    const expected = Object.hasOwn(ownType.keys, key) ? ownType.keys[key] : undefined
+    if (expected !== undefined) {
+      walkKnown(value[key], { pointer: childPointer(place.pointer, key), expected }, walk)
     }
   }
 }
 
 // An entry whose tag names no variant is skipped whole.
-function walkUnion(
-  value: unknown,
-  place: { pointer: string; union: KnownUnion },
-  walk: Walk,
-): void {
+function walkUnion(value: unknown, place: UnionPlace, walk: Walk): void {
   const { pointer, union } = place
   if (!isPlainObject(value)) {
     return
@@ -73,19 +84,19 @@ function walkUnion(
 
 // Only an object, a union variant, an array item, and a map value are entered. A leaf and an opaque
 // value are not, and a value of another shape than the table says is skipped.
-function walkAt(value: unknown, place: { pointer: string; at: KnownValue }, walk: Walk): void {
-  const { pointer, at } = place
-  if (at.kind === 'object') {
-    walkTyped(value, { pointer, typeName: at.type, definedTypeNames: [at.type] }, walk)
-  } else if (at.kind === 'union') {
-    walkUnion(value, { pointer, union: at }, walk)
-  } else if (at.kind === 'array' && Array.isArray(value)) {
+function walkKnown(value: unknown, place: KnownPlace, walk: Walk): void {
+  const { pointer, expected } = place
+  if (expected.kind === 'object') {
+    walkTyped(value, { pointer, typeName: expected.type, definedTypeNames: [expected.type] }, walk)
+  } else if (expected.kind === 'union') {
+    walkUnion(value, { pointer, union: expected }, walk)
+  } else if (expected.kind === 'array' && Array.isArray(value)) {
     value.forEach((item, index) => {
-      walkAt(item, { pointer: childPointer(pointer, index), at: at.item }, walk)
+      walkKnown(item, { pointer: childPointer(pointer, index), expected: expected.item }, walk)
     })
-  } else if (at.kind === 'map' && isPlainObject(value)) {
+  } else if (expected.kind === 'map' && isPlainObject(value)) {
     for (const key of Object.keys(value)) {
-      walkAt(value[key], { pointer: childPointer(pointer, key), at: at.value }, walk)
+      walkKnown(value[key], { pointer: childPointer(pointer, key), expected: expected.value }, walk)
     }
   }
 }

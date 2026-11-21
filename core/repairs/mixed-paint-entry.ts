@@ -2,21 +2,29 @@ import type { DataRemovingRepair } from './data-removing-repair'
 import { removeFromKnownObjects } from './known-walk'
 import type { KnownObject } from './known-walk'
 
-const PAINT_ENTRY_POINTER = /^\/paint\/[^/]+$/
 const PAINT_ENTRY_PREFIX = /^\/paint\/[^/]+/
 
+function isPaintEntry(pointer: string): boolean {
+  return PAINT_ENTRY_PREFIX.exec(pointer)?.[0] === pointer
+}
+
 // The keys of another variant: defined by a variant of the union, but not by the entry's own variant.
-function otherVariantKeysOf({ pointer, value, own, defined }: KnownObject): string[] {
-  if (!PAINT_ENTRY_POINTER.test(pointer)) {
+// Only a paint entry is repaired. An underlay source that mixes kinds has no repair and still refuses.
+function otherVariantKeysOf({ pointer, value, ownType, defined }: KnownObject): string[] {
+  if (!isPaintEntry(pointer)) {
     return []
   }
   return Object.keys(value).filter(
-    (key) => !Object.hasOwn(own.keys, key) && defined.some((type) => Object.hasOwn(type.keys, key)),
+    (key) =>
+      !Object.hasOwn(ownType.keys, key) && defined.some((type) => Object.hasOwn(type.keys, key)),
   )
 }
 
 function paintEntriesOf(removed: readonly string[]): Set<string> {
-  return new Set(removed.flatMap((pointer) => PAINT_ENTRY_PREFIX.exec(pointer) ?? []))
+  const prefixes = removed
+    .map((pointer) => PAINT_ENTRY_PREFIX.exec(pointer))
+    .filter((m) => m !== null)
+  return new Set(prefixes.map((match) => match[0]))
 }
 
 function describePaintEntries(removed: readonly string[]): string {
