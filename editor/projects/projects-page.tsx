@@ -67,6 +67,8 @@ interface CardListProps {
   readonly hrefFor: ProjectsPageProps['hrefFor']
   readonly onOpen?: ProjectsPageProps['onOpen'] | undefined
   readonly cardActions?: ProjectCardActions | undefined
+  /** The page's main region, which takes the focus when a confirmed delete removes the card. */
+  readonly page: RefObject<HTMLElement | null>
 }
 
 /** The handler of an action, or undefined when the page was given none. */
@@ -125,6 +127,12 @@ function focusMenuOfCard(list: RefObject<HTMLUListElement | null>, index: number
   list.current?.children[index]?.querySelector<HTMLElement>('[aria-haspopup]')?.focus()
 }
 
+/** The elements that take the focus when the dialog of a delete closes. */
+interface DialogFocusTargets {
+  readonly list: RefObject<HTMLUListElement | null>
+  readonly page: RefObject<HTMLElement | null>
+}
+
 /**
  * The dialog of a delete. A card that leaves the list takes its dialog with it. Cancel returns the
  * focus to the card's "..." control; a confirmed delete moves it to the page's main region, since
@@ -133,8 +141,9 @@ function focusMenuOfCard(list: RefObject<HTMLUListElement | null>, index: number
 function useDeleteDialog(
   cards: readonly ProjectCardModel[],
   onDelete: ProjectCardActions['onDelete'],
-  list: RefObject<HTMLUListElement | null>,
+  elements: DialogFocusTargets,
 ) {
+  const { list, page } = elements
   const [deletingId, setDeletingId] = useState<string | null>(null)
   if (deletingId !== null && !cards.some(({ id }) => id === deletingId)) {
     setDeletingId(null)
@@ -150,7 +159,7 @@ function useDeleteDialog(
           setDeletingId(null)
         }}
         onConfirm={() => {
-          list.current?.closest('main')?.focus()
+          page.current?.focus()
           setDeletingId(null)
           onDelete(card.id)
         }}
@@ -159,10 +168,10 @@ function useDeleteDialog(
   return { dialog, startDelete: setDeletingId }
 }
 
-function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): ReactElement {
+function CardList({ cards, hrefFor, onOpen, cardActions, page }: CardListProps): ReactElement {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const list = useRef<HTMLUListElement>(null)
-  const { dialog, startDelete } = useDeleteDialog(cards, cardActions?.onDelete, list)
+  const { dialog, startDelete } = useDeleteDialog(cards, cardActions?.onDelete, { list, page })
   // A card that left the list takes its form with it, also when it comes back.
   if (renamingId !== null && !cards.some(({ id }) => id === renamingId)) {
     setRenamingId(null)
@@ -196,6 +205,28 @@ function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): React
         })}
       </ul>
       {dialog}
+    </>
+  )
+}
+
+function PageHead({
+  headingId,
+  notice,
+  openProject,
+}: {
+  readonly headingId: string
+  readonly notice: string | undefined
+  readonly openProject: OpenProjectLink | undefined
+}): ReactElement {
+  return (
+    <>
+      <h1 id={headingId} className="projects-page__heading">
+        Projects
+      </h1>
+      {notice ? <PageNotice text={notice} /> : null}
+      {openProject ? (
+        <Button onClick={openProject.onBack}>{backText(openProject.name)}</Button>
+      ) : null}
     </>
   )
 }
@@ -238,27 +269,29 @@ export function ProjectsPage({
   onDropFile,
 }: ProjectsPageProps): ReactElement {
   const headingId = useId()
+  const page = useRef<HTMLElement>(null)
   return (
     <main
+      ref={page}
       className="projects-page"
       aria-labelledby={headingId}
       tabIndex={-1}
       {...dropHandlers(onDropFile)}
     >
-      <h1 id={headingId} className="projects-page__heading">
-        Projects
-      </h1>
-      {notice ? <PageNotice text={notice} /> : null}
-      {openProject ? (
-        <Button onClick={openProject.onBack}>{backText(openProject.name)}</Button>
-      ) : null}
+      <PageHead headingId={headingId} notice={notice} openProject={openProject} />
       <PageActions
         onNewProject={onNewProject}
         onImportFile={onImportFile}
         onOpenFolder={onOpenFolder}
       />
       {cards ? (
-        <CardList cards={cards} hrefFor={hrefFor} onOpen={onOpen} cardActions={cardActions} />
+        <CardList
+          cards={cards}
+          hrefFor={hrefFor}
+          onOpen={onOpen}
+          cardActions={cardActions}
+          page={page}
+        />
       ) : null}
     </main>
   )

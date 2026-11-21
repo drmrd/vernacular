@@ -4,6 +4,8 @@ import {
   deleteProject,
   removeFolderFromList,
   renameProject,
+  type DeleteFailure,
+  type DocumentHandle,
   type ProjectCardModel,
   type SessionPorts,
 } from '../session'
@@ -12,6 +14,7 @@ import { useCardExport } from './card-export'
 import { deleteFailureText, removeFromListFailureText, renameFailureText } from './card-action-text'
 import { createAssetLibrary } from './create-asset-library-registry'
 import { libraryHashesOf } from './library-hashes'
+import type { LibraryLister } from './pack-supplies'
 import type { HistoryNavigation } from './use-history-navigation'
 
 export interface CardActionsParts {
@@ -58,45 +61,51 @@ function useRename({ runPageAction, onActionStart, onActionEnd }: ActionRunner) 
   )
 }
 
-/** The library's hashes are read inside the action, at the click, so they are never stale. */
-function useDelete(
+/** What a change of the list of projects gave: its failure, or none, and whether it ended the open project. */
+type ListChangeResult<Failure> =
+  | { readonly ok: true; readonly currentClosed: boolean }
+  | { readonly ok: false; readonly failure: Failure; readonly currentClosed: boolean }
+
+/** The flow of a change of the list: a project leaves it, by its id. */
+type ListChange<Failure> = (
+  ports: SessionPorts,
+  current: DocumentHandle | undefined,
+  id: string,
+) => Promise<ListChangeResult<Failure>>
+
+/** A change of the list that runs through the navigation, and reports its failure as a sentence. */
+function useListChange<Failure>(
   { runPageAction, onActionStart, onActionEnd }: ActionRunner,
-  library: ReturnType<typeof useLibraryLister>,
+  change: ListChange<Failure>,
+  failureText: (failure: Failure) => string,
 ) {
   return useCallback(
     (id: string): void => {
       void runPageAction(async (ports, current) => {
         onActionStart()
-        const libraryHashes = library ? await libraryHashesOf(() => library.list()) : undefined
-        const result = await deleteProject(ports, current, { id, libraryHashes })
+        const result = await change(ports, current, id)
         return { result, currentClosed: result.currentClosed }
       }).then((outcome) => {
         if (outcome !== undefined) {
           const { result } = outcome
-          onActionEnd(result.ok ? null : deleteFailureText(result.failure))
+          onActionEnd(result.ok ? null : failureText(result.failure))
         }
       })
     },
-    [runPageAction, onActionStart, onActionEnd, library],
+    [runPageAction, onActionStart, onActionEnd, change, failureText],
   )
 }
 
-function useRemoveFromList({ runPageAction, onActionStart, onActionEnd }: ActionRunner) {
-  return useCallback(
-    (id: string): void => {
-      void runPageAction(async (ports, current) => {
-        onActionStart()
-        const result = await removeFolderFromList(ports, current, id)
-        return { result, currentClosed: result.currentClosed }
-      }).then((outcome) => {
-        if (outcome !== undefined) {
-          const { result } = outcome
-          onActionEnd(result.ok ? null : removeFromListFailureText(result.failure))
-        }
-      })
+/** The library's hashes are read inside the change, at the click, so they are never stale. */
+function useDelete(runner: ActionRunner, library: LibraryLister | undefined) {
+  const deleteWithLibrary = useCallback<ListChange<DeleteFailure>>(
+    async (ports, current, id) => {
+      const libraryHashes = library ? await libraryHashesOf(() => library.list()) : undefined
+      return deleteProject(ports, current, { id, libraryHashes })
     },
-    [runPageAction, onActionStart, onActionEnd],
+    [library],
   )
+  return useListChange(runner, deleteWithLibrary, deleteFailureText)
 }
 
 /**
@@ -113,9 +122,10 @@ export function useCardActions({
 }: CardActionsParts): ProjectCardActions {
   const runner = { runPageAction: navigation.runPageAction, onActionStart, onActionEnd }
   const onRename = useRename(runner)
-  const onDelete = useDelete(runner, useLibraryLister(libraryAssets))
-  const onRemoveFromList = useRemoveFromList(runner)
-  const onExport = useCardExport({ ports, handle: navigation.handle, cards, libraryAssets })
+  const library = useLibraryLister(libraryAssets)
+  const onDelete = useDelete(runner, library)
+  const onRemoveFromList = useListChange(runner, removeFolderFromList, removeFromListFailureText)
+  const onExport = useCardExport({ ports, handle: navigation.handle, cards, library })
   return useMemo(
     () => ({
       onRename,

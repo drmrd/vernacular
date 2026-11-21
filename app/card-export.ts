@@ -7,10 +7,9 @@ import {
   type ProjectCardModel,
   type SessionPorts,
 } from '../session'
-import { bundleFilename, downloadBytes, type AssetCache } from '../storage'
+import { bundleFilename, downloadBytes } from '../storage'
 import { exportMissingAssetsText } from './asset-report-text'
 import { exportFailureText, uncheckedCopyText } from './card-action-text'
-import { createAssetLibrary } from './create-asset-library-registry'
 import { loadPackSupplies, type LibraryLister } from './pack-supplies'
 import { runExportWithToast } from './use-export-actions'
 
@@ -21,8 +20,8 @@ export interface CardExportParts {
   readonly handle: DocumentHandle | null
   /** The cards on the page, which name the projects that are not open. */
   readonly cards?: readonly ProjectCardModel[] | undefined
-  /** The library whose packs supply assets, so that those assets do not count as missing. */
-  readonly libraryAssets?: AssetCache | null | undefined
+  /** The lister of the library whose packs supply assets, so that those assets do not count as missing. */
+  readonly library?: LibraryLister | undefined
 }
 
 /** The file that the export of the id is expected to make, for the toast until the file exists. */
@@ -79,13 +78,9 @@ export function useCardExport({
   ports,
   handle,
   cards,
-  libraryAssets,
+  library,
 }: CardExportParts): ((id: string) => void) | undefined {
   const notifications = useNotifications()
-  const packs = useMemo(
-    () => (libraryAssets ? createAssetLibrary(libraryAssets).registry : undefined),
-    [libraryAssets],
-  )
   return useMemo(
     () =>
       ports === null
@@ -93,9 +88,12 @@ export function useCardExport({
         : (id: string): void => {
             const current = handle ?? undefined
             runExportWithToast(notifications, expectedFileName(cards, current, id), (onProgress) =>
-              exportAndDownload({ ports, handle: current, id, notifications, packs }, onProgress),
+              exportAndDownload(
+                { ports, handle: current, id, notifications, packs: library },
+                onProgress,
+              ),
             )
           },
-    [ports, handle, cards, notifications, packs],
+    [ports, handle, cards, notifications, library],
   )
 }
