@@ -17,6 +17,8 @@ sourceFiles:
     core/scene/construction-profile.ts,
     core/scene/scene-graph.ts,
     editor/plan/draw-plan.ts,
+    editor/plan/plan-wall-graph.ts,
+    editor/plan/plan-scene.ts,
     editor/plan/draw-opening.ts,
     editor/plan/opening-spans.ts,
     editor/plan/draw-surface-paint.ts,
@@ -153,6 +155,8 @@ place would have buried the bands under an opaque fill.
   because the memoization seam belongs at the plan-scene layer rather than inside the draw pass.
   It will bite first on exactly the plans this product exists to serve, old houses carved into many
   small rooms, so it should not sit unaddressed for long. Issue #546 carries the memoization.
+  2026-11-20: the memo now exists and the graph no longer rebuilds on every draw; see the update
+  of that date below.
 - The surface-paint bands still compute their endpoints as square offsets from each wall's own
   endpoints, independent of the mitred corners the faces now use. Under the old uniform stroke that
   mismatch was hidden inside thick ink; against a drawn face line a painted band will visibly fall
@@ -317,6 +321,41 @@ wall graph that nodes the arrangement reads no thickness at all.
 The fallback rule is the same as for the other readers: a wall with no profile, or a profile id
 the registry does not carry, resolves to its raw thickness. Issue #674 closes with this change.
 
+## Update (2026-11-20): the plan wall graph is built once per scene change
+
+The consequences above accepted a wall graph rebuilt on every `drawPlan` call and named where the
+fix belonged: a memo at the plan-scene layer, invalidated when the scene graph changes rather than
+on every draw. That memo now exists, and issue #546 closes.
+
+`editor/plan/plan-wall-graph.ts` holds the plan's graph builder, `planWallGraph` (moved out of
+`draw-plan.ts`, where it was `wallGraphOf`, with its body unchanged), and `createPlanWallGraphMemo`,
+a single-entry cache keyed by the identity of the walls array. Given the array it saw last, the
+memo returns the graph it built last. Given any other array, it builds a new graph and keeps that
+pair instead. `usePlanRedraw` in `editor/plan/plan-scene.ts` creates one memo per mounted plan
+and passes it to `drawPlan` as the `wallGraphFor` option. `drawPlan` hands that function the
+walls it is about to draw, so the graph always matches them. Other callers of `drawPlan` pass no
+`wallGraphFor` and still build the graph on each call.
+
+Array identity is a safe key because the model updates immutably
+([[ADR-0005-command-pattern-framework-captured-inverse]]). A dispatch, an undo, or a redo that
+changes something produces a new scene graph, and the active-floor filter then builds a new walls
+array from it. A floor switch builds a new array too. Between those events the array keeps its
+reference. For the memo to return a stale graph, a wall would have to change in place, and that
+would break the scene graph first. The graph also reads only each wall's `id`, `start` and `end`.
+Drawn thickness reaches the poche through `wallFootprints` and `effectiveWallThickness`, which
+still run on every draw, so a thickness edit shows at once.
+
+A redraw that leaves the walls alone (a pan, a zoom, a hover change, a snap, a marquee, or a wall
+preview while drawing) reuses the graph. Any model edit rebuilds it once, even one that touches no
+wall, because the walls array is new. A key on each wall node would skip that rebuild, but no
+gesture dispatches once per pointer move today, so it would save at most one build per dispatch.
+If that changes, the key can change behind the same seam.
+
+`editor/plan/plan-scene-wall-graph.test.ts` pins the behavior. It counts calls to the core
+`buildWallGraph` export while `usePlanRedraw` redraws. Two draws over the same walls array build
+the graph once, and a third draw over a new array with a moved wall builds it again and draws the
+faces out to the moved end.
+
 ## References
 
 - [[ADR-0159-plan-ink-weight-hierarchy]] (the ink roles this builds on; its wall-stroke-width claim
@@ -331,7 +370,8 @@ the registry does not carry, resolves to its raw thickness. Issue #674 closes wi
 - Issue #414 (size the 2D plan wall symbol from the construction-profile thickness).
 - Issue #521 (the durable geometric break for the wall-break gap fill, closed by the 2026-09-07
   update).
-- Issue #546 (memoize the plan wall graph so a pan or zoom stops rebuilding topology).
+- Issue #546 (memoize the plan wall graph so a pan or zoom stops rebuilding topology, closed by
+  the 2026-11-20 update).
 - Issue #547 (bring the surface-paint band, the wall-face hit band, and an opening's `hostThickness`
   onto the construction-profile thickness the drawn symbol now uses).
 - Issue #550 (bring the SVG plan export's wall stroke onto the same resolver, so an exported
