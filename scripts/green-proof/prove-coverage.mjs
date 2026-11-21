@@ -7,7 +7,7 @@ import { parseUnifiedDiff } from '../policy-check/git-input.mjs'
 import { parseLcov, splitByCoverage, uncoveredLineFindings } from './coverage.mjs'
 import { splitGuardLines } from './guard-block.mjs'
 import { isProofSource, parseRemovedLines, provableAddedLines } from './diff-lines.mjs'
-import { GENERATED_FOLDER, LCOV_FILE } from './vitest-worktree.mjs'
+import { COVERAGE_CONTROL_FILE, GENERATED_FOLDER, LCOV_FILE } from './vitest-worktree.mjs'
 
 /**
  * @typedef {import('../policy-check/rule-severity.mjs').Finding} Finding
@@ -48,9 +48,9 @@ function showDiff(runGit, sha) {
 export function planCoverage(runGit, sha) {
   const diff = showDiff(runGit, sha)
   const added = parseUnifiedDiff(diff).filter(({ file }) => isProofSource(file))
-  const include = [...new Set(added.map(({ file }) => file))]
+  const include = [...new Set(added.map(({ file }) => file)), COVERAGE_CONTROL_FILE]
   return {
-    request: include.length === 0 ? undefined : { include, dir: COVERAGE_FOLDER },
+    request: added.length === 0 ? undefined : { include, dir: COVERAGE_FOLDER },
     lines: provableAddedLines(added, parseRemovedLines(diff)),
   }
 }
@@ -86,8 +86,10 @@ function readLcov(files, root) {
 export function checkCoverage(lines, { sha, root, mixed }, files) {
   if (lines.length === 0) return { findings: [], notes: [], covered: [] }
   const coverage = parseLcov(readLcov(files, root), root)
-  if (coverage.size === 0) {
-    throw new Error(`the coverage run wrote an lcov file with no records at ${lcovPath(root)}`)
+  if (!coverage.delete(COVERAGE_CONTROL_FILE)) {
+    throw new Error(
+      `the coverage run wrote no record for the control file ${COVERAGE_CONTROL_FILE} at ${lcovPath(root)}`,
+    )
   }
   const { covered, uncovered, unrecorded } = splitByCoverage(lines, coverage)
   const rule = mixed ? 'mixed-uncovered-added-line' : 'uncovered-added-line'

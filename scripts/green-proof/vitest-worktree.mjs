@@ -16,6 +16,10 @@ import { readVitestRun, vitestArgs } from './vitest-run.mjs'
 export const GENERATED_FOLDER = '.green-proof'
 const VITEST_REPORT = 'vitest-run.json'
 export const LCOV_FILE = 'lcov.info'
+/** The repository path of the control file every GREEN coverage run includes. */
+export const COVERAGE_CONTROL_FILE = join(GENERATED_FOLDER, 'coverage-control.mjs')
+/** The control file text: one line, so a run that records coverage always has this record. */
+export const COVERAGE_CONTROL_TEXT = 'export const coverageControl = true\n'
 
 /**
  * @param {Files} files
@@ -59,6 +63,7 @@ export function runVitest({ runCommand, files }, { root, sha }, request) {
   files.removeFile(jsonFile)
   if (request.coverage !== undefined) {
     files.removeFile(join(root, request.coverage.dir, LCOV_FILE))
+    files.writeFile(join(root, COVERAGE_CONTROL_FILE), COVERAGE_CONTROL_TEXT)
   }
   const result = runCommand('pnpm', vitestArgs({ ...request, jsonFile }), { cwd: root })
   const outcome = readVitestRun(result.status, readOrEmpty(files, jsonFile), root)
