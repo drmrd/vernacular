@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { createElement } from 'react'
+import { createElement, useEffect, type ReactElement } from 'react'
 import { act, cleanup, render } from '@testing-library/react'
 import { DEFAULT_METRIC_PREFERENCES, type DimensionSceneNode, type SceneGraph } from '../../core'
 import {
@@ -9,13 +9,15 @@ import {
 } from '../viewport/view-overlay-context'
 import { recordingContext } from './draw-plan-test-fixtures'
 import {
+  PLAN_HEIGHT,
+  PLAN_WIDTH,
   buildDrawOptions,
   scopeSceneToShownAnnotations,
   usePlanRedraw,
   type PlanScene,
 } from './plan-scene'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
-import { DEFAULT_PLAN_SCALE } from './viewport'
+import { DEFAULT_PLAN_SCALE, type ViewportSize } from './viewport'
 
 // A scene with no entities, used to check the option assembly in isolation.
 function emptyScene(): PlanScene {
@@ -31,6 +33,7 @@ function emptyScene(): PlanScene {
     endpointHandles: null,
     openingResizeHandles: null,
     viewport,
+    size: { width: PLAN_WIDTH, height: PLAN_HEIGHT },
     preferences: DEFAULT_METRIC_PREFERENCES,
     underlays: [],
     openings: [],
@@ -202,5 +205,95 @@ describe('the header Dimensions toggle', () => {
 
     expect(dimensionMarkCount(probe.lastDraw())).toBe(0)
     expect(dimensionLabelCount(probe.lastDraw())).toBe(0)
+  })
+})
+
+const SMALL_STAGE: ViewportSize = { width: 640, height: 480 }
+const LARGE_STAGE: ViewportSize = { width: 1024, height: 768 }
+
+describe('buildDrawOptions stage size', () => {
+  it("draws at the scene's stage size, not the nominal size", () => {
+    const options = buildDrawOptions({ ...emptyScene(), size: LARGE_STAGE }, DEFAULT_PLAN_PALETTE, {
+      showGrid: true,
+      showDimensions: true,
+    })
+
+    expect(options.width).toBe(LARGE_STAGE.width)
+    expect(options.height).toBe(LARGE_STAGE.height)
+  })
+})
+
+// The ruler bands span the stage's top and left edges, so their far edge is the stage size.
+function rulerReach(recorder: Recorder): ViewportSize {
+  const bands = recorder.fillRects.filter((rect) => rect.style === PROBE_PALETTE.rulerBand)
+  return {
+    width: Math.max(...bands.map((band) => band.x + band.w)),
+    height: Math.max(...bands.map((band) => band.y + band.h)),
+  }
+}
+
+interface ResizeProbe {
+  draws: Recorder[]
+  commitLog: string[]
+  resize: (size: ViewportSize) => void
+}
+
+// A child's passive effect logs beside every draw, so the log order tells whether a
+// draw ran in the layout phase or after the passive effects of its commit.
+function renderResizableRedraw(scene: PlanScene): ResizeProbe {
+  const draws: Recorder[] = []
+  const commitLog: string[] = []
+  const canvasRef = {
+    current: {
+      getContext: () => {
+        const recorder = recordingContext()
+        draws.push(recorder)
+        commitLog.push('draw')
+        return recorder.ctx
+      },
+    } as unknown as HTMLCanvasElement,
+  }
+  function PassiveMarker() {
+    useEffect(() => {
+      commitLog.push('passive')
+    })
+    return null
+  }
+  function Probe({ current }: { current: PlanScene }) {
+    usePlanRedraw(canvasRef, current, PROBE_PALETTE)
+    return createElement(PassiveMarker)
+  }
+  const tree = (current: PlanScene): ReactElement =>
+    createElement(ViewOverlayProvider, null, createElement(Probe, { current }))
+  const { rerender } = render(tree(scene))
+  return {
+    draws,
+    commitLog,
+    resize: (size) => rerender(tree({ ...scene, size })),
+  }
+}
+
+describe('the plan redraw when the stage resizes', () => {
+  afterEach(cleanup)
+
+  it('redraws at the new width and height when only the stage size changes', () => {
+    const probe = renderResizableRedraw({ ...emptyScene(), size: SMALL_STAGE })
+    expect(rulerReach(probe.draws.at(-1)!)).toEqual(SMALL_STAGE)
+    const drawsBefore = probe.draws.length
+
+    act(() => probe.resize(LARGE_STAGE))
+
+    expect(probe.draws.length).toBeGreaterThan(drawsBefore)
+    expect(rulerReach(probe.draws.at(-1)!)).toEqual(LARGE_STAGE)
+  })
+
+  it('redraws in the layout phase of the commit that changes the size', () => {
+    const probe = renderResizableRedraw({ ...emptyScene(), size: SMALL_STAGE })
+    probe.commitLog.length = 0
+
+    act(() => probe.resize(LARGE_STAGE))
+
+    // Setting a canvas width clears it, so a later draw would paint one blank frame.
+    expect(probe.commitLog[0]).toBe('draw')
   })
 })

@@ -88,6 +88,7 @@ export function referencePlanScene(project: Project, floor: Floor): PlanScene {
     endpointHandles: null,
     openingResizeHandles: null,
     viewport: fitWholeFloor(graph.walls, graph.rooms),
+    size: { width: PLAN_WIDTH, height: PLAN_HEIGHT },
     preferences: imperial ? DEFAULT_IMPERIAL_PREFERENCES : DEFAULT_METRIC_PREFERENCES,
     underlays: [],
     openings: toDrawableOpenings(graph.openings, NOTHING_SELECTED),
