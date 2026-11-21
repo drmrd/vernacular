@@ -1,7 +1,7 @@
 import { renameProject as renameProjectCommand } from '../../core'
 import type { DocumentHandle, OpenFailure } from '../handle/handle-types'
 import { openDocumentHandle } from '../handle/open-document-handle'
-import { messageOf } from '../handle/thrown-failures'
+import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import { recentTarget } from './open-recent'
 
@@ -79,6 +79,6 @@ export async function renameProject(
       ? await renameOpenProject(current, trimmed)
       : await renameClosedProject(ports, id, trimmed)
   } catch (error) {
-    return { ok: false, failure: { kind: 'storage-unavailable', message: messageOf(error) } }
+    return storageUnavailable(error)
   }
 }

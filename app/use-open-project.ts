@@ -41,7 +41,7 @@ export interface OpenProject {
   /** Why no project is open. Null while the start runs and while a project is open. */
   readonly failure: SwitchFailure | null
   readonly runFlow: RunFlow
-  /** Runs a card action. It installs no handle and forgets the open one when the action ended it. */
+  /** Runs a card action. It installs no handle, and forgets the open one if the action ended it. */
   readonly runAction: RunAction
   /** Runs the start again after it failed. */
   readonly retry: () => void
@@ -66,9 +66,9 @@ function isSwitchKindOfOther(kind: OtherKind): false {
 }
 
 /**
- * True for a kind of a failed switch, as opposed to a flow's refusal. The switch names every kind of
- * SwitchFailure and some refusals, and hands the other kinds to a second switch. Neither has a
- * default for a kind it names, so a new kind is a type error until it is placed.
+ * True for a kind of a failed switch, as opposed to a flow's refusal. The switch names every kind
+ * of SwitchFailure and some refusals, and hands the other kinds to a second switch. Neither has
+ * a default for a kind it names, so a new kind is a type error until it is placed.
  */
 function isSwitchKind(kind: OpenFailureCause['kind']): boolean {
   switch (kind) {

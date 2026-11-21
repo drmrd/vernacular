@@ -3,7 +3,7 @@ import type { ProjectRecord, ProjectSummary } from '../../storage'
 import type { DocumentHandle } from '../handle/handle-types'
 import type { SessionPorts } from '../ports'
 import { assetHashesOf } from '../projects/project-facts'
-import { type StorageUnavailable, storageUnavailable } from './card-flow-failures'
+import { type StorageUnavailable, storageFailureOf } from './card-flow-failures'
 
 /**
  * The pool assets that each project of the workspace uses, by id. A project whose asset list is not
@@ -60,7 +60,7 @@ export async function usersOf(
   try {
     return { ok: true, users: await readUsers(ports, current) }
   } catch (error) {
-    return { ok: false, failure: storageUnavailable(error) }
+    return { ok: false, failure: storageFailureOf(error) }
   }
 }
 

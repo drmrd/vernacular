@@ -13,11 +13,11 @@ import { recentTarget, recordOf } from './open-recent'
 
 export interface ExportRequest {
   readonly id: string
-  readonly packSupplies?: PackSupplies
   /**
-   * Supplies the pack supplies when the export needs them: after the folder of a closed project
-   * grants its permission, so that a slow listing cannot outlast the click that asked. Used when
-   * `packSupplies` is absent.
+   * Loads the pack supplies when an archive is packed. A closed folder project is asked for its
+   * permission first: the browser shows that prompt only while the user activation of the click
+   * lasts, and refuses without asking once a slow listing has outlasted it. Not called when the
+   * project cannot be read or when the export gives an unchecked copy.
    */
   readonly loadPackSupplies?: () => Promise<PackSupplies | undefined>
   readonly onProgress?: (completed: number, total: number) => void
@@ -73,19 +73,29 @@ function failedWith(failure: OpenFailure): ExportProjectResult {
   }
 }
 
-/** The request with its pack supplies loaded, when it carries a loader and no supplies. */
-async function withLoadedSupplies(request: ExportRequest): Promise<ExportRequest> {
-  if (request.packSupplies !== undefined || request.loadPackSupplies === undefined) {
-    return request
+/** The request as the pack steps take it: with the pack supplies already loaded. */
+interface LoadedRequest extends Pick<ExportRequest, 'id' | 'onProgress'> {
+  readonly packSupplies?: PackSupplies
+}
+
+/** The request with its pack supplies loaded, when it carries a loader. */
+async function withLoadedSupplies({
+  id,
+  onProgress,
+  loadPackSupplies,
+}: ExportRequest): Promise<LoadedRequest> {
+  const packSupplies = await loadPackSupplies?.()
+  return {
+    id,
+    ...(onProgress === undefined ? {} : { onProgress }),
+    ...(packSupplies === undefined ? {} : { packSupplies }),
   }
-  const packSupplies = await request.loadPackSupplies()
-  return packSupplies === undefined ? request : { ...request, packSupplies }
 }
 
 /** Packs the open project after its pending changes are written. */
 async function exportOpenProject(
   current: DocumentHandle,
-  { onProgress, packSupplies }: ExportRequest,
+  { onProgress, packSupplies }: LoadedRequest,
 ): Promise<ExportProjectResult> {
   const result = await exportArchive(current, {
     ...(onProgress === undefined ? {} : { onProgress }),
@@ -102,7 +112,7 @@ async function exportOpenProject(
 async function archiveOfStored(
   store: DocumentStore,
   project: Project,
-  { id, onProgress, packSupplies }: ExportRequest,
+  { id, onProgress, packSupplies }: LoadedRequest,
 ): Promise<ExportProjectResult> {
   const { bytes, missingAssets } = await exportProjectBundle(id, project, {
     assets: store.assets(id),

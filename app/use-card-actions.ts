@@ -22,7 +22,7 @@ export interface CardActionsParts {
   readonly ports: SessionPorts | null
   /** The cards on the page, which name the projects that an export shows. */
   readonly cards?: readonly ProjectCardModel[] | undefined
-  /** The library whose packs supply assets, for an export. */
+  /** The library: its packs supply an export, and its hashes are kept by a delete. */
   readonly libraryAssets?: AssetCache | null | undefined
   /** The start of an action that runs clears the page's sentence. */
   readonly onActionStart: () => void
@@ -61,7 +61,10 @@ function useRename({ runPageAction, onActionStart, onActionEnd }: ActionRunner) 
   )
 }
 
-/** What a change of the list of projects gave: its failure, or none, and whether it ended the open project. */
+/**
+ * What a change of the list of projects gave: its failure, or none, and whether it ended the open
+ * project.
+ */
 type ListChangeResult<Failure> =
   | { readonly ok: true; readonly currentClosed: boolean }
   | { readonly ok: false; readonly failure: Failure; readonly currentClosed: boolean }
@@ -125,7 +128,7 @@ export function useCardActions({
   const library = useLibraryLister(libraryAssets)
   const onDelete = useDelete(runner, library)
   const onRemoveFromList = useListChange(runner, removeFolderFromList, removeFromListFailureText)
-  const onExport = useCardExport({ ports, handle: navigation.handle, cards, library })
+  const onExport = useCardExport({ ports, handle: navigation.handle, cards, packs: library })
   return useMemo(
     () => ({
       onRename,

@@ -47,7 +47,7 @@ export interface DocumentHandle {
 
 /** How a handle is opened, beyond which project. */
 export interface OpenOptions {
-  /** True for a handle that no editor shows: its saves write no recovery snapshot and remove none. */
+  /** True for a handle that no editor shows: its saves write no recovery snapshot, remove none. */
   readonly leaveSnapshots?: boolean
 }
 

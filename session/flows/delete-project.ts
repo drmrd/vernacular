@@ -1,7 +1,7 @@
 import type { DocumentHandle } from '../handle/handle-types'
 import type { SessionPorts } from '../ports'
 import { removableAssets, usersOf } from './asset-users'
-import { readRecord, storageUnavailable } from './card-flow-failures'
+import { readRecord, storageFailureOf } from './card-flow-failures'
 import { freeLock, lockFor } from './project-lock-for'
 
 export interface DeleteRequest {
@@ -46,7 +46,7 @@ async function removeProjectAndItsAssets(
     }
     return { ok: true, removedAssets }
   } catch (error) {
-    return { ok: false, failure: storageUnavailable(error) }
+    return { ok: false, failure: storageFailureOf(error) }
   }
 }
 

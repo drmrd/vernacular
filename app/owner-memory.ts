@@ -42,7 +42,7 @@ export interface OwnerMemory {
   flowRunning: boolean
   /** The ports and the id of the last start request that launched a start. */
   launched: { readonly ports: SessionPorts; readonly id: string } | null
-  /** The start request that was current when an action ended the open project. It never launches. */
+  /** The start request that was current when an action ended the open project. Never launches. */
   retired: OpenRequest | null
   /** What retry opens: the target of the last start. */
   retryTarget: StartTarget | null

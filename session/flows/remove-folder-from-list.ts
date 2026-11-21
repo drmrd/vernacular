@@ -1,6 +1,6 @@
 import type { DocumentHandle } from '../handle/handle-types'
 import type { SessionPorts } from '../ports'
-import { readRecord, storageUnavailable } from './card-flow-failures'
+import { readRecord, storageFailureOf } from './card-flow-failures'
 import { freeLock, lockFor } from './project-lock-for'
 
 export type RemoveFromListFailure =
@@ -60,7 +60,7 @@ export async function removeFolderFromList(
     await ports.index.remove(id)
     return { ok: true, currentClosed }
   } catch (error) {
-    return { ok: false, failure: storageUnavailable(error), currentClosed }
+    return { ok: false, failure: storageFailureOf(error), currentClosed }
   } finally {
     await freeLock(locked.hold)
   }

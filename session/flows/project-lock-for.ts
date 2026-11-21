@@ -3,7 +3,7 @@ import { callGuardedAsync } from '../guarded-call'
 import { internalsOf } from '../handle/handle-internals'
 import type { DocumentHandle } from '../handle/handle-types'
 import type { SessionPorts } from '../ports'
-import { storageUnavailable } from './card-flow-failures'
+import { storageFailureOf } from './card-flow-failures'
 
 export type LockFailure =
   | { readonly kind: 'open-elsewhere' | 'flush-failed' }
@@ -61,7 +61,7 @@ export async function lockFor(
     }
     return await lockOfOtherProject(ports, id)
   } catch (error) {
-    return failed(storageUnavailable(error))
+    return failed(storageFailureOf(error))
   }
 }
 

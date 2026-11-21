@@ -23,7 +23,8 @@ export type RunAction = <Result>(
 /**
  * Forgets the handle that an action ended. The owner shows no handle and no failure, and a close
  * that the owner deferred for it is dropped, so the project is not opened again from memory. The
- * request that is current now never launches again, and a later request launches even for the same id.
+ * request that is current now never launches again, and a later request launches even for the same
+ * id.
  */
 function forgetEndedHandle(memory: OwnerMemory, ended: DocumentHandle | undefined): void {
   if (ended !== undefined && memory.closed?.handle === ended) {

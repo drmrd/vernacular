@@ -42,7 +42,7 @@ export async function requestFor(ports: SessionPorts, id: string): Promise<OpenR
 }
 
 /** The request to open, or why the folder cannot be used. */
-export type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | OpenFailed
+type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | OpenFailed
 
 /**
  * Where the project of the id is kept: its request, or why the folder cannot be used. For a folder,

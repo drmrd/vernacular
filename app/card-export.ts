@@ -20,8 +20,8 @@ export interface CardExportParts {
   readonly handle: DocumentHandle | null
   /** The cards on the page, which name the projects that are not open. */
   readonly cards?: readonly ProjectCardModel[] | undefined
-  /** The lister of the library whose packs supply assets, so that those assets do not count as missing. */
-  readonly library?: LibraryLister | undefined
+  /** The lister of the library whose packs supply assets, so that they do not count as missing. */
+  readonly packs?: LibraryLister | undefined
 }
 
 /** The file that the export of the id is expected to make, for the toast until the file exists. */
@@ -77,7 +77,7 @@ export function useCardExport({
   ports,
   handle,
   cards,
-  library,
+  packs,
 }: CardExportParts): ((id: string) => void) | undefined {
   const notifications = useNotifications()
   return useMemo(
@@ -87,12 +87,9 @@ export function useCardExport({
         : (id: string): void => {
             const current = handle ?? undefined
             runExportWithToast(notifications, expectedFileName(cards, current, id), (onProgress) =>
-              exportAndDownload(
-                { ports, handle: current, id, notifications, packs: library },
-                onProgress,
-              ),
+              exportAndDownload({ ports, handle: current, id, notifications, packs }, onProgress),
             )
           },
-    [ports, handle, cards, notifications, library],
+    [ports, handle, cards, notifications, packs],
   )
 }

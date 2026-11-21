@@ -8,7 +8,7 @@ export interface StorageUnavailable {
 }
 
 /** The failure that a rejected storage call becomes in the flows of the project card. */
-export function storageUnavailable(error: unknown): StorageUnavailable {
+export function storageFailureOf(error: unknown): StorageUnavailable {
   return { kind: 'storage-unavailable', message: messageOf(error) }
 }
 
@@ -22,6 +22,6 @@ export async function readRecord(ports: SessionPorts, id: string): Promise<Recor
   try {
     return { record: await ports.index.get(id) }
   } catch (error) {
-    return { failure: storageUnavailable(error) }
+    return { failure: storageFailureOf(error) }
   }
 }
