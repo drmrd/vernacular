@@ -170,12 +170,6 @@ export const UNCOVERED_COMPONENTS: {
       'the scene-objects group (the close doors and windows control) that sits between the camera presets and the display options, a component of its own that scene-nav-toolbar.tsx renders; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
   },
   {
-    component: 'ToolbarButton',
-    file: 'bridge/react/toolbar-button.tsx',
-    reason:
-      'the toolbar action that stays focusable and describes why it cannot act, rendered inside SceneNavToolbar, which is itself recorded here; its DOM is exercised through its own tests and the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
-  },
-  {
     component: 'SceneProxyProjector',
     file: 'bridge/react/scene-proxies.tsx',
     reason:

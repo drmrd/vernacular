@@ -148,8 +148,7 @@
   outline-offset: 1px;
 }
 
-.scene-nav-toolbar__btn[aria-disabled='true'],
-.scene-nav-toolbar__btn:disabled {
+.scene-nav-toolbar__btn[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -198,8 +197,8 @@
    without this a hovered active toggle would read exactly like an inactive one. The
    shipped language reaches the same place by painting the same fill for both states;
    this restates it where the two have been pulled apart. */
-/* prettier-ignore */
-[data-design-language='arris'] .scene-nav-toolbar__btn[aria-pressed='true']:hover:not([aria-disabled='true']) {
+[data-design-language='arris']
+  .scene-nav-toolbar__btn[aria-pressed='true']:hover:not([aria-disabled='true']) {
   background: var(--color-surface-active);
   border-color: var(--color-indicator);
   color: var(--color-on-surface-active);
