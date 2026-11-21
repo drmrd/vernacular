@@ -221,11 +221,9 @@ end-to-end tests run against.
 `e2e/tests/scene-edge-overlay-resources.spec.ts` runs in the GPU project. It calls
 `guardLiveSceneSupport` from `e2e/tests/live-webgpu.ts`, so it skips on a runner that has no
 WebGPU adapter or no WebGL 2 context, and it fails there when `E2E_REQUIRE_WEBGPU` is set. The
-macOS WebGPU job in `.github/workflows/ci.yml` lists its specs one by one and does not list this
-one. The Linux runners have no adapter, so the spec skips there as well. Until the macOS job
-runs it, the check that matters for the WebGPU backend, whose render object and geometry
-behavior this ADR analyses, runs only on a developer's machine. Issue #1041 tracks adding it to
-that job. The spec draws a closed room, takes a settled reading, flips the surface-edge overlay
+macOS WebGPU job in `.github/workflows/ci.yml` runs it with `E2E_REQUIRE_WEBGPU` set, so the
+check runs on the WebGPU backend whose render object and geometry behavior this ADR analyses. The
+Linux runners have no adapter, so the spec skips there. The spec draws a closed room, takes a settled reading, flips the surface-edge overlay
 ten times, and expects both counts to return to the first reading or below. The check allows no
 margin. It also checks that the first flip raised the geometry count, so the probe is known to
 count what the overlay builds.
@@ -299,8 +297,8 @@ context, and it leaks a batch whenever a frame falls in it.
   (pack assets carry textures), ADR-0132 (surface-edge overlay), ADR-0170 (scene session state),
   ADR-0197 (scene renderer lifecycle).
 - Follow-up issues: #1038 (the first attach), #1039 (the build of a deleted floor), #1040
-  (render objects that stay reachable within a lineage), #1041 (the overlay spec in the macOS
-  WebGPU job), and #1042 (model cache eviction).
+  (render objects that stay reachable within a lineage), and #1042 (model cache eviction). This
+  change also closes #1041, which asked for the overlay spec in the macOS WebGPU job.
 - three 0.184: `src/renderers/common/RenderObject.js` (the material `dispose` listener and
   `dispose()`), `RenderObjects.js` (the chain map of render objects), and `Geometries.js` (upload
   on draw and the free on `dispose`).
