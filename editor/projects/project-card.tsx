@@ -1,4 +1,4 @@
-import { useId, useRef, type MouseEvent, type ReactElement, type RefObject } from 'react'
+import { useEffect, useId, useRef, type MouseEvent, type ReactElement, type RefObject } from 'react'
 import type { ProjectCardAction, ProjectCardModel } from '../../session'
 import {
   DID_NOT_OPEN,
@@ -141,10 +141,22 @@ interface RenameOnCardProps {
   readonly cardRef: RefObject<HTMLElement | null>
 }
 
-/** The rename form of a card. When it closes, the focus goes to the card's "..." control. */
+/**
+ * The rename form of a card. When it closes, the focus goes to the card's "..." control, unless
+ * the form is already gone because another card took the rename.
+ */
 function RenameOnCard({ name, rename, cardRef }: RenameOnCardProps): ReactElement {
+  const shown = useRef(true)
+  useEffect(() => {
+    shown.current = true
+    return () => {
+      shown.current = false
+    }
+  }, [])
   const close = (): void => {
-    cardRef.current?.querySelector<HTMLElement>('[aria-haspopup]')?.focus()
+    if (shown.current) {
+      cardRef.current?.querySelector<HTMLElement>('[aria-haspopup]')?.focus()
+    }
     rename.onClose()
   }
   const save = async (typed: string): Promise<boolean> => {

@@ -30,7 +30,9 @@ async function renameOpenProject(current: DocumentHandle, name: string): Promise
 
 /**
  * Renames a project that is not open: opens a handle on it, renames, saves, and closes the handle.
- * The handle is closed also when the save failed, so its lock is free afterward.
+ * The handle is closed also when the rename threw (the save never throws), so its lock is free
+ * afterward, unless the close fails too. A session listener that throws after the rename applied
+ * still gives storage-unavailable, though the close stores the new name.
  */
 async function renameClosedProject(
   ports: SessionPorts,
@@ -46,8 +48,14 @@ async function renameClosedProject(
     return opened
   }
   const { handle } = opened
-  handle.session.dispatch(renameProjectCommand(name))
-  const saved = savedOrFailed(await handle.save())
+  let saved: RenameResult
+  try {
+    handle.session.dispatch(renameProjectCommand(name))
+    saved = savedOrFailed(await handle.save())
+  } catch (error) {
+    await handle.close()
+    throw error
+  }
   const closed = savedOrFailed(await handle.close())
   return saved.ok ? closed : saved
 }

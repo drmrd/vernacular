@@ -85,7 +85,7 @@ function CardList({ cards, hrefFor, onOpen, cardActions }: CardListProps): React
     renamingId === id && cardActions?.onRename
       ? {
           onSave: (name) => cardActions.onRename?.(id, name) ?? Promise.resolve(false),
-          onClose: () => setRenamingId(null),
+          onClose: () => setRenamingId((shown) => (shown === id ? null : shown)),
         }
       : undefined
   return (
