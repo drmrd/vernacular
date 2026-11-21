@@ -1,11 +1,15 @@
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  acceptsDelete,
   acceptsExport,
+  acceptsRemoval,
   acceptsRename,
   actionsControlOf,
   cardNamed,
   cardOf,
+  folderCardOf,
+  renderChangingPage,
   renderPage,
   renderPageWithCardActions,
   renderRenamingPage,
@@ -175,5 +179,103 @@ describe('the actions that the card menu hands to the page', () => {
     expect(formOf(HUBBARD)).toHaveValue(HUBBARD)
     expect(onExport).toHaveBeenCalledOnce()
     expect(onRename).not.toHaveBeenCalled()
+  })
+})
+
+const FOLDER = 'Folder House'
+const DELETE_QUESTION = `Delete "${HUBBARD}"?`
+
+const entriesOf = () => screen.getAllByRole('menuitem').map((item) => item.textContent)
+
+describe('the delete and remove actions that the card menu hands to the page', () => {
+  it('lists Delete after Export on an ordinary card and Remove from list after Export on a folder card', async () => {
+    const handlers = {
+      onRename: acceptsRename(),
+      onExport: acceptsExport(),
+      onDelete: acceptsDelete(),
+      onRemoveFromList: acceptsRemoval(),
+    }
+    const user = renderPageWithCardActions([hubbard, folderCardOf()], handlers)
+
+    await user.click(actionsControlOf(HUBBARD))
+    expect(entriesOf()).toEqual(['Rename', 'Export', 'Delete'])
+    await user.keyboard('{Escape}')
+    await user.click(actionsControlOf(FOLDER))
+
+    expect(entriesOf()).toEqual(['Rename', 'Export', 'Remove from list'])
+  })
+
+  it('shows no Delete entry without an onDelete handler and no Remove from list entry without an onRemoveFromList handler', async () => {
+    const onExport = acceptsExport()
+    const user = renderPageWithCardActions([hubbard, folderCardOf()], { onExport })
+
+    await user.click(actionsControlOf(HUBBARD))
+    expect(entriesOf()).toEqual(['Export'])
+    await user.keyboard('{Escape}')
+    await user.click(actionsControlOf(FOLDER))
+
+    expect(entriesOf()).toEqual(['Export'])
+  })
+
+  it('shows the delete dialog of the card when Delete is chosen, and calls nothing yet', async () => {
+    const onDelete = acceptsDelete()
+    const user = renderPageWithCardActions([hubbard, queenAnne], { onDelete })
+
+    await user.click(actionsControlOf(HUBBARD))
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+
+    expect(screen.getByRole('alertdialog', { name: DELETE_QUESTION })).toBeInTheDocument()
+    expect(onDelete).not.toHaveBeenCalled()
+  })
+
+  it('closes the dialog on Cancel, calls nothing, and focuses the "..." control', async () => {
+    const onDelete = acceptsDelete()
+    const user = renderPageWithCardActions([hubbard], { onDelete })
+    await user.click(actionsControlOf(HUBBARD))
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(onDelete).not.toHaveBeenCalled()
+    expect(actionsControlOf(HUBBARD)).toHaveFocus()
+  })
+
+  it('closes the dialog on Delete project, calls onDelete once with the id, and focuses the main region', async () => {
+    const onDelete = acceptsDelete()
+    const user = renderPageWithCardActions([hubbard, queenAnne], { onDelete })
+    await user.click(actionsControlOf(HUBBARD))
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+
+    await user.click(screen.getByRole('button', { name: 'Delete project' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(onDelete.mock.calls).toEqual([['hubbard']])
+    expect(screen.getByRole('main', { name: 'Projects' })).toHaveFocus()
+  })
+
+  it('calls onRemoveFromList with the id at once, and shows no dialog', async () => {
+    const onRemoveFromList = acceptsRemoval()
+    const user = renderPageWithCardActions([hubbard, folderCardOf()], { onRemoveFromList })
+
+    await user.click(actionsControlOf(FOLDER))
+    await user.click(screen.getByRole('menuitem', { name: 'Remove from list' }))
+
+    expect(onRemoveFromList.mock.calls).toEqual([['folder']])
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('takes the dialog away with its card when the card leaves the list', async () => {
+    const { user, showCards } = renderChangingPage([hubbard, queenAnne], {
+      onDelete: acceptsDelete(),
+    })
+    await user.click(actionsControlOf(HUBBARD))
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+
+    showCards([queenAnne])
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    showCards([hubbard, queenAnne])
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 })

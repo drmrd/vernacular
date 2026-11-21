@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, vi } from 'vitest'
 import { reconcileIndex } from '../session'
+import { changeRecord, putInPool } from '../session/flows/delete-project-test-kit'
 import type { TestPorts } from '../session/handle/handle-test-kit'
 import { contentHashOf } from '../storage/zip/zip-test-kit'
 import { FAILED_ID, documentBytes, namedProject, plantFailedProject } from './app-test-support'
@@ -11,6 +12,7 @@ import {
   chooseAnActionOf,
   findTheCardThatDidNotOpen,
   listFolderProject,
+  openTheMenuOf,
 } from './projects-screen-test-support'
 
 /** Test support: the steps of the actions of a card on the Projects page that the tests share. */
@@ -102,4 +104,37 @@ export async function giveTheProjectThatDidNotOpenAnAsset(ports: TestPorts): Pro
   const record = await ports.index.get(FAILED_ID)
   if (record === undefined) throw new Error('The project that did not open has no record')
   await ports.index.put({ ...record, assetHashes: [hash] })
+}
+
+/** Chooses Delete on the card of `name`, then presses the button `answer` of the dialog that asks. */
+export async function chooseDeleteAndAnswer(
+  name: string,
+  answer: 'Cancel' | 'Delete project',
+): Promise<void> {
+  await chooseAnActionOf(name, 'Delete')
+  const dialog = await screen.findByRole('alertdialog', { name: `Delete "${name}"?` })
+  await userEvent.click(within(dialog).getByRole('button', { name: answer }))
+}
+
+/** The names of the entries in the "..." menu of the card of `name`, in order. The menu is closed after. */
+export async function menuEntriesOf(name: string): Promise<Array<string | null>> {
+  await openTheMenuOf(name)
+  const entries = (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
+  await userEvent.keyboard('{Escape}')
+  return entries
+}
+
+/** The link back to the open project, or null when the page shows none. */
+export function theLinkBack(): HTMLElement | null {
+  return screen.queryByRole('button', { name: /^Back to / })
+}
+
+/**
+ * Puts an asset into the pool that only the project `id` lists. Gives its content hash. Call it once
+ * the card shows, so that no later read of the cards writes the record again.
+ */
+export async function givePoolAssetTo(ports: TestPorts, id: string): Promise<string> {
+  const hash = await putInPool(ports, `the asset that only ${id} uses`)
+  await changeRecord(ports, id, { assetHashes: [hash] })
+  return hash
 }

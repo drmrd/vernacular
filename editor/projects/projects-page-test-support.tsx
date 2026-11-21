@@ -71,6 +71,40 @@ export function renderPageWithCardActions(
   return userEvent.setup()
 }
 
+/** A delete handler that records its calls. */
+export function acceptsDelete() {
+  return vi.fn<NonNullable<ProjectCardActions['onDelete']>>()
+}
+
+/** A remove-from-list handler that records its calls. */
+export function acceptsRemoval() {
+  return vi.fn<NonNullable<ProjectCardActions['onRemoveFromList']>>()
+}
+
+/** A card for a project that a folder holds: its menu lists Remove from list in place of Delete. */
+export const folderCardOf = () =>
+  cardOf({
+    id: 'folder',
+    name: 'Folder House',
+    location: { folderName: 'Old house' },
+    actions: ['rename', 'export', 'remove-from-list'],
+  })
+
+/** Renders the page with the given card actions. Gives a user and a function that shows other cards. */
+export function renderChangingPage(
+  cards: readonly ProjectCardModel[],
+  cardActions: ProjectCardActions,
+) {
+  const pageOf = (shown: readonly ProjectCardModel[]) => (
+    <ProjectsPage cards={shown} hrefFor={(id) => `#/project/${id}`} cardActions={cardActions} />
+  )
+  const view = render(pageOf(cards))
+  return {
+    user: userEvent.setup(),
+    showCards: (shown: readonly ProjectCardModel[]) => view.rerender(pageOf(shown)),
+  }
+}
+
 /** The "..." control of the card of the project named `name`. */
 export const actionsControlOf = (name: string) =>
   screen.getByRole('button', { name: `Actions for ${name}` })
