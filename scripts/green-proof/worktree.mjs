@@ -3,7 +3,7 @@
  * @typedef {{ status: number, stdout: string, stderr: string }} CommandResult
  * @typedef {(command: string, args: readonly string[], options: { cwd: string }) => CommandResult} RunCommand
  * @typedef {(args: readonly string[]) => string} RunGit  throws on a nonzero git exit
- * @typedef {{ readFile(path: string): string, writeFile(path: string, text: string): void, makeTempDir(prefix: string): string, removeDir(path: string): void }} Files
+ * @typedef {{ readFile(path: string): string, writeFile(path: string, text: string): void, makeTempDir(prefix: string): string, removeDir(path: string): void, removeFile(path: string): void }} Files
  */
 
 import { join } from 'node:path'
