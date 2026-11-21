@@ -10,7 +10,7 @@ import type { RunFlow } from './use-open-project'
 /** What the actions of the Projects page run on. */
 export interface PageActionsContext {
   /** Runs a flow of a page action as a try of the page. */
-  readonly runFlow: RunFlow
+  readonly runActionFlow: RunFlow
   /** Clears the page's notice when a try starts. */
   readonly onTryStart: () => void
   readonly ports: SessionPorts | null
@@ -32,7 +32,7 @@ export interface PageActions {
  * the toast that the editor shows for it, and the page stays.
  */
 export function usePageActions({
-  runFlow,
+  runActionFlow,
   onTryStart,
   ports,
   libraryAssets,
@@ -44,10 +44,10 @@ export function usePageActions({
   )
   const { onImportFile: pickFile, onImportDroppedFile } = useOpenFileAction({
     notifications,
-    runFlow,
+    runFlow: runActionFlow,
     ...(packs === undefined ? {} : { packs }),
   })
-  const runSwitch = useSwitchFlow(runFlow)
+  const runSwitch = useSwitchFlow(runActionFlow)
   const onImportFile = () => {
     onTryStart()
     pickFile()

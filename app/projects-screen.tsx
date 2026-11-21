@@ -36,6 +36,11 @@ interface TriedNotice {
   readonly notice: PageNotice | undefined
 }
 
+/** The try's state with `notice` set, keeping the failure that the try replaced. */
+function withNotice(previous: TriedNotice | null, notice: PageNotice): TriedNotice {
+  return { replacedFailure: previous?.replacedFailure, notice }
+}
+
 /** The one notice to show: the latest try's while it stands, else the screen's. */
 function shownNotice(
   screenNotice: PageNotice | undefined,
@@ -71,7 +76,7 @@ interface PageTries {
 /** The tries of the page actions: the clear of the notice at their start, and their run. */
 interface ActionTries {
   readonly onTryStart: () => void
-  readonly runFlow: RunFlow
+  readonly runActionFlow: RunFlow
 }
 
 /**
@@ -88,7 +93,7 @@ function useActionTries(
     setTried({ replacedFailure, notice: undefined })
   }, [replacedFailure, setTried])
   const { runPageFlow } = navigation
-  const runFlow = useCallback(
+  const runActionFlow = useCallback(
     async <Refusal = never,>(flow: Flow<Refusal>): Promise<FlowResult<Refusal> | undefined> => {
       const result = await runPageFlow(flow)
       if (result === undefined || result.ok) {
@@ -99,32 +104,30 @@ function useActionTries(
       if (!isSwitchFailure(failure)) {
         return result
       }
-      setTried((previous) => ({
-        replacedFailure: previous?.replacedFailure,
-        notice: { id: '', failure },
-      }))
+      // `shownNotice` compares this failure by identity, and `settleFlow` stores it as it is.
+      setTried((previous) => withNotice(previous, { id: '', failure }))
       return undefined
     },
     [runPageFlow, refresh, setTried],
   )
-  return { onTryStart, runFlow }
+  return { onTryStart, runActionFlow }
 }
 
 /** The notice of the page, and the tries of the page that open a project in place of the page. */
-function usePageTries({ navigation, screen, refresh }: PageTries) {
+function usePageTries(pageTries: PageTries) {
+  const { navigation, screen, refresh } = pageTries
   const [tried, setTried] = useState<TriedNotice | null>(null)
-  const actionTries = useActionTries({ navigation, screen, refresh }, setTried)
+  const actionTries = useActionTries(pageTries, setTried)
   // The notice clears while the try runs. A try that gives a project leaves the page, and a try
   // that is refused because another runs changed nothing, so only a try that fails sets the notice
   // again and reads the cards again.
   const runTry = (id: string, flow: Flow) => {
-    const replacedFailure = screen.notice?.failure
-    setTried({ replacedFailure, notice: undefined })
+    actionTries.onTryStart()
     void navigation.runPageFlow(flow).then((result) => {
       if (result === undefined || result.ok) {
         return
       }
-      setTried({ replacedFailure, notice: { id, failure: result.failure } })
+      setTried((previous) => withNotice(previous, { id, failure: result.failure }))
       refresh()
     })
   }
@@ -152,7 +155,7 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
   const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
   const tries = usePageTries({ navigation, screen, refresh })
   const actions = usePageActions({
-    runFlow: tries.runFlow,
+    runActionFlow: tries.runActionFlow,
     onTryStart: tries.onTryStart,
     ports,
     libraryAssets,
