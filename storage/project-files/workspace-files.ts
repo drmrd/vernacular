@@ -1,5 +1,5 @@
 import type { AssetCache } from '../asset-cache'
-import { ASSET_DIRECTORY_PREFIX, DirectoryAssetCache } from '../directory-asset-cache'
+import { ASSET_DIRECTORY_PREFIX, assetPathFor, DirectoryAssetCache } from '../directory-asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
 import { SubdirectoryPort } from '../fs/subdirectory-port'
 import { isContentHash } from '../zip/archive-layout'
@@ -66,7 +66,7 @@ export class WorkspaceFiles implements RemovableProjectFiles {
   async removeAssets(contentHashes: readonly string[]): Promise<void> {
     for (const contentHash of contentHashes) {
       if (isContentHash(contentHash)) {
-        await this.root.removeFile(`${ASSET_DIRECTORY_PREFIX}/${contentHash}`)
+        await this.root.removeFile(assetPathFor(contentHash))
       }
     }
   }

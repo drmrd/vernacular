@@ -3,6 +3,11 @@ import type { DirectoryPort } from './fs/directory-port'
 
 export const ASSET_DIRECTORY_PREFIX = 'assets'
 
+/** The path of an asset in the shared pool, relative to the pool's root directory. */
+export function assetPathFor(contentHash: string): string {
+  return `${ASSET_DIRECTORY_PREFIX}/${contentHash}`
+}
+
 export class DirectoryAssetCache implements AssetCache {
   constructor(private readonly directory: DirectoryPort) {}
 
@@ -11,18 +16,14 @@ export class DirectoryAssetCache implements AssetCache {
    * ask for the content; what that costs depends on the port.
    */
   async has(contentHash: string): Promise<boolean> {
-    return (await this.directory.modifiedAt(this.pathFor(contentHash))) !== undefined
+    return (await this.directory.modifiedAt(assetPathFor(contentHash))) !== undefined
   }
 
   async get(contentHash: string): Promise<Uint8Array | undefined> {
-    return this.directory.readFile(this.pathFor(contentHash))
+    return this.directory.readFile(assetPathFor(contentHash))
   }
 
   async put(contentHash: string, bytes: Uint8Array): Promise<void> {
-    await this.directory.writeFile(this.pathFor(contentHash), bytes)
-  }
-
-  private pathFor(contentHash: string): string {
-    return `${ASSET_DIRECTORY_PREFIX}/${contentHash}`
+    await this.directory.writeFile(assetPathFor(contentHash), bytes)
   }
 }
