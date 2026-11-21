@@ -23,8 +23,8 @@ const SHEEN_ROUGHNESS = 1
  * cache with SurfaceMaterialProvider, but a solid paint additionally reads its finish
  * (roughness, sheen, specular) and emits a MeshPhysicalMaterial, so gloss and flat
  * paints no longer render at one default roughness. The sheen lobe takes the paint's
- * own color, because three.js leaves it black and a black sheen renders nothing. A pattern keeps its standard
- * material and an unpainted surface keeps the neutral gray.
+ * own color, because three.js leaves it black and a black sheen renders nothing. A
+ * pattern keeps its standard material and an unpainted surface keeps the neutral gray.
  */
 export class PhysicalMaterialProvider extends SurfaceMaterialProvider {
   protected createPaintedMaterial(role: SurfaceRole, treatment: SurfaceTreatment): THREE.Material {
@@ -33,7 +33,7 @@ export class PhysicalMaterialProvider extends SurfaceMaterialProvider {
       return new THREE.MeshPhysicalMaterial({
         ...base,
         ...finishParameters(treatment.finishId),
-        ...(base.color === undefined ? {} : { sheenColor: base.color }),
+        sheenColor: base.color,
         sheenRoughness: SHEEN_ROUGHNESS,
       })
     }
@@ -42,9 +42,10 @@ export class PhysicalMaterialProvider extends SurfaceMaterialProvider {
 }
 
 /**
- * The physical roughness, sheen, and specular a finish contributes. An unregistered
- * finishId falls back to the matte finish, so every parameter comes from one real
- * registry entry rather than three.js's material defaults.
+ * The physical roughness, sheen, and specular a finish contributes. The sheen amount
+ * comes from here, while the sheen lobe's color is the paint color, set by the caller.
+ * An unregistered finishId falls back to the matte finish, so every parameter comes from
+ * one real registry entry rather than three.js's material defaults.
  */
 function finishParameters(finishId: string): THREE.MeshPhysicalMaterialParameters {
   const finish =
