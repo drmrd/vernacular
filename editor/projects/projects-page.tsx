@@ -5,8 +5,6 @@ import { backText } from './card-text'
 import { CardList, type ProjectCardActions } from './card-list'
 import './projects-page.css'
 
-export type { ProjectCardActions } from './card-list'
-
 export interface OpenProjectLink {
   readonly name: string
   readonly onBack: () => void
