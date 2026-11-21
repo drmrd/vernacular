@@ -9,6 +9,7 @@ import {
   type SurfaceRef,
   type SurfaceTreatment,
 } from '../../core'
+import { markCacheHeld } from '../scene/dispose-object'
 import type { MaterialProvider, SurfaceRole } from './material-provider'
 import { roleMaterialParameters, slabTopDepthBiasParameters } from './role-appearance'
 
@@ -57,6 +58,7 @@ export abstract class SurfaceMaterialProvider implements MaterialProvider {
       return cached
     }
     const created = this.createPaintedMaterial(role, treatment)
+    markCacheHeld(created)
     this.paintedByKey.set(key, created)
     return created
   }
@@ -67,8 +69,21 @@ export abstract class SurfaceMaterialProvider implements MaterialProvider {
       return cached
     }
     const created = new THREE.MeshStandardMaterial(roleMaterialParameters(role))
+    markCacheHeld(created)
     this.neutralByRole.set(role, created)
     return created
+  }
+
+  /**
+   * Frees every cached material and empties the caches. The provider owns these materials, so
+   * a scene tree walk never frees them. Safe to call twice: the second call finds nothing.
+   */
+  dispose(): void {
+    for (const material of [...this.neutralByRole.values(), ...this.paintedByKey.values()]) {
+      material.dispose()
+    }
+    this.neutralByRole.clear()
+    this.paintedByKey.clear()
   }
 
   /**

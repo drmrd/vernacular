@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 
+import { markCacheHeld } from '../scene/dispose-object'
 import type { MaterialProvider, SurfaceRole } from './material-provider'
 import { roleMaterialParameters } from './role-appearance'
 
@@ -17,7 +18,16 @@ export class NeutralMaterialProvider implements MaterialProvider {
       return cached
     }
     const created = new THREE.MeshStandardMaterial(roleMaterialParameters(role))
+    markCacheHeld(created)
     this.materials.set(role, created)
     return created
+  }
+
+  /** Frees every cached material and empties the cache. Safe to call twice. */
+  dispose(): void {
+    for (const material of this.materials.values()) {
+      material.dispose()
+    }
+    this.materials.clear()
   }
 }
