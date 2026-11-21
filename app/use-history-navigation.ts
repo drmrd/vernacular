@@ -8,6 +8,7 @@ import {
   leavePage,
   retryNotice,
   runFlowOf,
+  runPageActionOf,
   runPageFlowOf,
   showProjects,
   startFresh,
@@ -22,7 +23,7 @@ import {
   type StartEntry,
 } from './navigation-memory'
 import type { Screen } from './resolve-place'
-import { useOpenProject, type RunFlow } from './use-open-project'
+import { useOpenProject, type RunAction, type RunFlow } from './use-open-project'
 
 /** The open project and what shows, following the address of the page through its history. */
 export interface HistoryNavigation {
@@ -42,6 +43,8 @@ export interface HistoryNavigation {
   readonly showProjects: () => void
   /** Runs a flow from the page. When it gives a project, the page goes and the project leads. */
   readonly runPageFlow: RunFlow
+  /** Runs an action from the page. It adds no entry, and the page stays. */
+  readonly runPageAction: RunAction
 }
 
 interface ScreenParts {
@@ -135,7 +138,7 @@ export function useHistoryNavigation(
   const owner = useOpenProject(ports, firstRequestOf(entry, ports))
   const memoryRef = useRef<NavigationMemory | null>(null)
   // The owner keeps both controls stable, so the first render's pair serves every render.
-  const controls = { runFlow: owner.runFlow, retry: owner.retry }
+  const controls = { runFlow: owner.runFlow, runAction: owner.runAction, retry: owner.retry }
   memoryRef.current ??= newNavigationMemory(address, { setPage, setEntry, bump }, controls)
   const memory = memoryRef.current
   const { handle, failure } = owner
@@ -155,6 +158,7 @@ export function useHistoryNavigation(
       startFresh: () => startFresh(memory),
       showProjects: () => showProjects(memory),
       runPageFlow: runPageFlowOf(memory),
+      runPageAction: runPageActionOf(memory),
     }),
     [memory],
   )

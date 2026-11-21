@@ -12,7 +12,7 @@ import {
   showPage,
   type NavigationMemory,
 } from './navigation-memory'
-import type { RunFlow } from './use-open-project'
+import type { RunAction, RunFlow } from './use-open-project'
 
 /** The owner's way to run a flow, with one addition: a flow that opens another project adds an entry. */
 export function runFlowOf(memory: NavigationMemory): RunFlow {
@@ -45,6 +45,28 @@ export function runPageFlowOf(memory: NavigationMemory): RunFlow {
       memory.view.bump()
     }
     return result
+  }
+}
+
+/**
+ * Runs an action from the page. It adds no history entry and keeps the page and the address. When
+ * the action ended the open project, the navigation forgets that project and the first request it
+ * gave the owner, so the page shows with no project open and the owner is not seen as opening one.
+ */
+export function runPageActionOf(memory: NavigationMemory): RunAction {
+  return async (action) => {
+    memory.busy.flowsRunning += 1
+    try {
+      const outcome = await memory.owner.runAction?.(action)
+      if (outcome?.currentClosed === true) {
+        memory.handle = null
+        memory.given = null
+      }
+      return outcome
+    } finally {
+      memory.busy.flowsRunning -= 1
+      memory.view.bump()
+    }
   }
 }
 
