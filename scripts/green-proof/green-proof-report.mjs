@@ -3,6 +3,7 @@
  */
 
 import { formatAnnotation, formatPlainLine, shortSha } from '../policy-check/report.mjs'
+import { MUTATION_NOT_REACHED_NOTE } from './mutation-budget.mjs'
 import { severityOf } from '../policy-check/rule-severity.mjs'
 
 /**
@@ -104,7 +105,11 @@ export function hasFailingFinding(results) {
  */
 export function reportLines(results, run) {
   const count = (status) => results.filter((result) => result.status === status).length
-  const header = `green:proof: ${count('proven')} proven, ${count('skipped')} skipped, ${count('failed')} failed in ${run.range}`
+  const unreached = results.filter((result) =>
+    result.notes.includes(MUTATION_NOT_REACHED_NOTE),
+  ).length
+  const suffix = unreached > 0 ? `; cycles the mutation check did not reach: ${unreached}` : ''
+  const header = `green:proof: ${count('proven')} proven, ${count('skipped')} skipped, ${count('failed')} failed in ${run.range}${suffix}`
   return [
     header,
     ...results.flatMap((result) => [...cycleLines(result), ...findingLines(result, run)]),

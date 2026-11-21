@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { shortSha } from '../policy-check/report.mjs'
 import { GIT_LOG_FORMAT, parseGitLog } from '../rgb-audit/cycle-audit.mjs'
 import { pairGreenCycles } from '../rgb-audit/cycle-pairing.mjs'
+import { createMutationBudget, parseBudgetMinutes } from './mutation-budget.mjs'
 import { defaultDeps } from './default-deps.mjs'
 import { hasFailingFinding, reportLines } from './green-proof-report.mjs'
 import { proveCycle } from './prove-cycle.mjs'
@@ -19,7 +20,7 @@ import { createWorktreeSession } from './worktree.mjs'
  * @typedef {import('./worktree.mjs').RunCommand} RunCommand
  * @typedef {import('./worktree.mjs').Files} Files
  * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, log: (line: string) => void, githubActions: boolean, now: () => number, onSession?: (session: { dispose(): void }) => void }} GreenProofDeps
- * @typedef {{ range: string | null, commit: string | null, base: string }} Options
+ * @typedef {{ range: string | null, commit: string | null, base: string, mutationBudgetMinutes: number | null }} Options
  */
 
 const EXIT_CLEAN = 0
@@ -30,7 +31,12 @@ const DEFAULT_BASE = 'origin/main'
 const DEFAULT_HEAD = 'HEAD'
 const RANGE_SEPARATOR = '..'
 const NOT_FOUND = -1
-const OPTION_KEYS = { '--range': 'range', '--commit': 'commit', '--base': 'base' }
+const OPTION_KEYS = {
+  '--range': 'range',
+  '--commit': 'commit',
+  '--base': 'base',
+  '--mutation-budget-minutes': 'mutationBudgetMinutes',
+}
 
 /**
  * @param {readonly string[]} argv
@@ -38,13 +44,13 @@ const OPTION_KEYS = { '--range': 'range', '--commit': 'commit', '--base': 'base'
  */
 function parseOptions(argv) {
   /** @type {Options} */
-  const options = { range: null, commit: null, base: DEFAULT_BASE }
+  const options = { range: null, commit: null, base: DEFAULT_BASE, mutationBudgetMinutes: null }
   for (let index = 0; index < argv.length; index += 2) {
     const key = Object.hasOwn(OPTION_KEYS, argv[index]) ? OPTION_KEYS[argv[index]] : undefined
     const value = argv[index + 1]
     if (key === undefined) throw new Error(`unknown option ${argv[index]}`)
     if (value === undefined) throw new Error(`${argv[index]} needs a value`)
-    options[key] = value
+    options[key] = key === 'mutationBudgetMinutes' ? parseBudgetMinutes(value) : value
   }
   if (options.range !== null && options.commit !== null) {
     throw new Error('use either --range or --commit, not both')
@@ -123,14 +129,20 @@ function selectCycles(cycles, onlySha, range) {
 /**
  * @param {import('../rgb-audit/cycle-pairing.mjs').GreenCycle[]} cycles
  * @param {GreenProofDeps} deps
+ * @param {number | null} budgetMinutes
  * @returns {CycleResult[]}
  */
-function proveAll(cycles, deps) {
+function proveAll(cycles, deps, budgetMinutes) {
   const { runGit, runCommand, files, now } = deps
+  const budget = createMutationBudget(budgetMinutes)
   const session = createWorktreeSession({ runGit, runCommand, files, now })
   deps.onSession?.(session)
   try {
-    return cycles.map((cycle) => proveCycle(cycle, { runGit, runCommand, files, session, now }))
+    const context = { runGit, runCommand, files, session, now, budget }
+    return [...cycles]
+      .reverse()
+      .map((cycle) => proveCycle(cycle, context))
+      .reverse()
   } finally {
     session.dispose()
   }
@@ -143,13 +155,14 @@ function proveAll(cycles, deps) {
  */
 export async function runGreenProof(argv, deps) {
   try {
-    const { range, onlySha, headSha } = resolveRange(parseOptions(argv), deps.runGit)
+    const options = parseOptions(argv)
+    const { range, onlySha, headSha } = resolveRange(options, deps.runGit)
     const cycles = selectCycles(readCycles(range, deps.runGit), onlySha, range)
     if (cycles.length === 0) {
       deps.log(`green:proof: no GREEN commit in ${range}`)
       return EXIT_CLEAN
     }
-    const results = proveAll(cycles, deps)
+    const results = proveAll(cycles, deps, options.mutationBudgetMinutes)
     for (const line of reportLines(results, { range, headSha, githubActions: deps.githubActions }))
       deps.log(line)
     return hasFailingFinding(results) ? EXIT_FAILING : EXIT_CLEAN

@@ -3,6 +3,7 @@
  */
 
 import { join } from 'node:path'
+import { MUTATION_NOT_REACHED_NOTE } from './mutation-budget.mjs'
 import { survivorFindings } from './mutation-report.mjs'
 import {
   mutateRanges,
@@ -20,7 +21,8 @@ import { GENERATED_FOLDER } from './vitest-worktree.mjs'
  * @typedef {import('./worktree.mjs').RunCommand} RunCommand
  * @typedef {import('./worktree.mjs').Files} Files
  * @typedef {{ sha: string, root: string, redFiles: string[] }} MutationProof the GREEN commit, its worktree, and the RED files that ran
- * @typedef {{ runCommand: RunCommand, files: Files, now: () => number }} MutationTools
+ * @typedef {import('./mutation-budget.mjs').MutationBudget} MutationBudget
+ * @typedef {{ runCommand: RunCommand, files: Files, now: () => number, budget?: MutationBudget }} MutationTools
  */
 
 const RED_CONFIG = join(GENERATED_FOLDER, 'vitest.red.config.mjs')
@@ -77,16 +79,21 @@ function mutateGroup({ group, ranges }, base, { proof, tools }) {
  * @param {AddedLine[]} covered the covered added lines of the GREEN commit
  * @param {MutationProof} proof
  * @param {MutationTools} tools
- * @returns {{ findings: Finding[], elapsed: number } | undefined} undefined when no covered line is mutated
+ * @returns {{ findings: Finding[], notes: string[], elapsed?: number } | undefined} undefined when no covered line is mutated; no elapsed when the budget was spent
  */
 export function checkMutation(covered, proof, tools) {
   const targets = mutationTargets(covered)
   if (targets.length === 0) return undefined
+  if (tools.budget && !tools.budget.canStart()) {
+    return { findings: [], notes: [MUTATION_NOT_REACHED_NOTE] }
+  }
   const started = tools.now()
   tools.files.writeFile(join(proof.root, RED_CONFIG), redVitestConfigText(proof.redFiles))
   const base = JSON.parse(tools.files.readFile(join(proof.root, 'stryker.conf.json')))
   const findings = strykerGroups(mutateRanges(targets)).flatMap((target) =>
     mutateGroup(target, base, { proof, tools }),
   )
-  return { findings, elapsed: tools.now() - started }
+  const elapsed = tools.now() - started
+  tools.budget?.spend(elapsed)
+  return { findings, notes: [], elapsed }
 }

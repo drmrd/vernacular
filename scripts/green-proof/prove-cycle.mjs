@@ -251,7 +251,8 @@ export function proveCycle(cycle, context) {
   result.notes.push(...green.notes)
   if (green.mutation) {
     result.findings.push(...green.mutation.findings)
-    result.timings.mutation = green.mutation.elapsed
+    result.notes.push(...green.mutation.notes)
+    if (green.mutation.elapsed !== undefined) result.timings.mutation = green.mutation.elapsed
   }
   if (result.findings.some((finding) => severityOf(finding.rule) === 'fail')) {
     result.status = 'failed'
