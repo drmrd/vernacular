@@ -1,15 +1,20 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, vi } from 'vitest'
-import { rememberFolder, type TestPorts } from '../session/handle/handle-test-kit'
+import { DID_NOT_OPEN } from '../editor/projects'
+import { reconcileIndex } from '../session'
+import { createTestPorts, rememberFolder, type TestPorts } from '../session/handle/handle-test-kit'
+import type { InMemoryDirectory } from '../storage'
 import { folderRecord } from '../session/projects/rebuild-test-kit'
 import type { MemoryAddressBar } from './address-bar'
 import {
   documentBytes,
   editTheProject,
   expectOpenProject,
+  failedOpenSentence,
   findTheProjectsPage,
   namedProject,
+  plantFailedProject,
   renderAppAt,
   stubCapableStorage,
   usedLast,
@@ -107,13 +112,52 @@ export async function textOfTheCards(): Promise<string[]> {
     .map((link) => link.textContent ?? '')
 }
 
+/**
+ * Lists a project that a folder holds, under `FOLDER_ID`, with `bytes` as its document and a record
+ * used after every other. Gives the directory of the folder, which a later pick can choose again.
+ */
+export async function listFolderProject(
+  ports: TestPorts,
+  bytes: Uint8Array,
+): Promise<InMemoryDirectory> {
+  const directory = await rememberFolder(ports, FOLDER_ID, bytes)
+  await ports.index.put(folderRecord(FOLDER_ID, { name: FOLDER_NAME }))
+  await usedLast(ports, FOLDER_ID)
+  return directory
+}
+
 /** Durable ports with the first project and, used after it, a project that a folder holds. */
 export async function portsWithAFolderProject(): Promise<TestPorts> {
   const ports = await durablePortsWith(FIRST_ID)
-  await rememberFolder(ports, FOLDER_ID, documentBytes(namedProject(FOLDER_NAME)))
-  await ports.index.put(folderRecord(FOLDER_ID, { name: FOLDER_NAME }))
-  await usedLast(ports, FOLDER_ID)
+  await listFolderProject(ports, documentBytes(namedProject(FOLDER_NAME)))
   return ports
+}
+
+/** Durable ports with a project that opens and, in the index, a project that did not open. */
+export async function portsWithAProjectThatDoesNotOpen(): Promise<TestPorts> {
+  const ports = await durablePortsWith(FIRST_ID)
+  await plantFailedProject(ports)
+  await reconcileIndex(ports)
+  return ports
+}
+
+/** Waits for the card that says its project did not open, and gives its link. */
+export async function findTheCardThatDidNotOpen(): Promise<HTMLElement> {
+  const page = await findTheProjectsPage()
+  return waitFor(() => {
+    const [card] = within(page)
+      .getAllByRole('link')
+      .filter((link) => link.textContent?.includes(DID_NOT_OPEN))
+    if (card === undefined) throw new Error('No card says that its project did not open')
+    return card
+  })
+}
+
+/** The sentence of the notice for a stored document that a newer build wrote. */
+export async function theSentenceOfANewerBuildDocument(): Promise<string> {
+  const scratch = createTestPorts()
+  await plantFailedProject(scratch)
+  return failedOpenSentence(scratch)
 }
 
 /** Makes the file picker that Import file opens choose `file`, as a user does who picks one. */
