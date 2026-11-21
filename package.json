@@ -25,6 +25,7 @@
     "pack:validate": "node scripts/pack/vernacular-pack.mjs validate",
     "rgb:audit": "node scripts/rgb-audit/rgb-audit.mjs",
     "policy:check": "node scripts/policy-check/policy-check.mjs",
+    "green:proof": "node scripts/green-proof/green-proof.mjs",
     "integration:audit": "node scripts/integration-audit/integration-audit.mjs",
     "dup": "jscpd --silent .",
     "storybook": "storybook dev -p 6006 --no-open",

@@ -4,9 +4,11 @@
  * Exit code 0 means no failing finding, 1 means at least one, 2 means an internal error.
  */
 
+import { fileURLToPath } from 'node:url'
 import { shortSha } from '../policy-check/report.mjs'
 import { GIT_LOG_FORMAT, parseGitLog } from '../rgb-audit/cycle-audit.mjs'
 import { pairGreenCycles } from '../rgb-audit/cycle-pairing.mjs'
+import { defaultDeps } from './default-deps.mjs'
 import { hasFailingFinding, reportLines } from './green-proof-report.mjs'
 import { proveCycle } from './prove-cycle.mjs'
 import { createWorktreeSession } from './worktree.mjs'
@@ -16,13 +18,14 @@ import { createWorktreeSession } from './worktree.mjs'
  * @typedef {import('./worktree.mjs').RunGit} RunGit
  * @typedef {import('./worktree.mjs').RunCommand} RunCommand
  * @typedef {import('./worktree.mjs').Files} Files
- * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, log: (line: string) => void, githubActions: boolean, now: () => number }} GreenProofDeps
+ * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, log: (line: string) => void, githubActions: boolean, now: () => number, onSession?: (session: { dispose(): void }) => void }} GreenProofDeps
  * @typedef {{ range: string | null, commit: string | null, base: string }} Options
  */
 
 const EXIT_CLEAN = 0
 const EXIT_FAILING = 1
 const EXIT_INTERNAL = 2
+const EXIT_INTERRUPTED = 130
 const DEFAULT_BASE = 'origin/main'
 const DEFAULT_HEAD = 'HEAD'
 const OPTION_KEYS = { '--range': 'range', '--commit': 'commit', '--base': 'base' }
@@ -105,6 +108,7 @@ function selectCycles(cycles, onlySha, range) {
 function proveAll(cycles, deps) {
   const { runGit, runCommand, files, now } = deps
   const session = createWorktreeSession({ runGit, runCommand, files, now })
+  deps.onSession?.(session)
   try {
     return cycles.map((cycle) => proveCycle(cycle, { runGit, runCommand, files, session, now }))
   } finally {
@@ -133,3 +137,35 @@ export async function runGreenProof(argv, deps) {
     return EXIT_INTERNAL
   }
 }
+
+// Run only when invoked directly (node scripts/green-proof/green-proof.mjs ...),
+// never when imported by a test.
+const invokedPath = process.argv[1]
+const isDirectInvocation =
+  invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath
+
+/**
+ * Runs the command with the real dependencies. A signal that arrives during a synchronous step
+ * is handled once that step ends; it removes the worktree and exits 130.
+ */
+function runFromCommandLine() {
+  /** @type {{ dispose(): void }[]} */
+  const sessions = []
+  const deps = { ...defaultDeps(), onSession: (session) => sessions.push(session) }
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.once(signal, () => {
+      for (const session of sessions) session.dispose()
+      process.exit(EXIT_INTERRUPTED)
+    })
+  }
+  runGreenProof(process.argv.slice(2), deps)
+    .then((code) => {
+      process.exitCode = code
+    })
+    .catch((error) => {
+      console.error(error)
+      process.exit(EXIT_INTERNAL)
+    })
+}
+
+if (isDirectInvocation) runFromCommandLine()
