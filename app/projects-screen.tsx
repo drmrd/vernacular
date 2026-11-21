@@ -1,5 +1,11 @@
-import { useState, type ReactElement } from 'react'
-import { createNewProject, openRecent, type SessionPorts, type SwitchFailure } from '../session'
+import { useCallback, useState, type Dispatch, type ReactElement, type SetStateAction } from 'react'
+import {
+  createNewProject,
+  openRecent,
+  type FlowResult,
+  type SessionPorts,
+  type SwitchFailure,
+} from '../session'
 import { ThemeProvider, ToastRegion } from '../editor/design-system'
 import { ProjectsPage, type OpenProjectLink } from '../editor/projects'
 import type { AssetCache } from '../storage'
@@ -8,7 +14,7 @@ import { createInitialProject } from './create-initial-project'
 import { pageNoticeText } from './page-notice-text'
 import type { PageNotice, PageScreen } from './resolve-place'
 import type { HistoryNavigation } from './use-history-navigation'
-import type { Flow } from './use-open-project'
+import { isSwitchFailure, type Flow, type RunFlow } from './use-open-project'
 import { usePageActions } from './use-page-actions'
 import { requestedDesignLanguage } from './url-seams'
 import { useProjectCards } from './use-project-cards'
@@ -62,9 +68,52 @@ interface PageTries {
   readonly refresh: () => void
 }
 
+/** The tries of the page actions: the clear of the notice at their start, and their run. */
+interface ActionTries {
+  readonly onTryStart: () => void
+  readonly runFlow: RunFlow
+}
+
+/**
+ * The tries of Import file, a dropped file, and Open folder. A try that the owner ran and that
+ * ends with no project reads the cards again. A failure of the switch shows in the page's notice,
+ * under no card, and resolves `undefined`, so no toast says it again. Any other result passes on.
+ */
+function useActionTries(
+  { navigation, screen, refresh }: PageTries,
+  setTried: Dispatch<SetStateAction<TriedNotice | null>>,
+): ActionTries {
+  const replacedFailure = screen.notice?.failure
+  const onTryStart = useCallback(() => {
+    setTried({ replacedFailure, notice: undefined })
+  }, [replacedFailure, setTried])
+  const { runPageFlow } = navigation
+  const runFlow = useCallback(
+    async <Refusal = never,>(flow: Flow<Refusal>): Promise<FlowResult<Refusal> | undefined> => {
+      const result = await runPageFlow(flow)
+      if (result === undefined || result.ok) {
+        return result
+      }
+      refresh()
+      const { failure } = result
+      if (!isSwitchFailure(failure)) {
+        return result
+      }
+      setTried((previous) => ({
+        replacedFailure: previous?.replacedFailure,
+        notice: { id: '', failure },
+      }))
+      return undefined
+    },
+    [runPageFlow, refresh, setTried],
+  )
+  return { onTryStart, runFlow }
+}
+
 /** The notice of the page, and the tries of the page that open a project in place of the page. */
 function usePageTries({ navigation, screen, refresh }: PageTries) {
   const [tried, setTried] = useState<TriedNotice | null>(null)
+  const actionTries = useActionTries({ navigation, screen, refresh }, setTried)
   // The notice clears while the try runs. A try that gives a project leaves the page, and a try
   // that is refused because another runs changed nothing, so only a try that fails sets the notice
   // again and reads the cards again.
@@ -91,7 +140,7 @@ function usePageTries({ navigation, screen, refresh }: PageTries) {
     createNewProject(ports, current, createInitialProject)
   const onNewProject =
     openId === undefined ? navigation.startFresh : () => runTry(openId, newProject)
-  return { notice: shownNotice(screen.notice, tried), onOpen, onNewProject }
+  return { notice: shownNotice(screen.notice, tried), onOpen, onNewProject, ...actionTries }
 }
 
 /**
@@ -102,7 +151,12 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
   const { navigation, screen, ports, libraryAssets } = props
   const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
   const tries = usePageTries({ navigation, screen, refresh })
-  const actions = usePageActions({ navigation, ports, libraryAssets })
+  const actions = usePageActions({
+    runFlow: tries.runFlow,
+    onTryStart: tries.onTryStart,
+    ports,
+    libraryAssets,
+  })
   const openProject = openProjectLink(navigation)
   const notice = pageNoticeText(tries.notice, cards)
   return (
