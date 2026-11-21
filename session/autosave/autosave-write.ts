@@ -20,6 +20,8 @@ export interface WriteProgress {
   lastWriteFailed: boolean
   /** True once autosave is disposed. */
   disposed: boolean
+  /** True once the autosave must write no recovery snapshot and remove none. */
+  leavesSnapshots: boolean
 }
 
 /** Progress with no change and no write. */
@@ -30,6 +32,7 @@ export function createWriteProgress(): WriteProgress {
     runningFrom: undefined,
     lastWriteFailed: false,
     disposed: false,
+    leavesSnapshots: false,
   }
 }
 
@@ -43,6 +46,11 @@ export function needsWrite(progress: WriteProgress): boolean {
     return false
   }
   return progress.changes !== progress.storedChanges || progress.lastWriteFailed
+}
+
+/** Makes every later write of the autosave save the project and touch no recovery snapshot. */
+export function leaveSnapshots(progress: WriteProgress): void {
+  progress.leavesSnapshots = true
 }
 
 /** Saves the project, then gives what the save found to the report callback, guarded. */
@@ -69,12 +77,16 @@ export function flushWrites(queue: TrackedWriteQueue, progress: WriteProgress): 
 }
 
 /**
- * Writes ahead to a snapshot when snapshots are set, saves, then prunes. A prune that rejects goes
+ * Writes ahead to a snapshot when snapshots are set and not left, saves, then prunes. A prune that rejects goes
  * to console.error and does not fail the write, because the project is stored by then; the next
  * write that succeeds prunes again.
  */
-async function storeProject(config: AutosaveConfig, project: Project): Promise<void> {
-  const { snapshots } = config
+async function storeProject(
+  config: AutosaveConfig,
+  progress: WriteProgress,
+  project: Project,
+): Promise<void> {
+  const snapshots = progress.leavesSnapshots ? undefined : config.snapshots
   if (snapshots === undefined) {
     await saveAndReport(config, project)
     return
@@ -106,7 +118,7 @@ async function startAndStore(config: AutosaveConfig, progress: WriteProgress): P
   const startedFrom = progress.changes
   progress.runningFrom = startedFrom
   try {
-    await storeProject(config, project)
+    await storeProject(config, progress, project)
   } finally {
     progress.runningFrom = undefined
   }

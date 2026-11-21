@@ -1,5 +1,5 @@
 import type { DocumentStore, ProjectLockHold, ProjectSnapshots, SaveReport } from '../../storage'
-import { createAutosave } from '../autosave/create-autosave'
+import { type Autosave, createAutosave } from '../autosave/create-autosave'
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuarded } from '../guarded-call'
 import { registerHandle } from './handle-internals'
@@ -125,6 +125,25 @@ function listenToWrites(parts: WriteListenerParts): WriteListeners {
   }
 }
 
+/** The autosave of a handle, which leaves the recovery snapshots alone when the parts say so. */
+function createHandleAutosave(
+  parts: DocumentHandleParts,
+  session: EditorSession,
+  writes: WriteListeners,
+): Autosave {
+  const autosave = createAutosave({
+    session,
+    store: parts.store,
+    projectId: parts.request.id,
+    snapshots: parts.snapshots,
+    ...writes,
+  })
+  if (parts.leaveSnapshots === true) {
+    autosave.leaveSnapshots()
+  }
+  return autosave
+}
+
 /**
  * Builds the handle of an opened project: its session, its autosave, its status, its notices, and
  * its save, flush, and close. It records the store and the hand-over of the handle in the internal
@@ -144,13 +163,8 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
   const { snapshots } = parts
   const reportFaults = reportFaultsTo(notices, opened)
   const storedFlag = createStoredFlag(parts.stored ?? false)
-  const autosave = createAutosave({
-    session,
-    store,
-    projectId: request.id,
-    ...(parts.leaveSnapshots === true ? {} : { snapshots }),
-    ...listenToWrites({ session, status, reportFaults, records, storedFlag }),
-  })
+  const writes = listenToWrites({ session, status, reportFaults, records, storedFlag })
+  const autosave = createHandleAutosave(parts, session, writes)
   const { save, flush, close, handOver } = createSavePath({ autosave, hold, records })
   const handle: DocumentHandle = {
     id: request.id,
@@ -165,6 +179,13 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     flush,
     close,
   }
-  registerHandle(handle, { request, store, records, handOver, stored: storedFlag.get })
+  registerHandle(handle, {
+    request,
+    store,
+    records,
+    handOver,
+    leaveSnapshots: autosave.leaveSnapshots,
+    stored: storedFlag.get,
+  })
   return handle
 }

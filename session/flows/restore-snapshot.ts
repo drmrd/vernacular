@@ -66,7 +66,10 @@ async function prepareRestore(current: DocumentHandle): Promise<Prepared> {
     const opened = decideDocument(restored)
     if ('ok' in opened) {
       // A copy that does not decode moves to the backups, so the prompt stops offering it.
-      await setAsideRefusedCopies(current.snapshots)
+      // A copy that stays where it is must outlive the saves of the handle that stays open.
+      if ((await setAsideRefusedCopies(current.snapshots)) === 'failed') {
+        internals.leaveSnapshots()
+      }
       return opened
     }
     return { ok: true, opened, session: createEditorSession(opened.project), internals }
