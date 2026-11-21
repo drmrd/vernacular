@@ -172,30 +172,30 @@ Goal: learn whether Stryker 8.7.1 runs under Vitest 4.1.12 on a line range with 
 tests, and record the facts later cycles rely on. Target: `core/units/format-area.ts` lines 10 to
 20 with only `core/units/format-area.test.ts`.
 
-- [ ] **Step 1:** write a throwaway config `.green-proof/stryker-spike.json` (copy of
+- [x] **Step 1:** write a throwaway config `.green-proof/stryker-spike.json` (copy of
       `stryker.conf.json` with `"plugins": ["@stryker-mutator/vitest-runner",
 "@stryker-mutator/typescript-checker"]`, `mutate: ["core/units/format-area.ts:10-20"]`,
       `reporters: ["json", "clear-text"]`, `thresholds.break: null`, and
       `vitest: { configFile: ".green-proof/vitest.red.config.mjs", related: false }`) and the
       Vitest config `mergeConfig(base, { test: { include: ['core/units/format-area.test.ts'] } })`
       over `../vite.config.ts`. Run `pnpm exec stryker run .green-proof/stryker-spike.json`.
-- [ ] **Step 2:** record in a "Spike results" section at the end of this plan: (a) whether the
+- [x] **Step 2:** record in a "Spike results" section at the end of this plan: (a) whether the
       checker plugin loads with the explicit `plugins` list; (b) whether the run passes the dry
       run or fails on Vitest pool options (`threads`, `poolOptions.threads`); (c) that only
       mutants on lines 10 to 20 appear (whether the range end is inclusive, whether lines are
       1-based); (d) that the initial test run lists only `format-area.test.ts`; (e) the shape of
       `files` keys in the JSON report (relative or absolute) and of a mutant's `status`,
       `mutatorName`, `replacement`, `location.start.line`; (f) wall time.
-- [ ] **Step 3:** repeat with one `scripts/policy-check/report.mjs` range, the test
+- [x] **Step 3:** repeat with one `scripts/policy-check/report.mjs` range, the test
       `scripts/policy-check/report.test.mjs`, and `checkers: []`. Record whether it runs and
       whether a `typescript` checker would reject or ignore `.mjs` (Decision 6).
-- [ ] **Step 4, only if (b) fails:** upgrade `@stryker-mutator/core`, `vitest-runner`, and
+- [x] **Step 4, only if (b) fails:** upgrade `@stryker-mutator/core`, `vitest-runner`, and
       `typescript-checker` together to the newest release published at least 30 days before
       today (`pnpm view @stryker-mutator/core time --json`; 10.0.0 on 2026-11-20, 10.1.1 from
       2026-11-22). Check the `@stryker-mutator/instrumenter>@babel/core@7` override in
       `pnpm.overrides` still applies. Rerun Steps 1 and 3. Commit
       `build: upgrade Stryker to <version> for Vitest 4`.
-- [ ] **Step 5:** delete `.green-proof/`. Commit the results section
+- [x] **Step 5:** delete `.green-proof/`. Commit the results section
       `docs: record the Stryker spike results in the green proof plan`. If any of (a) to (e)
       contradicts Decisions 5 to 7, stop and bring it to the main thread before cycle 14.
 
@@ -710,7 +710,35 @@ reading from `.claude/agents/pr-reviewer.md` to cycles the job skipped.
 
 ## Spike results
 
-(Task 1 fills this in.)
+Run on 2026-11-20 with Vitest 4.1.12. Stryker 8.7.1 failed (b), so Step 4 upgraded core,
+`vitest-runner`, and `typescript-checker` to 10.0.0 (10.1.1 is from 2026-10-23, inside the
+cooldown). The facts below are for 10.0.0 unless they name 8.7.1.
+
+- **(a)** The checker plugin loads with the explicit `plugins` list. Without the list, the run
+  stops with "no Checker plugins were loaded". With `tsconfigFile: "tsconfig.json"` the checker
+  fails to start: the root config has `references`, so the checker runs in build mode, turns on
+  `declaration`, and reports TS4058 in `tests/performance/timing/frame-probe-test-setup.ts`. A
+  generated `{ "extends": "../tsconfig.json" }` under `.green-proof/` has no `references`, and the
+  checker starts with it.
+- **(b)** 8.7.1 rejects `vitest.related` ("must NOT have additional properties"), and without it
+  the initial run crashes with "Cannot destructure property 'moduleGraph' of 'project.server'".
+  It did not fail on pool options. 10.0.0 accepts `related: false` and the dry run passes.
+- **(c)** For `core/units/format-area.ts:10-20` the mutants are on lines 15, 16, and 20, and none
+  are on line 21. Lines are 1-based and the end line is inclusive.
+- **(d)** The initial test run lists only `format-area.test.ts` (5 tests), and the report's
+  `testFiles` holds only `core/units/format-area.test.ts`.
+- **(e)** `files` keys are repository-relative (`core/units/format-area.ts`). A mutant has
+  `status` in PascalCase (`Killed`, `Survived`, `CompileError`), `mutatorName` such as
+  `EqualityOperator`, `replacement` as source text (`"preferences.system !== 'metric'"`), and
+  1-based `location.start.line` and `location.start.column`. A checker rejection is
+  `CompileError` with the `tsc` message in `statusReason`.
+- **(f)** 118 s wall for 6 mutants. Starting the checker took about 87 s of it, the initial test
+  run 1 s.
+
+**Step 3:** `scripts/policy-check/report.mjs:19-30` with `report.test.mjs` and `checkers: []`
+runs in 11 s: 21 mutants, 20 killed, 1 survived. With the `typescript` checker the result is the
+same (no `CompileError`, so the checker ignores `.mjs` mutants) and the run takes 101 s. Decision 6
+holds for `scripts/`.
 
 ## Measurement results
 
