@@ -2,12 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   PROJECT_ID,
   REFUSED_COPY_NAME,
+  REFUSED_TEXT,
   THE_REFUSED_BACKUP,
   autosaveFolderOf,
   backupFolderOf,
   plantRefusedCopy,
   refusedBackupsIn,
+  textOf,
 } from '../handle/handle-refused-snapshots-test-kit'
+import { DEFAULT_AUTOSAVE_DELAY_MS } from '../autosave/create-autosave'
+import { settle } from '../autosave/save-gate-test-kit'
 import { rename, storedName } from '../handle/handle-test-kit'
 import { openStored } from './restore-snapshot-test-kit'
 import type { StoredAndOpen } from './restore-snapshot-test-kit'
@@ -99,5 +103,35 @@ describe('a restore of a recovery copy that cannot be read', () => {
     expect(result).toEqual(DID_NOT_RESTORE)
     expect(await ports.locks.heldIds()).toEqual(new Set([PROJECT_ID]))
     expect(await ports.root.list(AUTOSAVE_PATH)).toContain(REFUSED_COPY_NAME)
+  })
+})
+
+describe('the saves that follow a restore of a recovery copy that cannot be read', () => {
+  it('a restore whose move rejects keeps the copy in the autosave folder through an autosave and a save', async () => {
+    const { ports, handle } = await openedThenRefused()
+    vi.spyOn(handle.snapshots, 'setAsideRefused').mockRejectedValue(new Error(DISK_FULL))
+    await restoreSnapshot(handle)
+
+    rename(handle, EDITED_AGAIN_NAME)
+    await vi.advanceTimersByTimeAsync(DEFAULT_AUTOSAVE_DELAY_MS)
+    await settle()
+    const saved = await handle.save()
+
+    expect(saved).toEqual({ ok: true })
+    expect(await storedName(ports.workspace, PROJECT_ID)).toBe(EDITED_AGAIN_NAME)
+    expect(textOf(await ports.root.readFile(`${AUTOSAVE_PATH}/${REFUSED_COPY_NAME}`))).toBe(
+      REFUSED_TEXT,
+    )
+  })
+
+  it('a restore whose move succeeds leaves the backup in place after an edit and a save', async () => {
+    const { ports, handle } = await openedThenRefused()
+    await restoreSnapshot(handle)
+
+    rename(handle, EDITED_AGAIN_NAME)
+    const saved = await handle.save()
+
+    expect(saved).toEqual({ ok: true })
+    expect(await refusedBackupsIn(ports.root, BACKUP_PATH)).toEqual(THE_REFUSED_BACKUP)
   })
 })
