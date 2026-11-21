@@ -172,15 +172,35 @@ function evictScenesSharingBuilds(
 }
 
 /**
+ * Drops every cached scene that stacked a floor build the cache has since replaced. Such a
+ * scene can never be returned again, because a cache hit compares against the current builds,
+ * so its ground plane retires now rather than waiting for its floor set to come back.
+ */
+function evictStaleScenes(
+  scenes: Map<string, AssembledScene>,
+  cache: Map<string, CachedFloorBuild>,
+  retired: RetiredResources,
+): void {
+  for (const [key, scene] of scenes) {
+    if (scene.builds.some((build) => cache.get(build.floorNode.id) !== build)) {
+      scenes.delete(key)
+      retireGroundPlanes(scene.framed, retired)
+    }
+  }
+}
+
+/**
  * Stacks the pass's floors into a scene, returning the cached scene for the floor set when it
- * holds the exact same builds. A scene this replaces or evicts retires its ground plane.
+ * holds the exact same builds. A scene this replaces, evicts, or leaves stale retires its
+ * ground plane.
  */
 function reconcileStackedScene(
   pass: ReconcilePass,
   scenes: Map<string, AssembledScene>,
 ): FramedScene {
-  const { graph, retired } = pass
+  const { graph, cache, retired } = pass
   const builds = graph.nodes.map((node) => reuseOrBuildFloor(node, pass))
+  evictStaleScenes(scenes, cache, retired)
   const key = graph.nodes.map((node) => node.id).join(FLOOR_SET_SEPARATOR)
   const cached = scenes.get(key)
   if (cached !== undefined && sameRefs(cached.builds, builds)) {
