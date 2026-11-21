@@ -2,8 +2,8 @@ import type { ProjectLockHold } from '../../storage'
 import { callGuardedAsync } from '../guarded-call'
 import { internalsOf } from '../handle/handle-internals'
 import type { DocumentHandle } from '../handle/handle-types'
-import { messageOf } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
+import { storageUnavailable } from './card-flow-failures'
 
 export type LockFailure =
   | { readonly kind: 'open-elsewhere' | 'flush-failed' }
@@ -20,7 +20,9 @@ function failed(failure: LockFailure, currentClosed = false): LockResult {
 
 /**
  * Ends the open project's handle, keeps its lock, tells its record keeper that the lock moved, and
- * waits for the record write that runs. A handle that cannot end stays open.
+ * waits for the record write that runs. A handle that cannot end stays open, with one exception:
+ * when a close of the same handle overlaps, the hand-over gives flush-failed with currentClosed
+ * false although the handle is closed.
  */
 async function lockOfOpenProject(current: DocumentHandle): Promise<LockResult> {
   const internals = internalsOf(current)
@@ -59,7 +61,7 @@ export async function lockFor(
     }
     return await lockOfOtherProject(ports, id)
   } catch (error) {
-    return failed({ kind: 'storage-unavailable', message: messageOf(error) })
+    return failed(storageUnavailable(error))
   }
 }
 

@@ -1,9 +1,9 @@
 import type { Project } from '../../core'
 import type { ProjectRecord, ProjectSummary } from '../../storage'
 import type { DocumentHandle } from '../handle/handle-types'
-import { messageOf } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import { assetHashesOf } from '../projects/project-facts'
+import { type StorageUnavailable, storageUnavailable } from './card-flow-failures'
 
 /**
  * The pool assets that each project of the workspace uses, by id. A project whose asset list is not
@@ -13,10 +13,7 @@ export type AssetUsers = ReadonlyMap<string, readonly string[] | undefined>
 
 export type UsersResult =
   | { readonly ok: true; readonly users: AssetUsers }
-  | {
-      readonly ok: false
-      readonly failure: { readonly kind: 'storage-unavailable'; readonly message: string }
-    }
+  | { readonly ok: false; readonly failure: StorageUnavailable }
 
 /** The asset list of a record that is complete and as new as the stored document; else unknown. */
 function listedBy(
@@ -63,7 +60,7 @@ export async function usersOf(
   try {
     return { ok: true, users: await readUsers(ports, current) }
   } catch (error) {
-    return { ok: false, failure: { kind: 'storage-unavailable', message: messageOf(error) } }
+    return { ok: false, failure: storageUnavailable(error) }
   }
 }
 

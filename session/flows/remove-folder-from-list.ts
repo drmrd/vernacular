@@ -1,6 +1,6 @@
 import type { DocumentHandle } from '../handle/handle-types'
-import { messageOf } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
+import { readRecord, storageUnavailable } from './card-flow-failures'
 import { freeLock, lockFor } from './project-lock-for'
 
 export type RemoveFromListFailure =
@@ -25,15 +25,14 @@ async function refusalFor(
   current: DocumentHandle | undefined,
   id: string,
 ): Promise<RemoveFromListFailure | undefined> {
-  try {
-    const record = await ports.index.get(id)
-    const location = record?.location ?? (current?.id === id ? current.location : undefined)
-    return location !== undefined && location.kind !== 'folder'
-      ? { kind: 'workspace-project' }
-      : undefined
-  } catch (error) {
-    return { kind: 'storage-unavailable', message: messageOf(error) }
+  const read = await readRecord(ports, id)
+  if ('failure' in read) {
+    return read.failure
   }
+  const location = read.record?.location ?? (current?.id === id ? current.location : undefined)
+  return location !== undefined && location.kind !== 'folder'
+    ? { kind: 'workspace-project' }
+    : undefined
 }
 
 /**
@@ -61,8 +60,7 @@ export async function removeFolderFromList(
     await ports.index.remove(id)
     return { ok: true, currentClosed }
   } catch (error) {
-    const failure = { kind: 'storage-unavailable', message: messageOf(error) } as const
-    return { ok: false, failure, currentClosed }
+    return { ok: false, failure: storageUnavailable(error), currentClosed }
   } finally {
     await freeLock(locked.hold)
   }

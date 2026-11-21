@@ -1,8 +1,7 @@
-import type { ProjectRecord } from '../../storage'
 import type { DocumentHandle } from '../handle/handle-types'
-import { messageOf } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import { removableAssets, usersOf } from './asset-users'
+import { readRecord, storageUnavailable } from './card-flow-failures'
 import { freeLock, lockFor } from './project-lock-for'
 
 export interface DeleteRequest {
@@ -27,15 +26,8 @@ type Removal =
   | { readonly ok: true; readonly removedAssets: readonly string[] }
   | { readonly ok: false; readonly failure: DeleteFailure }
 
-function unavailable(error: unknown): {
-  readonly kind: 'storage-unavailable'
-  readonly message: string
-} {
-  return { kind: 'storage-unavailable', message: messageOf(error) }
-}
-
 /** The document, then the record, then the assets that only this project used. */
-async function removeAll(
+async function removeProjectAndItsAssets(
   ports: SessionPorts,
   current: DocumentHandle | undefined,
   request: DeleteRequest,
@@ -54,19 +46,7 @@ async function removeAll(
     }
     return { ok: true, removedAssets }
   } catch (error) {
-    return { ok: false, failure: unavailable(error) }
-  }
-}
-
-/** The record of the id, or why it cannot be read. */
-async function recordRead(
-  ports: SessionPorts,
-  id: string,
-): Promise<{ readonly record: ProjectRecord | undefined } | { readonly failure: DeleteFailure }> {
-  try {
-    return { record: await ports.index.get(id) }
-  } catch (error) {
-    return { failure: unavailable(error) }
+    return { ok: false, failure: storageUnavailable(error) }
   }
 }
 
@@ -82,7 +62,7 @@ export async function deleteProject(
   current: DocumentHandle | undefined,
   request: DeleteRequest,
 ): Promise<DeleteResult> {
-  const read = await recordRead(ports, request.id)
+  const read = await readRecord(ports, request.id)
   if ('failure' in read) {
     return { ok: false, failure: read.failure, currentClosed: false }
   }
@@ -95,7 +75,7 @@ export async function deleteProject(
   }
   const { currentClosed } = locked
   try {
-    const removal = await removeAll(ports, current, request)
+    const removal = await removeProjectAndItsAssets(ports, current, request)
     return { ...removal, currentClosed }
   } finally {
     await freeLock(locked.hold)
