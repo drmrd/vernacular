@@ -192,6 +192,12 @@ export const UNCOVERED_COMPONENTS: {
       'the scene-objects group (the close doors and windows control) that sits between the camera presets and the display options, a component of its own that scene-nav-toolbar.tsx renders; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
   },
   {
+    component: 'ScenePaneShell',
+    file: 'bridge/react/scene-pane-shell.tsx',
+    reason:
+      'the live preview pane wrapper (grab cursor and camera controls hint) split out of webgpu-scene-view.tsx to keep that module under its size budget; it is only rendered inside WebGPUSceneView, which is itself recorded here, and its DOM is exercised through the scene-pane-shell tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
     component: 'SceneProxyProjector',
     file: 'bridge/react/scene-proxies.tsx',
     reason:
