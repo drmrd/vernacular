@@ -450,6 +450,14 @@ jobs:
         env:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=scene-webgl e2e/tests/scene-live-view-startup.spec.ts --reporter=list
+      - name: Edge overlay GPU resource spec (scene-webgl project)
+        # One test that flips the surface-edge overlay ten times and expects the live renderer's
+        # geometry and texture counts to stay flat. It takes about ten seconds on the development
+        # Mac. Five minutes covers two retries and their traces, and it ends a hung run early.
+        timeout-minutes: 5
+        env:
+          E2E_REQUIRE_WEBGPU: '1'
+        run: pnpm exec playwright test --project=scene-webgl e2e/tests/scene-edge-overlay-resources.spec.ts --reporter=list
       - name: Upload live-view report on failure
         if: failure()
         uses: actions/upload-artifact@v4
