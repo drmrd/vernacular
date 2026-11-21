@@ -1,17 +1,26 @@
 import { StrictMode } from 'react'
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, act } from '@testing-library/react'
+import { render, screen, cleanup, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from './app'
-import { OPEN_ELSEWHERE } from './open-failure-text'
-import { createTestPorts, holdNextRead, recordingPorts } from '../session/handle/handle-test-kit'
+import { reconcileIndex } from '../session'
+import {
+  createTestPorts,
+  holdNextRead,
+  recordingPorts,
+  type TestPorts,
+} from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
   LOADING_TEXT,
   builtPorts,
+  clickCardOf,
   editTheProject,
   expectOpenProject,
+  findCardLink,
+  findThePageAlert,
+  findTheProjectsPage,
   findTheShell,
   lockCalls,
   lockedIds,
@@ -21,11 +30,22 @@ import {
   resetWindowAddress,
   secondTab,
   startNewProjectFromTheFailureView,
+  startNewProjectFromThePage,
   storedIds,
   stubCapableStorage,
 } from './app-test-support'
 
 const KEPT_NAME = 'Kept House'
+const OPEN_ELSEWHERE_LINE = 'Already open in another tab.'
+
+/** Ports whose store holds the kept project, indexed, and whose first read of any file fails once. */
+async function portsThatFailOnceOnAKeptProject(): Promise<TestPorts> {
+  const ports = createTestPorts()
+  await plantProject(ports, FAILED_ID, KEPT_NAME)
+  await reconcileIndex(ports)
+  vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
+  return ports
+}
 
 afterEach(() => {
   cleanup()
@@ -129,29 +149,29 @@ describe('The application boots from its ports', () => {
 })
 
 describe('The application after a failed start', () => {
-  it('shows a recoverable error when the project fails to load', async () => {
+  it('shows the Projects page with a notice when the project fails to load', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     const read = vi.spyOn(ports.workspace, 'read').mockRejectedValue(new Error('disk fault'))
 
     renderApp(ports)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/could not open the project/i)
+    expect(await findThePageAlert()).toHaveTextContent(/could not open the project/i)
     // The failure is the one of these ports, not of a store resolved elsewhere.
     expect(read).toHaveBeenCalled()
   })
 
-  it('names the underlying failure in the boot error notice', async () => {
+  it('names the underlying failure in the notice of the page', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     vi.spyOn(ports.workspace, 'read').mockRejectedValue(new Error('stored project is corrupt'))
 
     renderApp(ports)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/stored project is corrupt/i)
+    expect(await findThePageAlert()).toHaveTextContent(/stored project is corrupt/i)
   })
 
-  it('says that the project is open in another tab when another tab holds it', async () => {
+  it('says on the card that the project is open in another tab when another tab holds it', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     await plantProject(ports, FAILED_ID, KEPT_NAME)
@@ -159,22 +179,22 @@ describe('The application after a failed start', () => {
 
     renderApp(ports)
 
-    const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(OPEN_ELSEWHERE)
-    expect(alert).not.toHaveTextContent(/could not open the project/i)
+    const page = await findTheProjectsPage()
+    const card = await findCardLink(KEPT_NAME)
+    expect(card).toHaveTextContent(OPEN_ELSEWHERE_LINE)
+    expect(within(page).queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('boots into the shell when the failed boot is retried', async () => {
+  it('boots into the shell when the card of the failed project is clicked', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
-    // Fails once, then reads normally: Retry has to run the start again, not just
+    // Fails once, then reads normally: the click has to open the project again, not just
     // repaint the notice.
-    vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
+    const ports = await portsThatFailOnceOnAKeptProject()
 
     renderApp(ports)
 
-    await screen.findByRole('alert')
-    await userEvent.click(screen.getByRole('button', { name: /retry/i }))
+    await findThePageAlert()
+    await clickCardOf(KEPT_NAME)
 
     expect(await findTheShell()).toBeInTheDocument()
   })
@@ -186,7 +206,7 @@ describe('The application after a failed start', () => {
     const save = vi.spyOn(ports.workspace, 'save')
 
     renderApp(ports)
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
 
     await findTheShell()
     // The stored bytes survive: they are only replaced by an explicit save.
@@ -198,19 +218,20 @@ describe('The application after a failed start', () => {
     expect(await storedIds(ports)).toEqual([FAILED_ID])
   })
 
-  it('shows the loading view, and no button of the failure view, while a new project opens', async () => {
+  it('shows the loading view, and no Projects page, while a new project opens', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     await plantFailedProject(ports)
     renderApp(ports)
-    await screen.findByRole('alert')
+    await findThePageAlert()
     const letTheReadGo = holdNextRead(ports.workspace)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Start a new project' }))
+    await startNewProjectFromThePage()
 
     expect(await screen.findByText(LOADING_TEXT)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Start a new project' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('main', { name: 'Projects' })).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('link')).toEqual([])
+    expect(screen.queryByRole('button', { name: 'New project' })).not.toBeInTheDocument()
     letTheReadGo()
     expect(await findTheShell()).toBeInTheDocument()
   })
@@ -228,17 +249,16 @@ describe('The application that resolves its ports', () => {
     expect(resolvePorts).toHaveBeenCalledTimes(1)
   })
 
-  it('retries only the failed open and leaves the resolved ports alone', async () => {
+  it('opens only the failed project from its card and leaves the resolved ports alone', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
     // The ports resolve normally; only the first open fails.
-    vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
+    const ports = await portsThatFailOnceOnAKeptProject()
     const resolvePorts = vi.fn(() => Promise.resolve(builtPorts(ports)))
 
     render(<App resolvePorts={resolvePorts} />)
 
-    await screen.findByRole('alert')
-    await userEvent.click(screen.getByRole('button', { name: /retry/i }))
+    await findThePageAlert()
+    await clickCardOf(KEPT_NAME)
 
     await findTheShell()
     // Resolving again would hand the open project other ports, and a resolution that

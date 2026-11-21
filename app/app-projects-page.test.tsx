@@ -3,13 +3,19 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TestPorts } from '../session/handle/handle-test-kit'
 import {
-  KEPT_PROJECT_TEXT,
+  NEW_PROJECT_NAME,
+  backToTheProject,
   editTheProject,
   expectOpenProject,
+  findCardLink,
+  findThePageAlert,
+  findTheProjectsPage,
+  lockedIds,
   logSaves,
   projectWithWalls,
   renderAppAt,
   settleForAWhile,
+  startNewProjectFromThePage,
   stubCapableStorage,
 } from './app-test-support'
 import {
@@ -24,7 +30,6 @@ import {
 } from './history-navigation-test-support'
 
 const NOT_STORED_SENTENCE = 'This project is not stored in this browser.'
-const LIST_SENTENCE = 'The list of projects is not available yet.'
 const OPEN_FAILURE_PREFIX = /could not open the project/i
 const FLUSH_WAIT_MS = 300
 const releases: Array<() => void> = []
@@ -72,15 +77,9 @@ async function addAFloorWithoutAutosave(): Promise<void> {
   await screen.findByRole('button', { name: /2nd floor/i })
 }
 
-/** Waits for the page of the interim view, and gives its landmark. */
-function theProjectsPage(): Promise<HTMLElement> {
-  return screen.findByRole('main', { name: 'Projects' })
-}
-
-/** Clicks "Return to the project" on the page. */
-async function returnToTheProject(): Promise<void> {
-  const page = await theProjectsPage()
-  await userEvent.click(within(page).getByRole('button', { name: 'Return to the project' }))
+/** Clicks "Back to <name>" for the first project on the page. */
+function returnToTheFirstProject(): Promise<void> {
+  return backToTheProject(nameOf(FIRST_ID))
 }
 
 /** Whether a new cancelable `beforeunload` event is vetoed, the sign of the browser's warning. */
@@ -98,52 +97,64 @@ function hideTheTab(): void {
   })
 }
 
-describe('The interim page with a notice', () => {
-  it('shows the sentence of an unknown project with Retry and Start a new project, and no line about a saved project', async () => {
+describe('The Projects page with a notice', () => {
+  it('shows the sentence of an unknown project, New project, and the stored cards, and no Retry', async () => {
     const ports = await durablePortsWith(FIRST_ID)
 
     renderAppAt(ports, addressOf(MISSING_ID))
 
-    const alert = await screen.findByRole('alert')
+    const alert = await findThePageAlert()
     expect(alert).toHaveTextContent(NOT_STORED_SENTENCE)
     expect(alert).not.toHaveTextContent(OPEN_FAILURE_PREFIX)
-    expect(screen.getByRole('main', { name: 'Error' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start a new project' })).toBeInTheDocument()
-    expect(screen.queryByText(KEPT_PROJECT_TEXT)).not.toBeInTheDocument()
+    const page = await findTheProjectsPage()
+    expect(within(page).getByRole('button', { name: 'New project' })).toBeInTheDocument()
+    expect(await findCardLink(nameOf(FIRST_ID))).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
   })
 
-  it('shows Retry and Return to the project when a move leads to a project that does not open, and Return keeps the undo history', async () => {
+  it('shows the notice and Back to the project when a move leads to a project that does not open, and Back keeps the undo history', async () => {
     const { bar } = await openFirstProject()
     await addAFloor()
 
     await visit(bar, addressOf(MISSING_ID))
 
-    const alert = await screen.findByRole('alert')
+    const alert = await findThePageAlert()
     expect(alert).toHaveTextContent(NOT_STORED_SENTENCE)
     expect(alert).not.toHaveTextContent(OPEN_FAILURE_PREFIX)
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Return to the project' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Start a new project' })).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Return to the project' }))
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+    await returnToTheFirstProject()
     expect(await screen.findByRole('button', { name: /2nd floor/i })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /undo/i }))
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /2nd floor/i })).not.toBeInTheDocument(),
     )
   })
+
+  it('starts a new project from the notice with New project', async () => {
+    const ports = await durablePortsWith(FIRST_ID)
+    renderAppAt(ports, addressOf(MISSING_ID))
+    await findThePageAlert()
+
+    await startNewProjectFromThePage()
+
+    await expectOpenProject(NEW_PROJECT_NAME)
+    expect(lockedIds(ports)).not.toContain(FIRST_ID)
+  })
 })
 
-describe('The interim page over an open project', () => {
-  it('shows the page with one button for the projects address over an open project', async () => {
+describe('The Projects page over an open project', () => {
+  it('shows Back to the project and a card for each project over an open project', async () => {
     const { bar } = await openFirstProject()
 
     await visit(bar, PROJECTS_ADDRESS)
 
-    const page = await theProjectsPage()
-    expect(within(page).getByRole('status')).toHaveTextContent(LIST_SENTENCE)
-    const buttons = within(page).getAllByRole('button')
-    expect(buttons.map((button) => button.textContent)).toEqual(['Return to the project'])
+    const page = await findTheProjectsPage()
+    expect(
+      within(page).getByRole('button', { name: `Back to ${nameOf(FIRST_ID)}` }),
+    ).toBeInTheDocument()
+    expect(await findCardLink(nameOf(FIRST_ID))).toBeInTheDocument()
+    expect(await findCardLink(nameOf(SECOND_ID))).toBeInTheDocument()
+    expect(within(page).queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: /breadcrumb/i })).not.toBeInTheDocument()
   })
 
@@ -153,7 +164,7 @@ describe('The interim page over an open project', () => {
     await addAFloor()
     await visit(bar, PROJECTS_ADDRESS)
 
-    await returnToTheProject()
+    await returnToTheFirstProject()
 
     expect(await screen.findByRole('button', { name: /2nd floor/i })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /undo/i }))
@@ -167,25 +178,30 @@ describe('The interim page over an open project', () => {
     holdSaves(ports)
     await addAFloor()
     await visit(bar, PROJECTS_ADDRESS)
-    await theProjectsPage()
+    await findTheProjectsPage()
 
     await userEvent.keyboard('{Control>}z{/Control}{Meta>}z{/Meta}{Delete}')
 
-    await returnToTheProject()
+    await returnToTheFirstProject()
     expect(await screen.findByRole('button', { name: /2nd floor/i })).toBeInTheDocument()
   })
 })
 
-describe('The interim page with no project open', () => {
-  it('shows the page with Open the last project when nothing is open', async () => {
+describe('The Projects page with no project open', () => {
+  it('shows the cards of the stored projects, latest use first, and opens nothing', async () => {
     const ports = await durablePortsWith(FIRST_ID, SECOND_ID)
 
     renderAppAt(ports, PROJECTS_ADDRESS)
 
-    const page = await theProjectsPage()
-    expect(within(page).getByRole('status')).toHaveTextContent(LIST_SENTENCE)
-    await userEvent.click(within(page).getByRole('button', { name: 'Open the last project' }))
-    await expectOpenProject(nameOf(FIRST_ID))
+    const page = await findTheProjectsPage()
+    await findCardLink(nameOf(SECOND_ID))
+    const names = within(page)
+      .getAllByRole('link')
+      .map((link) => link.textContent)
+    expect(names[0]).toContain(nameOf(FIRST_ID))
+    expect(names[1]).toContain(nameOf(SECOND_ID))
+    expect(within(page).queryByRole('button', { name: /^Back to/ })).not.toBeInTheDocument()
+    expect(lockedIds(ports)).toEqual([])
   })
 })
 
@@ -195,7 +211,7 @@ describe('The unsaved work of a project while the page shows', () => {
     holdSaves(ports)
     await addAFloor()
     await visit(bar, PROJECTS_ADDRESS)
-    await theProjectsPage()
+    await findTheProjectsPage()
 
     expect(unloadIsVetoed()).toBe(true)
   })
@@ -205,7 +221,7 @@ describe('The unsaved work of a project while the page shows', () => {
     const log = logSaves(ports.workspace)
     await addAFloorWithoutAutosave()
     await visit(bar, PROJECTS_ADDRESS)
-    await theProjectsPage()
+    await findTheProjectsPage()
     expect(log.saved).toEqual([])
 
     hideTheTab()
@@ -221,7 +237,7 @@ describe('The unsaved work of a project while the page shows', () => {
     expect(within(prompt).getByRole('button', { name: /restore/i })).toBeInTheDocument()
     await visit(bar, PROJECTS_ADDRESS)
 
-    await returnToTheProject()
+    await returnToTheFirstProject()
 
     await screen.findByRole('navigation', { name: /breadcrumb/i })
     await settleForAWhile()

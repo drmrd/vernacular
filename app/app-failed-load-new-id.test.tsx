@@ -8,7 +8,7 @@ import {
   filesUnder,
   projectFromANewerBuild,
   renderApp,
-  startNewProjectFromTheFailureView,
+  startNewProjectFromThePage,
   storedIds,
   stubCapableStorage,
 } from './app-test-support'
@@ -50,7 +50,7 @@ describe('A project started after a failed load', () => {
 
     renderApp(ports)
 
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
     await editTheProject()
     await waitFor(() => expect(save).toHaveBeenCalled(), { timeout: AUTOSAVE_TIMEOUT_MS })
     await save.mock.results[0]?.value

@@ -1,21 +1,24 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { cleanup, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { DID_NOT_OPEN } from '../editor/projects'
 import { createTestPorts, recordOf, type TestPorts } from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
-  KEPT_PROJECT_TEXT,
   chooseFromTheProjectMenu,
   editTheProject,
   failedOpenSentence,
   filesUnder,
+  findThePageAlert,
+  findTheProjectsPage,
   logSaves,
   plantFailedProject,
   recordIds,
   renderApp,
   secondTab,
   settleForAWhile,
+  startNewProjectFromThePage,
   storedIds,
   stubCapableStorage,
   type SaveLog,
@@ -31,11 +34,6 @@ async function durablePortsWithAFailedProject(): Promise<TestPorts> {
 // ports of one root and one lock registry are two tabs.
 function boot(ports: TestPorts): HTMLElement {
   return renderApp(ports).container
-}
-
-async function startNewProject(tab: HTMLElement): Promise<void> {
-  await within(tab).findByRole('alert')
-  await userEvent.click(within(tab).getByRole('button', { name: /start a new project/i }))
 }
 
 async function editTheProjectIn(tab: HTMLElement): Promise<void> {
@@ -81,13 +79,13 @@ describe('Two tabs that start a new project after a failed load', () => {
     const failedBefore = await filesUnder(firstPorts.root, FAILED_ID)
     const first = boot(firstPorts)
     const second = boot(secondPorts)
-    await within(first).findByRole('alert')
-    await within(second).findByRole('alert')
+    await findThePageAlert(first)
+    await findThePageAlert(second)
 
-    await startNewProject(first)
+    await startNewProjectFromThePage(first)
     await editTheProjectIn(first)
     const firstId = await nextSavedIdOutside(saves, [FAILED_ID])
-    await startNewProject(second)
+    await startNewProjectFromThePage(second)
     const firstFiles = await filesUnder(firstPorts.root, firstId)
     await editTheProjectIn(second)
     const secondId = await nextSavedIdOutside(saves, [FAILED_ID, firstId])
@@ -106,16 +104,18 @@ describe('Two tabs that start a new project after a failed load', () => {
   })
 })
 
-describe('The failure dialog after a failed load', () => {
-  it('says that the saved project is kept and the new one is stored separately', async () => {
+describe('The Projects page after a failed load', () => {
+  it('says why the saved project did not open, keeps its card, and offers a new project', async () => {
     stubCapableStorage()
     const ports = await durablePortsWithAFailedProject()
     const tab = boot(ports)
 
-    const alert = await within(tab).findByRole('alert')
+    const alert = await findThePageAlert(tab)
 
     expect(alert).toHaveTextContent(await failedOpenSentence(ports))
-    expect(within(tab).getByText(KEPT_PROJECT_TEXT)).toBeInTheDocument()
+    const page = await findTheProjectsPage(tab)
+    expect(within(page).getByText(DID_NOT_OPEN)).toBeInTheDocument()
+    expect(within(page).getByRole('button', { name: 'New project' })).toBeInTheDocument()
   })
 })
 
@@ -125,7 +125,7 @@ describe('A second fresh start while the first new project is still saving', () 
     const ports = await durablePortsWithAFailedProject()
     const saves = logSaves(ports.workspace)
     const tab = boot(ports)
-    await startNewProject(tab)
+    await startNewProjectFromThePage(tab)
     const letTheSavesGo = saves.hold()
     await editTheProject()
     await waitFor(() => expect(ports.workspace.save).toHaveBeenCalled(), {

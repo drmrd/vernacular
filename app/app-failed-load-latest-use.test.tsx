@@ -11,6 +11,7 @@ import {
   editTheProject,
   expectOpenProject,
   failedOpenSentence,
+  findThePageAlert,
   openProjectName,
   plantFailedProject,
   plantProject,
@@ -18,7 +19,7 @@ import {
   reloadOf,
   renderApp,
   settleForAWhile,
-  startNewProjectFromTheFailureView,
+  startNewProjectFromThePage,
   stubCapableStorage,
   usedLast,
 } from './app-test-support'
@@ -57,17 +58,17 @@ afterEach(() => {
 })
 
 describe('The start after a project started from a failed load', () => {
-  it('still shows the failure dialog on the next boot when the new project was never saved', async () => {
+  it('still shows the notice of the failed project on the next boot when the new project was never saved', async () => {
     stubCapableStorage()
     const ports = await durablePortsWithAFailedProject()
     renderApp(ports)
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
     await screen.findByRole('button', { name: /add floor/i })
     cleanup()
 
     renderApp(reloadOf(ports))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(await failedOpenSentence(ports))
+    expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
     expect(await recordIdsBesideTheFailedOne(ports)).toEqual([])
   })
 
@@ -75,7 +76,7 @@ describe('The start after a project started from a failed load', () => {
     stubCapableStorage()
     const ports = await durablePortsWithAFailedProject()
     renderApp(ports)
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
     await editTheProject()
     await expectTheSaveReportedSaved()
     await waitFor(async () => expect(await recordIdsBesideTheFailedOne(ports)).toHaveLength(1), {
@@ -95,7 +96,7 @@ describe('The start after a project started from a failed load', () => {
     const ports = await durablePortsWithAFailedProject()
     const put = vi.spyOn(ports.index, 'put').mockRejectedValue(new Error('the index is full'))
     renderApp(ports)
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
 
     await editTheProject()
 

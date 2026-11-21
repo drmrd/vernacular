@@ -55,10 +55,6 @@ const SETTLE_MS = 300
 /** The name that a new project starts with. */
 export const NEW_PROJECT_NAME = 'Untitled project'
 
-/** The sentence of the failure view under its buttons. */
-export const KEPT_PROJECT_TEXT =
-  'The saved project is kept unchanged. A new project is stored separately.'
-
 /** The text of the loading view. */
 export const LOADING_TEXT = 'Loading project...'
 
@@ -319,10 +315,52 @@ export async function expectOpenProject(name: string): Promise<void> {
   )
 }
 
-/** Clicks "Start a new project" on the failure view, once it shows. */
+/** The queries of `container`, or of the whole document when none is given. */
+function queriesIn(container?: HTMLElement) {
+  return within(container ?? document.body)
+}
+
+/** Waits for the Projects page, and gives its landmark. Pass `container` to look inside one tab. */
+export function findTheProjectsPage(container?: HTMLElement): Promise<HTMLElement> {
+  return queriesIn(container).findByRole('main', { name: 'Projects' })
+}
+
+/** Waits for the link of the card of the project named `name` on the Projects page. */
+export async function findCardLink(name: string, container?: HTMLElement): Promise<HTMLElement> {
+  const page = await findTheProjectsPage(container)
+  return within(page).findByRole('link', { name })
+}
+
+/** Waits for the alert of the Projects page, which says why a project did not open. */
+export async function findThePageAlert(container?: HTMLElement): Promise<HTMLElement> {
+  const page = await findTheProjectsPage(container)
+  return within(page).findByRole('alert')
+}
+
+/** Clicks the card of the project named `name` on the Projects page, once the card shows. */
+export async function clickCardOf(name: string, container?: HTMLElement): Promise<void> {
+  await userEvent.click(await findCardLink(name, container))
+}
+
+/** Clicks "Back to <name>" on the Projects page, once it shows. */
+export async function backToTheProject(name: string, container?: HTMLElement): Promise<void> {
+  const page = await findTheProjectsPage(container)
+  await userEvent.click(within(page).getByRole('button', { name: `Back to ${name}` }))
+}
+
+/** Clicks "New project" on the Projects page, once it shows. */
+export async function startNewProjectFromThePage(container?: HTMLElement): Promise<void> {
+  const page = await findTheProjectsPage(container)
+  await userEvent.click(within(page).getByRole('button', { name: 'New project' }))
+}
+
+/**
+ * Clicks the button that starts a new project on the screen of a failed start: "New project" on the
+ * Projects page, or "Start a new project" on the view of ports that did not resolve.
+ */
 export async function startNewProjectFromTheFailureView(): Promise<void> {
   await screen.findByRole('alert')
-  await userEvent.click(screen.getByRole('button', { name: 'Start a new project' }))
+  await userEvent.click(screen.getByRole('button', { name: /^(New project|Start a new project)$/ }))
 }
 
 /** Adds a floor through the shell: one edit of the open project. */
