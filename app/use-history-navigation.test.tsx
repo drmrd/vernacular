@@ -33,6 +33,7 @@ import {
   spiesOnEveryCall,
   switchTo,
 } from './history-navigation-test-support'
+import { holdIndexReads } from './held-index-test-support'
 import { unmountAndSettle } from './use-open-project-test-support'
 
 const THIRD_ADDRESS = addressOf(THIRD_ID)
@@ -141,8 +142,8 @@ describe('the address of a new project', () => {
   })
 })
 
-describe('a double press of Start a new project', () => {
-  it('starts one new project, takes one lock, and adds one entry when the notice is answered twice', async () => {
+describe('a double request for a new project', () => {
+  it('starts one new project, takes one lock, and adds one entry when the page asks for it twice', async () => {
     const ports = await durablePortsWith(FIRST_ID)
     const bar = createMemoryAddressBar(MISSING_ADDRESS)
     const { result, handles } = renderNavigation(ports, bar)
@@ -160,6 +161,22 @@ describe('a double press of Start a new project', () => {
     expect(locks).toHaveBeenCalledTimes(1)
     expect(lockedIds(ports)).toEqual([handle.id])
     expect(bar.entries()).toEqual([MISSING_ADDRESS, ''])
+  })
+})
+
+describe('a retry while the index does not answer', () => {
+  it('opens the project that the start could not open, without waiting for the index', async () => {
+    const ports = await durablePortsWith(FIRST_ID)
+    vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
+    const bar = createMemoryAddressBar(FIRST_ADDRESS)
+    const { result } = renderNavigation(ports, bar)
+    expect((await pageOf(result)).notice?.id).toBe(FIRST_ID)
+    const releaseReads = holdIndexReads(ports.index)
+
+    act(() => result.current.retry())
+
+    expect((await editorOf(result)).id).toBe(FIRST_ID)
+    releaseReads()
   })
 })
 

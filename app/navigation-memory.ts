@@ -151,6 +151,15 @@ export function projectLeads(memory: NavigationMemory): void {
 }
 
 /**
+ * The page shows over the open project for a move to its address: nothing waits, and that place is
+ * followed.
+ */
+export function pageLeads(memory: NavigationMemory, place: Place): void {
+  memory.addressLeads = false
+  memory.followed = place
+}
+
+/**
  * A flow gave another project, so the next address write adds an entry. A move made while it ran
  * still leads, which is why the address keeps leading.
  */

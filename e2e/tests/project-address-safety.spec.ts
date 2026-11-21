@@ -17,7 +17,7 @@ import {
 // a reload at that address opens the project with no page of projects in between.
 
 const NOT_STORED = 'This project is not stored in this browser.'
-const NOT_AVAILABLE_YET = 'The list of projects is not available yet.'
+const DEFAULT_NAME = 'Untitled project'
 // An id far longer than any id that a project can have.
 const OVERLONG_ID_LENGTH = 200
 const HOSTILE_ADDRESSES = [
@@ -83,16 +83,16 @@ test('says that a project of an unknown address is not stored, and stores nothin
   page,
 }) => {
   await loadAt(page, '', `#/project/${UNKNOWN_ID}`)
-  const failure = selectors.failureView(page)
-  await expect(failure.getByRole('alert')).toHaveText(NOT_STORED)
+  const projects = selectors.projectsPage(page)
+  await expect(projects.getByRole('alert')).toHaveText(NOT_STORED)
   await expect(selectors.planCanvas(page)).toHaveCount(0)
 
-  await failure.getByRole('button', { name: 'Start a new project' }).click()
+  await projects.getByRole('button', { name: 'New project' }).click()
   await expect(selectors.planCanvas(page)).toBeVisible()
 
   // The address still names no stored project: the failed open stored nothing under it.
   await loadAt(page, '', `#/project/${UNKNOWN_ID}`)
-  await expect(selectors.failureView(page).getByRole('alert')).toHaveText(NOT_STORED)
+  await expect(selectors.projectsPage(page).getByRole('alert')).toHaveText(NOT_STORED)
 })
 
 test('shows the page over the open project and returns to it with its unsaved wall', async ({
@@ -107,11 +107,11 @@ test('shows the page over the open project and returns to it with its unsaved wa
   await page.evaluate(() => {
     window.location.hash = '#/projects'
   })
-  const projects = page.getByRole('main', { name: 'Projects' })
-  await expect(projects.getByRole('status')).toHaveText(NOT_AVAILABLE_YET)
+  const projects = selectors.projectsPage(page)
+  await expect(selectors.projectCard(page, DEFAULT_NAME)).toBeVisible()
   await expect(selectors.planCanvas(page)).toHaveCount(0)
 
-  await projects.getByRole('button', { name: 'Return to the project' }).click()
+  await projects.getByRole('button', { name: `Back to ${DEFAULT_NAME}` }).click()
   await expect(selectors.planCanvas(page)).toBeVisible()
   await expectWallCount(page, 2)
   await expectProjectAddress(page, id)

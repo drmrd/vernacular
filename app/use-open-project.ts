@@ -86,7 +86,7 @@ function isSwitchKind(kind: OpenFailureCause['kind']): boolean {
  * True for a failure that says why a project could not open, as opposed to a flow's refusal. Every
  * refusal that a flow gives is one of the kinds of OpenFailureCause.
  */
-function isSwitchFailure(failure: unknown): failure is SwitchFailure {
+export function isSwitchFailure(failure: unknown): failure is SwitchFailure {
   return (
     typeof failure === 'object' &&
     failure !== null &&

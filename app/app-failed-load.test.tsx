@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, waitFor, within } from '@testing-library/react'
+import { DID_NOT_OPEN } from '../editor/projects'
 import { reconcileIndex } from '../session'
 import { createTestPorts, recordOf, type TestPorts } from '../session/handle/handle-test-kit'
 import {
@@ -11,6 +12,9 @@ import {
   START_ID,
   expectOpenProject,
   failedOpenSentence,
+  findCardLink,
+  findThePageAlert,
+  findTheProjectsPage,
   lockedIds,
   openProjectName,
   plantFailedProject,
@@ -91,7 +95,7 @@ describe('The application opens the project that was used last', () => {
 })
 
 describe('The application that starts from the records of the index', () => {
-  it('starts in the workspace project used last also when it did not open', async () => {
+  it('shows the page with the notice and a card for the project used last when it did not open', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     await plantFailedProject(ports)
@@ -102,7 +106,13 @@ describe('The application that starts from the records of the index', () => {
 
     renderApp(ports)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(await failedOpenSentence(ports))
+    expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
+    const page = await findTheProjectsPage()
+    await findCardLink('Second House')
+    const failedCards = within(page)
+      .getAllByRole('link')
+      .filter((link) => link.textContent?.includes(DID_NOT_OPEN))
+    expect(failedCards).toHaveLength(1)
     expect(read).not.toHaveBeenCalledWith(SECOND_ID)
     expect(lockedIds(ports)).not.toContain(SECOND_ID)
   })

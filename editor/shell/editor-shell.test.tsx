@@ -468,18 +468,18 @@ describe('EditorShell', () => {
     expect(banner).toContainElement(screen.getByRole('alert'))
   })
 
-  it('shows the open-file menu item and a viewport drop target', async () => {
+  it('shows the Import file menu item and a viewport drop target', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
 
     renderShell({
       onNewProject: vi.fn(),
-      onOpenFile: vi.fn(),
+      onImportFile: vi.fn(),
       onImportDroppedFile: vi.fn(),
     })
 
     await user.click(screen.getByRole('button', { name: /project/i }))
-    expect(screen.getByRole('menuitem', { name: /open file/i })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /import file/i })).toBeInTheDocument()
 
     expect(screen.getByTestId('import-drop-target')).toBeInTheDocument()
   })

@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import { createTestPorts, rememberFolder, type TestPorts } from '../session/handle/handle-test-kit'
 import { folderRecord } from '../session/projects/rebuild-test-kit'
 import { START_ADDRESS } from './address'
@@ -10,9 +9,12 @@ import {
   NEW_PROJECT_NAME,
   START_ID,
   builtPorts,
+  clickCardOf,
   documentBytes,
   editTheProject,
   expectOpenProject,
+  findCardLink,
+  findTheProjectsPage,
   lockedIds,
   namedProject,
   renderApp,
@@ -34,7 +36,7 @@ import {
 
 const FOLDER_ID = 'project-folder'
 const FOLDER_NAME = 'Folder House'
-const NO_PERMISSION_SENTENCE = 'Vernacular has no permission to use this folder.'
+const NEEDS_PERMISSION_LINE = 'This folder needs permission again.'
 
 beforeEach(() => {
   stubCapableStorage()
@@ -108,18 +110,18 @@ describe('The application at the start with a project in a folder', () => {
     expect(lockedIds(ports)).toEqual([FOLDER_ID])
   })
 
-  it('shows the permission sentence for a folder project that was used last, and opens it after Retry', async () => {
+  it('shows the permission line on the card of a folder project that was used last, and opens it after a click on the card', async () => {
     const ports = await portsWithAFolderProjectUsedLast()
     ports.folders.setPermission(FOLDER_ID, 'prompt')
 
     renderAppAt(ports, START_ADDRESS)
 
-    const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(NO_PERMISSION_SENTENCE)
-    expect(alert).not.toHaveTextContent(/could not open the project/i)
+    const page = await findTheProjectsPage()
+    expect(await findCardLink(FOLDER_NAME)).toHaveTextContent(NEEDS_PERMISSION_LINE)
+    expect(within(page).queryByRole('alert')).not.toBeInTheDocument()
     expect(lockedIds(ports)).toEqual([])
-    expect(screen.getByRole('button', { name: 'Start a new project' })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(within(page).getByRole('button', { name: 'New project' })).toBeInTheDocument()
+    await clickCardOf(FOLDER_NAME)
     await expectOpenProject(FOLDER_NAME)
   })
 })

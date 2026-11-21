@@ -19,6 +19,7 @@ import {
   chooseFromTheProjectMenu,
   editTheProject,
   expectOpenProject,
+  findThePageAlert,
   findTheShell,
   lockCalls,
   lockedIds,
@@ -28,14 +29,14 @@ import {
   plantProject,
   renderApp,
   settleForAWhile,
-  startNewProjectFromTheFailureView,
+  startNewProjectFromThePage,
   stubCapableStorage,
 } from './app-test-support'
 
 const KEPT_NAME = 'Kept House'
 
-function startANewProjectButton(): HTMLElement {
-  return screen.getByRole('button', { name: 'Start a new project' })
+function newProjectButton(): HTMLElement {
+  return screen.getByRole('button', { name: 'New project' })
 }
 
 // The lock calls of every project other than the failed one, in their order.
@@ -58,20 +59,21 @@ afterEach(() => {
 })
 
 describe('A new project that opens after a failed start', () => {
-  it('while a new project opens, the failure view is gone, so no Retry can run beside it', async () => {
+  it('while a new project opens, the Projects page is gone, so no card can be clicked beside it', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     await plantProject(ports, FAILED_ID, KEPT_NAME)
     await reconcileIndex(ports)
     vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
     renderApp(ports)
-    await screen.findByRole('alert')
+    await findThePageAlert()
     const letTheReadGo = holdNextRead(ports.workspace)
 
-    await userEvent.click(startANewProjectButton())
+    await userEvent.click(newProjectButton())
 
     expect(await screen.findByText(LOADING_TEXT)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('main', { name: 'Projects' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: KEPT_NAME })).not.toBeInTheDocument()
     letTheReadGo()
     await expectOpenProject(NEW_PROJECT_NAME)
     const [newId] = lockedIds(ports)
@@ -87,7 +89,7 @@ describe('A save that finishes after another new project started', () => {
     await plantFailedProject(ports)
     const saves = logSaves(ports.workspace)
     renderApp(ports)
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
     const letTheSavesGo = saves.hold()
     await editTheProject()
     await waitFor(() => expect(ports.workspace.save).toHaveBeenCalled(), {
@@ -122,16 +124,16 @@ describe('An index that rejects its reads', () => {
   })
 })
 
-describe('Guards on starting a new project from the failure view', () => {
+describe('Guards on starting a new project from the Projects page', () => {
   it('starts one new project on a double click', async () => {
     stubCapableStorage()
     const log: string[] = []
     const ports = recordingPorts(log)
     await plantFailedProject(ports)
     renderApp(ports)
-    await screen.findByRole('alert')
+    await findThePageAlert()
 
-    await userEvent.dblClick(startANewProjectButton())
+    await userEvent.dblClick(newProjectButton())
 
     await findTheShell()
     await act(async () => {})
@@ -145,9 +147,9 @@ describe('Guards on starting a new project from the failure view', () => {
     const ports = recordingPorts(log)
     await plantFailedProject(ports)
     renderApp(ports)
-    await screen.findByRole('alert')
+    await findThePageAlert()
     const letTheReadGo = holdNextRead(ports.workspace)
-    await userEvent.click(startANewProjectButton())
+    await userEvent.click(newProjectButton())
     const error = vi.spyOn(console, 'error')
     const warn = vi.spyOn(console, 'warn')
 

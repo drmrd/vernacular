@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import { App, type BuiltSessionPorts } from './app'
 import { reconcileIndex } from '../session'
 import {
@@ -16,6 +16,8 @@ import {
   builtPorts,
   editTheProject,
   expectOpenProject,
+  findThePageAlert,
+  findTheProjectsPage,
   findTheShell,
   lockCalls,
   lockedIds,
@@ -23,7 +25,7 @@ import {
   plantProject,
   resetWindowAddress,
   settleForAWhile,
-  startNewProjectFromTheFailureView,
+  startNewProjectFromThePage,
   storedIds,
   stubCapableStorage,
 } from './app-test-support'
@@ -61,7 +63,7 @@ describe('A new project after a failed open on ports that were resolved', () => 
     const resolvePorts = () => Promise.resolve(builtPorts(ports))
     render(<App resolvePorts={resolvePorts} />)
 
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
     await findTheShell()
 
     await expectNewProjectOnThesePorts(ports)
@@ -117,24 +119,6 @@ describe('Retry clicked twice in one batch', () => {
     })
   }
 
-  it('after a failed open reads the project twice and takes its lock twice in all', async () => {
-    stubCapableStorage()
-    const log: string[] = []
-    const ports = recordingPorts(log)
-    await plantProject(ports, START_ID, KEPT_NAME)
-    await reconcileIndex(ports)
-    const read = vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
-    render(<App ports={ports} />)
-
-    await clickRetryTwice()
-
-    await expectOpenProject(KEPT_NAME)
-    await settleForAWhile()
-    expect(read).toHaveBeenCalledTimes(2)
-    const locks = lockCalls(log).filter((call) => call.startsWith('lock:'))
-    expect(locks).toEqual([`lock:${START_ID}`, `lock:${START_ID}`])
-  })
-
   it('after a failed build of the ports builds them twice in all', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
@@ -149,6 +133,37 @@ describe('Retry clicked twice in one batch', () => {
     await expectOpenProject(KEPT_NAME)
     await settleForAWhile()
     expect(resolvePorts).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('The card of a project that did not open, clicked twice in one batch', () => {
+  /** Clicks the card of the kept project twice before React renders again. */
+  async function clickTheCardTwice(): Promise<void> {
+    await findThePageAlert()
+    const page = await findTheProjectsPage()
+    const card = await within(page).findByRole('link', { name: new RegExp(KEPT_NAME) })
+    act(() => {
+      card.click()
+      card.click()
+    })
+  }
+
+  it('reads the project twice and takes its lock twice in all', async () => {
+    stubCapableStorage()
+    const log: string[] = []
+    const ports = recordingPorts(log)
+    await plantProject(ports, START_ID, KEPT_NAME)
+    await reconcileIndex(ports)
+    const read = vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
+    render(<App ports={ports} />)
+
+    await clickTheCardTwice()
+
+    await expectOpenProject(KEPT_NAME)
+    await settleForAWhile()
+    expect(read).toHaveBeenCalledTimes(2)
+    const locks = lockCalls(log).filter((call) => call.startsWith('lock:'))
+    expect(locks).toEqual([`lock:${START_ID}`, `lock:${START_ID}`])
   })
 })
 

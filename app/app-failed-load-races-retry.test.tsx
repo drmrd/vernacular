@@ -1,17 +1,17 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { cleanup } from '@testing-library/react'
 import { InMemoryProjectIndex } from '../storage'
 import { reconcileIndex } from '../session'
 import { createTestPorts, type TestPorts } from '../session/handle/handle-test-kit'
 import {
   FAILED_ID,
   NEW_PROJECT_NAME,
+  findThePageAlert,
   findTheShell,
   openProjectName,
   plantProject,
   renderApp,
-  startNewProjectFromTheFailureView,
+  startNewProjectFromThePage,
   stubCapableStorage,
 } from './app-test-support'
 import { holdIndexReads, type ReleaseReads } from './held-index-test-support'
@@ -50,7 +50,7 @@ describe('An index whose read throws', () => {
   })
 })
 
-describe('The failure view while the index does not answer', () => {
+describe('The Projects page while the index does not answer', () => {
   let releaseReads: ReleaseReads = () => undefined
 
   afterEach(() => {
@@ -61,7 +61,7 @@ describe('The failure view while the index does not answer', () => {
   })
 
   /**
-   * Renders the application on a kept project whose first read rejects, waits for the failure view,
+   * Renders the application on a kept project whose first read rejects, waits for the Projects page,
    * and then holds every read of the index.
    */
   async function failedOpenWithAHeldIndex(): Promise<TestPorts> {
@@ -71,23 +71,15 @@ describe('The failure view while the index does not answer', () => {
     await reconcileIndex(ports)
     vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
     renderApp(ports)
-    await screen.findByRole('alert')
+    await findThePageAlert()
     releaseReads = holdIndexReads(ports.index)
     return ports
   }
 
-  it('Retry does not wait for the index', async () => {
+  it('New project does not wait for the index', async () => {
     await failedOpenWithAHeldIndex()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
-
-    expect(await openProjectName()).toBe(KEPT_NAME)
-  })
-
-  it('Start a new project does not wait for the index', async () => {
-    await failedOpenWithAHeldIndex()
-
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
 
     await findTheShell()
     expect(await openProjectName()).toBe(NEW_PROJECT_NAME)

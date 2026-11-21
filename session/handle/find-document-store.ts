@@ -6,6 +6,12 @@ import { storageUnavailable } from './thrown-failures'
 /** The store that holds a project, or why it cannot be reached. */
 export type FoundStore = { readonly ok: true; readonly store: DocumentStore } | OpenFailed
 
+/** Why a folder that refused the request to reopen it cannot be used. */
+export function folderRefusal(answer: 'denied' | 'missing'): OpenFailed {
+  const kind = answer === 'denied' ? 'folder-permission' : 'folder-unavailable'
+  return { ok: false, failure: { kind } }
+}
+
 /**
  * The store of a folder. Access is asked of the browser only after it says that access is
  * granted, since a request needs a user gesture.
@@ -19,11 +25,8 @@ async function findFolderStore(ports: SessionPorts, id: string): Promise<FoundSt
     return { ok: false, failure: { kind: 'folder-permission' } }
   }
   const files = await ports.folders.reopen(id)
-  if (files === 'missing') {
-    return { ok: false, failure: { kind: 'folder-unavailable' } }
-  }
-  if (files === 'denied') {
-    return { ok: false, failure: { kind: 'folder-permission' } }
+  if (files === 'missing' || files === 'denied') {
+    return folderRefusal(files)
   }
   return { ok: true, store: new DocumentStore(files) }
 }

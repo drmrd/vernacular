@@ -1,11 +1,12 @@
 import { newProjectRequest } from '../session'
-import { START_ADDRESS } from './address'
+import { addressFor, START_ADDRESS } from './address'
 import { createInitialProject } from './create-initial-project'
 import { beginRead, followAgain, reopenFolder } from './follow-address'
 import {
   flowGaveProject,
   handFirstRequest,
   ownerRetries,
+  pageLeads,
   projectLeads,
   runOwnerFlow,
   showPage,
@@ -28,6 +29,32 @@ export function runFlowOf(memory: NavigationMemory): RunFlow {
       memory.view.bump()
     }
   }
+}
+
+/**
+ * Runs a flow from the page. When it gives a project, the page goes, and the next address write
+ * adds an entry for that project. A flow that fails or is refused leaves the page and the address.
+ */
+export function runPageFlowOf(memory: NavigationMemory): RunFlow {
+  const runFlow = runFlowOf(memory)
+  return async (flow) => {
+    const result = await runFlow(flow)
+    if (result?.ok === true && memory.live) {
+      showPage(memory, null)
+      projectLeads(memory)
+      memory.view.bump()
+    }
+    return result
+  }
+}
+
+/** Shows the page over the open project, with a new history entry for the page's address. */
+export function showProjects(memory: NavigationMemory): void {
+  const place = { kind: 'projects' } as const
+  showPage(memory, {})
+  pageLeads(memory, place)
+  memory.address.push(addressFor(place))
+  memory.view.bump()
 }
 
 /** Tries again what the notice says did not work. */

@@ -1,5 +1,6 @@
 import type { ProjectRecord } from '../../storage'
-import type { DocumentHandle, OpenRequest } from '../handle/handle-types'
+import { folderRefusal } from '../handle/find-document-store'
+import type { DocumentHandle, OpenFailed, OpenRequest } from '../handle/handle-types'
 import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import { type SwitchResult, switchProject } from './switch-project'
@@ -37,17 +38,24 @@ export async function requestFor(ports: SessionPorts, id: string): Promise<OpenR
   return { id, location: { kind: 'workspace' } }
 }
 
+/** The request to open, or why the folder cannot be used. */
+type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | OpenFailed
+
 /**
- * Where the project of the id is kept: its request. For a folder, when the browser would ask the
- * user, the access is requested here, inside the user's gesture; its answer is left to the open.
- * Rejects when that request rejects.
+ * Where the project of the id is kept: its request, or why the folder cannot be used. For a folder,
+ * when the browser would ask the user, the access is requested here, inside the user's gesture. A
+ * refusal or a missing folder ends the open before anything is stored. Rejects when that request
+ * rejects.
  */
-async function recentTarget(ports: SessionPorts, id: string): Promise<OpenRequest> {
+async function recentTarget(ports: SessionPorts, id: string): Promise<RecentTarget> {
   const request = await requestFor(ports, id)
   if (request.location.kind === 'folder' && (await wouldAskUser(ports, id))) {
-    await ports.folders.reopen(id)
+    const answer = await ports.folders.reopen(id)
+    if (answer === 'denied' || answer === 'missing') {
+      return folderRefusal(answer)
+    }
   }
-  return request
+  return { ok: true, request }
 }
 
 /**
@@ -63,11 +71,11 @@ export async function openRecent(
   if (current?.id === id) {
     return { ok: true, handle: current }
   }
-  let target: OpenRequest
+  let target: RecentTarget
   try {
     target = await recentTarget(ports, id)
   } catch (error) {
     return storageUnavailable(error)
   }
-  return switchProject(ports, current, target)
+  return target.ok ? switchProject(ports, current, target.request) : target
 }

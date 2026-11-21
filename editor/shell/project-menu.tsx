@@ -17,7 +17,8 @@ interface RecentProject {
 export interface ProjectMenuProps {
   onNewProject?: (() => void) | undefined
   onSave?: (() => void) | undefined
-  onOpenFile?: (() => void) | undefined
+  onSwitchProjects?: (() => void) | undefined
+  onImportFile?: (() => void) | undefined
   onOpenFolder?: (() => void) | undefined
   onOpenRecent?: ((id: string) => void) | undefined
   recentProjects?: RecentProject[] | undefined
@@ -38,29 +39,35 @@ interface ProjectMenuItemsInput extends ProjectMenuProps {
   onStartRename: (() => void) | undefined
 }
 
-// Build the menu entries from the wired handlers, in display order.
-function projectMenuItems({
+// The action entries, in display order, each with the handler that wires it or undefined.
+function actionEntries({
   onNewProject,
-  onSave,
-  onOpenFile,
+  onSwitchProjects,
+  onImportFile,
   onOpenFolder,
-  onOpenRecent,
-  recentProjects,
+  onSave,
   onStartRename,
-}: ProjectMenuItemsInput): MenuItem[] {
+}: ProjectMenuItemsInput): [key: string, label: string, onSelect: (() => void) | undefined][] {
+  return [
+    ['action:new-project', 'New project', onNewProject],
+    ['action:switch-projects', 'Switch projects', onSwitchProjects],
+    ['action:import-file', 'Import file', onImportFile],
+    ['action:open-folder', 'Open folder', onOpenFolder],
+    ['action:save', 'Save', onSave],
+    ['action:rename', 'Rename', onStartRename],
+  ]
+}
+
+// Build the menu entries from the wired handlers, in display order: the actions, then the recent
+// projects.
+function projectMenuItems(input: ProjectMenuItemsInput): MenuItem[] {
   const items: MenuItem[] = []
-  if (onNewProject) {
-    items.push({ key: 'action:new-project', label: 'New project', onSelect: onNewProject })
+  for (const [key, label, onSelect] of actionEntries(input)) {
+    if (onSelect) {
+      items.push({ key, label, onSelect })
+    }
   }
-  if (onSave) {
-    items.push({ key: 'action:save', label: 'Save', onSelect: onSave })
-  }
-  if (onOpenFile) {
-    items.push({ key: 'action:open-file', label: 'Open file', onSelect: onOpenFile })
-  }
-  if (onOpenFolder) {
-    items.push({ key: 'action:open-folder', label: 'Open folder', onSelect: onOpenFolder })
-  }
+  const { onOpenRecent, recentProjects } = input
   if (onOpenRecent && recentProjects) {
     for (const project of recentProjects) {
       items.push({
@@ -69,9 +76,6 @@ function projectMenuItems({
         onSelect: () => onOpenRecent(project.id),
       })
     }
-  }
-  if (onStartRename) {
-    items.push({ key: 'action:rename', label: 'Rename', onSelect: onStartRename })
   }
   return items
 }
@@ -167,8 +171,8 @@ function projectMenuContent({
   return null
 }
 
-// The project menu anchored near the wordmark. It collapses New, Open folder, and the
-// recent projects into one dropdown, rendering only the entries whose handler is wired
+// The project menu anchored near the wordmark. It collapses the project actions and the recent
+// projects into one dropdown, rendering only the entries whose handler is wired
 // and nothing at all when none are.
 export function ProjectMenu(props: ProjectMenuProps) {
   const menu = useMenuButton<HTMLDivElement>()

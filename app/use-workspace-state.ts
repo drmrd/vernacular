@@ -217,12 +217,14 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   const notifications = useNotifications()
   // The asset library (starter pack + user imports), assembled once for the pool of the library.
   const assetLibrary = useMemo(() => createAssetLibrary(libraryAssets), [libraryAssets])
+  const { showProjects } = props
   const actions = useProjectActions({
     handle,
     runFlow,
     capabilities,
     notifications,
     packs: assetLibrary.registry,
+    ...(showProjects === undefined ? {} : { showProjects }),
   })
   return {
     selection,

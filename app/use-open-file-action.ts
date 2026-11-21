@@ -39,6 +39,12 @@ function openFilePicker(onFile: (file: File) => void | Promise<void>): void {
   input.click()
 }
 
+/**
+ * What the import reads: the notices, the library of pack supplies, and the owner of the open
+ * project.
+ */
+export type OpenFileContext = Pick<ProjectActionsContext, 'notifications' | 'packs' | 'runFlow'>
+
 // Shows the refusal of a file above the size limit of the archive reader, and says whether it did.
 function refuseLargeFile(file: File, notifications: NotificationApi): boolean {
   if (file.size <= ARCHIVE_LIMITS.archiveBytes) {
@@ -53,9 +59,9 @@ function refuseLargeFile(file: File, notifications: NotificationApi): boolean {
 // the flow, so a file that cannot be read shows why and runs no flow. The import then opens the
 // copy under a new id and stores it. A failure shows "Open failed: " with the reason, with no
 // Retry. An import that opened the project with assets missing shows one warning with the count.
-export function useOpenFileAction(context: ProjectActionsContext): {
+export function useOpenFileAction(context: OpenFileContext): {
   onImportDroppedFile: (file: File) => Promise<void>
-  onOpenFile: () => void
+  onImportFile: () => void
 } {
   const { notifications, packs, runFlow } = context
   const runSwitch = useSwitchFlow(runFlow)
@@ -90,6 +96,6 @@ export function useOpenFileAction(context: ProjectActionsContext): {
   )
   return {
     onImportDroppedFile: importAndActivate,
-    onOpenFile: () => openFilePicker(importAndActivate),
+    onImportFile: () => openFilePicker(importAndActivate),
   }
 }

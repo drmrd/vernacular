@@ -37,6 +37,14 @@ export { isStored } from './handle/handle-stored'
 export { reconcileIndex } from './projects/reconcile-index'
 export { displayNameOf, UNNAMED_PROJECT } from './projects/display-name'
 export { recentRecords } from './projects/recent-records'
+export { listProjectCards } from './projects/project-cards'
+export type {
+  ProjectCardAction,
+  ProjectCardLocation,
+  ProjectCardModel,
+  ProjectCardPreview,
+  ProjectCardStateLine,
+} from './projects/project-cards'
 export type {
   AssetCache,
   ProjectIndex,

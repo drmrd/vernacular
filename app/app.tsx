@@ -15,20 +15,15 @@ import {
 import { AppSettings, type AppSettingsProps } from './app-settings'
 import { AssetProviders } from './asset-providers'
 import type { BuiltSessionPorts } from './create-session-ports'
-import {
-  DESIGN_LANGUAGE_PREVIEW_PARAM,
-  NotificationProvider,
-  ThemeProvider,
-  resolveDesignLanguage,
-  type DesignLanguage,
-} from '../editor/design-system'
+import { NotificationProvider, ThemeProvider } from '../editor/design-system'
 import { probeStorageCapabilities, type AssetCache, type StorageCapabilities } from '../storage'
 import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
 import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
 import type { AddressBar } from './address-bar'
-import { interimProjectsView, nothingOpenFailureView } from './interim-projects-view'
+import { nothingOpenFailureView } from './nothing-open-failure-view'
+import { ProjectsScreen, type ProjectsScreenProps } from './projects-screen'
 import type { PageScreen } from './resolve-place'
 import { useUnsavedChangesGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
@@ -38,6 +33,7 @@ import { useProjectBoot, type ProjectBoot } from './use-project-boot'
 import { useSessionKey } from './use-session-key'
 import { useDiscardPrompt } from './use-discard-prompt'
 import type { RunFlow } from './use-open-project'
+import { requestedDesignLanguage, searchParam } from './url-seams'
 import { useWorkspaceState } from './use-workspace-state'
 
 export type { BuiltSessionPorts } from './create-session-ports'
@@ -54,10 +50,6 @@ const SCENE_HARNESS_FIXTURE = 'scene-harness'
 // kelvin-to-color conversion either way.
 const COLOR_TEMPERATURE_PARAM = 'temp'
 
-function searchParam(name: string): string | null {
-  return new URLSearchParams(globalThis.location?.search ?? '').get(name)
-}
-
 function requestedFixture(): string | null {
   return searchParam('fixture')
 }
@@ -71,15 +63,6 @@ function requestedColorTemperature(): number | undefined {
 
 function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
   return resolveHarnessPaint(searchParam('paint'))
-}
-
-// Preview seam for the in-progress Arris visual language (ADR-0154): `?theme-preview=arris`
-// mounts the Arris token layer instead of the shipped one. A normal page load carries no
-// such parameter, so the shipped language is what every real user gets; the migration plan
-// flips the default only once every component family has moved.
-// eslint-disable-next-line react-refresh/only-export-components -- every URL seam in this app reads through the one searchParam helper here, so the reader belongs beside its siblings rather than in a module of its own; it is exported only so the seam itself is unit-testable.
-export function requestedDesignLanguage(): DesignLanguage {
-  return resolveDesignLanguage(searchParam(DESIGN_LANGUAGE_PREVIEW_PARAM))
 }
 
 export interface AppProps {
@@ -136,7 +119,7 @@ function AppWorkspace(props: AppProps) {
     return portsFailureView(boot.portsFailure, boot)
   }
   if (screen?.kind === 'projects') {
-    return pageOverProjectView(navigation, screen)
+    return pageOverProjectView(navigation, screen, { ports, libraryAssets })
   }
   if (screen === null || ports === null || libraryAssets === null || capabilities === null) {
     return bootLoadingView()
@@ -150,24 +133,23 @@ function AppWorkspace(props: AppProps) {
       ports={ports}
       capabilities={capabilities}
       offeredRecovery={offeredRecovery}
+      showProjects={navigation.showProjects}
     />
   )
 }
 
 // The page in place of the editor. A project that stays open under it keeps its guards of unsaved
 // work, since the editor that mounts them otherwise is not mounted.
-function pageOverProjectView(navigation: HistoryNavigation, screen: PageScreen) {
+function pageOverProjectView(
+  navigation: HistoryNavigation,
+  screen: PageScreen,
+  stores: Pick<ProjectsScreenProps, 'ports' | 'libraryAssets'>,
+) {
   const { handle } = navigation
   return (
     <>
       {handle === null ? null : <UnsavedWorkGuards handle={handle} />}
-      {interimProjectsView({
-        failure: screen.notice?.failure ?? null,
-        handle,
-        onRetry: navigation.retry,
-        onStartFresh: navigation.startFresh,
-        onLeave: navigation.leavePage,
-      })}
+      <ProjectsScreen navigation={navigation} screen={screen} {...stores} />
     </>
   )
 }
@@ -226,6 +208,8 @@ export interface EditorWorkspaceProps {
   capabilities: StorageCapabilities
   /** The handles whose recovered work was offered already; each is offered once over remounts. */
   offeredRecovery?: WeakSet<DocumentHandle>
+  /** Shows the Projects page over the open project. */
+  showProjects?: () => void
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {

@@ -30,12 +30,27 @@ Where things happen:
   address follows the open project, and the open project follows the address after the user moves
   through the history or edits it. A project gets its address once the store holds it and the
   browser keeps it, and a project that a flow opens gets a new history entry.
-- `interim-projects-view.tsx` is the page of projects until the list of projects exists. It says
-  why a project did not open, or that the list is not available yet, and offers a way out. While
-  it shows over an open project, the editor is not mounted, and `App` keeps the guards of unsaved
-  work mounted for that project. `App` also remembers the handles whose recovered work it offered,
-  so each open handle offers it once. A return from the page does not offer it again. A reload
-  offers it again until the next save, because each save removes the recovery snapshots.
+- `projects-screen.tsx` puts the Projects page of `editor/projects/` into the application.
+  `use-project-cards.ts` reads its cards with `listProjectCards` of `session/` when the page mounts,
+  when the open project changes, after a try from the page that ends with no project, and when the
+  tab becomes visible again. A failed try, a refused one, and a cancelled folder pick all read the
+  cards again. A try that does not run because another try runs reads nothing. A plain click on a
+  card opens that project. On the card of the open project it returns to the editor instead. "New
+  project", "Import file", a file dropped on the page, and "Open folder" (where the browser can
+  open folders) run their flows through `runPageFlow` of the navigation, so a project that opens
+  replaces the page. The page fills the window, so a file dropped anywhere on it imports. A failure
+  to open shows in the page's one notice. `page-notice-text.ts` gives its sentence and leaves it
+  out when the card of the project that failed already says it. If that card lacks the line, the
+  notice shows the sentence. The notice of a page action belongs to no card, so when Open folder
+  picks a listed folder that another tab holds, the notice shows the sentence and the card keeps
+  its line. "Switch projects" in the Project menu calls `showProjects` of the navigation, which
+  shows the page over the open project with a new history entry. While the page shows over an open
+  project, the editor is not mounted, and `App` keeps the guards of unsaved work mounted for that
+  project. `App` also remembers the handles whose recovered work it offered, so each open handle
+  offers it once. A return from the page does not offer it again. A reload offers it again until the
+  next save, because each save removes the recovery snapshots.
+- `nothing-open-failure-view.tsx` is the view for storage that does not resolve. It says why, and
+  offers Retry and "Start a new project".
 - `use-open-project.ts` is the one owner of the open project. It holds the one open document
   handle, runs the start, and runs one flow at a time through `runFlow`, which resolves `undefined`
   while the start or another flow runs. It closes the handle when its effects are cleaned up.
@@ -51,7 +66,7 @@ Where things happen:
   reads its assets from its folder first, while the library keeps the shared pool that the ports
   builder returns beside the ports.
 - The action adapters `use-project-actions.ts`, `use-open-file-action.ts`, and
-  `use-export-actions.ts` back the project menu. New project, Open file, Open folder, and a recent
+  `use-export-actions.ts` back the project menu. New project, Import file, Open folder, and a recent
   project run their flow through the owner; Save and the exports work on the open handle.
   `project-action-helpers.ts` runs a flow through the owner and shows the result. The handle
   writes the project index, so no adapter keeps a list.

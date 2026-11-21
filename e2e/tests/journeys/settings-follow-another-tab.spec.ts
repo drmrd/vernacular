@@ -13,14 +13,11 @@ async function chooseTheme(page: Page, name: 'Light' | 'Dark'): Promise<void> {
 }
 
 // The first tab's saved project is the one used last. A project is open in one tab at a time,
-// so the second tab finds it open and offers to start a new project instead. That tab then
-// shows the editor, and its settings are the same stored settings.
+// so the second tab finds it open, shows the Projects page, and offers a new project instead.
+// That tab then shows the editor, and its settings are the same stored settings.
 async function openEditorInSecondTab(page: Page): Promise<void> {
   await page.goto('/')
-  await page
-    .getByRole('main', { name: 'Error' })
-    .getByRole('button', { name: 'Start a new project' })
-    .click()
+  await selectors.projectsPage(page).getByRole('button', { name: 'New project' }).click()
   await expect(selectors.planCanvas(page)).toBeVisible()
 }
 

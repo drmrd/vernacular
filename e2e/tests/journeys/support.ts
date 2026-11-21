@@ -24,6 +24,13 @@ export const selectors = {
   projectMenu: (page: Page) => page.getByRole('button', { name: 'Project', exact: true }),
   projectMenuItem: (page: Page, name: string) => page.getByRole('menuitem', { name, exact: true }),
   failureView: (page: Page) => page.getByRole('main', { name: 'Error' }),
+  projectsPage: (page: Page) => page.getByRole('main', { name: 'Projects', exact: true }),
+  // A card is the list item that holds the link named after its project.
+  projectCard: (page: Page, name: string) =>
+    selectors
+      .projectsPage(page)
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('link', { name, exact: true }) }),
 }
 
 // Open the Project menu and choose the row with the given label.
