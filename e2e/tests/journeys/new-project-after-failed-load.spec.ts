@@ -8,6 +8,8 @@ import { selectors } from './support'
 // installed by src/e2e-storage-hook.ts.
 
 const KEPT_PROJECT_TEXT = 'The saved project is kept unchanged. A new project is stored separately.'
+// The id that the hook plants the project of a newer build under.
+const PLANTED_ID = 'current'
 
 async function openStorageHook(page: Page): Promise<void> {
   await page.goto('/?e2e-storage')
@@ -16,7 +18,7 @@ async function openStorageHook(page: Page): Promise<void> {
 
 async function storedFilesOfOldProject(page: Page): Promise<Record<string, string>> {
   await openStorageHook(page)
-  return page.evaluate(() => window.vernacularE2eStorage!.storedFilesOfDefaultProject())
+  return page.evaluate((id) => window.vernacularE2eStorage!.storedFilesOfProject(id), PLANTED_ID)
 }
 
 test('starts a new project after a failed load and keeps the saved one unchanged', async ({
@@ -33,7 +35,7 @@ test('starts a new project after a failed load and keeps the saved one unchanged
   )
   expect(planted).toBe(true)
   const before = await storedFilesOfOldProject(page)
-  expect(Object.keys(before)).toContain('current/vernacular.json')
+  expect(Object.keys(before)).toContain(`${PLANTED_ID}/vernacular.json`)
 
   await page.goto('/')
   const failure = page.getByRole('main', { name: 'Error' })

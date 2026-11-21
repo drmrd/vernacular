@@ -1,5 +1,11 @@
 import { test, expect, type Page } from '@playwright/test'
-import { chooseFromProjectMenu, drawWall, expectWallCount, gotoEditor, selectors } from './support'
+import {
+  chooseFromProjectMenu,
+  drawWallAndWaitForSave,
+  expectWallCount,
+  gotoEditor,
+  selectors,
+} from './support'
 
 // A browser that an older build used holds stored projects but no project index, and that
 // build may have remembered the id of its last active project. The start rebuilds the index
@@ -13,12 +19,6 @@ const PLANTED_ID = 'e2e-persist'
 const PLANTED_NAME = 'Persisted House'
 const SECOND_FLOOR = '2nd Floor'
 const UNTITLED_NAME = 'Untitled project'
-
-async function drawWallAndWaitForSave(page: Page): Promise<void> {
-  await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
-  await expectWallCount(page, 1)
-  await expect(selectors.savedStatus(page)).toBeVisible()
-}
 
 // Deletes the project index database of the page's origin and resolves once it is gone.
 async function deleteIndexDatabase(page: Page): Promise<void> {
@@ -42,8 +42,9 @@ function rememberedId(page: Page): Promise<string | null> {
   return page.evaluate((key) => localStorage.getItem(key), REMEMBERED_ID_KEY)
 }
 
-// The first project has the id that the start falls back to, so the test opens a second project
-// and changes it last: only a rebuild of the index makes the start open that one.
+// The test opens a second project and changes it last: only a rebuild of the index makes the start
+// open that one. The page loads again at the bare address, because a load at the address of a
+// project opens that project whatever the index holds.
 test("opens today's project when the browser holds no index", async ({ page }) => {
   await gotoEditor(page)
   await drawWallAndWaitForSave(page)
@@ -54,7 +55,7 @@ test("opens today's project when the browser holds no index", async ({ page }) =
   await expect(selectors.savedStatus(page)).toBeVisible()
 
   await deleteIndexDatabase(page)
-  await page.reload()
+  await page.goto('/')
 
   await expect(selectors.planCanvas(page)).toBeVisible()
   await expect(selectors.floorButton(page, SECOND_FLOOR)).toBeVisible()

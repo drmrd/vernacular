@@ -54,6 +54,11 @@
       "id": "recent-projects",
       "title": "switches between two stored projects from the recent list",
       "status": "required"
+    },
+    {
+      "id": "project-addresses",
+      "title": "reloads on a project address and follows Back and Forward between two projects",
+      "status": "required"
     }
   ]
 }

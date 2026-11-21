@@ -116,3 +116,40 @@ export async function drawWall(
 export async function expectWallCount(page: Page, count: number): Promise<void> {
   await expect(selectors.wallProxies(page)).toHaveCount(count)
 }
+
+// Draw one wall on a plan that holds none and wait until the project is saved.
+export async function drawWallAndWaitForSave(page: Page): Promise<void> {
+  await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
+  await expectWallCount(page, 1)
+  await expect(selectors.savedStatus(page)).toBeVisible()
+}
+
+// Starts a new project and waits until it shows, unsaved: its status is not the saved one.
+export async function startNewProject(page: Page): Promise<void> {
+  await chooseFromProjectMenu(page, 'New project')
+  await expect(selectors.planCanvas(page)).toBeVisible()
+  await expect(selectors.savedStatus(page)).toHaveCount(0)
+}
+
+// The fragment of the page address, with its leading `#`, or the empty text when it has none.
+export function addressFragment(page: Page): string {
+  return new URL(page.url()).hash
+}
+
+// The address of a project ends with its id, which only letters, digits, and hyphens make up.
+const PROJECT_ADDRESS = /#\/project\/([A-Za-z0-9-]+)$/
+
+// Waits until the page address names a project, and gives the id that it names.
+export async function projectIdOfAddress(page: Page): Promise<string> {
+  await expect(page).toHaveURL(PROJECT_ADDRESS)
+  const id = PROJECT_ADDRESS.exec(page.url())?.[1]
+  if (id === undefined) {
+    throw new Error(`the address ${page.url()} names no project`)
+  }
+  return id
+}
+
+// Waits until the page address is the address of the project with the given id.
+export async function expectProjectAddress(page: Page, id: string): Promise<void> {
+  await expect.poll(() => addressFragment(page)).toBe(`#/project/${id}`)
+}
