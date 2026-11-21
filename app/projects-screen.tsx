@@ -99,10 +99,10 @@ function usePageTries({ navigation, screen, refresh }: PageTries) {
  * actions that start, import, or open a project.
  */
 export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
-  const { navigation, screen, ports } = props
+  const { navigation, screen, ports, libraryAssets } = props
   const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
   const tries = usePageTries({ navigation, screen, refresh })
-  const actions = usePageActions({ navigation, ports, libraryAssets: props.libraryAssets })
+  const actions = usePageActions({ navigation, ports, libraryAssets })
   const openProject = openProjectLink(navigation)
   const notice = pageNoticeText(tries.notice, cards)
   return (

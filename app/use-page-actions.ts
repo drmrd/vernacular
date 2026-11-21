@@ -46,11 +46,14 @@ export function usePageActions({
   })
   const runSwitch = useSwitchFlow(runFlow)
   const onOpenFolder = useCallback(() => {
-    void runSwitch((given, current) => openFolder(given, current))
+    void runSwitch(openFolder)
   }, [runSwitch])
-  const onDropFile = (file: File) => {
-    void onImportDroppedFile(file)
-  }
+  const onDropFile = useCallback(
+    (file: File) => {
+      void onImportDroppedFile(file)
+    },
+    [onImportDroppedFile],
+  )
   const foldersSupported = ports?.folders.supported === true
   return { onImportFile, onDropFile, ...(foldersSupported ? { onOpenFolder } : {}) }
 }
