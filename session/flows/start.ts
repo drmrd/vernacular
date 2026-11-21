@@ -7,6 +7,11 @@ import { recentRecords } from '../projects/recent-records'
 
 const WORKSPACE: OpenRequest['location'] = { kind: 'workspace' }
 
+/** The request of a new project under a new id, kept in the workspace. */
+export function newProjectRequest(create: () => Project): OpenRequest {
+  return { id: newProjectId([]), location: WORKSPACE, create }
+}
+
 /**
  * The request that the bare address opens: the project used last, or a new project under a new
  * id when the index holds no record. The promise never rejects.
@@ -17,7 +22,7 @@ export async function startProject(
 ): Promise<OpenRequest> {
   const latest = recentRecords(await reconcileIndex(ports))[0]
   if (latest === undefined) {
-    return { id: newProjectId([]), location: WORKSPACE, create }
+    return newProjectRequest(create)
   }
   if (latest.location.kind === 'folder') {
     return { id: latest.id, location: latest.location }

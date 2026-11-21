@@ -85,18 +85,20 @@ function useAddressBar(inputs: ProjectBootInputs): AddressBar {
   return inputs.address ?? own
 }
 
-// Composes the start: the ports, the address bar, and the navigation over the one owner of the
-// open project. It holds no handle itself.
+/**
+ * Composes the start: the ports, the address bar, and the navigation over the one owner of the
+ * open project. It holds no handle itself.
+ */
 export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const bootPorts = useBootPorts(inputs)
   const ports = inputs.ports ?? bootPorts.built?.ports ?? null
   const navigation = useHistoryNavigation(ports, useAddressBar(inputs))
-  const answered = useRef<SwitchFailure | null>(null)
+  const startedInMemoryFor = useRef<SwitchFailure | null>(null)
   const portsFailure = bootPorts.failure
   const startInMemory = () => {
     // A second call for the same failure, before the new project opened, does nothing.
-    if (portsFailure === null || answered.current === portsFailure) return
-    answered.current = portsFailure
+    if (portsFailure === null || startedInMemoryFor.current === portsFailure) return
+    startedInMemoryFor.current = portsFailure
     bootPorts.fallBackToMemory()
     navigation.startFresh()
   }

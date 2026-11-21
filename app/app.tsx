@@ -28,7 +28,7 @@ import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
 import type { AddressBar } from './address-bar'
-import { interimProjectsView } from './interim-projects-view'
+import { interimProjectsView, nothingOpenFailureView } from './interim-projects-view'
 import type { PageScreen } from './resolve-place'
 import { useUnsavedChangesGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
@@ -181,9 +181,8 @@ function UnsavedWorkGuards({ handle }: { readonly handle: DocumentHandle }) {
 
 // The ports did not resolve, so no project can open: build them again, or start in memory.
 function portsFailureView(failure: SwitchFailure, boot: ProjectBoot) {
-  return interimProjectsView({
+  return nothingOpenFailureView({
     failure,
-    handle: null,
     onRetry: boot.rebuildPorts,
     onStartFresh: boot.startInMemory,
   })

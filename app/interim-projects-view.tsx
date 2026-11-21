@@ -15,11 +15,15 @@ export interface InterimProjectsInputs {
   readonly onRetry: () => void
   /** Starts a new project. Offered only when no project is open. */
   readonly onStartFresh: () => void
-  /**
-   * Leaves the page: back to the open project, or to the project used last. Left out when a failure
-   * with no project open offers no way back.
-   */
-  readonly onLeave?: () => void
+  /** Leaves the page: back to the open project, or to the project used last. */
+  readonly onLeave: () => void
+}
+
+/** What the page shows for a failure with no project open: Retry and a new project. */
+export interface NothingOpenFailure {
+  readonly failure: SwitchFailure
+  readonly onRetry: () => void
+  readonly onStartFresh: () => void
 }
 
 // Why the project did not open, in one sentence. A failure with a fixed text shows it alone; every
@@ -32,24 +36,43 @@ function failureText(failure: SwitchFailure): string {
   return `Could not open the project: ${openFailureReason(failure)}`
 }
 
+/** The page for a failure with no project open: Retry, and a new project that is stored apart. */
+export function nothingOpenFailureView({
+  failure,
+  onRetry,
+  onStartFresh,
+}: NothingOpenFailure): ReactElement {
+  return (
+    <main aria-label="Error">
+      <p role="alert">{failureText(failure)}</p>
+      <button type="button" onClick={onRetry}>
+        Retry
+      </button>
+      <button type="button" onClick={onStartFresh}>
+        Start a new project
+      </button>
+      {failure.kind !== 'not-found' ? <p>{KEPT_UNCHANGED}</p> : null}
+    </main>
+  )
+}
+
 function failureView(failure: SwitchFailure, inputs: InterimProjectsInputs): ReactElement {
-  const { handle } = inputs
+  if (inputs.handle === null) {
+    return nothingOpenFailureView({
+      failure,
+      onRetry: inputs.onRetry,
+      onStartFresh: inputs.onStartFresh,
+    })
+  }
   return (
     <main aria-label="Error">
       <p role="alert">{failureText(failure)}</p>
       <button type="button" onClick={inputs.onRetry}>
         Retry
       </button>
-      {handle === null ? (
-        <button type="button" onClick={inputs.onStartFresh}>
-          Start a new project
-        </button>
-      ) : (
-        <button type="button" onClick={inputs.onLeave}>
-          Return to the project
-        </button>
-      )}
-      {handle === null && failure.kind !== 'not-found' ? <p>{KEPT_UNCHANGED}</p> : null}
+      <button type="button" onClick={inputs.onLeave}>
+        Return to the project
+      </button>
     </main>
   )
 }

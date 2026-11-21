@@ -6,9 +6,9 @@ import type { AddressBar } from './address-bar'
 import { afterRender, beginRead, follow } from './follow-address'
 import { leavePage, retryNotice, runFlowOf, startFresh } from './navigation-actions'
 import {
-  currentPlace,
   initialPage,
   newNavigationMemory,
+  replaceInexactAddress,
   takeCommitted,
   type NavigationMemory,
   type ShownPage,
@@ -85,7 +85,7 @@ function useAddressListener(memory: NavigationMemory, address: AddressBar): void
   useEffect(() => {
     memory.address = address
     memory.live = true
-    currentPlace(address)
+    replaceInexactAddress(address)
     const stop = address.onNavigate(() => follow(memory))
     return () => {
       memory.live = false

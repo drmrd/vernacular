@@ -25,7 +25,10 @@ async function wouldAskUser(ports: SessionPorts, id: string): Promise<boolean> {
   }
 }
 
-/** The request of a project address: its folder when its record names one, else the workspace. */
+/**
+ * The request of the project of the id: its folder when its record names one, else the workspace.
+ * The promise never rejects.
+ */
 export async function requestFor(ports: SessionPorts, id: string): Promise<OpenRequest> {
   const record = await recordOf(ports, id)
   if (record?.location.kind === 'folder') {
@@ -35,7 +38,7 @@ export async function requestFor(ports: SessionPorts, id: string): Promise<OpenR
 }
 
 /**
- * Where the project of the id is kept: the request of its address. For a folder, when the browser
+ * Where the project of the id is kept: its request. For a folder, when the browser
  * would ask the user, the access is requested here, inside the user's gesture; its answer is left
  * to the open. Rejects when that request rejects.
  */

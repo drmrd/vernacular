@@ -1,4 +1,5 @@
-import { newProjectId } from '../storage'
+import { newProjectRequest } from '../session'
+import { START_ADDRESS } from './address'
 import { createInitialProject } from './create-initial-project'
 import { beginRead, followAgain, reopenFolder } from './follow-address'
 import {
@@ -68,7 +69,7 @@ export function leavePage(memory: NavigationMemory): void {
     return
   }
   memory.addressLeads = false
-  memory.address.push('')
+  memory.address.push(START_ADDRESS)
   if (memory.ports !== null) {
     beginRead(memory, memory.ports, { kind: 'start' })
   }
@@ -84,10 +85,5 @@ export function startFresh(memory: NavigationMemory): void {
   memory.busy.reading = null
   projectLeads(memory)
   showPage(memory, null)
-  const request = {
-    id: newProjectId([]),
-    location: { kind: 'workspace' } as const,
-    create: createInitialProject,
-  }
-  handFirstRequest(memory, memory.ports, request)
+  handFirstRequest(memory, memory.ports, newProjectRequest(createInitialProject))
 }

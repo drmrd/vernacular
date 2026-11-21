@@ -33,14 +33,14 @@ const NAVIGATION_EVENTS = ['popstate', 'hashchange'] as const
 
 /** The address bar of a window: its location fragment and its history entries. */
 export function createBrowserAddressBar(view: Window): AddressBar {
-  const addressFor = (fragment: string): string => {
+  const urlWith = (fragment: string): string => {
     const { pathname, search } = view.location
     return pathname + search + fragment
   }
   return {
     hash: () => view.location.hash,
-    replace: (fragment) => view.history.replaceState(view.history.state, '', addressFor(fragment)),
-    push: (fragment) => view.history.pushState(view.history.state, '', addressFor(fragment)),
+    replace: (fragment) => view.history.replaceState(view.history.state, '', urlWith(fragment)),
+    push: (fragment) => view.history.pushState(view.history.state, '', urlWith(fragment)),
     onNavigate(listener) {
       const call = (): void => listener()
       for (const name of NAVIGATION_EVENTS) view.addEventListener(name, call)

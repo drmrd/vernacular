@@ -6,7 +6,7 @@ import type {
   SessionPorts,
   SwitchFailure,
 } from '../session'
-import { addressFor, parseAddress, type Place } from './address'
+import { addressFor, parseAddress, START_ADDRESS, type Place } from './address'
 import type { AddressBar } from './address-bar'
 import type { PageNotice } from './resolve-place'
 import type { Flow, RunFlow } from './use-open-project'
@@ -111,8 +111,8 @@ export function samePlace(first: Place, second: Place): boolean {
   return addressFor(first) === addressFor(second) && first.kind === second.kind
 }
 
-/** The place of the address now. A fragment that is not exact is replaced by the exact one. */
-export function currentPlace(address: AddressBar): Place {
+/** Gives the place of the address now, and replaces a fragment that is not exact by the exact one. */
+export function replaceInexactAddress(address: AddressBar): Place {
   const hash = address.hash()
   const place = parseAddress(hash)
   const exact = addressFor(place)
@@ -125,7 +125,7 @@ export function currentPlace(address: AddressBar): Place {
 /** The fragment that an open project wants: its address once it is stored and kept, else bare. */
 export function wantedFragment(handle: DocumentHandle): string {
   const kept = isStored(handle) && handle.durable
-  return kept ? addressFor({ kind: 'project', id: handle.id }) : ''
+  return kept ? addressFor({ kind: 'project', id: handle.id }) : START_ADDRESS
 }
 
 /** Records the page in the memory at once, so callbacks see it before the next render. */

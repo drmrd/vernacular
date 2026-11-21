@@ -1,8 +1,12 @@
 import { isValidProjectId } from '../storage'
 
+/** A place of the application: the start, the page of projects, or the project of an id. */
 export type Place =
   | { readonly kind: 'start' | 'projects' }
   | { readonly kind: 'project'; readonly id: string }
+
+/** The fragment of the start: no fragment at all. */
+export const START_ADDRESS = ''
 
 const PROJECTS_FRAGMENT = '#/projects'
 const PROJECT_FRAGMENT_PREFIX = '#/project/'
@@ -25,10 +29,10 @@ export function parseAddress(hash: string): Place {
 export function addressFor(place: Place): string {
   switch (place.kind) {
     case 'start':
-      return ''
+      return START_ADDRESS
     case 'projects':
       return PROJECTS_FRAGMENT
     case 'project':
-      return isValidProjectId(place.id) ? PROJECT_FRAGMENT_PREFIX + place.id : ''
+      return isValidProjectId(place.id) ? PROJECT_FRAGMENT_PREFIX + place.id : START_ADDRESS
   }
 }

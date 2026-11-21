@@ -16,6 +16,7 @@ export interface PageNotice {
   readonly failure: SwitchFailure
 }
 
+/** What shows in place of the application: the editor of a handle, or the page of projects. */
 export type Screen =
   | { readonly kind: 'editor'; readonly handle: DocumentHandle }
   | { readonly kind: 'projects'; readonly notice?: PageNotice }
@@ -30,7 +31,8 @@ function screenOf(id: string, result: SwitchResult): Screen {
   return { kind: 'projects', notice: { id, failure: result.failure } }
 }
 
-async function requestForPlace(ports: SessionPorts, place: Place): Promise<OpenRequest> {
+/** The request that a place opens: its project's own, else the start request. */
+export async function requestForPlace(ports: SessionPorts, place: Place): Promise<OpenRequest> {
   if (place.kind === 'project') {
     return requestFor(ports, place.id)
   }

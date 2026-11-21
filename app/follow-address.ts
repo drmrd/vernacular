@@ -1,42 +1,38 @@
-import { openRecent, reconcileIndex, requestFor, startProject } from '../session'
+import { openRecent, reconcileIndex } from '../session'
 import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '../session'
 import type { Place } from './address'
-import { createInitialProject } from './create-initial-project'
 import {
-  currentPlace,
   handFirstRequest,
   isBusy,
   addressLeadsNow,
   moveWaits,
   refusedPlaceWaits,
+  replaceInexactAddress,
   runOwnerFlow,
   samePlace,
   showPage,
   writeWantedAddress,
   type NavigationMemory,
 } from './navigation-memory'
-import { resolvePlace, type PageNotice, type PageScreen } from './resolve-place'
+import { requestForPlace, resolvePlace, type PageNotice, type PageScreen } from './resolve-place'
 import type { Flow } from './use-open-project'
 
 type ProjectPlace = Extract<Place, { readonly kind: 'project' }>
 
-/** The start request, or the request of a project address. The page has no request. */
+/** The request that a place opens, after the index is reconciled. The page has no request. */
 async function readFirstRequest(
   memory: NavigationMemory,
   ports: SessionPorts,
   place: Place,
 ): Promise<OpenRequest | null> {
-  if (place.kind === 'project') {
-    if (!memory.reconciled.has(ports)) {
-      await reconcileIndex(ports)
-      memory.reconciled.add(ports)
-    }
-    return requestFor(ports, place.id)
-  }
   if (place.kind === 'projects') {
     return null
   }
-  const request = await startProject(ports, createInitialProject)
+  if (place.kind === 'project' && !memory.reconciled.has(ports)) {
+    await reconcileIndex(ports)
+    memory.reconciled.add(ports)
+  }
+  const request = await requestForPlace(ports, place)
   memory.reconciled.add(ports)
   return request
 }
@@ -70,8 +66,8 @@ function placeFlow(place: ProjectPlace): Flow<PageScreen> {
   }
 }
 
-function noticeOf(id: string, failure: SwitchFailure | PageScreen): PageNotice | undefined {
-  return failure.kind === 'projects' ? failure.notice : { id, failure }
+function noticeOf(id: string, outcome: SwitchFailure | PageScreen): PageNotice | undefined {
+  return outcome.kind === 'projects' ? outcome.notice : { id, failure: outcome }
 }
 
 /**
@@ -143,7 +139,7 @@ function readyToFollow(memory: NavigationMemory): Place | null {
   if (!memory.live) {
     return null
   }
-  const place = currentPlace(memory.address)
+  const place = replaceInexactAddress(memory.address)
   if (isBusy(memory)) {
     moveWaits(memory)
     return null
