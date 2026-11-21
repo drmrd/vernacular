@@ -31,6 +31,20 @@ describe('SceneNavToolbar color-temperature honesty', () => {
     expect(screen.getByText(/reference white/i)).toBeInTheDocument()
   })
 
+  it('gives the inert slider the note text as its accessible description, under realistic lighting and under the color check', () => {
+    const { rerender } = render(<SceneNavToolbar {...baseProps} lightingMode="realistic" />)
+
+    const slider = screen.getByRole('slider', { name: /color temperature/i })
+    expect(slider).toBeDisabled()
+    expect(slider).toHaveAccessibleDescription(/sun and sky/i)
+
+    rerender(<SceneNavToolbar {...baseProps} colorCheck />)
+
+    expect(screen.getByRole('slider', { name: /color temperature/i })).toHaveAccessibleDescription(
+      /reference white/i,
+    )
+  })
+
   it('keeps the slider live in schematic mode, the one mode whose rig it tints', () => {
     render(<SceneNavToolbar {...baseProps} lightingMode="schematic" />)
 
