@@ -31,27 +31,30 @@ const WALL_MATTE_PATCH = { x: 0.0375, y: 0.5 }
 /**
  * The smallest OKLab distance the semi-gloss floor and the matte wall may sample at.
  *
- * Re-derived on 2026-11-15 on the development Mac (issue #491); the readings below are darwin
- * Metal values. Once the wall faces were wound outward, the paint on the walls' outer side
- * rendered on the exterior, out of this frame, and the gate compared the floor against
- * unpainted wall: it passed at 0.283 and the collapsed probe moved the distance up, so the
- * gate could no longer fail. The state now paints the room side of the walls. Five
- * consecutive captures were taken of each build, and all five came back byte-identical each
- * time, so the noise band is 0.000000:
+ * Re-derived on 2026-11-20 on the development Mac (issue #629); the readings below are darwin
+ * Metal values. Until #629 the sheen lobe had a black tint, so a finish's sheen added nothing
+ * to the frame. The sheen now takes the paint color, which lifts the semi-gloss floor. (The
+ * 2026-11-15 derivation, issue #491, moved the wall paint to the room side of the walls, so
+ * the gate compares the floor against painted wall.) Five consecutive captures were taken of
+ * each build, and all five came back byte-identical each time, so the noise band is 0.000000:
  *
- *   shipped registry (semi-gloss roughness 0.3, sheen 0.5, specular 0.4): 0.010278
+ *   shipped registry (semi-gloss roughness 0.3, sheen 0.5, specular 0.4): 0.023911
+ *   (0.010278 before the sheen took the paint color)
  *   collapsed probe (the semi-gloss entry set to the matte values, roughness 0.9, sheen 0,
  *   specular 0.04, which is the #520 defect class): 0.000000
- *   roughness-only probe (semi-gloss roughness set to 0.9, sheen and specular kept): 0.003431
+ *   roughness-only probe (semi-gloss roughness set to 0.9, sheen and specular kept): 0.017105
  *
  * The threshold goes between the shipped and collapsed readings with a margin of at least
  * twice the noise band, the derivation rule that fixed the 0.06 color-accuracy tolerance
- * (ADR-0157). The true midpoint of the two readings is 0.005139; rounded to 0.0051, it leaves
- * a margin of 0.010278 - 0.0051 = 0.005178 above and 0.0051 below. The roughness-only probe
- * also falls under it. The noise band over the byte-identical captures is 0.000000, so the
- * margin rule (at least twice the noise band) is satisfied on both sides with room to spare.
+ * (ADR-0157). The true midpoint of the two readings is 0.011956; rounded down to 0.0119, it
+ * leaves a margin of 0.023911 - 0.0119 = 0.012011 above and 0.0119 below. The roughness-only
+ * probe now reads above the minimum, because the tinted sheen alone keeps the floor apart
+ * from the wall, so this gate sees the full collapse and the finish-contrast pixel baseline in
+ * scene-solar.spec.ts sees the roughness defect. The noise band over the byte-identical
+ * captures is 0.000000, so the margin rule (at least twice the noise band) is satisfied on
+ * both sides with room to spare.
  */
-const FINISH_CONTRAST_MINIMUM = 0.0051
+const FINISH_CONTRAST_MINIMUM = 0.0119
 
 // Puts the harness in the finish-contrast state and returns its settled canvas.
 async function gotoFinishContrast(page: Page): Promise<Locator> {
