@@ -15,7 +15,7 @@ const RECORD_END = 'end_of_record'
  * @param {string} root
  * @returns {string}
  */
-function repositoryPath(path, root) {
+export function repositoryPath(path, root) {
   const base = root.replace(/\/+$/, '')
   return path.startsWith(`${base}/`) ? path.slice(base.length + 1) : path
 }
