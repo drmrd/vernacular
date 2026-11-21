@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import { setRoomName } from '../../core'
-import { Field } from '../design-system'
+import { Field, isComposingKey } from '../design-system'
 
 export interface RoomNameEditorProps {
   roomKey: string
@@ -17,7 +17,7 @@ export function RoomNameEditor({ roomKey, name, dispatch }: RoomNameEditorProps)
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && !isComposingKey(event)) {
       commit()
     }
   }

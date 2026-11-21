@@ -7,7 +7,7 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
-import { Field, Segmented, type SegmentedOption } from '../design-system'
+import { Field, isComposingKey, Segmented, type SegmentedOption } from '../design-system'
 import { lengthRejectionMessage } from './length-rejection-message'
 
 // The selectable entry units per system, in display order. The value and label
@@ -173,7 +173,8 @@ export function LengthField({
   const entry = useLengthEntry(system, valueMm, onCommitMm)
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === 'Enter') {
+    // An Enter inside a text composition belongs to the input method.
+    if (event.key === 'Enter' && !isComposingKey(event)) {
       entry.commit()
     }
   }
