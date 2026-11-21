@@ -268,4 +268,5 @@ If you are contributing without Claude Code, the same discipline applies: write 
 Vernacular is licensed under Apache-2.0. By contributing to this
 project, you agree that your contributions will be licensed under
 the same terms. Asset packs may declare their own SPDX licenses;
-see the project specification for details.
+see the project specification for details. Every contribution keeps
+the project's commitment to stay free (ADR-0230).
