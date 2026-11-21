@@ -146,15 +146,15 @@ interface RenameOnCardProps {
  * the form is already gone because another card took the rename.
  */
 function RenameOnCard({ name, rename, cardRef }: RenameOnCardProps): ReactElement {
-  const shown = useRef(true)
+  const mounted = useRef(true)
   useEffect(() => {
-    shown.current = true
+    mounted.current = true
     return () => {
-      shown.current = false
+      mounted.current = false
     }
   }, [])
   const close = (): void => {
-    if (shown.current) {
+    if (mounted.current) {
       cardRef.current?.querySelector<HTMLElement>('[aria-haspopup]')?.focus()
     }
     rename.onClose()
