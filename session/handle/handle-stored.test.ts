@@ -36,6 +36,17 @@ function failSavesUntilRepaired(ports: TestPorts): () => void {
   }
 }
 
+/** From now on the store saves once as before, and every save after that rejects. */
+function failSavesAfterTheNext(ports: TestPorts): void {
+  const realSave = ports.workspace.save.bind(ports.workspace)
+  let saved = false
+  ports.workspace.save = (id, project) => {
+    if (saved) return Promise.reject(new Error('disk full'))
+    saved = true
+    return realSave(id, project)
+  }
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -108,23 +119,37 @@ describe('whether the project of a handle is stored', () => {
     expect(isStored(handle)).toBe(true)
   })
 
-  it('keeps the answer of the handle that a restore replaces', async () => {
+  it('keeps the answer of a stored handle that a restore replaces', async () => {
     const stored = await openStored()
     await snapshotRecovered(stored.handle)
-    failSavesUntilRepaired(stored.ports)
-    const restoredFromStored = handleOf(await restoreSnapshot(stored.handle))
+    failSaves(stored.ports.workspace)
 
-    expect(isStored(restoredFromStored)).toBe(true)
+    const restored = handleOf(await restoreSnapshot(stored.handle))
 
-    const fresh = await openNew()
-    await snapshotRecovered(fresh.handle)
-    const repair = failSavesUntilRepaired(fresh.ports)
-    const restoredFromFresh = handleOf(await restoreSnapshot(fresh.handle))
+    expect(isStored(restored)).toBe(true)
+  })
 
-    expect(isStored(restoredFromFresh)).toBe(false)
+  it('keeps the answer of a new handle that a restore replaces until its own first save', async () => {
+    const { ports, handle } = await openNew()
+    await snapshotRecovered(handle)
+    const repair = failSavesUntilRepaired(ports)
+    const restored = handleOf(await restoreSnapshot(handle))
+
+    expect(isStored(restored)).toBe(false)
     repair()
-    expect(await restoredFromFresh.save()).toEqual({ ok: true })
-    expect(isStored(restoredFromFresh)).toBe(true)
+    expect(await restored.save()).toEqual({ ok: true })
+    expect(isStored(restored)).toBe(true)
+  })
+
+  it('says stored after a restore whose hand-over stored the replaced project', async () => {
+    const { ports, handle } = await openNew()
+    await snapshotRecovered(handle)
+    rename(handle, 'Unsaved before the restore')
+    failSavesAfterTheNext(ports)
+
+    const restored = handleOf(await restoreSnapshot(handle))
+
+    expect(isStored(restored)).toBe(true)
   })
 
   it('says not stored for a handle that the session layer did not build', async () => {
