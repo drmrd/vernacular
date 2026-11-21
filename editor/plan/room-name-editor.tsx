@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import { setRoomName } from '../../core'
-import { Field } from '../design-system'
+import { Field, isComposingKey } from '../design-system'
 
 export interface RoomNameEditorProps {
   roomKey: string
@@ -18,6 +18,10 @@ export function RoomNameEditor({ roomKey, name, dispatch }: RoomNameEditorProps)
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter') {
+      // An Enter inside a text composition belongs to the input method.
+      if (isComposingKey(event)) {
+        return
+      }
       commit()
     }
   }

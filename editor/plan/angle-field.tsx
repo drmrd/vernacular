@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent, type ReactElement } from 'react'
-import { Field } from '../design-system'
+import { Field, isComposingKey } from '../design-system'
 import { DEG_TO_RAD, RAD_TO_DEG } from './angles'
 
 const ANGLE_DECIMAL_PLACES = 2
@@ -41,6 +41,10 @@ export function AngleField({ inputId, rotation, onCommit }: AngleFieldProps): Re
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'Enter') {
+      // An Enter inside a text composition belongs to the input method.
+      if (isComposingKey(event)) {
+        return
+      }
       commit()
     }
   }

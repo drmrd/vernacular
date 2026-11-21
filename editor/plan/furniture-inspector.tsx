@@ -12,7 +12,7 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
-import { Field, Stack } from '../design-system'
+import { Field, isComposingKey, Stack } from '../design-system'
 import { AngleField } from './angle-field'
 import { LengthField } from './length-field'
 
@@ -32,6 +32,10 @@ function NameField({ inputId, name, onCommit }: NameFieldProps): ReactElement {
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'Enter') {
+      // An Enter inside a text composition belongs to the input method.
+      if (isComposingKey(event)) {
+        return
+      }
       onCommit(text)
     }
   }
