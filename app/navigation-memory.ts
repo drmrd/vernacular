@@ -1,9 +1,15 @@
 import { isStored } from '../session'
-import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '../session'
+import type {
+  DocumentHandle,
+  FlowResult,
+  OpenRequest,
+  SessionPorts,
+  SwitchFailure,
+} from '../session'
 import { addressFor, parseAddress, type Place } from './address'
 import type { AddressBar } from './address-bar'
 import type { PageNotice } from './resolve-place'
-import type { RunFlow } from './use-open-project'
+import type { Flow, RunFlow } from './use-open-project'
 
 /** The page shown by the navigation, with the notice of a switch that failed or none. */
 export interface ShownPage {
@@ -46,7 +52,8 @@ export interface NavigationMemory {
   reading: object | null
   /** True from a first request that the owner opens until the owner shows what it gave. */
   starting: boolean
-  flowRunning: boolean
+  /** How many flows were handed to the owner and have not ended yet. */
+  flowsRunning: number
   /** True when the user moved while something ran, so the address is followed after it. */
   addressLeads: boolean
   /** True when the next address write adds a history entry. */
@@ -80,7 +87,7 @@ export function newNavigationMemory(
     live: false,
     reading: null,
     starting: false,
-    flowRunning: false,
+    flowsRunning: 0,
     addressLeads: false,
     pushNext: false,
     followed: null,
@@ -127,7 +134,23 @@ export function showPage(memory: NavigationMemory, page: ShownPage | null): void
 /** True while a first request is read, the owner opens one, or a flow runs. */
 export function isBusy(memory: NavigationMemory): boolean {
   const ownerOpens = memory.handle === null && memory.failure === null && memory.given !== null
-  return memory.reading !== null || memory.starting || memory.flowRunning || ownerOpens
+  return memory.reading !== null || memory.starting || memory.flowsRunning > 0 || ownerOpens
+}
+
+/**
+ * Hands a flow to the owner and keeps the navigation busy until it ends. A flow that the owner
+ * refuses ends at once and leaves a flow that still runs busy; a flow that throws ends too.
+ */
+export async function runOwnerFlow<Refusal>(
+  memory: NavigationMemory,
+  flow: Flow<Refusal>,
+): Promise<FlowResult<Refusal> | undefined> {
+  memory.flowsRunning += 1
+  try {
+    return await memory.owner.runFlow(flow)
+  } finally {
+    memory.flowsRunning -= 1
+  }
 }
 
 /**

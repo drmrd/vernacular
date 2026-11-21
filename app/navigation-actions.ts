@@ -1,15 +1,19 @@
 import { newProjectId } from '../storage'
 import { createInitialProject } from './create-initial-project'
 import { beginRead, followAgain, reopenFolder } from './follow-address'
-import { handFirstRequest, showPage, type NavigationMemory } from './navigation-memory'
+import {
+  handFirstRequest,
+  runOwnerFlow,
+  showPage,
+  type NavigationMemory,
+} from './navigation-memory'
 import type { RunFlow } from './use-open-project'
 
 /** The owner's way to run a flow, with one addition: a flow that opens another project adds an entry. */
 export function runFlowOf(memory: NavigationMemory): RunFlow {
   return async (flow) => {
-    memory.flowRunning = true
     try {
-      return await memory.owner.runFlow(async (ports, current) => {
+      return await runOwnerFlow(memory, async (ports, current) => {
         const result = await flow(ports, current)
         if (result.ok && result.handle !== current) {
           memory.pushNext = true
@@ -18,7 +22,6 @@ export function runFlowOf(memory: NavigationMemory): RunFlow {
         return result
       })
     } finally {
-      memory.flowRunning = false
       memory.view.bump()
     }
   }
@@ -50,7 +53,7 @@ function retryWithNothingOpen(memory: NavigationMemory): void {
     reopenFolder(memory, triedId)
     return
   }
-  if (!memory.flowRunning) {
+  if (memory.flowsRunning === 0) {
     memory.starting = true
   }
   memory.owner.retry()

@@ -6,6 +6,7 @@ import {
   currentPlace,
   handFirstRequest,
   isBusy,
+  runOwnerFlow,
   samePlace,
   showPage,
   writeWantedAddress,
@@ -80,9 +81,7 @@ async function runPlaceFlow(
   id: string,
   flow: Flow<PageScreen>,
 ): Promise<void> {
-  memory.flowRunning = true
-  const result = await memory.owner.runFlow(flow)
-  memory.flowRunning = false
+  const result = await runOwnerFlow(memory, flow)
   if (!memory.live) {
     return
   }
