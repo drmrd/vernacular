@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { FurnitureSceneNode, Point } from '../../core'
 import { FURNITURE_NODE_PREFIX } from '../../core'
 import { parseGltfBytes } from '../loaders/gltf-loader'
-import { disposeObject } from './dispose-object'
+import { disposeObject, markCacheHeld } from './dispose-object'
 import { markShadowCasters } from './shadow-casters'
 
 /** The error a furniture model parse rejects with when the model has no usable geometry. */
@@ -27,7 +27,26 @@ export async function parseFurnitureModel(bytes: Uint8Array): Promise<THREE.Obje
     disposeObject(model)
     throw new UnusableFurnitureModelError()
   }
+  markTemplateResourcesHeld(model)
   return model
+}
+
+/**
+ * The model cache owns a template's geometries, materials, and textures. Marking them held lets a
+ * scene tree that holds a clone of the template skip them when it is freed.
+ */
+function markTemplateResourcesHeld(model: THREE.Object3D): void {
+  model.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return
+    markCacheHeld(object.geometry)
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    for (const material of materials) {
+      markCacheHeld(material)
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) markCacheHeld(value)
+      }
+    }
+  })
 }
 
 function edgeLength(a: Point, b: Point): number {

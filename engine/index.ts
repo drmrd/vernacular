@@ -3,7 +3,7 @@ export { buildScene } from './scene/build-scene'
 export type { EdgeOverlayOptions } from './scene/edge-overlay'
 export { buildFurnitureMassing } from './scene/furniture-builder'
 export { buildFurnitureModelGroup, parseFurnitureModel } from './scene/furniture-model'
-export { disposeObject } from './scene/dispose-object'
+export { disposeObject, releaseCachedObject } from './scene/dispose-object'
 export {
   assembleFloorRoot,
   buildFurnitureSubgroup,
