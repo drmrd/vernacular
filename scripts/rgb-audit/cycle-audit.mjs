@@ -2,8 +2,9 @@
 //
 // Pure helpers for auditing the red-green-blue TDD cycle across a branch's git
 // history. No filesystem or process access: callers feed in raw `git log` output
-// and receive structured commits and rule violations. This module is the parsing
-// half; rule checks consume the parsed commits it produces.
+// and receive structured commits and rule violations. This module parses commits
+// and runs the cycle rules (ordering, independence, blue presence, test scope,
+// refactor scope) over them.
 
 /**
  * A single commit parsed from `git log` output.
@@ -12,13 +13,15 @@
 
 /**
  * A red-green-blue cycle rule that a sequence of commits broke.
- * @typedef {{ sha: string, rule: 'ordering'|'independence'|'blue', message: string }} Violation
+ * @typedef {{ sha: string, rule: 'ordering'|'independence'|'blue'|'test-scope'|'refactor-scope', message: string }} Violation
  */
+
+import { refactorScopeViolation, testScopeViolation } from './scope-rules.mjs'
+import { isTestFile } from './test-files.mjs'
 
 const RECORD_SEPARATOR = '\x1e'
 const UNIT_SEPARATOR = '\x1f'
 const CONVENTIONAL_COMMIT_PATTERN = /^(\w+)(?:\(([^)]*)\))?!?:\s*(.*)$/
-const TEST_FILE_PATTERN = /\.test\.(ts|tsx|mjs|js)$/
 
 /**
  * Parse raw `git log` output into structured commits.
@@ -101,25 +104,33 @@ function classify(commit) {
  * Blue presence rule: every GREEN commit must be closed by a BLUE refactor
  * commit before the next RED commit or the end of the range.
  *
+ * Test-scope rule: a RED commit must change only test assets.
+ *
+ * Refactor-scope rule: a BLUE commit must change no test files, unless the
+ * change only follows a rename or a move. `readCommitDiff` returns the
+ * rename-aware diff of a commit; it is called only for BLUE commits that touch
+ * a test file, and without it no exemption applies.
+ *
  * The loop is a small state machine over two carried values: `pendingRed`, the
  * count of RED commits not yet consumed by a GREEN, and `openGreen`, the sha of
  * a GREEN cycle still awaiting its closing BLUE (or null). Each role advances
  * that state and may emit violations; `auditCommits` itself only drives the loop.
  *
  * @param {ParsedCommit[]} commits
+ * @param {{ readCommitDiff?: (sha: string) => string }} [options]
  * @returns {Violation[]}
  */
-export function auditCommits(commits) {
+export function auditCommits(commits, { readCommitDiff } = {}) {
   const violations = []
   let state = { pendingRed: 0, openGreen: null }
   for (const commit of commits) {
     const role = classify(commit)
     if (role === 'red') {
-      state = advanceOnRed(state, violations)
+      state = advanceOnRed(state, commit, violations)
     } else if (role === 'green') {
       state = advanceOnGreen(state, commit, violations)
     } else if (role === 'blue') {
-      state = advanceOnBlue(state)
+      state = advanceOnBlue(state, { commit, violations, readCommitDiff })
     }
   }
   if (state.openGreen !== null) {
@@ -137,13 +148,20 @@ export function auditCommits(commits) {
  * A RED commit closes any open GREEN cycle (it cannot have seen its BLUE) and
  * adds to the pool of RED commits a later GREEN may consume.
  *
+ * A RED commit is also checked against the test-scope rule.
+ *
  * @param {AuditState} state
+ * @param {ParsedCommit} commit
  * @param {Violation[]} violations
  * @returns {AuditState}
  */
-function advanceOnRed(state, violations) {
+function advanceOnRed(state, commit, violations) {
   if (state.openGreen !== null) {
     violations.push(blueViolation(state.openGreen))
+  }
+  const scopeViolation = testScopeViolation(commit)
+  if (scopeViolation !== null) {
+    violations.push(scopeViolation)
   }
   return { pendingRed: state.pendingRed + 1, openGreen: null }
 }
@@ -177,10 +195,17 @@ function advanceOnGreen(state, commit, violations) {
 /**
  * A BLUE commit closes the open GREEN cycle, satisfying the blue-presence rule.
  *
+ * A BLUE commit is also checked against the refactor-scope rule.
+ *
  * @param {AuditState} state
+ * @param {{ commit: ParsedCommit, violations: Violation[], readCommitDiff?: (sha: string) => string }} context
  * @returns {AuditState}
  */
-function advanceOnBlue(state) {
+function advanceOnBlue(state, { commit, violations, readCommitDiff }) {
+  const scopeViolation = refactorScopeViolation(commit, readCommitDiff)
+  if (scopeViolation !== null) {
+    violations.push(scopeViolation)
+  }
   return { pendingRed: state.pendingRed, openGreen: null }
 }
 
@@ -209,7 +234,7 @@ function orderingViolation(commit, hasPrecedingRed) {
  * @returns {Violation|null}
  */
 function independenceViolation(commit) {
-  const testFiles = commit.files.filter((file) => TEST_FILE_PATTERN.test(file))
+  const testFiles = commit.files.filter((file) => isTestFile(file))
   if (testFiles.length === 0) {
     return null
   }

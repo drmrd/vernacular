@@ -75,7 +75,9 @@ end-to-end and visual tiers have their own sections below.
 3. Write your change. See "Conventions" below.
 4. Open a pull request against `main`. Fill in the PR description with
    a clear summary and a test plan.
-5. Wait for CI to go green and for review.
+5. Wait for CI to go green and for review. On a pull request from a
+   fork, the repository policy check reports your commit author as a
+   warning, not a failure, so it does not hold up the required checks.
 
 Small, focused PRs are easier to review and merge. If your work is
 large, open an issue first to discuss scope and possibly split into
