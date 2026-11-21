@@ -1043,6 +1043,20 @@ it('keeps the header unchanged when every cycle that needed mutation was reached
       `test: expect a time budget to cap the mutation check`,
       `feat: cap the mutation check with a time budget, newest GREEN commit first`, then BLUE.
 
+Refinements (main thread, 2026-11-21, after Cycle 16):
+
+- Cycle 16 put check 4 in `scripts/green-proof/prove-mutation.mjs` (`checkMutation`), called from
+  `checkGreen` in `prove-cycle.mjs`. `checkMutation` returns nothing when `mutationTargets` is
+  empty. The budget is asked there, after that test and before any config is written, so a cycle
+  with no mutation target never asks it. `proveCycle` passes `context.budget` through.
+- `green-proof-cli-test-support.mjs` has no coverage or Stryker answers today: its GREEN commits
+  have an empty diff, so check 4 never runs in CLI tests. The RED commit gives `cliScenario` an
+  option that makes each GREEN commit add one covered `core/a.ts` line (its `git show` diff, the
+  lcov file a coverage run leaves, a `stryker.conf.json` base, and an exit-0 Stryker answer with an
+  empty report), plus the clock jump on each `stryker` call. Existing CLI tests keep their output.
+  `green-proof-stryker-test-support.mjs` holds the Stryker fake of `scenario`; reuse it.
+- `MUTATION_NOT_REACHED_NOTE` is the only note text the header counts.
+
 **Review focus:** checks 1 to 3 run on every cycle whatever the budget; the budget counts only
 check 4 time; a started cycle runs all its groups; the note never becomes a finding, so it adds no
 annotation and never changes the exit code; the report order is the range order; `parseOptions`,
