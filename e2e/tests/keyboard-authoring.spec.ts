@@ -263,7 +263,6 @@ test.describe('Keyboard plan authoring announcements', () => {
 
 const GROUND_FLOOR = 'Ground'
 const UPPER_FLOOR = '2nd Floor'
-const STAIR_STEPS = 2
 
 // A placed stair is selected, and its inspector is the only place that offers an angle.
 const stairInspectorAngle = (page: Page) => page.getByLabel('Angle (deg)')
@@ -305,7 +304,9 @@ test.describe('Keyboard plan authoring across floors', () => {
 
     // Real arrow keys move the candidate, and Enter drops the stair there. The placed
     // stair is selected, so its inspector appears beside the plan.
-    await pressRepeatedly(page, 'ArrowRight', STAIR_STEPS)
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByTestId('plan-authoring-candidate')).toBeVisible()
+    await page.keyboard.press('ArrowRight')
     await page.keyboard.press('Enter')
 
     await expect(live).toHaveText('Stair placed')
@@ -322,7 +323,14 @@ test.describe('Keyboard plan authoring across floors', () => {
     await selectors.floorButton(page, GROUND_FLOOR).click()
     await armTool(page, 'Stairs')
     await selectors.floorButton(page, UPPER_FLOOR).click()
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+
+    // One arrow key moves the candidate first: a focused radio owns the arrows, so it
+    // goes before the chip takes focus.
+    await page.keyboard.press('ArrowRight')
+
+    // The armed chip stays checked and focusable (only aria-disabled) after the floor
+    // switch. Focus it with focus() rather than a Tab path, then press Enter on it.
+    await page.getByRole('radio', { name: 'Stairs', exact: true }).focus()
     await page.keyboard.press('Enter')
 
     await expect(page.locator('.plan-overlay__refusal')).toHaveText(
