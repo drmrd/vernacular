@@ -6,7 +6,7 @@
 import { join } from 'node:path'
 import { shortSha } from '../policy-check/report.mjs'
 import { severityOf } from '../policy-check/rule-severity.mjs'
-import { checkCoverage, coverageRequest } from './prove-coverage.mjs'
+import { checkCoverage, planCoverage } from './prove-coverage.mjs'
 import { redTestSet } from './test-set.mjs'
 import {
   declarationFiles,
@@ -32,7 +32,9 @@ import { assertRanExactlyRedFiles, GENERATED_FOLDER, runVitest } from './vitest-
  * @typedef {{ sha: string, title: string, status: 'proven'|'skipped'|'failed', reason: string, notes: string[], findings: Finding[], timings: Partial<Record<Step, number>> }} CycleResult
  * @typedef {{ runGit: RunGit, runCommand: RunCommand, files: Files, session: { checkout(sha: string): { root: string, installMs: number } }, now: () => number }} CycleContext
  * @typedef {{ root: string, sha: string }} Checkout the worktree root and the commit checked out in it
- * @typedef {{ cycle: GreenCycle, context: CycleContext, set: RedTestSet, result: CycleResult, skipReason: string | null }} Run the cycle in progress; `set` and `skipReason` change during the run
+ * @typedef {{ cycle: GreenCycle, context: CycleContext, set: RedTestSet, result: CycleResult }} Run the cycle in progress; `set` is the RED test set the next check runs
+ * @typedef {{ findings: Finding[], notes: string[] }} CheckReport what a check found and what it noted
+ * @typedef {{ skip: string } | { set: RedTestSet, findings: Finding[] }} ParentOutcome either why the cycle is skipped, or the RED test set that ran and the findings
  */
 
 /**
@@ -113,18 +115,18 @@ function runRedTests(run, checkout, coverage) {
 }
 
 /**
- * Runs the unit tests related to the RED test assets. Their test files replace the unit files of
- * the cycle, so every later check runs exactly them.
+ * Runs the RED tests at the parent. For RED test assets, the unit tests related to them replace the
+ * unit files of the cycle, so every later check runs exactly those.
  * @param {Run} run
  * @param {Checkout} checkout
- * @returns {VitestOutcome}
+ * @returns {{ outcome: VitestOutcome, set: RedTestSet }} the outcome and the set that ran
  */
-function runRelatedTests(run, checkout) {
-  const outcome = runVitest(run.context, checkout, { files: run.set.assetFiles, related: true })
-  if (outcome.outcome !== 'empty') {
-    run.set = { ...run.set, kind: 'unit', unitFiles: outcome.testFiles }
-  }
-  return outcome
+function runParentTests(run, checkout) {
+  const { set } = run
+  if (set.kind !== 'assets-only') return { outcome: runRedTests(run, checkout), set }
+  const outcome = runVitest(run.context, checkout, { files: set.assetFiles, related: true })
+  if (outcome.outcome === 'empty') return { outcome, set }
+  return { outcome, set: { ...set, kind: 'unit', unitFiles: outcome.testFiles } }
 }
 
 /**
@@ -157,10 +159,11 @@ function typeErrorsOfTarget(run, { root, sha }, target) {
 /**
  * @param {Run} run
  * @param {Checkout} checkout
+ * @param {RedTestSet} set
  * @returns {boolean} true when a RED file has a type error
  */
-function hasTypeError(run, checkout) {
-  const targets = typeCheckTargets(run.set.unitFiles)
+function hasTypeError(run, checkout, set) {
+  const targets = typeCheckTargets(set.unitFiles)
   return targets.some(
     (target, index) => typeErrorsOfTarget(run, checkout, { ...target, index }).length > 0,
   )
@@ -168,61 +171,44 @@ function hasTypeError(run, checkout) {
 
 /**
  * @param {Run} run
- * @returns {Finding | null} null when the RED tests fail at the parent, or when the cycle is skipped
+ * @returns {ParentOutcome} no findings when the RED tests fail or do not type-check at the parent
  */
 function checkParent(run) {
   const { cycle, context } = run
   const parent = context.runGit(['rev-parse', `${cycle.green.sha}^`]).trim()
   const checkout = checkoutAt(run, parent)
-  const outcome = measure(run, 'parent', () =>
-    run.set.kind === 'assets-only' ? runRelatedTests(run, checkout) : runRedTests(run, checkout),
-  )
-  if (outcome.outcome === 'empty') {
-    run.skipReason = assetsSkipReason(run.set)
-    return null
+  const { outcome, set } = measure(run, 'parent', () => runParentTests(run, checkout))
+  if (outcome.outcome === 'empty') return { skip: assetsSkipReason(set) }
+  if (outcome.outcome === 'failed') return { set, findings: [] }
+  if (measure(run, 'typeCheck', () => hasTypeError(run, checkout, set))) {
+    return { set, findings: [] }
   }
-  if (outcome.outcome === 'failed') return null
-  if (measure(run, 'typeCheck', () => hasTypeError(run, checkout))) return null
-  const { set } = run
-  return {
-    rule: set.kind === 'mixed' ? 'mixed-red-passes-before-green' : 'red-passes-before-green',
-    sha: cycle.green.sha,
-    message: `RED tests pass and type-check at the parent ${shortSha(parent)}: ${set.unitFiles.join(', ')}`,
-  }
+  const rule = set.kind === 'mixed' ? 'mixed-red-passes-before-green' : 'red-passes-before-green'
+  const message = `RED tests pass and type-check at the parent ${shortSha(parent)}: ${set.unitFiles.join(', ')}`
+  return { set, findings: [{ rule, sha: cycle.green.sha, message }] }
 }
 
 /**
- * Check 3, run only after check 2 passed: findings and notes go straight into the result.
+ * Checks 2 and 3: the RED tests pass at the GREEN commit and run every line it adds. Check 3 runs
+ * only after check 2 passed.
  * @param {Run} run
- * @param {string} root
- */
-function checkAddedLines(run, root) {
-  const { cycle, context, set, result } = run
-  const request = { cycle, root, mixed: set.kind === 'mixed' }
-  const { findings, notes } = checkCoverage(request, context)
-  result.findings.push(...findings)
-  result.notes.push(...notes)
-}
-
-/**
- * @param {Run} run
- * @returns {Finding | null}
+ * @returns {CheckReport}
  */
 function checkGreen(run) {
-  const sha = run.cycle.green.sha
+  const { context, set } = run
+  const { sha } = run.cycle.green
   const checkout = checkoutAt(run, sha)
-  const outcome = measure(run, 'green', () =>
-    runRedTests(run, checkout, coverageRequest(run.cycle, run.context.runGit)),
+  const { request, lines } = planCoverage(context.runGit, sha)
+  const outcome = measure(run, 'green', () => runRedTests(run, checkout, request))
+  if (outcome.outcome !== 'passed') {
+    const message = `RED tests do not pass at the GREEN commit: ${outcome.detail}`
+    return { findings: [{ rule: 'red-fails-at-green', sha, message }], notes: [] }
+  }
+  return checkCoverage(
+    lines,
+    { sha, root: checkout.root, mixed: set.kind === 'mixed' },
+    context.files,
   )
-  if (outcome.outcome === 'passed') {
-    checkAddedLines(run, checkout.root)
-    return null
-  }
-  return {
-    rule: 'red-fails-at-green',
-    sha,
-    message: `RED tests do not pass at the GREEN commit: ${outcome.detail}`,
-  }
 }
 
 /**
@@ -242,7 +228,8 @@ function newResult(green) {
 }
 
 /**
- * Checks 1 and 2: RED tests fail at the GREEN commit's parent and pass at the GREEN commit.
+ * Checks 1 to 3: the RED tests fail at the GREEN commit's parent, pass at the GREEN commit, and run
+ * every line it adds.
  * @param {GreenCycle} cycle
  * @param {CycleContext} context
  * @returns {CycleResult}
@@ -252,12 +239,12 @@ export function proveCycle(cycle, context) {
   const set = redTestSet(cycle, existsAtGreen(cycle, context.runGit))
   const reason = skipReason(cycle, set)
   if (reason !== null) return { ...result, status: 'skipped', reason }
-  const run = { cycle, context, set, result, skipReason: null }
-  const parentFinding = checkParent(run)
-  if (run.skipReason !== null) return { ...result, status: 'skipped', reason: run.skipReason }
-  if (parentFinding !== null) result.findings.push(parentFinding)
-  const greenFinding = checkGreen(run)
-  if (greenFinding !== null) result.findings.push(greenFinding)
+  const run = { cycle, context, set, result }
+  const parent = checkParent(run)
+  if ('skip' in parent) return { ...result, status: 'skipped', reason: parent.skip }
+  const green = checkGreen({ ...run, set: parent.set })
+  result.findings.push(...parent.findings, ...green.findings)
+  result.notes.push(...green.notes)
   if (result.findings.some((finding) => severityOf(finding.rule) === 'fail')) {
     result.status = 'failed'
   }

@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { parseUnifiedDiff } from '../policy-check/git-input.mjs'
 import { parseLcov, splitByCoverage, uncoveredLineFindings } from './coverage.mjs'
 import { isProofSource, parseRemovedLines, provableAddedLines } from './diff-lines.mjs'
-import { LCOV_FILE } from './vitest-worktree.mjs'
+import { GENERATED_FOLDER, LCOV_FILE } from './vitest-worktree.mjs'
 
 /**
  * @typedef {import('../rgb-audit/cycle-pairing.mjs').GreenCycle} GreenCycle
@@ -15,7 +15,13 @@ import { LCOV_FILE } from './vitest-worktree.mjs'
  * @typedef {import('./worktree.mjs').Files} Files
  */
 
-const COVERAGE_FOLDER = '.green-proof/coverage'
+const COVERAGE_FOLDER = join(GENERATED_FOLDER, 'coverage')
+
+/**
+ * @typedef {import('../policy-check/git-input.mjs').AddedLine} AddedLine
+ * @typedef {{ include: string[], dir: string }} CoverageRequest the files whose coverage the run records
+ * @typedef {{ request: CoverageRequest | undefined, lines: AddedLine[] }} CoveragePlan
+ */
 
 /**
  * @param {RunGit} runGit
@@ -37,32 +43,19 @@ function showDiff(runGit, sha) {
 }
 
 /**
- * @param {string} diff
- * @returns {import('../policy-check/git-input.mjs').AddedLine[]}
- */
-function addedSourceLines(diff) {
-  return parseUnifiedDiff(diff).filter(({ file }) => isProofSource(file))
-}
-
-/**
- * @param {GreenCycle} cycle
- * @param {RunGit} runGit
- * @returns {{ include: string[], dir: string } | undefined} undefined when no changed file needs proof
- */
-export function coverageRequest(cycle, runGit) {
-  const lines = addedSourceLines(showDiff(runGit, cycle.green.sha))
-  const include = [...new Set(lines.map(({ file }) => file))]
-  return include.length === 0 ? undefined : { include, dir: COVERAGE_FOLDER }
-}
-
-/**
+ * Reads the GREEN commit's diff once: the files to record coverage for, and the added lines to prove.
  * @param {RunGit} runGit
  * @param {string} sha
- * @returns {import('../policy-check/git-input.mjs').AddedLine[]}
+ * @returns {CoveragePlan} `request` is undefined when no changed file needs proof
  */
-function provableLines(runGit, sha) {
+export function planCoverage(runGit, sha) {
   const diff = showDiff(runGit, sha)
-  return provableAddedLines(addedSourceLines(diff), parseRemovedLines(diff))
+  const added = parseUnifiedDiff(diff).filter(({ file }) => isProofSource(file))
+  const include = [...new Set(added.map(({ file }) => file))]
+  return {
+    request: include.length === 0 ? undefined : { include, dir: COVERAGE_FOLDER },
+    lines: provableAddedLines(added, parseRemovedLines(diff)),
+  }
 }
 
 /**
@@ -88,13 +81,12 @@ function readLcov(files, root) {
 }
 
 /**
- * @param {{ cycle: GreenCycle, root: string, mixed: boolean }} request
- * @param {{ runGit: RunGit, files: Files }} context
+ * @param {AddedLine[]} lines the provable added lines of the GREEN commit
+ * @param {{ sha: string, root: string, mixed: boolean }} proof
+ * @param {Files} files
  * @returns {{ findings: Finding[], notes: string[] }}
  */
-export function checkCoverage({ cycle, root, mixed }, { runGit, files }) {
-  const { sha } = cycle.green
-  const lines = provableLines(runGit, sha)
+export function checkCoverage(lines, { sha, root, mixed }, files) {
   if (lines.length === 0) return { findings: [], notes: [] }
   const coverage = parseLcov(readLcov(files, root), root)
   if (coverage.size === 0) {
