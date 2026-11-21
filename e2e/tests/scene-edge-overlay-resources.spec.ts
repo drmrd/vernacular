@@ -2,6 +2,7 @@ import { test, expect, type Locator } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
 import { navButton } from './journeys/close-openings-support'
 import { LIVE_VIEW_READY } from './live-pane'
+import { guardLiveSceneSupport } from './live-webgpu'
 import { drawnRoomCanvas, logReading } from './scene-helpers'
 
 // Issue #434: flipping the surface-edge overlay rebuilds the scene, and the superseded build's
@@ -15,7 +16,8 @@ import { drawnRoomCanvas, logReading } from './scene-helpers'
 // tests of the release path cover those.
 //
 // Runs only in the GPU `scene-webgl` Playwright project (the config routes `scene-*.spec.ts`
-// there) and self-skips without navigator.gpu, as the neighbouring live-view specs do.
+// there). The shared guard skips it on a runner with no WebGPU adapter or no WebGL 2 context,
+// and E2E_REQUIRE_WEBGPU=1 turns that skip into a failure.
 
 const FLIPS = 10
 // A reading is settled when two reads this far apart agree; a frame draws well within it.
@@ -71,8 +73,7 @@ test('ten flips of the surface-edge overlay keep the renderer geometry and textu
   test.setTimeout(TEST_TIMEOUT_MS)
   await page.goto('/?e2e=1')
   await webFontsSettled(page)
-  const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
-  test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+  await guardLiveSceneSupport(page, 'the overlay resource spec')
 
   // A closed room gives the overlay real wall and floor edges to build and retire.
   const canvas = await drawnRoomCanvas(page)
