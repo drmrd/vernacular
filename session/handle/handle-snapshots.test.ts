@@ -69,6 +69,7 @@ function failFirstPrune(ports: TestPorts, error: Error): void {
       },
       isRecoverable: () => real.isRecoverable(),
       restore: () => real.restore(),
+      setAsideRefused: () => Promise.resolve(0),
     }
   }
 }
