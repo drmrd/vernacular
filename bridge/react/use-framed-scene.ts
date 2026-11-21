@@ -61,7 +61,16 @@ interface ReconcilerLifetime {
   release: RefObject<SceneReleaseState>
 }
 
-function useReconcilerLifetime(edgeOverlay: boolean): ReconcilerLifetime {
+/**
+ * One reconciler per overlay setting; it reuses an unchanged floor's built scene instead of
+ * rebuilding on every edit (foundation spec 5.5). Flipping the edge overlay constructs a fresh
+ * reconciler, since every cached sub-group baked the previous setting in. Nothing is freed
+ * during render: the flipped-away reconciler waits in the release state until useSceneRelease
+ * frees it. On unmount the live reconciler and every waiting one are disposed a microtask later,
+ * and a StrictMode remount, which runs the effect again at once, cancels that disposal. Activity
+ * hiding counts as an unmount here; see useFramedScene.
+ */
+function useFramedSceneReconciler(edgeOverlay: boolean): ReconcilerLifetime {
   const reconciler = useMemo(() => createFramedSceneReconciler({ edgeOverlay }), [edgeOverlay])
   const release = useRef<SceneReleaseState>({
     superseded: new Set(),
@@ -134,12 +143,16 @@ export interface FramedSceneState {
  * paint and each furniture instance's loaded model, and reconciles the result into a
  * framed scene. The edge-overlay toggle lives here because the reconciler is keyed
  * on it.
+ *
+ * Not safe under Activity hiding: a hidden subtree runs the effect cleanup with no setup, so the
+ * live reconciler is disposed while its scene can still be shown again. Unmount the view
+ * instead of hiding it.
  */
 export function useFramedScene(): FramedSceneState {
   const { graph, buildingView } = useShownSceneGraph()
   const paint = useProjectPaint()
   const { edgeOverlay, toggleEdgeOverlay } = useEdgeOverlay()
-  const lifetime = useReconcilerLifetime(edgeOverlay)
+  const lifetime = useFramedSceneReconciler(edgeOverlay)
   const { reconciler } = lifetime
   const models = useFurnitureModelCache(graph)
   const framed = useMemo(
