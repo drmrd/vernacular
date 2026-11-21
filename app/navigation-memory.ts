@@ -51,12 +51,11 @@ export interface NavigationMemory {
   address: AddressBar
   readonly view: NavigationView
   readonly owner: OwnerControls
-  /**
-   * The ports and the owner's failure of the latest commit, and the open project: the handle of the
-   * latest resolved flow or commit.
-   */
+  /** The ports of the latest commit. */
   ports: SessionPorts | null
+  /** The open project: the handle of the latest flow that opened a project, or of the latest commit. */
   handle: DocumentHandle | null
+  /** The owner's failure of the latest commit. */
   failure: SwitchFailure | null
   page: ShownPage | null
   /** True while the hook's effects are set up. */
@@ -188,9 +187,25 @@ export function ownerRetries(memory: NavigationMemory): void {
 }
 
 /**
+ * Records the project that a flow opened as the open project and as the id tried last. This runs as
+ * soon as the flow ends, not when the commit is taken: React commits the new view before the effect
+ * that calls `takeCommitted` runs, and a history move can arrive between the two, which must see the
+ * project that the flow opened.
+ */
+function takeFlowProject<Refusal>(
+  memory: NavigationMemory,
+  result: FlowResult<Refusal> | undefined,
+): void {
+  if (result?.ok) {
+    memory.handle = result.handle
+    memory.triedId = result.handle.id
+  }
+}
+
+/**
  * Hands a flow to the owner and keeps the navigation busy until it ends. A flow that the owner
  * refuses ends at once and leaves a flow that still runs busy. The count drops also when the owner
- * rejects.
+ * rejects. A flow that opens a project is recorded at once, see `takeFlowProject`.
  */
 export async function runOwnerFlow<Refusal>(
   memory: NavigationMemory,
@@ -199,10 +214,7 @@ export async function runOwnerFlow<Refusal>(
   memory.busy.flowsRunning += 1
   try {
     const result = await memory.owner.runFlow(flow)
-    if (result?.ok) {
-      memory.handle = result.handle
-      memory.triedId = result.handle.id
-    }
+    takeFlowProject(memory, result)
     return result
   } finally {
     memory.busy.flowsRunning -= 1
