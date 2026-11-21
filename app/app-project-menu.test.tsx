@@ -32,11 +32,11 @@ const HOUSE_NAME = 'My House'
 const TWIN_IDS = ['twin-a', 'twin-b']
 const TWIN_NAME = 'Twin House'
 const SAVE_FAILED_TOAST = 'Save failed. Your latest changes are not saved yet.'
-const WRITE_OF_THE_START_PROJECT = [
-  `writeSnapshot:${START_ID}`,
-  `save:${START_ID}`,
-  `prune:${START_ID}`,
-]
+
+/** The steps of one write of the project under `id`: the write ahead, the save, and the prune. */
+function writeOf(id: string): string[] {
+  return [`writeSnapshot:${id}`, `save:${id}`, `prune:${id}`]
+}
 
 afterEach(() => {
   cleanup()
@@ -77,6 +77,7 @@ describe('The project menu of the application', () => {
     renderApp(ports)
 
     await findTheShell()
+    const [startId = ''] = lockedIds(ports)
     save.mockClear()
     log.length = 0
 
@@ -84,12 +85,12 @@ describe('The project menu of the application', () => {
 
     await waitFor(() =>
       expect(save).toHaveBeenCalledWith(
-        START_ID,
+        startId,
         expect.objectContaining({ floors: expect.any(Array) }),
       ),
     )
     // The write ahead comes first, and the snapshots are pruned once the save is stored.
-    await waitFor(() => expect(log).toEqual(WRITE_OF_THE_START_PROJECT))
+    await waitFor(() => expect(log).toEqual(writeOf(startId)))
   })
 
   it('lists a recent project and opens it into the session when clicked', async () => {
@@ -134,10 +135,11 @@ describe('The project menu of the application', () => {
     const ports = createTestPorts()
     renderApp(ports)
     await expectOpenProject(NEW_PROJECT_NAME)
+    const [firstId = ''] = lockedIds(ports)
     await plantProject(ports, HOUSE_ID, HOUSE_NAME)
 
     await chooseFromTheProjectMenu(/new project/i)
-    await waitFor(() => expect(lockedIds(ports)).not.toContain(START_ID))
+    await waitFor(() => expect(lockedIds(ports)).not.toContain(firstId))
     await settleForAWhile()
 
     await openTheProjectMenu()

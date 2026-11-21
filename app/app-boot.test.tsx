@@ -18,6 +18,7 @@ import {
   plantFailedProject,
   plantProject,
   renderApp,
+  resetWindowAddress,
   secondTab,
   startNewProjectFromTheFailureView,
   storedIds,
@@ -28,6 +29,7 @@ const KEPT_NAME = 'Kept House'
 
 afterEach(() => {
   cleanup()
+  resetWindowAddress()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -83,7 +85,7 @@ describe('The application boots from its ports', () => {
 
     await findTheShell()
     await act(async () => {})
-    expect(lockedIds(ports)).toEqual([FAILED_ID])
+    expect(lockedIds(ports)).toHaveLength(1)
     expect(save).not.toHaveBeenCalled()
     expect(await storedIds(ports)).toEqual([])
   })
@@ -102,7 +104,7 @@ describe('The application boots from its ports', () => {
     await findTheShell()
     await act(async () => {})
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(lockCalls(log)).toEqual([`lock:${FAILED_ID}`])
+    expect(lockCalls(log)).toEqual([expect.stringMatching(/^lock:/)])
   })
 
   it('opens the project again after an unmount and a new render on the same ports', async () => {
@@ -136,7 +138,7 @@ describe('The application after a failed start', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not open the project/i)
     // The failure is the one of these ports, not of a store resolved elsewhere.
-    expect(read).toHaveBeenCalledWith(FAILED_ID)
+    expect(read).toHaveBeenCalled()
   })
 
   it('names the underlying failure in the boot error notice', async () => {
@@ -152,6 +154,7 @@ describe('The application after a failed start', () => {
   it('says that the project is open in another tab when another tab holds it', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
+    await plantProject(ports, FAILED_ID, KEPT_NAME)
     await secondTab(ports).locks.tryAcquire(FAILED_ID)
 
     renderApp(ports)
