@@ -16,8 +16,9 @@ const DASH_ERA_SEPARATOR = '-'
  * segments the way `roomKey` does. A key that does not segment matches no wall and
  * is left untouched. When a dash-era key and a key already in the current form name
  * the same room, the current-form key wins in any key order and the dash override is
- * dropped. The orchestrator advances
- * `meta.schemaVersion`, so the migration must not.
+ * dropped. When two dash-era keys name the same room, the later one in the stored
+ * order wins. The orchestrator advances `meta.schemaVersion`, so the migration
+ * must not.
  */
 export const rekeyRoomOverridesMigration: SchemaMigration = {
   from: 16,
@@ -32,6 +33,8 @@ export const rekeyRoomOverridesMigration: SchemaMigration = {
       const resolvedKey = roomKeyFor(storedKey, wallIds)
       if (resolvedKey !== storedKey) {
         rewroteAnyKey = true
+        // Check the stored keys, not `rekeyed`, so the current-form key wins even
+        // when the loop has not reached it yet.
         if (Object.hasOwn(overrides, resolvedKey)) continue
       }
       rekeyed[resolvedKey] = override
