@@ -54,20 +54,29 @@ export function ownsKeystroke(target: EventTarget | null, key: string): boolean 
   )
 }
 
+// The accessible name of the tools panel radiogroup, whose checked chip is the armed tool.
+const TOOLS_RADIOGROUP_LABEL = 'Tools'
+
+function isArmedToolChip(button: HTMLElement): boolean {
+  return (
+    button.getAttribute('role') === 'radio' &&
+    button.getAttribute('aria-checked') === 'true' &&
+    button.closest('[role="radiogroup"]')?.getAttribute('aria-label') === TOOLS_RADIOGROUP_LABEL
+  )
+}
+
 /**
- * True when Enter landed on a focused button that activates on it. While an
- * authoring tool is armed, every focused button owns Enter, so a tool never drops
- * a vertex or places an opening on the press that clicks the button. The one
- * exception is the chip of the armed tool, a checked radio, which keeps Enter for
- * the tool (ADR-0115, ADR-0155). The chip of any other tool is an ordinary button.
+ * True when Enter landed on a focused button that activates on it, except the chip
+ * of the armed tool, which keeps Enter for the tool (ADR-0115, ADR-0155). Every
+ * other focused button owns Enter, so a tool never drops a vertex or places an
+ * opening on the press that clicks the button. A checked radio in any other group,
+ * such as the Edit layer group, is an ordinary button.
  */
 export function buttonOwnsEnter(target: EventTarget | null, key: string): boolean {
   if (key !== 'Enter' || !(target instanceof HTMLElement) || target.tagName !== 'BUTTON') {
     return false
   }
-  return !(
-    target.getAttribute('role') === 'radio' && target.getAttribute('aria-checked') === 'true'
-  )
+  return !isArmedToolChip(target)
 }
 
 // The keystrokes a tool has already answered. Held weakly, so an event is
