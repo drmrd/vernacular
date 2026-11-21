@@ -15,7 +15,8 @@ export interface ProjectControlsProps {
   onExportImage?: () => void
   onExportPdf?: () => void
   onOpenFolder?: () => void
-  onOpenFile?: () => void
+  onImportFile?: () => void
+  onSwitchProjects?: () => void
   onImportDroppedFile?: ((file: File) => void) | undefined
 }
 

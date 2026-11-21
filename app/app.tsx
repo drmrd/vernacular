@@ -23,7 +23,7 @@ import { harnessEnvironmentState, resolveHarnessScene } from './harness-environm
 import { resolveHarnessPaint } from './harness-paint'
 import type { AddressBar } from './address-bar'
 import { nothingOpenFailureView } from './nothing-open-failure-view'
-import { ProjectsScreen } from './projects-screen'
+import { ProjectsScreen, type ProjectsScreenProps } from './projects-screen'
 import type { PageScreen } from './resolve-place'
 import { useUnsavedChangesGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
@@ -121,7 +121,7 @@ function AppWorkspace(props: AppProps) {
     return portsFailureView(boot.portsFailure, boot)
   }
   if (screen?.kind === 'projects') {
-    return pageOverProjectView(navigation, screen, ports)
+    return pageOverProjectView(navigation, screen, { ports, libraryAssets })
   }
   if (screen === null || ports === null || libraryAssets === null || capabilities === null) {
     return bootLoadingView()
@@ -135,6 +135,7 @@ function AppWorkspace(props: AppProps) {
       ports={ports}
       capabilities={capabilities}
       offeredRecovery={offeredRecovery}
+      showProjects={navigation.showProjects}
     />
   )
 }
@@ -144,13 +145,13 @@ function AppWorkspace(props: AppProps) {
 function pageOverProjectView(
   navigation: HistoryNavigation,
   screen: PageScreen,
-  ports: SessionPorts | null,
+  stores: Pick<ProjectsScreenProps, 'ports' | 'libraryAssets'>,
 ) {
   const { handle } = navigation
   return (
     <>
       {handle === null ? null : <UnsavedWorkGuards handle={handle} />}
-      <ProjectsScreen navigation={navigation} screen={screen} ports={ports} />
+      <ProjectsScreen navigation={navigation} screen={screen} {...stores} />
     </>
   )
 }
@@ -209,6 +210,8 @@ export interface EditorWorkspaceProps {
   capabilities: StorageCapabilities
   /** The handles whose recovered work was offered already; each is offered once over remounts. */
   offeredRecovery?: WeakSet<DocumentHandle>
+  /** Shows the Projects page over the open project. */
+  showProjects?: () => void
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {

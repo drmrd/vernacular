@@ -101,6 +101,29 @@ function useProjectRename() {
   return { session, projectName, handleRename }
 }
 
+interface ShellProjectMenuProps {
+  projectControls: ProjectControlsProps
+  projectName: string
+  onRename: (name: string) => void
+}
+
+// The Project menu of the header, wired to the project controls of the shell.
+function ShellProjectMenu({ projectControls, projectName, onRename }: ShellProjectMenuProps) {
+  return (
+    <ProjectMenu
+      onNewProject={projectControls.onNewProject}
+      onSave={projectControls.onSave}
+      onSwitchProjects={projectControls.onSwitchProjects}
+      onImportFile={projectControls.onImportFile}
+      onOpenFolder={projectControls.onOpenFolder}
+      onOpenRecent={projectControls.onOpenRecent}
+      recentProjects={projectControls.recentProjects}
+      projectName={projectName}
+      onRename={onRename}
+    />
+  )
+}
+
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const { session, projectName, handleRename } = useProjectRename()
   return (
@@ -109,13 +132,8 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         <BrandMark />
         <h1 className="editor-shell__wordmark">Vernacular</h1>
       </div>
-      <ProjectMenu
-        onNewProject={projectControls.onNewProject}
-        onSave={projectControls.onSave}
-        onOpenFile={projectControls.onOpenFile}
-        onOpenFolder={projectControls.onOpenFolder}
-        onOpenRecent={projectControls.onOpenRecent}
-        recentProjects={projectControls.recentProjects}
+      <ShellProjectMenu
+        projectControls={projectControls}
         projectName={projectName}
         onRename={handleRename}
       />

@@ -23,6 +23,8 @@ export interface ProjectActionsContext {
   notifications: NotificationApi
   /** The library whose packs supply assets by themselves, so that those assets do not count as missing. */
   packs?: LibraryLister
+  /** Shows the Projects page over the open project. Without it the menu has no Switch projects. */
+  showProjects?: () => void
 }
 
 export interface ProjectActions {
@@ -35,7 +37,8 @@ export interface ProjectActions {
   onExportPdf: () => void
   onOpenFolder?: () => void
   onImportDroppedFile?: (file: File) => void | Promise<void>
-  onOpenFile?: () => void
+  onImportFile?: () => void
+  onSwitchProjects?: () => void
 }
 
 export function useProjectActions(context: ProjectActionsContext): ProjectActions {
@@ -50,6 +53,7 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
     onExportPdf: useExportPdfAction(context),
     ...useOpenFolderAction(context, runSwitch),
     ...useOpenFileAction(context),
+    ...(context.showProjects === undefined ? {} : { onSwitchProjects: context.showProjects }),
   }
 }
 

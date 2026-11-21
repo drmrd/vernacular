@@ -1,4 +1,4 @@
-import { useId, type ReactElement } from 'react'
+import { useId, type DragEvent, type ReactElement } from 'react'
 import { Button } from '../design-system'
 import type { ProjectCardAction, ProjectCardModel } from '../../session'
 import { NO_PROJECTS, backText } from './card-text'
@@ -23,6 +23,8 @@ export interface ProjectsPageProps {
   readonly onNewProject?: () => void
   readonly onImportFile?: () => void
   readonly onOpenFolder?: () => void
+  /** A file dropped on the page. */
+  readonly onDropFile?: (file: File) => void
 }
 
 interface PageActionHandlers {
@@ -75,6 +77,23 @@ function CardList({ cards, hrefFor, onOpen, onCardAction }: CardListProps): Reac
   )
 }
 
+// The drag handlers of the page: with a handler, a dropped file goes to it, the first file only.
+function dropHandlers(onDropFile: ProjectsPageProps['onDropFile']) {
+  if (onDropFile === undefined) {
+    return {}
+  }
+  return {
+    onDragOver: (event: DragEvent<HTMLElement>) => event.preventDefault(),
+    onDrop: (event: DragEvent<HTMLElement>) => {
+      event.preventDefault()
+      const file = event.dataTransfer?.files?.[0]
+      if (file) {
+        onDropFile(file)
+      }
+    },
+  }
+}
+
 export function ProjectsPage({
   cards,
   hrefFor,
@@ -85,10 +104,11 @@ export function ProjectsPage({
   onNewProject,
   onImportFile,
   onOpenFolder,
+  onDropFile,
 }: ProjectsPageProps): ReactElement {
   const headingId = useId()
   return (
-    <main className="projects-page" aria-labelledby={headingId}>
+    <main className="projects-page" aria-labelledby={headingId} {...dropHandlers(onDropFile)}>
       <h1 id={headingId} className="projects-page__heading">
         Projects
       </h1>

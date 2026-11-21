@@ -15,8 +15,10 @@ export function useProjectCards(
   const [cards, setCards] = useState<readonly ProjectCardModel[] | undefined>(undefined)
   // The read that runs last. A read that ends after a newer one began sets nothing.
   const latestRead = useRef<object | null>(null)
+  // A try that ends after the page is gone reads nothing.
+  const mounted = useRef(false)
   const refresh = useCallback(() => {
-    if (ports === null) {
+    if (ports === null || !mounted.current) {
       return
     }
     const read = {}
@@ -28,6 +30,7 @@ export function useProjectCards(
     })
   }, [ports, openId])
   useEffect(() => {
+    mounted.current = true
     refresh()
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -36,6 +39,7 @@ export function useProjectCards(
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
+      mounted.current = false
       latestRead.current = null
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
