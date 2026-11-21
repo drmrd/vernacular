@@ -3,7 +3,7 @@ import { isStored } from '../session'
 import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
 import { parseAddress } from './address'
 import type { AddressBar } from './address-bar'
-import { beginRead, follow, settle } from './follow-address'
+import { afterRender, beginRead, follow } from './follow-address'
 import { leavePage, retryNotice, runFlowOf, startFresh } from './navigation-actions'
 import {
   currentPlace,
@@ -37,7 +37,7 @@ interface ScreenParts {
   readonly handle: DocumentHandle | null
   readonly failure: SwitchFailure | null
   readonly page: ShownPage | null
-  readonly tried: string | null
+  readonly triedId: string | null
 }
 
 function pageScreen(page: ShownPage): Screen {
@@ -46,7 +46,7 @@ function pageScreen(page: ShownPage): Screen {
     : { kind: 'projects', notice: page.notice }
 }
 
-function screenOf({ handle, failure, page, tried }: ScreenParts): Screen | null {
+function shownScreen({ handle, failure, page, triedId }: ScreenParts): Screen | null {
   if (handle !== null) {
     return page === null ? { kind: 'editor', handle } : pageScreen(page)
   }
@@ -54,7 +54,7 @@ function screenOf({ handle, failure, page, tried }: ScreenParts): Screen | null 
     return { kind: 'projects' }
   }
   if (failure !== null) {
-    return { kind: 'projects', notice: { id: tried ?? '', failure } }
+    return { kind: 'projects', notice: { id: triedId ?? '', failure } }
   }
   return null
 }
@@ -70,9 +70,13 @@ function useStoredSignal(handle: DocumentHandle | null, bump: () => void): void 
     if (handle === null || isStored(handle)) {
       return
     }
-    return handle.subscribe(() => {
-      if (isStored(handle)) bump()
+    const stop = handle.subscribe(() => {
+      if (isStored(handle)) {
+        stop()
+        bump()
+      }
     })
+    return stop
   }, [handle, bump])
 }
 
@@ -119,7 +123,9 @@ export function useHistoryNavigation(
   const bump = useCallback(() => setStep((step) => step + 1), [])
   const owner = useOpenProject(ports, firstRequestOf(entry, ports))
   const memoryRef = useRef<NavigationMemory | null>(null)
-  memoryRef.current ??= newNavigationMemory(address, { setPage, setEntry, bump }, owner)
+  // The owner keeps both controls stable, so the first render's pair serves every render.
+  const controls = { runFlow: owner.runFlow, retry: owner.retry }
+  memoryRef.current ??= newNavigationMemory(address, { setPage, setEntry, bump }, controls)
   const memory = memoryRef.current
   const { handle, failure } = owner
   useEffect(
@@ -129,7 +135,7 @@ export function useHistoryNavigation(
   useAddressListener(memory, address)
   useFirstRead(memory, ports)
   useStoredSignal(handle, bump)
-  useEffect(() => settle(memory))
+  useEffect(() => afterRender(memory))
   const actions = useMemo(
     () => ({
       runFlow: runFlowOf(memory),
@@ -139,6 +145,6 @@ export function useHistoryNavigation(
     }),
     [memory],
   )
-  const screen = screenOf({ handle, failure, page, tried: memory.tried })
+  const screen = shownScreen({ handle, failure, page, triedId: memory.triedId })
   return { screen, handle, ...actions }
 }

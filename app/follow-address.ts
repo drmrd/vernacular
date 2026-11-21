@@ -4,17 +4,16 @@ import type { Place } from './address'
 import { createInitialProject } from './create-initial-project'
 import {
   currentPlace,
-  give,
+  handFirstRequest,
   isBusy,
   samePlace,
   showPage,
   writeWantedAddress,
   type NavigationMemory,
 } from './navigation-memory'
-import { resolvePlace, type PageNotice, type Screen } from './resolve-place'
+import { resolvePlace, type PageNotice, type PageScreen } from './resolve-place'
 import type { Flow } from './use-open-project'
 
-type PageScreen = Extract<Screen, { readonly kind: 'projects' }>
 type ProjectPlace = Extract<Place, { readonly kind: 'project' }>
 
 /** The start request, or the request of a project address. The page has no request. */
@@ -51,7 +50,7 @@ export function beginRead(memory: NavigationMemory, ports: SessionPorts, place: 
     if (request === null) {
       showPage(memory, {})
     } else {
-      give(memory, ports, request)
+      handFirstRequest(memory, ports, request)
     }
     memory.view.bump()
   })
@@ -120,7 +119,7 @@ function followWithNothingOpen(memory: NavigationMemory, place: Place): void {
     return
   }
   showPage(memory, null)
-  if (place.kind === 'project' && memory.failure !== null && memory.tried === place.id) {
+  if (place.kind === 'project' && memory.failure !== null && memory.triedId === place.id) {
     return
   }
   if (memory.ports !== null) {
@@ -128,24 +127,7 @@ function followWithNothingOpen(memory: NavigationMemory, place: Place): void {
   }
 }
 
-/**
- * Follows the address. While something runs, it is followed when that ends. A place that was
- * followed already is not followed again unless the follow is forced.
- */
-export function follow(memory: NavigationMemory, forced = false): void {
-  if (!memory.live) {
-    return
-  }
-  const place = currentPlace(memory.address)
-  if (isBusy(memory)) {
-    memory.addressLeads = true
-    return
-  }
-  memory.addressLeads = false
-  memory.pushNext = false
-  if (!forced && memory.followed !== null && samePlace(memory.followed, place)) {
-    return
-  }
+function followPlace(memory: NavigationMemory, place: Place): void {
   memory.followed = place
   if (memory.handle === null) {
     followWithNothingOpen(memory, place)
@@ -154,8 +136,43 @@ export function follow(memory: NavigationMemory, forced = false): void {
   }
 }
 
+/** Takes the address into account while nothing runs, and tells whether a place is to be followed. */
+function readyToFollow(memory: NavigationMemory): Place | null {
+  if (!memory.live) {
+    return null
+  }
+  const place = currentPlace(memory.address)
+  if (isBusy(memory)) {
+    memory.addressLeads = true
+    return null
+  }
+  memory.addressLeads = false
+  memory.pushNext = false
+  return place
+}
+
+/**
+ * Follows the address. While something runs, it is followed when that ends. A place that was
+ * followed already is not followed again.
+ */
+export function follow(memory: NavigationMemory): void {
+  const place = readyToFollow(memory)
+  if (place === null || (memory.followed !== null && samePlace(memory.followed, place))) {
+    return
+  }
+  followPlace(memory, place)
+}
+
+/** Follows the address again, also when its place was followed already. */
+export function followAgain(memory: NavigationMemory): void {
+  const place = readyToFollow(memory)
+  if (place !== null) {
+    followPlace(memory, place)
+  }
+}
+
 /** After a render: follows an address that moved while something ran, or writes the wanted one. */
-export function settle(memory: NavigationMemory): void {
+export function afterRender(memory: NavigationMemory): void {
   if (!memory.live || isBusy(memory)) {
     return
   }

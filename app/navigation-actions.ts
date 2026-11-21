@@ -1,7 +1,7 @@
 import { newProjectId } from '../storage'
 import { createInitialProject } from './create-initial-project'
-import { beginRead, follow, reopenFolder } from './follow-address'
-import { give, showPage, type NavigationMemory } from './navigation-memory'
+import { beginRead, followAgain, reopenFolder } from './follow-address'
+import { handFirstRequest, showPage, type NavigationMemory } from './navigation-memory'
 import type { RunFlow } from './use-open-project'
 
 /** The owner's way to run a flow, with one addition: a flow that opens another project adds an entry. */
@@ -37,17 +37,17 @@ export function retryNotice(memory: NavigationMemory): void {
   if (notice.failure.kind === 'folder-permission') {
     reopenFolder(memory, notice.id)
   } else {
-    follow(memory, true)
+    followAgain(memory)
   }
 }
 
 function retryWithNothingOpen(memory: NavigationMemory): void {
-  const { failure, tried } = memory
+  const { failure, triedId } = memory
   if (failure === null) {
     return
   }
-  if (failure.kind === 'folder-permission' && tried !== null) {
-    reopenFolder(memory, tried)
+  if (failure.kind === 'folder-permission' && triedId !== null) {
+    reopenFolder(memory, triedId)
     return
   }
   if (!memory.flowRunning) {
@@ -75,10 +75,10 @@ export function leavePage(memory: NavigationMemory): void {
 /** Starts a new project under a new id, once for each failure. It waits for the ports. */
 export function startFresh(memory: NavigationMemory): void {
   const { failure } = memory
-  if (memory.answered !== null && memory.answered.failure === failure) {
+  if (memory.freshStartFor !== null && memory.freshStartFor.failure === failure) {
     return
   }
-  memory.answered = { failure }
+  memory.freshStartFor = { failure }
   memory.reading = null
   memory.addressLeads = false
   memory.pushNext = true
@@ -89,5 +89,5 @@ export function startFresh(memory: NavigationMemory): void {
     location: { kind: 'workspace' } as const,
     create: createInitialProject,
   }
-  give(memory, memory.ports, request)
+  handFirstRequest(memory, memory.ports, request)
 }

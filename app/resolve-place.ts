@@ -20,6 +20,9 @@ export type Screen =
   | { readonly kind: 'editor'; readonly handle: DocumentHandle }
   | { readonly kind: 'projects'; readonly notice?: PageNotice }
 
+/** The screen that shows the page, with or without a notice. */
+export type PageScreen = Extract<Screen, { readonly kind: 'projects' }>
+
 function screenOf(id: string, result: SwitchResult): Screen {
   if (result.ok) {
     return { kind: 'editor', handle: result.handle }

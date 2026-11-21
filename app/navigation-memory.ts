@@ -54,13 +54,13 @@ export interface NavigationMemory {
   /** The place that the last move was followed to, while that outcome stands. */
   followed: Place | null
   /** The id that the owner tried last. */
-  tried: string | null
+  triedId: string | null
   /** The ports and the id of the latest first request. */
   given: { readonly ports: SessionPorts | null; readonly id: string } | null
   /** The ports whose index was reconciled already. */
   readonly reconciled: WeakSet<SessionPorts>
   /** The failure that a new project was already started for. */
-  answered: { readonly failure: SwitchFailure | null } | null
+  freshStartFor: { readonly failure: SwitchFailure | null } | null
 }
 
 /** The memory of a navigation that shows the page at once when its address names the page. */
@@ -84,10 +84,10 @@ export function newNavigationMemory(
     addressLeads: false,
     pushNext: false,
     followed: null,
-    tried: null,
+    triedId: null,
     given: null,
     reconciled: new WeakSet(),
-    answered: null,
+    freshStartFor: null,
   }
 }
 
@@ -134,7 +134,7 @@ export function isBusy(memory: NavigationMemory): boolean {
  * Hands a first request to the owner. The owner opens it when no project is open and the ports or
  * the id differ from those of the request before.
  */
-export function give(
+export function handFirstRequest(
   memory: NavigationMemory,
   ports: SessionPorts | null,
   request: OpenRequest,
@@ -142,7 +142,7 @@ export function give(
   const before = memory.given
   const isNew = before === null || before.ports !== ports || before.id !== request.id
   memory.given = { ports, id: request.id }
-  memory.tried = request.id
+  memory.triedId = request.id
   if (isNew && memory.handle === null) {
     memory.starting = true
   }
@@ -161,7 +161,7 @@ export function takeCommitted(memory: NavigationMemory, committed: Committed): v
   const { handle, failure } = committed
   const changed = handle !== memory.handle || failure !== memory.failure
   if (handle !== null && handle !== memory.handle) {
-    memory.tried = handle.id
+    memory.triedId = handle.id
   }
   if (changed && (handle !== null || failure !== null)) {
     memory.starting = false
