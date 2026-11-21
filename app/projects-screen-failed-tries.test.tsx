@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DID_NOT_OPEN } from '../editor/projects'
 import { reconcileIndex } from '../session'
-import { failSaves, type TestPorts } from '../session/handle/handle-test-kit'
+import { failSaves, holdNextRead, type TestPorts } from '../session/handle/handle-test-kit'
 import {
   FAILED_ID,
   backToTheProject,
@@ -94,6 +94,37 @@ describe('A click on the card of a project that did not open', () => {
     expect(filesBefore.size).toBeGreaterThan(0)
     expect(await filesUnder(ports.root, FAILED_ID)).toEqual(filesBefore)
     expect(lockedIds(ports)).toEqual([])
+  })
+
+  it('reads the cards again once the try has ended', async () => {
+    const ports = await portsWithAProjectThatDoesNotOpen()
+    renderAppAt(ports, PROJECTS_ADDRESS)
+    const card = await findTheCardThatDidNotOpen()
+    const heldIds = vi.spyOn(ports.locks, 'heldIds')
+    const readsBefore = heldIds.mock.calls.length
+
+    await userEvent.click(card)
+    await findThePageAlert()
+
+    await waitFor(() => expect(heldIds).toHaveBeenCalledTimes(readsBefore + 1))
+    await settleForAWhile()
+    expect(heldIds).toHaveBeenCalledTimes(readsBefore + 1)
+  })
+
+  it('clears the earlier notice while a new try runs, and shows the notice of that try when it fails', async () => {
+    const ports = await portsWithAProjectThatDoesNotOpen()
+    renderAppAt(ports, PROJECTS_ADDRESS)
+    const card = await findTheCardThatDidNotOpen()
+    await userEvent.click(card)
+    await findThePageAlert()
+    const letTheReadGo = holdNextRead(ports.workspace)
+
+    await userEvent.click(card)
+
+    await settleForAWhile()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    letTheReadGo()
+    expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
   })
 })
 

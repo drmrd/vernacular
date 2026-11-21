@@ -112,7 +112,7 @@ describe('Switching projects from the Projects page', () => {
 })
 
 describe('Starting a new project from the Projects page beside an open project', () => {
-  it('shows a new editor under a new id, and stores the edit of the earlier project', async () => {
+  it('shows a new editor under a new id, stores the edit of the earlier project, and leaves the page one move back', async () => {
     const { ports, bar } = await openFirstProject()
     await addAFloor()
     await showThePageOn(bar)
@@ -124,5 +124,8 @@ describe('Starting a new project from the Projects page beside an open project',
     await waitFor(() => expect(lockedIds(ports)).toHaveLength(1))
     expect(lockedIds(ports)).not.toContain(FIRST_ID)
     expect((await storedProject(ports.workspace, FIRST_ID)).floors).toHaveLength(2)
+    await goBack(bar)
+    await findTheProjectsPage()
+    expect(bar.hash()).toBe(PROJECTS_ADDRESS)
   })
 })

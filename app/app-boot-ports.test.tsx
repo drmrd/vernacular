@@ -25,7 +25,7 @@ import {
   plantProject,
   resetWindowAddress,
   settleForAWhile,
-  startNewProjectFromTheFailureView,
+  startNewProjectFromThePage,
   storedIds,
   stubCapableStorage,
 } from './app-test-support'
@@ -63,7 +63,7 @@ describe('A new project after a failed open on ports that were resolved', () => 
     const resolvePorts = () => Promise.resolve(builtPorts(ports))
     render(<App resolvePorts={resolvePorts} />)
 
-    await startNewProjectFromTheFailureView()
+    await startNewProjectFromThePage()
     await findTheShell()
 
     await expectNewProjectOnThesePorts(ports)

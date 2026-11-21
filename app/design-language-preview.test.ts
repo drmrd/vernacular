@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { requestedDesignLanguage } from './app'
+import { requestedDesignLanguage } from './url-seams'
 
 // The preview flag is a URL seam read at exactly one site, like the `fixture`
 // harness seam beside it. A normal page load carries no query string, so the

@@ -354,13 +354,10 @@ export async function startNewProjectFromThePage(container?: HTMLElement): Promi
   await userEvent.click(within(page).getByRole('button', { name: 'New project' }))
 }
 
-/**
- * Clicks the button that starts a new project on the screen of a failed start: "New project" on the
- * Projects page, or "Start a new project" on the view of ports that did not resolve.
- */
+/** Clicks "Start a new project" on the view of ports that did not resolve, once it shows. */
 export async function startNewProjectFromTheFailureView(): Promise<void> {
   await screen.findByRole('alert')
-  await userEvent.click(screen.getByRole('button', { name: /^(New project|Start a new project)$/ }))
+  await userEvent.click(screen.getByRole('button', { name: 'Start a new project' }))
 }
 
 /** Adds a floor through the shell: one edit of the open project. */
