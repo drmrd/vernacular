@@ -177,4 +177,25 @@ describe('rekey-room-overrides schema migration', () => {
     expect(migrated.roomOverrides?.[soleDerivedRoomKey(parlorWalls)]).toEqual(PARLOR_OVERRIDE)
     expect(migrated.roomOverrides?.[dashEraKey(PARLOR_WALL_IDS)]).toBeUndefined()
   })
+
+  it.each([
+    { order: 'the dash key first', dashFirst: true },
+    { order: 'the pipe key first', dashFirst: false },
+  ])(
+    'keeps the pipe key override when a dash key names the same room, with $order',
+    ({ dashFirst }) => {
+      const walls = roomWalls({ x: 0, y: 0 }, PARLOR_WALL_IDS)
+      const pipeKey = soleDerivedRoomKey(walls)
+      const dashOverride = { name: 'Old Parlor', purpose: 'parlor' }
+      const pipeOverride = { name: 'New Parlor', purpose: 'sitting-room' }
+      const dashEntry: [string, unknown] = [dashEraKey(PARLOR_WALL_IDS), dashOverride]
+      const pipeEntry: [string, unknown] = [pipeKey, pipeOverride]
+      const entries = dashFirst ? [dashEntry, pipeEntry] : [pipeEntry, dashEntry]
+      const document = makeDocument([makeFloor('floor:ground', walls)], Object.fromEntries(entries))
+
+      const migrated = asDocument(rekeyRoomOverridesMigration.migrate(document))
+
+      expect(migrated.roomOverrides).toEqual({ [pipeKey]: pipeOverride })
+    },
+  )
 })
