@@ -14,11 +14,13 @@ const DASH_ERA_SEPARATOR = '-'
  * overrides the room lookup can no longer find. This migration recovers them by
  * segmenting each stored key against the document's wall ids, then re-joining the
  * segments the way `roomKey` does. A key that does not segment matches no wall and
- * is left untouched. When a dash-era key and a key already in the current form name
- * the same room, the current-form key wins in any key order and the dash override is
- * dropped. When two dash-era keys name the same room, the later one in the stored
- * order wins. The orchestrator advances `meta.schemaVersion`, so the migration
- * must not.
+ * is left untouched. A dash-era key moves only to a key that no other entry holds.
+ * When a key already in the current form names the same room, that key keeps its
+ * override and wins the room lookup, and the dash-era key stays in the map
+ * untouched, in any key order. When two dash-era keys name the same room, the first
+ * in the stored order moves and the later one stays. So no data is dropped: a
+ * colliding dash-era key stays as a dead key that names no room. The orchestrator
+ * advances `meta.schemaVersion`, so the migration must not.
  */
 export const rekeyRoomOverridesMigration: SchemaMigration = {
   from: 16,
@@ -31,13 +33,12 @@ export const rekeyRoomOverridesMigration: SchemaMigration = {
     let rewroteAnyKey = false
     for (const [storedKey, override] of Object.entries(overrides)) {
       const resolvedKey = roomKeyFor(storedKey, wallIds)
-      if (resolvedKey !== storedKey) {
-        rewroteAnyKey = true
-        // Check the stored keys, not `rekeyed`, so the current-form key wins even
-        // when the loop has not reached it yet.
-        if (Object.hasOwn(overrides, resolvedKey)) continue
-      }
-      rekeyed[resolvedKey] = override
+      // Check the stored keys as well as `rekeyed`, so a current-form key holds its
+      // place even when the loop has not reached it yet.
+      const isTaken = Object.hasOwn(overrides, resolvedKey) || Object.hasOwn(rekeyed, resolvedKey)
+      const targetKey = isTaken ? storedKey : resolvedKey
+      if (targetKey !== storedKey) rewroteAnyKey = true
+      rekeyed[targetKey] = override
     }
     return rewroteAnyKey ? { ...project, roomOverrides: rekeyed } : project
   },
