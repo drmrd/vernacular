@@ -1,18 +1,12 @@
 import { StrictMode, type ReactNode } from 'react'
 
-import {
-  FLOOR_NODE_PREFIX,
-  createEmptyProject,
-  createFloor,
-  createWall,
-  moveWallEndpoint,
-} from '../../core'
-import type { Wall } from '../../core'
+import { FLOOR_NODE_PREFIX, createEmptyProject, createFloor, moveWallEndpoint } from '../../core'
 import { createActiveFloorStore } from '../active-floor/active-floor-store'
 import { createSceneSessionStore, SceneSessionProvider } from '../index'
 import { createEditorSession } from '../../session/testing'
 import { ActiveFloorProvider } from './active-floor-provider'
 import { EditorSessionProvider } from './editor-session-provider'
+import { HEIGHT_MM, RIGHT_MM, partitionedWalls } from './partitioned-floor-test-support'
 
 // A real editor session, scene session, and active floor under their real providers, so the
 // framed-scene hook runs against the same wiring the live view has. The floor is a rectangle
@@ -21,24 +15,6 @@ import { EditorSessionProvider } from './editor-session-provider'
 export const FLOOR_ID = 'g'
 export const FLOOR_NODE_ID = `${FLOOR_NODE_PREFIX}${FLOOR_ID}`
 const PARTITION_ID = 'g-partition'
-const WIDTH_MM = 6000
-const HEIGHT_MM = 3000
-const PARTITION_X_MM = 3000
-
-function floorWalls(): Wall[] {
-  const id = (name: string): { id: string } => ({ id: `g-${name}` })
-  return [
-    createWall({ x: 0, y: 0 }, { x: WIDTH_MM, y: 0 }, id('bottom')),
-    createWall({ x: 0, y: HEIGHT_MM }, { x: WIDTH_MM, y: HEIGHT_MM }, id('top')),
-    createWall({ x: 0, y: 0 }, { x: 0, y: HEIGHT_MM }, id('left')),
-    createWall({ x: WIDTH_MM, y: 0 }, { x: WIDTH_MM, y: HEIGHT_MM }, id('right')),
-    createWall(
-      { x: PARTITION_X_MM, y: 0 },
-      { x: PARTITION_X_MM, y: HEIGHT_MM },
-      { id: PARTITION_ID },
-    ),
-  ]
-}
 
 export interface FramedSceneEnvironmentOptions {
   /** A project with no floors, so the shown graph is empty. */
@@ -65,7 +41,9 @@ export function framedSceneEnvironment(
     appVersion: '0',
   })
   if (options.withoutFloors !== true) {
-    project.floors.push(createFloor('Ground', { id: FLOOR_ID, walls: floorWalls() }))
+    project.floors.push(
+      createFloor('Ground', { id: FLOOR_ID, walls: partitionedWalls(RIGHT_MM, 'g-') }),
+    )
   }
   const session = createEditorSession(project)
   const sceneSession = createSceneSessionStore()

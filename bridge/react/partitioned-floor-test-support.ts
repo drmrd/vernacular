@@ -7,7 +7,7 @@ import type { Wall } from '../../core'
 export const HEIGHT_MM = 3000
 export const RIGHT_MM = 6000
 export const WIDENED_RIGHT_MM = 9000
-export const PARTITION_X_MM = 3000
+const PARTITION_X_MM = 3000
 const WIDENED_WALL_IDS = ['wall-right', 'wall-bottom', 'wall-top']
 
 /**
