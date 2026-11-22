@@ -1,10 +1,10 @@
 import { test, expect, type Page } from '@playwright/test'
 import { selectors } from './support'
 
-// A stored project this build cannot open shows the Projects page, with a notice and a card that
-// says the project did not open. Starting a new project from it must store the new one separately:
-// after an edit and a save, a reload opens the new project, and every stored file of the old one
-// is unchanged.
+// A stored project this build cannot open shows the Projects page, with a dialog that says the
+// project did not open and, once the dialog is closed, a card that says the same. Starting a new
+// project from it must store the new one separately: after an edit and a save, a reload opens the
+// new project, and every stored file of the old one is unchanged.
 // The old project is planted and read through the query-parameter-guarded hook
 // installed by src/e2e-storage-hook.ts.
 
@@ -40,7 +40,10 @@ test('starts a new project after a failed load and keeps the saved one unchanged
 
   await page.goto('/')
   const projects = selectors.projectsPage(page)
-  await expect(projects.getByRole('alert')).toContainText('Could not open the project')
+  const dialog = selectors.failedOpenDialog(page)
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toHaveCount(0)
   await expect(projects.getByText(DID_NOT_OPEN_TEXT)).toBeVisible()
   await projects.getByRole('button', { name: 'New project' }).click()
 
