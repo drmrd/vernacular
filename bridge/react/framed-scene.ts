@@ -186,11 +186,10 @@ function stackFloorRoot(floors: FloorAssembly[], framedNodeId?: string): Stacked
 /**
  * Frames pre-built floors into a FramedScene: the shared root of every floor group seated
  * at its elevation, a camera framed on the framed floor's box (every drawn floor's when no
- * floor is framed, or when the framed floor is absent or has no built content) with near and far
- * planes from the box of everything drawn, and one site ground plane sized to the whole
- * footprint at the graph grade. Bounds are read before the ground
- * plane is seated (sceneBounds excludes the ground either way). This is the caching
- * reconciler's counterpart to buildScene's stacked, grounded root (issue #479).
+ * floor is framed, or when the framed floor is absent or has no built content) with near and
+ * far planes from the box of everything drawn, and one site ground plane sized to the whole
+ * footprint at the graph grade. This is the caching reconciler's counterpart to buildScene's
+ * stacked, grounded root (issue #479).
  */
 export function frameStackedScene(
   floors: FloorAssembly[],

@@ -16,10 +16,9 @@ import type { DoorwayTarget } from './use-doorway-target'
 // view so that file stays within its size budget. Each helper is an in-canvas component
 // that reads the live camera through useThree and applies a pose as a layout effect.
 
-// Frames the camera on the framing box (the framed floor, or everything drawn when no
-// floor is framed), fitting it to the live canvas aspect ratio and field of view
-// (ADR-0075), and takes the near and far planes from the box of everything drawn so the
-// floors outside the frame still render. It does so while the user has not taken control
+// Frames the camera on the framing box (see FramedScene.framingBounds), fitting it to the
+// live canvas aspect ratio and field of view (ADR-0075), and takes the near and far planes
+// from the box of everything drawn so the floors outside the frame still render. It does so while the user has not taken control
 // of the camera. It reruns when the canvas size changes, so a pane resize or a move
 // between full and split view refits the model instead of leaving a stale frame.
 // Once the user orbits or walks, `active` goes false and the fit stops being
