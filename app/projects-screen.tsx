@@ -21,7 +21,7 @@ import type { PageNotice, PageScreen } from './resolve-place'
 import type { HistoryNavigation } from './use-history-navigation'
 import { isSwitchFailure, type Flow, type RunFlow } from './use-open-project'
 import { useCardActions } from './use-card-actions'
-import { usePageActions } from './use-page-actions'
+import { useLibraryPacks, usePageActions } from './use-page-actions'
 import { requestedDesignLanguage } from './url-seams'
 import {
   useFailedOpenDialog,
@@ -249,14 +249,21 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
     ...{ navigation, ports, cards, libraryAssets, onActionEnd },
     onActionStart: onTryStart,
   })
+  const packs = useLibraryPacks(libraryAssets)
   const failedOpen = useFailedOpenDialog({
-    ...{ ports, libraryAssets, onTryStart, runActionFlow, onOpen, onChoiceFailed },
+    ...{ ports, packs, runActionFlow, onOpen, onChoiceFailed },
     notice: tries.notice?.id === UNDER_NO_CARD ? undefined : tries.notice,
     runPageFlow: navigation.runPageFlow,
   })
+  const { onRefusedFile, clearFile } = failedOpen
+  const actions = usePageActions({
+    ...{ runActionFlow, onTryStart, ports, packs },
+    onRefusedFile,
+    clearFile,
+  })
   const pageNotice = failedOpen.takesNotice ? undefined : tries.notice
   const notice = actionNotice ?? pageNoticeText(pageNotice, cards)
-  return { cards, tries, cardActions, failedOpen, notice }
+  return { cards, tries, cardActions, actions, failedOpen, notice }
 }
 
 /**
@@ -264,12 +271,8 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
  * actions that start, import, or open a project.
  */
 export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
-  const { navigation, ports, libraryAssets } = props
-  const { cards, tries, cardActions, failedOpen, notice } = useScreenParts(props)
-  const { onTryStart, runActionFlow } = tries
-  const actions = usePageActions({ runActionFlow, onTryStart, ports, libraryAssets })
-  const { onImportFile, onDropFile } = failedOpen
-  const openProject = openProjectLink(navigation)
+  const { cards, tries, cardActions, actions, failedOpen, notice } = useScreenParts(props)
+  const openProject = openProjectLink(props.navigation)
   return (
     <ThemeProvider designLanguage={requestedDesignLanguage()}>
       <ProjectsPage
@@ -279,7 +282,6 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
         onNewProject={tries.onNewProject}
         cardActions={cardActions}
         {...actions}
-        {...{ onImportFile, onDropFile }}
         {...(openProject === undefined ? {} : { openProject })}
         {...(notice === undefined ? {} : { notice })}
       />

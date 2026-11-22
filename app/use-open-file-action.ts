@@ -10,7 +10,7 @@ import {
 import { ARCHIVE_LIMITS } from '../storage'
 import { importMissingAssetsText } from './asset-report-text'
 import { failureMessage } from './failure-message'
-import { archiveTooLargeText } from './open-failure-text'
+import { openFailureReason } from './open-failure-text'
 import { loadPackSupplies } from './pack-supplies'
 import type { RunFlow } from './use-open-project'
 import type { ProjectActionsContext } from './use-project-actions'
@@ -74,13 +74,16 @@ function refuseLargeFile(
   if (file.size <= ARCHIVE_LIMITS.archiveBytes) {
     return false
   }
-  if (onRefusedFile !== undefined) {
-    const allowed = ARCHIVE_LIMITS.archiveBytes
-    onRefusedFile({ failure: { kind: 'archive-too-large', limit: 'archiveBytes', allowed } })
-    return true
+  const failure: RefusedFileFailure = {
+    kind: 'archive-too-large',
+    limit: 'archiveBytes',
+    allowed: ARCHIVE_LIMITS.archiveBytes,
   }
-  const reason = archiveTooLargeText('archiveBytes', ARCHIVE_LIMITS.archiveBytes)
-  notifications.error(failureMessage('Open', reason))
+  if (onRefusedFile === undefined) {
+    notifications.error(failureMessage('Open', openFailureReason(failure)))
+  } else {
+    onRefusedFile({ failure })
+  }
   return true
 }
 
@@ -97,20 +100,25 @@ function refusedFileFailure(
     : undefined
 }
 
-/** What the owner gave for the import, and the import's own result when it ran. */
-interface ImportRun {
-  readonly result: FlowResult<ImportFailure> | undefined
-  readonly imported: ImportResult | undefined
-}
-
-/** Runs the import of the file that was read through the owner of the open project. */
-async function runImport(runFlow: RunFlow, request: ImportedFile): Promise<ImportRun> {
+/**
+ * Runs the import of the file that was read through the owner of the open project, and gives what
+ * the owner gave. An import that opened the project with assets missing shows one warning with the
+ * count.
+ */
+export async function importWithAssetWarning(
+  runFlow: RunFlow,
+  request: ImportedFile,
+  notifications: NotificationApi,
+): Promise<FlowResult<ImportFailure> | undefined> {
   let imported: ImportResult | undefined
   const result = await runFlow(async (ports, current) => {
     imported = await importFile(ports, current, request)
     return imported
   })
-  return { result, imported }
+  if (imported?.ok === true && imported.missingAssets.length > 0) {
+    notifications.warning(importMissingAssetsText(imported.missingAssets.length))
+  }
+  return result
 }
 
 /** The file as the import reads it: its name, its bytes, and the supplies of the packs. */
@@ -148,15 +156,12 @@ export function useOpenFileAction(context: OpenFileContext): {
         return
       }
       const request = await importRequest(file, bytes, packs)
-      const { result, imported } = await runImport(runFlow, request)
+      const result = await importWithAssetWarning(runFlow, request, notifications)
       const refused = refusedFileFailure(result)
       if (onRefusedFile !== undefined && refused !== undefined) {
         onRefusedFile({ failure: refused, file: request })
       } else {
         notify(result)
-      }
-      if (imported?.ok === true && imported.missingAssets.length > 0) {
-        notifications.warning(importMissingAssetsText(imported.missingAssets.length))
       }
     },
     [runFlow, notify, notifications, packs, onRefusedFile],

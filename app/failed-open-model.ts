@@ -74,6 +74,34 @@ function plainModel(
   }
 }
 
+/** The kinds of failure that the failed-open dialog shows. */
+type DialogKind =
+  | 'did-not-open'
+  | 'did-not-import'
+  | 'storage-unavailable'
+  | 'folder-unavailable'
+  | 'archive-too-large'
+
+/** A kind of failure that the dialog does not show. */
+type OtherNoticeKind = Exclude<(SwitchFailure | ImportFailure)['kind'], DialogKind>
+
+/**
+ * No model for a failure that another notice says: the page's sentence, or the toast of a file of
+ * another type. A new kind of failure fails the typecheck here until it is given a case.
+ */
+function otherNoticeModel(kind: OtherNoticeKind): undefined {
+  switch (kind) {
+    case 'open-elsewhere':
+    case 'not-found':
+    case 'folder-permission':
+    case 'flush-failed':
+    case 'unsupported-file':
+      return undefined
+    default:
+      return kind satisfies never
+  }
+}
+
 /**
  * The cause and the details of a failure that the failed-open dialog shows, or `undefined` for a
  * failure that another notice says.
@@ -92,6 +120,6 @@ export function failedOpenModel(
     case 'archive-too-large':
       return plainModel('file-too-large', failure, build)
     default:
-      return undefined
+      return otherNoticeModel(failure.kind)
   }
 }

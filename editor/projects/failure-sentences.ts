@@ -8,14 +8,14 @@ export type FailedOpenCause =
   | 'folder-unavailable'
   | 'file-too-large'
 
+/** Where the project that did not open came from: the stored projects, or a file the user chose. */
+export type FailedOpenSource = 'stored' | 'file'
+
 /**
  * The plain sentence that names a cause, for the person at the screen. A file that the user chose
  * is named as a file, a stored project as the stored file. Default 'stored'.
  */
-export function causeSentence(
-  cause: FailedOpenCause,
-  source: 'stored' | 'file' = 'stored',
-): string {
+export function causeSentence(cause: FailedOpenCause, source: FailedOpenSource = 'stored'): string {
   switch (cause) {
     case 'format-rules':
       return 'A part of the project breaks the format rules.'

@@ -1,7 +1,7 @@
 import { useId, type ReactElement } from 'react'
 import { Button, useFocusTrap } from '../design-system'
 import { answerOnEscape, DIALOG_SHADE_CLASS } from './dialog-shade'
-import { causeSentence, type FailedOpenCause } from './failure-sentences'
+import { causeSentence, type FailedOpenCause, type FailedOpenSource } from './failure-sentences'
 import './failed-open-dialog.css'
 
 export type { FailedOpenCause } from './failure-sentences'
@@ -23,7 +23,7 @@ export interface FailedOpenDialogProps {
   readonly cause: FailedOpenCause
   readonly details: FailedOpenDetails
   /** 'file': the texts of a file that did not open, and no Export. Default 'stored'. */
-  readonly source?: 'stored' | 'file' | undefined
+  readonly source?: FailedOpenSource | undefined
   /** The sentences of the offered repair. Absent or empty: no offer shows. */
   readonly repairSentences?: readonly string[] | undefined
   readonly onClose: () => void
@@ -110,7 +110,7 @@ interface DescribedSentence {
  */
 function describedSentences(
   cause: FailedOpenCause,
-  source: 'stored' | 'file',
+  source: FailedOpenSource,
   idBase: string,
 ): readonly DescribedSentence[] {
   const causeEntry = { id: `${idBase}-cause`, text: causeSentence(cause, source) }
