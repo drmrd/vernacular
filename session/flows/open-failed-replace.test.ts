@@ -17,6 +17,7 @@ import {
   workspaceRequest,
 } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
+import { folderRecord } from '../projects/rebuild-test-kit'
 import { replaceWithRepaired } from './open-failed'
 import {
   EDITED_NAME,
@@ -106,6 +107,7 @@ describe('Replace the stored project', () => {
   it('a replace of a folder project writes into the folder, with the backup in the folder', async () => {
     const ports = createTestPorts()
     const folder = await placeInFolder(ports, mixedPaintBytes())
+    await ports.index.put(folderRecord(PROJECT_ID, { location: IN_FOLDER }))
     const offer = await offerOf(ports, folderRequest())
 
     const handle = handleOf(await replaceWithRepaired(ports, undefined, replaceRequest(offer)))
