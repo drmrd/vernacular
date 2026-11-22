@@ -28,3 +28,8 @@ core/model/known-keys.json
 # Standalone validators generated with the schema. The drift guard compares them
 # byte-for-byte with the generator output, so Prettier must not reformat them.
 core/format/generated/
+
+# Pack fixtures written by scripts/pack/generate-fixtures.mjs. A test compares
+# them byte for byte with the generator's output, so Prettier must not reformat
+# them.
+tests/fixtures/packs/

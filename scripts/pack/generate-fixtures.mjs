@@ -19,26 +19,25 @@ const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex')
 const webp = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x04, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])
 
 /**
- * Write a pack tree: every entry of `files` is a path relative to the pack
- * directory, and the manifest is serialized last.
+ * Write a pack tree through `sink`: every entry of `files` is a path relative
+ * to the pack directory, and the manifest is serialized last.
+ * @param {{ writeFile(relativePath: string, bytes: Buffer | string): Promise<void> }} sink
  * @param {string} name pack directory name under tests/fixtures/packs/
  * @param {object} manifest
  * @param {Record<string, Buffer | string>} files
  */
-async function writePack(name, manifest, files) {
-  const dir = join(root, name)
-  await rm(dir, { recursive: true, force: true })
+async function writePack(sink, name, manifest, files) {
   for (const [rel, bytes] of Object.entries(files)) {
-    await mkdir(dirname(join(dir, rel)), { recursive: true })
-    await writeFile(join(dir, rel), bytes)
+    await sink.writeFile(`${name}/${rel}`, bytes)
   }
-  await writeFile(join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+  await sink.writeFile(`${name}/manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`)
 }
 
-async function writeWellFormedPack() {
+export async function writeWellFormedPack(sink) {
   const glb = Buffer.from('vernacular starter chair glb placeholder\n')
   const hash = sha256(glb)
   await writePack(
+    sink,
     'vernacular-starter-1.0.0',
     {
       packId: 'vernacular-starter',
@@ -46,6 +45,7 @@ async function writeWellFormedPack() {
       license: 'CC0-1.0',
       attribution: 'Vernacular project',
       eras: ['mid-century'],
+      styles: ['mid-century-modern'],
       categories: ['seating'],
       assets: [
         {
@@ -55,6 +55,7 @@ async function writeWellFormedPack() {
           license: 'CC0-1.0',
           attribution: 'Vernacular project',
           eras: ['mid-century'],
+          styles: ['mid-century-modern'],
           categories: ['seating'],
           dimensions: { width: 500, depth: 520, height: 800 },
         },
@@ -70,12 +71,13 @@ async function writeWellFormedPack() {
   )
 }
 
-async function writeBrokenPack() {
+export async function writeBrokenPack(sink) {
   // The asset file's real bytes hash to something other than the declared hash, so
   // the integrity check reports a mismatch. The directory name, license, thumbnail,
   // orphan file, and missing NOTICE each trip a distinct failure path.
   const declaredHash = sha256(Buffer.from('the bytes this hash was computed from\n'))
   await writePack(
+    sink,
     'broken-pack-wrong',
     {
       packId: 'broken-pack',
@@ -106,12 +108,25 @@ async function writeBrokenPack() {
   )
 }
 
-async function main() {
-  await writeWellFormedPack()
-  await writeBrokenPack()
+const diskSink = {
+  async writeFile(relativePath, bytes) {
+    const target = join(root, relativePath)
+    await mkdir(dirname(target), { recursive: true })
+    await writeFile(target, bytes)
+  },
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exitCode = 1
-})
+async function main() {
+  for (const name of ['vernacular-starter-1.0.0', 'broken-pack-wrong']) {
+    await rm(join(root, name), { recursive: true, force: true })
+  }
+  await writeWellFormedPack(diskSink)
+  await writeBrokenPack(diskSink)
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error)
+    process.exitCode = 1
+  })
+}
