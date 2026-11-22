@@ -22,23 +22,24 @@ export function paintTargetForSelection(
   if (selectedIds.size !== 1 || entityId === undefined) {
     return { kind: 'keep' }
   }
-  if (entityId.startsWith(WALL_NODE_PREFIX)) {
-    const keepsActive = active !== null && isSurfaceOfEntity(active, entityId)
-    return keepsActive
-      ? { kind: 'keep' }
-      : {
-          kind: 'select',
-          surface: {
-            kind: 'wall-face',
-            wallId: entityId.slice(WALL_NODE_PREFIX.length),
-            side: 'left',
-          },
-        }
+  const wallFace = wallFaceForSelection(selectedIds)
+  if (wallFace !== null) {
+    return wallPaintTarget(wallFace, entityId, active)
   }
   if (entityId.startsWith(ROOM_ID_PREFIX)) {
     return roomPaintTarget(entityId, active, rooms)
   }
   return { kind: 'clear' }
+}
+
+function wallPaintTarget(
+  wallFace: SurfaceRef,
+  wallEntityId: string,
+  active: SurfaceRef | null,
+): PaintTargetChange {
+  return active !== null && isSurfaceOfEntity(active, wallEntityId)
+    ? { kind: 'keep' }
+    : { kind: 'select', surface: wallFace }
 }
 
 function roomPaintTarget(
@@ -80,7 +81,8 @@ function wallIdOf(entityId: string): string | null {
 /**
  * Whether a paint surface is one of the surfaces of an entity, so a surface that a
  * 3D click already picked on the entity survives the selection change that follows
- * it. A wall owns both of its faces; any other entity owns none that this module knows.
+ * it. This check covers walls only, which own both of their faces; a room's surfaces are
+ * matched in `roomPaintTarget`.
  */
 export function isSurfaceOfEntity(surface: SurfaceRef, entityId: string): boolean {
   return surface.kind === 'wall-face' && surface.wallId === wallIdOf(entityId)
