@@ -30,16 +30,16 @@ export interface SelectedOpening {
   opening: Opening
 }
 
-export interface OpeningInspectorProps extends SelectedOpening {
+export interface SelectedOpeningContext extends SelectedOpening {
   entranceRole: EntranceRole
   wallHasOneRoomSide: boolean
 }
 
 /** The selected opening with its main entrance role and whether its wall has one room side. */
-export function openingInspectorProps(
+export function selectedOpeningContext(
   selectedOpening: SelectedOpening,
   graph: SceneGraph,
-): OpeningInspectorProps {
+): SelectedOpeningContext {
   const { floorId, opening } = selectedOpening
   return {
     ...selectedOpening,

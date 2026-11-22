@@ -37,7 +37,7 @@ import { FurnitureInspector } from '../plan/furniture-inspector'
 import { OpeningInspector } from '../plan/opening-inspector'
 import {
   floorOpenings,
-  openingInspectorProps,
+  selectedOpeningContext,
   singleSelectedOpening,
 } from '../plan/opening-inspector-context'
 import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
@@ -351,14 +351,13 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   const project = session.getProject()
   const selectedOpening = singleSelectedOpening(selectedIds, project, activeFloorId)
   if (selectedOpening !== null) {
-    const openingProps = openingInspectorProps(selectedOpening, graph)
     return (
       // Key on the opening's editable values so the inspector remounts when the
       // selected opening changes or an undo restores different ones; its dimension
       // fields seed from the opening at mount and never re-read it afterwards.
       <OpeningInspector
         key={`${selectedOpening.opening.id}:${selectedOpening.opening.width}:${selectedOpening.opening.height}:${selectedOpening.opening.sillHeight}:${selectedOpening.opening.type}`}
-        {...openingProps}
+        {...selectedOpeningContext(selectedOpening, graph)}
         units={project.meta.units}
         siblingOpenings={floorOpenings(project, selectedOpening.floorId)}
         dispatch={session.dispatch}
