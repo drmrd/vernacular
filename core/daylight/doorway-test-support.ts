@@ -10,6 +10,8 @@ const TEST_CEILING_HEIGHT = 2600
 const WINDOW_SILL = 900
 const WINDOW_HEAD = 2100
 const DOORWAY_HEAD = 2100
+const WINDOW_START = 1000
+const WINDOW_END = 2000
 const DOORWAY_START = 1000
 const DOORWAY_END = 2000
 const SOURCE_HALL_WIDTH = 3000
@@ -19,6 +21,7 @@ const EXTREME_CEILING_HEIGHT = 6000
 
 export const GRAY: LinearRgb = { r: 0.5, g: 0.5, b: 0.5 }
 export const WHITE: LinearRgb = { r: 1, g: 1, b: 1 }
+export const BLACK: LinearRgb = { r: 0, g: 0, b: 0 }
 
 export function rectangleOutline(x0: number, x1: number, y1: number): Point[] {
   return [
@@ -43,7 +46,7 @@ export const testRoom: DaylightRoom = {
   floorColor: GRAY,
   apertures: [
     {
-      span: verticalSpan(TEST_ROOM_WIDTH, DOORWAY_START, DOORWAY_END),
+      span: verticalSpan(TEST_ROOM_WIDTH, WINDOW_START, WINDOW_END),
       sill: WINDOW_SILL,
       head: WINDOW_HEAD,
       revealDepth: 0,
