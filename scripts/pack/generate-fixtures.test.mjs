@@ -1,16 +1,11 @@
 // @vitest-environment node
 import { readdir, readFile } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { writeBrokenPack, writeWellFormedPack } from './generate-fixtures.mjs'
+import { FIXTURE_PACKS } from './generate-fixtures.mjs'
 
 const fixturesRoot = fileURLToPath(new URL('../../tests/fixtures/packs/', import.meta.url))
-
-const fixturePacks = [
-  { packDirectory: 'vernacular-starter-1.0.0', build: writeWellFormedPack },
-  { packDirectory: 'broken-pack-wrong', build: writeBrokenPack },
-]
 
 /** In-memory sink: records every file a builder writes, keyed by path under the packs root. */
 function memorySink() {
@@ -30,23 +25,29 @@ async function committedFilePaths(packDirectory) {
   })
   return entries
     .filter((entry) => entry.isFile())
-    .map((entry) => relative(fixturesRoot, join(entry.parentPath, entry.name)))
+    .map((entry) => relative(fixturesRoot, join(entry.parentPath, entry.name)).split(sep).join('/'))
     .sort()
 }
 
 describe('the fixture generator', () => {
-  it('reproduces the committed fixture packs byte for byte, styles included', async () => {
-    for (const { packDirectory, build } of fixturePacks) {
+  it.each(FIXTURE_PACKS)(
+    'reproduces the committed $directory pack byte for byte, styles included',
+    async ({ directory, write }) => {
       const sink = memorySink()
-      await build(sink)
+      await write(sink)
 
-      expect([...sink.files.keys()].sort()).toEqual(await committedFilePaths(packDirectory))
+      expect([...sink.files.keys()].sort()).toEqual(await committedFilePaths(directory))
       for (const [relativePath, bytes] of sink.files) {
         const committed = await readFile(join(fixturesRoot, relativePath))
-        expect(bytes.equals(committed), `${relativePath} differs from the committed fixture`).toBe(
-          true,
-        )
+        if (relativePath.endsWith('.json')) {
+          expect(bytes.toString('utf8'), relativePath).toBe(committed.toString('utf8'))
+        } else {
+          expect(
+            bytes.equals(committed),
+            `${relativePath} differs from the committed fixture`,
+          ).toBe(true)
+        }
       }
-    }
-  })
+    },
+  )
 })
