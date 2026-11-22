@@ -41,15 +41,31 @@ export function observationInstantToIso(instant: ObservationInstant): string {
 // expects: `YYYY-MM-DDThh:mm`. Owned here so every caller that needs to guard the
 // parse boundary (a UI input, a future importer, ...) validates against the domain's
 // own contract instead of re-deriving the shape itself.
-const OBSERVATION_INSTANT_ISO_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
+const OBSERVATION_INSTANT_ISO_SHAPE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/
+
+const FIRST_MONTH_INDEX_OFFSET = 1
+
+function isRealCalendarDate(year: number, month: number, day: number): boolean {
+  // A UTC round trip: a date that does not exist (30 Feb, month 13) rolls over into
+  // another month, so its month or day no longer matches what was asked for.
+  const probe = new Date(0)
+  probe.setUTCFullYear(year, month - FIRST_MONTH_INDEX_OFFSET, day)
+  return probe.getUTCMonth() === month - FIRST_MONTH_INDEX_OFFSET && probe.getUTCDate() === day
+}
 
 /**
  * Reports whether `value` has the exact `YYYY-MM-DDThh:mm` shape `parseObservationInstant`
- * expects. `parseObservationInstant` itself stays non-validating (it tolerates and
- * defaults malformed input) so callers that need a hard boundary check here first.
+ * expects and names a real calendar instant (a date that exists, hour 0..23, minute 0..59).
+ * `parseObservationInstant` itself stays non-validating (it tolerates and defaults malformed
+ * input) so callers that need a hard boundary check here first.
  */
 export function isObservationInstantIso(value: string): boolean {
-  return OBSERVATION_INSTANT_ISO_SHAPE.test(value)
+  const match = OBSERVATION_INSTANT_ISO_SHAPE.exec(value)
+  if (match === null) return false
+  const [year = 0, month = 0, day = 0, hours = 0, minutes = 0] = match
+    .slice(1)
+    .map((field) => Number.parseInt(field, DECIMAL_RADIX))
+  return isRealCalendarDate(year, month, day) && hours < HOURS_PER_DAY && minutes < MINUTES_PER_HOUR
 }
 
 /** Parses an ISO 8601 civil datetime `YYYY-MM-DDThh:mm` back into an `ObservationInstant`. */
