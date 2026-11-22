@@ -753,7 +753,12 @@ export {
   registerEntranceCommands,
 } from './commands/handlers/entrance-commands'
 export { countMarkedDoors, withoutEntranceMark } from './commands/entrance-rule'
-export type { EnvironmentScene, WeatherConditions } from './model/environment-scene'
+export type {
+  EnvironmentScene,
+  OpeningLight,
+  ViewingConditions,
+  WeatherConditions,
+} from './model/environment-scene'
 export type {
   AddEnvironmentSceneParams,
   RemoveEnvironmentSceneParams,

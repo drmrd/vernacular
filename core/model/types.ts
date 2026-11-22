@@ -1,6 +1,6 @@
 import type { NamedColor } from '../color/color'
 import type { AssetReference } from './asset-reference'
-import type { EnvironmentScene } from './environment-scene'
+import type { EnvironmentScene, OpeningLight } from './environment-scene'
 import type { SurfaceTreatment } from './paint'
 import type { Site } from './site'
 
@@ -322,6 +322,8 @@ export interface Project {
   paint?: Record<string, SurfaceTreatment> | undefined
   /** Optional site metadata (design spec 3.1). Absent means none. */
   site?: Site | undefined
+  /** The light the project opens in, set only on the user's click. Absent means the computed opening light. */
+  openingLight?: OpeningLight
   /** Third-party extension data; see {@link Extensions}. */
   extensions?: Extensions
 }
