@@ -45,13 +45,13 @@ interface SceneCameraRigProps {
 // walk controls. The navigation state decides which control is active and whether the
 // user has taken over from the automatic framing.
 function SceneCameraRig({ nav, framed, doorway }: SceneCameraRigProps) {
-  const { root, pose, bounds } = framed
+  const { root, pose } = framed
   return (
     <>
       <FrameCamera boxes={framed} active={!nav.userControlled} />
       <PresetCamera
         request={nav.presetRequest}
-        bounds={bounds}
+        boxes={framed}
         doorway={doorway}
         onApplied={nav.notePresetApplied}
       />

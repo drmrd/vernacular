@@ -5,7 +5,6 @@ import {
   doorwayPose,
   frameSceneCamera,
   withDepthRangeOf,
-  type Bounds3,
   type CameraPose,
 } from '../../core'
 import { applyCameraPose, cameraViewport, type FittableCamera } from './fit-camera'
@@ -52,42 +51,49 @@ export type DoorwayStand = Pick<DoorwayTarget, 'opening' | 'floorElevationMm'>
 // The live inputs a preset pose needs, captured in a ref so PresetCamera reads the
 // latest without the effect re-firing on every change.
 interface PresetView {
-  bounds: Bounds3 | null
+  boxes: FramingBoxes
   doorway: DoorwayStand | null
   size: { width: number; height: number }
   camera: FittableCamera
 }
 
 // Derives the pose for a preset request: the doorway view needs the resolved door and the
-// elevation of its floor (none means no pose), and the axis-aligned views fit the live viewport.
+// elevation of its floor (none means no pose), and the axis-aligned views fit the framing box
+// to the live viewport. Both take their depth range from the box of everything drawn.
 function poseForRequest(request: PresetRequest, view: PresetView): CameraPose | null {
-  if (view.bounds === null) return null
+  const { framingBounds, bounds } = view.boxes
+  if (bounds === null) return null
   if (request.preset === 'doorway') {
     return view.doorway === null
       ? null
-      : doorwayPose(view.doorway.opening, view.bounds, view.doorway.floorElevationMm)
+      : doorwayPose(view.doorway.opening, bounds, view.doorway.floorElevationMm)
   }
-  return cameraPresetPose(request.preset, view.bounds, cameraViewport(view.camera, view.size))
+  const fit = cameraPresetPose(
+    request.preset,
+    framingBounds,
+    cameraViewport(view.camera, view.size),
+  )
+  return withDepthRangeOf(fit, bounds)
 }
 
 // Snaps the live camera to a preset whenever a new request arrives. It reads the
-// latest bounds, doorway, size, and camera from a ref so the effect fires only on a
+// latest boxes, doorway, size, and camera from a ref so the effect fires only on a
 // new request, not on a resize (a resize must not yank the camera onto a preset).
 export function PresetCamera({
   request,
-  bounds,
+  boxes,
   doorway,
   onApplied,
 }: {
   request: PresetRequest | null
-  bounds: Bounds3 | null
+  boxes: FramingBoxes
   doorway: DoorwayStand | null
   onApplied: (pose: CameraPose) => void
 }) {
   const camera = useThree((state) => state.camera)
   const size = useThree((state) => state.size)
-  const latest = useRef<PresetView>({ camera, size, bounds, doorway })
-  latest.current = { camera, size, bounds, doorway }
+  const latest = useRef<PresetView>({ camera, size, boxes, doorway })
+  latest.current = { camera, size, boxes, doorway }
   // Held in a ref alongside the view inputs so reporting the applied pose cannot become a
   // reason the effect re-fires; only a new request may move the camera.
   const report = useRef(onApplied)
