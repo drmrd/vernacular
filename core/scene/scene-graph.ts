@@ -134,6 +134,8 @@ export interface OpeningSceneNode {
    * A hung window puts its lower sash on this side; `orientation.facing` decides when it is absent.
    */
   roomSide?: OpeningOrientation['facing']
+  /** True on the one door that is the project's main entrance. Absent on every other opening. */
+  entrance?: true
 }
 
 export interface DimensionSceneNode {
@@ -254,6 +256,7 @@ export function deriveOpeningNode(
     sillHeight: opening.sillHeight,
     hostThickness: effectiveWallThickness(hostWall),
     orientation: opening.orientation,
+    ...(opening.entrance === true ? { entrance: true } : {}),
   }
 }
 
