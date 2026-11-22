@@ -72,7 +72,7 @@ describe('useFlushOnHidden', () => {
   })
 
   it('the prompt before unload still shows while a write is pending', async () => {
-    const ports = createTestPorts()
+    const ports = createTestPorts({ durable: true })
     const gate = gateSaves(ports.workspace)
     const handle = await openNewProject(ports, 'a')
     renderHook(() => {

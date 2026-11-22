@@ -7,6 +7,7 @@ import {
   workspaceRequest,
 } from '../session/handle/handle-test-kit'
 import type { DocumentHandle } from '../session'
+import { gateSaves, settle } from '../session/autosave/save-gate-test-kit'
 import { createInitialProject } from './create-initial-project'
 import { useBeforeUnloadGuard, useLeaveWarningGuard } from './use-before-unload-guard'
 
@@ -150,5 +151,32 @@ describe('useLeaveWarningGuard', () => {
 
     unmount()
     await handle.close()
+  })
+
+  it('keeps the warning while a save failed over storage that keeps the project', async () => {
+    const ports = createTestPorts({ durable: true })
+    const gate = gateSaves(ports.workspace)
+    const handle = await openOrThrow(ports, {
+      ...workspaceRequest('current'),
+      create: createInitialProject,
+    })
+    const { unmount } = renderHook(() => {
+      useLeaveWarningGuard(handle)
+    })
+    act(() => {
+      rename(handle, 'Edited before the save failed')
+    })
+
+    await act(async () => {
+      const saving = handle.save()
+      await settle()
+      gate.endOldestSave(new Error('disk full'))
+      await saving.catch(() => undefined)
+    })
+
+    expect(handle.saveStatus()).toBe('error')
+    expect(dispatchBeforeUnload().preventDefault).toHaveBeenCalled()
+
+    unmount()
   })
 })
