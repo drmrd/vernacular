@@ -194,6 +194,22 @@ function assignCells(
   return { cellsByRoom, roomOfCell }
 }
 
+/** The opening area of every doorway that another room lists into each room, by room index. */
+function doorwayAreasInto(
+  apertures: readonly (readonly ApertureGeometry[])[],
+  roomCount: number,
+): number[] {
+  const areas = new Array<number>(roomCount).fill(0)
+  for (const roomApertures of apertures) {
+    for (const aperture of roomApertures) {
+      if (aperture.kind === 'doorway') {
+        areas[aperture.neighbor] = (areas[aperture.neighbor] ?? 0) + aperture.openingArea
+      }
+    }
+  }
+  return areas
+}
+
 /**
  * Checks the rooms, then measures the form factor from every cell center at the work plane to
  * every aperture of the cell's room, and finds the room cell that each cell under a wall copies.
@@ -205,11 +221,13 @@ export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry 
   const grid = createDaylightField(rooms)
   const openings = rooms.map(roomOpenings)
   const { cellsByRoom, roomOfCell } = assignCells(grid, rooms, openings)
+  const apertures = openings.map((roomOpenings) => roomOpenings.map(apertureGeometry))
+  const doorwayAreas = doorwayAreasInto(apertures, rooms.length)
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
     openToSky: room.openToSky === true,
-    apertures: (openings[index] ?? []).map(apertureGeometry),
+    apertures: apertures[index] ?? [],
     cells: cellsByRoom[index] ?? [],
-    surfaces: measureRoomSurfaces(room),
+    surfaces: measureRoomSurfaces(room, doorwayAreas[index] ?? 0),
   }))
   return { grid, rooms: measured, cellsUnderWalls: findCellsUnderWalls(grid, rooms, roomOfCell) }
 }
