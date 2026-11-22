@@ -32,7 +32,6 @@ export const ASSET_KINDS: readonly AssetKind[] = Object.freeze([
 ])
 
 export const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
-const NEWEST_PACK_FORMAT_VERSION = 2
 
 export interface PackValidationResult {
   valid: boolean
@@ -185,12 +184,18 @@ function validateAssets(assets: unknown, errors: string[]): void {
   })
 }
 
+function isKnownFormatVersion(formatVersion: unknown): boolean {
+  return typeof formatVersion === 'number' && PACK_FORMAT_VERSIONS.includes(formatVersion)
+}
+
 function validateFormatVersion(formatVersion: unknown, errors: string[]): void {
-  if (formatVersion !== undefined && !PACK_FORMAT_VERSIONS.includes(formatVersion as number)) {
-    errors.push(
-      `formatVersion must be 1 or 2; the newest format this reader knows is ${NEWEST_PACK_FORMAT_VERSION}`,
-    )
-  }
+  if (formatVersion === undefined || isKnownFormatVersion(formatVersion)) return
+  const newest = Math.max(...PACK_FORMAT_VERSIONS)
+  errors.push(
+    `formatVersion must be ${PACK_FORMAT_VERSIONS.join(' or ')}, ` +
+      `but this pack declares ${JSON.stringify(formatVersion)}; ` +
+      `the newest format this reader knows is ${newest}`,
+  )
 }
 
 function validatePackFields(source: Record<string, unknown>, errors: string[]): void {
