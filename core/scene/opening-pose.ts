@@ -1,4 +1,5 @@
 import { openingParts, type OpeningPartId } from './opening-motion'
+import { advanceOpenness } from './opening-openness'
 
 /** How far each part of one opening stands open: 0 is shut and 1 is the full travel. */
 export type OpeningPose = Readonly<Partial<Record<OpeningPartId, number>>>
@@ -23,4 +24,35 @@ export function openingTargetPose(
   open: ReadonlySet<OpeningPartId> | undefined,
 ): OpeningPose {
   return Object.fromEntries(openingParts(type).map((part) => [part, openingPartTarget(open, part)]))
+}
+
+/**
+ * Eases every part named in the target toward its own openness. A part missing from the
+ * current pose counts as shut. Returns `current` itself when no part moves.
+ */
+export function advanceOpeningPose(
+  current: OpeningPose,
+  target: OpeningPose,
+  dtSeconds: number,
+): OpeningPose {
+  const advanced: Partial<Record<OpeningPartId, number>> = { ...current }
+  let moved = false
+  for (const [part, goal] of Object.entries(target) as [OpeningPartId, number][]) {
+    const before = current[part] ?? 0
+    const after = advanceOpenness(before, goal, dtSeconds)
+    if (after !== before) {
+      advanced[part] = after
+      moved = true
+    }
+  }
+  return moved ? advanced : current
+}
+
+/** Jumps every part named in the pose or in the open set straight to its target openness. */
+export function settledPose(
+  pose: OpeningPose,
+  open: ReadonlySet<OpeningPartId> | undefined,
+): OpeningPose {
+  const parts = new Set([...(Object.keys(pose) as OpeningPartId[]), ...(open ?? [])])
+  return Object.fromEntries([...parts].map((part) => [part, openingPartTarget(open, part)]))
 }
