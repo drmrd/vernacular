@@ -31,7 +31,11 @@ interface FadeBaseline {
 interface FadeMaterial {
   material: THREE.Material
   baseline: FadeBaseline
-  /** True on every material of a held fill: it stays at baseline and never drops to the fade opacity. */
+  /**
+   * True on every material of a held fill: it stays at baseline and never drops to the fade
+   * opacity. `kind: 'held-fill'` now covers this, so the flag stays only until issue #1075
+   * removes it.
+   */
   holdOpaque?: boolean
 }
 
@@ -177,8 +181,10 @@ function privatizeEntityMaterials(root: THREE.Object3D, entityId: string): FadeM
  * Enrolls one privatized fade target for a junction fill mesh. A private material is
  * required because the fill's side faces share the `junction` role material; pinning the
  * shared instance would pin every junction's material. A fill whose junction has a non-fading
- * incident wall holds opaque unconditionally (the ADR-0103 tee, a held-fill target whose records carry `holdOpaque`). A pure-exterior fill instead carries the facing of each incident run, so
- * the per-frame update fades it only when the camera is outside all of them (ADR-0140).
+ * incident wall holds opaque unconditionally (the ADR-0103 tee, a held-fill target whose
+ * records carry `holdOpaque`). A pure-exterior fill instead carries the facing of each
+ * incident run, so the per-frame update fades it only when the camera is outside all of them
+ * (ADR-0140).
  */
 function enrollFillMesh(
   mesh: THREE.Mesh,
@@ -200,8 +206,8 @@ function enrollFillMesh(
     point,
     // One facing per incident exterior run actually built into `root`. An empty array
     // (every incident run absent from the built scene) leaves the update with no facing
-    // to test, so the fill never fades: the safe
-    // hold when none of the runs it stood in for are present.
+    // to test, so the fill never fades: the safe hold when none of the runs it stood in for
+    // are present.
     incidentFacings: group.exteriorRunIndexes
       .map((runIndex) => facingByRunIndex.get(runIndex))
       .filter((facing): facing is WallFacing => facing !== undefined),
