@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { validatePackManifest } from '../../core/assets/pack-manifest.ts'
 import { checkPackIntegrity } from './pack-integrity.mjs'
 import { isShareAlike, shareAlikeWarning } from '../../core/assets/license-policy.ts'
+import { isRecord } from '../../core/assets/is-record.ts'
 
 const EXIT_OK = 0
 const EXIT_INVALID = 1
@@ -40,14 +41,15 @@ function isReadableManifest(manifest) {
 
 /**
  * The license strings declared by a pack and its assets.
- * @param {object} manifest
+ * @param {unknown} manifest
  * @returns {string[]}
  */
 function collectLicenses(manifest) {
   const licenses = []
+  if (!isRecord(manifest)) return licenses
   if (typeof manifest.license === 'string') licenses.push(manifest.license)
   for (const asset of Array.isArray(manifest.assets) ? manifest.assets : []) {
-    if (typeof asset.license === 'string') licenses.push(asset.license)
+    if (isRecord(asset) && typeof asset.license === 'string') licenses.push(asset.license)
   }
   return licenses
 }
@@ -61,7 +63,7 @@ function collectLicenses(manifest) {
 async function reviewPack(manifest, reader) {
   const manifestResult = validatePackManifest(manifest)
   const integrity = isReadableManifest(manifest)
-    ? await checkPackIntegrity(manifest, reader)
+    ? await checkPackIntegrity({ ...manifest, assets: manifest.assets.filter(isRecord) }, reader)
     : { errors: [] }
   const warning = shareAlikeWarning(collectLicenses(manifest))
   return {
@@ -89,7 +91,9 @@ function reportAsset(asset) {
  * @returns {object}
  */
 function buildReport(manifest, review) {
-  const assets = (Array.isArray(manifest?.assets) ? manifest.assets : []).map(reportAsset)
+  const assets = (Array.isArray(manifest?.assets) ? manifest.assets : [])
+    .filter(isRecord)
+    .map(reportAsset)
   const licenses = collectLicenses(manifest)
   return {
     status: review.errors.length === 0 ? 'PASS' : 'FAIL',
