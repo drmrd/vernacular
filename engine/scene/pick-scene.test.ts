@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
-import type { OpeningSceneNode, Point, SceneGraph } from '../../core'
+import { exteriorWalls, type OpeningSceneNode, type Point, type SceneGraph } from '../../core'
 
 import { buildScene } from './build-scene'
+import { prepareNearWallTransparency, updateNearWallTransparency } from './near-wall-transparency'
 import { pickScene, pickSceneAt } from './pick-scene'
 import { worldAt } from './wall-winding-test-support'
 
@@ -225,5 +226,51 @@ describe('pickSceneAt', () => {
     const viaPoint = pickSceneAt({ raycaster: new THREE.Raycaster(), camera, root, ndc: centre })
     expect(viaPoint).toEqual(pickScene(raycaster, root))
     expect(viaPoint.entityId).toBe('chair')
+  })
+})
+
+// The edge overlay draws a dark line along every surface edge. The line is for the eye, not
+// the pointer: it never takes a click from the face it lies on or from the face behind it.
+describe('pickScene with the edge overlay on', () => {
+  /** mm: how far the pointer is from the top outer edge of the near wall, on its face. */
+  const BELOW_EDGE = 0.5
+  const EYE_HEIGHT_ABOVE_WALL = 3000
+  const EYE_STANDOFF = 3000
+  const NEAR_OUTER_FACE_Y = -WALL_THICKNESS / 2
+  const NEAR_OUTER_FACE = { kind: 'wall-face', wallId: 'near', side: 'right' }
+  const FAR_FACE = { kind: 'wall-face', wallId: 'far', side: 'left' }
+
+  const overlaidRoom = (): { root: THREE.Group; graph: SceneGraph } => {
+    const graph = closedRoom()
+    const root = buildScene(graph, undefined, { edgeOverlay: true })
+    root.updateMatrixWorld(true)
+    return { root, graph }
+  }
+
+  /** A ray from an eye above and outside the near wall through a point just under its top edge. */
+  const throughJustBelowTopEdge = (): { raycaster: THREE.Raycaster; eye: THREE.Vector3 } => {
+    const eye = worldAt({ x: MIDDLE, y: -EYE_STANDOFF }, EYE_HEIGHT_ABOVE_WALL)
+    const aim = worldAt({ x: MIDDLE, y: NEAR_OUTER_FACE_Y }, WALL_HEIGHT - BELOW_EDGE)
+    return { raycaster: new THREE.Raycaster(eye.clone(), aim.sub(eye).normalize()), eye }
+  }
+
+  it('picks the wall and its face for a click within a millimetre of the wall edge line', () => {
+    const { root } = overlaidRoom()
+    const { raycaster } = throughJustBelowTopEdge()
+    expect(pickScene(raycaster, root)).toEqual({
+      entityId: 'wall:near',
+      surface: NEAR_OUTER_FACE,
+    })
+  })
+
+  it('goes on past the edge line of a faded wall to the face behind it', () => {
+    const { root, graph } = overlaidRoom()
+    const { raycaster, eye } = throughJustBelowTopEdge()
+    const targets = prepareNearWallTransparency(
+      root,
+      exteriorWalls(graph.walls, graph.rooms, graph.openings),
+    )
+    updateNearWallTransparency(targets, { x: eye.x, z: eye.z })
+    expect(pickScene(raycaster, root)).toEqual({ entityId: 'wall:far', surface: FAR_FACE })
   })
 })
