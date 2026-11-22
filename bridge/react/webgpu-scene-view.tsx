@@ -170,7 +170,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   // reports a frame drawn without the session.
   useEffect(() => readiness.noteSessionApplied(), [readiness])
   return (
-    <SceneReadinessBoundary ready={drawnRevision !== null}>
+    <SceneReadinessBoundary sceneRevision={sceneRevision} drawnRevision={drawnRevision}>
       {/* React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
           configuring the Canvas, so create-renderer's shadowMap setup goes dead
           without this prop. The bare boolean also selects PCFSoftShadowMap,
