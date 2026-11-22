@@ -200,6 +200,7 @@ describe('checkPackIntegrity for a format 2 asset', () => {
     const missing = result.errors.filter((m) => m.includes('thumbnail missing'))
     expect(missing).toHaveLength(1)
     expect(missing[0]).toContain(HASH)
+    expect(result.errors).toEqual(missing)
   })
 
   const NO_THUMBNAIL = { files: { [THUMBNAIL_FILE]: false }, dirs: { thumbnails: [] } }
@@ -222,20 +223,29 @@ describe('checkPackIntegrity for a format 2 asset', () => {
 
   it('accepts a texture with a valid WebP thumbnail at the usual path', async () => {
     const { manifest, reader } = formatTwoPack(TEXTURE, 'png')
-    expect(await reader.exists(THUMBNAIL_FILE)).toBe(true)
     const result = await checkPackIntegrity(manifest, reader)
     expect(result).toEqual({ errors: [] })
   })
 
-  it('flags a texture thumbnail whose bytes are not a valid WebP signature', async () => {
+  it.each([
+    ['image/png', 'png'],
+    ['image/webp', 'webp'],
+  ])('flags an %s texture thumbnail that is not a valid WebP signature', async (mediaType, ext) => {
     const notWebp = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    const { manifest, reader } = formatTwoPack(TEXTURE, 'png', {
+    const { manifest, reader } = formatTwoPack({ ...TEXTURE, mediaType }, ext, {
       bytes: { [THUMBNAIL_FILE]: notWebp },
     })
     const result = await checkPackIntegrity(manifest, reader)
     expect(result.errors).toHaveLength(1)
     expect(result.errors[0]).toContain('not valid WebP')
     expect(result.errors[0]).toContain(HASH)
+  })
+
+  it('does not look for a thumbnail of an asset whose content hash is malformed', async () => {
+    const { manifest, reader } = formatTwoPack(MODEL, 'glb', NO_THUMBNAIL)
+    manifest.assets[0].contentHash = 'not-a-hash'
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result.errors.filter((m) => m.includes('thumbnail'))).toEqual([])
   })
 })
 
