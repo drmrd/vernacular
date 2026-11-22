@@ -97,7 +97,8 @@ async function checkAssetHashes(assets, reader, errors) {
 }
 
 /**
- * Confirm each model asset has a thumbnail file in the pack; textures need none.
+ * Confirm each model asset has a WebP thumbnail in the pack; a texture's thumbnail is optional
+ * but must be WebP when present.
  * @param {object[]} assets
  * @param {PackReader} reader
  * @param {string[]} errors
@@ -105,10 +106,10 @@ async function checkAssetHashes(assets, reader, errors) {
  */
 async function checkThumbnails(assets, reader, errors) {
   for (const asset of assets) {
-    if (!SHA256_PATTERN.test(asset.contentHash) || asset.kind === TEXTURE_KIND) continue
+    if (!SHA256_PATTERN.test(asset.contentHash)) continue
     const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
     if (!(await reader.exists(file))) {
-      errors.push(`asset ${asset.contentHash}: thumbnail missing`)
+      if (asset.kind !== TEXTURE_KIND) errors.push(`asset ${asset.contentHash}: thumbnail missing`)
       continue
     }
     const bytes = await reader.readBytes(file, WEBP_HEADER_LENGTH)
