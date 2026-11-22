@@ -12,10 +12,10 @@ export interface OpeningPartRef {
 /** The map with the referenced part flipped open or shut; the input is never mutated. */
 export function toggleOpenPart(parts: OpenParts, ref: OpeningPartRef): OpenParts {
   const next = new Map(parts)
-  const openParts = new Set(parts.get(ref.openingId))
-  if (!openParts.delete(ref.part)) openParts.add(ref.part)
-  if (openParts.size === 0) next.delete(ref.openingId)
-  else next.set(ref.openingId, openParts)
+  const partsOfOpening = new Set(parts.get(ref.openingId))
+  if (!partsOfOpening.delete(ref.part)) partsOfOpening.add(ref.part)
+  if (partsOfOpening.size === 0) next.delete(ref.openingId)
+  else next.set(ref.openingId, partsOfOpening)
   return next
 }
 
@@ -27,12 +27,12 @@ export function openOpeningIds(parts: OpenParts): ReadonlySet<string> {
 /** Whether two maps hold the same openings with the same open parts, whatever their instances. */
 export function sameOpenParts(a: OpenParts, b: OpenParts): boolean {
   if (a.size !== b.size) return false
-  return [...a].every(([openingId, openParts]) => {
-    const otherParts = b.get(openingId)
+  return [...a].every(([openingId, partsHere]) => {
+    const partsThere = b.get(openingId)
     return (
-      otherParts !== undefined &&
-      otherParts.size === openParts.size &&
-      [...openParts].every((part) => otherParts.has(part))
+      partsThere !== undefined &&
+      partsThere.size === partsHere.size &&
+      [...partsHere].every((part) => partsThere.has(part))
     )
   })
 }
