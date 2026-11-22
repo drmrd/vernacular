@@ -129,4 +129,13 @@ describe('isProofSource', () => {
     expect(yes.map(isProofSource)).toEqual([true, true, true, true])
     expect(no.map(isProofSource)).toEqual([false, false, false, false])
   })
+
+  it('excludes the generated schema validators but keeps hand-written format source', () => {
+    const generated = [
+      'core/format/generated/current-schema-validator.js',
+      'core/format/generated/tolerant-schema-validator.js',
+    ]
+    expect(generated.map(isProofSource)).toEqual([false, false])
+    expect(isProofSource('core/format/schema-version.ts')).toBe(true)
+  })
 })
