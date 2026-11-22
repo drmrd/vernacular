@@ -154,6 +154,8 @@ Done when:
 
 ### 5.3 A project started after a failed load (#671)
 
+Changed on 2026-11-22. The "Start a new project" control and the view that held it are removed (ADR-0190). The Projects page has New project. A browser whose storage is not found works in memory, and the application says that its projects last only until the tab closes. The text below describes what was built before that change and is kept as written.
+
 Today:
 
 - The application has one project slot with the fixed id `'current'` (`app/app.tsx:50`).

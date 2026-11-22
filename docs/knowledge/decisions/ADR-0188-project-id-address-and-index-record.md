@@ -23,7 +23,7 @@ sourceFiles:
     core/export/svg/svg-plan-exporter.ts,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # ADR-0188: A project has a random id, an address, and a record in the project index
@@ -83,7 +83,7 @@ the recent-project store holds one entry at most.
 > gets none. The start (`startProject` in `session/flows/`) opens the project used last, from the
 > browser or from a folder. A folder project opens with no click only when the browser still
 > reports access as granted. Otherwise the start shows the permission sentence with Retry, which
-> asks for access inside the click, and "Start a new project" stays beside it. With no record, the
+> asks for access inside the click. With no record, the
 > start makes a new project under a new random id, so the id `current` belongs only to a project
 > that an older build stored. A project that a flow of the editor opens adds a step to the browser
 > history, and Back and Forward switch projects with the same switch, which writes the open project
