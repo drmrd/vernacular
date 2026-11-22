@@ -201,6 +201,31 @@ describe('checkPackIntegrity for a format 2 asset', () => {
     expect(missing).toHaveLength(1)
     expect(missing[0]).toContain(HASH)
   })
+
+  const NO_THUMBNAIL = { files: { [THUMBNAIL_FILE]: false }, dirs: { thumbnails: [] } }
+
+  it.each(['architectural-element', 'trim-profile'])(
+    'requires a thumbnail for a %s model',
+    async (kind) => {
+      const { manifest, reader } = formatTwoPack({ ...MODEL, kind }, 'glb', NO_THUMBNAIL)
+      const result = await checkPackIntegrity(manifest, reader)
+      expect(result.errors.some((m) => m.includes('thumbnail missing'))).toBe(true)
+    },
+  )
+
+  it('accepts an image/webp texture that has no thumbnail', async () => {
+    const asset = { ...TEXTURE, mediaType: 'image/webp' }
+    const { manifest, reader } = formatTwoPack(asset, 'webp', NO_THUMBNAIL)
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result).toEqual({ errors: [] })
+  })
+
+  it('accepts a texture with a valid WebP thumbnail at the usual path', async () => {
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png')
+    expect(await reader.exists(THUMBNAIL_FILE)).toBe(true)
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result).toEqual({ errors: [] })
+  })
 })
 
 describe('isWebp', () => {
