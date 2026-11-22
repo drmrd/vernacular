@@ -48,9 +48,24 @@ const FIRST_MONTH_INDEX_OFFSET = 1
 function isRealCalendarDate(year: number, month: number, day: number): boolean {
   // A UTC round trip: a date that does not exist (30 Feb, month 13) rolls over into
   // another month, so its month or day no longer matches what was asked for.
+  const monthIndex = month - FIRST_MONTH_INDEX_OFFSET
   const probe = new Date(0)
-  probe.setUTCFullYear(year, month - FIRST_MONTH_INDEX_OFFSET, day)
-  return probe.getUTCMonth() === month - FIRST_MONTH_INDEX_OFFSET && probe.getUTCDate() === day
+  probe.setUTCFullYear(year, monthIndex, day)
+  return probe.getUTCMonth() === monthIndex && probe.getUTCDate() === day
+}
+
+function splitNumbers(text: string, separator: string): number[] {
+  return text.split(separator).map((field) => Number.parseInt(field, DECIMAL_RADIX))
+}
+
+// The single reading of `YYYY-MM-DDThh:mm`, shared by the tolerant parse and the strict
+// check. Missing or malformed fields default rather than throw; the strict check guards
+// the shape first, so only the tolerant parse ever sees defaults.
+function readIsoFields(iso: string) {
+  const [date = '', time = ''] = iso.split('T')
+  const [year = 0, month = 0, day = 0] = splitNumbers(date, '-')
+  const [hours = 0, minutes = 0] = splitNumbers(time, ':')
+  return { date, year, month, day, hours, minutes }
 }
 
 /**
@@ -60,20 +75,14 @@ function isRealCalendarDate(year: number, month: number, day: number): boolean {
  * input) so callers that need a hard boundary check here first.
  */
 export function isObservationInstantIso(value: string): boolean {
-  const match = OBSERVATION_INSTANT_ISO_SHAPE.exec(value)
-  if (match === null) return false
-  const [year = 0, month = 0, day = 0, hours = 0, minutes = 0] = match
-    .slice(1)
-    .map((field) => Number.parseInt(field, DECIMAL_RADIX))
+  if (!OBSERVATION_INSTANT_ISO_SHAPE.test(value)) return false
+  const { year, month, day, hours, minutes } = readIsoFields(value)
   return isRealCalendarDate(year, month, day) && hours < HOURS_PER_DAY && minutes < MINUTES_PER_HOUR
 }
 
 /** Parses an ISO 8601 civil datetime `YYYY-MM-DDThh:mm` back into an `ObservationInstant`. */
 export function parseObservationInstant(iso: string): ObservationInstant {
-  const [date = '', time = ''] = iso.split('T')
-  const [hours = 0, minutes = 0] = time
-    .split(':')
-    .map((field) => Number.parseInt(field, DECIMAL_RADIX))
+  const { date, hours, minutes } = readIsoFields(iso)
   return { date, minutesSinceMidnight: hours * MINUTES_PER_HOUR + minutes }
 }
 
