@@ -6,6 +6,7 @@
 // loader lands (phase 3) these checks graduate to core/ as shared TypeScript.
 
 import { MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
+import { TEXTURE_LIMITS, textureFileProblems } from '../../core/assets/texture-asset-rules.ts'
 
 /**
  * @typedef {object} PackReader
@@ -77,9 +78,10 @@ function assetFileName(asset) {
  * @param {object[]} assets
  * @param {PackReader} reader
  * @param {string[]} errors
- * @returns {Promise<void>}
+ * @returns {Promise<object[]>} the assets whose file is present and hashes correctly
  */
 async function checkAssetHashes(assets, reader, errors) {
+  const verified = []
   for (const asset of assets) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
     const file = `${ASSET_DIR}/${assetFileName(asset)}`
@@ -92,6 +94,26 @@ async function checkAssetHashes(assets, reader, errors) {
       errors.push(
         `asset ${asset.contentHash}: content hash does not match the file bytes of ${file}`,
       )
+      continue
+    }
+    verified.push(asset)
+  }
+  return verified
+}
+
+/**
+ * Confirm each texture file's header agrees with its manifest entry.
+ * @param {object[]} assets   assets whose files are present and hash correctly
+ * @param {PackReader} reader
+ * @param {string[]} errors
+ * @returns {Promise<void>}
+ */
+async function checkTextureFiles(assets, reader, errors) {
+  for (const asset of assets.filter((a) => a.kind === TEXTURE_KIND)) {
+    const file = `${ASSET_DIR}/${assetFileName(asset)}`
+    const bytes = await reader.readBytes(file, TEXTURE_LIMITS.maxFileBytes)
+    for (const problem of textureFileProblems(asset, bytes)) {
+      errors.push(`asset ${asset.contentHash}: ${problem}`)
     }
   }
 }
@@ -177,7 +199,8 @@ function checkDirName(manifest, reader, errors) {
  */
 export async function checkPackIntegrity(manifest, reader) {
   const errors = []
-  await checkAssetHashes(manifestAssets(manifest), reader, errors)
+  const verifiedAssets = await checkAssetHashes(manifestAssets(manifest), reader, errors)
+  await checkTextureFiles(verifiedAssets, reader, errors)
   await checkThumbnails(manifestAssets(manifest), reader, errors)
   await checkOrphans(manifestAssets(manifest), reader, errors)
   await checkRequiredFiles(reader, errors)
