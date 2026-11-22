@@ -8,6 +8,7 @@ import {
   restoreUnenrolledNearWallTargets,
   updateNearWallTransparency,
   type NearWallTarget,
+  type WallFadeTarget,
 } from './near-wall-transparency'
 import { findByEntityId } from '../testing'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
@@ -432,13 +433,11 @@ describe('updateNearWallTransparency', () => {
     // target so that honoring `holdOpaque` per material is the only thing that can keep the
     // fill solid. (The fill covers the leg's mitered end and divides the rooms; it must not
     // fade with the bar.)
-    const barTarget = prepared.find((target) => target.outwardNormal.z > 0)
+    const barTarget = prepared.find(
+      (target): target is WallFadeTarget => target.kind === 'wall' && target.outwardNormal.z > 0,
+    ) as WallFadeTarget
     expect(barTarget).toBeDefined()
-    const fadingTarget: NearWallTarget = {
-      point: (barTarget as NearWallTarget).point,
-      outwardNormal: (barTarget as NearWallTarget).outwardNormal,
-      materials: [...(barTarget as NearWallTarget).materials, ...fillRecords],
-    }
+    const fadingTarget = { ...barTarget, materials: [...barTarget.materials, ...fillRecords] }
 
     const fillBaselines = fillRecords.map((record) => ({ ...record.baseline }))
 
@@ -499,8 +498,9 @@ describe('updateNearWallTransparency', () => {
     // `holdOpaque` per material is the only thing that can keep it solid in each case.
     const fillTarget = (
       point: NearWallTarget['point'],
-      outwardNormal: NearWallTarget['outwardNormal'],
-    ): NearWallTarget => ({
+      outwardNormal: WallFadeTarget['outwardNormal'],
+    ): WallFadeTarget => ({
+      kind: 'wall',
       point,
       outwardNormal,
       materials: [...fillRecords],
@@ -562,13 +562,12 @@ describe('restoreUnenrolledNearWallTargets', () => {
     const bottomMaterials = wallMaterials(root, 'wall:bottom')
     const bottomTarget = targets.find((target) =>
       target.materials.some((record) => bottomMaterials.includes(record.material)),
-    ) as NearWallTarget
+    ) as WallFadeTarget
 
     // A rebuild hands back a fresh target object wrapping the very same material
     // instances, so enrollment must be recognized by material, not by target identity.
-    const freshBottomTarget: NearWallTarget = {
-      point: bottomTarget.point,
-      outwardNormal: bottomTarget.outwardNormal,
+    const freshBottomTarget: WallFadeTarget = {
+      ...bottomTarget,
       materials: bottomTarget.materials.map((record) => ({ ...record })),
     }
 

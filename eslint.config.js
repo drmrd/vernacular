@@ -357,13 +357,13 @@ export const lintExceptions = [
     file: 'engine/scene/near-wall-transparency.test.ts',
     rule: 'max-lines',
     issue: 689,
-    max: 451,
+    max: 450,
   },
   {
     file: 'engine/scene/near-wall-transparency.test.ts',
     rule: 'max-lines-per-function',
     issue: 689,
-    max: 155,
+    max: 154,
   },
   { file: 'editor/plan/draw-plan.test.ts', rule: 'max-lines-per-function', issue: 690, max: 168 },
   {

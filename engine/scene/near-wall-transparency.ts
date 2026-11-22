@@ -31,7 +31,11 @@ interface FadeBaseline {
 interface FadeMaterial {
   material: THREE.Material
   baseline: FadeBaseline
-  /** True => `updateNearWallTransparency` holds it at baseline, never dropping it to the fade opacity. */
+  /**
+   * True on every material of a held fill: it stays at baseline and never drops to the fade
+   * opacity. `kind: 'held-fill'` now covers this, so the flag stays only until issue #1075
+   * removes it.
+   */
   holdOpaque?: boolean
 }
 
@@ -77,24 +81,33 @@ function privatizeMaterial(material: THREE.Material): FadeMaterial {
   return { material: clone, baseline }
 }
 
-/** An exterior run's own materials plus the world geometry that decides its fade. */
-export interface NearWallTarget {
+/** An exterior run's own materials plus the world geometry that decides its fade by its own facing. */
+export interface WallFadeTarget {
+  kind: 'wall'
   materials: FadeMaterial[]
   point: WorldXZ
-  /**
-   * Meaningful only for ordinary wall targets, whose own camera-facing test reads it.
-   * Both junction-fill kinds leave it zero and unused: an unconditional-hold fill masks
-   * the facing test with `holdOpaque`, and a conditional fill decides its fade from
-   * `incidentFacings` instead. The outward direction is undefined for a planar fill anyway.
-   */
   outwardNormal: WorldXZ
-  /**
-   * For a conditional-hold junction fill, the facing of each incident exterior run;
-   * the fill fades only when the camera is outside every one of them. Absent for
-   * ordinary walls and unconditional-hold fills.
-   */
-  incidentFacings?: WallFacing[]
 }
+
+/** A junction fill that stays solid (the ADR-0103 tee): it never fades, whatever the camera does. */
+export interface HeldFillFadeTarget {
+  kind: 'held-fill'
+  materials: FadeMaterial[]
+  point: WorldXZ
+}
+
+/**
+ * A pure-exterior junction fill (ADR-0140): the facing of each incident exterior run, and it
+ * fades only when the camera is outside every one of them. An empty list never fades.
+ */
+export interface ConditionalFillFadeTarget {
+  kind: 'conditional-fill'
+  materials: FadeMaterial[]
+  point: WorldXZ
+  incidentFacings: WallFacing[]
+}
+
+export type NearWallTarget = WallFadeTarget | HeldFillFadeTarget | ConditionalFillFadeTarget
 
 /**
  * True when the camera sits on the wall's outside, i.e. the horizontal vector from
@@ -168,32 +181,33 @@ function privatizeEntityMaterials(root: THREE.Object3D, entityId: string): FadeM
  * Enrolls one privatized fade target for a junction fill mesh. A private material is
  * required because the fill's side faces share the `junction` role material; pinning the
  * shared instance would pin every junction's material. A fill whose junction has a non-fading
- * incident wall holds opaque unconditionally (the ADR-0103 tee, `holdOpaque` on every
- * record). A pure-exterior fill instead carries the facing of each incident run, so
- * the per-frame update fades it only when the camera is outside all of them (ADR-0140).
+ * incident wall holds opaque unconditionally (the ADR-0103 tee, a held-fill target whose
+ * records carry `holdOpaque`). A pure-exterior fill instead carries the facing of each
+ * incident run, so the per-frame update fades it only when the camera is outside all of them
+ * (ADR-0140).
  */
 function enrollFillMesh(
   mesh: THREE.Mesh,
   group: JunctionFadeGroup,
   facingByRunIndex: Map<number, WallFacing>,
-): NearWallTarget {
+): HeldFillFadeTarget | ConditionalFillFadeTarget {
   const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3())
   const point = { x: center.x, z: center.z }
   if (group.fillHoldsUnconditionally) {
-    return {
-      materials: privatizeMeshMaterials(mesh).map((record) => ({ ...record, holdOpaque: true })),
-      point,
-      outwardNormal: { x: 0, z: 0 },
-    }
+    const materials = privatizeMeshMaterials(mesh).map((record) => ({
+      ...record,
+      holdOpaque: true,
+    }))
+    return { kind: 'held-fill', materials, point }
   }
   return {
+    kind: 'conditional-fill',
     materials: privatizeMeshMaterials(mesh),
     point,
-    outwardNormal: { x: 0, z: 0 },
     // One facing per incident exterior run actually built into `root`. An empty array
     // (every incident run absent from the built scene) leaves the update with no facing
-    // to test, and `hasConditionalFade` reports false, so the fill never fades: the safe
-    // hold when none of the runs it stood in for are present.
+    // to test, so the fill never fades: the safe hold when none of the runs it stood in for
+    // are present.
     incidentFacings: group.exteriorRunIndexes
       .map((runIndex) => facingByRunIndex.get(runIndex))
       .filter((facing): facing is WallFacing => facing !== undefined),
@@ -284,7 +298,7 @@ function buildWallTarget(
   root: THREE.Object3D,
   wall: ExteriorWall,
   { meshes, facing }: { meshes: THREE.Mesh[]; facing: WallFacing },
-): NearWallTarget {
+): WallFadeTarget {
   const materials = meshes.flatMap((mesh) => privatizeMeshMaterials(mesh))
   materials.push(
     ...wall.openingIds.flatMap((openingId) => privatizeEntityMaterials(root, openingId)),
@@ -294,7 +308,7 @@ function buildWallTarget(
       privatizeEntityMaterials(root, furnitureEntityId(furnitureId)),
     ),
   )
-  return { materials, point: facing.point, outwardNormal: facing.outwardNormal }
+  return { kind: 'wall', materials, point: facing.point, outwardNormal: facing.outwardNormal }
 }
 
 /**
@@ -335,14 +349,24 @@ export function prepareNearWallTransparency(
 }
 
 /**
- * True when `target` is a conditional junction fill (ADR-0140): it carries at least one
- * incident run facing, so its fade is decided by whether the camera is outside every one
- * of those runs rather than by the target's own `outwardNormal`.
+ * Whether `target` fades for a camera at `cameraPosition`. A wall fades by its own facing, a
+ * held fill never fades, and a conditional fill fades when the camera is outside every incident
+ * facing (an empty list never fades: the safe hold when none of its runs are present).
  */
-function hasConditionalFade(
-  target: NearWallTarget,
-): target is NearWallTarget & { incidentFacings: WallFacing[] } {
-  return target.incidentFacings !== undefined && target.incidentFacings.length > 0
+function shouldFade(target: NearWallTarget, cameraPosition: WorldXZ): boolean {
+  switch (target.kind) {
+    case 'wall':
+      return cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
+    case 'held-fill':
+      return false
+    case 'conditional-fill':
+      return (
+        target.incidentFacings.length > 0 &&
+        target.incidentFacings.every((facing) =>
+          cameraFacesWallOutside(cameraPosition, facing.point, facing.outwardNormal),
+        )
+      )
+  }
 }
 
 /**
@@ -392,11 +416,7 @@ export function updateNearWallTransparency(
   cameraPosition: WorldXZ,
 ): void {
   for (const target of targets) {
-    const faded = hasConditionalFade(target)
-      ? target.incidentFacings.every((facing) =>
-          cameraFacesWallOutside(cameraPosition, facing.point, facing.outwardNormal),
-        )
-      : cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
+    const faded = shouldFade(target, cameraPosition)
     for (const record of target.materials) {
       applyFadeState(record, faded && record.holdOpaque !== true)
     }

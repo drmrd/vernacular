@@ -4,7 +4,8 @@ import { buildScene } from './build-scene'
 import {
   prepareNearWallTransparency,
   updateNearWallTransparency,
-  type NearWallTarget,
+  type ConditionalFillFadeTarget,
+  type HeldFillFadeTarget,
 } from './near-wall-transparency'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { buildWallGraph, exteriorWalls, junctionFadeGroups, type SceneGraph } from '../../core'
@@ -35,22 +36,34 @@ const wall = (
  * record carries a solid baseline and NO `holdOpaque`, so only the incident-facing rule can
  * decide whether it fades.
  */
-const makeConditionalFillTarget = (): NearWallTarget => {
-  const material = new THREE.MeshStandardMaterial()
-  const record = {
-    material,
-    baseline: { transparent: false, opacity: 1, depthWrite: true },
-  }
-  return {
-    materials: [record],
-    point: { x: 0, z: 0 },
-    outwardNormal: { x: 0, z: 0 },
-    incidentFacings: [
-      { point: { x: 0, z: 0 }, outwardNormal: { x: 0, z: 1 } },
-      { point: { x: 0, z: 0 }, outwardNormal: { x: 1, z: 0 } },
-    ],
-  }
-}
+const makeConditionalFillTarget = (
+  incidentFacings: ConditionalFillFadeTarget['incidentFacings'] = [
+    { point: { x: 0, z: 0 }, outwardNormal: { x: 0, z: 1 } },
+    { point: { x: 0, z: 0 }, outwardNormal: { x: 1, z: 0 } },
+  ],
+): ConditionalFillFadeTarget => ({
+  kind: 'conditional-fill',
+  materials: [
+    {
+      material: new THREE.MeshStandardMaterial(),
+      baseline: { transparent: false, opacity: 1, depthWrite: true },
+    },
+  ],
+  point: { x: 0, z: 0 },
+  incidentFacings,
+})
+
+/** A held-fill target: a junction fill that never fades, whatever side the camera is on. */
+const makeHeldFillTarget = (): HeldFillFadeTarget => ({
+  kind: 'held-fill',
+  materials: [
+    {
+      material: new THREE.MeshStandardMaterial(),
+      baseline: { transparent: false, opacity: 1, depthWrite: true },
+    },
+  ],
+  point: { x: 0, z: 0 },
+})
 
 /**
  * Two rooms that meet only at the corner (1000,0). The west, east, and north walls each have
@@ -132,6 +145,28 @@ describe('updateNearWallTransparency conditional junction fill (ADR-0140)', () =
     expect(solidMaterial.depthWrite).toBe(true)
     expect(solidMaterial.opacity).not.toBe(FADED_OPACITY)
   })
+
+  it('never fades a conditional fill that has no incident facings, whatever side the camera is on', () => {
+    const noFacings = makeConditionalFillTarget([])
+    updateNearWallTransparency([noFacings], { x: 1000, z: 1000 })
+
+    const record = noFacings.materials[0]
+    if (!record) throw new Error('conditional fill target lost its fade record')
+    expect(record.material.opacity).toBe(OPAQUE)
+    expect(record.material.transparent).toBe(false)
+    expect(record.material.depthWrite).toBe(true)
+  })
+
+  it('keeps a held fill solid while the camera is outside', () => {
+    const heldFill = makeHeldFillTarget()
+    updateNearWallTransparency([heldFill], { x: 1000, z: 1000 })
+
+    const record = heldFill.materials[0]
+    if (!record) throw new Error('held fill target lost its fade record')
+    expect(record.material.opacity).toBe(OPAQUE)
+    expect(record.material.transparent).toBe(false)
+    expect(record.material.depthWrite).toBe(true)
+  })
 })
 
 describe('prepareNearWallTransparency conditional junction fill (ADR-0140)', () => {
@@ -149,9 +184,11 @@ describe('prepareNearWallTransparency conditional junction fill (ADR-0140)', () 
       fadeGroups,
     )
 
-    // Exactly one prepared target is the conditional fill, marked by a non-empty incident-facing
-    // list. Ordinary wall targets and unconditional-hold fills carry none.
-    const conditionalTargets = targets.filter((target) => (target.incidentFacings?.length ?? 0) > 0)
+    // Exactly one prepared target is the conditional fill, marked by its
+    // `conditional-fill` kind. Wall targets and held fills have other kinds.
+    const conditionalTargets = targets.filter(
+      (target): target is ConditionalFillFadeTarget => target.kind === 'conditional-fill',
+    )
     expect(conditionalTargets).toHaveLength(1)
 
     // One facing per incident exterior wall (west, east, north).
