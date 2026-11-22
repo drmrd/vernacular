@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useRef, useState } from 'react'
-import { frameMatchesCanvasSize, type FrameSizeState } from './drawn-frame-size'
+import { frameMatchesCanvasSize } from './drawn-frame-size'
 
 // The live canvas's per-frame readiness signal, extracted from the scene view so that
 // file stays within its size budget: the drawn scene revision the readiness boundary
@@ -11,7 +11,10 @@ import { frameMatchesCanvasSize, type FrameSizeState } from './drawn-frame-size'
 // The wrapper advertises it so the editor pane's readiness observer knows the scene has
 // actually drawn, not merely mounted.
 // eslint-disable-next-line react-refresh/only-export-components -- a hook, not a component, exported alongside LiveSceneFrameSignal because the two travel together everywhere they are used
-export function useDrawnRevision() {
+export function useDrawnRevision(): {
+  drawnRevision: number | null
+  noteDrawnRevision: (revision: number) => void
+} {
   const [drawnRevision, noteDrawnRevision] = useState<number | null>(null)
   return { drawnRevision, noteDrawnRevision }
 }
@@ -40,9 +43,7 @@ export function LiveSceneFrameSignal({
 }: LiveSceneFrameSignalProps) {
   const reportedRevisionRef = useRef<number | null>(null)
   useFrame((state) => {
-    // An orthographic camera has no aspect, which the optional field allows but TypeScript's
-    // weak-type check cannot see through the camera union, so the state is asserted.
-    if (!frameMatchesCanvasSize(state as FrameSizeState)) return
+    if (!frameMatchesCanvasSize(state)) return
     onDrawnFrame()
     if (reportedRevisionRef.current === revision) return
     reportedRevisionRef.current = revision

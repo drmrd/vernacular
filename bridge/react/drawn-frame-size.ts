@@ -1,8 +1,11 @@
-/** The part of the frame state the size check reads; the R3F root state satisfies it. */
+/**
+ * The part of the frame state the size check reads; the R3F root state satisfies it.
+ * The camera is either one with an aspect (perspective) or an orthographic one, which has none.
+ */
 export interface FrameSizeState {
   gl: { domElement: { width: number; height: number }; getPixelRatio(): number }
   size: { width: number; height: number }
-  camera: { aspect?: number }
+  camera: { aspect?: number } | { isOrthographicCamera: boolean }
 }
 
 /**
@@ -24,6 +27,7 @@ export function frameMatchesCanvasSize(state: FrameSizeState): boolean {
     gl.domElement.height === Math.floor(size.height * pixelRatio)
   if (!bufferMatches) return false
   return (
+    !('aspect' in camera) ||
     camera.aspect === undefined ||
     Math.abs(camera.aspect - size.width / size.height) <= ASPECT_TOLERANCE
   )
