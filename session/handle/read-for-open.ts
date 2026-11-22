@@ -10,6 +10,11 @@ export interface OpenedProject {
   readonly secondFile?: SecondFileState
 }
 
+/** True when the read chose the second file as the newer copy of the project. */
+export function openedFromSecondFile(opened: OpenedProject): boolean {
+  return opened.secondFile?.read === 'second'
+}
+
 /** The project to open, or why it did not open. */
 export type ReadForOpen =
   | {

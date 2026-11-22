@@ -1,7 +1,7 @@
 import { callGuarded } from '../guarded-call'
 import type { SaveReport } from '../../storage'
 import type { HandleNotice } from './handle-types'
-import type { OpenedProject } from './read-for-open'
+import { openedFromSecondFile, type OpenedProject } from './read-for-open'
 
 /** The notices of one handle: each kind is raised once and delivered once. */
 export interface HandleNotices {
@@ -60,7 +60,7 @@ export function raiseOpenNotices(
   if (opened.savedByNewerBuild) {
     notices.raise('saved-by-newer-build')
   }
-  if (opened.secondFile?.read === 'second') {
+  if (openedFromSecondFile(opened)) {
     notices.raise('saved-in-second-file')
   }
   if (recoveryCopyKept === true) {

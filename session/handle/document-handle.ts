@@ -8,7 +8,7 @@ import type { RecordKeeper } from './handle-record'
 import { createSavePath } from './handle-save-path'
 import { createStoredFlag, type StoredFlag } from './handle-stored'
 import type { DocumentHandle, OpenRequest, SaveStatus } from './handle-types'
-import type { OpenedProject } from './read-for-open'
+import { openedFromSecondFile, type OpenedProject } from './read-for-open'
 import { markSession } from './session-mark'
 
 /** What an open found, from which a handle is built. */
@@ -155,7 +155,7 @@ function createHandleAutosave(
 export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle {
   const { request, store, hold, opened, records } = parts
   const session = parts.session ?? createEditorSession(opened.project)
-  const status = createSaveStatusCell(store.durable, opened.secondFile?.read === 'second')
+  const status = createSaveStatusCell(store.durable, openedFromSecondFile(opened))
   const notices = createHandleNotices()
   raiseOpenNotices(notices, opened, parts.recoveryCopyKept)
   const { snapshots } = parts
