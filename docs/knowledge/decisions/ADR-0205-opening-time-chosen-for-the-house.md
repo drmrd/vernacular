@@ -69,6 +69,10 @@ specification".
 The pull request of the opening light, the second part of #737, extends this record with the
 stored light. The section "Extension, 2026-11-22: the stored light" below describes it.
 
+On 2026-11-22 the owner decided open question 2 of the first-view specification: the light on screen
+is seeded once when a project opens, and only the light controls change it after that. The build
+followed that answer from the start, so the decision changes no code. #1087 tracked it.
+
 ## Context
 
 Every project opened at one fixed instant: 20 March 2026 at 10:30 (`DAYLIGHT_REFERENCE_INSTANT`).
@@ -164,12 +168,12 @@ answer.
 - Call 27: `openingInstant` keeps its signature and returns the fixed instant for every input.
   Only `openingConditions` reads the front.
 
-One question is open for the owner: open question 2 of the first-view specification. Does the
-light on screen follow a change of the site or the entrance while the user has not touched the
-light? This pull request builds the recommended answer, "No": the light is seeded once, and a new
-location shows its chosen time at the next open. The other answer, "Yes, until the user first moves
-a light control", would change one test, the first case of
-`editor/shell/shell-providers-opening-light.test.tsx`, and add one behavior.
+Open question 2 of the first-view specification asked whether the light on screen follows a change
+of the site or the entrance while the user has not touched the light. This pull request built the
+recommended answer, "No": the light is seeded once, and a new location shows its chosen time at the
+next open. The owner decided that answer on 2026-11-22 (answer 11 of the specification). The other
+answer, "Yes, until the user first moves a light control", would have changed one test, the first
+case of `editor/shell/shell-providers-opening-light.test.tsx`, and added one behavior.
 
 ### The edits of the daylight specification
 
@@ -240,7 +244,7 @@ it.
   need a seed for each project.
 - Let the light follow edits of the site until the user first moves a light control (the other
   answer to open question 2). A new location would show its time at once, but the store would need
-  to know whether the user has touched the light. The owner has not chosen it.
+  to know whether the user has touched the light. The owner rejected it on 2026-11-22.
 - Scan 21 June for every site. The rule would be simpler to state, but 21 June is midwinter in the
   southern hemisphere. The south-east front at latitude -40 in the tests finds no minute on 21 June
   and opens on 21 December.
@@ -251,7 +255,6 @@ it.
 - A house with no front that takes sun on either date. It opens at the fixed instant, and under the
   true sun its front can be in shade. At latitude 40 that is a front within about 23 degrees of
   north. Its owner can store a better light, as the extension below describes.
-- Open question 2, above. Tracked in #1087.
 - The Projects page of the session layer. A return to the project that is still open must not seed
   the light again and must not drop it. Tracked in #1088.
 
@@ -358,8 +361,8 @@ places. `openingInstant` is unchanged.
 
 The shell seeds the light once, when the project opens. `SessionStateProviders` reads the `site`
 and the `openingLight` of the project in its state initializer and passes both to
-`openingEnvironmentFor(site, sceneGraph, stored)`. This is the recommended answer (a) to open
-question 2. Storing a light does not move the light on screen, and it does not need to, because the
+`openingEnvironmentFor(site, sceneGraph, stored)`. This is answer (a) to open
+question 2, which the owner decided on 2026-11-22. Storing a light does not move the light on screen, and it does not need to, because the
 user is looking at that light. Clearing or undoing does not move it either. The stored light shows
 at the next open.
 
@@ -429,7 +432,6 @@ fourth is a detail of the control. The pull request body names all four for the 
 
 ### Still open after the extension
 
-- Open question 2 stands as built, answer (a). The owner can overrule it. Tracked in #1087.
 - A button that applies the stored light to the screen is not built.
 - Nothing offers to repair a malformed stored light. If the repairs of the session layer ever offer
   to drop one, that write happens on the user's click. Tracked in #1089.
