@@ -14,8 +14,10 @@ import type { ProjectFiles, RemovableProjectFiles } from '../project-files/proje
 import { collectReferencedAssets } from '../project-files/referenced-assets'
 import { writeBackup } from './document-backups'
 import { warnAboutEncodeProblems } from './open-decoded'
+import { ProjectNotFoundError } from '../project-store'
 import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
+import { replaceStoredDocument } from './replace-stored'
 import { listStoredFiles } from './stored-files'
 
 /** Why a read gave no document. */
@@ -38,6 +40,11 @@ export interface SaveReport {
   /** The time of last change of the document file after the write; absent when the store cannot tell. */
   readonly lastChangedAt?: string
 }
+
+/** What a replace of the stored document did: it wrote, or it found faults and wrote nothing. */
+export type ReplaceReport =
+  | { readonly replaced: true }
+  | { readonly replaced: false; readonly faults: readonly FormatFault[] }
 
 /** One listed project: its id and when its document file last changed. */
 export interface ProjectSummary {
@@ -157,6 +164,26 @@ export class DocumentStore {
       ...(graftDropped === undefined ? {} : { graftDropped }),
       ...(lastChangedAt === undefined ? {} : { lastChangedAt }),
     }
+  }
+
+  /**
+   * Replaces the stored document with the project, encoded with no previous document. Keeps the
+   * stored bytes as a `pre-repair` backup before the write. Rejects with ProjectNotFoundError
+   * when no document is stored.
+   */
+  async replaceStored(id: string, project: Project): Promise<ReplaceReport> {
+    if (!this.files.holds(id)) {
+      throw new ProjectNotFoundError(id)
+    }
+    return replaceStoredDocument(
+      {
+        id,
+        directory: this.files.projectDirectory(id),
+        ...(this.options === undefined ? {} : { options: this.options }),
+        prepareAssets: (replacement) => this.files.prepareAssets(id, hashesToCopy(replacement)),
+      },
+      project,
+    )
   }
 
   /**
