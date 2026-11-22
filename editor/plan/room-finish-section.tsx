@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useCallback } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
+import { useActiveSurface, useSurfaceSelection } from '../../bridge'
 import { SectionLabel, Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker, FloorPatternPicker } from '../paint/finish-picker'
@@ -17,7 +18,7 @@ interface RoomFinishSectionProps {
   // below), so the section needs to know how many rooms share that scope to warn
   // before a "room" edit silently repaints every room on the floor. Defaults to a
   // single room, which is the only count where a room-driven paint is unambiguous.
-  roomsOnFloor?: number
+  roomsOnFloor?: number | undefined
 }
 
 const SHARED_HINT =
@@ -56,6 +57,24 @@ type SolidPaint = Extract<SurfaceTreatment, { kind: 'solid' }>
 // the readout's reference color, and the finish picker itself.
 function solidPaint(treatment: SurfaceTreatment | undefined): SolidPaint | undefined {
   return treatment?.kind === 'solid' ? treatment : undefined
+}
+
+/**
+ * The floor-level surface the section shows and edits. It is the ceiling when the
+ * active surface is this floor's ceiling, otherwise the floor. Choosing a kind makes
+ * that surface of this floor the active surface.
+ */
+function useActiveRoomSurfaceKind(
+  floorId: string,
+): ['floor' | 'ceiling', (kind: 'floor' | 'ceiling') => void] {
+  const active = useActiveSurface()
+  const surfaceSelection = useSurfaceSelection()
+  const kind = active?.kind === 'ceiling' && active.floorId === floorId ? 'ceiling' : 'floor'
+  const selectKind = useCallback(
+    (next: 'floor' | 'ceiling') => surfaceSelection.select(surfaceRef(next, floorId)),
+    [surfaceSelection, floorId],
+  )
+  return [kind, selectKind]
 }
 
 interface RoomSurfaceSwitchProps {
@@ -143,7 +162,7 @@ export function RoomFinishSection({
   dispatch,
   roomsOnFloor = 1,
 }: RoomFinishSectionProps) {
-  const [kind, setKind] = useState<'floor' | 'ceiling'>('floor')
+  const [kind, selectKind] = useActiveRoomSurfaceKind(floorId)
   const ref = surfaceRef(kind, floorId)
   const sharedAcrossRooms = roomsOnFloor > 1
   return (
@@ -156,7 +175,7 @@ export function RoomFinishSection({
         <RoomFinishControls
           surface={ref}
           kind={kind}
-          onSelectKind={setKind}
+          onSelectKind={selectKind}
           treatment={treatmentFor(ref)}
           recent={recent}
           dispatch={dispatch}
