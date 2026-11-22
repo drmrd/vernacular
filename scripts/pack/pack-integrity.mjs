@@ -7,7 +7,10 @@
 
 import { MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
-import { textureFileProblems } from '../../core/assets/texture-file-rules.ts'
+import {
+  textureFileProblems,
+  textureFileSizeProblem,
+} from '../../core/assets/texture-file-rules.ts'
 
 /**
  * @typedef {object} PackReader
@@ -122,12 +125,9 @@ async function checkAssetHashes(assets, reader, errors) {
 async function checkTextureFiles(assets, reader, errors) {
   for (const asset of assets.filter((a) => a.kind === TEXTURE_KIND)) {
     const file = assetPath(asset)
-    const fileBytes = await reader.size(file)
-    if (fileBytes > TEXTURE_LIMITS.maxFileBytes) {
-      errors.push(
-        `asset ${asset.contentHash}: file is ${fileBytes} bytes, above the ${TEXTURE_LIMITS.maxFileBytes} byte limit for a texture`,
-      )
-    }
+    const fileSize = await reader.size(file)
+    const sizeProblem = textureFileSizeProblem(fileSize)
+    if (sizeProblem !== null) errors.push(`asset ${asset.contentHash}: ${sizeProblem}`)
     const bytes = await reader.readBytes(file, TEXTURE_LIMITS.maxFileBytes)
     for (const problem of textureFileProblems(asset, bytes)) {
       errors.push(`asset ${asset.contentHash}: ${problem}`)

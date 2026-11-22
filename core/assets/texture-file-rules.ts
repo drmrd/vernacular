@@ -4,6 +4,7 @@
 // manifest entry, and the PNG or WebP must meet the format constraints. Pure:
 // it reads the bytes and returns a list of human-readable problems.
 import { isRecord } from './is-record.ts'
+import { TEXTURE_LIMITS } from './texture-asset-rules.ts'
 import { pngChunkTypes, readImageHeader } from './image-header.ts'
 import type { ImageHeader, PngImageHeader, WebpImageHeader } from './image-header.ts'
 
@@ -78,4 +79,9 @@ export function textureFileProblems(asset: TextureFileExpectation, bytes: Uint8A
     return [`file bytes do not match the declared media type ${asset.mediaType}`]
   }
   return [...sizeProblems(header, declaredSize(asset.image)), ...formatProblems(header, bytes)]
+}
+
+export function textureFileSizeProblem(fileSize: number): string | null {
+  if (fileSize <= TEXTURE_LIMITS.maxFileBytes) return null
+  return `file is ${fileSize} bytes, above the 8 MiB (${TEXTURE_LIMITS.maxFileBytes} byte) limit for a texture`
 }
