@@ -4,24 +4,37 @@ import { getEntry } from './registry'
 /** Whether an opening reads as a door or a window. */
 export type OpeningKind = 'door' | 'window'
 
-const doorFamilies: ReadonlySet<OpeningFamily> = new Set([
-  'swing',
-  'slide',
-  'fold',
-  'pivot',
-  'cased',
-])
+const DOOR_FAMILIES = ['swing', 'slide', 'fold', 'pivot', 'cased'] as const
+
+/** The family of a door opening: how its leaf moves, or a cased hole with none. */
+export type DoorFamily = (typeof DOOR_FAMILIES)[number]
+
+const doorFamilies: ReadonlySet<OpeningFamily> = new Set<OpeningFamily>(DOOR_FAMILIES)
 
 /**
  * Classifies a built-in element type as a door or window opening. Returns `undefined`
  * when the id is unknown or the type is not an opening.
  */
 export function openingKindOfType(typeId: string): OpeningKind | undefined {
-  const family = getEntry(builtinElementTypes, typeId)?.opening?.family
+  const family = openingFamilyOfType(typeId)
   if (family === undefined) {
     return undefined
   }
-  return doorFamilies.has(family) ? 'door' : 'window'
+  return isDoorFamily(family) ? 'door' : 'window'
+}
+
+function openingFamilyOfType(typeId: string): OpeningFamily | undefined {
+  return getEntry(builtinElementTypes, typeId)?.opening?.family
+}
+
+function isDoorFamily(family: OpeningFamily): family is DoorFamily {
+  return doorFamilies.has(family)
+}
+
+/** The door family of a built-in opening type; undefined for a window type or an unknown id. */
+export function doorFamilyOfType(typeId: string): DoorFamily | undefined {
+  const family = openingFamilyOfType(typeId)
+  return family !== undefined && isDoorFamily(family) ? family : undefined
 }
 
 /**

@@ -27,6 +27,7 @@ related:
     decisions/ADR-0158-millimeter-scale-shadow-and-occlusion-constants,
     decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
     decisions/ADR-0205-opening-time-chosen-for-the-house,
+    decisions/ADR-0204-the-main-entrance-and-the-view-from-the-front,
   ]
 sourceFiles:
   [
@@ -54,7 +55,7 @@ sourceFiles:
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-21
 ---
 
 # ADR-0193: Sample daylight for a project with no site location
@@ -370,3 +371,31 @@ The time a project opens at now depends on its site and its front
 ADR-0205 settles one half of the "Not decided" bullet on #737: the opening instant for a located
 house whose front faces away from the sun. The stored light is still open, and the pull request of
 the opening light amends this record again.
+
+## Amendment (2026-11-21): the entrance guess ranks the floor and the door family
+
+With no door marked, the front now comes from a guessed entrance
+([[ADR-0204-the-main-entrance-and-the-view-from-the-front]]). `frontDirection` returns the front of
+`entranceOf`, in the same file. Four passages of this record change. The text above stays as it
+was written.
+
+- "The front direction" says that the function "returns the outward normal of the wall that hosts
+  the widest exterior door". It now returns the outward normal of the exterior run that hosts the
+  guessed entrance. Only the first level with an exterior door competes: the levels at or above
+  grade from the lowest up, then the levels below grade from the highest down. On that level the
+  widest door still wins, after the family rank of the next bullet.
+- The bullet "It counts doors only ..." still holds for what counts, but the door families now rank.
+  A door of the `swing` or `pivot` family comes before a door of the `slide`, `fold`, or `cased`
+  family on the same level, however wide. The ties after the width are the ones this record set,
+  plan-down and then the opening id, and a last tie on the floor that comes first in the walls
+  follows them.
+- The consequence "Adding a door wider than the present front door on another exterior wall turns
+  the implied north" now holds only for a door on the same level and of the same rank as the
+  present front door. A wider door on a level tried later does not turn it, and neither does a
+  wider sliding, folding, or cased door beside a hinged front door. A door can also turn it without
+  being wider: any door on a level tried earlier, or a hinged door on a level whose front door
+  slides, folds, or is cased.
+- The "Not decided" bullet "The entrance" says that until #627 `frontDirection` "uses the widest
+  exterior door". The guess part of that bullet is settled by ADR-0204: the function now uses the
+  guessed entrance. What stays open is the door marked by the user, and the camera and the sun
+  calling the same function.
