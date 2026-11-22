@@ -19,6 +19,15 @@ const SECOND_DOORWAY_AREA = 600 * 2100
 // S (1 - rho) of the hall: S = 38e6, floor 3e6 at 0.5, the rest 32e6 at 0.66.
 const HALL_ABSORBING_AREA = 38e6 - 3e6 - 32e6 * 0.66
 const HALL_FLOOR_REFLECTANCE = 0.5
+const GLAZED_DOORWAY_TRANSMITTANCE = 0.5
+
+const glazedHall: DaylightRoom = {
+  ...hall,
+  apertures: hall.apertures.map((aperture) => ({
+    ...aperture,
+    netTransmittance: GLAZED_DOORWAY_TRANSMITTANCE,
+  })),
+}
 
 function relativeError(actual: number, expected: number): number {
   return Math.abs(actual / expected - 1)
@@ -67,6 +76,18 @@ describe('a doorway counts in the balance of the room it opens into as a surface
     const flux = createDaylightFieldSolver(rooms).enteringFlux(1, UNIFORM_SKY)
     const expected = (flux * HALL_FLOOR_REFLECTANCE) / HALL_ABSORBING_AREA
     expect(relativeError(interreflectionOf(rooms, 1), expected)).toBeLessThan(TOLERANCE)
+  })
+
+  it('opens a hole of the full doorway area even when the doorway glazing passes half the light', () => {
+    const rooms = [testRoom, glazedHall]
+    const expectedBalance = ROOM_FLOOR_FLUX / (ROOM_ABSORBING_AREA + DOORWAY_AREA)
+    expect(expectedBalance).toBeCloseTo(0.0097735788, 10)
+    expect(relativeError(interreflectionOf(rooms, 0), expectedBalance)).toBeLessThan(TOLERANCE)
+
+    const expectedFlux = GLAZED_DOORWAY_TRANSMITTANCE * DOORWAY_AREA * expectedBalance
+    expect(expectedFlux).toBeCloseTo(10262.2577, 4)
+    const flux = createDaylightFieldSolver(rooms).enteringFlux(1, UNIFORM_SKY)
+    expect(relativeError(flux, expectedFlux)).toBeLessThan(TOLERANCE)
   })
 
   it('darkens every cell of the source room by the light that leaves through the doorway', () => {
