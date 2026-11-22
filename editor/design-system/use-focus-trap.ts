@@ -19,6 +19,8 @@ function focusableDescendants(container: HTMLElement): HTMLElement[] {
   )
 }
 
+// The trap does not check whether the marked element, or the first focusable one, is visible,
+// so focusing a hidden one leaves focus where it was.
 function firstFocusTarget(container: HTMLElement): HTMLElement | undefined {
   const focusable = focusableDescendants(container)
   return focusable.find((element) => element.hasAttribute(INITIAL_FOCUS_ATTRIBUTE)) ?? focusable[0]
@@ -163,7 +165,8 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  *   `document` or `window` does not see it. Handlers inside the container, React ones included,
  *   still receive every key, and keyup passes untouched so that held keys are released. A keydown
  *   that starts outside the container is held back as well, and focus moves to the first
- *   focusable descendant (the container when there is none). A `keydown` that starts while a trap
+ *   focusable descendant (the container when there is none), not to the one marked with
+ *   `data-initial-focus`. A `keydown` that starts while a trap
  *   is the active one is held back from the bubble-phase listeners on `document` and `window`
  *   even when the trap unmounts while that event is being handled. The hold is for that one event
  *   only.
