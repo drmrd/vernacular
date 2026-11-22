@@ -1,24 +1,22 @@
 import { describe, it } from 'vitest'
 import type { FrontDirectionInput } from './front-direction'
 import {
-  box,
   EAST,
   expectDirection,
   floorNode,
   NORTH,
   openingOn,
-  point,
-  ROOM_SIZE,
+  roomOnFloor,
   sceneOf,
+  SWING_DOOR,
+  SWING_WIDTH,
   unitFrontDirection,
   WEST,
   type Box,
 } from './front-direction-test-support'
 
 const FRENCH_DOOR = 'french-door'
-const SWING_DOOR = 'single-swing-door'
 const FRENCH_DOOR_WIDTH = 1626
-const SWING_DOOR_WIDTH = 813
 const BASEMENT_ELEVATION = -2400
 const GROUND_ELEVATION = 0
 const UPPER_ELEVATION = 2700
@@ -54,7 +52,7 @@ const C_GROUND: DoorPlacement = {
   floor: 'ground',
   wall: 'north',
   type: SWING_DOOR,
-  width: SWING_DOOR_WIDTH,
+  width: SWING_WIDTH,
 }
 
 function french(id: string, floor: string, wall: WallName): DoorPlacement {
@@ -74,17 +72,7 @@ function sceneOfFloors(
   floors: readonly Floor[],
   doors: readonly DoorPlacement[],
 ): FrontDirectionInput {
-  const boxes = new Map(
-    floors.map((floor) => [
-      floor.id,
-      box({
-        name: floor.id,
-        floorId: floor.id,
-        min: point(0, 0),
-        max: point(ROOM_SIZE, ROOM_SIZE),
-      }),
-    ]),
-  )
+  const boxes = new Map(floors.map((floor) => [floor.id, roomOnFloor(floor.id)]))
   const openings = doors.map((door) =>
     openingOn(boxOnFloor(boxes, door.floor)[door.wall], {
       id: door.id,
@@ -128,7 +116,7 @@ describe('frontDirection on a plan with floors above and below grade', () => {
 
   it('takes the lowest level above grade first when the ground floor has no door', () => {
     const stack = [GROUND, UPPER, TOP]
-    const doors = [french('b-upper', 'upper', 'east'), french('a-top', 'top', 'west')]
+    const doors = [B_UPPER, french('a-top', 'top', 'west')]
     const input = { ...sceneOfFloors(stack, doors), ...levelsOf(stack, 0) }
 
     expectDirection(unitFrontDirection(input), EAST)

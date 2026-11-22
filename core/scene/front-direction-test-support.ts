@@ -12,12 +12,15 @@ import {
 
 export const GROUND_FLOOR = 'ground'
 export const UPPER_FLOOR = 'upper'
-export const WALL_THICKNESS = 200
+const WALL_THICKNESS = 200
 export const ROOM_SIZE = 4000
-export const DEFAULT_DOOR_WIDTH = 900
-export const DOOR_TYPE = 'single-swing-door'
+const DEFAULT_DOOR_WIDTH = 900
+export const SWING_DOOR = 'single-swing-door'
+export const SWING_WIDTH = 813
+export const SLIDING_GLASS_DOOR = 'sliding-glass-door'
+export const SLIDING_GLASS_WIDTH = 1829
 export const WINDOW_TYPE = 'double-hung-window'
-export const DIRECTION_DECIMAL_PLACES = 9
+const DIRECTION_DECIMAL_PLACES = 9
 
 const DOOR_HEIGHT = 2032
 
@@ -90,6 +93,11 @@ export function box({ name, floorId, min, max }: BoxSpec): Box {
   }
 }
 
+/** A room of the standard size with its south-west corner at the origin, named after its floor by default. */
+export function roomOnFloor(floorId: string, name: string = floorId): Box {
+  return box({ name, floorId, min: point(0, 0), max: point(ROOM_SIZE, ROOM_SIZE) })
+}
+
 export function singleRoom(): Box {
   return box({
     name: 'room',
@@ -116,7 +124,7 @@ export function openingOn(host: WallSceneNode, spec: DoorSpec): OpeningSceneNode
     id: `opening:${spec.id}`,
     kind: 'opening',
     floorId: host.floorId,
-    type: spec.type ?? DOOR_TYPE,
+    type: spec.type ?? SWING_DOOR,
     center: point((host.start.x + host.end.x) / 2, (host.start.y + host.end.y) / 2),
     along,
     normal: point(inward.x * sign, inward.y * sign),

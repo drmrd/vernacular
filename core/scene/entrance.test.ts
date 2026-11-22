@@ -6,16 +6,17 @@ import {
   floorNode,
   openingOn,
   point,
+  roomOnFloor,
   ROOM_SIZE,
   sceneOf,
   singleRoom,
+  SLIDING_GLASS_DOOR,
+  SLIDING_GLASS_WIDTH,
   SOUTH,
+  SWING_DOOR,
+  SWING_WIDTH,
 } from './front-direction-test-support'
 
-const SWING_DOOR = 'single-swing-door'
-const SLIDING_GLASS_DOOR = 'sliding-glass-door'
-const SWING_WIDTH = 813
-const SLIDING_GLASS_WIDTH = 1829
 const GROUND_ELEVATION = 0
 const WEST_WING = 'west-wing'
 const EAST_WING = 'east-wing'
@@ -35,12 +36,7 @@ function hingedAndSlidingDoors() {
 }
 
 function twoWingsAtOneElevation() {
-  const west = box({
-    name: WEST_WING,
-    floorId: WEST_WING,
-    min: point(0, 0),
-    max: point(ROOM_SIZE, ROOM_SIZE),
-  })
+  const west = roomOnFloor(WEST_WING)
   const east = box({
     name: EAST_WING,
     floorId: EAST_WING,

@@ -7,6 +7,7 @@ import {
   GROUND_FLOOR,
   openingOn,
   point,
+  roomOnFloor,
   ROOM_SIZE,
   sceneOf,
   singleRoom,
@@ -148,12 +149,7 @@ describe('frontDirection when two fronts are nearly equally near plan-down', () 
 })
 
 describe('frontDirection with two rooms that share a wall', () => {
-  const left = box({
-    name: 'left',
-    floorId: GROUND_FLOOR,
-    min: point(0, 0),
-    max: point(ROOM_SIZE, ROOM_SIZE),
-  })
+  const left = roomOnFloor(GROUND_FLOOR, 'left')
   const right = box({
     name: 'right',
     floorId: GROUND_FLOOR,
@@ -193,12 +189,7 @@ describe('frontDirection on a plan with two floors', () => {
       min: point(0, 0),
       max: point(2 * ROOM_SIZE, ROOM_SIZE),
     })
-    const upper = box({
-      name: 'upper',
-      floorId: UPPER_FLOOR,
-      min: point(0, 0),
-      max: point(ROOM_SIZE, ROOM_SIZE),
-    })
+    const upper = roomOnFloor(UPPER_FLOOR, 'upper')
     // The ground room lies beyond the upper room's east wall, so across floors that wall looks interior.
     const groundDoor = openingOn(ground.north, { id: 'ground', width: 900 })
     const upperDoor = openingOn(upper.east, { id: 'upper', width: 1000 })

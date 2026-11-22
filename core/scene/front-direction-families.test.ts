@@ -1,34 +1,34 @@
 import { describe, it } from 'vitest'
 import {
-  box,
   EAST,
   expectDirection,
   floorNode,
+  GROUND_FLOOR,
   NORTH,
   openingOn,
-  point,
-  ROOM_SIZE,
+  roomOnFloor,
   singleRoom,
   sceneOf,
+  SLIDING_GLASS_DOOR,
+  SLIDING_GLASS_WIDTH,
   SOUTH,
+  SWING_DOOR,
+  SWING_WIDTH,
   unitFrontDirection,
+  UPPER_FLOOR,
   WEST,
 } from './front-direction-test-support'
 
-const SWING_DOOR = 'single-swing-door'
 const PIVOT_DOOR = 'pivot-door'
-const SLIDING_GLASS_DOOR = 'sliding-glass-door'
 const BARN_DOOR = 'barn-door'
 const BYPASS_DOOR = 'bypass-door'
 const BIFOLD_DOOR = 'bifold-door'
 const CASED_OPENING = 'cased-opening'
-const SWING_WIDTH = 813
 const PIVOT_WIDTH = 914
 const BARN_WIDTH = 965
 const BIFOLD_WIDTH = 813
 const CASED_WIDTH = 914
 const BYPASS_WIDTH = 1524
-const SLIDING_GLASS_WIDTH = 1829
 const UPPER_ELEVATION = 2700
 
 describe('frontDirection with doors of different families on one level', () => {
@@ -76,18 +76,8 @@ describe('frontDirection with doors of different families on one level', () => {
   })
 
   it('ranks the floor before the door family, so a sliding ground floor door beats a hinged door upstairs', () => {
-    const ground = box({
-      name: 'ground',
-      floorId: 'ground',
-      min: point(0, 0),
-      max: point(ROOM_SIZE, ROOM_SIZE),
-    })
-    const upper = box({
-      name: 'upper',
-      floorId: 'upper',
-      min: point(0, 0),
-      max: point(ROOM_SIZE, ROOM_SIZE),
-    })
+    const ground = roomOnFloor(GROUND_FLOOR)
+    const upper = roomOnFloor(UPPER_FLOOR)
     const input = {
       ...sceneOf(
         [ground, upper],
@@ -96,7 +86,7 @@ describe('frontDirection with doors of different families on one level', () => {
           openingOn(upper.east, { id: 'hinged', type: SWING_DOOR, width: SWING_WIDTH }),
         ],
       ),
-      nodes: [floorNode('ground', 0), floorNode('upper', UPPER_ELEVATION)],
+      nodes: [floorNode(GROUND_FLOOR, 0), floorNode(UPPER_FLOOR, UPPER_ELEVATION)],
       gradeElevation: 0,
     }
 
