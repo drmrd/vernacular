@@ -221,7 +221,7 @@ export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry 
   const grid = createDaylightField(rooms)
   const openings = rooms.map(roomOpenings)
   const { cellsByRoom, roomOfCell } = assignCells(grid, rooms, openings)
-  const apertures = openings.map((roomOpenings) => roomOpenings.map(apertureGeometry))
+  const apertures = openings.map((ofRoom) => ofRoom.map(apertureGeometry))
   const doorwayAreas = doorwayAreasInto(apertures, rooms.length)
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
     openToSky: room.openToSky === true,

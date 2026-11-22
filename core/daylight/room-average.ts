@@ -60,12 +60,12 @@ function outlinePerimeter(outline: readonly Point[]): number {
  */
 export function measureRoomSurfaces(room: DaylightRoom, doorwayArea: number): RoomSurfaces {
   const floorArea = Math.abs(polygonArea(room.outline))
-  const area = 2 * floorArea + outlinePerimeter(room.outline) * room.ceilingHeight
-  if (!(area > 0)) return { area: 0, firstReflectance: 0, meanReflectance: 0 }
+  const surfaceArea = 2 * floorArea + outlinePerimeter(room.outline) * room.ceilingHeight
+  if (!(surfaceArea > 0)) return { area: 0, firstReflectance: 0, meanReflectance: 0 }
   const firstReflectance = floorReflectance(room.floorColor)
   const reflected =
-    floorArea * firstReflectance + (area - floorArea) * UNPAINTED_SURFACE_REFLECTANCE
-  const totalArea = area + doorwayArea
+    floorArea * firstReflectance + (surfaceArea - floorArea) * UNPAINTED_SURFACE_REFLECTANCE
+  const totalArea = surfaceArea + doorwayArea
   return { area: totalArea, firstReflectance, meanReflectance: reflected / totalArea }
 }
 
