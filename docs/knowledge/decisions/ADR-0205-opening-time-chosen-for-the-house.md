@@ -251,9 +251,9 @@ it.
 - A house with no front that takes sun on either date. It opens at the fixed instant, and under the
   true sun its front can be in shade. At latitude 40 that is a front within about 23 degrees of
   north. Its owner can store a better light, as the extension below describes.
-- Open question 2, above.
+- Open question 2, above. Tracked in #1087.
 - The Projects page of the session layer. A return to the project that is still open must not seed
-  the light again and must not drop it.
+  the light again and must not drop it. Tracked in #1088.
 
 ## Evidence
 
@@ -414,7 +414,7 @@ fourth is a detail of the control. The pull request body names all four for the 
 - The same time and weather can live in a saved scene and in the opening light. That is the cost
   of keeping the opening light its own record.
 - The stored light travels with the file, so the project opens in it on any computer.
-- The control has a story of its own. The Environment panel's stories did not change.
+- The control has a story of its own. `EnvironmentPanel` changed in two small ways. A refactor shares the `hh:mm` format (`formatObservationTime`), and its date-input guard now uses the stricter `isObservationInstantIso`. Its stories and baselines did not change.
 
 ### Options not taken in the extension
 
@@ -429,10 +429,12 @@ fourth is a detail of the control. The pull request body names all four for the 
 
 ### Still open after the extension
 
-- Open question 2 stands as built, answer (a). The owner can overrule it.
+- Open question 2 stands as built, answer (a). The owner can overrule it. Tracked in #1087.
 - A button that applies the stored light to the screen is not built.
 - Nothing offers to repair a malformed stored light. If the repairs of the session layer ever offer
-  to drop one, that write happens on the user's click.
+  to drop one, that write happens on the user's click. Tracked in #1089.
+- A stored cloud cover outside 0 to 1 passes the schema and reaches the status line. Tracked in
+  #1090.
 
 ### Evidence of the extension
 

@@ -211,6 +211,6 @@ the house. The seed still happens once for each opened project.
 
 The Environment section of the tool rail gains the opening light control
 (`editor/environment/opening-light-control.tsx`). It sits between the Environment panel and the
-saved scenes. The panel itself, and its contract in this record, did not change. The state still
+saved scenes. The panel's contract in this record did not change. The panel now shares the clock format with the control, and its date guard refuses dates that do not exist. The state still
 never touches the document or undo. Only the button "Use this light when the project opens"
 writes, through one command, and the project then holds a copy of the time and the cloud cover.
