@@ -350,9 +350,9 @@ Design:
 
 #### The check
 
-A stored project that fails decode does not open. A failed open writes nothing, so the stored bytes are as they were.
+A stored project that fails decode does not open. A failed open writes no file of the project, so the stored bytes are as they were. It writes only the record in the project index, which says why the project did not open.
 
-A recovery snapshot that fails decode is not restored. It moves to the project's backups, where no prune removes it, and the recovery prompt says that the copy could not be read and is kept.
+A recovery snapshot that fails decode is not restored. It moves to the project's backups, where no prune removes it, and a notice says that the copy could not be read and is kept.
 
 #### Two classes of repair
 

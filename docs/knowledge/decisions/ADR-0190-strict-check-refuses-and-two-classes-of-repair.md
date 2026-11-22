@@ -102,8 +102,9 @@ has one `kind` and also carries fields that only another variant defines.
   under the project's lock and writes only when the file still fails in the same way and the
   repair removes the same paths that the user saw. It keeps the stored bytes as a backup of the
   kind `pre-repair` by the rule of ADR-0182, and it writes the repaired document without the
-  restore of unknown keys that a save does, so the removed data does not come back. For a folder project, a new project made from a repair is stored
-  in the browser, and a replace writes into the folder.
+  restore of unknown keys that a save does, so the removed data does not come back. For a folder
+  project, a new project made from a repair is stored in the browser, and a replace writes into
+  the folder.
 - A failed check never blocks a save. The save is written, the last stored file that passed the
   check is kept as a backup, and the user is told. The alternative was to refuse the save, which
   loses the work since the last save.
