@@ -5,14 +5,20 @@ export interface FrameSizeState {
   camera: { aspect?: number }
 }
 
-/** How far the camera aspect may sit from the canvas aspect and still count. */
+/**
+ * How far the camera aspect may sit from the canvas aspect and still count.
+ * 1e-6 absorbs float rounding in the aspect ratio and stays far below one
+ * pixel of drift.
+ */
 export const ASPECT_TOLERANCE = 1e-6
 
 /** Whether a finished frame was drawn at the canvas's current size. */
 export function frameMatchesCanvasSize(state: FrameSizeState): boolean {
   const { gl, size, camera } = state
+  // A zero size means the canvas is not laid out yet, so nothing was drawn at it.
   if (size.width <= 0 || size.height <= 0) return false
   const pixelRatio = gl.getPixelRatio()
+  // The renderer floors the drawing buffer size the same way when it sets the size.
   const bufferMatches =
     gl.domElement.width === Math.floor(size.width * pixelRatio) &&
     gl.domElement.height === Math.floor(size.height * pixelRatio)
