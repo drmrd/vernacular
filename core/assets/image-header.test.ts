@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { readImageHeader } from './image-header.ts'
+import { pngChunkTypes, readImageHeader } from './image-header.ts'
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 const IHDR_DATA_LENGTH = 13
 const IHDR_TYPE = [0x49, 0x48, 0x44, 0x52]
 const ANY_CRC = [0, 0, 0, 0]
+const GAMA_TYPE = [0x67, 0x41, 0x4d, 0x41]
+const IDAT_TYPE = [0x49, 0x44, 0x41, 0x54]
+const IEND_TYPE = [0x49, 0x45, 0x4e, 0x44]
+const IDAT_DATA = [0x78, 0x01, 0x01]
+const GAMA_DATA = [0, 1, 0x86, 0xa0]
 
 interface HeaderFields {
   width: number
@@ -108,5 +113,22 @@ describe('readImageHeader', () => {
       colorType: 2,
       interlaced: false,
     })
+  })
+})
+
+function chunk(type: number[], data: number[]): number[] {
+  return [...uint32BigEndian(data.length), ...type, ...data, ...ANY_CRC]
+}
+
+describe('pngChunkTypes', () => {
+  it('lists the chunk types of a PNG in order', () => {
+    const withGamma = Uint8Array.from([
+      ...pngFirst33Bytes(rgbImage),
+      ...chunk(GAMA_TYPE, GAMA_DATA),
+      ...chunk(IDAT_TYPE, IDAT_DATA),
+      ...chunk(IEND_TYPE, []),
+    ])
+
+    expect(pngChunkTypes(withGamma)).toEqual(['IHDR', 'gAMA', 'IDAT', 'IEND'])
   })
 })
