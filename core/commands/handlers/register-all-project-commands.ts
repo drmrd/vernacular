@@ -1,6 +1,7 @@
 import type { Project } from '../../model/types'
 import type { CommandRegistry } from '../command-registry'
 import { registerDimensionCommands } from './dimension-commands'
+import { registerEntranceCommands } from './entrance-commands'
 import { registerEnvironmentSceneCommands } from './environment-scene-commands'
 import { registerFurnitureCommands } from './furniture-commands'
 import { registerOpeningCommands } from './opening-commands'
@@ -30,5 +31,6 @@ export function registerAllProjectCommands(
   registerPaintCommands(registry)
   registerSiteCommands(registry)
   registerEnvironmentSceneCommands(registry)
+  registerEntranceCommands(registry)
   return registry
 }

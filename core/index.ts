@@ -741,6 +741,15 @@ export {
   setSiteNorthBearing,
   setSiteTimezone,
 } from './commands/handlers/site-commands'
+export type { MarkMainEntranceParams } from './commands/handlers/entrance-commands'
+export {
+  CLEAR_MAIN_ENTRANCE,
+  MARK_MAIN_ENTRANCE,
+  clearMainEntrance,
+  markMainEntrance,
+  registerEntranceCommands,
+} from './commands/handlers/entrance-commands'
+export { withoutEntranceMark } from './commands/entrance-rule'
 export type { EnvironmentScene, WeatherConditions } from './model/environment-scene'
 export type {
   AddEnvironmentSceneParams,
