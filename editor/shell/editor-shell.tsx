@@ -1,6 +1,7 @@
 import {
   ArrowClockwise,
   ArrowCounterClockwise,
+  Browser,
   CheckCircle,
   Circle,
   CircleNotch,
@@ -12,9 +13,9 @@ import {
   useEditorSession,
   useSceneGraph,
   useSetActiveFloorId,
-  type AutosaveStatus,
 } from '../../bridge'
 import { addFloor, renameFloor, renameProject, setUnits } from '../../core'
+import type { SaveStatus } from '../../session'
 import { PlanView } from '../plan/plan-view'
 import { useActiveTool } from '../tools/active-tool-context'
 import { toolLabel } from '../tools/tool-label'
@@ -39,20 +40,24 @@ import { ViewToggles } from './view-toggles'
 import { ShellProviders } from './shell-providers'
 import './editor-shell.css'
 
-const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
+const TAB_ONLY = 'tab-only'
+
+const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
   idle: 'Ready',
   pending: 'Saving...',
   saved: 'All changes saved',
   error: 'Save failed',
+  [TAB_ONLY]: 'In this tab only',
 }
 
 // A small decorative icon paired with each save-status label. The icon is
 // aria-hidden so the role="status" label text stays the announced content.
-const SAVE_STATUS_ICONS: Record<AutosaveStatus, Icon> = {
+const SAVE_STATUS_ICONS: Record<SaveStatus, Icon> = {
   idle: Circle,
   pending: CircleNotch,
   saved: CheckCircle,
   error: WarningCircle,
+  [TAB_ONLY]: Browser,
 }
 
 // A blank (or whitespace-only) name is not a real rename request. Returns the
@@ -63,7 +68,7 @@ function trimmedOrNull(name: string): string | null {
 }
 
 interface ShellHeaderProps {
-  saveStatus: AutosaveStatus
+  saveStatus: SaveStatus
   projectControls: ProjectControlsProps
 }
 
@@ -75,7 +80,7 @@ function Breadcrumb({ projectName }: { projectName: string }) {
   )
 }
 
-function SaveStatusReadout({ status }: { status: AutosaveStatus }) {
+function SaveStatusReadout({ status }: { status: SaveStatus }) {
   const StatusIcon = SAVE_STATUS_ICONS[status]
   return (
     <span role="status" className="editor-shell__save-status">
@@ -221,7 +226,7 @@ function ViewportArea({ onImportDroppedFile }: Pick<EditorShellProps, 'onImportD
 }
 
 export interface EditorShellProps extends ProjectControlsProps {
-  saveStatus: AutosaveStatus
+  saveStatus: SaveStatus
   recovery?: { onRestore: () => void; onDiscard: () => void }
 }
 
