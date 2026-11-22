@@ -33,6 +33,8 @@ export interface RecordKeeper {
    * warning, when the index has not answered by then. Never rejects.
    */
   settled(): Promise<void>
+  /** What the last open or save of this handle found of a second file. Reads memory only. */
+  secondFileState(): SecondFileState | undefined
   /**
    * The handle is freeing its lock now. From then on no record is built and no put starts: another
    * handle can change the store and the index now. A put that started before can still land.
@@ -234,6 +236,7 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
         warn(WAIT_WARNING)
       }
     },
+    secondFileState: () => secondFile,
     lockReleased() {
       freed = true
     },

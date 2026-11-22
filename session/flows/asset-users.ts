@@ -1,5 +1,6 @@
 import type { Project } from '../../core'
 import type { ProjectRecord, ProjectSummary } from '../../storage'
+import { findInternals } from '../handle/handle-internals'
 import type { DocumentHandle } from '../handle/handle-types'
 import type { SessionPorts } from '../ports'
 import { assetHashesOf } from '../projects/project-facts'
@@ -15,19 +16,27 @@ export type UsersResult =
   | { readonly ok: true; readonly users: AssetUsers }
   | { readonly ok: false; readonly failure: StorageUnavailable }
 
-/** The asset list of a record that is complete and as new as the stored document; else unknown. */
+/**
+ * The asset list of a record that is complete and as new as the stored document; else unknown. A
+ * workspace project with a second file is unknown: its record lists the assets of one document.
+ */
 function listedBy(
   record: ProjectRecord | undefined,
   listed: ProjectSummary,
 ): readonly string[] | undefined {
   const current =
     record?.assetListComplete === true &&
+    !(record.secondFile !== undefined && record.location.kind === 'workspace') &&
     listed.lastChangedAt !== undefined &&
     record.lastChangedAt === listed.lastChangedAt
   return current ? record.assetHashes : undefined
 }
 
 function liveHashesOf(current: DocumentHandle): readonly string[] | undefined {
+  const besideSecondFile = findInternals(current)?.records.secondFileState() !== undefined
+  if (besideSecondFile && current.location.kind === 'workspace') {
+    return undefined
+  }
   const project: Project = current.session.getProject()
   return assetHashesOf(project)
 }
