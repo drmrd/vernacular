@@ -218,9 +218,24 @@ describe('runPackCli build', () => {
   })
 })
 
-describe('runPackCli malformed manifests', () => {
-  it('validate reports an invalid pack for a manifest that is null', async () => {
-    const cliDeps = deps(null)
+describe('runPackCli non-object manifest or asset entries', () => {
+  const withEntries = (...assets) => ({ ...validManifest(), assets })
+
+  it.each([
+    ['null', null],
+    ['a string', 'a string'],
+    ['a number', 42],
+  ])('validate reports an invalid pack for a manifest that is %s', async (_label, manifest) => {
+    const cliDeps = deps(manifest)
+
+    const code = await runPackCli(['validate', 'packs/x'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.error).toHaveBeenCalled()
+  })
+
+  it('validate does not throw for an asset entry that is null', async () => {
+    const cliDeps = deps(withEntries(null))
 
     const code = await runPackCli(['validate', 'packs/x'], cliDeps)
 
@@ -230,7 +245,9 @@ describe('runPackCli malformed manifests', () => {
 
   it.each([
     ['is null', null],
-    ['has an asset entry that is not an object', { ...validManifest(), assets: [null] }],
+    ['has a null asset entry', withEntries(null)],
+    ['has a string asset entry', withEntries('a string')],
+    ['has a number asset entry', withEntries(42)],
   ])('build writes an empty FAIL report for a manifest that %s', async (_label, manifest) => {
     const cliDeps = deps(manifest)
 
@@ -241,6 +258,17 @@ describe('runPackCli malformed manifests', () => {
     const [, report] = cliDeps.writeReport.mock.calls[0]
     expect(report.status).toBe('FAIL')
     expect(report.assets).toEqual([])
+  })
+
+  it('build still reports the license of a valid entry next to a non-object entry', async () => {
+    const [asset] = validManifestWithAsset().assets
+    const cliDeps = deps(withEntries(null, { ...asset, license: 'CC-BY-4.0' }))
+
+    await runPackCli(['build', 'packs/x'], cliDeps)
+
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.licenses.distinct).toContain('CC-BY-4.0')
+    expect(report.assets).toHaveLength(1)
   })
 })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkPackIntegrity, isWebp } from './pack-integrity.mjs'
+import { checkPackIntegrity, isWebp, manifestAssets } from './pack-integrity.mjs'
 import { TEXTURE_SIDE, lossyWebp, rgbPng } from './texture-test-bytes.mjs'
 
 const HASH = 'a'.repeat(64)
@@ -269,5 +269,18 @@ describe('isWebp', () => {
 
   it('rejects input shorter than the 12-byte header', () => {
     expect(isWebp(new Uint8Array([0x52, 0x49, 0x46, 0x46]))).toBe(false)
+  })
+})
+
+describe('manifestAssets', () => {
+  it('keeps only the object entries of the assets list', () => {
+    const entry = { contentHash: 'a' }
+
+    expect(manifestAssets({ assets: [null, 'text', 42, entry] })).toEqual([entry])
+  })
+
+  it('returns an empty list when the manifest has no assets array', () => {
+    expect(manifestAssets(null)).toEqual([])
+    expect(manifestAssets({ assets: 'x' })).toEqual([])
   })
 })
