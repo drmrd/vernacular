@@ -34,3 +34,14 @@ export const Default: Story = {
     await expect(screen.getByRole('button', { name: 'Replace the stored project' })).toBeVisible()
   },
 }
+
+export const WithNoReplaceChoice: Story = {
+  args: {
+    onReplace: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByRole('button', { name: 'Open as a new project' })).toBeVisible()
+    await expect(screen.queryByRole('button', { name: 'Replace the stored project' })).toBeNull()
+  },
+}

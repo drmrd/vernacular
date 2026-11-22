@@ -63,3 +63,40 @@ export const ForAFile: Story = {
     await expect(screen.queryByRole('button', { name: 'Export' })).toBeNull()
   },
 }
+
+export const WithARepairOffer: Story = {
+  args: {
+    repairSentences: ['It removes the extra data from 2 paint entries.'],
+    onOpenWithRepair: fn(),
+    details: {
+      error: 'The document breaks the format rules at 2 places.',
+      faults: [{ path: '/floors/0/paint/0', message: 'The entry mixes two kinds.' }],
+      formatVersion: FORMAT_VERSION,
+      build: '0.3.0',
+      removedPaths: ['/floors/0/paint/0/extra'],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByText('It removes the extra data from 2 paint entries.')).toBeVisible()
+    await expect(screen.getByRole('button', { name: 'Open with the repair' })).toBeVisible()
+  },
+}
+
+export const WhenTheStorageDidNotAnswer: Story = {
+  args: {
+    cause: 'storage-unavailable',
+    onTryAgain: fn(),
+    details: {
+      error: 'The request to the storage timed out.',
+      faults: [],
+      build: '0.3.0',
+      removedPaths: [],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByText('The storage did not answer.')).toBeVisible()
+    await expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible()
+  },
+}
