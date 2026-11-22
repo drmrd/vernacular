@@ -36,6 +36,7 @@ describe('A repair choice that fails, on the Projects page', () => {
   it('for a file shows the sentence of the failure, brings back no dialog, and keeps the open project', async () => {
     const ports = await durablePortsWith(FIRST_ID)
     const { bar } = await openFirstProjectOn(ports)
+    failSaves(ports.workspace)
     await addAFloor()
     await showThePageOn(bar)
     chooseInThePicker(new File([mixedPaintBytes().buffer as ArrayBuffer], 'house.json'))
@@ -43,7 +44,6 @@ describe('A repair choice that fails, on the Projects page', () => {
     const dialog = await findTheFailedOpenDialog(FILE_TITLE)
     await clickInTheDialog(dialog, 'Open with the repair')
     const choice = await findTheChoiceDialog()
-    failSaves(ports.workspace)
 
     await clickInTheDialog(choice, 'Open as a new project')
     await settleForAWhile()
