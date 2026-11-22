@@ -54,6 +54,8 @@ export class PackSource implements AssetSource {
     }
     const typed = manifest as TypedManifest
     this.scope = `pack:${typed.packId}@${typed.version}`
+    // Narrowing holds because only manifests that passed validatePackManifest
+    // reach this point, and it requires dimensions on every model asset.
     return typed.assets
       .filter((asset): asset is PackModelShape => isModelAsset(asset, typed.formatVersion))
       .map((asset) => this.toLibraryItem(asset))
