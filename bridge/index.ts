@@ -70,6 +70,7 @@ export {
 export type { EnvironmentSessionProviderProps } from './react/environment-session-provider'
 export { EnvironmentSessionProvider } from './react/environment-session-provider'
 export { useProjectEnvironmentScenes } from './react/use-project-environment-scenes'
+export { useProjectOpeningLight } from './react/use-project-opening-light'
 export type { SceneSessionState, SceneSessionStore } from './scene-session/scene-session-store'
 export {
   DEFAULT_SCENE_SESSION_STATE,
