@@ -447,8 +447,9 @@ color, and the application reads 1.1.0.
   `scripts/pack/png-encoder.mjs` from pull request 1.
 - `package.json` (one script, `pack:starter`).
 - `.prettierignore` (shared configuration): one entry, `public/packs/`, with a comment.
-- `public/packs/vernacular-starter-1.1.0/` (generated and committed); removal of
-  `public/packs/vernacular-starter-1.0.0/` (confirmed by the owner on 2026-11-22).
+- `public/packs/vernacular-starter-1.1.0/` (generated and committed).
+  `public/packs/vernacular-starter-1.0.0/` stays unchanged, so the hash of the old chair still
+  resolves (owner decision of 2026-11-22).
 - `core/environment/ground-surface.ts` (`GROUND_GRASS_REFERENCE`), `core/index.ts` (export).
 - `app/create-asset-library-registry.ts`, `app/create-asset-library-registry.test.ts` (new).
 - `editor/library/library-launcher.stories.tsx`, `editor/library/library-panel.stories.tsx` (the
