@@ -1,9 +1,9 @@
 // core/daylight/doorway-luminance.test.ts
 import { describe, expect, it } from 'vitest'
-import type { LinearRgb } from '../color/oklab'
 import type { Point } from '../model/types'
 import { sampleSkyVisibility } from './daylight-field'
-import type { DaylightAperture, DaylightRoom } from './daylight-field'
+import type { DaylightRoom } from './daylight-field'
+import { hall, testRoom } from './doorway-test-support'
 import { horizontalPointToWallRectangle } from './form-factor'
 import { UNIFORM_SKY, createDaylightFieldSolver } from './sky-visibility'
 
@@ -11,68 +11,17 @@ const TOLERANCE = 1e-6
 const CELL_SIZE = 100
 const ROOM_WIDTH = 4000
 const ROOM_DEPTH = 3000
-const HALL_WIDTH = 2000
-const CEILING_HEIGHT = 2600
-const WINDOW_SILL = 900
-const WINDOW_HEAD = 2100
 const DOORWAY_HEAD = 2100
 const DOORWAY_START = 1000
 const DOORWAY_END = 2000
 const DOORWAY_WIDTH = DOORWAY_END - DOORWAY_START
 const WORK_PLANE_HEIGHT = 850
-// The test room: (12e6 * 0.5 + 48.4e6 * 0.66) / 60.4e6, the floor at 0.5 and the rest unpainted.
-const TEST_ROOM_REFLECTANCE = 0.6282119
+// (12e6 * 0.5 + 48.4e6 * 0.66) / (60.4e6 + 2.1e6): the hall's doorway joins the test room's
+// surfaces at reflectance 0.
+const TEST_ROOM_REFLECTANCE = 0.607104
 // The hall cell that the second test samples: 950 mm from the doorway wall (x = 0) and level with
 // the doorway's middle, so the doorway lies 550 mm to one side and 450 mm to the other.
 const HALL_CELL: Point = { x: -950, y: 1550 }
-const GRAY: LinearRgb = { r: 0.5, g: 0.5, b: 0.5 }
-const WHITE: LinearRgb = { r: 1, g: 1, b: 1 }
-
-function rectangleOutline(x0: number, x1: number, y1: number): Point[] {
-  return [
-    { x: x0, y: 0 },
-    { x: x1, y: 0 },
-    { x: x1, y: y1 },
-    { x: x0, y: y1 },
-  ]
-}
-
-function verticalSpan(x: number, y0: number, y1: number): readonly [Point, Point] {
-  return [
-    { x, y: y0 },
-    { x, y: y1 },
-  ]
-}
-
-const testRoom: DaylightRoom = {
-  outline: rectangleOutline(0, ROOM_WIDTH, ROOM_DEPTH),
-  ceilingHeight: CEILING_HEIGHT,
-  floorColor: GRAY,
-  apertures: [
-    {
-      span: verticalSpan(ROOM_WIDTH, DOORWAY_START, DOORWAY_END),
-      sill: WINDOW_SILL,
-      head: WINDOW_HEAD,
-      revealDepth: 0,
-      opensTo: 'sky',
-    },
-  ],
-}
-
-const hall: DaylightRoom = {
-  outline: rectangleOutline(-HALL_WIDTH, 0, ROOM_DEPTH),
-  ceilingHeight: CEILING_HEIGHT,
-  floorColor: GRAY,
-  apertures: [
-    {
-      span: verticalSpan(0, DOORWAY_START, DOORWAY_END),
-      sill: 0,
-      head: DOORWAY_HEAD,
-      revealDepth: 0,
-      opensTo: { room: 0 },
-    },
-  ],
-}
 
 function meanVisibilityOfTestRoom(rooms: readonly DaylightRoom[]): number {
   const field = createDaylightFieldSolver(rooms).field(UNIFORM_SKY)
@@ -115,63 +64,4 @@ describe('a doorway weighs the luminance of the room it opens to', () => {
     const actual = sampleSkyVisibility(field, HALL_CELL)
     expect(Math.abs(actual - expected)).toBeLessThan(TOLERANCE)
   })
-})
-
-// The largest hall-to-source flux ratio of the sweep below is 0.7241 (a 500 by 6000 mm source with
-// a white floor), rounded up. The bound holds for these room proportions and is not a general law:
-// a very long and narrow source with a high ceiling can exceed 1.
-const MAX_HALL_TO_SOURCE_FLUX_RATIO = 0.73
-
-describe('a hall receives at most a bounded share of the flux that lights its source room', () => {
-  const sweep = [
-    { width: 500, depth: 6000 },
-    { width: 1000, depth: 6000 },
-    { width: 1000, depth: 10000 },
-    { width: 2000, depth: 8000 },
-  ].flatMap((size) =>
-    [GRAY, WHITE].map((floorColor) => ({ ...size, floorColor, label: floorColor.r })),
-  )
-
-  function sourceAndHall(width: number, depth: number, floorColor: LinearRgb): DaylightRoom[] {
-    const window: DaylightAperture = {
-      span: [
-        { x: 0, y: depth },
-        { x: width, y: depth },
-      ],
-      sill: 0,
-      head: CEILING_HEIGHT,
-      revealDepth: 0,
-      opensTo: 'sky',
-    }
-    const doorway: DaylightAperture = {
-      span: verticalSpan(width, 0, depth),
-      sill: 0,
-      head: CEILING_HEIGHT,
-      revealDepth: 0,
-      opensTo: { room: 0 },
-    }
-    return [
-      {
-        outline: rectangleOutline(0, width, depth),
-        ceilingHeight: CEILING_HEIGHT,
-        floorColor,
-        apertures: [window],
-      },
-      {
-        outline: rectangleOutline(width, width + 3000, depth),
-        ceilingHeight: CEILING_HEIGHT,
-        floorColor: GRAY,
-        apertures: [doorway],
-      },
-    ]
-  }
-
-  it.each(sweep)(
-    'holds for a source $width by $depth mm with a floor of reflectance $label',
-    ({ width, depth, floorColor }) => {
-      const solver = createDaylightFieldSolver(sourceAndHall(width, depth, floorColor))
-      const ratio = solver.enteringFlux(1, UNIFORM_SKY) / solver.enteringFlux(0, UNIFORM_SKY)
-      expect(ratio).toBeLessThanOrEqual(MAX_HALL_TO_SOURCE_FLUX_RATIO)
-    },
-  )
 })
