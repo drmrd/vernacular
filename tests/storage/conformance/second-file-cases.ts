@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../../core'
+import { NOT_JSON } from '../../../storage/documents/document-store-test-kit'
 import { fixtureDocument } from '../../fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
 import { PROJECT_ID, SECOND_FILE_NAME } from './conformance-run'
-import type { BeginRun } from './conformance-run'
+import type { BeginRun, ConformanceRun, NamedBytes } from './conformance-run'
 import {
   EXTENSIONS_PAYLOAD,
   currentBytes,
@@ -135,16 +136,74 @@ export function describeUnreadablePreviousFile(begin: BeginRun): void {
     it('keeps a copy of the bytes that it replaces, and the document reads back', async () => {
       vi.spyOn(console, 'warn').mockImplementation(() => undefined)
       const run = await begin()
-      const unreadable = new TextEncoder().encode('{ not json')
-      await run.place(unreadable)
+      await run.place(NOT_JSON)
 
       await run.open().save(PROJECT_ID, renamed(soundProject(), SAVED_NAME))
 
       const copies = await run.backups()
       expect(copies).toHaveLength(1)
       expect(copies[0]?.name.startsWith('unreadable-previous-')).toBe(true)
-      expect(copies[0]?.bytes).toEqual(unreadable)
+      expect(copies[0]?.bytes).toEqual(NOT_JSON)
       expect(decodedOf(await run.open().read(PROJECT_ID)).project.meta.name).toBe(SAVED_NAME)
+    })
+  })
+}
+
+const SET_ASIDE_PREFIX = 'set-aside-second-file-'
+const REPLACED_PREFIX = 'replaced-by-second-file-'
+
+function secondFileDocument(): Uint8Array {
+  return encodeDocument(renamed(soundProject(), SAVED_NAME), undefined).bytes
+}
+
+async function twoFilesOf(run: ConformanceRun) {
+  const files = await run.open().twoFiles(PROJECT_ID)
+  if (files === undefined) throw new Error('Expected the project to have two document files')
+  return files
+}
+
+function copiesNamedFrom(copies: readonly NamedBytes[], prefix: string): readonly NamedBytes[] {
+  return copies.filter(({ name }) => name.startsWith(prefix))
+}
+
+/** A choice between the two document files of a project moves a file only after a copy of it exists. */
+export function describeSecondFileChoice(begin: BeginRun): void {
+  describe('a choice between a newer vernacular.json and the second document file', () => {
+    it('keeps the main file, keeps a copy of the second file, and leaves no second file when the second file is set aside', async () => {
+      const run = await begin()
+      const newer = documentOfNewerVersion()
+      const second = secondFileDocument()
+      await run.place(newer)
+      await run.placeSecondFile(second)
+      const files = await twoFilesOf(run)
+
+      const change = await run.open().setAsideSecondFile(PROJECT_ID, files)
+
+      expect(change).toEqual({ ok: true })
+      expect(await run.storedBytes()).toEqual(newer)
+      expect(await run.secondFileBytes()).toBeUndefined()
+      const copies = copiesNamedFrom(await run.backups(), SET_ASIDE_PREFIX)
+      expect(copies.map(({ bytes }) => bytes)).toEqual([second])
+    })
+
+    it('keeps a copy of the main file, holds the second file document in the main file, and leaves no second file when the second file is promoted', async () => {
+      const run = await begin()
+      const newer = documentOfNewerVersion()
+      const second = secondFileDocument()
+      await run.place(newer)
+      await run.placeSecondFile(second)
+      const files = await twoFilesOf(run)
+
+      const change = await run.open().promoteSecondFile(PROJECT_ID, files)
+
+      expect(change).toEqual({ ok: true })
+      const copies = copiesNamedFrom(await run.backups(), REPLACED_PREFIX)
+      expect(copies.map(({ bytes }) => bytes)).toEqual([newer])
+      expect(await run.storedBytes()).toEqual(second)
+      expect(await run.secondFileBytes()).toBeUndefined()
+      const read = await run.open().read(PROJECT_ID)
+      expect(decodedOf(read).project.meta.name).toBe(SAVED_NAME)
+      expect(secondFileOf(read)).toBeUndefined()
     })
   })
 }

@@ -13,16 +13,16 @@ import type { Json } from '../../tests/fixtures/projects/versions/fixture-docume
 import {
   BACKUP_DIRECTORY,
   DOCUMENT_PATH,
+  NOT_JSON,
   backupsOf,
   readProject,
   rootHolding,
   storeOver,
+  unreadableNamePattern,
 } from './document-store-test-kit'
 
 const OLDER_VERSION = 8
 const FAULT_BACKUP_PREFIX = 'last-valid-'
-const DIGEST_PATTERN = '[0-9a-f]{64}'
-const NOT_JSON = new TextEncoder().encode('{ not json')
 
 const throwingStep: SchemaMigration = {
   from: OLDER_VERSION,
@@ -141,9 +141,7 @@ describe('saving over a previous file that cannot be read', () => {
       expect(warned.some((text) => text.includes(reason.failure.kind))).toBe(true)
       const backups = await backupsOf(root)
       expect(backups).toHaveLength(1)
-      expect(backups[0]?.name).toMatch(
-        new RegExp(`^unreadable-previous-v${version}-${DIGEST_PATTERN}\\.json$`),
-      )
+      expect(backups[0]?.name).toMatch(unreadableNamePattern(version))
       expect(backups[0]?.bytes).toEqual(previous)
     },
   )

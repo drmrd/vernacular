@@ -2,6 +2,7 @@
 // Pure storage/zip logic; node aligns Uint8Array realms with fflate.
 import { describe, expect, it, vi } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from '../../core'
+import { secondDocumentFileName } from '../project-files/project-file-name'
 import { buildUncheckedCopy } from './unchecked-copy'
 import {
   assetNames,
@@ -21,9 +22,9 @@ const NOT_JSON = Uint8Array.of(0xff, 0x00, 0xfe, 0x80, 0x7b)
 const THIRD_BYTES = new TextEncoder().encode('the third model')
 const NOT_A_CONTENT_HASH = 'not-a-content-hash'
 const UPPER_CASE_HASH = 'A'.repeat(64)
-const SECOND_FILE = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
-const NEWER_SECOND_FILE = `vernacular.format-${CURRENT_SCHEMA_VERSION + 1}.json`
 const NEWER_VERSION = CURRENT_SCHEMA_VERSION + 1
+const SECOND_FILE = secondDocumentFileName(CURRENT_SCHEMA_VERSION)
+const NEWER_SECOND_FILE = secondDocumentFileName(NEWER_VERSION)
 
 /** The files of a project folder with a second document file `secondBytes` beside the main file. */
 function filesBesideSecondFile(secondBytes: Uint8Array, name = SECOND_FILE) {

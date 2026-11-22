@@ -11,34 +11,28 @@ import {
 import type { DirectoryPort } from '../fs/directory-port'
 import type { StoreRead } from './document-store'
 import {
+  BackupRefusingDirectory,
+  DISK_FULL_MESSAGE,
   DOCUMENT_PATH,
-  PassThroughDirectory,
+  NOT_JSON,
   SECOND_FILE_NAME,
   SECOND_FILE_PATH,
+  UNREADABLE_PREFIX,
   backupsOf,
   newerVersionBytes,
+  rejectionOf,
   rootHolding,
   rootHoldingFiles,
   storeOver,
+  unreadableNamePattern,
 } from './document-store-test-kit'
 
 const OLDEST_VERSION = 8
 const OLDER_VERSION = 15
 const NEXT_VERSION = 16
 const AUTOSAVE_DIRECTORY = 'a/.house-autosave'
-const UNREADABLE_PREFIX = 'unreadable-previous-'
-const DIGEST_PATTERN = '[0-9a-f]{64}'
-const NOT_JSON = new TextEncoder().encode('{ not json')
 const ANOTHER_NOT_JSON = new TextEncoder().encode('{ also not json')
 const NOT_A_PROJECT = new TextEncoder().encode('{"title":"a list of errands"}')
-
-/** Test support: rejects each write under a backup directory and passes everything else through. */
-class BackupRefusingDirectory extends PassThroughDirectory {
-  override writeFile(path: string, bytes: Uint8Array): Promise<void> {
-    if (path.includes('.house-backups/')) return Promise.reject(new Error('the disk is full'))
-    return super.writeFile(path, bytes)
-  }
-}
 
 async function backupBytesOf(root: DirectoryPort): Promise<Uint8Array[]> {
   return (await backupsOf(root)).map(({ bytes }) => bytes)
@@ -59,17 +53,6 @@ async function unreadableCopiesOf(
   root: DirectoryPort,
 ): Promise<{ name: string; bytes: Uint8Array }[]> {
   return (await backupsOf(root)).filter(({ name }) => name.startsWith(UNREADABLE_PREFIX))
-}
-
-function unreadableNamePattern(version: number): RegExp {
-  return new RegExp(`^${UNREADABLE_PREFIX}v${version}-${DIGEST_PATTERN}\\.json$`)
-}
-
-function refusal(call: () => Promise<unknown>): Promise<unknown> {
-  return call().then(
-    () => undefined,
-    (error: unknown) => error,
-  )
 }
 
 describe('the migration backups of a store', () => {
@@ -131,9 +114,9 @@ describe('a backup that cannot be written', () => {
     const root = await rootHolding(original)
     const store = storeOver(new BackupRefusingDirectory(root))
 
-    const error = await refusal(() => store.read('a'))
+    const error = await rejectionOf(() => store.read('a'))
 
-    expect(error).toBeInstanceOf(Error)
+    expect(error).toEqual(new Error(DISK_FULL_MESSAGE))
     expect(await root.readFile(DOCUMENT_PATH)).toEqual(original)
   })
 })
@@ -197,9 +180,9 @@ describe('a copy of an unreadable stored file before a save replaces it', () => 
     const root = await rootHolding(NOT_JSON)
     const store = storeOver(new BackupRefusingDirectory(root))
 
-    const error = await refusal(() => store.save('a', soundProject()))
+    const error = await rejectionOf(() => store.save('a', soundProject()))
 
-    expect(error).toBeInstanceOf(Error)
+    expect(error).toEqual(new Error(DISK_FULL_MESSAGE))
     expect(await root.readFile(DOCUMENT_PATH)).toEqual(NOT_JSON)
   })
 
@@ -251,5 +234,18 @@ describe('a copy of an unreadable second file before a save replaces it', () => 
     expect(copies).toHaveLength(1)
     expect(copies[0]?.name).toMatch(unreadableNamePattern(CURRENT_SCHEMA_VERSION + 1))
     expect(copies[0]?.bytes).toEqual(second)
+  })
+
+  it('rejects the save and leaves both files as they were when the copy of a second file cannot be written', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const main = newerVersionBytes()
+    const root = await rootHoldingFiles({ main, second: NOT_JSON })
+    const store = storeOver(new BackupRefusingDirectory(root))
+
+    const error = await rejectionOf(() => store.save('a', soundProject()))
+
+    expect(error).toEqual(new Error(DISK_FULL_MESSAGE))
+    expect(await root.readFile(SECOND_FILE_PATH)).toEqual(NOT_JSON)
+    expect(await root.readFile(DOCUMENT_PATH)).toEqual(main)
   })
 })

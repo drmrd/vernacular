@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renameProject } from '../../core'
 import { settle } from '../autosave/save-gate-test-kit'
 import {
+  IN_FOLDER,
   createTestPorts,
   openOrThrow,
   placeDocument,
@@ -131,7 +132,7 @@ describe('a delete while a project of the workspace has a second document file',
     await handle.close()
   })
 
-  it('removes the files and the record of the project with two files and no asset when that project is deleted', async () => {
+  it('removes the files and the record of the project with two files, and removes no asset, when that project is deleted', async () => {
     const { ports, asset } = await workspaceWhereOnlyTheDeletedProjectUsesAnAsset()
     const ownAsset = await putInPool(ports, 'the asset that only the main file uses')
     await storeTwoFilesUsing(ports, { inMain: [ownAsset], inSecond: [asset] })
@@ -164,7 +165,7 @@ describe('a delete when no project of the workspace has a second document file a
     expect(await poolHashes(ports)).toEqual([])
   })
 
-  it('removes an asset that no project uses when a listed folder project has a second file', async () => {
+  it('removes an asset that no project uses when the record of a folder project names a second file', async () => {
     const { ports, asset } = await workspaceWhereOnlyTheDeletedProjectUsesAnAsset()
     const folder = await storeFolderProject(ports)
     await folder.writeFile(SECOND_FILE_NAME, documentNamed('A second file in the folder'))
@@ -174,5 +175,22 @@ describe('a delete when no project of the workspace has a second document file a
 
     expect(result).toMatchObject({ ok: true, removedAssets: [asset] })
     expect(await poolHashes(ports)).toEqual([])
+  })
+
+  it('removes an asset that no project uses when a folder project with a second file is open in this tab', async () => {
+    const { ports, asset } = await workspaceWhereOnlyTheDeletedProjectUsesAnAsset()
+    const folder = await storeFolderProject(ports)
+    await folder.writeFile(SECOND_FILE_NAME, documentNamed('A second file in the folder'))
+    const handle = await openOrThrow(ports, { id: FOLDER_ID, location: IN_FOLDER })
+    expect((await recordOf(ports, FOLDER_ID))?.secondFile).toEqual({
+      name: SECOND_FILE_NAME,
+      read: 'main',
+    })
+
+    const result = await deleteDeletedProject(ports, handle)
+
+    expect(result).toMatchObject({ ok: true, removedAssets: [asset] })
+    expect(await poolHashes(ports)).toEqual([])
+    await handle.close()
   })
 })

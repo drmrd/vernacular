@@ -1,11 +1,13 @@
-import { CURRENT_SCHEMA_VERSION } from '../../core'
+import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../core'
 import type { CodecOptions, Project } from '../../core'
 import {
   bytesOf,
   fixtureDocument,
   metaOf,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
-import { SECOND_FILE_NAME } from '../../tests/storage/conformance/conformance-run'
+import { renamed, soundProject } from '../../tests/storage/conformance/conformance-documents'
+import { SECOND_FILE_NAME, filesUnder } from '../../tests/storage/conformance/conformance-run'
+import type { NamedBytes } from '../../tests/storage/conformance/conformance-run'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { ProjectNotFoundError } from '../project-store'
@@ -13,6 +15,7 @@ import { WorkspaceFiles } from '../project-files/workspace-files'
 import { DocumentDecodeError } from './document-decode-error'
 import { WorkspaceDocumentStore } from './document-store'
 import type { DocumentStore } from './document-store'
+import type { TwoDocumentFiles } from './second-file'
 
 /** Shared set-up of the tests that cover a document store over the project `a` of a workspace. */
 
@@ -29,6 +32,24 @@ export const NEWER_SECOND_FILE_PATH = `a/vernacular.format-${CURRENT_SCHEMA_VERS
 
 /** The directory that holds the backups of the project `a`. */
 export const BACKUP_DIRECTORY = 'a/.house-backups'
+
+const HEX_RADIX = 16
+const HEX_BYTE_WIDTH = 2
+const DIGEST_PATTERN = '[0-9a-f]{64}'
+
+/** Bytes that are not JSON, so that no decode of them succeeds. */
+export const NOT_JSON = new TextEncoder().encode('{ not json')
+
+/** The start of the name of the copy that a save keeps of a stored file that it cannot read. */
+export const UNREADABLE_PREFIX = 'unreadable-previous-'
+
+/** What the directory that refuses a backup write rejects with. */
+export const DISK_FULL_MESSAGE = 'the disk is full'
+
+/** The name of a copy of an unreadable file stored at `version`: the prefix, the version, a digest. */
+export function unreadableNamePattern(version: number): RegExp {
+  return new RegExp(`^${UNREADABLE_PREFIX}v${version}-${DIGEST_PATTERN}\\.json$`)
+}
 
 /**
  * Test support: passes every call to another directory. A test extends it and overrides the one
@@ -79,6 +100,36 @@ export class WriteLoggingDirectory extends PassThroughDirectory {
   override writeFile(path: string, bytes: Uint8Array): Promise<void> {
     this.writes.push(path)
     return super.writeFile(path, bytes)
+  }
+}
+
+/** Test support: rejects each write under a backup directory and passes everything else through. */
+export class BackupRefusingDirectory extends PassThroughDirectory {
+  override writeFile(path: string, bytes: Uint8Array): Promise<void> {
+    if (path.includes('.house-backups/')) return Promise.reject(new Error(DISK_FULL_MESSAGE))
+    return super.writeFile(path, bytes)
+  }
+}
+
+/**
+ * Test support: passes every call through and lists each write and each removal, in the order
+ * that they happened, as `write <path>` and `remove <path>`.
+ */
+export class ChangeLoggingDirectory extends PassThroughDirectory {
+  readonly calls: string[] = []
+
+  /** The path of each removal, in order. */
+  readonly removals: string[] = []
+
+  override writeFile(path: string, bytes: Uint8Array): Promise<void> {
+    this.calls.push(`write ${path}`)
+    return super.writeFile(path, bytes)
+  }
+
+  override removeFile(path: string): Promise<void> {
+    this.removals.push(path)
+    this.calls.push(`remove ${path}`)
+    return super.removeFile(path)
   }
 }
 
@@ -143,14 +194,70 @@ export async function treeOf(root: DirectoryPort, prefix = ''): Promise<Record<s
 }
 
 /** The files of the backup directory of the project `a`: each name with its bytes. */
-export async function backupsOf(
-  root: DirectoryPort,
-): Promise<{ name: string; bytes: Uint8Array }[]> {
-  const names = await root.list(BACKUP_DIRECTORY)
-  return Promise.all(
-    names.map(async (name) => ({
-      name,
-      bytes: (await root.readFile(`${BACKUP_DIRECTORY}/${name}`)) ?? new Uint8Array(),
-    })),
+export function backupsOf(root: DirectoryPort): Promise<NamedBytes[]> {
+  return filesUnder(root, BACKUP_DIRECTORY)
+}
+
+/** The SHA-256 of `bytes`, in hex, as a backup name and a choice between two files carry it. */
+export async function digestOf(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes))
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(HEX_RADIX).padStart(HEX_BYTE_WIDTH, '0'),
+  ).join('')
+}
+
+/** The name of the backup of `bytes` that was kept as `kind` for a file stored at `version`. */
+export async function backupNameOf(
+  kind: string,
+  version: number,
+  bytes: Uint8Array,
+): Promise<string> {
+  return `${kind}-v${version}-${await digestOf(bytes)}.json`
+}
+
+/** The name of the project in the document that `soundSecondFile` gives. */
+export const SECOND_FILE_PROJECT_NAME = 'Saved beside the newer file'
+
+/** A sound document of the current version that is told apart from the fixture by its name. */
+export function soundSecondFile(name = SECOND_FILE_PROJECT_NAME): Uint8Array {
+  return encodeDocument(renamed(soundProject(), name), undefined).bytes
+}
+
+/** A main file of a newer build that differs in its bytes from `newerVersionBytes()`. */
+export function anotherNewerMainFile(): Uint8Array {
+  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+  metaOf(document).name = 'Another project of a newer build'
+  return bytesOf(document)
+}
+
+/** The two document files of the project `a`; throws when it does not have two. */
+export async function twoFilesOrThrow(store: DocumentStore): Promise<TwoDocumentFiles> {
+  const files = await store.twoFiles('a')
+  if (files === undefined) throw new Error('Expected the project to have two document files')
+  return files
+}
+
+/** What a call rejects with; undefined when the call resolves. */
+export function rejectionOf(call: () => Promise<unknown>): Promise<unknown> {
+  return call().then(
+    () => undefined,
+    (error: unknown) => error,
   )
+}
+
+/**
+ * A newer main file beside a sound second file, and a store over them that logs each write and
+ * removal, with the two files as a choice between them sees them.
+ */
+export async function choiceOfTwoFiles(): Promise<{
+  root: InMemoryDirectory
+  logged: ChangeLoggingDirectory
+  store: DocumentStore
+  files: TwoDocumentFiles
+}> {
+  const root = await rootHoldingFiles({ main: newerVersionBytes(), second: soundSecondFile() })
+  const logged = new ChangeLoggingDirectory(root)
+  const store = storeOver(logged)
+  return { root, logged, store, files: await twoFilesOrThrow(store) }
 }

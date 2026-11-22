@@ -30,8 +30,9 @@ export function documentReferring(contentHashes: readonly string[]): Uint8Array 
 export function documentOfNewerVersionReferring(contentHash: string): Uint8Array {
   const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
   metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
-  const floors = document.floors as { furniture: unknown[] }[]
-  floors[0]?.furniture.push({
+  const floor = (document.floors as { furniture: unknown[] }[])[0]
+  if (floor === undefined) throw new Error('Expected the fixture document to have a floor')
+  floor.furniture.push({
     id: 'piece-of-a-newer-build',
     assetRef: { scope: 'user', contentHash },
   })

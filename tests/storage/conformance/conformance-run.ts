@@ -19,6 +19,23 @@ export const PROJECT_ID = 'a'
 /** The second project of a store that holds many. */
 export const OTHER_PROJECT_ID = 'b'
 
+/** A stored file: its name in a directory and its bytes. */
+export interface NamedBytes {
+  readonly name: string
+  readonly bytes: Uint8Array
+}
+
+/** Every file directly under `directory` of `root`, each with its bytes. */
+export async function filesUnder(root: DirectoryPort, directory: string): Promise<NamedBytes[]> {
+  const names = await root.list(directory)
+  return Promise.all(
+    names.map(async (name) => ({
+      name,
+      bytes: (await root.readFile(`${directory}/${name}`)) ?? new Uint8Array(),
+    })),
+  )
+}
+
 /** One test of the suite: a store kind, over a root that only this test uses. */
 export class ConformanceRun {
   constructor(
@@ -47,14 +64,10 @@ export class ConformanceRun {
   }
 
   /** Every file of the backups directory of the project: its name and its bytes. */
-  async backups(id: string = PROJECT_ID): Promise<{ name: string; bytes: Uint8Array }[]> {
-    const directory = this.target.holdsMany ? `${id}/${BACKUP_DIRECTORY}` : BACKUP_DIRECTORY
-    const names = await this.root.list(directory)
-    return Promise.all(
-      names.map(async (name) => ({
-        name,
-        bytes: (await this.root.readFile(`${directory}/${name}`)) ?? new Uint8Array(),
-      })),
+  backups(id: string = PROJECT_ID): Promise<NamedBytes[]> {
+    return filesUnder(
+      this.root,
+      this.target.holdsMany ? `${id}/${BACKUP_DIRECTORY}` : BACKUP_DIRECTORY,
     )
   }
 
