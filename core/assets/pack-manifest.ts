@@ -160,7 +160,14 @@ function validateMediaType(
   errors: string[],
 ): void {
   const mediaType = source['mediaType']
-  if (mediaType === undefined && !declaresMediaTypes(context.formatVersion)) return
+  if (!declaresMediaTypes(context.formatVersion)) {
+    if (mediaType !== undefined) {
+      errors.push(
+        `${context.label}.mediaType needs formatVersion 2; format 1 assets name no media type`,
+      )
+    }
+    return
+  }
   const allowed = allowedMediaTypes(source['kind'], context.formatVersion)
   if (!(typeof mediaType === 'string' && allowed.includes(mediaType))) {
     errors.push(`${context.label}.mediaType must be one of: ${allowed.join(', ')}`)
@@ -192,7 +199,7 @@ function validateAssetFields(
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
   validateMediaType(source, context, errors)
-  if (source['kind'] === 'texture') {
+  if (source['kind'] === 'texture' && declaresMediaTypes(context.formatVersion)) {
     validateTextureFields(source, label, errors)
   } else {
     validateDimensions(source['dimensions'], label, errors)
