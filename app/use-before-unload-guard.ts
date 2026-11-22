@@ -35,10 +35,11 @@ export function useSaveStatus(handle: DocumentHandle): SaveStatus {
 }
 
 /**
- * Arms the leave warning while the handle has a change that is not stored: a save that waits, or
- * a save that failed.
+ * Arms the leave warning while the project is not stored beyond this tab: from the first moment
+ * while the handle is not durable, whatever its save status, and while a durable handle has a save
+ * that waits or a save that failed. A durable handle that is saved does not arm it.
  */
-export function useUnsavedChangesGuard(handle: DocumentHandle): void {
+export function useLeaveWarningGuard(handle: DocumentHandle): void {
   const status = useSaveStatus(handle)
-  useBeforeUnloadGuard(status === 'pending' || status === 'error')
+  useBeforeUnloadGuard(!handle.durable || status === 'pending' || status === 'error')
 }

@@ -26,7 +26,7 @@ import { resolveHarnessPaint } from './harness-paint'
 import type { AddressBar } from './address-bar'
 import { ProjectsScreen, type ProjectsScreenProps } from './projects-screen'
 import type { PageScreen } from './resolve-place'
-import { useUnsavedChangesGuard } from './use-before-unload-guard'
+import { useLeaveWarningGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 import type { HistoryNavigation } from './use-history-navigation'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
@@ -173,7 +173,7 @@ function pageOverProjectView(
 
 // Warns before the tab closes with unsaved changes, and writes when the tab is hidden.
 function UnsavedWorkGuards({ handle }: { readonly handle: DocumentHandle }) {
-  useUnsavedChangesGuard(handle)
+  useLeaveWarningGuard(handle)
   useFlushOnHidden(handle)
   return null
 }
