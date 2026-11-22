@@ -1,4 +1,10 @@
+import { CURRENT_SCHEMA_VERSION } from '../../core'
 import type { CodecOptions, Project } from '../../core'
+import {
+  bytesOf,
+  fixtureDocument,
+  metaOf,
+} from '../../tests/fixtures/projects/versions/fixture-documents'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { ProjectNotFoundError } from '../project-store'
@@ -11,6 +17,12 @@ import type { DocumentStore } from './document-store'
 
 /** The document of the project `a`. */
 export const DOCUMENT_PATH = 'a/vernacular.json'
+
+/** The name of the second document file that this build writes beside a newer main file. */
+export const SECOND_FILE_NAME = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
+
+/** The second document file of the project `a`. */
+export const SECOND_FILE_PATH = `a/${SECOND_FILE_NAME}`
 
 /** The directory that holds the backups of the project `a`. */
 export const BACKUP_DIRECTORY = 'a/.house-backups'
@@ -96,6 +108,23 @@ export async function rootHolding(
   const root = new InMemoryDirectory(now === undefined ? {} : { now })
   if (bytes !== undefined) await root.writeFile(DOCUMENT_PATH, bytes)
   return root
+}
+
+/** A root that holds the document files of the project `a` for which there are bytes. */
+export async function rootHoldingFiles(files: {
+  main?: Uint8Array
+  second?: Uint8Array
+}): Promise<InMemoryDirectory> {
+  const root = await rootHolding(files.main)
+  if (files.second !== undefined) await root.writeFile(SECOND_FILE_PATH, files.second)
+  return root
+}
+
+/** The document of the current version, stored as a build with the next schema version writes it. */
+export function newerVersionBytes(): Uint8Array {
+  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+  return bytesOf(document)
 }
 
 /** Every file under `prefix`, keyed by its path from the root, with its bytes. */

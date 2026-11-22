@@ -1,4 +1,5 @@
 import { afterEach } from 'vitest'
+import { CURRENT_SCHEMA_VERSION } from '../../../core'
 import { PROJECT_FILE } from '../../../storage/project-files/project-file-name'
 import type {
   DocumentStore,
@@ -7,6 +8,8 @@ import type {
 import type { DirectoryPort } from '../../../storage/fs/directory-port'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
 import type { StoreConformanceTarget } from './store-conformance-target'
+
+const SECOND_FILE_NAME = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
 
 /** The project that every case works on. A store bound to one project is bound to this id. */
 export const PROJECT_ID = 'a'
@@ -24,6 +27,21 @@ export class ConformanceRun {
   /** Where the document file of the project sits in the root. */
   documentPath(id: string = PROJECT_ID): string {
     return this.target.holdsMany ? `${id}/${PROJECT_FILE}` : PROJECT_FILE
+  }
+
+  /** Where the second document file of this build sits in the root. */
+  secondFilePath(id: string = PROJECT_ID): string {
+    return this.target.holdsMany ? `${id}/${SECOND_FILE_NAME}` : SECOND_FILE_NAME
+  }
+
+  /** Puts raw bytes where this build writes the second document file of the project. */
+  placeSecondFile(bytes: Uint8Array, id: string = PROJECT_ID): Promise<void> {
+    return this.root.writeFile(this.secondFilePath(id), bytes)
+  }
+
+  /** The bytes of the second document file as they are in the root; undefined when there is none. */
+  secondFileBytes(id: string = PROJECT_ID): Promise<Uint8Array | undefined> {
+    return this.root.readFile(this.secondFilePath(id))
   }
 
   /** Puts raw bytes where the store reads the document of the project. */

@@ -3,10 +3,7 @@ import { CURRENT_SCHEMA_VERSION, createWall, decodeDocument, encodeDocument } fr
 import type { CodecOptions, Project, SchemaMigration } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
-  bytesOf,
   firstWallOf,
-  fixtureDocument,
-  metaOf,
   projectOf,
   UNKNOWN_FIELD,
   UNKNOWN_WALL_FIELD_PATH,
@@ -103,19 +100,12 @@ describe('saving a project that breaks the format rules', () => {
   })
 })
 
-function newerVersionBytes(): Uint8Array {
-  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
-  return bytesOf(document)
-}
-
 describe('saving over a previous file that cannot be read', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
   const cases: { name: string; previous: Uint8Array; options?: CodecOptions }[] = [
-    { name: 'at a newer schema version', previous: newerVersionBytes() },
     { name: 'that is not JSON', previous: NOT_JSON },
     {
       name: 'whose migration throws',

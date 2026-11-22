@@ -14,6 +14,7 @@ import {
   bytesOf,
   firstWallOf,
   fixtureDocument,
+  metaOf,
   projectOf,
   withUnknownWallField,
 } from '../../fixtures/projects/versions/fixture-documents'
@@ -50,6 +51,13 @@ export function documentBreakingFormatRules(): Uint8Array {
 export function documentOfHigherRevision(): Uint8Array {
   const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
   return bytesOf(atHigherRevision(withUnknownWallField(document)))
+}
+
+/** The document of the current version, stored as a build with the next schema version writes it. */
+export function documentOfNewerVersion(): Uint8Array {
+  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+  return bytesOf(document)
 }
 
 /** An `extensions` payload that no build knows the meaning of. */
