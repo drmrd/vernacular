@@ -123,6 +123,55 @@ describe('checkPackIntegrity', () => {
   })
 })
 
+describe('checkPackIntegrity for a format 2 texture', () => {
+  const OTHER_HASH = 'c'.repeat(64)
+
+  /** A format 2 pack whose only asset is a texture stored as `assets/<hash>.<extension>`. */
+  function texturePack(mediaType, extension, overrides = {}) {
+    const file = `assets/${HASH}.${extension}`
+    const manifest = {
+      ...manifestWith({ kind: 'texture', mediaType }),
+      formatVersion: 2,
+    }
+    const reader = fakeReader({
+      ...overrides,
+      dirs: { assets: [`${HASH}.${extension}`], ...overrides.dirs },
+      files: { [ASSET_FILE]: false, [file]: true, ...overrides.files },
+      hashes: { [ASSET_FILE]: undefined, [file]: HASH, ...overrides.hashes },
+    })
+    return { manifest, reader, file }
+  }
+
+  it.each([
+    ['image/png', 'png'],
+    ['image/webp', 'webp'],
+  ])('reads a %s texture from the file with the .%s extension', async (mediaType, extension) => {
+    const { manifest, reader } = texturePack(mediaType, extension)
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result).toEqual({ errors: [] })
+  })
+
+  it('flags a texture whose bytes hash to a different digest than declared', async () => {
+    const file = `assets/${HASH}.png`
+    const { manifest, reader } = texturePack('image/png', 'png', {
+      hashes: { [file]: 'b'.repeat(64) },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(
+      result.errors.some((m) => m.includes('content hash does not match') && m.includes(file)),
+    ).toBe(true)
+  })
+
+  it('reports a stray .glb as an orphan but not the referenced .png', async () => {
+    const { manifest, reader } = texturePack('image/png', 'png', {
+      dirs: { assets: [`${HASH}.png`, `${OTHER_HASH}.glb`] },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result.errors.some((m) => m.includes(`${OTHER_HASH}.glb`))).toBe(true)
+    expect(result.errors.some((m) => m.includes(`${HASH}.png`))).toBe(false)
+  })
+})
+
 describe('isWebp', () => {
   it('accepts a RIFF....WEBP signature of at least 12 bytes', () => {
     expect(isWebp(WEBP_BYTES)).toBe(true)
