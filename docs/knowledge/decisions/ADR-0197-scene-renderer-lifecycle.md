@@ -11,6 +11,7 @@ related:
     decisions/ADR-0124-scene-component-story-gap,
     decisions/ADR-0111-story-coverage-guardrail-and-backfill-policy,
     decisions/ADR-0019-bridge-dispatch-boundary,
+    decisions/ADR-0231-the-live-3d-readiness-signal-names-the-drawn-revision,
   ]
 sourceFiles:
   [
@@ -364,6 +365,10 @@ signal to wait for is `data-harness-ready="true"` on the element with the test i
 `false` with each mount. `data-live-view-ready` is not that signal: it can still read `true` from an
 earlier open when the pane mounts again (issue #829). `e2e/tests/live-pane-frames.ts` holds the wait
 and the capture helpers for other live-pane specs to share.
+
+2026-11-21: `useDrawnRevision` replaces `useFirstFrameReadiness`. `data-harness-ready` now turns
+`true` on the first frame of the mount that was drawn at the canvas's current size, and the wrapper
+also names the scene revision it holds and the revision its last such frame drew. See ADR-0231.
 
 `bridge/react/scene-renderer-canvas-strict-mode.test.tsx` renders the wrapper under StrictMode with a
 stand-in canvas that calls `gl` in a plain effect, which StrictMode runs twice. The stand-in
