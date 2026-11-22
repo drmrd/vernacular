@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { expect } from 'vitest'
 
-import type { OpeningSceneNode } from '../../core'
+import type { HungSash, OpeningSceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 
 import { buildOpeningFill, openingFillSashOf } from './opening-fill-builder'
@@ -82,7 +82,7 @@ export function expectSameBox(actual: THREE.Box3, expected: THREE.Box3): void {
   }
 }
 
-export function lowestPointOfSash(group: THREE.Object3D, sash: 'lower' | 'upper'): number {
+export function lowestPointOfSash(group: THREE.Object3D, sash: HungSash): number {
   const meshes = meshesOf(group).filter((mesh) => openingFillSashOf(mesh) === sash)
   expect(meshes.length).toBeGreaterThan(0)
   return Math.min(...meshes.map((mesh) => worldBoxOf(mesh).min.y))

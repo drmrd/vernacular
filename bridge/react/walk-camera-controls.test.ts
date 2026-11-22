@@ -9,9 +9,11 @@ import {
   WALK_EYE_HEIGHT_MM,
 } from '../../core'
 
+import { openPartsWith } from './open-parts-test-support'
 import { walkKeyHandlers } from './walk-session'
 
 const DOOR_ID = 'opening:front-door'
+const DOOR_OPEN = openPartsWith({ [DOOR_ID]: ['primary'] })
 
 const UPPER_FLOOR_ELEVATION_MM = 3000
 const BASEMENT_ELEVATION_MM = -2700
@@ -77,7 +79,7 @@ function handlersFor(session: ReturnType<typeof sessionWith>) {
 
 describe('walk camera controls: reset key', () => {
   it('resets every open opening to closed and marks user control when KeyR is pressed', () => {
-    const session = sessionWith({ openIds: new Set([DOOR_ID]) })
+    const session = sessionWith({ openParts: DOOR_OPEN })
 
     handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyR' }))
 
@@ -86,7 +88,7 @@ describe('walk camera controls: reset key', () => {
   })
 
   it('leaves openings untouched and does not mark control for an unmapped key', () => {
-    const session = sessionWith({ openIds: new Set([DOOR_ID]) })
+    const session = sessionWith({ openParts: DOOR_OPEN })
 
     handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyZ' }))
 
@@ -97,11 +99,11 @@ describe('walk camera controls: reset key', () => {
   it('reports an empty set of open doors when KeyR shuts every opening', () => {
     // The session outlives the preview, so the doors the walker shut have to be
     // reported outward or a later mount would reopen them.
-    const session = sessionWith({ openIds: new Set([DOOR_ID]) })
+    const session = sessionWith({ openParts: DOOR_OPEN })
 
     handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyR' }))
 
-    expect(session.onOpenDoors).toHaveBeenCalledWith(new Set<string>())
+    expect(session.onOpenDoors).toHaveBeenCalledWith(new Map())
   })
 })
 
@@ -112,7 +114,7 @@ describe('walk camera controls: interact key', () => {
     handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyE' }))
 
     expect(isOpeningOpen(session.interaction.current, DOOR_ID)).toBe(true)
-    expect(session.onOpenDoors).toHaveBeenCalledWith(new Set([DOOR_ID]))
+    expect(session.onOpenDoors).toHaveBeenCalledWith(DOOR_OPEN)
   })
 
   it('opens the door the walker faces on a floor 3000 mm above the ground with KeyE', () => {
@@ -121,7 +123,7 @@ describe('walk camera controls: interact key', () => {
     handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyE' }))
 
     expect(isOpeningOpen(session.interaction.current, DOOR_ID)).toBe(true)
-    expect(session.onOpenDoors).toHaveBeenCalledWith(new Set([DOOR_ID]))
+    expect(session.onOpenDoors).toHaveBeenCalledWith(DOOR_OPEN)
   })
 
   it('opens the door the walker faces in a basement 2700 mm below the ground with KeyE', () => {
@@ -130,6 +132,6 @@ describe('walk camera controls: interact key', () => {
     handlersFor(session).onKeyDown(new KeyboardEvent('keydown', { code: 'KeyE' }))
 
     expect(isOpeningOpen(session.interaction.current, DOOR_ID)).toBe(true)
-    expect(session.onOpenDoors).toHaveBeenCalledWith(new Set([DOOR_ID]))
+    expect(session.onOpenDoors).toHaveBeenCalledWith(DOOR_OPEN)
   })
 })

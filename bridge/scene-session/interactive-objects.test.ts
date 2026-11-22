@@ -3,26 +3,28 @@ import { createSceneSessionStore } from '../index'
 import { interactiveObjectsAtDefault, resetInteractiveObjects } from './interactive-objects'
 
 const FRONT_DOOR_ID = 'opening:front-door'
+const FRONT_DOOR_OPEN = new Map([[FRONT_DOOR_ID, new Set(['primary' as const])]])
 
 describe('resetInteractiveObjects', () => {
   it('closes every opened door and window, leaving the session at its defaults', () => {
-    const store = createSceneSessionStore({ openDoorIds: new Set([FRONT_DOOR_ID]) })
+    const store = createSceneSessionStore({ openDoorIds: FRONT_DOOR_OPEN })
 
     expect(interactiveObjectsAtDefault(store.getSceneSession())).toBe(false)
 
     resetInteractiveObjects(store)
 
+    expect(store.getSceneSession().openDoorIds).toBeInstanceOf(Map)
     expect(store.getSceneSession().openDoorIds.size).toBe(0)
     expect(interactiveObjectsAtDefault(store.getSceneSession())).toBe(true)
   })
 
   it('replaces the stored open set and never mutates the original in place', () => {
-    const store = createSceneSessionStore({ openDoorIds: new Set([FRONT_DOOR_ID]) })
+    const store = createSceneSessionStore({ openDoorIds: FRONT_DOOR_OPEN })
     const before = store.getSceneSession().openDoorIds
 
     resetInteractiveObjects(store)
 
-    expect([...before]).toEqual([FRONT_DOOR_ID])
+    expect([...before.keys()]).toEqual([FRONT_DOOR_ID])
     expect(store.getSceneSession().openDoorIds).not.toBe(before)
   })
 
@@ -40,7 +42,7 @@ describe('resetInteractiveObjects', () => {
     const store = createSceneSessionStore({
       cameraMode: 'walk',
       edgeOverlay: true,
-      openDoorIds: new Set([FRONT_DOOR_ID]),
+      openDoorIds: FRONT_DOOR_OPEN,
     })
 
     resetInteractiveObjects(store)

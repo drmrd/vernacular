@@ -21,7 +21,7 @@ describe('openingUnderReach for a fully open opening', () => {
       reachMm: REACH_MM,
     })
 
-    expect(hit).toBe('opening:front-door')
+    expect(hit?.openingId).toBe('opening:front-door')
   })
 
   it('reaches a fully open pocket door head-on through its frame', () => {
@@ -32,7 +32,7 @@ describe('openingUnderReach for a fully open opening', () => {
       reachMm: REACH_MM,
     })
 
-    expect(hit).toBe('opening:pocket-door')
+    expect(hit?.openingId).toBe('opening:pocket-door')
   })
 
   it('reaches a fully open casement window head-on through its frame', () => {
@@ -44,7 +44,7 @@ describe('openingUnderReach for a fully open opening', () => {
       reachMm: REACH_MM,
     })
 
-    expect(hit).toBe('opening:casement')
+    expect(hit?.openingId).toBe('opening:casement')
   })
 
   it('prefers an open door in reach over a shut door behind it on the same ray', () => {
@@ -56,7 +56,7 @@ describe('openingUnderReach for a fully open opening', () => {
       reachMm: REACH_MM,
     })
 
-    expect(hit).toBe('opening:near-door')
+    expect(hit?.openingId).toBe('opening:near-door')
   })
 
   it('still misses an open door when the ray runs wide of its frame and its leaf', () => {

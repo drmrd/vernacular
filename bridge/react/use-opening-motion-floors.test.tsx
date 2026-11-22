@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup } from '@testing-library/react'
 
+import type { OpenParts } from '../../core'
+
+import { openPartsWith } from './open-parts-test-support'
 import { tickOpeningMotion } from './use-opening-motion'
 import {
   FLOOR_A_ID,
@@ -24,12 +27,12 @@ describe('useOpeningMotion in the whole-building view', () => {
     const root = env.buildRoot()
     seatDoorOpenOnRoot(env, root, { floorId: FLOOR_A_ID, doorId: env.doorAId })
     seatDoorOpenOnRoot(env, root, { floorId: FLOOR_B_ID, doorId: env.doorBId })
-    const openStored = new Set([env.doorAId, env.doorBId])
+    const openStored = openPartsWith({ [env.doorAId]: ['primary'], [env.doorBId]: ['primary'] })
     const { result, rerender } = renderMotion(env, { root, stored: openStored })
     tickOpeningMotion(root, result.current, FULL_STEP)
     expect(fillGroupPose(root, env.doorBId)).not.toEqual(shutPoseB)
 
-    rerender({ root, stored: new Set() })
+    rerender({ root, stored: new Map() })
     tickOpeningMotion(root, result.current, FULL_STEP)
 
     // Floor A is active, so its door is the control: it follows the stored set in this fixture.
@@ -44,7 +47,7 @@ describe('useOpeningMotion in the whole-building view', () => {
     const firstRoot = env.buildRoot()
     seatDoorOpenOnRoot(env, firstRoot, { floorId: FLOOR_A_ID, doorId: env.doorAId })
     seatDoorOpenOnRoot(env, firstRoot, { floorId: FLOOR_B_ID, doorId: env.doorBId })
-    const openStored = new Set([env.doorAId, env.doorBId])
+    const openStored = openPartsWith({ [env.doorAId]: ['primary'], [env.doorBId]: ['primary'] })
     const { result, rerender } = renderMotion(env, { root: firstRoot, stored: openStored })
     tickOpeningMotion(firstRoot, result.current, FULL_STEP)
     const openPoseA = fillGroupPose(firstRoot, env.doorAId)
@@ -64,8 +67,8 @@ describe('useOpeningMotion when the shown list changes and the root stays', () =
     const env = twoFloorEnvironment('building')
     const shutPoseA = shutPoseOf(env, env.doorAId)
     const root = env.buildRoot()
-    const stored = new Set([env.doorAId])
-    const { result, rerender } = renderMotion(env, { root, stored: new Set() })
+    const stored = openPartsWith({ [env.doorAId]: ['primary'] })
+    const { result, rerender } = renderMotion(env, { root, stored: new Map() })
     rerender({ root, stored })
     tickOpeningMotion(root, result.current, FULL_STEP / 10)
     const midPose = fillGroupPose(root, env.doorAId)
@@ -89,11 +92,11 @@ describe('useOpeningMotion when the shown list changes and the root stays', () =
 
 // Floor B is active with door B held open and ticked open on root B. The user then shows floor A
 // and either empties the stored set or keeps it, and comes back to floor B with the same root B.
-function leaveAndReturnToFloorB(env: TwoFloorEnvironment, storedWhileAway: ReadonlySet<string>) {
+function leaveAndReturnToFloorB(env: TwoFloorEnvironment, storedWhileAway: OpenParts) {
   env.activeFloor.setActiveFloorId(FLOOR_B_ID)
   const rootB = env.buildRoot()
   seatDoorOpenOnRoot(env, rootB, { floorId: FLOOR_B_ID, doorId: env.doorBId })
-  const openStored = new Set([env.doorBId])
+  const openStored = openPartsWith({ [env.doorBId]: ['primary'] })
   const { result, rerender } = renderMotion(env, { root: rootB, stored: openStored })
   tickOpeningMotion(rootB, result.current, FULL_STEP)
   const openPoseB = fillGroupPose(rootB, env.doorBId)
@@ -114,7 +117,7 @@ describe('useOpeningMotion in the floor view across a return to a floor', () => 
     env.activeFloor.setActiveFloorId(FLOOR_B_ID)
     const shutPoseB = shutPoseOf(env, env.doorBId)
 
-    const { rootB, openPoseB, result } = leaveAndReturnToFloorB(env, new Set())
+    const { rootB, openPoseB, result } = leaveAndReturnToFloorB(env, new Map())
 
     expect(openPoseB).not.toEqual(shutPoseB)
     expect(fillGroupPose(rootB, env.doorBId)).toEqual(shutPoseB)
@@ -125,7 +128,10 @@ describe('useOpeningMotion in the floor view across a return to a floor', () => 
   it('shows a door still held open as open on the return, before any tick', () => {
     const env = twoFloorEnvironment('floor')
 
-    const { rootB, openPoseB } = leaveAndReturnToFloorB(env, new Set([env.doorBId]))
+    const { rootB, openPoseB } = leaveAndReturnToFloorB(
+      env,
+      openPartsWith({ [env.doorBId]: ['primary'] }),
+    )
 
     expect(fillGroupPose(rootB, env.doorBId)).toEqual(openPoseB)
   })
@@ -137,20 +143,20 @@ describe('useOpeningMotion when the scope or the shown floors change', () => {
     act(() => env.activeFloor.setActiveFloorId(FLOOR_B_ID))
     const shutPoseB = shutPoseOf(env, env.doorBId)
     const rootB = env.buildRoot()
-    const openStored = new Set([env.doorBId])
+    const openStored = openPartsWith({ [env.doorBId]: ['primary'] })
     const { result, rerender } = renderMotion(env, { root: rootB, stored: openStored })
     tickOpeningMotion(rootB, result.current, FULL_STEP)
     act(() => env.activeFloor.setActiveFloorId(FLOOR_A_ID))
     const rootA = env.buildRoot()
     rerender({ root: rootA, stored: openStored })
-    rerender({ root: rootA, stored: new Set() })
+    rerender({ root: rootA, stored: new Map() })
     act(() => env.sceneSession.updateSceneSession({ scope: 'building' }))
 
     // The new shown list can reach the hook before the new root does, as across the canvas boundary.
-    rerender({ root: rootA, stored: new Set() })
+    rerender({ root: rootA, stored: new Map() })
     expect(() => tickOpeningMotion(rootA, result.current, FULL_STEP / 10)).not.toThrow()
     const building = env.buildRoot()
-    rerender({ root: building, stored: new Set() })
+    rerender({ root: building, stored: new Map() })
 
     expect(fillGroupPose(building, env.doorBId)).toEqual(shutPoseB)
   })
@@ -162,8 +168,8 @@ describe('useOpeningMotion when the scope or the shown floors change', () => {
     seatDoorOpenOnRoot(env, openRoot, { floorId: FLOOR_B_ID, doorId: env.doorBId })
     const openPoseB = fillGroupPose(openRoot, env.doorBId)
     const rootB = env.buildRoot()
-    const stored = new Set([env.doorBId])
-    const { result, rerender } = renderMotion(env, { root: rootB, stored: new Set() })
+    const stored = openPartsWith({ [env.doorBId]: ['primary'] })
+    const { result, rerender } = renderMotion(env, { root: rootB, stored: new Map() })
     rerender({ root: rootB, stored })
     tickOpeningMotion(rootB, result.current, FULL_STEP / 10)
     const midOpenness = result.current.openness.current.get(env.doorBId)

@@ -35,7 +35,10 @@ function doorWithId(id: string): OpeningSceneNode {
 }
 
 function holdingOpen(...ids: string[]): OpeningInteractionState {
-  return ids.reduce(toggleOpening, emptyOpeningInteraction())
+  return ids.reduce(
+    (state, openingId) => toggleOpening(state, { openingId, part: 'primary' }),
+    emptyOpeningInteraction(),
+  )
 }
 
 describe('settleUnshownOpenings', () => {

@@ -16,8 +16,10 @@ import {
   restoreOpenings,
   tickOpenings,
 } from './walk-interaction'
+import { openPartsWith } from './open-parts-test-support'
 
 const DOOR_ID = 'opening:front-door'
+const DOOR_REF = { openingId: DOOR_ID, part: 'primary' } as const
 
 // True when any object below the group sits above its built position. The traversal
 // visits the group first, so it is skipped.
@@ -116,6 +118,14 @@ describe('walk interaction', () => {
     expect(group.position.length()).toBeCloseTo(0, 3)
   })
 
+  it('opens the primary part of the looked-at door', () => {
+    const door = frontDoor()
+
+    const opened = interactFromWalk(facingDoor, [door], emptyOpeningInteraction())
+
+    expect(opened.openParts.get(DOOR_ID)).toEqual(new Set(['primary']))
+  })
+
   it('raises a window sash instead of swinging it when ticked open', () => {
     const window: OpeningSceneNode = {
       ...frontDoor(),
@@ -130,7 +140,7 @@ describe('walk interaction', () => {
     if (group === undefined) return
     const openness = new Map<string, number>()
 
-    const opened = toggleOpening(emptyOpeningInteraction(), window.id)
+    const opened = toggleOpening(emptyOpeningInteraction(), { openingId: window.id, part: 'lower' })
     tickOpenings({ root, openings: [window], interaction: opened, openness }, FULL_STEP)
 
     expect(openness.get(window.id)).toBe(1)
@@ -172,7 +182,7 @@ describe('walk interaction', () => {
       pitch: 0,
     }
 
-    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_REF)
     expect(isOpeningOpen(open, DOOR_ID)).toBe(true)
 
     // With the leaf's openness threaded, the ray tests the swung leaf at x=550,
@@ -194,7 +204,7 @@ describe('restoreOpenings', () => {
     const door = frontDoor()
     const swungOpen = sceneWith(door)
     const restored = sceneWith(door)
-    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_REF)
     const openness = new Map<string, number>()
 
     tickOpenings(
@@ -228,7 +238,7 @@ describe('restoreOpenings', () => {
     restoreOpenings({
       root,
       openings: [door],
-      interaction: toggleOpening(emptyOpeningInteraction(), DOOR_ID),
+      interaction: toggleOpening(emptyOpeningInteraction(), DOOR_REF),
       openness,
     })
 
@@ -239,7 +249,7 @@ describe('restoreOpenings', () => {
     const door = frontDoor()
     const earlierScene = sceneWith(door)
     const rebuiltScene = sceneWith(door)
-    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_REF)
     const openness = new Map<string, number>()
 
     tickOpenings({ root: earlierScene, openings: [door], interaction: open, openness }, FULL_STEP)
@@ -252,7 +262,7 @@ describe('restoreOpenings', () => {
     const door = frontDoor()
     const earlierScene = sceneWith(door)
     const rebuiltScene = sceneWith(door)
-    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_REF)
     const openness = new Map<string, number>()
 
     tickOpenings({ root: earlierScene, openings: [door], interaction: open, openness }, FULL_STEP)
@@ -270,35 +280,35 @@ describe('restoreOpenings', () => {
 
 describe('followStoredOpenings', () => {
   it('closes every door when the session store holds none open', () => {
-    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_REF)
 
-    const followed = followStoredOpenings(open, new Set())
+    const followed = followStoredOpenings(open, new Map())
 
     expect(isOpeningOpen(followed, DOOR_ID)).toBe(false)
   })
 
   it('leaves the interaction as it is when the store holds the same doors open', () => {
-    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_REF)
 
-    const followed = followStoredOpenings(open, new Set([DOOR_ID]))
+    const followed = followStoredOpenings(open, openPartsWith({ [DOOR_ID]: ['primary'] }))
 
     expect(followed).toBe(open)
   })
 
-  it('opens a door the store holds open that the interaction lacks, holding a copy of the stored set', () => {
-    const stored: ReadonlySet<string> = new Set([DOOR_ID])
+  it('opens a door the store holds open that the interaction lacks, holding a copy of the stored map', () => {
+    const stored = openPartsWith({ [DOOR_ID]: ['primary'] })
 
     const followed = followStoredOpenings(emptyOpeningInteraction(), stored)
 
     expect(isOpeningOpen(followed, DOOR_ID)).toBe(true)
-    expect(followed.openIds).not.toBe(stored)
+    expect(followed.openParts).not.toBe(stored)
   })
 
   it('swaps to the stored door when the interaction and the store hold equal counts of different doors', () => {
     const otherDoorId = 'opening:back-door'
-    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_REF)
 
-    const followed = followStoredOpenings(open, new Set([otherDoorId]))
+    const followed = followStoredOpenings(open, openPartsWith({ [otherDoorId]: ['primary'] }))
 
     expect(isOpeningOpen(followed, otherDoorId)).toBe(true)
     expect(isOpeningOpen(followed, DOOR_ID)).toBe(false)
@@ -309,12 +319,29 @@ describe('followStoredOpenings', () => {
     const root = sceneWith(door)
     const builtPose = fillGroupPose(root, DOOR_ID)
     const openness = new Map([[DOOR_ID, FULLY_OPEN]])
-    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_REF)
 
-    const followed = followStoredOpenings(open, new Set())
+    const followed = followStoredOpenings(open, new Map())
     tickOpenings({ root, openings: [door], interaction: followed, openness }, FULL_STEP)
 
     expect(openness.get(DOOR_ID)).toBe(0)
     expect(fillGroupPose(root, DOOR_ID)).toEqual(builtPose)
+  })
+
+  it('keeps the same state for a stored map with the same parts', () => {
+    const open = toggleOpening(emptyOpeningInteraction(), { openingId: 'w', part: 'upper' })
+    const sameParts = openPartsWith({ w: ['upper'] })
+
+    expect(followStoredOpenings(open, sameParts)).toBe(open)
+  })
+
+  it('copies a stored map with other parts', () => {
+    const open = toggleOpening(emptyOpeningInteraction(), { openingId: 'w', part: 'lower' })
+    const otherParts = openPartsWith({ w: ['upper'] })
+
+    const followed = followStoredOpenings(open, otherParts)
+
+    expect(followed.openParts).toEqual(otherParts)
+    expect(followed.openParts).not.toBe(otherParts)
   })
 })

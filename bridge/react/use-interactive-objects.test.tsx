@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest'
 import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
+import { openPartsWith } from './open-parts-test-support'
 import { useInteractiveObjects } from './use-interactive-objects'
 
-const SAMPLE_OPEN_DOORS: ReadonlySet<string> = new Set(['opening:front-door'])
+const FRONT_DOOR_ID = 'opening:front-door'
+const SAMPLE_OPEN_DOORS = openPartsWith({ [FRONT_DOOR_ID]: ['primary'] })
 
 function providerAround(store: SceneSessionStore) {
   return function SceneSessionWrapper({ children }: { children: ReactNode }) {

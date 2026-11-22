@@ -20,7 +20,16 @@ describe('openingUnderReach', () => {
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], { reachMm: REACH_MM })
 
-    expect(hit).toBe('opening:front-door')
+    expect(hit?.openingId).toBe('opening:front-door')
+  })
+
+  it('reports the primary part of a door it reaches', () => {
+    const door = doorAtZ2000('opening:front-door')
+
+    const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], { reachMm: REACH_MM })
+
+    expect(hit?.openingId).toBe('opening:front-door')
+    expect(hit?.part).toBe('primary')
   })
 
   it('excludes a cased opening even when it sits in reach directly ahead', () => {
@@ -47,7 +56,7 @@ describe('openingUnderReach', () => {
 
     const hit = openingUnderReach(eye, towardLeaf, [opening], { reachMm: REACH_MM })
 
-    expect(hit).toBe('opening:bay-window')
+    expect(hit?.openingId).toBe('opening:bay-window')
   })
 
   it('returns null when the walker looks away from the opening', () => {
@@ -89,7 +98,7 @@ describe('openingUnderReach', () => {
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [far, near], { reachMm: REACH_MM })
 
-    expect(hit).toBe('opening:near-door')
+    expect(hit?.openingId).toBe('opening:near-door')
   })
 
   it('tests a hinge door at its swung-open position when openness is set', () => {
@@ -113,7 +122,7 @@ describe('openingUnderReach', () => {
       openingUnderReach(eye, dir, [door], {
         openness: new Map([['opening:front-door', 1]]),
         reachMm: REACH_MM,
-      }),
+      })?.openingId,
     ).toBe('opening:front-door')
   })
 
@@ -137,7 +146,7 @@ describe('openingUnderReach', () => {
       openingUnderReach(eye, dir, [door], {
         openness: new Map([['opening:pocket-door', 1]]),
         reachMm: REACH_MM,
-      }),
+      })?.openingId,
     ).toBe('opening:pocket-door')
   })
 
@@ -153,7 +162,17 @@ describe('openingUnderReach', () => {
         reachMm: REACH_MM,
       })
 
-      expect(hit).toBe('opening:hung-window')
+      expect(hit?.openingId).toBe('opening:hung-window')
+    })
+
+    it('reports the lower sash of a hung window it reaches low', () => {
+      const window = hungWindowAtZ2000('opening:hung-window')
+      const eye: Vector3 = { x: 1000, y: 1100, z: -1000 }
+
+      const hit = openingUnderReach(eye, towardDoor, [window], { reachMm: REACH_MM })
+
+      expect(hit?.openingId).toBe('opening:hung-window')
+      expect(hit?.part).toBe('lower')
     })
 
     it('is not reached by looking at the wall above its head when it is open', () => {
@@ -174,7 +193,7 @@ describe('openingUnderReach', () => {
 
       const hit = openingUnderReach(eye, towardDoor, [window], { reachMm: REACH_MM })
 
-      expect(hit).toBe('opening:hung-window')
+      expect(hit?.openingId).toBe('opening:hung-window')
     })
   })
 })

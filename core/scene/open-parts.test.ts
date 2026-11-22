@@ -81,4 +81,18 @@ describe('sameOpenParts', () => {
     expect(sameOpenParts(windowUpper, windowAndDoor)).toBe(false)
     expect(sameOpenParts(new Map(), new Map())).toBe(true)
   })
+
+  it('treats two maps with the same number of openings but different opening ids as different', () => {
+    const windowUpper: OpenParts = new Map([[WINDOW_ID, partsOf('upper')]])
+    const doorUpper: OpenParts = new Map([[DOOR_ID, partsOf('upper')]])
+
+    expect(sameOpenParts(windowUpper, doorUpper)).toBe(false)
+  })
+
+  it('treats part sets of the same size that share only some parts as different', () => {
+    const upperAndLower: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'lower')]])
+    const upperAndPrimary: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'primary')]])
+
+    expect(sameOpenParts(upperAndLower, upperAndPrimary)).toBe(false)
+  })
 })

@@ -2,13 +2,20 @@ import type { ReactNode } from 'react'
 import { renderHook } from '@testing-library/react'
 import { expect } from 'vitest'
 
-import { createEmptyProject, createFloor, createOpening, createWall } from '../../core'
+import {
+  createEmptyProject,
+  createFloor,
+  createOpening,
+  createWall,
+  type OpenParts,
+} from '../../core'
 import { buildScene, NeutralMaterialProvider, type SceneRoot } from '../../engine'
 import { createActiveFloorStore, type ActiveFloorStore } from '../active-floor/active-floor-store'
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
 import { createEditorSession } from '../../session/testing'
 import { ActiveFloorProvider } from './active-floor-provider'
 import { EditorSessionProvider } from './editor-session-provider'
+import { openPartsWith } from './open-parts-test-support'
 import { tickOpeningMotion, useOpeningMotion } from './use-opening-motion'
 import { viewSceneGraph, type SceneScope } from './view-scene-graph'
 
@@ -102,7 +109,7 @@ export function twoFloorEnvironment(scope: SceneScope): TwoFloorEnvironment {
 
 export interface HookProps {
   root: SceneRoot
-  stored: ReadonlySet<string>
+  stored: OpenParts
 }
 
 /** Renders the opening motion hook under the environment's providers. */
@@ -146,7 +153,10 @@ export function seatDoorOpenOnRoot(
   }
   env.sceneSession.updateSceneSession({ scope: 'floor' })
   env.activeFloor.setActiveFloorId(placement.floorId)
-  const probe = renderMotion(env, { root, stored: new Set([placement.doorId]) })
+  const probe = renderMotion(env, {
+    root,
+    stored: openPartsWith({ [placement.doorId]: ['primary'] }),
+  })
   tickOpeningMotion(root, probe.result.current, FULL_STEP)
   probe.unmount()
   env.sceneSession.updateSceneSession({ scope: before.scope })

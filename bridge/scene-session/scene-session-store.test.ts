@@ -22,7 +22,7 @@ const defaultSceneSession: SceneSessionState = {
   scope: 'floor',
   showUnderground: true,
   edgeOverlay: false,
-  openDoorIds: new Set<string>(),
+  openDoorIds: new Map(),
   savedCamera: null,
   walkPose: null,
   sessionRestored: false,
@@ -35,6 +35,19 @@ describe('createSceneSessionStore', () => {
 
     expect(session).toEqual(defaultSceneSession)
     expect(session.openDoorIds.size).toBe(0)
+  })
+
+  it('starts with no open parts, held as a map', () => {
+    expect(createSceneSessionStore().getSceneSession().openDoorIds).toBeInstanceOf(Map)
+  })
+
+  it("holds a copy of a seeded open-parts map, not the caller's own map", () => {
+    const seed = new Map([['opening:front-door', new Set(['primary' as const])]])
+
+    const held = createSceneSessionStore({ openDoorIds: seed }).getSceneSession().openDoorIds
+
+    expect(held).toEqual(seed)
+    expect(held).not.toBe(seed)
   })
 
   it('starts a fresh session with no saved camera', () => {
