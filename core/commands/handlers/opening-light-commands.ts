@@ -17,10 +17,13 @@ const setOpeningLightHandler: CommandHandler<Project, SetOpeningLightParams> = {
   apply(state, params) {
     // Keep every key of the replaced record except the time and the weather, so
     // `extensions` and unknown keys survive; the new weather is added only when given.
+    // Build `next` and reassign the whole root so the inverse-capture proxy records
+    // the root-level change; otherwise undo back to "no light" would break.
     const next: OpeningLight = { ...state.openingLight, observedAt: params.light.observedAt }
-    delete next.weather
-    if (params.light.weather) {
+    if (params.light.weather !== undefined) {
       next.weather = params.light.weather
+    } else {
+      delete next.weather
     }
     state.openingLight = next
   },
