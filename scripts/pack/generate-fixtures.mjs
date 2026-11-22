@@ -1,10 +1,11 @@
 // scripts/pack/generate-fixtures.mjs
 //
-// One-shot generator for the pack fixtures under tests/fixtures/packs/. It writes
-// two pack trees with real bytes whose hashes the integrity check can verify:
-// a well-formed pack that passes, and a deliberately broken pack that exercises
+// Generator for the pack fixtures under tests/fixtures/packs/. It writes pack
+// trees with real bytes whose hashes the integrity check can verify: a
+// well-formed pack that passes, and a deliberately broken pack that exercises
 // every failure path. Run with `node scripts/pack/generate-fixtures.mjs`; the
-// output is committed, so this script only needs re-running when a fixture changes.
+// output is committed, so re-run it only when a fixture changes. Importing this
+// module has no side effects: only running it as the entry point writes to disk.
 
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
@@ -22,24 +23,25 @@ const webp = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x04, 0, 0, 0, 0x57, 0x45, 0x4
  * Write a pack tree through `sink`: every entry of `files` is a path relative
  * to the pack directory, and the manifest is serialized last.
  * @param {{ writeFile(relativePath: string, bytes: Buffer | string): Promise<void> }} sink
- * @param {string} name pack directory name under tests/fixtures/packs/
- * @param {object} manifest
- * @param {Record<string, Buffer | string>} files
+ * @param {{ directory: string, manifest: object, files: Record<string, Buffer | string> }} pack
+ *   `directory` is the pack directory name under tests/fixtures/packs/
  */
-async function writePack(sink, name, manifest, files) {
+async function writePack(sink, { directory, manifest, files }) {
   for (const [rel, bytes] of Object.entries(files)) {
-    await sink.writeFile(`${name}/${rel}`, bytes)
+    await sink.writeFile(`${directory}/${rel}`, bytes)
   }
-  await sink.writeFile(`${name}/manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`)
+  await sink.writeFile(`${directory}/manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`)
 }
+
+const WELL_FORMED_PACK_DIRECTORY = 'vernacular-starter-1.0.0'
+const BROKEN_PACK_DIRECTORY = 'broken-pack-wrong'
 
 export async function writeWellFormedPack(sink) {
   const glb = Buffer.from('vernacular starter chair glb placeholder\n')
   const hash = sha256(glb)
-  await writePack(
-    sink,
-    'vernacular-starter-1.0.0',
-    {
+  await writePack(sink, {
+    directory: WELL_FORMED_PACK_DIRECTORY,
+    manifest: {
       packId: 'vernacular-starter',
       version: '1.0.0',
       license: 'CC0-1.0',
@@ -61,14 +63,14 @@ export async function writeWellFormedPack(sink) {
         },
       ],
     },
-    {
+    files: {
       [`assets/${hash}.glb`]: glb,
       [`thumbnails/${hash}.webp`]: webp,
       LICENSE: 'CC0-1.0\n',
       NOTICE: 'Vernacular project\n',
       'CHANGELOG.md': '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n',
     },
-  )
+  })
 }
 
 export async function writeBrokenPack(sink) {
@@ -76,10 +78,9 @@ export async function writeBrokenPack(sink) {
   // the integrity check reports a mismatch. The directory name, license, thumbnail,
   // orphan file, and missing NOTICE each trip a distinct failure path.
   const declaredHash = sha256(Buffer.from('the bytes this hash was computed from\n'))
-  await writePack(
-    sink,
-    'broken-pack-wrong',
-    {
+  await writePack(sink, {
+    directory: BROKEN_PACK_DIRECTORY,
+    manifest: {
       packId: 'broken-pack',
       version: '1.0.0',
       license: 'CC0-1.0',
@@ -99,14 +100,19 @@ export async function writeBrokenPack(sink) {
         },
       ],
     },
-    {
+    files: {
       [`assets/${declaredHash}.glb`]: Buffer.from('these are not the declared bytes\n'),
       'assets/orphan.glb': Buffer.from('an orphan asset no manifest entry references\n'),
       LICENSE: 'CC-BY-NC-4.0\n',
       'CHANGELOG.md': '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n',
     },
-  )
+  })
 }
+
+export const FIXTURE_PACKS = [
+  { directory: WELL_FORMED_PACK_DIRECTORY, write: writeWellFormedPack },
+  { directory: BROKEN_PACK_DIRECTORY, write: writeBrokenPack },
+]
 
 const diskSink = {
   async writeFile(relativePath, bytes) {
@@ -117,11 +123,10 @@ const diskSink = {
 }
 
 async function main() {
-  for (const name of ['vernacular-starter-1.0.0', 'broken-pack-wrong']) {
-    await rm(join(root, name), { recursive: true, force: true })
+  for (const { directory, write } of FIXTURE_PACKS) {
+    await rm(join(root, directory), { recursive: true, force: true })
+    await write(diskSink)
   }
-  await writeWellFormedPack(diskSink)
-  await writeBrokenPack(diskSink)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
