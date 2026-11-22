@@ -1,6 +1,7 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { SceneChromeContext, useSceneChromeHidden } from './scene-chrome-context'
 
+/** Scopes the scene chrome that a mounted failure host hides. */
 export function SceneChromeProvider({ children }: { children: ReactNode }): ReactElement {
   const [hidden, setHidden] = useState(false)
   return (

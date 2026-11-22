@@ -1,6 +1,6 @@
 import { createContext, useContext, useLayoutEffect } from 'react'
 
-export interface SceneChromeState {
+interface SceneChromeState {
   hidden: boolean
   setHidden: (hidden: boolean) => void
 }
@@ -14,7 +14,7 @@ export function useSceneChromeHidden(): boolean {
   return useContext(SceneChromeContext).hidden
 }
 
-/** Hides the scene chrome of the nearest provider for as long as the caller is mounted. */
+/** Hides the scene chrome of the nearest provider for as long as the caller is mounted; one failure host per provider is assumed. */
 export function useHideSceneChrome(): void {
   const { setHidden } = useContext(SceneChromeContext)
   useLayoutEffect(() => {

@@ -186,6 +186,12 @@ export const UNCOVERED_COMPONENTS: {
       'draws nothing of its own: it wraps the failure view that fills the slot in the element that marks the failure kind, and the views it wraps have stories (see ADR-0111).',
   },
   {
+    component: 'FailureProbe',
+    file: 'bridge/react/scene-failure-probe-test-support.tsx',
+    reason:
+      'test-only probe that fills the failure slot in the scene-canvas and failure-host tests: one button that shows the failure kind it was given and hands a click to the reload callback; it is never rendered by the app, so an isolated story would document nothing a user sees (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
     component: 'ScopeToggle',
     file: 'bridge/react/scene-nav-segmented-toggles.tsx',
     reason:
