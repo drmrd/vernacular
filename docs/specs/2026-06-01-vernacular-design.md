@@ -409,6 +409,7 @@ The user picks a backend for each project when it is made. A new project gets a 
 Layered: schema-level (in `core/migrations/schema/`) and per-registry (in `core/migrations/registries/`). Both run on open.
 
 - Pre-migration backup to `.house-backups/pre-migration-v<n>-<hash>.json` after a decode that migrated succeeds, before the document reaches the caller (ADR-0182, ADR-0190).
+- A document that fails the strict format check after migration does not open. The refusal writes no file of the project, not even a migration backup, so the stored file stays as it is. The user sees why, and where a known repair applies, can open a repaired copy (ADR-0190).
 - Sync for fast migrations; async with progress UI for slow ones (> 1000 entities or > 1MB of JSON).
 - Atomic; migration runs in memory, so the stored file is never partially written. Migration throws → nothing on disk changed, so nothing is restored; surface error with "report bug" prompt.
 

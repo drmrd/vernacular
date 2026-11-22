@@ -35,7 +35,7 @@ sourceFiles:
     storage/zip/read-archive.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-21
 ---
 
 # ADR-0003: Provider pattern for storage with cloud-sync seam
@@ -54,11 +54,10 @@ updated: 2026-11-19
 > document handle reads the project once through `DocumentStore.read`
 > (`session/handle/read-for-open.ts`). A `not-found` result starts from the request's `create` step
 > when the request has one, and fails the open with `not-found` when it does not. A stored document
-> that does not decode fails the open, unless it only breaks the format rules and opens under the
-> interim rule of ADR-0190. A broken project is still never replaced by an empty one.
-> `ProjectNotFoundError` remains for an archive that holds no document and for a stored file that is
-> gone when `openDespiteFormatFaults` reads it. The section below on the typed "not found"
-> describes the earlier form.
+> that does not decode fails the open, and so does one that breaks the format rules (ADR-0190). A
+> broken project is still never replaced by an empty one. `ProjectNotFoundError` remains for an
+> archive that holds no document and for a replace that finds no stored document. The section below
+> on the typed "not found" describes the earlier form.
 
 > Updated on 2026-11-19. An import no longer throws `ProjectNotFoundError` for an archive that
 > holds no document. `importProjectFile` (`storage/import/import-project-file.ts`) reads the file
@@ -66,8 +65,8 @@ updated: 2026-11-19
 > typed result. An archive with no document is the failure `no-document`, and the import shows it
 > with the same sentence as a file that is no archive. A file name with no supported ending is the
 > failure `unsupported-file`, and `UnsupportedProjectFileError` is gone. In production code
-> `ProjectNotFoundError` remains only for a stored file that is gone when `openDespiteFormatFaults`
-> reads it.
+> `ProjectNotFoundError` remains only for a replace of a stored project whose document is gone
+> (`DocumentStore.replaceStored`).
 
 Accepted. The three provider interfaces, a Map-backed `InMemoryProjectStore`
 reference implementation, and a durable `IndexedDbProjectStore` are implemented

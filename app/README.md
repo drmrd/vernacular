@@ -30,6 +30,12 @@ Where things happen:
   address follows the open project, and the open project follows the address after the user moves
   through the history or edits it. A project gets its address once the store holds it and the
   browser keeps it, and a project that a flow opens gets a new history entry.
+- `failed-open-model.ts` maps a failure to what the failed-open dialog of `editor/projects/` shows:
+  the cause, the details, and the repair offer. `use-failed-open-dialog.ts` holds the dialog and its
+  choice dialog for the page. It shows a stored project that did not open and a file that did not
+  import, and it runs "Open as a new project" and "Replace the stored project" through
+  `openRepairedAsNew` and `replaceWithRepaired` of `session/`, and the file's repair through
+  the import flow with `applyRepair`. A file opened from the editor still shows a notice.
 - `projects-screen.tsx` puts the Projects page of `editor/projects/` into the application.
   `use-project-cards.ts` reads its cards with `listProjectCards` of `session/` when the page mounts,
   when the open project changes, after a try from the page that ends with no project, and when the
@@ -39,8 +45,10 @@ Where things happen:
   project", "Import file", a file dropped on the page, and "Open folder" (where the browser can
   open folders) run their flows through `runPageFlow` of the navigation, so a project that opens
   replaces the page. The page fills the window, so a file dropped anywhere on it imports. A failure
-  to open shows in the page's one notice. `page-notice-text.ts` gives its sentence and leaves it
-  out when the card of the project that failed already says it. If that card lacks the line, the
+  to open shows in the page's one notice, except a project that did not open, a storage that did not
+  answer, and a folder that is not available: those show the failed-open dialog. `page-notice-text.ts`
+  gives the sentence of a notice and leaves it out when the card of the project that failed already
+  says it. If that card lacks the line, the
   notice shows the sentence. The notice of a page action belongs to no card, so when Open folder
   picks a listed folder that another tab holds, the notice shows the sentence and the card keeps
   its line. "Switch projects" in the Project menu calls `showProjects` of the navigation, which
