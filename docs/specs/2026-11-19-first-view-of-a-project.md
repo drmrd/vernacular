@@ -142,6 +142,7 @@ The document is written on the recommended answer of each question still open. T
 4. Settled on 19 November (answer 10). The guess and the mark land before the view from the front, each when it is built and reviewed.
 5. For the design of #744: the entry view needs the front wall solid at the entry distance for a house of any size. That rules out a fixed distance in millimetres. (a) Accept it as a fixed constraint of #744, which then measures relative to the model or the orbit target (call 26). (b) Leave it open, and accept that answer 4 may reopen when #744 is designed.
 6. A file with several marks. It can come from an edit outside Vernacular, or from a build older than the mark: such a build keeps the unknown field, and its paste copies it. (a) No report yet. The first marked door in document order wins everywhere, the next edit of the mark heals the file, and a check that counts marks is ready for the load checks of the command layer. (b) A notice when the project opens, which edits the document handle of the session layer.
+   Settled on 21 November on option (a), by the builder, since the issue left the choice open (ADR-0204, extension of 21 November). The owner can still overrule it.
 7. Which later items of section 9 get an issue now? (a) All five, in the `1.0` milestone, since none blocks the beta. (b) Only some, or later.
 
 ## 5. The design
@@ -196,7 +197,7 @@ interface Opening {
 - A field on the door needs no reference. A reference from the project would need a floor id and an opening id, because opening ids are unique only within a floor. It would also name a missing door after a delete. The field moves with its door and is deleted with it. An undo of the delete brings both back. Three handlers remove openings today: remove opening (`core/commands/handlers/opening-commands.ts:271`), delete selection (`core/commands/handlers/transform-commands.ts:30-43`), and remove floor (`core/commands/handlers/project-commands.ts:232`). They need no change.
 - The trade: the shape of the file does not hold "at most one". Commands hold it, in kind with ADR-0179. Setting the mark clears every other mark in the same step.
 - Handlers that add openings from their parameters drop `entrance` (call 4). The paste handler drops it, because `instantiateClipboard` copies every field (`core/clipboard/clipboard.ts:116`) and the paste handler appends the copies unchanged (`core/commands/handlers/transform-commands.ts:157-165`). The add opening handler drops it (`core/commands/handlers/opening-commands.ts:52`). So does the add floor handler (`core/commands/handlers/project-commands.ts:226`).
-- A change of type to a window drops the mark in `retypeOpening` (`core/commands/handlers/opening-commands.ts:232-246`), which spreads every field today.
+- A change of type to a window drops the mark in `retypeOpening` (`core/commands/handlers/opening-commands.ts:232-246`), which spreads every field today. The mark carries only from a door to a door.
 - A test runs every registered command through the samples of `core/commands/testing/command-samples.ts`. It checks that at most one door is marked after each.
 - `entranceOf` names the first marked door in document order: floors in order, then openings in order within a floor. The inspector and the handlers call it too. Only that door shows the box ticked. The inspector matches it by floor and id together, because ids repeat across floors (call 28). Clearing the mark removes every `entrance` key. A mark on an opening that is not a door is ignored.
 - A file with several marks passes the strict check, because the schema cannot say "at most one". It opens, and `entranceOf` names the first. The next command that sets or clears the mark removes every extra mark. So the file heals with the first edit of the entrance.
@@ -226,6 +227,8 @@ When the guess is in use, the inspector of the guessed door shows the checkbox u
 The guess can move when the user adds a door, and the sample sun moves with it. ADR-0193 records that. A mark ends it.
 
 Left to the builder: the command names, the name of the field on the scene node, and the name of the check that counts marked doors.
+
+The builder chose these on 21 November (ADR-0204). The commands are `project/mark-main-entrance` and `project/clear-main-entrance`, built by `markMainEntrance(floorId, openingId)` and `clearMainEntrance()`. The scene node field is `entrance`, the same as the document field. The check is `countMarkedDoors`. The palette command has the id `mark-main-entrance` and the label "Mark as main entrance". The entrance role of a door in the inspector comes from `entranceRoleOf`, and `entranceOf` is called from the editor through `selectedOpeningContext` and the palette command in `editor/commands/entrance-commands.ts`, with no `use-entrance` hook.
 
 ### 5.3 The entry view
 

@@ -121,7 +121,7 @@ Project
 ├── floors[]
 │   ├── meta (name, elevation, defaultCeilingHeight, eraOverride?)
 │   ├── walls[]
-│   ├── openings[]            (doors, windows, transoms, sidelights)
+│   ├── openings[]            (doors, windows, transoms, sidelights; one door may carry entrance: true)
 │   ├── rooms[]               (derived polygons; purpose, eraOverride?, subPurpose?)
 │   ├── trim[]                (hand-placed runs: paths along wall faces; profile reference;
 │   │                          room-owned runs come from the room, ADR-0223)

@@ -17,7 +17,7 @@ sourceFiles:
     editor/plan/use-opening-placement.ts,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-21
 ---
 
 # ADR-0179: Domain rules live in the command handlers
@@ -67,3 +67,17 @@ A handler validates its command before it changes anything.
 
 - `docs/specs/2026-11-14-architecture-refactor-round.md`, section 5.3.
 - ADR-0122, which this partly supersedes.
+
+## Amendment 2026-11-21: at most one main entrance
+
+The rule that a project holds at most one marked door lives in the handlers, not in the shape of the
+file ([[ADR-0204-the-main-entrance-and-the-view-from-the-front]]). The mark and clear commands of
+`core/commands/handlers/entrance-commands.ts` reassign every floor so that one mark remains or
+none, and the handlers that copy or add openings drop the mark through `withoutEntranceMark`. A
+test runs every registered command and checks the rule after each.
+
+Loading a file with several marks follows option (a) of open question 6 of the first-view
+specification. Nothing is reported, the first marked door in document order wins, and the next
+command that marks or clears the entrance removes the extra marks. `countMarkedDoors` in
+`core/commands/entrance-rule.ts` counts the marks and is ready for the load checks of the command
+layer, which still decide whether any rule is reported or repaired.

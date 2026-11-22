@@ -3,6 +3,7 @@ import { rotatePoint, translatePoint } from '../../geometry/point'
 import type { Dimension, Floor, Opening, Point, Project, Wall } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
+import { withoutEntranceMark } from '../entrance-rule'
 import { mapTargetFloor } from './map-target-floor'
 
 // Moves the start/end of every wall and dimension whose id is in `idSet` through `move`,
@@ -159,7 +160,7 @@ const pasteEntitiesHandler: CommandHandler<Project, PasteEntitiesParams> = {
     mapTargetFloor(state, params.floorId, (floor) => ({
       ...floor,
       walls: [...floor.walls, ...params.walls],
-      openings: [...floor.openings, ...params.openings],
+      openings: [...floor.openings, ...params.openings.map(withoutEntranceMark)],
       dimensions: [...floor.dimensions, ...params.dimensions],
     }))
   },

@@ -2,6 +2,7 @@ import type { SnapPreferencesStore } from '../plan/snap-preferences-store'
 import type { ViewControls } from '../viewport/view-mode'
 import type { EditorCommand } from './command'
 import { createEditorCommands } from './editor-commands'
+import { createEntranceCommands } from './entrance-commands'
 import { createSaveCommand } from './save-command'
 import { createSnapCommands } from './snap-commands'
 import { createViewCommands } from './view-commands'
@@ -24,6 +25,7 @@ export interface CommandSetDeps {
 export function createCommandSet({ view, snapStore, onSave }: CommandSetDeps): EditorCommand[] {
   return [
     ...createEditorCommands(),
+    ...createEntranceCommands(),
     ...createViewCommands(view),
     ...createSnapCommands(snapStore),
     ...(onSave ? [createSaveCommand(onSave)] : []),

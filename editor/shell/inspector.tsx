@@ -21,7 +21,6 @@ import {
   type Command,
   type DimensionSceneNode,
   type FurnitureInstance,
-  type Opening,
   type Project,
   type RoomOverride,
   type RoomSceneNode,
@@ -36,7 +35,11 @@ import './inspector.css'
 import { DimensionInspector } from '../plan/dimension-inspector'
 import { FurnitureInspector } from '../plan/furniture-inspector'
 import { OpeningInspector } from '../plan/opening-inspector'
-import { floorOpenings, openingWallHasOneRoomSide } from '../plan/opening-inspector-context'
+import {
+  floorOpenings,
+  selectedOpeningContext,
+  singleSelectedModelOpening,
+} from '../plan/opening-inspector-context'
 import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
 import { RoomNameEditor } from '../plan/room-name-editor'
 import { RoomPeriodEditor } from '../plan/room-period-editor'
@@ -100,38 +103,6 @@ function singleSelectedRoomNode(
 // every room sharing that floor.
 function roomsSharingFloor(rooms: readonly RoomSceneNode[], floorId: string): number {
   return rooms.filter((room) => room.floorId === floorId).length
-}
-
-interface SelectedOpening {
-  floorId: string
-  opening: Opening
-}
-
-/**
- * The single selected raw `Opening` and its floor, or null. The selection holds
- * the namespaced scene-node id; this strips `OPENING_NODE_PREFIX` and finds the
- * raw model opening on its floor so the inspector edits the persisted record.
- * Mutually exclusive with a single selected wall or room (a node id names one).
- */
-function singleSelectedOpening(
-  selectedIds: ReadonlySet<string>,
-  project: Readonly<Project>,
-): SelectedOpening | null {
-  if (selectedIds.size !== 1) {
-    return null
-  }
-  const [onlyId] = selectedIds
-  if (onlyId === undefined || !onlyId.startsWith(OPENING_NODE_PREFIX)) {
-    return null
-  }
-  const rawId = onlyId.slice(OPENING_NODE_PREFIX.length)
-  for (const floor of project.floors) {
-    const opening = floor.openings.find((candidate) => candidate.id === rawId)
-    if (opening !== undefined) {
-      return { floorId: floor.id, opening }
-    }
-  }
-  return null
 }
 
 /**
@@ -346,6 +317,7 @@ interface SelectionInspectorProps {
 // The selection-driven content: the wall, room, opening, or dimension editor for
 // a single selection, otherwise a brief selection summary.
 function SelectionInspector({ session, graph, selectedIds, dispatch }: SelectionInspectorProps) {
+  const activeFloorId = useActiveFloorId()
   const wallNode = singleSelectedWallNode(selectedIds, graph)
   if (wallNode !== null) {
     const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
@@ -377,7 +349,7 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
     )
   }
   const project = session.getProject()
-  const selectedOpening = singleSelectedOpening(selectedIds, project)
+  const selectedOpening = singleSelectedModelOpening(selectedIds, project, activeFloorId)
   if (selectedOpening !== null) {
     return (
       // Key on the opening's editable values so the inspector remounts when the
@@ -385,11 +357,9 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
       // fields seed from the opening at mount and never re-read it afterwards.
       <OpeningInspector
         key={`${selectedOpening.opening.id}:${selectedOpening.opening.width}:${selectedOpening.opening.height}:${selectedOpening.opening.sillHeight}:${selectedOpening.opening.type}`}
-        floorId={selectedOpening.floorId}
-        opening={selectedOpening.opening}
+        {...selectedOpeningContext(selectedOpening, graph)}
         units={project.meta.units}
         siblingOpenings={floorOpenings(project, selectedOpening.floorId)}
-        wallHasOneRoomSide={openingWallHasOneRoomSide(graph, selectedOpening.opening.id)}
         dispatch={session.dispatch}
       />
     )

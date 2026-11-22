@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
+const SAVING_STATUS_TEXT = 'Saving...'
+
 // Every app selector the journeys depend on lives here, so that when a later
 // makeover slice restyles the shell only this module changes, not each spec.
 export const selectors = {
@@ -138,6 +140,34 @@ export async function drawWall(
   await canvas.click({ position: from })
   await canvas.click({ position: to })
   await page.keyboard.press('Enter')
+}
+
+// The closed room that the journeys share, in canvas pixels.
+export const CLOSED_ROOM = { left: 200, right: 500, top: 150, bottom: 400 }
+
+// Draws the shared closed room, closed by clicking back on the first corner.
+export async function drawClosedRoom(page: Page): Promise<void> {
+  await selectWallTool(page)
+  const canvas = selectors.planCanvas(page)
+  const { left, right, top, bottom } = CLOSED_ROOM
+  await canvas.click({ position: { x: left, y: top } })
+  await canvas.click({ position: { x: right, y: top } })
+  await canvas.click({ position: { x: right, y: bottom } })
+  await canvas.click({ position: { x: left, y: bottom } })
+  await canvas.click({ position: { x: left, y: top } })
+  await expect(selectors.roomProxies(page)).toHaveCount(1)
+}
+
+// Runs an edit and waits until it is stored. "All changes saved" is already on screen from the
+// save of an earlier edit, so it cannot tell the two saves apart. The status shows "Saving..."
+// from the edit until the write ends, which is never shorter than the autosave delay. The wait for
+// that state starts before the edit, in the page, so it cannot miss the state; the saved text that
+// is read after it can only belong to the edit.
+export async function editAndWaitForTheSave(page: Page, edit: () => Promise<void>): Promise<void> {
+  const saveStarted = page.getByText(SAVING_STATUS_TEXT).waitFor()
+  await edit()
+  await saveStarted
+  await expect(selectors.savedStatus(page)).toBeVisible()
 }
 
 // Assert the plan exposes the given number of walls. The wall count is observed

@@ -7,6 +7,7 @@ import { createStair } from '../../model/factories'
 import { solidTreatment } from '../../model/paint'
 import type { Project } from '../../model/types'
 import * as scenes from '../handlers/environment-scene-commands'
+import * as entrance from '../handlers/entrance-commands'
 import * as paint from '../handlers/paint-commands'
 import * as palettes from '../handlers/palette-commands'
 import * as projects from '../handlers/project-commands'
@@ -55,6 +56,12 @@ const PROJECT_SAMPLES: CommandSamples = {
   [projects.SET_FLOOR_STYLE]: () => projects.setFloorStyle(ids.groundFloor, undefined).params,
   [projects.SET_PROJECT_PERIOD]: () => projects.setProjectPeriod('edwardian').params,
   [projects.SET_PROJECT_STYLE]: () => projects.setProjectStyle(undefined).params,
+}
+
+const ENTRANCE_SAMPLES: CommandSamples = {
+  [entrance.MARK_MAIN_ENTRANCE]: () =>
+    entrance.markMainEntrance(ids.groundFloor, ids.sideOpening).params,
+  [entrance.CLEAR_MAIN_ENTRANCE]: () => entrance.clearMainEntrance().params,
 }
 
 const PALETTE_SAMPLES: CommandSamples = {
@@ -139,6 +146,7 @@ const ENVIRONMENT_SCENE_SAMPLES: CommandSamples = {
 /** Sample parameters for every project-wide command type, keyed by command type. */
 export const PROJECT_COMMAND_SAMPLES: CommandSamples = {
   ...PROJECT_SAMPLES,
+  ...ENTRANCE_SAMPLES,
   ...PALETTE_SAMPLES,
   ...ROOM_SAMPLES,
   ...STAIR_SAMPLES,

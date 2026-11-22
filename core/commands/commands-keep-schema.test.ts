@@ -2,19 +2,14 @@ import { describe, expect, it } from 'vitest'
 import type { Command } from './command'
 import { CommandRegistry } from './command-registry'
 import { Dispatcher } from './dispatcher'
-import { registerAllProjectCommands } from './handlers/register-all-project-commands'
-import { COMMAND_SAMPLES } from './testing/command-samples'
 import { PAINTED_SURFACE } from './testing/extensions-fixture'
+import { fullRegistry, resultOfSample } from './testing/sample-results'
 import { schemaFixture } from './testing/schema-fixture'
 import { checkCurrentSchema } from '../format/current-schema'
 import { surfaceKey } from '../model/paint'
 import type { Project } from '../model/types'
 
 const MIXED_PAINT_COMMAND = 'test.mix-paint-entry'
-
-function fullRegistry(): CommandRegistry<Project> {
-  return registerAllProjectCommands(new CommandRegistry<Project>())
-}
 
 /** Dispatches a command to a fresh copy of the fixture and returns the changed copy. */
 function applyToFixture(
@@ -24,19 +19,6 @@ function applyToFixture(
   const project = structuredClone(schemaFixture())
   new Dispatcher<Project>(project, registry).dispatch(command(project))
   return project
-}
-
-/** Applies the sample command of `type` to a fresh copy of the fixture and returns the result. */
-function resultOfSample(registry: CommandRegistry<Project>, type: string): Project {
-  const sample = COMMAND_SAMPLES[type]
-  if (sample === undefined) {
-    throw new Error(`no sample parameters for the registered command ${type}`)
-  }
-  return applyToFixture(registry, (project) => ({
-    type,
-    params: sample(project),
-    description: type,
-  }))
 }
 
 /** A handler that gives a solid paint entry the field that only a pattern entry defines. */

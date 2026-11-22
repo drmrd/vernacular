@@ -371,11 +371,15 @@
         "kind": "object",
         "type": "OpeningOrientation"
       },
+      "entrance": {
+        "kind": "leaf"
+      },
       "extensions": {
         "kind": "opaque"
       }
     },
     "optional": [
+      "entrance",
       "extensions"
     ]
   },

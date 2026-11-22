@@ -109,9 +109,10 @@ function walls(): Wall[] {
   ]
 }
 
-function opening(id: string, hostWallId: string): Opening {
+function opening(id: string, hostWallId: string, entrance?: true): Opening {
   const position = OPENING_POSITION_MM
-  return probed(createOpening({ type: FIXTURE_DOOR_TYPE, hostWallId, position, id }), id)
+  const created = createOpening({ type: FIXTURE_DOOR_TYPE, hostWallId, position, id })
+  return probed(entrance === undefined ? created : { ...created, entrance }, id)
 }
 
 function underlay(id: string): Underlay {
@@ -133,7 +134,10 @@ function groundFloor(): Floor {
       ...floor,
       periodOverride: FIXTURE_PERIOD,
       styleOverride: { styleId: FIXTURE_STYLE_ID },
-      openings: [opening(ids.mainOpening, ids.mainWall), opening(ids.sideOpening, ids.sideWall)],
+      openings: [
+        opening(ids.mainOpening, ids.mainWall, true),
+        opening(ids.sideOpening, ids.sideWall),
+      ],
       underlays: [underlay(ids.mainUnderlay), underlay(ids.spareUnderlay)],
       dimensions: [
         dimension(ids.mainDimension, 0),

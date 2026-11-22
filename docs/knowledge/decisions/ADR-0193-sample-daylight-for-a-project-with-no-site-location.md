@@ -399,3 +399,18 @@ was written.
   exterior door". The guess part of that bullet is settled by ADR-0204: the function now uses the
   guessed entrance. What stays open is the door marked by the user, and the camera and the sun
   calling the same function.
+
+## Amendment (2026-11-21): a marked door wins over the guess
+
+A door that the owner marks as the main entrance now sets the front
+([[ADR-0204-the-main-entrance-and-the-view-from-the-front]]). Two passages of this record change,
+beyond what the amendment above says.
+
+- "The front direction" returns `PLAN_DOWN` for "a plan whose only door is interior". That holds
+  only while no door is marked. A marked door, interior or not, gives the front. On an exterior run
+  it is the outward normal of the run. On an interior wall it is the side that faces away from the
+  center of the bounds of the wall endpoints on its floor, then the side nearer plan-down, then the
+  side nearer plan-right.
+- The "Not decided" bullet "The entrance" is decided. The mark is built, and it wins over the
+  guess. The camera of #627 and the sun still call the same function, and the camera is the part
+  that stays open.

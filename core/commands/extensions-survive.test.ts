@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { CommandRegistry } from './command-registry'
-import { Dispatcher } from './dispatcher'
-import { registerAllProjectCommands } from './handlers/register-all-project-commands'
+import type { CommandRegistry } from './command-registry'
 import { COMMAND_SAMPLES } from './testing/command-samples'
 import { REMOVED_OBJECTS } from './testing/command-removals'
 import { UNKNOWN_PROBE_KEY, createExtensionsFixture } from './testing/extensions-fixture'
+import { dispatchSample, fullRegistry } from './testing/sample-results'
 import {
   KNOWN_KEYS,
   KNOWN_ROOT_TYPE,
@@ -110,19 +109,6 @@ function missingFrom(before: Map<string, Carrier>, after: Map<string, Carrier>):
   return identitiesWithExtensions(before)
     .filter((identity) => !after.has(identity))
     .sort()
-}
-
-function fullRegistry(): CommandRegistry<Project> {
-  return registerAllProjectCommands(new CommandRegistry<Project>())
-}
-
-function dispatchSample(project: Project, type: string): void {
-  const sample = COMMAND_SAMPLES[type]
-  if (sample === undefined) {
-    throw new Error(`no sample parameters for the registered command ${type}`)
-  }
-  const dispatcher = new Dispatcher<Project>(project, fullRegistry())
-  dispatcher.dispatch({ type, params: sample(project), description: type })
 }
 
 describe('the extensions fixture and the command samples', () => {

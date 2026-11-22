@@ -131,6 +131,7 @@ export type {
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
 export type { OpeningKind } from './registries/opening-kind'
 export {
+  isMarkedDoor,
   openingKindOfType,
   openingTypeHasFill,
   openingTypeHasHingeSide,
@@ -387,6 +388,8 @@ export { exteriorWalls } from './scene/exterior-walls'
 export { openingRoomSide, withRoomSide } from './scene/opening-room-side'
 export type { Entrance, FrontDirectionInput, PlanDirection } from './scene/front-direction'
 export { PLAN_DOWN, entranceOf, frontDirection } from './scene/front-direction'
+export type { EntranceRole } from './scene/entrance-role'
+export { entranceRoleOf } from './scene/entrance-role'
 export type { WallPlanSegment } from './scene/wall-attached-furniture'
 export {
   furnitureAttachedToWall,
@@ -741,6 +744,15 @@ export {
   setSiteNorthBearing,
   setSiteTimezone,
 } from './commands/handlers/site-commands'
+export type { MarkMainEntranceParams } from './commands/handlers/entrance-commands'
+export {
+  CLEAR_MAIN_ENTRANCE,
+  MARK_MAIN_ENTRANCE,
+  clearMainEntrance,
+  markMainEntrance,
+  registerEntranceCommands,
+} from './commands/handlers/entrance-commands'
+export { countMarkedDoors, withoutEntranceMark } from './commands/entrance-rule'
 export type { EnvironmentScene, WeatherConditions } from './model/environment-scene'
 export type {
   AddEnvironmentSceneParams,

@@ -28,21 +28,18 @@ export interface InspectorFixture {
   stairs?: Project['stairs']
   dimensions?: Dimension[]
   openings?: Opening[]
+  /** An optional second floor (id `u`), stacked above the ground floor. */
+  upperFloor?: { walls?: Wall[]; openings?: Opening[] }
 }
 
-/**
- * Render the Inspector over a one-floor project (floor id `g`) wired through the
- * real session, selection, active-floor, and surface-selection stores, so tests
- * drive it the way the editor does. Returns the selection store to drive it with
- * and the editor session, so a test can undo or redo the way the editor does.
- */
-export function renderInspector({
+function buildFixtureProject({
   walls = [],
   roomOverrides,
   stairs = [],
   dimensions = [],
   openings = [],
-}: InspectorFixture = {}) {
+  upperFloor,
+}: InspectorFixture): Project {
   const project = createEmptyProject({
     name: 'T',
     units: 'imperial',
@@ -56,9 +53,26 @@ export function renderInspector({
   floor.dimensions = dimensions
   floor.openings = openings
   project.floors = [floor]
+  if (upperFloor !== undefined) {
+    const upper = createFloor('U', { id: 'u', walls: upperFloor.walls ?? [] })
+    upper.openings = upperFloor.openings ?? []
+    project.floors.push(upper)
+  }
   project.roomOverrides = roomOverrides
   project.stairs = stairs
-  const session = createEditorSession(project)
+  return project
+}
+
+/**
+ * Render the Inspector over a project whose ground floor has id `g` (and, when the
+ * fixture asks for one, an upper floor with id `u`), wired through the real session,
+ * selection, active-floor, and surface-selection stores, so tests drive it the way
+ * the editor does. The ground floor starts active. Returns the selection store and
+ * the active-floor store to drive it with, and the editor session, so a test can
+ * undo or redo the way the editor does.
+ */
+export function renderInspector(fixture: InspectorFixture = {}) {
+  const session = createEditorSession(buildFixtureProject(fixture))
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore('g')
   const surfaceSelection = createSurfaceSelectionStore()
@@ -73,5 +87,5 @@ export function renderInspector({
       </SelectionProvider>
     </EditorSessionProvider>,
   )
-  return { selection, session }
+  return { selection, session, activeFloor }
 }
