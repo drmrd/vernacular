@@ -3,13 +3,19 @@ import type { CodecOptions, EncodedDocument, Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { PROJECT_FILE, secondDocumentFileName } from '../project-files/project-file-name'
 
+/** The second file a save wrote because the main file is newer than this build. */
+export interface SecondFileWritten {
+  readonly name: string
+  readonly newerVersion: number
+}
+
 /** The file a save writes, the bytes it grafts onto, and the encoding of the project for it. */
 export interface SaveTarget {
   readonly fileName: string
   readonly previous: Uint8Array | undefined
   readonly encoded: EncodedDocument
   /** Set when the main file is newer than this build, so the save goes to the second file. */
-  readonly secondFile?: { readonly name: string; readonly newerVersion: number }
+  readonly secondFile?: SecondFileWritten
 }
 
 /**

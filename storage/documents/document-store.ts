@@ -19,6 +19,7 @@ import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
 import { replaceStoredDocument } from './replace-stored'
 import { encodeForSave } from './save-target'
+import type { SecondFileWritten } from './save-target'
 import { listStoredFiles } from './stored-files'
 
 /** Why a read gave no document. */
@@ -41,7 +42,7 @@ export interface SaveReport {
   /** The time of last change of the document file after the write; absent when the store cannot tell. */
   readonly lastChangedAt?: string
   /** Set when the save wrote the second file because the main file is newer than this build. */
-  readonly secondFile?: { readonly name: string; readonly newerVersion: number }
+  readonly secondFile?: SecondFileWritten
 }
 
 /** What a replace of the stored document did: it wrote, or it found faults and wrote nothing. */
