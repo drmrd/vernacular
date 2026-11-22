@@ -18,7 +18,8 @@ export interface ReplaceTarget {
  * Replaces the stored document with the project. The project is encoded with no previous document,
  * so data that only the stored document held is not carried over. The steps run in this order, and
  * a failed step stops the ones after it: read the stored bytes, encode, stop when the result breaks
- * the format rules, prepare the assets, keep the stored bytes as a backup, write the document.
+ * the format rules, work out the backup version, prepare the assets, keep the stored bytes as a
+ * backup, write the document. Assets copied before a later failure stay, as for a save.
  */
 export async function replaceStoredDocument(
   target: ReplaceTarget,
@@ -33,8 +34,8 @@ export async function replaceStoredDocument(
   if (encoded.faults.length > 0) {
     return { replaced: false, faults: encoded.faults }
   }
-  await target.prepareAssets(project)
   const version = storedVersionOf(decodeDocument(stored, options))
+  await target.prepareAssets(project)
   await writeBackup(directory, 'pre-repair', { version, bytes: stored })
   await directory.writeFile(PROJECT_FILE, encoded.bytes)
   return { replaced: true }

@@ -12,9 +12,9 @@ import type { DirectoryPort } from '../fs/directory-port'
 import { PROJECT_FILE } from '../project-files/project-file-name'
 import type { ProjectFiles, RemovableProjectFiles } from '../project-files/project-files'
 import { collectReferencedAssets } from '../project-files/referenced-assets'
-import { writeBackup } from './document-backups'
-import { warnAboutEncodeProblems } from './open-decoded'
 import { ProjectNotFoundError } from '../project-store'
+import { writeBackup, storedVersionOf } from './document-backups'
+import { warnAboutEncodeProblems } from './open-decoded'
 import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
 import { replaceStoredDocument } from './replace-stored'
@@ -202,8 +202,7 @@ export class DocumentStore {
     if (!previousResult.ok) {
       return false
     }
-    const { migratedFrom, project } = previousResult.value
-    const version = migratedFrom ?? project.meta.schemaVersion
+    const version = storedVersionOf(previousResult)
     await writeBackup(directory, 'last-valid', { version, bytes: previous })
     return true
   }
