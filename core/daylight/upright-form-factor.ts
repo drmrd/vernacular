@@ -1,3 +1,5 @@
+import { distance } from '../geometry/point'
+import { dot, leftPerp, subtract } from '../geometry/vector'
 import type { Point } from '../model/types'
 
 /** A rectangle that stands on a wall. */
@@ -11,8 +13,8 @@ export interface UprightRectangle {
   facing: Point
 }
 
-/** How far a dot product of two unit normals may sit from -1 and still count as facing walls. */
-const PARALLEL_TOLERANCE = 1e-9
+/** How far a dot product of unit normals may sit from -1 or 0 and still count as facing or square. */
+const ORIENTATION_TOLERANCE = 1e-9
 
 interface SignedPosition {
   position: number
@@ -24,14 +26,10 @@ interface HeightTerm {
   sign: number
 }
 
-function dot(a: Point, b: Point): number {
-  return a.x * b.x + a.y * b.y
-}
-
 /** The larger end of a span along a direction counts +1 and the smaller end -1. */
-function signedEnds(span: readonly [Point, Point], along: Point): SignedPosition[] {
-  const first = dot(span[0], along)
-  const second = dot(span[1], along)
+function signedEnds(span: readonly [Point, Point], direction: Point): SignedPosition[] {
+  const first = dot(span[0], direction)
+  const second = dot(span[1], direction)
   return first > second
     ? [
         { position: first, sign: 1 },
@@ -53,49 +51,60 @@ function heightTerms(doorway: UprightRectangle, glazing: UprightRectangle): Heig
   ].map(({ height, sign }) => ({ height: Math.max(height, 0), sign }))
 }
 
-/** The antiderivative of the facing-walls exchange, in square millimetres. */
-function facingAntiderivative(along: number, height: number, distance: number): number {
-  const alongRoot = Math.sqrt(along * along + distance * distance)
-  const heightRoot = Math.sqrt(height * height + distance * distance)
+/**
+ * The fourfold antiderivative G(u, v) of the facing-walls exchange, in square millimetres. Its signed
+ * sum over the span ends and height terms is the exchange area.
+ */
+function facingAntiderivative(offset: number, height: number, gap: number): number {
+  const offsetRoot = Math.sqrt(offset * offset + gap * gap)
+  const heightRoot = Math.sqrt(height * height + gap * gap)
   return (
-    (height * alongRoot * Math.atan(height / alongRoot) +
-      along * heightRoot * Math.atan(along / heightRoot) -
-      (distance * distance * Math.log(along * along + height * height + distance * distance)) / 2) /
+    (height * offsetRoot * Math.atan(height / offsetRoot) +
+      offset * heightRoot * Math.atan(offset / heightRoot) -
+      (gap * gap * Math.log(offset * offset + height * height + gap * gap)) / 2) /
     (2 * Math.PI)
   )
 }
 
-function signedHeightSum(along: number, terms: readonly HeightTerm[], distance: number): number {
+function signedHeightSum(offset: number, terms: readonly HeightTerm[], gap: number): number {
   return terms.reduce(
-    (sum, term) => sum + term.sign * facingAntiderivative(along, term.height, distance),
+    (sum, term) => sum + term.sign * facingAntiderivative(offset, term.height, gap),
     0,
   )
 }
 
+function faceEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
+  return dot(doorway.facing, glazing.facing) <= ORIENTATION_TOLERANCE - 1
+}
+
+function rectangleArea(rectangle: UprightRectangle): number {
+  return distance(rectangle.span[0], rectangle.span[1]) * (rectangle.head - rectangle.sill)
+}
+
+/** The exchange area, in square millimetres, between two walls that face each other; 0 otherwise. */
+function facingWallsExchangeArea(doorway: UprightRectangle, glazing: UprightRectangle): number {
+  const gap = dot(subtract(doorway.span[0], glazing.span[0]), glazing.facing)
+  if (!faceEachOther(doorway, glazing) || gap <= 0) return 0
+  const wallDirection = leftPerp(glazing.facing)
+  const terms = heightTerms(doorway, glazing)
+  let exchangeArea = 0
+  for (const glazingEnd of signedEnds(glazing.span, wallDirection)) {
+    for (const doorwayEnd of signedEnds(doorway.span, wallDirection)) {
+      const signedSum = signedHeightSum(glazingEnd.position - doorwayEnd.position, terms, gap)
+      exchangeArea -= glazingEnd.sign * doorwayEnd.sign * signedSum
+    }
+  }
+  return exchangeArea
+}
+
 /**
- * The share of the light that leaves the doorway's plane and reaches the glazing, counting only
- * rays that travel downward from the glazing to the doorway. Walls that do not face each other give 0.
+ * The form factor from the doorway to the glazing, over only the point pairs where the glazing point
+ * is higher than the doorway point; the doorway's area times it is the exchange area that carries
+ * window light downward onto the doorway. Walls that do not face each other give 0.
  */
 export function doorwayToGlazingFormFactor(
   doorway: UprightRectangle,
   glazing: UprightRectangle,
 ): number {
-  const distance =
-    (doorway.span[0].x - glazing.span[0].x) * glazing.facing.x +
-    (doorway.span[0].y - glazing.span[0].y) * glazing.facing.y
-  if (dot(doorway.facing, glazing.facing) > PARALLEL_TOLERANCE - 1 || distance <= 0) return 0
-  const along = { x: -glazing.facing.y, y: glazing.facing.x }
-  const terms = heightTerms(doorway, glazing)
-  let exchangeArea = 0
-  for (const glazingEnd of signedEnds(glazing.span, along)) {
-    for (const doorwayEnd of signedEnds(doorway.span, along)) {
-      const signedSum = signedHeightSum(glazingEnd.position - doorwayEnd.position, terms, distance)
-      exchangeArea -= glazingEnd.sign * doorwayEnd.sign * signedSum
-    }
-  }
-  const doorwayWidth = Math.hypot(
-    doorway.span[1].x - doorway.span[0].x,
-    doorway.span[1].y - doorway.span[0].y,
-  )
-  return exchangeArea / (doorwayWidth * (doorway.head - doorway.sill))
+  return facingWallsExchangeArea(doorway, glazing) / rectangleArea(doorway)
 }
