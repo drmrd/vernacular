@@ -128,3 +128,36 @@ describe('validatePackManifest - asset media types', () => {
     expect(message).toMatch(scenario.expectedHint)
   })
 })
+
+describe('validatePackManifest - format 1 manifests read as before', () => {
+  function formatOneTextureWithoutDimensions(): Record<string, unknown> {
+    const copy = { ...validTextureAsset() }
+    delete copy.mediaType
+    return copy
+  }
+
+  it.each([
+    {
+      case: 'a furniture asset that names a media type',
+      asset: validModelAsset(),
+      expectedLabel: /^assets\[0\]\.mediaType\b/,
+      expectedHint: /formatVersion 2/,
+    },
+    {
+      case: 'a texture asset with no dimensions',
+      asset: formatOneTextureWithoutDimensions(),
+      expectedLabel: /^assets\[0\]\.dimensions\b/,
+      expectedHint: /required/,
+    },
+  ])('refuses a format 1 manifest with $case, with one error', (scenario) => {
+    const manifest = { ...validManifest(), formatVersion: 1, assets: [scenario.asset] }
+
+    const result = validatePackManifest(manifest)
+
+    expect(result.valid).toBe(false)
+    expect(result.errors).toHaveLength(1)
+    const message = result.errors[0] ?? ''
+    expect(message).toMatch(scenario.expectedLabel)
+    expect(message).toMatch(scenario.expectedHint)
+  })
+})
