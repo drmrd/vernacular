@@ -1,4 +1,5 @@
 import { detectRenderBackend } from '../../engine'
+import { SceneChromeProvider } from './scene-chrome'
 import { SceneFailureHost } from './scene-failure-host'
 import { LiveSceneView } from './live-scene-view'
 
@@ -7,5 +8,9 @@ import { LiveSceneView } from './live-scene-view'
  *  can drive neither. */
 export function SceneCanvas() {
   if (detectRenderBackend() === 'unsupported') return <SceneFailureHost kind="start" />
-  return <LiveSceneView />
+  return (
+    <SceneChromeProvider>
+      <LiveSceneView />
+    </SceneChromeProvider>
+  )
 }

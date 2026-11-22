@@ -14,6 +14,7 @@ import { PerceivedColorSampler } from './perceived-color-sampler'
 import { RendererMemoryProbe } from './renderer-memory-probe'
 import { FrameCamera, PresetCamera, type DoorwayStand } from './scene-camera-effects'
 import { initialCamera, orbitPivot } from './scene-camera-seed'
+import { SceneChrome } from './scene-chrome'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SceneLighting } from './scene-lighting'
 import { ScenePaneShell } from './scene-pane-shell'
@@ -218,15 +219,17 @@ export function LiveSceneView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <SceneViewToolbar
-        nav={nav}
-        buildingView={buildingView}
-        edgeOverlay={edgeOverlay}
-        onToggleEdgeOverlay={toggleEdgeOverlay}
-        viewEnvironment={viewEnvironment}
-        doorway={doorway}
-        lightingMode={lightingMode}
-      />
+      <SceneChrome>
+        <SceneViewToolbar
+          nav={nav}
+          buildingView={buildingView}
+          edgeOverlay={edgeOverlay}
+          onToggleEdgeOverlay={toggleEdgeOverlay}
+          viewEnvironment={viewEnvironment}
+          doorway={doorway}
+          lightingMode={lightingMode}
+        />
+      </SceneChrome>
       <ScenePaneShell mode={nav.mode}>
         <LiveSceneCanvas
           framed={framed}

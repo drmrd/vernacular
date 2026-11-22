@@ -168,6 +168,18 @@ export const UNCOVERED_COMPONENTS: {
       'the display-options group (the surface-edge overlay toggle) that sits beside the environment controls extracted from scene-nav-toolbar.tsx; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
   },
   {
+    component: 'SceneChrome',
+    file: 'bridge/react/scene-chrome.tsx',
+    reason:
+      'draws nothing of its own: it shows or removes the scene controls it wraps while a failure view is mounted, and the controls have their own coverage (see ADR-0111).',
+  },
+  {
+    component: 'SceneChromeProvider',
+    file: 'bridge/react/scene-chrome.tsx',
+    reason:
+      'context provider that only has meaning around the live scene view and a failure view that stands in for it; an isolated browser-mode story is not feasible (see ADR-0111).',
+  },
+  {
     component: 'SceneFailureHost',
     file: 'bridge/react/scene-failure-host.tsx',
     reason:
