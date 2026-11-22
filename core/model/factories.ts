@@ -46,8 +46,9 @@ export const CURRENT_SCHEMA_VERSION = 17
  * The additive revision of the current schema version that this build publishes.
  * Revision 1 of version 17 adds the optional `meta.schemaRevision` field. See ADR-0178.
  * Revision 2 adds the optional Opening.entrance field.
+ * Revision 3 adds the optional Project.openingLight field.
  */
-export const CURRENT_SCHEMA_REVISION = 2
+export const CURRENT_SCHEMA_REVISION = 3
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438

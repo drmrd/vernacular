@@ -61,6 +61,10 @@
         "kind": "object",
         "type": "Site"
       },
+      "openingLight": {
+        "kind": "object",
+        "type": "OpeningLight"
+      },
       "extensions": {
         "kind": "opaque"
       }
@@ -71,6 +75,7 @@
       "palettes",
       "paint",
       "site",
+      "openingLight",
       "extensions"
     ]
   },
@@ -513,18 +518,18 @@
   },
   "EnvironmentScene": {
     "keys": {
-      "id": {
-        "kind": "leaf"
-      },
-      "name": {
-        "kind": "leaf"
-      },
       "observedAt": {
         "kind": "leaf"
       },
       "weather": {
         "kind": "object",
         "type": "WeatherConditions"
+      },
+      "id": {
+        "kind": "leaf"
+      },
+      "name": {
+        "kind": "leaf"
       },
       "extensions": {
         "kind": "opaque"
@@ -765,5 +770,23 @@
       }
     },
     "optional": []
+  },
+  "OpeningLight": {
+    "keys": {
+      "observedAt": {
+        "kind": "leaf"
+      },
+      "weather": {
+        "kind": "object",
+        "type": "WeatherConditions"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "weather",
+      "extensions"
+    ]
   }
 }

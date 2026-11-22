@@ -3,6 +3,7 @@ import {
   useEditorSession,
   useEnvironmentSession,
   useProjectEnvironmentScenes,
+  useProjectOpeningLight,
   useSceneGraph,
 } from '../../bridge'
 import {
@@ -14,6 +15,7 @@ import {
 } from '../../core'
 import { EnvironmentPanel } from '../environment/environment-panel'
 import { EnvironmentScenes } from '../environment/environment-scenes'
+import { OpeningLightControl } from '../environment/opening-light-control'
 import { LibraryLauncherPanel } from '../library/library-launcher-panel'
 import { SiteEditor } from '../metadata/site-editor'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
@@ -75,6 +77,7 @@ function EnvironmentRailSection({ site }: { site: Project['site'] }) {
   const session = useEditorSession()
   const { environment, setEnvironment } = useEnvironmentSession()
   const scenes = useProjectEnvironmentScenes()
+  const openingLight = useProjectOpeningLight()
   return (
     <section aria-label="Environment">
       <SectionLabel>Environment</SectionLabel>
@@ -82,6 +85,11 @@ function EnvironmentRailSection({ site }: { site: Project['site'] }) {
         site={site}
         environment={environment}
         onEnvironmentChange={setEnvironment}
+      />
+      <OpeningLightControl
+        environment={environment}
+        openingLight={openingLight}
+        dispatch={session.dispatch}
       />
       <EnvironmentScenes
         scenes={scenes}

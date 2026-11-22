@@ -7,6 +7,7 @@ import { ADD_ENVIRONMENT_SCENE } from './environment-scene-commands'
 import { MARK_MAIN_ENTRANCE } from './entrance-commands'
 import { PLACE_FURNITURE } from './furniture-commands'
 import { PLACE_OPENING } from './opening-commands'
+import { SET_OPENING_LIGHT } from './opening-light-commands'
 import { ASSIGN_SURFACE_TREATMENT } from './paint-commands'
 import { CREATE_PROJECT_PALETTE } from './palette-commands'
 import { RENAME_PROJECT } from './project-commands'
@@ -17,7 +18,7 @@ import { TRANSLATE_ENTITIES } from './transform-commands'
 import { PLACE_UNDERLAY } from './underlay-commands'
 import { ADD_WALL } from './wall-commands'
 
-const REGISTERED_COMMAND_COUNT = 70
+const REGISTERED_COMMAND_COUNT = 72
 
 const ONE_COMMAND_PER_HANDLER_FILE: readonly (readonly [string, string])[] = [
   ['dimension-commands', ADD_DIMENSION],
@@ -25,6 +26,7 @@ const ONE_COMMAND_PER_HANDLER_FILE: readonly (readonly [string, string])[] = [
   ['entrance-commands', MARK_MAIN_ENTRANCE],
   ['furniture-commands', PLACE_FURNITURE],
   ['opening-commands', PLACE_OPENING],
+  ['opening-light-commands', SET_OPENING_LIGHT],
   ['paint-commands', ASSIGN_SURFACE_TREATMENT],
   ['palette-commands', CREATE_PROJECT_PALETTE],
   ['project-commands', RENAME_PROJECT],

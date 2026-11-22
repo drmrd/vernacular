@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
-const SAVING_STATUS_TEXT = 'Saving...'
+// The status text that the editor shows from the start of a save until the write ends.
+export const SAVING_STATUS_TEXT = 'Saving...'
 
 // Every app selector the journeys depend on lives here, so that when a later
 // makeover slice restyles the shell only this module changes, not each spec.
@@ -220,4 +221,15 @@ export async function projectIdOfAddress(page: Page): Promise<string> {
 // Waits until the page address is the address of the project with the given id.
 export async function expectProjectAddress(page: Page, id: string): Promise<void> {
   await expect.poll(() => addressFragment(page)).toBe(`#/project/${id}`)
+}
+
+// The panel writes the observation as "YYYY-MM-DD HH:MM".
+const OBSERVATION_DATE_TIME_SHAPE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/
+
+// The date and time that the Environment panel shows under "Observation date and time".
+export function observationDateTime(page: Page) {
+  return page
+    .getByRole('region', { name: /environment/i })
+    .getByRole('status')
+    .filter({ hasText: OBSERVATION_DATE_TIME_SHAPE })
 }

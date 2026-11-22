@@ -106,7 +106,7 @@ The rule the cycles build (specification, section 5.4). A minute qualifies when 
 - Test file: `e2e/tests/journeys/opening-time-for-the-house.spec.ts`, plus a row in `e2e/journey-coverage.json`.
 - Test: "opens a house whose front faces west at the time its front takes the sun".
 - Setup: draw the closed room the journeys share. Open the site editor and set "North bearing (degrees)" (`editor/metadata/site-editor.tsx:155`) to 90. Wait for the save, then reload.
-- Assertion: the output under "Observation date and time" in the Environment panel reads `2026-03-20 14:00` (`formatObservationDateTime`, `core/environment/observation-time.ts:65-68`).
+- Assertion: the output under "Observation date and time" in the Environment panel reads `2026-03-20 14:00` (`formatObservationDateTime`, `core/environment/observation-time.ts:95-97`).
 
 Journeys and pictures: no scene harness state reads the opening rule. Each pins its `observedAt` in `app/harness-environment.ts`, and a state with no environment gets `openingInstant`, which stays fixed. No live-view or story baseline moves. In the default schematic style the sun update does nothing, so the visible change is the panel's time, which the journey proves.
 
@@ -136,6 +136,8 @@ Fence. May touch:
 - Documents: ADR-0205 (extended); amendments in ADR-0193, ADR-0146, and ADR-0143; in the daylight specification, the status line, decision 7, the non-goal of section 2, the two approach rows of section 5, and the #737 risk row of section 9; locked decision 3 of `docs/specs/2026-07-01-realistic-environmental-lighting.md`; section 4.1 of the format specification; section 3.1 of the design specification.
 
 Must not touch: `editor/environment/environment-panel.tsx` and its stories (so its three story baselines stay), `core/scene/`, `session/`, `storage/`, `app/`, `engine/`, `core/migrations/`.
+
+Fence deviations as built: the schema revision is 3 of version 17, since the entrance mark took revision 2 first. `core/environment/environment-state.ts` joined the fence, because `openingEnvironmentFor` is the seam the shell calls and it now takes the stored light. `core/environment/observation-time.ts` joined it for the real-calendar check on `observedAt` and for the shared time format. `editor/environment/environment-panel.tsx` was touched by a behavior-neutral refactor (the shared `formatObservationTime`); its stories and baselines did not move. The stored-light cases went into a new file, `core/environment/opening-conditions-stored.test.ts`, because `opening-conditions.test.ts` was at its line cap. The extensions fixture retrofit moved into cycle 2.1, since the extensions check fails as soon as the new schema type has `extensions`.
 
 ### Cycle 2.1: the field is a schema revision
 

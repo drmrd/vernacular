@@ -61,6 +61,11 @@
       "status": "required"
     },
     {
+      "id": "opening-light",
+      "title": "stores the light the project opens in and reopens in it",
+      "status": "required"
+    },
+    {
       "id": "opening-time-for-the-house",
       "title": "opens a house whose front faces west at the time its front takes the sun",
       "status": "required"

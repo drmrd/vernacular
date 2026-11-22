@@ -1,11 +1,8 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { bytesOf, metaOf } from '../fixtures/projects/versions/fixture-documents'
 import type { Json } from '../fixtures/projects/versions/fixture-documents'
 import {
   CURRENT_SCHEMA_REVISION,
-  CURRENT_SCHEMA_VERSION,
   createEmptyProject,
   createFloor,
   createOpening,
@@ -13,8 +10,8 @@ import {
   decodeDocument,
   encodeDocument,
 } from '../../core'
-import type { DecodedDocument, DecodeResult, Opening, Project } from '../../core'
-import { schemaPath } from '../../scripts/schema/build-schema.mjs'
+import type { Opening, Project } from '../../core'
+import { schemaAt, valueOf, writtenDocument } from './schema-revision-test-support'
 
 const REVISION_WITH_THE_ENTRANCE_FIELD = 2
 const REVISION_BEFORE_THE_ENTRANCE_FIELD = 1
@@ -44,28 +41,11 @@ function projectWithOneDoor(entrance: boolean): Project {
   return project
 }
 
-function valueOf(result: DecodeResult): DecodedDocument {
-  if (!result.ok) {
-    throw new Error(`Expected the decode to succeed: ${JSON.stringify(result.failure)}`)
-  }
-  return result.value
-}
-
-function writtenDocument(project: Project): Json {
-  const { bytes } = encodeDocument(project, undefined)
-  return JSON.parse(new TextDecoder().decode(bytes))
-}
-
 function firstOpeningOf(document: Json): Json {
   const floors = document.floors as { openings: Json[] }[]
   const opening = floors[0]?.openings[0]
   if (opening === undefined) throw new Error('The document has no opening')
   return opening
-}
-
-function schemaAt(revision: number): Json {
-  const text = readFileSync(resolve(schemaPath(CURRENT_SCHEMA_VERSION, revision)), 'utf8')
-  return JSON.parse(text)
 }
 
 function withoutTheEntranceField(schema: Json): Json {
@@ -77,7 +57,7 @@ function withoutTheEntranceField(schema: Json): Json {
 }
 
 describe('the main entrance field on an opening', () => {
-  it('survives an encode and a decode, and the written bytes name revision 2', () => {
+  it('survives an encode and a decode, and the written bytes name the current revision', () => {
     const project = projectWithOneDoor(true)
 
     const written = encodeDocument(project, undefined)
@@ -85,7 +65,7 @@ describe('the main entrance field on an opening', () => {
 
     expect(decoded.project.floors[0]?.openings[0]?.entrance).toBe(true)
     expect(decoded.project.floors).toEqual(project.floors)
-    expect(metaOf(writtenDocument(project)).schemaRevision).toBe(REVISION_WITH_THE_ENTRANCE_FIELD)
+    expect(metaOf(writtenDocument(project)).schemaRevision).toBe(CURRENT_SCHEMA_REVISION)
   })
 
   it.each([
@@ -112,8 +92,8 @@ describe('the main entrance field on an opening', () => {
     expect(decoded.project.floors[0]?.openings[0]?.entrance).toBeUndefined()
   })
 
-  it('is the revision of this build', () => {
-    expect(CURRENT_SCHEMA_REVISION).toBe(REVISION_WITH_THE_ENTRANCE_FIELD)
+  it('is at or below the revision of this build', () => {
+    expect(CURRENT_SCHEMA_REVISION).toBeGreaterThanOrEqual(REVISION_WITH_THE_ENTRANCE_FIELD)
   })
 
   it('is the only change between the published revision 1 and revision 2 of the schema', () => {

@@ -367,7 +367,7 @@ export async function editTheProject(): Promise<void> {
 
 /** Chooses `item` in the project menu. */
 export async function chooseFromTheProjectMenu(item: string | RegExp): Promise<void> {
-  await userEvent.click(await screen.findByRole('button', { name: /project/i }))
+  await userEvent.click(await screen.findByRole('button', { name: /^project$/i }))
   await userEvent.click(await screen.findByRole('menuitem', { name: item }))
 }
 

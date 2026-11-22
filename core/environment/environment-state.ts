@@ -1,11 +1,12 @@
+import { observationInstantToIso, type ObservationInstant } from './observation-time'
 import {
-  observationInstantToIso,
-  parseObservationInstant,
-  type ObservationInstant,
-} from './observation-time'
-import { openingConditions, openingInstant, type OpeningConditions } from './opening-instant'
+  openingConditions,
+  openingConditionsOf,
+  openingInstant,
+  type OpeningConditions,
+} from './opening-instant'
 import { DEFAULT_CLOUD_COVER } from './sky-model'
-import type { EnvironmentScene } from '../model/environment-scene'
+import type { EnvironmentScene, ViewingConditions } from '../model/environment-scene'
 import type { Site } from '../model/site'
 import { frontDirection, type FrontDirectionInput } from '../scene/front-direction'
 
@@ -38,17 +39,36 @@ export function environmentStateOpenedWith(conditions: OpeningConditions): Envir
   }
 }
 
-/** The environment a project opens with: the light chosen from its site and its front, in the default mode. */
+/**
+ * The environment a project opens with: the light chosen from its site and its front, in the default mode.
+ *
+ * @param stored The light saved with the project; when valid, it wins over the chosen one.
+ */
 export function openingEnvironmentFor(
   site: Site | undefined,
   graph: FrontDirectionInput,
+  stored?: ViewingConditions,
 ): EnvironmentState {
-  return environmentStateOpenedWith(openingConditions({ site, front: frontDirection(graph) }))
+  return environmentStateOpenedWith(
+    openingConditions({
+      site,
+      front: frontDirection(graph),
+      ...(stored !== undefined ? { stored } : {}),
+    }),
+  )
 }
 
 export interface EnvironmentSceneIdentity {
   id: string
   name: string
+}
+
+/** The "when and weather" of a state as the serializable conditions a scene or opening light stores. */
+export function viewingConditionsOf(state: EnvironmentState): ViewingConditions {
+  return {
+    observedAt: observationInstantToIso(state.observedAt),
+    weather: { cloudCover: state.cloudCover },
+  }
 }
 
 /** Persists the current "when and weather" as a named scene (observedAt ISO + weather). */
@@ -59,8 +79,7 @@ export function captureEnvironmentScene(
   return {
     id: identity.id,
     name: identity.name,
-    observedAt: observationInstantToIso(state.observedAt),
-    weather: { cloudCover: state.cloudCover },
+    ...viewingConditionsOf(state),
   }
 }
 
@@ -69,10 +88,5 @@ export function applyEnvironmentScene(
   state: EnvironmentState,
   scene: EnvironmentScene,
 ): EnvironmentState {
-  return {
-    mode: state.mode,
-    observedAt: parseObservationInstant(scene.observedAt),
-    cloudCover: scene.weather?.cloudCover ?? DEFAULT_CLOUD_COVER,
-    colorCheck: state.colorCheck,
-  }
+  return { mode: state.mode, ...openingConditionsOf(scene), colorCheck: state.colorCheck }
 }

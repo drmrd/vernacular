@@ -5,6 +5,7 @@ import { registerEntranceCommands } from './entrance-commands'
 import { registerEnvironmentSceneCommands } from './environment-scene-commands'
 import { registerFurnitureCommands } from './furniture-commands'
 import { registerOpeningCommands } from './opening-commands'
+import { registerOpeningLightCommands } from './opening-light-commands'
 import { registerPaintCommands } from './paint-commands'
 import { registerPaletteCommands } from './palette-commands'
 import { registerProjectCommands } from './project-commands'
@@ -32,5 +33,6 @@ export function registerAllProjectCommands(
   registerSiteCommands(registry)
   registerEnvironmentSceneCommands(registry)
   registerEntranceCommands(registry)
+  registerOpeningLightCommands(registry)
   return registry
 }

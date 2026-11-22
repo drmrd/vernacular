@@ -1,6 +1,7 @@
 // Sample parameters for the commands that act on the project as a whole: the
-// project and its list of floors, palettes, rooms, stairs, paint, the site, and
-// environment scenes. Built against the ids of the extensions fixture.
+// project and its list of floors, palettes, rooms, stairs, paint, the site, the
+// environment scenes, and the opening light. Built against the ids of the
+// extensions fixture.
 
 import { colorFromHex } from '../../color/color'
 import { createStair } from '../../model/factories'
@@ -8,6 +9,7 @@ import { solidTreatment } from '../../model/paint'
 import type { Project } from '../../model/types'
 import * as scenes from '../handlers/environment-scene-commands'
 import * as entrance from '../handlers/entrance-commands'
+import * as lights from '../handlers/opening-light-commands'
 import * as paint from '../handlers/paint-commands'
 import * as palettes from '../handlers/palette-commands'
 import * as projects from '../handlers/project-commands'
@@ -143,6 +145,17 @@ const ENVIRONMENT_SCENE_SAMPLES: CommandSamples = {
     scenes.renameEnvironmentScene(ids.mainScene, 'Winter noon').params,
 }
 
+const OPENING_LIGHT_CLOUD_COVER = 0.4
+
+const OPENING_LIGHT_SAMPLES: CommandSamples = {
+  [lights.SET_OPENING_LIGHT]: () =>
+    lights.setOpeningLight({
+      observedAt: '2026-06-21T08:00',
+      weather: { cloudCover: OPENING_LIGHT_CLOUD_COVER },
+    }).params,
+  [lights.CLEAR_OPENING_LIGHT]: () => lights.clearOpeningLight().params,
+}
+
 /** Sample parameters for every project-wide command type, keyed by command type. */
 export const PROJECT_COMMAND_SAMPLES: CommandSamples = {
   ...PROJECT_SAMPLES,
@@ -152,4 +165,5 @@ export const PROJECT_COMMAND_SAMPLES: CommandSamples = {
   ...STAIR_SAMPLES,
   ...PAINT_AND_SITE_SAMPLES,
   ...ENVIRONMENT_SCENE_SAMPLES,
+  ...OPENING_LIGHT_SAMPLES,
 }

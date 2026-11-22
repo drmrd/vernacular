@@ -28,7 +28,7 @@ sourceFiles:
     editor/shell/shell-providers-opening-light.test.tsx,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-22
 ---
 
 # ADR-0146: Environment panel and the session-state contract behind it
@@ -200,3 +200,17 @@ The contract of this record holds. The state stays window state and never touche
 undo. The panel still owns it. A later edit of the site does not move the light on screen; only the
 controls do. That is the recommended answer to open question 2 of the first-view specification,
 which the owner has not taken yet ([[ADR-0205-opening-time-chosen-for-the-house]]).
+
+## Amendment (2026-11-22): the store is seeded from the stored light, and the rail gains a control
+
+The start state of the environment store now comes from the stored opening light when the project
+has a well-formed one ([[ADR-0205-opening-time-chosen-for-the-house]], the extension of
+2026-11-22). `SessionStateProviders` passes the `openingLight` of the project to
+`openingEnvironmentFor(site, sceneGraph, stored)`, and a stored light wins over the time chosen for
+the house. The seed still happens once for each opened project.
+
+The Environment section of the tool rail gains the opening light control
+(`editor/environment/opening-light-control.tsx`). It sits between the Environment panel and the
+saved scenes. The panel's contract in this record did not change. The panel now shares the clock format with the control, and its date guard refuses dates that do not exist. The state still
+never touches the document or undo. Only the button "Use this light when the project opens"
+writes, through one command, and the project then holds a copy of the time and the cloud cover.

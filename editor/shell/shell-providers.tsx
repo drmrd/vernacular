@@ -88,11 +88,12 @@ function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
   const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
   const session = useEditorSession()
   // Created one time for each opened project: a later edit of the site must not move the light.
-  const [environmentSession] = useState(() =>
-    createEnvironmentSessionStore(
-      openingEnvironmentFor(session.getProject().site, session.getSceneGraph()),
-    ),
-  )
+  const [environmentSession] = useState(() => {
+    const { site, openingLight } = session.getProject()
+    return createEnvironmentSessionStore(
+      openingEnvironmentFor(site, session.getSceneGraph(), openingLight),
+    )
+  })
   const perceivedColor = useMemo(() => createPerceivedColorStore(), [])
   const sceneSession = useMemo(() => createSceneSessionStore(), [])
   return (

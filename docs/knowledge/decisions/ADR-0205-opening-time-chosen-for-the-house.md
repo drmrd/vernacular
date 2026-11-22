@@ -10,6 +10,8 @@ related:
     decisions/ADR-0143-environment-model-foundations,
     decisions/ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point,
     decisions/ADR-0139-plan-to-world-orientation,
+    decisions/ADR-0178-schema-version-and-revision,
+    decisions/ADR-0184-known-keys-from-the-schema-for-the-save-time-graft,
   ]
 sourceFiles:
   [
@@ -29,9 +31,23 @@ sourceFiles:
     docs/specs/2026-11-19-first-view-of-a-project.md,
     docs/plans/2026-11-19-first-view-of-a-project.md,
     docs/specs/2026-11-15-daylight-and-shadow.md,
+    core/model/environment-scene.ts,
+    core/model/types.ts,
+    core/model/known-keys.json,
+    core/environment/observation-time.ts,
+    core/commands/handlers/opening-light-commands.ts,
+    bridge/react/use-project-opening-light.ts,
+    editor/environment/opening-light-control.tsx,
+    editor/shell/tool-rail.tsx,
+    schema/17/revision-3/vernacular.schema.json,
+    core/environment/opening-conditions-stored.test.ts,
+    core/commands/handlers/opening-light-commands.test.ts,
+    editor/environment/opening-light-control.test.tsx,
+    tests/format/opening-light-schema.test.ts,
+    e2e/tests/journeys/opening-light.spec.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-22
 ---
 
 # ADR-0205: A project opens at a time chosen for its house
@@ -51,7 +67,7 @@ seeded for each project. The record also explains four edits of the daylight spe
 specification".
 
 The pull request of the opening light, the second part of #737, extends this record with the
-stored light.
+stored light. The section "Extension, 2026-11-22: the stored light" below describes it.
 
 ## Context
 
@@ -175,7 +191,8 @@ Section 8 of the first-view specification gives these edits of
   front takes the sun, where one exists, and that a front near north has none.
 
 The section 8 row for call 4 also names the stored light. This pull request does not build it, so
-the edited call leaves it out. The pull request of the opening light adds it.
+the edited call leaves it out. The stored light arrived afterwards, and the extension below covers
+it.
 
 ## Consequences
 
@@ -230,15 +247,13 @@ the edited call leaves it out. The pull request of the opening light adds it.
 
 ## What stays open
 
-- The stored light. A project does not store a light yet. The pull request of the opening light
-  adds `openingLight` to the document on the user's click, and a stored light then wins over this
-  rule. It extends this record.
+- The stored light. It is built now, and the extension below describes it.
 - A house with no front that takes sun on either date. It opens at the fixed instant, and under the
   true sun its front can be in shade. At latitude 40 that is a front within about 23 degrees of
-  north. Its owner will be able to store a better light.
-- Open question 2, above.
+  north. Its owner can store a better light, as the extension below describes.
+- Open question 2, above. Tracked in #1087.
 - The Projects page of the session layer. A return to the project that is still open must not seed
-  the light again and must not drop it.
+  the light again and must not drop it. Tracked in #1088.
 
 ## Evidence
 
@@ -287,3 +302,155 @@ tests. `tests/architecture/opening-instant-seam.test.ts` passed its 2 tests unch
   and instant.
 - [[ADR-0143-environment-model-foundations]]: the stored site and observation time.
 - [[ADR-0139-plan-to-world-orientation]]: the plan frame of the front and the bearing.
+
+## Extension, 2026-11-22: the stored light
+
+The pull request of the opening light is the second part of #737. It stores the light a project
+opens in, in the document, on the user's click. It follows the owner's answers 6, 7, and 8 of the
+first-view specification and its section 5.5. His answer on new fields was "Schema revisions, no
+fallback (Recommended)".
+
+### What is stored
+
+`Project` gains an optional `openingLight: { observedAt, weather?, extensions? }`. It is revision 3
+of schema version 17, published at `schema/17/revision-3/vernacular.schema.json`
+([[ADR-0178-schema-version-and-revision]]). The field is additive, so a file without it loads with
+no migration step. The table of known keys is regenerated with an `OpeningLight` entry
+([[ADR-0184-known-keys-from-the-schema-for-the-save-time-graft]]), so a save keeps the unknown keys
+and the `extensions` of a stored light. A cleared light removes the key. The key is never written
+as `null` or `false`.
+
+`ViewingConditions` is a type in `core/model/environment-scene.ts`, the time and weather that a
+saved scene and the opening light share. `EnvironmentScene` and `OpeningLight` both extend it. The
+type is a change in code only (call 11). The `EnvironmentScene` definition in the published schema
+is the same as in revision 2, with `observedAt` a plain string, because a revision cannot tighten
+what an earlier one accepted. So the schema does not refuse a malformed `observedAt` in either
+record. The reader ignores a malformed stored light instead, as the next section says.
+
+Because `EnvironmentScene` now extends `ViewingConditions`, the generated `EnvironmentScene`
+definition lists its properties as `observedAt`, `weather`, `id`, `name`, `extensions`. Revision 2
+listed them as `id`, `name`, `observedAt`, `weather`, `extensions`. The definition is otherwise the
+same, and property order has no meaning in JSON Schema, so a diff of the two schemas shows a move
+and no change.
+
+The style, the quality level, and the color check are not stored. They stay session state and
+device settings.
+
+### Which light a project opens in
+
+`openingConditions` takes the stored light as an optional `stored` input and reads it first. A
+well-formed stored light wins over every rule above, also under sample daylight, where a project
+with no site opens in it as well (call 12). A stored light with no `weather` opens at
+`DEFAULT_CLOUD_COVER`, a clear sky. `storedOpeningConditions` in
+`core/environment/opening-instant.ts` is the one reading of a stored light. The control uses it
+too, so the status line and the opening always agree.
+
+A stored light is well-formed when `isObservationInstantIso` accepts its `observedAt`. That check
+asks for the exact shape `YYYY-MM-DDThh:mm` and for a real calendar instant: a date that exists
+(not 30 February, not month 13), an hour from 0 to 23, and a minute from 0 to 59. A stored light
+that fails the check is ignored when the project opens, so the project opens in the light chosen
+for the house, by the two rules above (call 23). Nothing repairs or deletes it. The status line
+then reads "Opens in the default light."
+
+Applying, renaming, or removing a saved scene leaves the stored light alone. It is its own record.
+A scene stays a named light that the user applies by hand, and the same values can live in both
+places. `openingInstant` is unchanged.
+
+The shell seeds the light once, when the project opens. `SessionStateProviders` reads the `site`
+and the `openingLight` of the project in its state initializer and passes both to
+`openingEnvironmentFor(site, sceneGraph, stored)`. This is the recommended answer (a) to open
+question 2. Storing a light does not move the light on screen, and it does not need to, because the
+user is looking at that light. Clearing or undoing does not move it either. The stored light shows
+at the next open.
+
+### Two commands
+
+`opening-light/set` (`setOpeningLight`, "Set opening light") stores the time and the cloud cover.
+It keeps the other keys of the record it replaces, `extensions` included (call 24), and removes a
+weather that the new light lacks. `opening-light/clear` (`clearOpeningLight`, "Clear opening
+light") removes the key. Each assigns or removes one top-level key of the project, so undo restores
+the earlier stored light, including the state of no stored light. The set handler builds the new
+record and assigns it whole, so the capture of the inverse sees the change at the root.
+
+### Only on the click
+
+This is answer 8. Moving the time, the date, or the cloud cover dispatches nothing, so the document
+stays clean and autosave does not run. The button dispatches exactly one command, which marks the
+project as changed once. No migration, repair, or autosave path writes the field.
+
+### The control
+
+`OpeningLightControl` in `editor/environment/opening-light-control.tsx` is a component of its own.
+`EnvironmentRailSection` in `editor/shell/tool-rail.tsx` places it between the Environment panel
+and the saved scenes (call 13). `useProjectOpeningLight` in the bridge subscribes it to the stored
+light, so it updates after a click, a clear, and an undo. `EnvironmentPanel` and its stories did
+not change, so the story baselines of the panel stay.
+
+It has three parts: a status line, a button "Use this light when the project opens", and a button
+"Clear the opening light".
+
+### Choices the builder made
+
+The first-view specification leaves the first three of these to the builder (section 5.5). The
+fourth is a detail of the control. The pull request body names all four for the owner.
+
+- The command names are `opening-light/set` and `opening-light/clear`. They follow
+  `environment-scene/add` and `site/set-location`.
+- The status line reads "Opens at 21 June 2026, 08:00, clear sky." or "Opens in the default
+  light.". A cloud cover of 0 reads "clear sky", 1 reads "overcast sky", and any other value reads
+  "<percent>% cloud cover", rounded to the percent that the Environment panel shows. A stored light
+  with no weather reads "clear sky". A stored light that is ignored reads "Opens in the default
+  light."
+- The control does not apply the stored light to the screen. The stored light already shows at the
+  next open, and a saved scene covers "go back to that light" by hand. If the owner wants the
+  button, it is a small follow-up.
+- The clear button is disabled while nothing is stored, not hidden, so the control keeps its shape.
+
+### Consequences of the extension
+
+- A project saved by this build can carry one more key. A build at a lower revision reads it
+  tolerantly, keeps it through a save, and says that a newer build saved the project
+  ([[ADR-0178-schema-version-and-revision]]).
+- The same time and weather can live in a saved scene and in the opening light. That is the cost
+  of keeping the opening light its own record.
+- The stored light travels with the file, so the project opens in it on any computer.
+- The control has a story of its own. `EnvironmentPanel` changed in two small ways. A refactor shares the `hh:mm` format (`formatObservationTime`), and its date-input guard now uses the stricter `isObservationInstantIso`. Its stories and baselines did not change.
+
+### Options not taken in the extension
+
+- A pointer from the project to a saved scene. It would share one record, but renaming or removing
+  that scene would change how the project opens. The specification marks it not taken.
+- A light kept for each device. It needs no document change, but a project would look different on
+  each computer. Not taken.
+- Writing the light on every move of a control. Autosave would then rewrite the document for each
+  slider step, and the owner chose a click (answer 8).
+- A schema that refuses a malformed `observedAt`. A revision cannot tighten an earlier one, so the
+  reader ignores the value instead.
+
+### Still open after the extension
+
+- Open question 2 stands as built, answer (a). The owner can overrule it. Tracked in #1087.
+- A button that applies the stored light to the screen is not built.
+- Nothing offers to repair a malformed stored light. If the repairs of the session layer ever offer
+  to drop one, that write happens on the user's click. Tracked in #1089.
+- A stored cloud cover outside 0 to 1 passes the schema and reaches the status line. Tracked in
+  #1090.
+
+### Evidence of the extension
+
+On 2026-11-22, `pnpm exec vitest run` on the seven files below passed 68 tests.
+
+- `core/environment/opening-conditions-stored.test.ts`: a stored light wins, also with no site,
+  and a malformed one is ignored.
+- `core/environment/observation-time.test.ts`: the check refuses an impossible date, hour, and
+  minute.
+- `core/commands/handlers/opening-light-commands.test.ts`: set, clear, undo, and the kept
+  `extensions`.
+- `tests/format/opening-light-schema.test.ts`: the schema at revision 3 with and without the
+  field, an encode and decode round trip, and the `.building` archive round trip.
+- `editor/environment/opening-light-control.test.tsx` and `editor/shell/tool-rail.test.tsx`: the
+  control, its wording, and its place in the rail.
+- `editor/shell/shell-providers-opening-light.test.tsx`: the shell seeds the stored light.
+- `e2e/tests/journeys/opening-light.spec.ts`, listed in `e2e/journey-coverage.json`: it stores 08:00
+  on a project that would open at 10:30, reloads, and reads the stored time. This record cites it
+  but did not run it.

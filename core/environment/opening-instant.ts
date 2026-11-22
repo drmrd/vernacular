@@ -1,11 +1,17 @@
 import { toDegrees } from './angle-units'
 import { daylightSiteFor, type DaylightSite } from './daylight-site'
 import { DAYLIGHT_REFERENCE_INSTANT } from './daylight-reference'
-import { MINUTES_PER_DAY, type ObservationInstant } from './observation-time'
+import {
+  isObservationInstantIso,
+  MINUTES_PER_DAY,
+  parseObservationInstant,
+  type ObservationInstant,
+} from './observation-time'
 import { DEFAULT_CLOUD_COVER } from './sky-model'
 import { solarPosition } from './solar-position'
 import { sunWorldDirection } from './sun-world-direction'
 import type { Vector3 } from '../scene/vector3'
+import type { ViewingConditions } from '../model/environment-scene'
 import type { Site } from '../model/site'
 import type { PlanDirection } from '../scene/front-direction'
 
@@ -25,6 +31,7 @@ export function openingInstant(input: OpeningInstantInput): ObservationInstant {
 export type OpeningConditionsInput = {
   readonly site: Site | undefined
   readonly front: PlanDirection
+  readonly stored?: ViewingConditions
 }
 
 export type OpeningConditions = {
@@ -122,13 +129,42 @@ function firstQualifyingInstant(
 }
 
 /**
- * The instant and the cloud cover a project opens at. A site whose north is implied opens at
+ * The opening conditions that a "when and weather" pair stands for: its instant read from the
+ * stored text, and its cloud cover with the default for a pair that names no weather. The text
+ * is read tolerantly, so a caller that needs a real instant checks `isObservationInstantIso` first.
+ */
+export function openingConditionsOf(viewing: ViewingConditions): OpeningConditions {
+  return {
+    observedAt: parseObservationInstant(viewing.observedAt),
+    cloudCover: viewing.weather?.cloudCover ?? DEFAULT_CLOUD_COVER,
+  }
+}
+
+/**
+ * The conditions a stored opening light stands for, or undefined when there is none or its
+ * `observedAt` is not a real civil instant (`isObservationInstantIso`: the exact
+ * `YYYY-MM-DDThh:mm` shape, a date that exists, hour 0..23, minute 0..59). A stored light that
+ * fails that check is ignored wherever the project opens or reports its opening light.
+ */
+export function storedOpeningConditions(
+  stored: ViewingConditions | undefined,
+): OpeningConditions | undefined {
+  if (stored === undefined || !isObservationInstantIso(stored.observedAt)) return undefined
+  return openingConditionsOf(stored)
+}
+
+/**
+ * The instant and the cloud cover a project opens at. A valid stored light comes first, because
+ * the light the user last chose outranks any guess from the site; a stored light that fails that
+ * check is ignored and the rules below apply. A site whose north is implied opens at
  * the fixed instant. Any other site opens at the qualifying minute nearest 10:30, the earlier
  * of two equally near, on the first date that has one. The dates are tried in order: 20 March
  * 2026, then 21 June 2026 at a latitude of 0 or more or 21 December 2026 below 0. When no minute
  * of either date qualifies, the fixed instant applies.
  */
 export function openingConditions(input: OpeningConditionsInput): OpeningConditions {
+  const stored = storedOpeningConditions(input.stored)
+  if (stored !== undefined) return stored
   const fixedInstant = openingInstant({ site: input.site })
   const equinoxSite = daylightSiteFor(input.site, input.front, EQUINOX_DATE)
   if (northIsImplied(equinoxSite))

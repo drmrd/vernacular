@@ -28,6 +28,7 @@ const TYPES_WITH_EXTENSIONS = [
   'EnvironmentScene',
   'Floor',
   'Opening',
+  'OpeningLight',
   'Project',
   'ProjectMeta',
   'ProjectPalette',
