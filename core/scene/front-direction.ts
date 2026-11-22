@@ -1,5 +1,6 @@
 import { DEFAULT_GRADE_ELEVATION_MM } from '../model/site'
-import { doorFamilyOfType, openingKindOfType } from '../registries/opening-kind'
+import { doorFamilyOfType, isMarkedDoor, openingKindOfType } from '../registries/opening-kind'
+import { dot, negate, subtract } from '../geometry/vector'
 import { exteriorWalls } from './exterior-walls'
 import { FLOOR_NODE_PREFIX, type OpeningSceneNode, type SceneGraph } from './scene-graph'
 
@@ -118,16 +119,12 @@ function firstMarkedDoor(
 ): OpeningSceneNode | undefined {
   return floorIds
     .flatMap((floorId) => input.openings.filter((opening) => opening.floorId === floorId))
-    .find((opening) => opening.entrance === true && openingKindOfType(opening.type) === 'door')
-}
-
-function reversed(direction: PlanDirection): PlanDirection {
-  return { x: -direction.x, y: -direction.y }
+    .find(isMarkedDoor)
 }
 
 /** Of a door's two normals, the one nearer plan-down, then the one nearer plan-right. */
 function tieBrokenNormal(normal: PlanDirection): PlanDirection {
-  const opposite = reversed(normal)
+  const opposite = negate(normal)
   const downGap = dotWithPlanDown(normal) - dotWithPlanDown(opposite)
   if (Math.abs(downGap) > DIRECTION_TIE_TOLERANCE) {
     return downGap > 0 ? normal : opposite
@@ -144,12 +141,11 @@ function awayFromWallCenter(input: FrontDirectionInput, door: OpeningSceneNode):
   const ys = ends.map((end) => end.y)
   const centerX = (Math.min(...xs) + Math.max(...xs)) / 2
   const centerY = (Math.min(...ys) + Math.max(...ys)) / 2
-  const outwardness =
-    (door.center.x - centerX) * door.normal.x + (door.center.y - centerY) * door.normal.y
+  const outwardness = dot(subtract(door.center, { x: centerX, y: centerY }), door.normal)
   if (Math.abs(outwardness) <= DIRECTION_TIE_TOLERANCE) {
     return tieBrokenNormal(door.normal)
   }
-  return outwardness > 0 ? door.normal : reversed(door.normal)
+  return outwardness > 0 ? door.normal : negate(door.normal)
 }
 
 /** The direction a marked door faces: its exterior run's outward normal, else away from the center. */

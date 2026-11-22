@@ -38,7 +38,7 @@ import { OpeningInspector } from '../plan/opening-inspector'
 import {
   floorOpenings,
   selectedOpeningContext,
-  singleSelectedOpening,
+  singleSelectedModelOpening,
 } from '../plan/opening-inspector-context'
 import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
 import { RoomNameEditor } from '../plan/room-name-editor'
@@ -349,7 +349,7 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
     )
   }
   const project = session.getProject()
-  const selectedOpening = singleSelectedOpening(selectedIds, project, activeFloorId)
+  const selectedOpening = singleSelectedModelOpening(selectedIds, project, activeFloorId)
   if (selectedOpening !== null) {
     return (
       // Key on the opening's editable values so the inspector remounts when the

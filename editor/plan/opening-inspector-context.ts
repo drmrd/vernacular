@@ -54,7 +54,7 @@ export function selectedOpeningContext(
  * raw model opening so the inspector edits the persisted record. Opening ids repeat
  * across floors, so the active floor is searched first, then the others in order.
  */
-export function singleSelectedOpening(
+export function singleSelectedModelOpening(
   selectedIds: ReadonlySet<string>,
   project: Readonly<Project>,
   activeFloorId: string | null,

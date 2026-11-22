@@ -131,6 +131,7 @@ export type {
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
 export type { OpeningKind } from './registries/opening-kind'
 export {
+  isMarkedDoor,
   openingKindOfType,
   openingTypeHasFill,
   openingTypeHasHingeSide,

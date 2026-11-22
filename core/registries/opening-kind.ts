@@ -23,6 +23,14 @@ export function openingKindOfType(typeId: string): OpeningKind | undefined {
   return isDoorFamily(family) ? 'door' : 'window'
 }
 
+/** Whether the opening is a door carrying the main entrance mark; a marked window does not count. */
+export function isMarkedDoor(opening: {
+  readonly type: string
+  readonly entrance?: boolean
+}): boolean {
+  return opening.entrance === true && openingKindOfType(opening.type) === 'door'
+}
+
 function openingFamilyOfType(typeId: string): OpeningFamily | undefined {
   return getEntry(builtinElementTypes, typeId)?.opening?.family
 }
