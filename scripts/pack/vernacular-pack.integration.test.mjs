@@ -1,9 +1,11 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
+import { CHANGELOG, textureEntry } from './generate-fixtures.mjs'
 import { encodePng } from './png-encoder.mjs'
 import { createNodePackReader, readManifestFromDisk, runPackCli } from './vernacular-pack.mjs'
 
@@ -27,6 +29,7 @@ function integrationDeps() {
   }
 }
 
+const EXPECTED_BROKEN_PACK_PROBLEMS = 6
 const OVERSIZE_SIDE = 2048
 const RGB_CHANNELS = 3
 const GREY = 0x80
@@ -43,7 +46,7 @@ async function writeOversizeTexturePack(parent) {
   for (const [name, text] of [
     ['LICENSE', 'CC0-1.0\n'],
     ['NOTICE', 'Vernacular project\n'],
-    ['CHANGELOG.md', '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n'],
+    ['CHANGELOG.md', CHANGELOG],
   ]) {
     await writeFile(join(packDir, name), text)
   }
@@ -56,19 +59,10 @@ async function writeOversizeTexturePack(parent) {
     eras: ['edwardian'],
     categories: ['flooring'],
     assets: [
-      {
-        contentHash: hash,
-        name: 'Oversize floorboards',
-        kind: 'texture',
-        mediaType: 'image/png',
-        license: 'CC0-1.0',
-        attribution: 'Vernacular project',
-        eras: ['edwardian'],
-        categories: ['flooring'],
+      textureEntry('Oversize floorboards', hash, {
         image: { width: OVERSIZE_SIDE, height: OVERSIZE_SIDE },
         tileSize: { width: 1000, height: 1000 },
-        colorSpace: 'srgb',
-      },
+      }),
     ],
   }
   await writeFile(join(packDir, 'manifest.json'), JSON.stringify(manifest))
@@ -96,7 +90,9 @@ describe('vernacular-pack against the fixture packs', () => {
 
     expect(await runPackCli(['validate', packDir], deps)).toBe(1)
 
-    const messages = deps.error.mock.calls.map((call) => call[0]).join('\n')
+    const lines = deps.error.mock.calls.map((call) => call[0])
+    expect(lines.filter((line) => /^ {2}- /.test(line))).toHaveLength(EXPECTED_BROKEN_PACK_PROBLEMS)
+    const messages = lines.join('\n')
     expect(messages).toMatch(/forbids redistribution/)
     expect(messages).toMatch(/content hash does not match/)
     expect(messages).toMatch(/thumbnail missing/)

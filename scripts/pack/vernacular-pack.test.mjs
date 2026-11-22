@@ -190,6 +190,16 @@ describe('runPackCli build', () => {
     expect(report.assets[0]).not.toHaveProperty('mediaType')
   })
 
+  it('build reports an empty asset list when the manifest has no assets array', async () => {
+    const { assets: _omitted, ...manifest } = validManifest()
+    const cliDeps = deps(manifest)
+
+    await runPackCli(['build', 'packs/x'], cliDeps)
+
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.assets).toEqual([])
+  })
+
   it('build writes a FAIL report and exits 1 for an invalid pack', async () => {
     const cliDeps = deps(validManifestWithAsset())
     const hash = 'a'.repeat(64)
