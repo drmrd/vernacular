@@ -89,7 +89,7 @@ Where things happen:
 - `use-workspace-state.ts` gathers what the workspace renders from the handle: the save status,
   the recent list (the records of the project index used last, apart from the open project), the
   recovery prompt, and the menu actions. It mounts three small hooks on the handle.
-  `useUnsavedChangesGuard` (in `use-before-unload-guard.ts`) arms the browser's leave warning
+  `useLeaveWarningGuard` (in `use-before-unload-guard.ts`) arms the browser's leave warning
   while a change is not stored, `useFlushOnHidden` asks for a write when the page hides, and
   `useHandleNotices` shows each notice of the handle once. The content cache of the editor is
   the open project's own, from `assetsOf(handle)` in `asset-providers.tsx`, so a folder project

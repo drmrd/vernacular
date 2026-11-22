@@ -2,14 +2,13 @@ import { useEffect, useSyncExternalStore } from 'react'
 import type { DocumentHandle, SaveStatus } from '../session'
 
 /**
- * Warns the browser before the tab unloads while the project has unsaved
- * changes, so a refresh or close prompts the native leave warning. The
- * listener is armed only while `isDirty` is true and is removed on transition
- * to clean and on unmount, so it never leaks across sessions.
+ * Warns the browser before the tab unloads while `armed` is true, so a
+ * refresh or close prompts the native leave warning. The listener is removed
+ * when `armed` turns false and on unmount, so it never leaks across sessions.
  */
-export function useBeforeUnloadGuard(isDirty: boolean): void {
+export function useBeforeUnloadGuard(armed: boolean): void {
   useEffect(() => {
-    if (!isDirty) {
+    if (!armed) {
       return
     }
 
@@ -26,7 +25,7 @@ export function useBeforeUnloadGuard(isDirty: boolean): void {
     return () => {
       window.removeEventListener('beforeunload', warnBeforeUnload)
     }
-  }, [isDirty])
+  }, [armed])
 }
 
 /** The save status of the handle, read again each time it changes. */

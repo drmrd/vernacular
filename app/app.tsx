@@ -155,8 +155,8 @@ function durabilityOfWork(
   return ports === null ? null : { durable: portsAreDurable(ports) }
 }
 
-// The page in place of the editor. A project that stays open under it keeps its guards of unsaved
-// work, since the editor that mounts them otherwise is not mounted.
+// The page in place of the editor. A project that stays open under it keeps its leave and flush
+// guards, since the editor that mounts them otherwise is not mounted.
 function pageOverProjectView(
   navigation: HistoryNavigation,
   screen: PageScreen,
@@ -165,14 +165,15 @@ function pageOverProjectView(
   const { handle } = navigation
   return (
     <>
-      {handle === null ? null : <UnsavedWorkGuards handle={handle} />}
+      {handle === null ? null : <LeaveGuards handle={handle} />}
       <ProjectsScreen navigation={navigation} screen={screen} {...stores} />
     </>
   )
 }
 
-// Warns before the tab closes with unsaved changes, and writes when the tab is hidden.
-function UnsavedWorkGuards({ handle }: { readonly handle: DocumentHandle }) {
+// Warns before the tab closes with work that is unsaved or held only by this tab, and writes when
+// the tab is hidden.
+function LeaveGuards({ handle }: { readonly handle: DocumentHandle }) {
   useLeaveWarningGuard(handle)
   useFlushOnHidden(handle)
   return null
