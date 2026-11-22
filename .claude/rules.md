@@ -1,22 +1,22 @@
 # Project Rules
 
-These rules apply to every contribution to Vernacular, whether by a human or a Claude Code subagent. They are loaded at every conversation start via `CLAUDE.md`.
+These rules apply to every contribution to Vernacular, whether by a human or a Claude Code subagent. The reviewers read this file on every dispatch; `CLAUDE.md` summarizes the hard invariants and points here.
 
 ## Hard invariants
 
 1. **Layer boundaries are non-negotiable.** `core/` does not import React or Three.js. `engine/` is the only layer that imports Three.js. `session/` imports no React and no Three.js and uses no DOM global. `bridge/` is the only layer that touches both React state and Three.js scene state. Storage browser APIs are only used inside `storage/`. See ADR-0001 and ADR-0175.
 
-2. **Apache-2.0 license, project-wide.** See ADR-0002 and `LICENSE`. Asset packs declare their own SPDX licenses; the export pipeline refuses incompatible mixes.
+2. **Apache-2.0 license, project-wide.** See `LICENSE`. Asset packs declare their own SPDX licenses; the export pipeline refuses incompatible mixes.
 
-3. **All mutations go through `dispatch(command)`** at the bridge boundary. The framework captures the inverse for undo/redo. See ADR-0005.
+3. **All mutations go through `dispatch(command)`** on the editor session in `session/` (the dispatcher is `core/commands/dispatcher.ts`); React reaches it through the adapters in `bridge/`. The framework captures the inverse for undo and redo. See ADR-0005 and ADR-0176.
 
 4. **Asset references are content-addressed.** Every reference is `(scope, contentHash)`. See ADR-0007.
 
-5. **30-day dependency cooldown.** No direct or transitive dependency younger than 30 days. Enforced by `.npmrc` `minimum-release-age=43200`. See ADR-0010.
+5. **30-day dependency cooldown.** No direct or transitive dependency younger than 30 days. Enforced by `.npmrc` `minimum-release-age=43200`.
 
 6. **Knowledge graph.** Significant architectural changes are summarized as ADRs under `docs/knowledge/decisions/`, committed and authoritative alongside the design specification, so future sessions and contributors recover context fast. The generated indices (`INDEX.md`, `index.json`) are a gitignored local cache; regenerate them with `pnpm knowledge:index`.
 
-7. **No Co-Authored-By trailers.** Project setting `includeCoAuthoredBy: false` is the source of truth. Commit messages should never contain `Co-Authored-By: Claude` or similar.
+7. **No co-author or AI-session trailers.** No commit message carries `Co-Authored-By:`, `Claude-Session:`, or a similar attribution line. `pnpm policy:check` fails the pull request on one (ADR-0221).
 
 8. **No em-dashes (`—`) in newly composed text.** Rephrase with commas, parentheses, or colons. Downloaded canonical text (Contributor Covenant, license texts) is exempt.
 
@@ -32,11 +32,11 @@ These rules apply to every contribution to Vernacular, whether by a human or a C
 
 13. **Author identity.** Locally configured to `Dan Moore <9156191+drmrd@users.noreply.github.com>` per repository.
 
-14. **Red-green-blue TDD for application code.** RED writes a failing test, GREEN writes the minimal implementation, BLUE applies Clean Code review and any refactors. The BLUE phase ends with a `refactor:` commit, even if empty. See ADR-0009.
+14. **Red-green-blue TDD for application code.** RED writes a failing test, GREEN writes the minimal implementation, BLUE applies Clean Code review and any refactors. The BLUE phase ends with a `refactor:` commit, even if empty. `pnpm rgb:audit` checks the commit order and which files each role touches; `pnpm green:proof` proves each GREEN commit against its RED tests. See ADR-0025 and ADR-0225.
 
-15. **Independent agents.** The test-author and implementer roles do not share files. The test-author cannot read implementation source; the implementer cannot read test source. See ADR-0011 for the agent system.
+15. **Independent agents.** The test-author and implementer roles do not share files. The test-author cannot read implementation source; the implementer cannot read test source. The agent definitions in `.claude/agents/` are the reference.
 
-16. **PRs require CI green and a `pr-reviewer` verdict** before merging.
+16. **PRs require a passing `ci-complete` check and a `pr-reviewer` verdict** before merging.
 
 17. **Humanize prose in Markdown and other text files.** Run new or substantially revised prose through the `humanizer` skill before committing it: specs, plans, ADRs, READMEs, the top-level docs, and any other Markdown or plain-text file. The skill removes the common machine-writing tells, including significance inflation, promotional framing, vague attributions, formulaic "-ing" analyses, the rule of three, padded transitions, copula avoidance, and em-dash overuse. The em-dash prohibition (rule 8) is the mechanical floor here. Apply this to prose only. Leave code blocks, command output, data tables, downloaded canonical text (license texts, the Contributor Covenant), and version-scoped release notes (`CHANGELOG.md`) alone; exact wording matters more than voice there.
 
@@ -50,11 +50,11 @@ Identifiers reveal intent. Avoid abbreviations beyond a small accepted set (`ctx
 
 ### Functions
 
-Small. Do one thing. One level of abstraction per function. Three parameters or fewer ideally; an options object when more are needed. No flag arguments.
+Small. Do one thing. One level of abstraction per function. No flag arguments. In `.ts` and `.tsx` files, ESLint fails a function over 40 lines (120 in tests and stories), a file over 300 lines, more than 3 parameters (use an options object), nesting deeper than 3, a nested ternary, and a magic number other than -1, 0, 1, 2, and 100 (tests, stories, registries, and config files are exempt). Hold `.mjs` and `.js` scripts to the same limits by review.
 
 ### Comments
 
-Only for the WHY (constraints, workarounds, non-obvious invariants, surprising-behavior warnings). Never the WHAT. No commented-out code. No journal comments.
+Prefer self-documenting code and tests to comments, always. Say what code does through names, small functions, and types, and say what it must do through tests. A comment is a last resort: write one only when the code and tests cannot carry the WHY (constraints, workarounds, non-obvious invariants, surprising-behavior warnings). Before you add a comment, try a better name, an extracted function, or a test. Never comment the WHAT. No commented-out code. No journal comments.
 
 ### Formatting
 
@@ -70,7 +70,7 @@ Exceptions over error codes. Do not return null; do not pass null. One concern p
 
 ### Boundaries
 
-External dependencies wrapped at clear seams. The `engine/loaders/` directory is the only consumer of Three.js loaders. Storage browser APIs are wrapped inside `storage/`.
+External dependencies wrapped at clear seams. The `engine/loaders/` directory is the only consumer of Three.js loaders.
 
 ### DRY
 
