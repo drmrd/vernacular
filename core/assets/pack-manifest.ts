@@ -148,10 +148,8 @@ function declaresMediaTypes(formatVersion: unknown): boolean {
   return formatVersion === MEDIA_TYPE_FORMAT_VERSION
 }
 
-function allowedMediaTypes(kind: unknown, formatVersion: unknown): readonly string[] {
-  return kind === 'texture' && declaresMediaTypes(formatVersion)
-    ? TEXTURE_MEDIA_TYPES
-    : MODEL_MEDIA_TYPES
+function allowedMediaTypes(kind: unknown): readonly string[] {
+  return kind === 'texture' ? TEXTURE_MEDIA_TYPES : MODEL_MEDIA_TYPES
 }
 
 function validateMediaType(
@@ -168,7 +166,7 @@ function validateMediaType(
     }
     return
   }
-  const allowed = allowedMediaTypes(source['kind'], context.formatVersion)
+  const allowed = allowedMediaTypes(source['kind'])
   if (!(typeof mediaType === 'string' && allowed.includes(mediaType))) {
     errors.push(`${context.label}.mediaType must be one of: ${allowed.join(', ')}`)
   }
