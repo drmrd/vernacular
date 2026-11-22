@@ -7,7 +7,7 @@ import { useActiveFloorId } from './active-floor-context'
 import { useBuildingViewState, type BuildingViewState } from './use-building-view-state'
 import { useSceneSessionStoreOrLocal } from './scene-session-context'
 import { useSceneGraph } from './use-scene-graph'
-import { viewSceneGraph } from './view-scene-graph'
+import { viewSceneGraph, type ScopedSceneGraph } from './view-scene-graph'
 
 /** The building-view toggles plus the camera mode: the inputs that scope the shown graph. */
 type ShownViewSettings = Pick<BuildingViewState, 'scope' | 'showUnderground'> &
@@ -25,7 +25,7 @@ export function useViewSceneGraph(
   rawGraph: SceneGraph,
   activeFloorId: string | null,
   view: ShownViewSettings,
-): SceneGraph {
+): ScopedSceneGraph {
   return useMemo(
     () =>
       viewSceneGraph({
@@ -40,7 +40,7 @@ export function useViewSceneGraph(
 }
 
 /** The graph the 3D view shows, with the building-view state that scoped it: the raw graph scoped by the active floor and the building view. */
-export function useShownSceneGraph(): { graph: SceneGraph; buildingView: BuildingViewState } {
+export function useShownSceneGraph(): { graph: ScopedSceneGraph; buildingView: BuildingViewState } {
   const rawGraph = useSceneGraph()
   const activeFloorId = useActiveFloorId()
   const buildingView = useBuildingViewState()

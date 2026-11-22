@@ -90,12 +90,15 @@ export interface ViewSceneGraphInput {
  * underground floors dropped when `includeUnderground` is false). While walking, the
  * active floor stays in the building view even when that setting hides its level.
  */
-export function viewSceneGraph(input: ViewSceneGraphInput): SceneGraph {
+export function viewSceneGraph(input: ViewSceneGraphInput): ScopedSceneGraph {
   if (input.scope === 'building') {
     return sceneGraphForBuilding(input.rawGraph, {
       includeUnderground: input.includeUnderground,
       standingFloorId: input.cameraMode === 'walk' ? input.activeFloorId : null,
     })
   }
-  return sceneGraphForFloor(input.rawGraph, input.activeFloorId)
+  return {
+    ...sceneGraphForFloor(input.rawGraph, input.activeFloorId),
+    framedFloorId: input.activeFloorId,
+  }
 }
