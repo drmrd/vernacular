@@ -33,15 +33,14 @@ function hoursAndMinutes(minutesSinceMidnight: number): { hours: number; minutes
 
 /** Serializes to an ISO 8601 civil datetime `YYYY-MM-DDThh:mm` (a `datetime-local` value). */
 export function observationInstantToIso(instant: ObservationInstant): string {
-  const { hours, minutes } = hoursAndMinutes(instant.minutesSinceMidnight)
-  return `${instant.date}T${twoDigits(hours)}:${twoDigits(minutes)}`
+  return `${instant.date}T${formatObservationTime(instant)}`
 }
 
 // The exact shape `observationInstantToIso` produces and `parseObservationInstant`
 // expects: `YYYY-MM-DDThh:mm`. Owned here so every caller that needs to guard the
 // parse boundary (a UI input, a future importer, ...) validates against the domain's
 // own contract instead of re-deriving the shape itself.
-const OBSERVATION_INSTANT_ISO_SHAPE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/
+const OBSERVATION_INSTANT_ISO_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
 
 const FIRST_MONTH_INDEX_OFFSET = 1
 

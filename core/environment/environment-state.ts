@@ -1,9 +1,10 @@
+import { observationInstantToIso, type ObservationInstant } from './observation-time'
 import {
-  observationInstantToIso,
-  parseObservationInstant,
-  type ObservationInstant,
-} from './observation-time'
-import { openingConditions, openingInstant, type OpeningConditions } from './opening-instant'
+  openingConditions,
+  openingConditionsOf,
+  openingInstant,
+  type OpeningConditions,
+} from './opening-instant'
 import { DEFAULT_CLOUD_COVER } from './sky-model'
 import type { EnvironmentScene, ViewingConditions } from '../model/environment-scene'
 import type { Site } from '../model/site'
@@ -87,10 +88,5 @@ export function applyEnvironmentScene(
   state: EnvironmentState,
   scene: EnvironmentScene,
 ): EnvironmentState {
-  return {
-    mode: state.mode,
-    observedAt: parseObservationInstant(scene.observedAt),
-    cloudCover: scene.weather?.cloudCover ?? DEFAULT_CLOUD_COVER,
-    colorCheck: state.colorCheck,
-  }
+  return { mode: state.mode, ...openingConditionsOf(scene), colorCheck: state.colorCheck }
 }
