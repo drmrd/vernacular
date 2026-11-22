@@ -34,6 +34,48 @@ function facingControl(typeId: string, wallHasOneRoomSide: boolean): FacingContr
   }
 }
 
+const NO_HINGE_SIDE_REASON = 'This kind of opening has no hinge side to choose.'
+
+const HINGED_FAMILIES: ReadonlySet<string> = new Set(['swing', 'fold', 'pivot'])
+
+/**
+ * The hinge side only shows on swing, fold, and pivot openings and on a casement window; every
+ * other kind draws and moves the same either way, so the button says why it is unavailable.
+ */
+function hingeDisabledReason(typeId: string): string | undefined {
+  const opening = getEntry(builtinElementTypes, typeId)?.opening
+  if (opening === undefined) return NO_HINGE_SIDE_REASON
+  const isCasement = opening.family === 'window-crank' && opening.hingeEdge === 'jamb'
+  return HINGED_FAMILIES.has(opening.family) || isCasement ? undefined : NO_HINGE_SIDE_REASON
+}
+
+function FlipHingeButton({
+  opening,
+  floorId,
+  dispatch,
+}: Omit<OpeningControlsProps, 'wallHasOneRoomSide'>): ReactElement {
+  const reasonId = useId()
+  const disabledReason = hingeDisabledReason(opening.type)
+  const unavailable = disabledReason !== undefined
+  return (
+    <>
+      <Button
+        variant="neutral"
+        aria-disabled={unavailable ? true : undefined}
+        aria-describedby={unavailable ? reasonId : undefined}
+        title={disabledReason}
+        onClick={() => {
+          if (unavailable) return
+          dispatch(flipOpening(floorId, opening.id, 'hinge'))
+        }}
+      >
+        Flip hinge
+      </Button>
+      <ReasonDescription id={reasonId} reason={disabledReason} />
+    </>
+  )
+}
+
 interface OpeningControlsProps {
   opening: Opening
   floorId: string
@@ -53,12 +95,7 @@ export function OpeningControls({
   return (
     <Stack direction="horizontal" gap="space-3">
       <Stack direction="horizontal" gap="space-2">
-        <Button
-          variant="neutral"
-          onClick={() => dispatch(flipOpening(floorId, opening.id, 'hinge'))}
-        >
-          Flip hinge
-        </Button>
+        <FlipHingeButton opening={opening} floorId={floorId} dispatch={dispatch} />
         <Button
           variant="neutral"
           aria-disabled={unavailable ? true : undefined}
