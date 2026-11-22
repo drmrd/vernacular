@@ -67,7 +67,7 @@ export type ShownFailure = StoredFailure | FileFailure
 type ChoiceContext = Pick<
   FailedOpenDialogParts,
   'runPageFlow' | 'runActionFlow' | 'onOpen' | 'onChoiceFailed' | 'packs'
-> & { readonly notifications: NotificationApi }
+> & { readonly notifications: NotificationApi; readonly clearFile: () => void }
 
 /** The run of a choice with the offered repair. */
 type ChoiceRun = (offer: RepairOffer) => Promise<void>
@@ -75,7 +75,7 @@ type ChoiceRun = (offer: RepairOffer) => Promise<void>
 /** The sentence for a repaired copy that lacks some of the assets its project uses. */
 function repairedCopyMissingAssetsText(count: number): string {
   const lacked = `Vernacular could not find ${groupedNumber(count)} of the assets this project uses.`
-  return count === 1 ? `${lacked} It shows as missing.` : `${lacked} Each one shows as missing.`
+  return count === 1 ? `${lacked} It shows as missing.` : `${lacked} They show as missing.`
 }
 
 /** Opens the offer of a stored project as a new project, with a warning for each missing asset. */
@@ -117,10 +117,13 @@ async function replaceStored(id: string, offer: RepairOffer, context: ChoiceCont
   }
 }
 
-/** Imports the file again with its repair, as a try of the page. */
+/** Imports the file again with its repair, as a try of the page. A failed try clears the file. */
 async function openFileCopy(file: ImportedFile, context: ChoiceContext) {
   const request = { ...file, applyRepair: true }
-  await importWithAssetWarning(context.runActionFlow, request, context.notifications)
+  const result = await importWithAssetWarning(context.runActionFlow, request, context.notifications)
+  if (result === undefined || !result.ok) {
+    context.clearFile()
+  }
 }
 
 /** The failure that the dialog shows: a file's, else that of the notice until it is closed. */
@@ -212,6 +215,7 @@ export function useFailedOpenDialog(parts: FailedOpenDialogParts): FailedOpenDia
   const choice = useRepairChoice(failure.shown, {
     ...{ runPageFlow, runActionFlow, onOpen, onChoiceFailed, packs },
     notifications,
+    clearFile: failure.clearFile,
   })
   const onClose = () => {
     choice.cancel()
