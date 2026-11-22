@@ -125,7 +125,7 @@ describe('checkPackIntegrity', () => {
 
 describe('checkPackIntegrity for a format 2 asset', () => {
   const OTHER_HASH = 'c'.repeat(64)
-  const textureFile = (extension) => `assets/${HASH}.${extension}`
+  const textureFile = (extension, hash = HASH) => `assets/${hash}.${extension}`
   const TEXTURE = { kind: 'texture', name: 'Grass', mediaType: 'image/png' }
   const MODEL = { kind: 'furniture', mediaType: 'model/gltf-binary' }
 
@@ -179,6 +179,27 @@ describe('checkPackIntegrity for a format 2 asset', () => {
     const result = await checkPackIntegrity(manifest, reader)
     expect(result.errors.some((m) => m.includes(`${OTHER_HASH}.glb`))).toBe(true)
     expect(result.errors.some((m) => m.includes(`${HASH}.png`))).toBe(false)
+  })
+
+  it('requires a thumbnail for a model but not for a texture', async () => {
+    const texturePath = textureFile('png', OTHER_HASH)
+    const manifest = {
+      ...manifestWith(MODEL),
+      formatVersion: 2,
+      assets: [
+        { contentHash: HASH, name: 'Chair', ...MODEL },
+        { contentHash: OTHER_HASH, ...TEXTURE },
+      ],
+    }
+    const reader = fakeReader({
+      dirs: { assets: [`${HASH}.glb`, `${OTHER_HASH}.png`], thumbnails: [] },
+      files: { [THUMBNAIL_FILE]: false, [texturePath]: true },
+      hashes: { [texturePath]: OTHER_HASH },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
+    const missing = result.errors.filter((m) => m.includes('thumbnail missing'))
+    expect(missing).toHaveLength(1)
+    expect(missing[0]).toContain(HASH)
   })
 })
 
