@@ -66,6 +66,11 @@ describe('validatePackManifest - top-level fields', () => {
     expect(result.errors.join(' ')).toContain('attribution')
   })
 
+  it('still accepts a manifest with no format version, read as format 1', () => {
+    const manifest = { ...validManifest(), assets: [validAsset()] }
+    expect(validatePackManifest(manifest)).toEqual({ valid: true, errors: [] })
+  })
+
   it('rejects a non-semver version string', () => {
     const manifest = { ...validManifest(), version: 'v1' }
     const result = validatePackManifest(manifest)
