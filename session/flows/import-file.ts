@@ -1,5 +1,5 @@
 import { repairOfferFor } from '../../core'
-import type { DecodeFailure, RepairOffer } from '../../core'
+import type { DecodeFailure, Project, RepairOffer } from '../../core'
 import {
   copyImportedAssets,
   importProjectFile,
@@ -13,10 +13,12 @@ import type {
   AssetCache,
   PackSupplies,
   ProjectFileFailure,
+  ProjectFileRead,
 } from '../../storage'
 import type { DocumentHandle } from '../handle/handle-types'
 import type { SessionPorts } from '../ports'
 import type { SwitchFailure } from './flow-result'
+import { repairedCopyOf } from './repaired-copy'
 import { switchProject } from './switch-project'
 
 /** A file that the user chose to open, with its name and its bytes. */
@@ -27,6 +29,8 @@ export interface ImportedFile {
   readonly packSupplies?: PackSupplies
   /** The limits of the archive reader. The reader's own limits apply when none are given. */
   readonly limits?: ArchiveLimits
+  /** True: a file that gave `format-rules` with a repair opens as its repaired copy. */
+  readonly applyRepair?: boolean
 }
 
 /** Why a file did not become a project. */
@@ -88,7 +92,7 @@ function archiveFailureOf(archive: ArchiveFailure): ImportFailure {
  * The pool of the new project. A pool that cannot be reached does not fail the import: the copy
  * still opens, and every needed asset shows as missing.
  */
-function poolOf(ports: SessionPorts, id: string): AssetCache | undefined {
+export function poolOf(ports: SessionPorts, id: string): AssetCache | undefined {
   try {
     return ports.workspace.assets(id)
   } catch (error) {
@@ -98,6 +102,35 @@ function poolOf(ports: SessionPorts, id: string): AssetCache | undefined {
     )
     return undefined
   }
+}
+
+/** The project to open and the assets that the file supplied for it. */
+interface CopySource {
+  readonly project: Project
+  readonly assets: ReadonlyMap<string, Uint8Array>
+}
+
+type SourceRead =
+  | { readonly ok: true; readonly source: CopySource }
+  | { readonly ok: false; readonly failure: ImportFailure }
+
+/**
+ * The project of the read. With `applyRepair`, a document that breaks the format rules and has a
+ * repair gives its repaired copy, with the assets that the archive supplied.
+ */
+function sourceOf(read: ProjectFileRead, applyRepair: boolean | undefined): SourceRead {
+  if (read.ok) {
+    return { ok: true, source: read }
+  }
+  const { failure } = read
+  if (applyRepair === true && failure.kind === 'decode') {
+    const offer = repairOfferFor(failure.decode)
+    if (offer !== undefined) {
+      const assets = failure.supplied?.assets ?? new Map<string, Uint8Array>()
+      return { ok: true, source: { project: repairedCopyOf(offer), assets } }
+    }
+  }
+  return { ok: false, failure: importFailureOf(failure) }
 }
 
 /**
@@ -110,11 +143,14 @@ async function openWithAssets(
   current: DocumentHandle | undefined,
   file: ImportedFile,
 ): Promise<ImportResult> {
-  const read = await importProjectFile(file.name, file.bytes, file.limits)
+  const read = sourceOf(
+    await importProjectFile(file.name, file.bytes, file.limits),
+    file.applyRepair,
+  )
   if (!read.ok) {
-    return { ok: false, failure: importFailureOf(read.failure) }
+    return read
   }
-  const { project } = read
+  const { project, assets } = read.source
   const id = newProjectId([])
   const switched = await switchProject(ports, current, {
     id,
@@ -126,8 +162,7 @@ async function openWithAssets(
   }
   const needed = neededAssetHashes(project, file.packSupplies)
   const pool = poolOf(ports, id)
-  const missingAssets =
-    pool === undefined ? needed : await copyImportedAssets(pool, read.assets, needed)
+  const missingAssets = pool === undefined ? needed : await copyImportedAssets(pool, assets, needed)
   return { ok: true, handle: switched.handle, missingAssets }
 }
 

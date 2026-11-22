@@ -1,5 +1,6 @@
-import { useId, type KeyboardEvent, type ReactElement } from 'react'
+import { useId, type ReactElement } from 'react'
 import { Button, useFocusTrap } from '../design-system'
+import { answerOnEscape, DIALOG_SHADE_CLASS } from './dialog-shade'
 import { causeSentence, type FailedOpenCause } from './failure-sentences'
 import './failed-open-dialog.css'
 
@@ -37,16 +38,6 @@ const KEPT_UNCHANGED = 'The stored file is kept unchanged.'
 const EXPORT_HINT = 'You can export a copy from the Projects page.'
 const REPAIR_OPENING = 'A repair can open this project.'
 const RETRY_CAUSES: readonly FailedOpenCause[] = ['storage-unavailable', 'folder-unavailable']
-
-/** Escape answers the safe way and stops here, so it reaches nothing behind the dialog. */
-function closeOnEscape(onClose: () => void): (event: KeyboardEvent<HTMLElement>) => void {
-  return (event) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation()
-      onClose()
-    }
-  }
-}
 
 function TechnicalEntry({
   label,
@@ -174,11 +165,7 @@ export function FailedOpenDialog(props: FailedOpenDialogProps): ReactElement {
   const sentences = describedSentences(cause, idBase)
   return (
     // The trap and the Escape handler sit on the shade, which the trap makes focusable.
-    <div
-      ref={dialogRef}
-      className="failed-open-dialog__backdrop"
-      onKeyDown={closeOnEscape(onClose)}
-    >
+    <div ref={dialogRef} className={DIALOG_SHADE_CLASS} onKeyDown={answerOnEscape(onClose)}>
       <div
         role="alertdialog"
         aria-modal="true"

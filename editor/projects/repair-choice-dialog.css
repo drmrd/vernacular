@@ -1,0 +1,24 @@
+.repair-choice-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  max-width: 32rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+}
+
+.repair-choice-dialog__title,
+.repair-choice-dialog__sentence {
+  margin: 0;
+}
+
+.repair-choice-dialog__title {
+  font-size: inherit;
+  font-weight: var(--font-weight-semibold);
+}

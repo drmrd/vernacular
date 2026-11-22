@@ -8,3 +8,5 @@ export type {
   FailedOpenDetails,
   FailedOpenDialogProps,
 } from './failed-open-dialog'
+export { RepairChoiceDialog } from './repair-choice-dialog'
+export type { RepairChoiceDialogProps } from './repair-choice-dialog'

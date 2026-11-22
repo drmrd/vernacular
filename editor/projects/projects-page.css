@@ -165,18 +165,6 @@
   gap: var(--space-2);
 }
 
-/* The shade covers the viewport and sits above the page, so the dialog cannot be passed by. */
-.delete-project-dialog__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3);
-  background: rgba(0, 0, 0, 0.4);
-}
-
 .delete-project-dialog {
   display: flex;
   flex-wrap: wrap;

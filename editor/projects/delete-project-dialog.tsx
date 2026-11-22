@@ -1,5 +1,6 @@
-import { useId, type KeyboardEvent, type ReactElement } from 'react'
+import { useId, type ReactElement } from 'react'
 import { Button, useFocusTrap } from '../design-system'
+import { answerOnEscape, DIALOG_SHADE_CLASS } from './dialog-shade'
 
 export interface DeleteProjectDialogProps {
   readonly name: string
@@ -9,16 +10,6 @@ export interface DeleteProjectDialogProps {
 
 const CONSEQUENCE =
   'This removes the project and its recovery copies from this browser. You cannot undo this action.'
-
-/** Escape answers the safe way and stops here, so it reaches nothing behind the dialog. */
-function cancelOnEscape(onCancel: () => void): (event: KeyboardEvent<HTMLElement>) => void {
-  return (event) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation()
-      onCancel()
-    }
-  }
-}
 
 /**
  * The question before a delete. Mount it only while it shows: the focus trap arms in a mount
@@ -35,11 +26,7 @@ export function DeleteProjectDialog({
   const consequenceId = `${idBase}-consequence`
   return (
     // The trap and the Escape handler sit on the shade, which the trap makes focusable.
-    <div
-      ref={dialogRef}
-      className="delete-project-dialog__backdrop"
-      onKeyDown={cancelOnEscape(onCancel)}
-    >
+    <div ref={dialogRef} className={DIALOG_SHADE_CLASS} onKeyDown={answerOnEscape(onCancel)}>
       <div
         role="alertdialog"
         aria-modal="true"
