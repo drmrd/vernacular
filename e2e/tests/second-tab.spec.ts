@@ -98,6 +98,25 @@ test.describe('A second tab', () => {
     await expectWallCount(first, 1)
   })
 
+  test('offers Export as the only action of the card it holds, and the first tab keeps its wall', async ({
+    context,
+  }) => {
+    const { first, second } = await openFirstTabThenSecondTab(context)
+    await expectRefused(second)
+
+    await selectors.cardActionsButton(second, DEFAULT_NAME).click()
+    await expect(selectors.cardMenuItems(second)).toHaveText(['Export'])
+    const [download] = await Promise.all([
+      second.waitForEvent('download'),
+      selectors.cardMenuItem(second, 'Export').click(),
+    ])
+
+    expect(download.suggestedFilename()).toMatch(/\.building$/)
+    await first.reload()
+    await expect(selectors.planCanvas(first)).toBeVisible()
+    await expectWallCount(first, 1)
+  })
+
   test('leaves exactly what the first tab drew in storage', async ({ context, browserName }) => {
     // WebKit does not support createWritable on OPFS handles from the main thread,
     // so the storage hook cannot read the stored project there (same limitation as

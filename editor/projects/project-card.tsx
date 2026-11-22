@@ -1,4 +1,4 @@
-import { useId, type MouseEvent, type ReactElement } from 'react'
+import { useEffect, useId, useRef, type MouseEvent, type ReactElement, type RefObject } from 'react'
 import type { ProjectCardAction, ProjectCardModel } from '../../session'
 import {
   DID_NOT_OPEN,
@@ -8,7 +8,16 @@ import {
   previewSource,
   stateLineText,
 } from './card-text'
+import { CardRenameForm } from './card-rename-form'
 import { ProjectCardMenu } from './project-card-menu'
+
+/** The rename form that a card shows under its link. */
+export interface CardRename {
+  /** Resolves true when the name is stored. */
+  readonly onSave: (name: string) => Promise<boolean>
+  /** Called when the form closes, after a stored name or a cancel. */
+  readonly onClose: () => void
+}
 
 interface ProjectCardProps {
   readonly card: ProjectCardModel
@@ -17,6 +26,8 @@ interface ProjectCardProps {
   readonly onOpen?: (id: string) => void
   /** Without it the card shows no "..." control. */
   readonly onAction?: (id: string, action: ProjectCardAction) => void
+  /** When set, the card shows the rename form under its link. */
+  readonly rename?: CardRename
 }
 
 interface DescribedText {
@@ -121,12 +132,55 @@ function CardLink({ card, href, onOpen }: CardLinkProps): ReactElement {
 interface ProjectCardInput extends Pick<ProjectCardProps, 'card' | 'href'> {
   readonly onOpen?: ProjectCardProps['onOpen'] | undefined
   readonly onAction?: ProjectCardProps['onAction'] | undefined
+  readonly rename?: ProjectCardProps['rename'] | undefined
 }
 
-export function ProjectCard({ card, href, onOpen, onAction }: ProjectCardInput): ReactElement {
+interface RenameOnCardProps {
+  readonly name: string
+  readonly rename: CardRename
+  readonly cardRef: RefObject<HTMLElement | null>
+}
+
+/**
+ * The rename form of a card. When it closes, the focus goes to the card's "..." control, unless
+ * the form is already gone because another card took the rename.
+ */
+function RenameOnCard({ name, rename, cardRef }: RenameOnCardProps): ReactElement {
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const close = (): void => {
+    if (mounted.current) {
+      cardRef.current?.querySelector<HTMLElement>('[aria-haspopup]')?.focus()
+    }
+    rename.onClose()
+  }
+  const save = async (typed: string): Promise<boolean> => {
+    const stored = await rename.onSave(typed)
+    if (stored) {
+      close()
+    }
+    return stored
+  }
+  return <CardRenameForm name={name} onSave={save} onCancel={close} />
+}
+
+export function ProjectCard({
+  card,
+  href,
+  onOpen,
+  onAction,
+  rename,
+}: ProjectCardInput): ReactElement {
+  const cardRef = useRef<HTMLLIElement>(null)
   return (
-    <li className="project-card">
+    <li className="project-card" ref={cardRef}>
       <CardLink card={card} href={href} onOpen={onOpen} />
+      {rename ? <RenameOnCard name={card.name} rename={rename} cardRef={cardRef} /> : null}
       {onAction ? (
         <ProjectCardMenu
           projectName={card.name}

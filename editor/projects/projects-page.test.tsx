@@ -219,14 +219,14 @@ describe('ProjectsPage notice', () => {
 describe('ProjectsPage card actions control', () => {
   const control = { name: 'Actions for Hubbard House' }
 
-  it('puts the control beside the link, never inside it, when onCardAction is given', () => {
-    renderPage({ cards: [cardOf()], onCardAction: vi.fn() })
+  it('puts the control beside the link, never inside it, when cardActions has a handler', () => {
+    renderPage({ cards: [cardOf()], cardActions: { onRename: vi.fn(() => Promise.resolve(true)) } })
     const actions = screen.getByRole('button', control)
     expect(linkNamed('Hubbard House').contains(actions)).toBe(false)
     expect(screen.getByRole('listitem')).toContainElement(actions)
   })
 
-  it('shows no control without onCardAction', () => {
+  it('shows no control without cardActions', () => {
     renderPage({ cards: [cardOf()] })
     expect(screen.queryByRole('button', control)).toBeNull()
   })

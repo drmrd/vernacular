@@ -6,7 +6,10 @@ import type { SessionPorts } from '../ports'
 import { type SwitchResult, switchProject } from './switch-project'
 
 /** The record of the id in the index. A `get` that rejects counts as no record. */
-async function recordOf(ports: SessionPorts, id: string): Promise<ProjectRecord | undefined> {
+export async function recordOf(
+  ports: SessionPorts,
+  id: string,
+): Promise<ProjectRecord | undefined> {
   try {
     return await ports.index.get(id)
   } catch {
@@ -47,7 +50,7 @@ type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | OpenF
  * refusal or a missing folder ends the open before anything is stored. Rejects when that request
  * rejects.
  */
-async function recentTarget(ports: SessionPorts, id: string): Promise<RecentTarget> {
+export async function recentTarget(ports: SessionPorts, id: string): Promise<RecentTarget> {
   const request = await requestFor(ports, id)
   if (request.location.kind === 'folder' && (await wouldAskUser(ports, id))) {
     const answer = await ports.folders.reopen(id)

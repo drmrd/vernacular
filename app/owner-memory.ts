@@ -42,6 +42,8 @@ export interface OwnerMemory {
   flowRunning: boolean
   /** The ports and the id of the last start request that launched a start. */
   launched: { readonly ports: SessionPorts; readonly id: string } | null
+  /** The start request that was current when an action ended the open project. Never launches. */
+  retired: OpenRequest | null
   /** What retry opens: the target of the last start. */
   retryTarget: StartTarget | null
   closed: ClosedHandle | null
@@ -58,6 +60,7 @@ export function newMemory(setView: (view: OwnerView) => void): OwnerMemory {
     start: null,
     flowRunning: false,
     launched: null,
+    retired: null,
     retryTarget: null,
     closed: null,
   }
@@ -175,14 +178,15 @@ export function launchRetry(memory: OwnerMemory): void {
 
 /**
  * The start that is due: the latest ports and request, when the effects are set up, no project is
- * open, nothing runs, and no start was launched for this ports and request yet. Otherwise null.
+ * open, nothing runs, the request is not the one an action retired, and no start was launched for
+ * this ports and request yet. Otherwise null.
  */
 function dueTarget(memory: OwnerMemory): StartTarget | null {
   if (!memory.live || memory.handle !== null || isBusy(memory)) {
     return null
   }
   const { ports, request, launched } = memory
-  if (ports === null || request === null) {
+  if (ports === null || request === null || request === memory.retired) {
     return null
   }
   const isNew = launched === null || launched.ports !== ports || launched.id !== request.id

@@ -1,8 +1,8 @@
-import { useId, type DragEvent, type ReactElement } from 'react'
+import { useId, useRef, type DragEvent, type ReactElement } from 'react'
 import { Button } from '../design-system'
-import type { ProjectCardAction, ProjectCardModel } from '../../session'
-import { NO_PROJECTS, backText } from './card-text'
-import { ProjectCard } from './project-card'
+import type { ProjectCardModel } from '../../session'
+import { backText } from './card-text'
+import { CardList, type ProjectCardActions } from './card-list'
 import './projects-page.css'
 
 export interface OpenProjectLink {
@@ -15,7 +15,7 @@ export interface ProjectsPageProps {
   readonly cards: readonly ProjectCardModel[] | undefined
   readonly hrefFor: (id: string) => string
   readonly onOpen?: (id: string) => void
-  readonly onCardAction?: (id: string, action: ProjectCardAction) => void
+  readonly cardActions?: ProjectCardActions
   /** The project open in this tab. With it the page shows "Back to <name>". */
   readonly openProject?: OpenProjectLink
   /** One sentence that says why a project did not open. */
@@ -51,29 +51,33 @@ function PageActions({
   )
 }
 
-interface CardListProps {
-  readonly cards: readonly ProjectCardModel[]
-  readonly hrefFor: ProjectsPageProps['hrefFor']
-  readonly onOpen?: ProjectsPageProps['onOpen'] | undefined
-  readonly onCardAction?: ProjectsPageProps['onCardAction'] | undefined
+function PageHead({
+  headingId,
+  notice,
+  openProject,
+}: {
+  readonly headingId: string
+  readonly notice: string | undefined
+  readonly openProject: OpenProjectLink | undefined
+}): ReactElement {
+  return (
+    <>
+      <h1 id={headingId} className="projects-page__heading">
+        Projects
+      </h1>
+      {notice ? <PageNotice text={notice} /> : null}
+      {openProject ? (
+        <Button onClick={openProject.onBack}>{backText(openProject.name)}</Button>
+      ) : null}
+    </>
+  )
 }
 
-function CardList({ cards, hrefFor, onOpen, onCardAction }: CardListProps): ReactElement {
-  if (cards.length === 0) {
-    return <p className="projects-page__empty">{NO_PROJECTS}</p>
-  }
+function PageNotice({ text }: { readonly text: string }): ReactElement {
   return (
-    <ul className="projects-page__cards">
-      {cards.map((card) => (
-        <ProjectCard
-          key={card.id}
-          card={card}
-          href={hrefFor(card.id)}
-          onOpen={onOpen}
-          onAction={onCardAction}
-        />
-      ))}
-    </ul>
+    <p role="alert" className="projects-page__notice">
+      {text}
+    </p>
   )
 }
 
@@ -98,7 +102,7 @@ export function ProjectsPage({
   cards,
   hrefFor,
   onOpen,
-  onCardAction,
+  cardActions,
   openProject,
   notice,
   onNewProject,
@@ -107,26 +111,29 @@ export function ProjectsPage({
   onDropFile,
 }: ProjectsPageProps): ReactElement {
   const headingId = useId()
+  const page = useRef<HTMLElement>(null)
   return (
-    <main className="projects-page" aria-labelledby={headingId} {...dropHandlers(onDropFile)}>
-      <h1 id={headingId} className="projects-page__heading">
-        Projects
-      </h1>
-      {notice ? (
-        <p role="alert" className="projects-page__notice">
-          {notice}
-        </p>
-      ) : null}
-      {openProject ? (
-        <Button onClick={openProject.onBack}>{backText(openProject.name)}</Button>
-      ) : null}
+    <main
+      ref={page}
+      className="projects-page"
+      aria-labelledby={headingId}
+      tabIndex={-1}
+      {...dropHandlers(onDropFile)}
+    >
+      <PageHead headingId={headingId} notice={notice} openProject={openProject} />
       <PageActions
         onNewProject={onNewProject}
         onImportFile={onImportFile}
         onOpenFolder={onOpenFolder}
       />
       {cards ? (
-        <CardList cards={cards} hrefFor={hrefFor} onOpen={onOpen} onCardAction={onCardAction} />
+        <CardList
+          cards={cards}
+          hrefFor={hrefFor}
+          onOpen={onOpen}
+          cardActions={cardActions}
+          page={page}
+        />
       ) : null}
     </main>
   )

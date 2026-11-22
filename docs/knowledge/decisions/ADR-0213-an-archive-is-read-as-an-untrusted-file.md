@@ -24,6 +24,7 @@ sourceFiles:
     storage/import/import-project-file.ts,
     storage/import/copy-imported-assets.ts,
     session/flows/import-file.ts,
+    session/flows/asset-users.ts,
     app/use-open-file-action.ts,
     app/open-failure-text.ts,
     app/asset-report-text.ts,
@@ -32,7 +33,7 @@ sourceFiles:
     docs/specs/2026-11-15-session-layer-and-document-identity.md,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-21
 ---
 
 # ADR-0213: An archive is read as an untrusted file, and an import copies only the assets its document refers to
@@ -199,7 +200,11 @@ the assets in the archive. The narrower rule has these reasons:
 - An archive cannot fill the pool with files that nothing uses.
 - An export writes only referenced assets, so an archive made here never carries extra ones.
 - An asset that the user keeps for later use belongs in the library, and a later delete keeps an
-  asset that the library holds (`removableAssets` in `storage/assets/removable-assets.ts`).
+  asset that the library holds (`removableAssets` in `session/flows/asset-users.ts`). That rule
+  also keeps each asset that another listed project or the live document uses, and it removes
+  nothing while the library or any project's asset list is unknown, as when a record cannot be read
+  or is incomplete. `storage/assets/removable-assets.ts` has no caller, and an issue tracks removing
+  it or putting it to use. Updated on 2026-11-21 to describe the code.
 
 ## Consequences
 

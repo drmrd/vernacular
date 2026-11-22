@@ -15,6 +15,7 @@ import { pageNoticeText } from './page-notice-text'
 import type { PageNotice, PageScreen } from './resolve-place'
 import type { HistoryNavigation } from './use-history-navigation'
 import { isSwitchFailure, type Flow, type RunFlow } from './use-open-project'
+import { useCardActions } from './use-card-actions'
 import { usePageActions } from './use-page-actions'
 import { requestedDesignLanguage } from './url-seams'
 import { useProjectCards } from './use-project-cards'
@@ -74,6 +75,8 @@ interface PageTries {
   readonly navigation: HistoryNavigation
   readonly screen: PageScreen
   readonly refresh: () => void
+  /** Clears the sentence that a card action left. */
+  readonly clearActionNotice: () => void
 }
 
 /** The tries of the page actions: the clear of the notice at their start, and their run. */
@@ -88,13 +91,14 @@ interface ActionTries {
  * under no card, and resolves `undefined`, so no toast says it again. Any other result passes on.
  */
 function useActionTries(
-  { navigation, screen, refresh }: PageTries,
+  { navigation, screen, refresh, clearActionNotice }: PageTries,
   setTried: Dispatch<SetStateAction<TriedNotice | null>>,
 ): ActionTries {
   const replacedFailure = screen.notice?.failure
   const onTryStart = useCallback(() => {
     setTried({ replacedFailure, notice: undefined })
-  }, [replacedFailure, setTried])
+    clearActionNotice()
+  }, [replacedFailure, setTried, clearActionNotice])
   const { runPageFlow } = navigation
   const runActionFlow = useCallback(
     async <Refusal = never,>(flow: Flow<Refusal>): Promise<FlowResult<Refusal> | undefined> => {
@@ -150,13 +154,39 @@ function usePageTries(pageTries: PageTries) {
 }
 
 /**
+ * The sentence of the last card action that failed. A try of the page clears it, and the start of
+ * a card action clears the sentence of a try. The end of an action reads the cards again.
+ */
+function useActionNotice(refresh: () => void) {
+  const [actionNotice, setActionNotice] = useState<string | null>(null)
+  const clearActionNotice = useCallback(() => setActionNotice(null), [])
+  const onActionEnd = useCallback(
+    (shown: string | null) => {
+      setActionNotice(shown)
+      refresh()
+    },
+    [refresh],
+  )
+  return { actionNotice, clearActionNotice, onActionEnd }
+}
+
+/**
  * The Projects page in the application: the stored projects, a click that opens each, and the
  * actions that start, import, or open a project.
  */
 export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
   const { navigation, screen, ports, libraryAssets } = props
   const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
-  const tries = usePageTries({ navigation, screen, refresh })
+  const { actionNotice, clearActionNotice, onActionEnd } = useActionNotice(refresh)
+  const tries = usePageTries({ navigation, screen, refresh, clearActionNotice })
+  const cardActions = useCardActions({
+    navigation,
+    ports,
+    cards,
+    libraryAssets,
+    onActionStart: tries.onTryStart,
+    onActionEnd,
+  })
   const actions = usePageActions({
     runActionFlow: tries.runActionFlow,
     onTryStart: tries.onTryStart,
@@ -164,7 +194,7 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
     libraryAssets,
   })
   const openProject = openProjectLink(navigation)
-  const notice = pageNoticeText(tries.notice, cards)
+  const notice = actionNotice ?? pageNoticeText(tries.notice, cards)
   return (
     <ThemeProvider designLanguage={requestedDesignLanguage()}>
       <ProjectsPage
@@ -172,6 +202,7 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
         hrefFor={hrefFor}
         onOpen={tries.onOpen}
         onNewProject={tries.onNewProject}
+        cardActions={cardActions}
         {...actions}
         {...(openProject === undefined ? {} : { openProject })}
         {...(notice === undefined ? {} : { notice })}

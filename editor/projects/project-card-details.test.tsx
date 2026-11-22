@@ -9,15 +9,18 @@ const CHANGED_AT = '2026-03-04T10:15:00.000Z'
 const STORED_DRAWING = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="4" height="4"/></svg>'
 
 describe('ProjectsPage card menu choices', () => {
-  it('calls onCardAction with the id of the card whose menu was used and the chosen action', async () => {
-    const onCardAction = vi.fn()
+  it('calls onRename with the id of the card whose menu was used and the new name', async () => {
+    const onRename = vi.fn(() => Promise.resolve(true))
     const user = renderPage({
       cards: [cardOf(), cardOf({ id: 'queen-anne', name: 'Queen Anne Cottage' })],
-      onCardAction,
+      cardActions: { onRename },
     })
-    await user.click(screen.getByRole('button', { name: 'Actions for Hubbard House' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Export' }))
-    expect(onCardAction.mock.calls).toEqual([['hubbard', 'export']])
+    await user.click(screen.getByRole('button', { name: 'Actions for Queen Anne Cottage' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }))
+    await user.clear(screen.getByRole('textbox', { name: 'Project name' }))
+    await user.type(screen.getByRole('textbox', { name: 'Project name' }), 'Queen Anne Villa')
+    await user.click(screen.getByRole('button', { name: 'Save name' }))
+    expect(onRename.mock.calls).toEqual([['queen-anne', 'Queen Anne Villa']])
   })
 })
 

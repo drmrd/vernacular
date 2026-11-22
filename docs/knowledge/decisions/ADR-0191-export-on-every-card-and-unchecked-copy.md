@@ -17,9 +17,13 @@ sourceFiles:
     storage/import/import-project-file.ts,
     app/use-export-actions.ts,
     editor/shell/export-menu.tsx,
+    session/flows/export-project.ts,
+    storage/zip/unchecked-copy.ts,
+    app/card-export.ts,
+    app/card-action-text.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-21
 ---
 
 # ADR-0191: Every project card can export, and a project that did not open exports unchecked
@@ -31,6 +35,21 @@ Current. The owner took decision 12 of section 4.1 of
 the same day, with that specification. It amends ADR-0182, where a backup never travels in an
 archive. The code changes with #685. Until then export is the Export control in the editor, whose
 first target is the archive, and no page lists projects to export.
+
+> Updated on 2026-11-21 to describe the code. Every card of the Projects page has Export, including
+> the card of a project that another tab holds, where it is the only action. `exportProject` in
+> `session/flows/export-project.ts` decides at the click. The project open in this tab is packed
+> after its pending changes are written. Any other project is read from its store with no lock, so
+> a project that another tab holds exports its stored document, without the changes that tab has
+> not saved. A read that opens gives an ordinary archive, and that includes a document that fails
+> only the strict check. A read that does not open gives the unchecked copy, which
+> `buildUncheckedCopy` in `storage/zip/unchecked-copy.ts` makes. It holds the stored document file
+> byte for byte, the recovery snapshots, the migration backups, and each asset that the project's
+> record lists and the pool can give. A value that is not a content hash, an asset that the pool
+> lacks, and a pool read that fails are left out. With no record, the copy holds no asset. The file
+> name ends in `-unchecked-copy.building`. `app/card-export.ts` hands the file to the download and
+> shows the notice "This copy was not checked, because the project did not open." When the copy
+> holds no asset, the notice goes on: "It has the project file only, and no assets."
 
 ## Context
 

@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import type { ProjectCardModel } from '../../session'
+import type { ProjectCardActions } from './card-list'
 import { ProjectsPage, type ProjectsPageProps } from './projects-page'
 
 /** Test support: the cards and the rendering that the tests of the Projects page share. */
@@ -29,3 +31,77 @@ export function renderPage(props: Partial<ProjectsPageProps> = {}) {
 
 /** The link of the card of the project named `name`. */
 export const linkNamed = (name: string) => screen.getByRole('link', { name })
+
+/** A rename handler that stores every name: it records its calls and resolves true. */
+export function acceptsRename() {
+  return vi.fn<NonNullable<ProjectCardActions['onRename']>>(() => Promise.resolve(true))
+}
+
+/**
+ * Renders the page with a rename handler as its only card action. Gives a user, the handler, and a
+ * function that shows another list of cards in the same page.
+ */
+export function renderRenamingPage(
+  cards: readonly ProjectCardModel[],
+  onRename: ReturnType<typeof acceptsRename> = acceptsRename(),
+) {
+  return { ...renderChangingPage(cards, { onRename }), onRename }
+}
+
+/** An export handler that records its calls. */
+export function acceptsExport() {
+  return vi.fn<NonNullable<ProjectCardActions['onExport']>>()
+}
+
+/** Renders the page with the given card actions, the address of each project being `#/project/<id>`, and gives a user. */
+export function renderPageWithCardActions(
+  cards: readonly ProjectCardModel[],
+  cardActions: ProjectCardActions,
+) {
+  return renderChangingPage(cards, cardActions).user
+}
+
+/** A delete handler that records its calls. */
+export function acceptsDelete() {
+  return vi.fn<NonNullable<ProjectCardActions['onDelete']>>()
+}
+
+/** A remove-from-list handler that records its calls. */
+export function acceptsRemoval() {
+  return vi.fn<NonNullable<ProjectCardActions['onRemoveFromList']>>()
+}
+
+/** A card for a project that a folder holds: its menu lists Remove from list in place of Delete. */
+export const folderCardOf = () =>
+  cardOf({
+    id: 'folder',
+    name: 'Folder House',
+    location: { folderName: 'Old house' },
+    actions: ['rename', 'export', 'remove-from-list'],
+  })
+
+/** Renders the page with the given card actions. Gives a user and a function that shows other cards. */
+export function renderChangingPage(
+  cards: readonly ProjectCardModel[],
+  cardActions: ProjectCardActions,
+) {
+  const pageOf = (shown: readonly ProjectCardModel[]) => (
+    <ProjectsPage cards={shown} hrefFor={(id) => `#/project/${id}`} cardActions={cardActions} />
+  )
+  const view = render(pageOf(cards))
+  return {
+    user: userEvent.setup(),
+    showCards: (shown: readonly ProjectCardModel[]) => view.rerender(pageOf(shown)),
+  }
+}
+
+/** The "..." control of the card of the project named `name`. */
+export const actionsControlOf = (name: string) =>
+  screen.getByRole('button', { name: `Actions for ${name}` })
+
+/** The list item of the card of the project named `name`. */
+export function cardNamed(name: string): HTMLElement {
+  const item = linkNamed(name).closest('li')
+  if (item === null) throw new Error(`The card of ${name} is not in a list item`)
+  return item
+}

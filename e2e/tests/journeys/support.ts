@@ -31,6 +31,14 @@ export const selectors = {
       .projectsPage(page)
       .getByRole('listitem')
       .filter({ has: page.getByRole('link', { name, exact: true }) }),
+  // The link of the card of the project with the given id, for projects that share a name.
+  projectCardLink: (page: Page, id: string) =>
+    selectors.projectsPage(page).locator(`a[href="#/project/${id}"]`),
+  // The "..." control of a card, which opens the menu of the actions of its project.
+  cardActionsButton: (page: Page, name: string) =>
+    selectors.projectCard(page, name).getByRole('button', { name: `Actions for ${name}` }),
+  cardMenuItems: (page: Page) => page.getByRole('menuitem'),
+  cardMenuItem: (page: Page, name: string) => page.getByRole('menuitem', { name, exact: true }),
 }
 
 // Open the Project menu and choose the row with the given label.
@@ -75,6 +83,16 @@ export async function webFontsSettled(
 // Boot the assembled editor at its root and wait for the plan canvas and the web fonts.
 export async function gotoEditor(page: Page): Promise<void> {
   await page.goto('/')
+  await webFontsSettled(page)
+}
+
+// Reloads the page from a script and waits for the new document and the web fonts. Playwright's
+// `page.reload()` adds an entry to the history in Firefox, which `window.location.reload()` does
+// not, so a journey that follows Back and Forward past a reload reloads this way.
+export async function reloadByScript(page: Page): Promise<void> {
+  const loaded = page.waitForEvent('load')
+  await page.evaluate(() => window.location.reload())
+  await loaded
   await webFontsSettled(page)
 }
 
@@ -133,6 +151,14 @@ export async function expectWallCount(page: Page, count: number): Promise<void> 
 export async function drawWallAndWaitForSave(page: Page): Promise<void> {
   await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
   await expectWallCount(page, 1)
+  await expect(selectors.savedStatus(page)).toBeVisible()
+}
+
+// Draw two walls on a plan that holds none and wait until the project is saved.
+export async function drawTwoWallsAndWaitForSave(page: Page): Promise<void> {
+  await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
+  await drawWall(page, { x: 120, y: 320 }, { x: 520, y: 320 })
+  await expectWallCount(page, 2)
   await expect(selectors.savedStatus(page)).toBeVisible()
 }
 

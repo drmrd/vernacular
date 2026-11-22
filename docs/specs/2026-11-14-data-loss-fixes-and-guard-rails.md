@@ -132,7 +132,7 @@ Today:
 
 Design:
 
-1. Backups go to `.house-backups/`, beside `vernacular.json`. Like `.house-autosave/`, the directory is not part of the format and never travels in an archive.
+1. Backups go to `.house-backups/`, beside `vernacular.json`. Like `.house-autosave/`, the directory is not part of the format and never travels in an ordinary archive. There is one named exception: the unchecked copy of a project that did not open carries its migration backups and its recovery snapshots as they are stored (ADR-0191).
 2. A backup is written after a decode that migrated and succeeded, before the document reaches the caller. A decode that fails writes nothing. The decode works in memory, so a failed migration leaves the stored file as it was. ADR-0190 changed this point on 2026-11-15. Its first form wrote the backup before the migration ran, as the store did then.
 3. A backup write never replaces a file that has different bytes. Loading the same old file twice writes one backup. If the slot later holds a different file at the same old version, both backups stay. This can happen today because every project shares one slot: an older build that cannot read the slot can start a fresh project in it. A content hash in the file name is one way to get this behavior with a single rule.
 4. Nothing removes a backup except the deletion of its project. `ProjectStore.delete` already removes the whole project directory.
@@ -150,7 +150,7 @@ Done when:
 - A second migrated load of the same bytes writes no second file. A migrated load of different bytes at the same version keeps both.
 - A project that is migrated under one target version and later under a higher one has two backups.
 - Deleting the project removes its backups.
-- An archive exported from a project that has a backup contains no backup.
+- An ordinary archive exported from a project that has a backup contains no backup and no snapshot. The exception is the unchecked copy of a project that did not open, which contains both (ADR-0191).
 
 ### 5.3 A project started after a failed load (#671)
 

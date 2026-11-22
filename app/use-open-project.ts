@@ -18,6 +18,10 @@ import {
   show,
 } from './owner-memory'
 import type { OwnerMemory, OwnerView } from './owner-memory'
+import { runOneAction } from './owner-actions'
+import type { RunAction } from './owner-actions'
+
+export type { ActionOutcome, OwnerAction, RunAction } from './owner-actions'
 
 /** A step that may replace the open project: it gets the ports and the project open now. */
 export type Flow<Refusal = never> = (
@@ -37,6 +41,8 @@ export interface OpenProject {
   /** Why no project is open. Null while the start runs and while a project is open. */
   readonly failure: SwitchFailure | null
   readonly runFlow: RunFlow
+  /** Runs a card action. It installs no handle, and forgets the open one if the action ended it. */
+  readonly runAction: RunAction
   /** Runs the start again after it failed. */
   readonly retry: () => void
 }
@@ -60,9 +66,9 @@ function isSwitchKindOfOther(kind: OtherKind): false {
 }
 
 /**
- * True for a kind of a failed switch, as opposed to a flow's refusal. The switch names every kind of
- * SwitchFailure and some refusals, and hands the other kinds to a second switch. Neither has a
- * default for a kind it names, so a new kind is a type error until it is placed.
+ * True for a kind of a failed switch, as opposed to a flow's refusal. The switch names every kind
+ * of SwitchFailure and some refusals, and hands the other kinds to a second switch. Neither has
+ * a default for a kind it names, so a new kind is a type error until it is placed.
  */
 function isSwitchKind(kind: OpenFailureCause['kind']): boolean {
   switch (kind) {
@@ -174,11 +180,12 @@ export function useOpenProject(ports: SessionPorts | null, start: OpenRequest | 
     launchDueStart(memory)
   }, [ports, start])
   const runFlow = useCallback<RunFlow>((flow) => runOneFlow(memoryRef.current, flow), [])
+  const runAction = useCallback<RunAction>((action) => runOneAction(memoryRef.current, action), [])
   const retry = useCallback(() => {
     const memory = memoryRef.current
     if (memory.failure !== null && !isBusy(memory)) {
       launchRetry(memory)
     }
   }, [])
-  return { handle: view.handle, failure: view.failure, runFlow, retry }
+  return { handle: view.handle, failure: view.failure, runFlow, runAction, retry }
 }

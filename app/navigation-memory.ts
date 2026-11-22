@@ -9,7 +9,7 @@ import type {
 import { addressFor, parseAddress, START_ADDRESS, type Place } from './address'
 import type { AddressBar } from './address-bar'
 import type { PageNotice } from './resolve-place'
-import type { Flow, RunFlow } from './use-open-project'
+import type { Flow, RunAction, RunFlow } from './use-open-project'
 
 /** The page shown by the navigation, with the notice of a switch that failed or none. */
 export interface ShownPage {
@@ -33,6 +33,7 @@ export interface NavigationView {
 /** What the owner of the open project lends the navigation. */
 export interface OwnerControls {
   readonly runFlow: RunFlow
+  readonly runAction: RunAction
   readonly retry: () => void
 }
 

@@ -243,4 +243,9 @@ export class WorkspaceDocumentStore extends DocumentStore {
   delete(id: string): Promise<void> {
     return this.removableFiles.remove(id)
   }
+
+  /** Removes the named assets from the shared pool, and no file of any project. */
+  removeAssets(contentHashes: readonly string[]): Promise<void> {
+    return this.removableFiles.removeAssets(contentHashes)
+  }
 }
