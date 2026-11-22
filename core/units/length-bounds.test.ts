@@ -40,3 +40,17 @@ describe('assertPositiveLength', () => {
     expect(invalid.message.toLowerCase()).toContain('positive length')
   })
 })
+
+describe('InvalidLengthError', () => {
+  it('records its label and value, names itself, and accepts a custom message', () => {
+    const byDefault = new InvalidLengthError('Depth', 0)
+
+    expect(byDefault).toBeInstanceOf(Error)
+    expect(byDefault.name).toBe('InvalidLengthError')
+    expect(byDefault.label).toBe('Depth')
+    expect(byDefault.valueMm).toBe(0)
+    expect(byDefault.message).toContain('Depth')
+    expect(byDefault.message.toLowerCase()).toContain('positive length')
+    expect(new InvalidLengthError('Depth', 0, 'too thin').message).toBe('too thin')
+  })
+})
