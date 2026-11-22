@@ -14,8 +14,11 @@ export type OpenFailure =
     }
   | { readonly kind: 'storage-unavailable'; readonly message: string }
 
-/** Whether the changes of an open project are stored, and whether the store outlives the tab. */
-export type SaveStatus = AutosaveStatus | 'tab-only'
+/**
+ * Whether the changes of an open project are stored, whether the store outlives the tab, and
+ * whether they are stored in a second plan file.
+ */
+export type SaveStatus = AutosaveStatus | 'tab-only' | 'second-file'
 
 /** How a save ended: stored, or not stored with the reason. */
 export type SaveOutcome = { readonly ok: true } | { readonly ok: false; readonly message: string }

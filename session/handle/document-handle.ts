@@ -41,20 +41,33 @@ export interface DocumentHandleParts {
 interface SaveStatusCell {
   get(): SaveStatus
   set(reported: AutosaveStatus): void
+  noteFileWritten(isSecondFile: boolean): void
   subscribe(listener: () => void): () => void
+}
+
+function savedStatus(durable: boolean, inSecondFile: boolean): SaveStatus {
+  if (!durable) {
+    return 'tab-only'
+  }
+  return inSecondFile ? 'second-file' : 'saved'
 }
 
 /**
  * The save status, which tells its listeners of each new value and of no repeated one. On a store
- * that does not outlive the tab, a write that the autosave reports as saved reads as tab-only.
+ * that does not outlive the tab, a write that the autosave reports as saved reads as tab-only; in
+ * a durable store it reads as second-file while the file last read or written is the second file.
  */
-function createSaveStatusCell(durable: boolean): SaveStatusCell {
+function createSaveStatusCell(durable: boolean, startsInSecondFile: boolean): SaveStatusCell {
   let status: SaveStatus = 'idle'
+  let inSecondFile = startsInSecondFile
   const listeners = new Set<() => void>()
   return {
     get: () => status,
+    noteFileWritten(isSecondFile) {
+      inSecondFile = isSecondFile
+    },
     set(reported) {
-      const next = reported === 'saved' && !durable ? 'tab-only' : reported
+      const next = reported === 'saved' ? savedStatus(durable, inSecondFile) : reported
       if (next === status) {
         return
       }
@@ -99,6 +112,7 @@ function listenToWrites(parts: WriteListenerParts): WriteListeners {
   return {
     onReport(report) {
       lastReport = report
+      status.noteFileWritten(report.secondFile !== undefined)
       reportNotices(report)
     },
     onStatusChange(next) {
@@ -141,7 +155,7 @@ function createHandleAutosave(
 export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle {
   const { request, store, hold, opened, records } = parts
   const session = parts.session ?? createEditorSession(opened.project)
-  const status = createSaveStatusCell(store.durable)
+  const status = createSaveStatusCell(store.durable, opened.secondFile?.read === 'second')
   const notices = createHandleNotices()
   raiseOpenNotices(notices, opened, parts.recoveryCopyKept)
   const { snapshots } = parts
