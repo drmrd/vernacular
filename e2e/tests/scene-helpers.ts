@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { linearLuminance, linearToSrgb, srgbToLinear, type Srgb } from '../../core'
+import { waitForDrawnSceneRevision } from './live-pane-frames'
 
 // Shared helpers for the live three-dimensional pane specs (navigation, color
 // temperature, selection). The live view renders through the non-deterministic WebGPU
@@ -43,6 +44,9 @@ export async function settledSceneCanvas(page: Page): Promise<Locator> {
       message: 'waiting for the live 3D canvas to settle past its default size',
     })
     .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
+  // The mount has drawn the scene it holds, so every edit made so far is on screen. The view
+  // switch above can remount the preview, so this wait follows it.
+  await waitForDrawnSceneRevision(page)
   return canvas
 }
 

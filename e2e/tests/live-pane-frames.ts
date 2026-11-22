@@ -12,11 +12,16 @@ import { errors, expect, type Locator, type Page } from '@playwright/test'
 
 // The wrapper of the live canvas (bridge/react/scene-readiness.ts names the id and the attribute).
 // Its attribute data-harness-ready turns "true" once the renderer of this mount has drawn its
-// first frame (useFirstFrameReadiness, bridge/react/live-scene-frame-signal.tsx), which is after
+// first counted frame (useDrawnRevision, bridge/react/live-scene-frame-signal.tsx), which is after
 // the stand-in canvas was replaced. The wrapper belongs to one mount of the pane and starts at
 // "false" with each mount, unlike data-live-view-ready, which can still read true from an earlier
 // open (issue #829).
 const LIVE_SCENE_CANVAS_TEST_ID = 'live-scene-canvas'
+
+// The two revisions the wrapper publishes (bridge/react/scene-readiness.ts): the scene revision
+// the mount has built, and the revision of the last counted frame, which is '' until the first.
+const SCENE_REVISION_ATTRIBUTE = 'data-scene-revision'
+const DRAWN_REVISION_ATTRIBUTE = 'data-drawn-revision'
 
 // React Three Fiber mounts the canvas at the HTML default (~150px) height, then resizes it to
 // the real pane box; a settled canvas is past that default.
@@ -167,4 +172,77 @@ export async function waitForLiveFrameEqualTo(
   message: string,
 ): Promise<void> {
   await waitForLiveFrame(page, reference, { equal: true, message })
+}
+
+/** The scene revision of the current mount and the revision its last counted frame drew. */
+export interface LiveSceneRevisions {
+  readonly scene: number
+  /** Null until the mount has drawn its first counted frame. */
+  readonly drawn: number | null
+}
+
+/** Reads the two revision attributes of the live canvas wrapper; '' (no frame yet) reads as null. */
+export async function liveSceneRevisions(page: Page): Promise<LiveSceneRevisions> {
+  const wrapper = liveSceneCanvas(page)
+  const options = { timeout: FRAME_CHANGE_TIMEOUT_MS }
+  const scene = await wrapper.getAttribute(SCENE_REVISION_ATTRIBUTE, options)
+  const drawn = await wrapper.getAttribute(DRAWN_REVISION_ATTRIBUTE, options)
+  return {
+    scene: Number(scene),
+    drawn: drawn === null || drawn === '' ? null : Number(drawn),
+  }
+}
+
+async function pollDrawnRevision(
+  page: Page,
+  accepts: (revisions: LiveSceneRevisions & { drawn: number }) => boolean,
+  message: string,
+): Promise<number> {
+  let drawnRevision = 0
+  await expect
+    .poll(
+      async () => {
+        const revisions = await liveSceneRevisions(page)
+        if (revisions.drawn === null || !accepts({ ...revisions, drawn: revisions.drawn })) {
+          return false
+        }
+        drawnRevision = revisions.drawn
+        return true
+      },
+      { message, timeout: FRAME_CHANGE_TIMEOUT_MS },
+    )
+    .toBe(true)
+  return drawnRevision
+}
+
+/**
+ * Waits until the current mount has drawn the scene revision it holds: a counted frame at that
+ * revision, so every edit made so far is on screen. Returns the revision. The revision restarts
+ * at 1 on each mount, so the wait belongs after any switch of the view.
+ */
+export async function waitForDrawnSceneRevision(page: Page): Promise<number> {
+  return pollDrawnRevision(
+    page,
+    ({ scene, drawn }) => drawn === scene,
+    'waiting for the live 3D pane to draw the current scene revision',
+  )
+}
+
+/**
+ * Reads the drawn revision, runs the change, then waits until a counted frame at a later revision
+ * that is also the current scene revision. Returns that revision. Start it after any view switch
+ * (the preview can remount, and its revision then restarts), never across one. A change that
+ * builds no new scene (a camera move, a selection outline) never satisfies it.
+ */
+export async function waitForDrawnSceneChange(
+  page: Page,
+  change: () => Promise<void>,
+): Promise<number> {
+  const before = (await liveSceneRevisions(page)).drawn ?? 0
+  await change()
+  return pollDrawnRevision(
+    page,
+    ({ scene, drawn }) => drawn > before && drawn === scene,
+    'waiting for the live 3D pane to draw a later scene revision',
+  )
 }
