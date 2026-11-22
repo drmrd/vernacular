@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   runPackCli,
@@ -57,6 +60,7 @@ function packReader(overrides = {}) {
     exists: overrides.exists ?? (async () => true),
     sha256: async (rel) => overrides.hashes?.[rel] ?? '',
     readBytes: async () => WEBP_BYTES,
+    size: async () => WEBP_BYTES.length,
     ...overrides.reader,
   }
 }
@@ -201,5 +205,15 @@ describe('node adapters', () => {
     expect(createNodePackReader('packs/vernacular-starter-1.0.0').dirName).toBe(
       'vernacular-starter-1.0.0',
     )
+  })
+
+  it('reports the byte size of a file in the pack directory', async () => {
+    const packDir = await mkdtemp(join(tmpdir(), 'pack-reader-size-'))
+    try {
+      await writeFile(join(packDir, 'LICENSE'), new Uint8Array(1234))
+      expect(await createNodePackReader(packDir).size('LICENSE')).toBe(1234)
+    } finally {
+      await rm(packDir, { recursive: true, force: true })
+    }
   })
 })

@@ -46,6 +46,7 @@ function fakeReader(overrides = {}) {
     exists: async (rel) => Boolean(files[rel]),
     sha256: async (rel) => hashes[rel] ?? '',
     readBytes: async (rel) => bytes[rel] ?? new Uint8Array(),
+    size: async (rel) => (bytes[rel] ?? new Uint8Array()).length,
     ...overrides.reader,
   }
 }

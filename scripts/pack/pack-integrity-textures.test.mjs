@@ -12,6 +12,8 @@ import {
 
 const HASH = 'a'.repeat(64)
 const SMALLER_SIDE = 128
+const FILE_EXTENSIONS = { 'image/webp': 'webp', 'model/gltf-binary': 'glb' }
+const FILE_LIMIT = TEXTURE_LIMITS.maxFileBytes
 
 const PNG_IHDR_BIT_DEPTH_OFFSET = 24
 const PNG_IHDR_COLOR_TYPE_OFFSET = 25
@@ -51,7 +53,7 @@ function textureAsset(mediaType = 'image/png') {
 
 /** A reader for a pack with one texture whose file holds `bytes`. */
 function readerFor(asset, bytes, overrides = {}) {
-  const extension = asset.mediaType === 'image/webp' ? 'webp' : 'png'
+  const extension = FILE_EXTENSIONS[asset.mediaType] ?? 'png'
   const file = `assets/${HASH}.${extension}`
   const thumbnailBytes = thumbnailSignature()
   const files = new Set([file, `thumbnails/${HASH}.webp`, 'LICENSE', 'NOTICE', 'CHANGELOG.md'])
@@ -63,6 +65,7 @@ function readerFor(asset, bytes, overrides = {}) {
     sha256: async () => HASH,
     readBytes: async (relative, length) =>
       relative === file ? bytes.subarray(0, length) : thumbnailBytes,
+    size: async (relative) => (relative === file ? bytes.length : thumbnailBytes.length),
     ...overrides,
   }
 }
@@ -143,6 +146,39 @@ describe('checkPackIntegrity for a texture file', () => {
     const reader = { exists: async (relative) => !relative.startsWith('assets/') }
     const result = await integrityOf(textureAsset(), Uint8Array.of(1, 2, 3), reader)
     expect(result.errors).toEqual([`asset ${HASH}: asset file missing at assets/${HASH}.png`])
+  })
+
+  describe('for a texture file at the size limit', () => {
+    const oversize = { size: async () => FILE_LIMIT + 1 }
+    const namesTheLimit = new RegExp(`${HASH}.*${FILE_LIMIT}`)
+
+    it.each([
+      ['image/png', rgbPng(TEXTURE_SIDE)],
+      ['image/webp', lossyWebp(TEXTURE_SIDE, TEXTURE_SIDE)],
+    ])(
+      'reports an %s file one byte above the limit once, naming the limit',
+      async (type, bytes) => {
+        const result = await integrityOf(textureAsset(type), bytes, oversize)
+        expect(result.errors).toEqual([expect.stringMatching(namesTheLimit)])
+      },
+    )
+
+    it('reports no size error for a file of exactly the limit', async () => {
+      const exact = { size: async () => FILE_LIMIT }
+      const result = await integrityOf(textureAsset(), rgbPng(TEXTURE_SIDE), exact)
+      expect(result).toEqual({ errors: [] })
+    })
+
+    it('does not apply the limit to a model file', async () => {
+      const model = {
+        contentHash: HASH,
+        kind: 'furniture',
+        name: 'Chair',
+        mediaType: 'model/gltf-binary',
+      }
+      const result = await integrityOf(model, Uint8Array.of(1, 2, 3), oversize)
+      expect(result).toEqual({ errors: [] })
+    })
   })
 
   describe('for a texture entry without a usable image size', () => {
