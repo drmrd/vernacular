@@ -1,4 +1,12 @@
-import { OPENING_NODE_PREFIX, type Opening, type Project, type SceneGraph } from '../../core'
+import {
+  entranceOf,
+  entranceRoleOf,
+  OPENING_NODE_PREFIX,
+  type EntranceRole,
+  type Opening,
+  type Project,
+  type SceneGraph,
+} from '../../core'
 
 /**
  * Whether the wall under the opening with this raw id has a room along only one side at the
@@ -20,6 +28,24 @@ export function floorOpenings(project: Readonly<Project>, floorId: string): read
 export interface SelectedOpening {
   floorId: string
   opening: Opening
+}
+
+export interface OpeningInspectorProps extends SelectedOpening {
+  entranceRole: EntranceRole
+  wallHasOneRoomSide: boolean
+}
+
+/** The selected opening with its main entrance role and whether its wall has one room side. */
+export function openingInspectorProps(
+  selectedOpening: SelectedOpening,
+  graph: SceneGraph,
+): OpeningInspectorProps {
+  const { floorId, opening } = selectedOpening
+  return {
+    ...selectedOpening,
+    entranceRole: entranceRoleOf(entranceOf(graph), floorId, opening.id),
+    wallHasOneRoomSide: openingWallHasOneRoomSide(graph, opening.id),
+  }
 }
 
 /**

@@ -388,6 +388,7 @@ export { openingRoomSide, withRoomSide } from './scene/opening-room-side'
 export type { Entrance, FrontDirectionInput, PlanDirection } from './scene/front-direction'
 export { PLAN_DOWN, entranceOf, frontDirection } from './scene/front-direction'
 export type { EntranceRole } from './scene/entrance-role'
+export { entranceRoleOf } from './scene/entrance-role'
 export type { WallPlanSegment } from './scene/wall-attached-furniture'
 export {
   furnitureAttachedToWall,
