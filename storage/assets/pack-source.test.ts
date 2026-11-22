@@ -3,6 +3,7 @@ import { PackSource } from './pack-source'
 import type { LibraryItem } from './asset-source'
 
 const MODEL_HASH = '0'.repeat(64)
+const TEXTURE_HASH = '1'.repeat(64)
 
 const VALID_MANIFEST = {
   packId: 'vernacular-starter',
@@ -28,12 +29,28 @@ const VALID_MANIFEST = {
 interface FakeReaderOptions {
   asset?: Uint8Array
   thumbnail?: Uint8Array
+  manifestFor?: (callNumber: number) => Promise<unknown>
 }
 
-function fakeReader(manifest: unknown, { asset, thumbnail }: FakeReaderOptions = {}) {
+interface AssetCall {
+  hash: string
+  mediaType: string | undefined
+}
+
+const FIRST_CALL = 1
+
+function fakeReader(manifest: unknown, { asset, thumbnail, manifestFor }: FakeReaderOptions = {}) {
+  const calls = { manifest: 0, assets: [] as AssetCall[] }
   return {
-    manifest: async () => manifest,
-    readAsset: async (h: string) => (h === MODEL_HASH ? asset : undefined),
+    calls,
+    manifest: async () => {
+      calls.manifest += 1
+      return manifestFor ? manifestFor(calls.manifest) : manifest
+    },
+    readAsset: async (h: string, mediaType?: string) => {
+      calls.assets.push({ hash: h, mediaType })
+      return h === MODEL_HASH || h === TEXTURE_HASH ? asset : undefined
+    },
     readThumbnail: async (h: string) => (h === MODEL_HASH ? thumbnail : undefined),
   }
 }
@@ -56,8 +73,6 @@ const STYLED_MANIFEST = {
   ...VALID_MANIFEST,
   assets: [{ ...VALID_MANIFEST.assets[0], styles: ['queen-anne'] }],
 }
-
-const TEXTURE_HASH = '1'.repeat(64)
 
 const FORMAT_2_MANIFEST = {
   ...VALID_MANIFEST,
@@ -161,5 +176,75 @@ describe('PackSource', () => {
     const source = new PackSource(fakeReader(VALID_MANIFEST, { thumbnail: Uint8Array.of(9, 9) }))
     await source.list()
     expect(await source.readThumbnail?.('nope')).toBeUndefined()
+  })
+})
+
+describe('PackSource reading an asset from the file of its media type', () => {
+  const ASSET_BYTES = Uint8Array.of(4, 5, 6)
+
+  it('reads a format 2 texture as image/png', async () => {
+    const reader = fakeReader(FORMAT_2_MANIFEST, { asset: ASSET_BYTES })
+    const bytes = await new PackSource(reader).read(TEXTURE_HASH)
+    expect(reader.calls.assets).toEqual([{ hash: TEXTURE_HASH, mediaType: 'image/png' }])
+    expect(bytes).toEqual(ASSET_BYTES)
+  })
+
+  it('reads a format 2 model as model/gltf-binary', async () => {
+    const reader = fakeReader(FORMAT_2_MANIFEST, { asset: ASSET_BYTES })
+    await new PackSource(reader).read(MODEL_HASH)
+    expect(reader.calls.assets).toEqual([{ hash: MODEL_HASH, mediaType: 'model/gltf-binary' }])
+  })
+
+  it('reads a format 1 asset, which has no media type, as model/gltf-binary', async () => {
+    const reader = fakeReader(VALID_MANIFEST, { asset: ASSET_BYTES })
+    await new PackSource(reader).read(MODEL_HASH)
+    expect(reader.calls.assets).toEqual([{ hash: MODEL_HASH, mediaType: 'model/gltf-binary' }])
+  })
+
+  it('gives undefined without reading a file for a hash outside the manifest', async () => {
+    const reader = fakeReader(VALID_MANIFEST, { asset: ASSET_BYTES })
+    expect(await new PackSource(reader).read('nope')).toBeUndefined()
+    expect(reader.calls.assets).toEqual([])
+  })
+
+  it('loads the manifest once for reads made before the first list', async () => {
+    const reader = fakeReader(VALID_MANIFEST, { asset: ASSET_BYTES })
+    const source = new PackSource(reader)
+    await Promise.all([source.read(MODEL_HASH), source.read(MODEL_HASH)])
+    expect(reader.calls.manifest).toBe(1)
+    await source.list()
+    expect(reader.calls.manifest).toBe(1)
+  })
+
+  it('rejects a read when the manifest fails to load, and loads it again on the next read', async () => {
+    const reader = fakeReader(VALID_MANIFEST, {
+      asset: ASSET_BYTES,
+      manifestFor: (call) =>
+        call === FIRST_CALL
+          ? Promise.reject(new Error('offline'))
+          : Promise.resolve(VALID_MANIFEST),
+    })
+    const source = new PackSource(reader)
+    await expect(source.read(MODEL_HASH)).rejects.toThrow('offline')
+    expect(await source.read(MODEL_HASH)).toEqual(ASSET_BYTES)
+  })
+
+  it('gives undefined without reading a file when the manifest is invalid', async () => {
+    const reader = fakeReader({}, { asset: ASSET_BYTES })
+    expect(await new PackSource(reader).read(MODEL_HASH)).toBeUndefined()
+    expect(reader.calls.assets).toEqual([])
+  })
+
+  it('loads an invalid manifest again on the next read', async () => {
+    const reader = fakeReader(
+      {},
+      {
+        asset: ASSET_BYTES,
+        manifestFor: async (call) => (call === FIRST_CALL ? {} : VALID_MANIFEST),
+      },
+    )
+    const source = new PackSource(reader)
+    await source.read(MODEL_HASH)
+    expect(await source.read(MODEL_HASH)).toEqual(ASSET_BYTES)
   })
 })

@@ -44,7 +44,7 @@ describe('createFetchPackReader', () => {
     }) as typeof fetch
 
     const reader = createFetchPackReader(BASE, trackingFetch)
-    const result = await reader.readAsset(HASH)
+    const result = await reader.readAsset(HASH, 'model/gltf-binary')
 
     expect(requestedUrls).toContain(`${BASE}/assets/${HASH}.glb`)
     expect(result).toEqual(ASSET_BYTES)
@@ -52,7 +52,7 @@ describe('createFetchPackReader', () => {
 
   it('resolves undefined for readAsset when the server returns a non-ok response', async () => {
     const reader = createFetchPackReader(BASE, fakeFetch({}))
-    const result = await reader.readAsset('missing')
+    const result = await reader.readAsset('missing', 'model/gltf-binary')
     expect(result).toBeUndefined()
   })
 
