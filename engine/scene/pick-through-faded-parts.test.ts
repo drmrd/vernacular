@@ -17,7 +17,7 @@ import { isFadedForPicking, markFadedForPicking } from './faded-for-picking'
 import {
   prepareNearWallTransparency,
   updateNearWallTransparency,
-  type NearWallTarget,
+  type ConditionalFillFadeTarget,
 } from './near-wall-transparency'
 import { pickScene } from './pick-scene'
 import { worldAt } from './wall-winding-test-support'
@@ -264,9 +264,14 @@ describe('a click through a junction fill that fades with its wall', () => {
         rooms: [roomNode('room:a', a), roomNode('room:b', b)],
       }),
     )
-    const fill = targets.find((target) => (target.incidentFacings?.length ?? 0) > 0)
-    if (fill?.incidentFacings?.[0] === undefined) throw new Error('the corner fill is not enrolled')
-    const onlyWestFacing: NearWallTarget = { ...fill, incidentFacings: [fill.incidentFacings[0]] }
+    const fill = targets.find(
+      (target): target is ConditionalFillFadeTarget => target.kind === 'conditional-fill',
+    )
+    const westFacing = fill?.incidentFacings[0]
+    if (fill === undefined || westFacing === undefined) {
+      throw new Error('the corner fill is not enrolled')
+    }
+    const onlyWestFacing: ConditionalFillFadeTarget = { ...fill, incidentFacings: [westFacing] }
     return { root, targets: [onlyWestFacing] }
   }
 
