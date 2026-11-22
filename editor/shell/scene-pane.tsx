@@ -8,12 +8,7 @@ import {
 } from 'react'
 
 import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
-import {
-  SceneCanvas,
-  detectLivePreviewBackend,
-  useActiveFloorId,
-  useSceneGraph,
-} from '../../bridge'
+import { SceneCanvas, detectRenderBackend, useActiveFloorId, useSceneGraph } from '../../bridge'
 import {
   LIVE_SCENE_CANVAS_TEST_ID,
   SCENE_READY_ATTRIBUTE,
@@ -105,7 +100,7 @@ export function ScenePane(): ReactElement {
   const activeFloorId = useActiveFloorId()
   const paneRef = useRef<HTMLDivElement | null>(null)
   const sceneState = useSceneState(paneRef)
-  const backend = detectLivePreviewBackend()
+  const backend = detectRenderBackend()
   if (backend === 'unsupported') {
     return (
       <EmptyState

@@ -1,4 +1,4 @@
-import { detectLivePreviewBackend } from './live-preview-backend'
+import { detectRenderBackend } from '../../engine'
 import { SceneUnsupportedStatus } from './scene-unsupported-status'
 import { WebGPUSceneView } from './webgpu-scene-view'
 
@@ -6,6 +6,6 @@ import { WebGPUSceneView } from './webgpu-scene-view'
  *  WebGPU or on the renderer's own WebGL 2 fallback, and an accessible message when it
  *  can drive neither. */
 export function SceneCanvas() {
-  if (detectLivePreviewBackend() === 'unsupported') return <SceneUnsupportedStatus />
+  if (detectRenderBackend() === 'unsupported') return <SceneUnsupportedStatus />
   return <WebGPUSceneView />
 }
