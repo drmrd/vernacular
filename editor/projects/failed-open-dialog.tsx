@@ -22,6 +22,8 @@ export interface FailedOpenDetails {
 export interface FailedOpenDialogProps {
   readonly cause: FailedOpenCause
   readonly details: FailedOpenDetails
+  /** 'file': the texts of a file that did not open, and no Export. Default 'stored'. */
+  readonly source?: 'stored' | 'file' | undefined
   /** The sentences of the offered repair. Absent or empty: no offer shows. */
   readonly repairSentences?: readonly string[] | undefined
   readonly onClose: () => void
@@ -34,6 +36,7 @@ export interface FailedOpenDialogProps {
 }
 
 const TITLE = 'This project did not open.'
+const FILE_TITLE = 'This file did not open.'
 const KEPT_UNCHANGED = 'The stored file is kept unchanged.'
 const EXPORT_HINT = 'You can export a copy from the Projects page.'
 const REPAIR_OPENING = 'A repair can open this project.'
@@ -101,10 +104,21 @@ interface DescribedSentence {
   readonly text: string
 }
 
-/** The sentences that describe the dialog, each with the id that `aria-describedby` names. */
-function describedSentences(cause: FailedOpenCause, idBase: string): readonly DescribedSentence[] {
+/**
+ * The sentences that describe the dialog, each with the id that `aria-describedby` names. A file
+ * that the user chose was not stored, so its dialog says only the cause.
+ */
+function describedSentences(
+  cause: FailedOpenCause,
+  source: 'stored' | 'file',
+  idBase: string,
+): readonly DescribedSentence[] {
+  const causeEntry = { id: `${idBase}-cause`, text: causeSentence(cause, source) }
+  if (source === 'file') {
+    return [causeEntry]
+  }
   return [
-    { id: `${idBase}-cause`, text: causeSentence(cause) },
+    causeEntry,
     { id: `${idBase}-kept`, text: KEPT_UNCHANGED },
     { id: `${idBase}-export`, text: EXPORT_HINT },
   ]
@@ -128,6 +142,7 @@ function Sentences({
 
 function Controls({
   cause,
+  source,
   repairSentences,
   onClose,
   onExport,
@@ -136,13 +151,14 @@ function Controls({
 }: FailedOpenDialogProps & { readonly repairSentences: readonly string[] }): ReactElement {
   const offersRetry = onTryAgain !== undefined && RETRY_CAUSES.includes(cause)
   const offersRepair = repairSentences.length > 0 && onOpenWithRepair !== undefined
+  const offersExport = onExport !== undefined && source !== 'file'
   return (
     <div className="failed-open-dialog__buttons">
       <Button onClick={onClose} data-initial-focus>
         Close
       </Button>
       {offersRetry && <Button onClick={onTryAgain}>Try again</Button>}
-      {onExport && <Button onClick={onExport}>Export</Button>}
+      {offersExport && <Button onClick={onExport}>Export</Button>}
       {offersRepair && (
         <Button variant="primary" onClick={onOpenWithRepair}>
           Open with the repair
@@ -153,16 +169,16 @@ function Controls({
 }
 
 /**
- * The reason a project did not open and the ways out. Mount it only while it shows: the focus
- * trap arms in a mount effect, so a dialog that stayed mounted would not take the focus the
+ * The reason a project or a file did not open and the ways out. Mount it only while it shows: the
+ * focus trap arms in a mount effect, so a dialog that stayed mounted would not take the focus the
  * second time.
  */
 export function FailedOpenDialog(props: FailedOpenDialogProps): ReactElement {
-  const { cause, details, repairSentences = [], onClose } = props
+  const { cause, details, source = 'stored', repairSentences = [], onClose } = props
   const dialogRef = useFocusTrap<HTMLDivElement>()
   const idBase = useId()
   const titleId = `${idBase}-title`
-  const sentences = describedSentences(cause, idBase)
+  const sentences = describedSentences(cause, source, idBase)
   return (
     // The trap and the Escape handler sit on the shade, which the trap makes focusable.
     <div ref={dialogRef} className={DIALOG_SHADE_CLASS} onKeyDown={answerOnEscape(onClose)}>
@@ -174,7 +190,7 @@ export function FailedOpenDialog(props: FailedOpenDialogProps): ReactElement {
         className="failed-open-dialog"
       >
         <h2 id={titleId} className="failed-open-dialog__title">
-          {TITLE}
+          {source === 'file' ? FILE_TITLE : TITLE}
         </h2>
         <Sentences sentences={sentences} />
         {repairSentences.length > 0 && <RepairOffer sentences={repairSentences} />}
