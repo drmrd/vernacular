@@ -84,11 +84,12 @@ function entityIdOfHit(hit: THREE.Intersection): string | null {
 /**
  * The nearest hit on an object that is not faded decides both fields. The user sees
  * through a faded wall (and what fades with it), so the click is for what is behind it.
+ * An edge-overlay line is a drawing aid, not a surface, so a click passes through it.
  */
 export function pickScene(raycaster: THREE.Raycaster, root: THREE.Object3D): ScenePick {
   const hits = raycaster
     .intersectObject(root, true)
-    .filter((each) => !isFadedForPicking(each.object))
+    .filter((each) => !(each.object instanceof THREE.Line) && !isFadedForPicking(each.object))
   const hit = decidingHit(hits)
   if (hit === undefined) {
     return NOTHING_PICKED
