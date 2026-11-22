@@ -7,15 +7,11 @@ import {
   type SwitchFailure,
 } from '../session'
 import { ThemeProvider, ToastRegion } from '../editor/design-system'
-import {
-  FailedOpenDialog,
-  ProjectsPage,
-  RepairChoiceDialog,
-  type OpenProjectLink,
-} from '../editor/projects'
+import { ProjectsPage, type OpenProjectLink } from '../editor/projects'
 import type { AssetCache } from '../storage'
 import { addressFor } from './address'
 import { createInitialProject } from './create-initial-project'
+import { PageDialog } from './page-dialog'
 import { pageNoticeText } from './page-notice-text'
 import type { PageNotice, PageScreen } from './resolve-place'
 import type { HistoryNavigation } from './use-history-navigation'
@@ -23,11 +19,7 @@ import { isSwitchFailure, type Flow, type RunFlow } from './use-open-project'
 import { useCardActions } from './use-card-actions'
 import { useLibraryPacks, usePageActions } from './use-page-actions'
 import { requestedDesignLanguage } from './url-seams'
-import {
-  useFailedOpenDialog,
-  type FailedOpenDialogState,
-  type ShownFailure,
-} from './use-failed-open-dialog'
+import { useFailedOpenDialog } from './use-failed-open-dialog'
 import { useProjectCards } from './use-project-cards'
 
 export interface ProjectsScreenProps {
@@ -181,59 +173,6 @@ function useActionNotice(refresh: () => void) {
     [refresh],
   )
   return { actionNotice, clearActionNotice, onActionEnd }
-}
-
-interface PageDialogProps {
-  readonly failedOpen: FailedOpenDialogState
-  /** The open of a card, which "Try again" runs. */
-  readonly onOpen: (id: string) => void
-  /** The export of a card. Absent: no Export control. */
-  readonly onExport: ((id: string) => void) | undefined
-}
-
-/** Export and "Try again" of a stored project run the card's own. A file has neither. */
-function storedControls(
-  shown: ShownFailure,
-  { onOpen, onExport }: Pick<PageDialogProps, 'onOpen' | 'onExport'>,
-) {
-  if (shown.source === 'file') {
-    return { onExport: undefined, onTryAgain: undefined }
-  }
-  const { id } = shown
-  return {
-    onExport: onExport === undefined ? undefined : () => onExport(id),
-    onTryAgain: () => onOpen(id),
-  }
-}
-
-/** The failed-open dialog of the page, or its choice dialog while the user chooses. */
-function PageDialog({ failedOpen, onOpen, onExport }: PageDialogProps): ReactElement | null {
-  const { shown, choice, onClose } = failedOpen
-  if (shown === undefined) {
-    return null
-  }
-  const { model } = shown
-  if (choice.choosing && model.repair !== undefined) {
-    return (
-      <RepairChoiceDialog
-        onOpenAsNew={choice.openAsNew}
-        onCancel={choice.cancel}
-        busy={choice.busy}
-        onReplace={shown.source === 'stored' ? choice.replace : undefined}
-      />
-    )
-  }
-  return (
-    <FailedOpenDialog
-      cause={model.cause}
-      details={model.details}
-      source={shown.source}
-      repairSentences={model.repair?.sentences ?? []}
-      onClose={onClose}
-      {...storedControls(shown, { onOpen, onExport })}
-      onOpenWithRepair={choice.start}
-    />
-  )
 }
 
 /**
