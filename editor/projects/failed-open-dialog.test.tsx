@@ -130,7 +130,7 @@ describe('the technical details of the failed-open dialog', () => {
   })
 
   it('the details list each path that the repair removes', () => {
-    const removedPaths = ['/floors/0/x-old', '/meta/x-older']
+    const removedPaths = ['/meta/x-older', '/rooms/2/x-stale']
     const { dialog } = renderDialog({ details: { ...DETAILS, removedPaths } })
 
     const details = technicalDetails(dialog)
@@ -181,6 +181,20 @@ describe('the controls and the repair offer of the failed-open dialog', () => {
     const names = screen.getAllByRole('button').map((button) => button.textContent)
 
     expect(names).toEqual(['Close', 'Export'])
+  })
+
+  it('with every handler, a retry cause, and an offer, has exactly Close, Try again, Export, and Open with the repair', () => {
+    renderDialog({
+      cause: 'storage-unavailable',
+      onTryAgain: vi.fn(),
+      onExport: vi.fn(),
+      onOpenWithRepair: vi.fn(),
+      repairSentences: ['It removes 1 field that the format does not define.'],
+    })
+
+    const names = screen.getAllByRole('button').map((button) => button.textContent)
+
+    expect([...names].sort()).toEqual(['Close', 'Export', 'Open with the repair', 'Try again'])
   })
 
   it('Escape and Close call onClose, and Export calls onExport', async () => {
