@@ -21,7 +21,12 @@ export type SaveStatus = AutosaveStatus | 'tab-only'
 export type SaveOutcome = { readonly ok: true } | { readonly ok: false; readonly message: string }
 
 /** Something the user should hear about an open project, given once for each handle. */
-export type HandleNotice = 'saved-by-newer-build' | 'saved-with-faults' | 'recovery-copy-kept'
+export type HandleNotice =
+  | 'saved-by-newer-build'
+  | 'saved-with-faults'
+  | 'recovery-copy-kept'
+  | 'saved-in-second-file'
+  | 'unreadable-file-replaced'
 
 /** One open project: its session, its save state, and the lock that keeps it in this tab. */
 export interface DocumentHandle {

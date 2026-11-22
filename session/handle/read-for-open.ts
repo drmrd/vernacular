@@ -1,5 +1,5 @@
 import { repairOfferFor, type DecodeFailure, type Project } from '../../core'
-import { InvalidProjectIdError, type DocumentStore } from '../../storage'
+import { InvalidProjectIdError, type DocumentStore, type SecondFileState } from '../../storage'
 import type { OpenFailed, OpenRequest } from './handle-types'
 import { storageUnavailable } from './thrown-failures'
 
@@ -7,6 +7,7 @@ import { storageUnavailable } from './thrown-failures'
 export interface OpenedProject {
   readonly project: Project
   readonly savedByNewerBuild: boolean
+  readonly secondFile?: SecondFileState
 }
 
 /** The project to open, or why it did not open. */
@@ -46,7 +47,10 @@ async function readStored(store: DocumentStore, request: OpenRequest): Promise<R
   const read = await store.read(request.id)
   if (read.ok) {
     const { project, savedByNewerBuild } = read.value
-    return foundStored(openedProject(project, { savedByNewerBuild }), read.lastChangedAt)
+    const { secondFile } = read
+    const flags =
+      secondFile === undefined ? { savedByNewerBuild } : { savedByNewerBuild, secondFile }
+    return foundStored(openedProject(project, flags), read.lastChangedAt)
   }
   if (read.failure.kind === 'not-found') {
     return request.create === undefined

@@ -3,7 +3,7 @@ import { type Autosave, type AutosaveStatus, createAutosave } from '../autosave/
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuarded } from '../guarded-call'
 import { registerHandle } from './handle-internals'
-import { createHandleNotices, type HandleNotices } from './handle-notices'
+import { createHandleNotices, raiseOpenNotices, reportNoticesTo } from './handle-notices'
 import type { RecordKeeper } from './handle-record'
 import { createSavePath } from './handle-save-path'
 import { createStoredFlag, type StoredFlag } from './handle-stored'
@@ -72,15 +72,6 @@ function createSaveStatusCell(durable: boolean): SaveStatusCell {
   }
 }
 
-/** Raises saved-with-faults for a store save that found faults. */
-function reportFaultsTo(notices: HandleNotices): (report: SaveReport) => void {
-  return (report) => {
-    if (report.faults.length > 0) {
-      notices.raise('saved-with-faults')
-    }
-  }
-}
-
 /** What the autosave of a handle tells: each status, and what each store save found. */
 interface WriteListeners {
   onStatusChange(next: AutosaveStatus): void
@@ -91,7 +82,7 @@ interface WriteListeners {
 interface WriteListenerParts {
   readonly session: EditorSession
   readonly status: SaveStatusCell
-  readonly reportFaults: (report: SaveReport) => void
+  readonly reportNotices: (report: SaveReport) => void
   readonly records: RecordKeeper
   readonly storedFlag: StoredFlag
 }
@@ -103,12 +94,12 @@ interface WriteListenerParts {
  * its write reports saved, so the last report is that of the write.
  */
 function listenToWrites(parts: WriteListenerParts): WriteListeners {
-  const { session, status, reportFaults, records, storedFlag } = parts
+  const { session, status, reportNotices, records, storedFlag } = parts
   let lastReport: SaveReport | undefined
   return {
     onReport(report) {
       lastReport = report
-      reportFaults(report)
+      reportNotices(report)
     },
     onStatusChange(next) {
       // The mark is taken before the status listeners run, so an edit that one of them makes
@@ -152,16 +143,14 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
   const session = parts.session ?? createEditorSession(opened.project)
   const status = createSaveStatusCell(store.durable)
   const notices = createHandleNotices()
-  if (opened.savedByNewerBuild) {
-    notices.raise('saved-by-newer-build')
-  }
+  raiseOpenNotices(notices, opened)
   if (parts.recoveryCopyKept === true) {
     notices.raise('recovery-copy-kept')
   }
   const { snapshots } = parts
-  const reportFaults = reportFaultsTo(notices)
+  const reportNotices = reportNoticesTo(notices)
   const storedFlag = createStoredFlag(parts.stored ?? false)
-  const writes = listenToWrites({ session, status, reportFaults, records, storedFlag })
+  const writes = listenToWrites({ session, status, reportNotices, records, storedFlag })
   const autosave = createHandleAutosave(parts, session, writes)
   const { save, flush, close, handOver } = createSavePath({ autosave, hold, records })
   const handle: DocumentHandle = {
