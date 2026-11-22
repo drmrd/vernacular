@@ -24,8 +24,8 @@ export interface DaylightFieldSolver {
   field(sky: SkyLuminance): DaylightField
   /**
    * Light that enters the room through its apertures, in plan square millimetres of open sky: each
-   * opening's area times its flux share (one half for a window, 1 for a doorway into a room that
-   * is not open to the sky) times its net transmittance times the radiance it faces, relative to
+   * opening's area times its flux share (one half for a window and for a doorway into a room open to
+   * the sky, 1 for a doorway into any other room) times its net transmittance times the radiance it faces, relative to
    * the open sky.
    */
   enteringFlux(room: number, sky: SkyLuminance): number
@@ -108,9 +108,9 @@ function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): Dayli
  * apertures of the form factor from the cell center at the work plane to the opening, times the
  * opening's weight, plus the room-average term, capped at 1. A sky aperture weighs the sky's
  * radiance toward its facing times its net transmittance; a doorway weighs the luminance of the
- * room it opens to times its net transmittance (that luminance is the
- * room-average term of that room, lit by its sky apertures alone; 1 for a room open to the sky). A cell whose center lies in no room, with a cell of a room (a room open to the
- * sky counts) among its eight neighbors, holds the sky visibility of one such neighbor; only cells
+ * room it opens to times its net transmittance (that luminance is the room-average term of that
+ * room, lit by its sky apertures alone; 1 for a room open to the sky). A cell whose center lies in
+ * no room, with a cell of a room (a room open to the sky counts) among its eight neighbors, holds the sky visibility of one such neighbor; only cells
  * whose center lies in a room are sources. The room is the one whose outline lies nearest the
  * cell's center, and on an equal distance the first in the input; among its neighbors the source is
  * the nearest, and on a tie the first in the order left, right, below, above, lower left, lower

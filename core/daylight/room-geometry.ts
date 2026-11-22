@@ -13,7 +13,7 @@ import {
 } from './daylight-field'
 import type { WallRectangle } from './form-factor'
 import { horizontalPointToWallRectangle, visibleThroughReveal } from './form-factor'
-import type { RoomSurfaces } from './room-average'
+import type { OpeningArea, RoomSurfaces } from './room-average'
 import {
   DOORWAY_HEMISPHERE_SHARE,
   measureRoomSurfaces,
@@ -54,21 +54,12 @@ export interface CellView {
  * window, and for a doorway into a room open to the sky, which face only the half of their view
  * above the horizon; 1 for a doorway into any other room, which faces the whole room.
  */
-export type ApertureGeometry =
-  | {
-      kind: 'sky'
-      direction: Vector3
-      openingArea: number
-      netTransmittance: number
-      fluxShare: number
-    }
-  | {
-      kind: 'doorway'
-      neighbor: number
-      openingArea: number
-      netTransmittance: number
-      fluxShare: number
-    }
+export interface ApertureOpening extends OpeningArea {
+  netTransmittance: number
+}
+
+export type ApertureGeometry = ApertureOpening &
+  ({ kind: 'sky'; direction: Vector3 } | { kind: 'doorway'; neighbor: number })
 
 /** What a room keeps between calls: its apertures, its cells, and its surfaces. */
 export interface RoomGeometry {
