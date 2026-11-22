@@ -8,6 +8,11 @@ import {
 } from '../../tests/storage/conformance/conformance-documents'
 import { openOrThrow, placeDocument, rename, workspaceRequest } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
+import {
+  SECOND_FILE_NAME,
+  storeNewerMainBesideSecondFile,
+  storeTwoReadableFiles,
+} from '../handle/second-file-test-kit'
 import { UNNAMED_PROJECT, displayNameOf, reconcileIndex } from '..'
 import {
   EARLIER_CHANGE,
@@ -224,4 +229,32 @@ describe('the records that the rebuild keeps, replaces, and orders', () => {
     expect(records).toEqual([rebuilt])
     expect(await ports.index.get('a')).toEqual(rebuilt)
   })
+})
+
+describe('the second file in a rebuilt record', () => {
+  it.each([
+    [
+      'the main file was read',
+      'main',
+      (ports: TestPorts) =>
+        storeTwoReadableFiles(ports, 'a', { main: 'Main file', second: 'Second file' }),
+    ],
+    [
+      'the second file was read',
+      'second',
+      (ports: TestPorts) =>
+        storeNewerMainBesideSecondFile(ports, 'a', documentNamed('Second file')),
+    ],
+  ] as const)(
+    'a project beside a second file gets its name and which file was read when %s',
+    async (_case, read, store) => {
+      const ports = rebuildPorts()
+      await store(ports)
+
+      const [record] = await reconcileIndex(ports)
+
+      expect(record?.id).toBe('a')
+      expect(record?.secondFile).toEqual({ name: SECOND_FILE_NAME, read })
+    },
+  )
 })

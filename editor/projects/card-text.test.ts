@@ -70,6 +70,7 @@ describe('stateLineText', () => {
     ['open-here', 'Already open in this tab.'],
     ['open-elsewhere', 'Already open in another tab.'],
     ['needs-permission', 'This folder needs permission again.'],
+    ['second-file', 'This project has a second plan file.'],
   ]
 
   it.each(sentences)('says %s as a sentence', (line, sentence) => {
@@ -81,6 +82,7 @@ describe('actionLabel', () => {
   const labels: [ProjectCardAction, string][] = [
     ['rename', 'Rename'],
     ['export', 'Export'],
+    ['choose-file', 'Choose a plan file'],
     ['delete', 'Delete'],
     ['remove-from-list', 'Remove from list'],
   ]

@@ -3,6 +3,12 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ProjectCardAction } from '../../session'
 import { ProjectCardMenu } from './project-card-menu'
+import {
+  acceptsExport,
+  actionsControlOf,
+  cardOf,
+  renderPageWithCardActions,
+} from './projects-page-test-support'
 
 afterEach(cleanup)
 
@@ -33,6 +39,11 @@ describe('ProjectCardMenu', () => {
       'a folder project',
       ['rename', 'export', 'remove-from-list'],
       ['Rename', 'Export', 'Remove from list'],
+    ],
+    [
+      'a project with a second plan file',
+      ['rename', 'export', 'choose-file', 'delete'],
+      ['Rename', 'Export', 'Choose a plan file', 'Delete'],
     ],
     ['a project open in another tab', ['export'], ['Export']],
     [
@@ -79,5 +90,48 @@ describe('ProjectCardMenu', () => {
       <ProjectCardMenu projectName={PROJECT} actions={[]} onAction={vi.fn()} />,
     )
     expect(container.firstChild).toBeNull()
+  })
+})
+
+describe('the card menu of a project with a second plan file', () => {
+  const withSecondFile = cardOf({ actions: ['rename', 'export', 'choose-file', 'delete'] })
+
+  it('reports the chosen action once', async () => {
+    const onAction = vi.fn()
+    const { user, control } = renderMenu(['export', 'choose-file', 'delete'], onAction)
+    await user.click(control)
+
+    await user.click(screen.getByRole('menuitem', { name: 'Choose a plan file' }))
+
+    expect(onAction.mock.calls).toEqual([['choose-file']])
+  })
+
+  it('offers Choose a plan file between Export and the removal when the page has a handler for it', async () => {
+    const user = renderPageWithCardActions([withSecondFile], {
+      onExport: acceptsExport(),
+      onChooseFile: vi.fn(),
+      onDelete: vi.fn(),
+    })
+
+    await user.click(actionsControlOf(PROJECT))
+
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Export',
+      'Choose a plan file',
+      'Delete',
+    ])
+  })
+
+  it('calls the handler of the page with the id of the project when Choose a plan file is chosen', async () => {
+    const onChooseFile = vi.fn()
+    const user = renderPageWithCardActions([withSecondFile], {
+      onExport: acceptsExport(),
+      onChooseFile,
+    })
+    await user.click(actionsControlOf(PROJECT))
+
+    await user.click(screen.getByRole('menuitem', { name: 'Choose a plan file' }))
+
+    expect(onChooseFile.mock.calls).toEqual([[withSecondFile.id]])
   })
 })
