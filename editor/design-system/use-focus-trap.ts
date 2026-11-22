@@ -6,7 +6,7 @@ const FOCUSABLE_SELECTOR = [
   'select:not([disabled])',
   'textarea:not([disabled])',
   'a[href]',
-  'summary',
+  'details > summary:first-of-type',
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
