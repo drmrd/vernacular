@@ -100,10 +100,9 @@ draws it in the live view and in the scene harness, and the calibrated daylight 
   2026-11-21: the grass carries CC-BY-4.0. ADR-0229 and
   `docs/specs/2026-11-21-asset-pack-distribution.md` record that license decision.)
 
-## Working assumptions
+## Confirmed by the owner on 2026-11-22
 
-These are the plan's choices. None is a decision of the owner yet. He confirms each one before
-the pull request that depends on it.
+These were the plan's working assumptions. The owner confirmed each one as written on 2026-11-22.
 
 - The grass tile: a PNG of 512 by 512 RGB texels over 2000 by 2000 mm, with deflate blocks stored
   without compression (about 787 KB). Stored blocks make the bytes the same on every machine. The
@@ -449,7 +448,7 @@ color, and the application reads 1.1.0.
 - `package.json` (one script, `pack:starter`).
 - `.prettierignore` (shared configuration): one entry, `public/packs/`, with a comment.
 - `public/packs/vernacular-starter-1.1.0/` (generated and committed); removal of
-  `public/packs/vernacular-starter-1.0.0/` if the owner agrees (see the working assumptions).
+  `public/packs/vernacular-starter-1.0.0/` (confirmed by the owner on 2026-11-22).
 - `core/environment/ground-surface.ts` (`GROUND_GRASS_REFERENCE`), `core/index.ts` (export).
 - `app/create-asset-library-registry.ts`, `app/create-asset-library-registry.test.ts` (new).
 - `editor/library/library-launcher.stories.tsx`, `editor/library/library-panel.stories.tsx` (the
