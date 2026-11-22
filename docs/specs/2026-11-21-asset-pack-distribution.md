@@ -314,6 +314,8 @@ These rules change design specification section 5.8, which lets the cache evict 
 
 A small pack stays in the app build, as `public/packs/vernacular-starter-<version>/` is today, and the service worker precaches it. It holds what the default scene needs and a small core of furniture. A catalog may list the starter pack too, and the hashes match, so the device keeps one copy. When the catalog has a newer starter version than the build, the library shows the catalog's.
 
+Starter pack 1.1.0 replaces the CC0-1.0 chair of 1.0.0 with a new chair from the generator in the repository, with new bytes and a new hash, under CC-BY-4.0. The build keeps the old chair's file, so a project that uses it still opens with no network. The library lists only the newest starter version, so the old chair no longer shows there.
+
 ### Importing a pack
 
 A pack file is a zip archive of the pack folder of ADR-0219: `manifest.json`, `assets/`, `thumbnails/`, `LICENSE`, `NOTICE`, `CHANGELOG.md`. The pack tool's `build` command writes it. Two ways in:
@@ -425,13 +427,13 @@ When a project opens with any placeholder, one notice gives the count and the re
 
 - First-party assets, and assets that code in the repository generates, are CC-BY-4.0 and not dual licensed. Their licensor is "The Vernacular Contributors", as in the repository's `NOTICE`. Starter pack 1.0.0 says "Vernacular project" and cannot change.
 - Generated assets are CC-BY-4.0 to the extent copyright applies to them. The generator's code stays under Apache-2.0, and running it yourself places no license condition on its output.
-- ADR-0219 gave the generated grass of starter pack 1.1.0 the license CC0-1.0. The grass has not shipped, and it ships as CC-BY-4.0. The chair of starter pack 1.0.0 was published as CC0-1.0 and stays CC0.
+- ADR-0219 gave the generated grass of starter pack 1.1.0 the license CC0-1.0. The grass has not shipped, and it ships as CC-BY-4.0. The chair of starter pack 1.0.0 was published as CC0-1.0, and that hash stays CC0. Starter pack 1.1.0 carries a new CC-BY-4.0 chair in its place, so the starter set has one license.
 - The license is manifest metadata, and the content hash covers the file's bytes only. A new pack version can name a new license. The store gains one manifest, and no device downloads a file again.
 - A license change only grants more rights (ADR-0230). The allowed moves are any license to CC0-1.0, and a share-alike license to the attribution license of the same version. The publish step refuses any other change to the license of a published hash.
 - When published manifests list one hash under different licenses, credits show the most permissive of them, so an asset keeps every right it was ever published with.
 - Share-alike applies to the asset and to changes made to it. A share-alike item does not change the license of the plan it sits in. A saved file that embeds the item carries it under its share-alike terms.
 - The app reads only packs whose every asset names one license on the allowlist of `core/assets/license-policy.ts`, and the catalog format has no field for content under other terms. Every license on the allowlist lets a person embed the asset in a project and share it with anyone for any purpose, and lets each recipient open, edit, and share it again. The embedding choice relies on that.
-- A pack's own `license` and `attribution` fields cover its manifest and text files. Each asset's own fields govern that asset, so one pack can mix licenses, as starter pack 1.1.0 does with a CC0-1.0 chair and CC-BY-4.0 grass.
+- A pack's own `license` and `attribution` fields cover its manifest and text files. Each asset's own fields govern that asset, so one pack can mix licenses, for example a third-party pack with CC0-1.0 and CC-BY-4.0 assets.
 - For the starter set, the pack tool writes a `REUSE.toml` from the manifest and checks that the two agree. License texts sit in `LICENSES/` at the repository root, and a pack's `LICENSE` file holds the full text of every license its assets use. The repository as a whole does not yet pass a REUSE check.
 
 ### Hosting requirements
@@ -455,6 +457,7 @@ This plan also writes a short deployment guide under `docs/`. It covers the stor
 - The pack tool gains a publish step. It validates each pack, copies each file to its hash path, writes the manifest under its hash, and adds the entry to `catalog.json`, all in a local directory. Anyone can run it to build a store of their own.
 - The upload order is blobs, then manifests, then `catalog.json`, so a catalog never names a file that is not there yet.
 - The pack tool also gains a mirror command. It reads a store's catalog, manifests, and blobs, checks every hash, and writes a complete copy.
+- The source files of every first-party catalog asset are public in a repository, under the asset's license. Source files are the modeling file, the original textures, and any generator input. The served files are public there too, so the library does not depend on one host. This plan builds no such repository: the starter set already lives in this one, and the first catalog pack beyond it waits for the follow-up below.
 
 ### What the user sees when something fails
 
@@ -527,6 +530,7 @@ ADR-0229 lists what stays open. These points come on top of that list.
 - `CONTRIBUTING.md` gains a clause for contributed assets, and the license section of `README.md` names the asset licenses beside Apache-2.0.
 - A configurable app name, a policy on what a renamed deployment may call itself, and an About entry with the app's license notices.
 - A REUSE check that the whole repository passes.
+- Choose the public repository for the source files and served files of first-party catalog assets: this repository with large-file storage, or a separate one.
 - Publish what the project's catalog accepts and how to suggest an asset.
 
 ## Left to the builder

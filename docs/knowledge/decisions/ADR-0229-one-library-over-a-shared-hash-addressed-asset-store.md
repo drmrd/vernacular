@@ -122,7 +122,17 @@ restate it. Two of its points shape the library directly:
 - The license is manifest metadata, and the content hash covers the file's bytes only. A new pack
   version can name a new license while every file keeps its hash. A license change may only grant
   more rights (ADR-0230).
-- The chair of starter pack 1.0.0 was published as CC0-1.0 and stays CC0.
+- The chair of starter pack 1.0.0 was published as CC0-1.0, and that hash stays CC0 for good.
+  Starter pack 1.1.0 does not carry it. A new chair from the generator in the repository, with
+  new bytes and a new hash, takes its place under CC-BY-4.0, so the starter set has one license.
+  ADR-0219 said that 1.1.0 keeps the old chair, and this record replaces that one rule.
+- The old chair stays published in starter pack 1.0.0, and the app build keeps its file, so a
+  project that uses it still opens with no network. The library lists only the newest starter
+  version, so the old chair no longer shows there. It was a placeholder, and it stays free under
+  CC0-1.0.
+- The source files of every first-party catalog asset are public in a repository, under the
+  asset's license: the modeling file, the original textures, and any generator input. The served
+  files are public there too, so the library does not depend on one host. Which repository is still open.
 - SPDX expressions with `OR` are not supported for now.
 
 ### Hosting
@@ -187,6 +197,7 @@ None of these was taken.
 - Signing the catalog with Ed25519 and refusing a bad signature.
 - The asset-preparation pipeline, which gets its own specification.
 - The host: where the store lives, and its setup.
+- The public repository for the source files and served files of first-party catalog assets.
 - The proposals of the specification, which the owner may still correct.
 - The text of the design specification, sections 4.1, 4.2, 4.3, 4.8, and 5.8.
 

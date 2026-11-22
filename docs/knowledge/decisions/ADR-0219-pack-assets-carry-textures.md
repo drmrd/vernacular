@@ -240,7 +240,9 @@ inherit it.
 ### What the grass must keep
 
 - Starter pack 1.1.0 is format 2. It keeps the chair of 1.0.0 with the same bytes, the same hash,
-  and the same metadata. It adds one texture of kind `texture`: a tile of mown grass.
+  and the same metadata. It adds one texture of kind `texture`: a tile of mown grass. (Replaced on
+  2026-11-22: 1.1.0 holds a new generated chair under CC-BY-4.0 in place of the CC0-1.0 chair.
+  ADR-0229 records that decision.)
 - The mean of the grass in linear light is the lawn color, `GROUND_SURFACE_COLOR`. Its luminance
   is the ground bounce of the sky, 0.21174.
 - Every part of the tile as large as the ground under a gate square keeps that mean. The plan sets
