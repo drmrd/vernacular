@@ -13,8 +13,12 @@ import {
 } from './daylight-field'
 import type { WallRectangle } from './form-factor'
 import { horizontalPointToWallRectangle, visibleThroughReveal } from './form-factor'
-import type { RoomSurfaces } from './room-average'
-import { measureRoomSurfaces } from './room-average'
+import type { OpeningArea, RoomSurfaces } from './room-average'
+import {
+  DOORWAY_HEMISPHERE_SHARE,
+  measureRoomSurfaces,
+  VERTICAL_OPENING_SKY_SHARE,
+} from './room-average'
 import type { DaylightInputLocation } from './room-validation'
 import { daylightInputError, OUTLINE_TOLERANCE_MM, validateDaylightRooms } from './room-validation'
 
@@ -43,13 +47,22 @@ export interface CellView {
 }
 
 /**
- * Where an aperture's light comes from: the sky toward a world direction (unit vector, Y up), or
- * the room it opens to. `openingArea` is the width times the height from sill to head, in plan
- * square millimetres. `netTransmittance` is the share of light that the opening passes.
+ * `openingArea` is the width times the height from sill to head, in plan square millimetres.
+ * `netTransmittance` is the share of light that the opening passes. `fluxShare` is the share of the
+ * opening's area that counts in the entering flux: one half for a window, and for a doorway into a
+ * room open to the sky, which face only the half of their view above the horizon; 1 for a doorway
+ * into any other room, which faces the whole room.
  */
-export type ApertureGeometry =
-  | { kind: 'sky'; direction: Vector3; openingArea: number; netTransmittance: number }
-  | { kind: 'doorway'; neighbor: number; openingArea: number; netTransmittance: number }
+interface ApertureOpening extends OpeningArea {
+  netTransmittance: number
+}
+
+/**
+ * Where an aperture's light comes from: the sky toward a world direction (unit vector, Y up), or
+ * the room it opens to.
+ */
+export type ApertureGeometry = ApertureOpening &
+  ({ kind: 'sky'; direction: Vector3 } | { kind: 'doorway'; neighbor: number })
 
 /** What a room keeps between calls: its apertures, its cells, and its surfaces. */
 export interface RoomGeometry {
@@ -116,7 +129,7 @@ function skyDirection(normal: Point): Vector3 {
   }
 }
 
-function apertureGeometry(opening: Opening): ApertureGeometry {
+function apertureGeometry(opening: Opening, rooms: readonly DaylightRoom[]): ApertureGeometry {
   const { aperture } = opening
   const [start, end] = aperture.span
   const width = Math.hypot(end.x - start.x, end.y - start.y)
@@ -127,13 +140,17 @@ function apertureGeometry(opening: Opening): ApertureGeometry {
       direction: skyDirection(opening.outwardNormal),
       openingArea,
       netTransmittance: aperture.netTransmittance ?? DEFAULT_WINDOW_NET_TRANSMITTANCE,
+      fluxShare: VERTICAL_OPENING_SKY_SHARE,
     }
   }
+  const neighbor = aperture.opensTo.room
   return {
     kind: 'doorway',
-    neighbor: aperture.opensTo.room,
+    neighbor,
     openingArea,
     netTransmittance: aperture.netTransmittance ?? OPEN_DOORWAY_NET_TRANSMITTANCE,
+    fluxShare:
+      rooms[neighbor]?.openToSky === true ? VERTICAL_OPENING_SKY_SHARE : DOORWAY_HEMISPHERE_SHARE,
   }
 }
 
@@ -194,6 +211,22 @@ function assignCells(
   return { cellsByRoom, roomOfCell }
 }
 
+/** The opening area of every doorway that another room lists into each room, by room index. */
+function doorwayAreasInto(
+  apertures: readonly (readonly ApertureGeometry[])[],
+  roomCount: number,
+): number[] {
+  const areas = new Array<number>(roomCount).fill(0)
+  for (const roomApertures of apertures) {
+    for (const aperture of roomApertures) {
+      if (aperture.kind === 'doorway') {
+        areas[aperture.neighbor] = (areas[aperture.neighbor] ?? 0) + aperture.openingArea
+      }
+    }
+  }
+  return areas
+}
+
 /**
  * Checks the rooms, then measures the form factor from every cell center at the work plane to
  * every aperture of the cell's room, and finds the room cell that each cell under a wall copies.
@@ -205,11 +238,15 @@ export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry 
   const grid = createDaylightField(rooms)
   const openings = rooms.map(roomOpenings)
   const { cellsByRoom, roomOfCell } = assignCells(grid, rooms, openings)
+  const apertures = openings.map((ofRoom) =>
+    ofRoom.map((opening) => apertureGeometry(opening, rooms)),
+  )
+  const doorwayAreas = doorwayAreasInto(apertures, rooms.length)
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
     openToSky: room.openToSky === true,
-    apertures: (openings[index] ?? []).map(apertureGeometry),
+    apertures: apertures[index] ?? [],
     cells: cellsByRoom[index] ?? [],
-    surfaces: measureRoomSurfaces(room),
+    surfaces: measureRoomSurfaces(room, doorwayAreas[index] ?? 0),
   }))
   return { grid, rooms: measured, cellsUnderWalls: findCellsUnderWalls(grid, rooms, roomOfCell) }
 }

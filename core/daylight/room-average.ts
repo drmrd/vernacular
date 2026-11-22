@@ -12,18 +12,30 @@ export const UNPAINTED_SURFACE_REFLECTANCE = 0.66
  * Share of the open sky that a vertical opening sees: the form factor from a vertical plane to the
  * half of its view that lies above the horizon.
  */
-const VERTICAL_OPENING_SKY_SHARE = 0.5
+export const VERTICAL_OPENING_SKY_SHARE = 0.5
+
+/**
+ * Share of the light of a room that crosses a doorway into it: the form factors from a doorway to
+ * the surfaces of the room it faces sum to 1, because the doorway sees the whole room.
+ */
+export const DOORWAY_HEMISPHERE_SHARE = 1
 
 /** The surfaces of a room that pass light back and forth. */
 export interface RoomSurfaces {
-  /** Floor, ceiling, and walls together, in plan square millimetres. */
+  /**
+   * Floor, ceiling, and walls together, plus every doorway that opens into the room, in plan
+   * square millimetres.
+   */
   area: number
   /**
    * Share of light that the floor reflects, from 0 to 1: the luminance of the floor color. The
    * first reflection of the light that enters the room lands on the floor, so it uses this share.
    */
   firstReflectance: number
-  /** Area-weighted share of light that the surfaces reflect, from 0 up to but not including 1. */
+  /**
+   * Area-weighted share of light that the surfaces reflect, from 0 up to but not including 1. The
+   * doorways that open into the room count at 0.
+   */
   meanReflectance: number
 }
 
@@ -31,6 +43,8 @@ export interface RoomSurfaces {
 export interface OpeningArea {
   /** Width times the height from sill to head, in plan square millimetres. */
   openingArea: number
+  /** Share of the opening's area that counts in the entering flux, from 0 to 1. */
+  fluxShare: number
 }
 
 function floorReflectance(color: LinearRgb): number {
@@ -49,26 +63,28 @@ function outlinePerimeter(outline: readonly Point[]): number {
  * ceiling height. The floor reflects the luminance of its color and every other surface reflects
  * `UNPAINTED_SURFACE_REFLECTANCE`. The mean reflectance weighs every surface by its area and the
  * first reflectance is the floor's alone. A room with no surface area reflects nothing.
+ * `doorwayArea` is the total opening area of the doorways that open into the room: it joins the
+ * surface area and reflects nothing, so the room loses the light that leaves through it.
  */
-export function measureRoomSurfaces(room: DaylightRoom): RoomSurfaces {
+export function measureRoomSurfaces(room: DaylightRoom, doorwayArea: number): RoomSurfaces {
   const floorArea = Math.abs(polygonArea(room.outline))
-  const area = 2 * floorArea + outlinePerimeter(room.outline) * room.ceilingHeight
-  if (!(area > 0)) return { area: 0, firstReflectance: 0, meanReflectance: 0 }
+  const surfaceArea = 2 * floorArea + outlinePerimeter(room.outline) * room.ceilingHeight
+  if (!(surfaceArea > 0)) return { area: 0, firstReflectance: 0, meanReflectance: 0 }
   const firstReflectance = floorReflectance(room.floorColor)
   const reflected =
-    floorArea * firstReflectance + (area - floorArea) * UNPAINTED_SURFACE_REFLECTANCE
-  return { area, firstReflectance, meanReflectance: reflected / area }
+    floorArea * firstReflectance + (surfaceArea - floorArea) * UNPAINTED_SURFACE_REFLECTANCE
+  const totalArea = surfaceArea + doorwayArea
+  return { area: totalArea, firstReflectance, meanReflectance: reflected / totalArea }
 }
 
 /**
  * Light that enters a room, in plan square millimetres of open sky: the sum over its openings of
- * half the opening area times the opening's weight (the radiance it faces times its net
+ * the opening's flux share times its area times its weight (the radiance it faces times its net
  * transmittance, relative to the open sky).
  */
 export function enteringFlux(openings: readonly OpeningArea[], weights: readonly number[]): number {
   return openings.reduce(
-    (sum, opening, index) =>
-      sum + VERTICAL_OPENING_SKY_SHARE * (weights[index] ?? 0) * opening.openingArea,
+    (sum, opening, index) => sum + opening.fluxShare * (weights[index] ?? 0) * opening.openingArea,
     0,
   )
 }
