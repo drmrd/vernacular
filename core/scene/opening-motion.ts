@@ -228,10 +228,15 @@ function lowerSashRise(opening: OpeningSceneNode): SlideMotion {
   return {
     kind: 'slide',
     axis: 'vertical',
-    travel: { x: 0, y: Math.max(0, opening.height / 2 - SASH_FRAME_WIDTH_MM / 2), z: 0 },
+    travel: { x: 0, y: opening.height - meetingRailTopMm(opening.height), z: 0 },
     partId: 'lower',
     partCount: SINGLE_PART,
   }
+}
+
+/** Millimeters up from a hung window's bottom to the top of its meeting rail, capped at the head. */
+export function meetingRailTopMm(heightMm: number): number {
+  return Math.min(heightMm, heightMm / 2 + SASH_FRAME_WIDTH_MM / 2)
 }
 
 /** The upper sash slides down by the same rise the lower sash slides up. */

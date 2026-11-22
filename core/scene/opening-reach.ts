@@ -1,6 +1,6 @@
 import { openingTypeHasFill } from '../registries/opening-kind'
-import { SASH_FRAME_WIDTH_MM } from './opening-fill'
 import {
+  meetingRailTopMm,
   openingMotion,
   openingParts,
   type HingeMotion,
@@ -121,10 +121,10 @@ function swungFrame(shut: OpeningFrame, motion: HingeMotion, openness: number): 
   }
 }
 
-/** How far the walker can reach and how far open the leaf is swung or slid. */
+/** How far the walker can reach and the opening's pose. */
 interface ReachLimit {
   reachMm: number
-  openness: number
+  pose: OpeningPose | undefined
 }
 
 /** The rectangle's size and how far the walker can reach, in millimeters. */
@@ -144,9 +144,10 @@ interface FrameHit {
  * Where the ray from the eye meets one rectangle of the opening, or null when the ray
  * runs parallel to it, points away from it, lands beyond reach, or crosses the
  * rectangle's plane outside it. The ray direction must be a unit vector, so the
- * returned distance is in millimeters.
+ * distance is in millimeters along the ray and the height in millimeters up from the
+ * rectangle's bottom edge.
  */
-function distanceToFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent): FrameHit | null {
+function hitOnFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent): FrameHit | null {
   const denom = dot(ray.direction, frame.normal)
   if (Math.abs(denom) < PARALLEL_EPSILON) return null
   const t = dot(subtract(frame.center, ray.origin), frame.normal) / denom
@@ -160,29 +161,34 @@ function distanceToFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent
 }
 
 /**
- * The nearer ray distance to the opening's shut frame and, once it is open, to its moved
- * leaf, or null when the ray reaches neither. The shut frame counts at every openness, so
- * an open door is still found from where it was opened.
+ * The nearer hit on the opening's shut frame and, once it is open, on its moved leaf, or
+ * null when the ray reaches neither. The shut frame counts at every openness, so an open
+ * door is still found from where it was opened. The openness is that of the part the
+ * opening's motion drives, which is the leaf whose moved rectangle is tested, not the part
+ * that E acts on (that part comes from `reachHit`).
  */
-function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit): FrameHit | null {
+function nearestReachHit(
+  ray: ReachRay,
+  node: OpeningSceneNode,
+  limit: ReachLimit,
+): FrameHit | null {
   const shut = shutFrame(node)
-  const frames =
-    limit.openness > 0
-      ? [shut, openedFrame(shut, openingMotion(node.type, node), limit.openness)]
-      : [shut]
+  const motion = openingMotion(node.type, node)
+  const openness = motion.kind === 'none' ? 0 : (limit.pose?.[motion.partId] ?? 0)
+  const frames = openness > 0 ? [shut, openedFrame(shut, motion, openness)] : [shut]
   const extent: ReachExtent = { width: node.width, height: node.height, reachMm: limit.reachMm }
   const hits = frames
-    .map((frame) => distanceToFrame(ray, frame, extent))
+    .map((frame) => hitOnFrame(ray, frame, extent))
     .filter((hit): hit is FrameHit => hit !== null)
   return hits.length === 0
     ? null
     : hits.reduce((nearest, hit) => (hit.distance < nearest.distance ? hit : nearest))
 }
 
-/** How far the part that the opening's motion drives stands open in the pose. */
-function partOpenness(node: OpeningSceneNode, pose: OpeningPose | undefined): number {
-  const motion = openingMotion(node.type, node)
-  return motion.kind === 'none' ? 0 : (pose?.[motion.partId] ?? 0)
+/** The band of an opening's shut frame, in millimeters up from the frame's bottom. */
+export interface OpeningBand {
+  readonly bottomMm: number
+  readonly topMm: number
 }
 
 /** The opening the walker looks at and the part of it that E acts on. */
@@ -190,26 +196,40 @@ export interface OpeningReachHit {
   readonly openingId: string
   readonly part: OpeningPartId
   /** The band of the shut frame that the part answers for, in millimeters up from the frame's bottom. */
-  readonly band: { readonly bottomMm: number; readonly topMm: number }
+  readonly band: OpeningBand
 }
 
 function reachHit(node: OpeningSceneNode, heightMm: number): OpeningReachHit {
+  return { openingId: node.id, ...partAt(node, heightMm) }
+}
+
+function partAt(
+  node: OpeningSceneNode,
+  heightMm: number,
+): { part: OpeningPartId; band: OpeningBand } {
   const parts = openingParts(node.type)
-  if (parts.length < 2) {
-    return {
-      openingId: node.id,
-      part: parts[0] ?? 'primary',
-      band: { bottomMm: 0, topMm: node.height },
-    }
+  if (!parts.includes('upper') || !parts.includes('lower')) {
+    return { part: parts[0] ?? 'primary', band: { bottomMm: 0, topMm: node.height } }
   }
-  const railTopMm = Math.min(node.height, node.height / 2 + SASH_FRAME_WIDTH_MM / 2)
+  const railTopMm = meetingRailTopMm(node.height)
   return heightMm > railTopMm
-    ? {
-        openingId: node.id,
-        part: 'upper',
-        band: { bottomMm: railTopMm, topMm: node.height },
-      }
-    : { openingId: node.id, part: 'lower', band: { bottomMm: 0, topMm: railTopMm } }
+    ? { part: 'upper', band: { bottomMm: railTopMm, topMm: node.height } }
+    : { part: 'lower', band: { bottomMm: 0, topMm: railTopMm } }
+}
+
+interface NearestOpening {
+  node: OpeningSceneNode
+  hit: FrameHit
+}
+
+function nearerOf(
+  nearest: NearestOpening | null,
+  node: OpeningSceneNode,
+  hit: FrameHit | null,
+): NearestOpening | null {
+  return hit !== null && hit.distance < (nearest?.hit.distance ?? Infinity)
+    ? { node, hit }
+    : nearest
 }
 
 /**
@@ -232,16 +252,11 @@ export function openingUnderReach(
 ): OpeningReachHit | null {
   const reachMm = options?.reachMm ?? DEFAULT_INTERACT_REACH_MM
   const ray: ReachRay = { origin: eye, direction: normalize(direction) }
-  let nearest: { node: OpeningSceneNode; heightMm: number } | null = null
-  let nearestDistance = Infinity
+  let nearest: NearestOpening | null = null
   for (const node of openings) {
     if (!openingTypeHasFill(node.type)) continue
-    const openness = partOpenness(node, options?.openness?.get(node.id))
-    const hit = reachDistance(ray, node, { reachMm, openness })
-    if (hit !== null && hit.distance < nearestDistance) {
-      nearestDistance = hit.distance
-      nearest = { node, heightMm: hit.heightMm }
-    }
+    const hit = nearestReachHit(ray, node, { reachMm, pose: options?.openness?.get(node.id) })
+    nearest = nearerOf(nearest, node, hit)
   }
-  return nearest && reachHit(nearest.node, nearest.heightMm)
+  return nearest && reachHit(nearest.node, nearest.hit.heightMm)
 }
