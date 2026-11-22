@@ -8,6 +8,11 @@ export const SAVING_STATUS_TEXT = 'Saving...'
 export const selectors = {
   planCanvas: (page: Page) => page.getByLabel('Floor plan'),
   savedStatus: (page: Page) => page.getByText('All changes saved'),
+  // What the shell says of a change that only the tab holds. The card of the Projects page says
+  // the same with a full stop, so only the whole text without it matches.
+  tabOnlyStatus: (page: Page) => page.getByText('In this tab only', { exact: true }),
+  // The banner of a browser that keeps no projects, which sits outside the page content.
+  storageBanner: (page: Page) => page.getByRole('alert'),
   tool: (page: Page, name: string) => page.getByRole('button', { name }),
   // The top bar renders icon undo/redo buttons and the command bar renders its own,
   // so two buttons share each name; the toolbar icon button is the first in the DOM.
