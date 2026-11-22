@@ -116,7 +116,12 @@ const TEXTURE_SIDE = 64
 const RGB_CHANNELS = 3
 const UINT8_RANGE = 256
 const TILE_SIZE_MM = 600
-const CHANGELOG = '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n'
+const NOT_POWER_OF_TWO_SIDE = 100
+const WELL_FORMED_TEXTURE_TINT = 0x40
+const WRONG_SIZE_TINT = 0x10
+const WRONG_MEDIA_TYPE_TINT = 0x20
+const WRONG_FIELDS_TINT = 0x30
+export const CHANGELOG = '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n'
 
 /**
  * A square RGB PNG whose pixels differ by `tint`, so each tint hashes differently.
@@ -133,7 +138,7 @@ function tintedPng(side, tint) {
 }
 
 /** A texture entry of a format 2 manifest; `overrides` replaces any field. */
-function textureEntry(name, hash, overrides = {}) {
+export function textureEntry(name, hash, overrides = {}) {
   return {
     contentHash: hash,
     name,
@@ -153,7 +158,7 @@ function textureEntry(name, hash, overrides = {}) {
 export async function writeTexturePack(sink) {
   const glb = Buffer.from('vernacular textures stool glb placeholder\n')
   const stoolHash = sha256(glb)
-  const png = tintedPng(TEXTURE_SIDE, 0x40)
+  const png = tintedPng(TEXTURE_SIDE, WELL_FORMED_TEXTURE_TINT)
   const textureHash = sha256(png)
   await writePack(sink, {
     directory: TEXTURE_PACK_DIRECTORY,
@@ -195,14 +200,13 @@ export async function writeBrokenTexturePack(sink) {
   // Three small textures with matching hashes. The first declares 128 by 128 over a 64 by 64
   // file. The second declares WebP over PNG bytes. The third declares a side that is not a
   // power of two and an unknown color space.
-  const smaller = tintedPng(TEXTURE_SIDE, 0x10)
-  const pngAsWebp = tintedPng(TEXTURE_SIDE, 0x20)
-  const badFields = tintedPng(TEXTURE_SIDE, 0x30)
+  const smaller = tintedPng(TEXTURE_SIDE, WRONG_SIZE_TINT)
+  const pngAsWebp = tintedPng(TEXTURE_SIDE, WRONG_MEDIA_TYPE_TINT)
+  const badFields = tintedPng(TEXTURE_SIDE, WRONG_FIELDS_TINT)
   const sizeHash = sha256(smaller)
   const typeHash = sha256(pngAsWebp)
   const fieldsHash = sha256(badFields)
   const declaredSide = TEXTURE_SIDE * 2
-  const notPowerOfTwoSide = 100
   await writePack(sink, {
     directory: BROKEN_TEXTURE_PACK_DIRECTORY,
     manifest: {
@@ -219,7 +223,7 @@ export async function writeBrokenTexturePack(sink) {
         }),
         textureEntry('Wrong media type', typeHash, { mediaType: 'image/webp' }),
         textureEntry('Wrong fields', fieldsHash, {
-          image: { width: notPowerOfTwoSide, height: TEXTURE_SIDE },
+          image: { width: NOT_POWER_OF_TWO_SIDE, height: TEXTURE_SIDE },
           colorSpace: 'display-p3',
         }),
       ],
