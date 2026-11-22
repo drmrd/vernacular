@@ -226,6 +226,17 @@ describe('checkPackIntegrity for a format 2 asset', () => {
     const result = await checkPackIntegrity(manifest, reader)
     expect(result).toEqual({ errors: [] })
   })
+
+  it('flags a texture thumbnail whose bytes are not a valid WebP signature', async () => {
+    const notWebp = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png', {
+      bytes: { [THUMBNAIL_FILE]: notWebp },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toContain('not valid WebP')
+    expect(result.errors[0]).toContain(HASH)
+  })
 })
 
 describe('isWebp', () => {
