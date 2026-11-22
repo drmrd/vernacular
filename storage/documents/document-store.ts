@@ -13,7 +13,7 @@ import type { DirectoryPort } from '../fs/directory-port'
 import { PROJECT_FILE } from '../project-files/project-file-name'
 import type { ProjectFiles, RemovableProjectFiles } from '../project-files/project-files'
 import { ProjectNotFoundError } from '../project-store'
-import { writeBackup, storedVersionOf } from './document-backups'
+import { keepUnreadablePrevious, writeBackup, storedVersionOf } from './document-backups'
 import { warnAboutEncodeProblems } from './open-decoded'
 import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
@@ -203,6 +203,7 @@ export class DocumentStore {
       this.options,
     )
     await this.files.prepareAssets(id, hashesToCopy(project))
+    await keepUnreadablePrevious(directory, previous, encoded.graftDropped)
     const backedUp = await this.backUpLastValid(directory, previous, encoded.faults)
     warnAboutEncodeProblems(encoded)
     await directory.writeFile(fileName, encoded.bytes)

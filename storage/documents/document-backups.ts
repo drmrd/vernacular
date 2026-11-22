@@ -1,5 +1,5 @@
 import { CURRENT_SCHEMA_VERSION } from '../../core'
-import type { DecodeResult } from '../../core'
+import type { DecodeResult, GraftDropped } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 
 /**
@@ -9,7 +9,12 @@ import type { DirectoryPort } from '../fs/directory-port'
 export const BACKUP_DIRECTORY = '.house-backups'
 
 /** Why a copy of a stored file is kept. */
-export type BackupKind = 'pre-migration' | 'last-valid' | 'pre-repair' | 'refused-snapshot'
+export type BackupKind =
+  | 'pre-migration'
+  | 'last-valid'
+  | 'pre-repair'
+  | 'refused-snapshot'
+  | 'unreadable-previous'
 
 /** The version of bytes that carry no readable schema version. */
 const UNKNOWN_VERSION = 0
@@ -44,6 +49,20 @@ export async function writeBackup(
   if ((await directory.readFile(path)) === undefined) {
     await directory.writeFile(path, stored.bytes)
   }
+}
+
+/**
+ * Copies the previous file of a save to the backups when the encode could not read it, so the
+ * save replaces no bytes that it cannot read without a copy. Does nothing for a readable file.
+ */
+export async function keepUnreadablePrevious(
+  directory: DirectoryPort,
+  previous: Uint8Array | undefined,
+  graftDropped: GraftDropped | undefined,
+): Promise<void> {
+  if (previous === undefined || graftDropped === undefined) return
+  const version = storedVersionOf({ ok: false, failure: graftDropped })
+  await writeBackup(directory, 'unreadable-previous', { version, bytes: previous })
 }
 
 /** The schema version to name a backup by, from the decode of the bytes it holds. */
