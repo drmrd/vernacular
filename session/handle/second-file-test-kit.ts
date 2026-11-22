@@ -1,8 +1,7 @@
 import { documentOfNewerVersion } from '../../tests/storage/conformance/conformance-documents'
 import { SECOND_FILE_NAME } from '../../tests/storage/conformance/conformance-run'
 import { documentNamed } from '../projects/rebuild-test-kit'
-import { openOrThrow, placeDocument, workspaceRequest } from './handle-test-kit'
-import type { TestPorts } from './handle-test-kit'
+import { openOrThrow, placeDocument, workspaceRequest, type TestPorts } from './handle-test-kit'
 import type { DocumentHandle } from './handle-types'
 
 /** Test support: stored projects that hold a second document file beside the main file. */
