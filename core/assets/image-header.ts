@@ -21,7 +21,7 @@ const PNG_HEIGHT_OFFSET = PNG_WIDTH_OFFSET + UINT32_BYTES
 const PNG_BIT_DEPTH_OFFSET = PNG_HEIGHT_OFFSET + UINT32_BYTES
 const PNG_COLOR_TYPE_OFFSET = PNG_BIT_DEPTH_OFFSET + 1
 const PNG_INTERLACE_OFFSET = PNG_COLOR_TYPE_OFFSET + 1 + PNG_COMPRESSION_AND_FILTER_BYTES
-const PNG_HEADER_LENGTH = PNG_INTERLACE_OFFSET + 1
+const PNG_BYTES_THROUGH_INTERLACE = PNG_INTERLACE_OFFSET + 1
 const PNG_INTERLACE_ADAM7 = 1
 
 function hasTextAt(bytes: Uint8Array, offset: number, expected: string): boolean {
@@ -32,7 +32,7 @@ function hasTextAt(bytes: Uint8Array, offset: number, expected: string): boolean
 
 function readPngHeader(bytes: Uint8Array): ImageHeader | undefined {
   if (
-    bytes.length < PNG_HEADER_LENGTH ||
+    bytes.length < PNG_BYTES_THROUGH_INTERLACE ||
     !hasTextAt(bytes, 0, PNG_SIGNATURE) ||
     !hasTextAt(bytes, PNG_IHDR_TYPE_OFFSET, PNG_IHDR_TYPE)
   ) {
