@@ -21,8 +21,8 @@ import { openingFillSashOf } from './opening-fill-builder'
  * - A slide whose partId names a hung-window sash leaves the group at its built transform and
  *   translates only the child meshes stamped with that sash (see openingFillSashOf) by
  *   travel * openness. Every other child mesh is left as it is.
- * At openness 0 every motion is the identity: the group and every child mesh sit at zero
- * translation and identity rotation, so a shut opening renders exactly as it was built.
+ * At openness 0 the moving part sits at its built transform (zero translation, identity
+ * rotation), so an opening with every part shut renders exactly as it was built.
  */
 export function applyOpeningMotion(
   group: THREE.Object3D,
@@ -92,11 +92,7 @@ function applySlide(group: THREE.Object3D, motion: SlideMotion, openness: number
     return
   }
   group.quaternion.identity()
-  group.position.set(
-    motion.travel.x * openness,
-    motion.travel.y * openness,
-    motion.travel.z * openness,
-  )
+  translateAlong(group, motion.travel, openness)
 }
 
 /** True when the part id names one sash of a hung window rather than the whole opening. */
@@ -117,13 +113,17 @@ function slideSash(group: THREE.Object3D, motion: SlideMotion, openness: number)
   group.position.set(0, 0, 0)
   for (const child of group.children) {
     if (openingFillSashOf(child) === motion.partId) {
-      child.position.set(
-        motion.travel.x * openness,
-        motion.travel.y * openness,
-        motion.travel.z * openness,
-      )
+      translateAlong(child, motion.travel, openness)
     }
   }
+}
+
+function translateAlong(
+  object: THREE.Object3D,
+  travel: SlideMotion['travel'],
+  openness: number,
+): void {
+  object.position.set(travel.x * openness, travel.y * openness, travel.z * openness)
 }
 
 /**
