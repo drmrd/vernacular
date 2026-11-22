@@ -16,6 +16,7 @@ sourceFiles:
   [
     core/scene/opening-fill.ts,
     core/scene/opening-motion.ts,
+    core/scene/opening-pose.ts,
     core/scene/opening-reach.ts,
     core/scene/opening-room-side.ts,
     core/scene/wall-room-sides.ts,
@@ -24,11 +25,12 @@ sourceFiles:
     bridge/react/harness-fixtures.ts,
     engine/scene/opening-fill-builder.ts,
     engine/scene/opening-motion.ts,
+    bridge/react/walk-interaction.ts,
     editor/plan/opening-controls.tsx,
     editor/plan/opening-inspector-context.ts,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # ADR-0216: Hung-window sashes ride two tracks, and the lower sash rises inside its frame
@@ -43,6 +45,10 @@ nothing. Both records carry a dated note that points here.
 On 2026-11-17 the rule that finds the room side changed. The room side is now read from the room
 boundaries along the wall, as [[ADR-0218-exterior-walls-follow-the-rooms-along-the-wall]] records,
 and no longer from sample points past the wall faces. The sections below describe the new rule.
+
+On 2026-11-22, for issue #831, the upper sash of a double-hung window began to lower as well, and
+the walker's aim now picks the sash. The amendment of that date records the change. The sections
+below it are corrected where they said that the upper sash never moves.
 
 ## Context
 
@@ -180,9 +186,10 @@ high, a little under half the height.
 The rise stops at zero. A window no taller than `SASH_FRAME_WIDTH_MM` has no room to open, and a
 negative rise would move the sash down out of the frame at the sill. Such a window does not move.
 
-The upper sash does not move, on either hung type. The walk-mode motion has one openness scalar per
-opening, and per-part openness is out of the spec's scope. With one scalar, one sash moves, and the
-spec chose the lower one.
+Until 2026-11-22 the upper sash did not move on either hung type. The walk-mode motion had one
+openness scalar per opening, so one sash moved, and the spec chose the lower one. Since the
+amendment of 2026-11-22 the upper sash of a double-hung window lowers by the same rise. The upper
+sash of a single-hung window still never moves.
 
 ### The part identifier names the sash that moves
 
@@ -225,7 +232,9 @@ stays true.
 
 `applyOpeningMotion` handles a slide that names a sash in its own way. It rests the group at zero
 translation and identity rotation, which is its built transform. It then moves each direct child mesh
-of the named sash by `travel * openness` and sets every other child to zero translation. This relies
+of the named sash by `travel * openness` and leaves every other child where it is. Before
+2026-11-22 it set every other child to zero translation, which the amendment of that date changed
+so that one sash no longer puts the other back. This relies
 on how the builder lays a fill out: each part mesh is a direct child of the group, with its vertices
 built in place and a mesh position of zero. A hinge, or a slide for `'primary'`, still moves the
 whole group. At openness 0 every part sits exactly as built. Edge lines are children of their mesh,
@@ -278,7 +287,8 @@ given above.
 
 - A user who opens a hung window in the 3D view sees the lower sash rise inside the frame until its
   meeting rail meets the head. The upper sash stays put. Nothing appears above the head of the
-  frame, and the open area is just under half the height.
+  frame, and the open area is just under half the height. Since 2026-11-22 the sash that moves
+  depends on where the walker looks; see the amendment of that date.
 - A closed hung window looks different too. Its two sashes sit on stepped planes: seen from the room,
   the upper sash is set back behind the lower one by one sash depth. On a wall with no single room
   side, the side that `facing` names takes the place of the room. This holds for every hung window,
@@ -301,8 +311,9 @@ given above.
   the wall above it. So the open key now closes a hung window from the pose that opened it. Doors
   now work the same way (issue #817): the reach keeps the shut frame of every opening, as the
   amendment in [[ADR-0198-open-doors-follow-the-scene-session]] describes.
-- A later control for the upper sash of a double-hung window is a slide with `partId: 'upper'` and a
-  negative travel. It needs no change to the applier.
+- The upper sash of a double-hung window moves as this bullet foresaw, by a slide with
+  `partId: 'upper'` and a negative travel. The applier did need one change: it no longer moves the
+  other children back to zero (see the amendment of 2026-11-22).
 - The closed look of a hung window changes to two stepped sashes. The step is too small to move a
   committed scene capture on macOS. The scene captures ran twice against the committed images with
   no update. At commit `959b613a`, before the lower sash moved to the room side, 55 passed and none
@@ -341,7 +352,8 @@ The rules are proven by unit tests.
 - `engine/scene/opening-fill-builder.test.ts`: each double-hung mesh is stamped with its sash, the
   lower sash sits on the facing side and the upper sash on the other, the tracks swap with `facing`,
   and a door and a picture window carry no stamp and stay on the centerline.
-- `engine/scene/opening-motion.test.ts`, block "applyOpeningMotionForNode on a %s", run for both hung
+- `engine/scene/opening-motion.test.ts`, block "applyOpeningPose on a %s" (named
+  "applyOpeningMotionForNode on a %s" before 2026-11-22), run for both hung
   types: fully open, the group's world box stays between the sill and the head, with its plan
   extents unchanged and the group itself unmoved; the lower sash opens no more than half the height;
   every part other than the lower sash stays where it was built; half open gives half the rise; and
@@ -427,6 +439,106 @@ way the sashes face on this wall." The code is in `editor/plan/opening-controls.
 The rule that finds the sash side did not change. Only the control now says what it does and
 declines to act where it has no effect.
 
+## Amendment 2026-11-22: the upper sash lowers, and aim picks the sash
+
+Issue #831 asked for the upper sash of a double-hung window to lower in the 3D view, as a real one
+can. The owner decided three things:
+
+- Aim picks the sash. A hit above the top of the meeting rail opens or shuts the upper sash. A hit
+  at or below it opens or shuts the lower sash.
+- When both sashes are open, each travels half the rise.
+- The split stays at the rail top, with no allowance for eye height. The default window has a
+  900 mm sill and a 1200 mm height, so its rail top is at 1530 mm. The walker's eye is at 1700 mm
+  (`WALK_EYE_HEIGHT_MM`), so a straight look lowers the upper sash. To raise the lower sash, the
+  walker looks below 1530 mm.
+
+### Each sash has its own motion
+
+`openingParts(type)` (`core/scene/opening-motion.ts:81`) lists the parts of a type that move:
+`'lower'` and `'upper'` for a double-hung window, `'lower'` alone for a single-hung window, and
+`'primary'` for every other type. The single-hung entry in the registry sets `fixedSash: 'upper'`,
+and `openingParts` leaves that sash out. `openingPartMotion` (line 93) gives the motion of one
+part. The upper sash lowers by the same rise that the lower sash rises: the same vertical slide
+with the travel negated and `partId: 'upper'` (`upperSashLowering`, line 243). A part that the type
+lacks has no motion, so the upper sash of a single-hung window never moves. `openingMotion` still
+gives the rise of the lower sash for a hung window, and the reach test still reads it.
+
+The rise is `height - meetingRailTopMm(height)` (line 231). `meetingRailTopMm` (line 238) is
+`min(height, height / 2 + 30)`, so the rise equals the `max(0, height / 2 - 30)` given above.
+
+### One openness for each sash
+
+The pose of an opening is now an `OpeningPose` (`core/scene/opening-pose.ts:5`) with one openness
+for each part, 0 shut and 1 at the full travel. `openingPartTarget` (line 11) gives the target of
+one part. A shut part aims for 0. A sash that is open alone aims for 1, the full rise. When both
+sashes are open, each aims for 0.5 (`SHARED_SASH_TRAVEL`, line 8). `advanceOpeningPose` (line 33)
+eases each part toward its own target at the existing rate. `settledPose` (line 51) seats each
+part at its target, for an opening that the view does not show.
+
+### Aim picks the sash, and the bands belong to the shut frame
+
+`openingUnderReach` (`core/scene/opening-reach.ts:247`) returns an `OpeningReachHit` (line 195): the
+opening id, the part that E acts on, and the band of the shut frame that the part answers for, in
+millimeters up from the bottom of the frame. `hitOnFrame` (line 150) returns the height of the hit
+above the bottom edge along with its distance, so no second ray test is needed. `partAt` (line 206)
+picks the part. On a window with both sashes, a hit above `meetingRailTopMm` names the upper sash,
+with a band from the rail top to the head. A hit at or below the rail top names the lower sash,
+with a band from the bottom of the frame to the rail top. Every other opening names its one part
+and gives the whole frame as its band. That includes the single-hung window, which toggles its
+lower sash from anywhere in the frame. A fixed window names `'primary'` and moves nothing, as
+before.
+
+The bands are measured on the shut frame. A hung window keeps its shut rectangle at every openness
+(`slidesInsideFrame`, line 108), so the height of a hit is read against the frame and not against a
+moved sash. So E on the gap that an open sash leaves closes that sash: the gap under a raised lower
+sash lies in the lower band, and the gap over a lowered upper sash lies in the upper band.
+
+### The engine moves only the named sash
+
+`applyOpeningPose` (`engine/scene/opening-motion.ts:53`) takes the place of
+`applyOpeningMotionForNode`. It plays each part of the node's type at its openness in the pose, and
+a part missing from the pose counts as shut. For a sash, `slideSash` (line 93) rests the group at
+its built transform and moves only the meshes stamped with that sash. Every other child stays where
+it is. The old applier set every other child to zero translation; with two sashes applied in turn,
+the second would have put the first back. `applyOpeningMotion` (line 26) stays for a single motion.
+
+In the bridge, `interactFromWalk` (`bridge/react/walk-interaction.ts:26`) toggles the part that the
+reach names. `tickOpenings` (line 55) eases each opening's pose toward `openingTargetPose` and
+applies it. `settleUnshownOpenings` (line 83) and `restoreOpenings` (line 97) settle and pose each
+part. The amendment of 2026-11-22 in [[ADR-0198-open-doors-follow-the-scene-session]] records the
+map of open parts that these functions read.
+
+### Evidence for the amendment
+
+- `core/scene/opening-motion-sashes.test.ts`: the parts of each hung type, the upper sash lowering by
+  the rise of the lower sash, a zero travel on a window too short to open, and no motion for the
+  fixed upper sash of a single-hung window.
+- `core/scene/opening-pose.test.ts`: full travel for one open sash, half travel for each of two,
+  easing by part, and the settled pose.
+- `core/scene/opening-reach-sash.test.ts`: the upper sash for a hit above the meeting rail and for a
+  straight look at standing eye height, the lower sash for a hit on the top of the rail, the lower
+  sash anywhere on a single-hung window, E on each opened gap closing its own sash, and the whole
+  frame as the band of a door.
+- `engine/scene/opening-motion-sashes.test.ts`: the upper sash lowers while the lower sash stays in
+  its built box, each sash moves half its rise when both are open, every part stays between the
+  sill and the head in every pose, every mesh returns to its built box when shut, and the upper sash
+  of a single-hung window never moves.
+- `bridge/react/walk-interaction-sashes.test.ts`: the tick, the settle, and the restore by sash, and
+  an E press aimed high that lowers the upper sash.
+
+The live check in `e2e/tests/journeys/close-doors-and-windows.spec.ts` opens the window with a
+straight look at eye height, so its press now lowers the upper sash. It does not tell the two sashes
+apart. The unit tests above do.
+
+### Limits of the amendment
+
+- No end-to-end check raises the lower sash. The journeys never tilt the view down, and a straight
+  look at the default window lowers the upper sash.
+- A state that holds both sashes of a single-hung window open cannot come from aim. If one arose,
+  `settledPose` would give its lower sash half travel.
+- The bridge names `openDoorIds`, `noteOpenDoors`, `storedOpenDoorIds`, and `onOpenDoors` now carry
+  open parts and not only doors. They keep their names for now; issue #1099 tracks the rename.
+
 ## Limits
 
 - On a wall between two rooms, or a wall that bounds no room at the opening, `facing` still decides.
@@ -440,9 +552,9 @@ declines to act where it has no effect.
   reads the ring edges of the rooms of its floor, and the warm deriver reads them again whenever the
   room array changes. The gate in `tests/performance/scene-rebuild-counts.test.ts` counts the
   rebuilds.
-- Only the lower sash moves, on the double-hung window as well. A real double-hung window can also
-  lower its upper sash; #831 covers that in the 3D view. Until then the 3D view does not
-  tell the two hung types apart by their motion.
+- Until 2026-11-22 only the lower sash moved, on the double-hung window as well, so the 3D view
+  did not tell the two hung types apart by their motion. The amendment of that date lets the upper
+  sash of a double-hung window lower. The single-hung window keeps its upper sash fixed.
 - In a wall thinner than 40 mm the sashes stand proud of the wall faces, by up to 19.5 mm on each
   face in a 1 mm wall.
 - Nobody saw coplanar sashes flicker. That they would was inferred from the geometry. The live check
@@ -450,8 +562,8 @@ declines to act where it has no effect.
 - The margin of the live check, 6 px, is wider than the measured overhang. A run saw the check fail
   when the whole window rose by its full height: the overhang past the top of the outline was
   40 px. The check does not fail when the whole window rises by half its height, because the wall
-  hides the parts that go above the head. The unit tests of the engine guard that only the lower
-  sash moves.
+  hides the parts that go above the head. The unit tests of the engine guard that each sash moves
+  only its own meshes.
 - No committed image shows the stepped sashes at a size where a reader can see them.
 - The new place of the lower sash changes the draw order of a door leaf against the window bars. In
   the room of the journey that exposed a defect in `three` 0.184.0, which left a shut door drawn
@@ -464,6 +576,9 @@ declines to act where it has no effect.
 ## References
 
 - Issue #792.
+- Issue #831: the upper sash of a double-hung window and the choice of sash by aim. Resolved by
+  the 2026-11-22 amendment.
+- Issue #1099: the rename of the bridge names that carry open parts.
 - Issue #827: the label and the behavior of the facing button for a hung window. Resolved by the
   2026-11-21 update.
 - Issue #674: rooms inset by the raw wall thickness.
@@ -472,8 +587,8 @@ declines to act where it has no effect.
 - [[ADR-0128-opening-animation-motion-model]]: the motion model and the part identifier this record
   uses.
 - [[ADR-0081-three-dimensional-opening-fill]]: the fill parts and the hung-window fill kind.
-- [[ADR-0198-open-doors-follow-the-scene-session]]: the tick, the restore, and the close control,
-  which read the motion and did not change.
+- [[ADR-0198-open-doors-follow-the-scene-session]]: the tick, the restore, and the close control.
+  They did not change for issue #792; its amendment of 2026-11-22 records the map of open parts.
 - [[ADR-0152-linux-scene-baseline-lane]]: the second family of scene baselines.
 - Specs: `docs/specs/2026-06-28-walk-mode-opening-animations.md` and
   `docs/specs/2026-06-14-three-dimensional-opening-fill.md`.

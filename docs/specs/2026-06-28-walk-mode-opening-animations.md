@@ -94,9 +94,12 @@ In scope for the first implementation:
 ## Deferred by design, tracked separately
 
 - Fold and pivot motions, falling back to hinge until built.
-- Multi-part motion: both leaves, both sashes, every bifold panel.
-- Per-part openness. One scalar still drives the whole opening; independent leaf or sash control is
-  out of scope.
+- Multi-part motion: both leaves and every bifold panel.
+- Per-part openness for leaves, bifold panels, and every other type. Hung windows now hold one
+  openness per sash: the walker's aim picks the sash, and when both sashes are open each travels
+  half the rise (ADR-0216, amendment of 2026-11-22). The open state names the open part of each
+  opening (ADR-0198, amendment of 2026-11-22). Every other type still moves its one part with a
+  single scalar.
 
 ## Verification
 

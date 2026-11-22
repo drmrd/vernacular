@@ -9,6 +9,7 @@ related:
     decisions/ADR-0128-opening-animation-motion-model,
     decisions/ADR-0064-three-dimensional-camera-navigation,
     decisions/ADR-0135-walk-collision-swept-movement-and-thickness-standoff,
+    decisions/ADR-0216-hung-window-sashes-stay-in-their-frame,
   ]
 sourceFiles:
   [
@@ -28,9 +29,12 @@ sourceFiles:
     bridge/react/use-opening-motion-floors-test-support.tsx,
     bridge/react/walk-interaction-settle.test.ts,
     core/scene/opening-reach.ts,
+    core/scene/open-parts.ts,
+    core/scene/opening-interaction.ts,
+    engine/scene/opening-motion.ts,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # ADR-0198: Open doors and windows follow the scene session, and one control closes them in either camera mode
@@ -40,7 +44,8 @@ updated: 2026-11-21
 Current. Landed with issue #533. The owner made the interface choices below on 2026-11-16. This
 record extends [[ADR-0170-scene-session-state-in-a-bridge-provider]], which put the open-door ids in
 the scene session store, and supersedes nothing. It was amended on 2026-11-18 for issue #777, so
-that the doors and windows of every shown floor follow the session.
+that the doors and windows of every shown floor follow the session, and on 2026-11-22 for issue
+#831, so that the open state names the open part of each opening.
 
 ## Context
 
@@ -347,9 +352,59 @@ frame. A hung window already kept its shut rectangle, so it behaves as before, a
 has no leaf to test. The context above still holds: E opens or shuts the door or window in reach.
 The R key and the toolbar control are unchanged. The code is in `core/scene/opening-reach.ts`.
 
+## Amendment 2026-11-22: the open state names the open parts
+
+Issue #831 lets each sash of a double-hung window open on its own, and the walker's aim picks the
+sash. The amendment of the same date in [[ADR-0216-hung-window-sashes-stay-in-their-frame]] records
+that motion. A set of opening ids could not say which sash stood open, so the open state now names
+the parts.
+
+- `OpenParts` (`core/scene/open-parts.ts:4`) maps each opening id to the set of its open parts. A
+  closed opening has no entry. `toggleOpenPart` (line 13) flips one part and drops the opening when
+  its last part shuts. `openOpeningIds` (line 23) gives the ids with any part open. Walk collision
+  reads those ids (`bridge/react/walk-session.ts:223`), so a door the walker holds open still lets
+  the walker through.
+- `OpeningInteractionState` holds the map as `openParts` (`core/scene/opening-interaction.ts:8`).
+  `toggleOpening` (line 27) takes an `OpeningPartRef`, which is an opening id and one part.
+- The scene session field keeps the name `openDoorIds` and holds this map
+  (`bridge/scene-session/scene-session-store.ts:37`). The bridge names that carry it keep their
+  names too: `storedOpenDoorIds` and `onOpenDoors` in `bridge/react/walk-camera-controls.tsx`,
+  `onOpenDoors` in `bridge/react/walk-session.ts`, and `noteOpenDoors` in
+  `bridge/react/use-scene-navigation.ts`. The owner chose to keep them in this change, because a
+  rename reaches `bridge/react/live-scene-view.tsx`, which no unit test loads. Issue #1099 tracks
+  the rename, with a render test of the live view.
+- `followStoredOpenings` (`bridge/react/walk-interaction.ts:71`) compares the open parts through
+  `sameOpenParts` (`core/scene/open-parts.ts:28`), not only the ids. A stored map that holds the
+  same window with the other sash open is a change, and the follow takes a copy of it. A stored map
+  with the same parts keeps the same state, so the echo of the walker's own press still changes
+  nothing.
+- Shut all empties the map. `resetInteractiveObjects` writes a new empty map
+  (`bridge/scene-session/interactive-objects.ts:20`), and `interactiveObjectsAtDefault` (line 8)
+  reads its size. The R key sets the walk state to `emptyOpeningInteraction()` and reports its empty
+  map (`bridge/react/walk-session.ts:180`).
+- The open state is still view state. It does not go through `dispatch(command)`, does not enter
+  undo, and is never saved with the project.
+- `applyOpeningPose` (`engine/scene/opening-motion.ts:53`) takes the place of
+  `applyOpeningMotionForNode`, which the amendment of 2026-11-18 names. Like the old function, it
+  ignores a node with no built group.
+
+Tests that hold the amendment:
+
+- `core/scene/open-parts.test.ts`: a toggle opens one part, opens the second sash beside the first,
+  removes the opening when its last part shuts, and never changes its input; the ids of the open
+  openings; two maps compared by ids and parts, not by instance.
+- `bridge/react/walk-interaction.test.ts`, under `followStoredOpenings`: "keeps the same state for
+  a stored map with the same parts" and "copies a stored map with other parts".
+- `bridge/scene-session/scene-session-store.test.ts`: "starts with no open parts, held as a map" and
+  "holds a copy of a seeded open-parts map, not the caller's own map".
+- `bridge/scene-session/interactive-objects.test.ts`: "replaces the stored open-parts map and never
+  mutates the original in place".
+- `bridge/react/walk-session.test.ts`: "lets the walker pass a door held open at its primary part".
+
 ## References
 
-- Issue #533, and issue #777 for the amendment.
+- Issue #533, issue #777 for the amendment of 2026-11-18, issue #831 for the amendment of
+  2026-11-22, and issue #1099 for the rename of the bridge names that carry open parts.
 - ADR-0170, which this record extends, and ADR-0128 for the opening motion itself.
 - `bridge/scene-session/interactive-objects.ts`, `bridge/react/use-opening-motion.ts`,
   `bridge/react/use-view-scene-graph.ts`, `bridge/react/walk-interaction.ts`, and
