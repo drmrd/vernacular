@@ -35,7 +35,7 @@ sourceFiles:
     .github/workflows/mutation.yml,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # ADR-0225: GREEN commits are proven by their RED tests
@@ -290,3 +290,12 @@ run that is cancelled or times out still saves its partial file, so the next wee
   results.
 - Issue #487, the weekly Stryker job that never completed.
 - Pull request #961, the 28-commit range of the first measurement.
+
+## Amendment 2026-11-22: generated schema validators are not proof source
+
+The GREEN proof no longer treats files under `core/format/generated/` as proof source. Those files
+are the schema validators, which `pnpm schema:check` regenerates and compares with the committed
+copies, so that check already guards them. Each is about 150 KB of code on one line, so a schema
+change turned every mutant in them into a diff line. One pull request's mutation check ran about
+18,000 mutants for 25 minutes on a fast machine and went past the 60-minute CI job limit.
+Declaration files and JSON outputs were already excluded.
