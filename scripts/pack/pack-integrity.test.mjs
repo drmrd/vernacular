@@ -123,37 +123,38 @@ describe('checkPackIntegrity', () => {
   })
 })
 
-describe('checkPackIntegrity for a format 2 texture', () => {
+describe('checkPackIntegrity for a format 2 asset', () => {
   const OTHER_HASH = 'c'.repeat(64)
+  const textureFile = (extension) => `assets/${HASH}.${extension}`
+  const TEXTURE = { kind: 'texture', name: 'Grass', mediaType: 'image/png' }
+  const MODEL = { kind: 'furniture', mediaType: 'model/gltf-binary' }
 
-  /** A format 2 pack whose only asset is a texture stored as `assets/<hash>.<extension>`. */
-  function texturePack(mediaType, extension, overrides = {}) {
-    const file = `assets/${HASH}.${extension}`
-    const manifest = {
-      ...manifestWith({ kind: 'texture', mediaType }),
-      formatVersion: 2,
-    }
+  /** A format 2 pack whose only asset is stored as `assets/<hash>.<extension>`. */
+  function formatTwoPack(asset, extension, overrides = {}) {
+    const file = textureFile(extension)
+    const manifest = { ...manifestWith(asset), formatVersion: 2 }
     const reader = fakeReader({
       ...overrides,
       dirs: { assets: [`${HASH}.${extension}`], ...overrides.dirs },
       files: { [ASSET_FILE]: false, [file]: true, ...overrides.files },
-      hashes: { [ASSET_FILE]: undefined, [file]: HASH, ...overrides.hashes },
+      hashes: { [file]: HASH, ...overrides.hashes },
     })
-    return { manifest, reader, file }
+    return { manifest, reader }
   }
 
   it.each([
-    ['image/png', 'png'],
-    ['image/webp', 'webp'],
-  ])('reads a %s texture from the file with the .%s extension', async (mediaType, extension) => {
-    const { manifest, reader } = texturePack(mediaType, extension)
+    ['an image/png texture', { ...TEXTURE, mediaType: 'image/png' }, 'png'],
+    ['an image/webp texture', { ...TEXTURE, mediaType: 'image/webp' }, 'webp'],
+    ['a model/gltf-binary model', MODEL, 'glb'],
+  ])('reads %s from the file with the .%s extension', async (_label, asset, extension) => {
+    const { manifest, reader } = formatTwoPack(asset, extension)
     const result = await checkPackIntegrity(manifest, reader)
     expect(result).toEqual({ errors: [] })
   })
 
   it('flags a texture whose bytes hash to a different digest than declared', async () => {
-    const file = `assets/${HASH}.png`
-    const { manifest, reader } = texturePack('image/png', 'png', {
+    const file = textureFile('png')
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png', {
       hashes: { [file]: 'b'.repeat(64) },
     })
     const result = await checkPackIntegrity(manifest, reader)
@@ -162,8 +163,17 @@ describe('checkPackIntegrity for a format 2 texture', () => {
     ).toBe(true)
   })
 
+  it('flags a texture whose file is missing and names the expected path', async () => {
+    const file = textureFile('png')
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png', { files: { [file]: false } })
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result.errors.some((m) => m.includes('asset file missing') && m.includes(file))).toBe(
+      true,
+    )
+  })
+
   it('reports a stray .glb as an orphan but not the referenced .png', async () => {
-    const { manifest, reader } = texturePack('image/png', 'png', {
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png', {
       dirs: { assets: [`${HASH}.png`, `${OTHER_HASH}.glb`] },
     })
     const result = await checkPackIntegrity(manifest, reader)
