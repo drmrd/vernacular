@@ -121,9 +121,13 @@ function firstMarkedDoor(
     .find((opening) => opening.entrance === true && openingKindOfType(opening.type) === 'door')
 }
 
+function reversed(direction: PlanDirection): PlanDirection {
+  return { x: -direction.x, y: -direction.y }
+}
+
 /** Of a door's two normals, the one nearer plan-down, then the one nearer plan-right. */
 function tieBrokenNormal(normal: PlanDirection): PlanDirection {
-  const opposite = { x: -normal.x, y: -normal.y }
+  const opposite = reversed(normal)
   const downGap = dotWithPlanDown(normal) - dotWithPlanDown(opposite)
   if (Math.abs(downGap) > DIRECTION_TIE_TOLERANCE) {
     return downGap > 0 ? normal : opposite
@@ -145,20 +149,24 @@ function awayFromWallCenter(input: FrontDirectionInput, door: OpeningSceneNode):
   if (Math.abs(outwardness) <= DIRECTION_TIE_TOLERANCE) {
     return tieBrokenNormal(door.normal)
   }
-  return outwardness > 0 ? door.normal : { x: -door.normal.x, y: -door.normal.y }
+  return outwardness > 0 ? door.normal : reversed(door.normal)
 }
 
 /** The direction a marked door faces: its exterior run's outward normal, else away from the center. */
-function markedFront(input: FrontDirectionInput, door: OpeningSceneNode): PlanDirection {
-  const exterior = exteriorDoorsOnFloor(input, door.floorId, 0).find(
-    (candidate) => candidate.opening.id === door.id,
+function markedFront(
+  input: FrontDirectionInput,
+  door: OpeningSceneNode,
+  candidates: readonly FrontCandidate[],
+): PlanDirection {
+  const exterior = candidates.find(
+    ({ opening }) => opening.floorId === door.floorId && opening.id === door.id,
   )
   return exterior?.outward ?? awayFromWallCenter(input, door)
 }
 
 /** The door a building is entered by, how it was found, and the direction it faces. */
 export interface Entrance {
-  /** The entrance door; undefined when there is no exterior door. */
+  /** The entrance door; undefined when no door is marked and none is exterior. */
   readonly door: OpeningSceneNode | undefined
   /** 'marked' when the owner marked a door, 'guessed' when a rule chose it, 'none' with no door. */
   readonly source: 'marked' | 'guessed' | 'none'
@@ -171,14 +179,15 @@ export interface Entrance {
  * in order), and a mark on a window is ignored. Its front is the outward normal
  * of its exterior run, or for an interior door the side away from the center of
  * its floor's walls. Without a mark, the guessed door and the outward normal of
- * the wall that hosts it. For the guess, only the first level with an exterior door competes:
- * levels at or above grade from the lowest up, then levels below grade from the
- * highest down. On that level a swing or pivot door comes before a sliding,
- * folding, or cased one, and then the widest door wins. Equal widths prefer the
- * direction nearer plan-down (directions within a rounding tolerance are equally
- * near), then the opening id that sorts first as a string (so `opening:10` comes
- * before `opening:9`), then the floor that comes first in the walls. With no
- * exterior door there is no door and the front is plan-down.
+ * the wall that hosts it. For the guess, only the first level with an exterior
+ * door competes: levels at or above grade from the lowest up, then levels below
+ * grade from the highest down. On that level a swing or pivot door comes before
+ * a sliding, folding, or cased one, and then the widest door wins. Equal widths
+ * prefer the direction nearer plan-down (directions within a rounding tolerance
+ * are equally near), then the opening id that sorts first as a string (so
+ * `opening:10` comes before `opening:9`), then the floor that comes first in the
+ * walls. With no marked door and no exterior door there is no door and the front
+ * is plan-down.
  */
 export function entranceOf(input: FrontDirectionInput): Entrance {
   const grade = input.gradeElevation ?? DEFAULT_GRADE_ELEVATION_MM
@@ -189,8 +198,13 @@ export function entranceOf(input: FrontDirectionInput): Entrance {
   )
   const markedDoor = firstMarkedDoor(input, floorIds)
   if (markedDoor !== undefined) {
-    return { door: markedDoor, source: 'marked', front: markedFront(input, markedDoor) }
+    return { door: markedDoor, source: 'marked', front: markedFront(input, markedDoor, candidates) }
   }
+  return guessedEntrance(candidates, grade)
+}
+
+/** The entrance a rule picks from the exterior doors, or none when there are no candidates. */
+function guessedEntrance(candidates: FrontCandidate[], grade: number): Entrance {
   const level = entranceLevel(candidates, grade)
   const best = bestCandidate(candidates.filter(({ elevation }) => elevation === level))
   return best === undefined
