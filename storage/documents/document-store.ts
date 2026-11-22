@@ -12,17 +12,21 @@ import type { AssetCache } from '../asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
 import { PROJECT_FILE } from '../project-files/project-file-name'
 import type { ProjectFiles, RemovableProjectFiles } from '../project-files/project-files'
-import { collectReferencedAssets } from '../project-files/referenced-assets'
 import { ProjectNotFoundError } from '../project-store'
 import { writeBackup, storedVersionOf } from './document-backups'
 import { warnAboutEncodeProblems } from './open-decoded'
 import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
-import { replaceStoredDocument } from './replace-stored'
+import { hashesToCopy, replaceStoredDocument } from './replace-stored'
 import { encodeForSave } from './save-target'
 import type { SecondFileWritten } from './save-target'
-import { latestChangeOf, newestSecondFile, secondFilesUpTo } from './second-file'
-import type { SecondFileState } from './second-file'
+import {
+  latestChangeOf,
+  listSecondFiles,
+  readNewestSecondFile,
+  secondFileBesideMain,
+} from './second-file'
+import type { SecondFileEntry, SecondFileState } from './second-file'
 import { listStoredFiles } from './stored-files'
 
 /** Why a read gave no document. */
@@ -65,25 +69,18 @@ export interface ProjectSummary {
   readonly lastChangedAt: string | undefined
 }
 
-const PACK_SCOPE_PREFIX = 'pack:'
-
 type DecodedRead = Extract<StoreRead, { readonly ok: true }>
 
 /** A stored document file with the outcome of decoding exactly those bytes. */
 type StoredRead = { readonly decoded: DecodedRead } | { readonly failure: DecodeFailure }
 
-/** Document bytes that a read decodes, the outcome of that decode, and the second file beside them. */
+/** Document bytes that a read decodes, the outcome of that decode, and the second files beside them. */
 interface FileToRead {
+  readonly directory: DirectoryPort
   readonly bytes: Uint8Array
   readonly result: DecodeResult
   readonly secondFile: SecondFileState | undefined
-}
-
-function hashesToCopy(project: Project): string[] {
-  const references = collectReferencedAssets(project).filter(
-    (reference) => !reference.scope.startsWith(PACK_SCOPE_PREFIX),
-  )
-  return [...new Set(references.map((reference) => reference.contentHash))]
+  readonly listed: SecondFileEntry[]
 }
 
 /**
@@ -113,15 +110,19 @@ export class DocumentStore {
   }
 
   /** The latest change of a document file, or undefined whenever it cannot be read, for any reason. */
-  private async changedAt(id: string): Promise<string | undefined> {
+  private async changedAt(id: string, listed?: SecondFileEntry[]): Promise<string | undefined> {
     try {
-      return await latestChangeOf(this.files.projectDirectory(id))
+      const directory = this.files.projectDirectory(id)
+      return await latestChangeOf(directory, listed ?? (await listSecondFiles(directory)))
     } catch {
       return undefined
     }
   }
 
-  /** Decodes the project's document. A failed decode writes nothing; a migrated one is backed up. */
+  /**
+   * Decodes the project's document. A failed decode writes nothing; a migrated one is backed up. A
+   * failed listing of the project directory rejects the read of a readable file.
+   */
   async read(id: string): Promise<StoreRead> {
     const stored = await this.readStored(id)
     if (stored === undefined) {
@@ -144,47 +145,44 @@ export class DocumentStore {
     }
     const result = decodeDocument(bytes, this.options)
     if (result.ok) {
-      const [name] = await secondFilesUpTo(directory, result.value.project.meta.schemaVersion)
-      const secondFile = name === undefined ? undefined : { name, read: 'main' as const }
-      return this.decodeFile(id, { bytes, result, secondFile })
+      const listed = await listSecondFiles(directory)
+      const secondFile = secondFileBesideMain(listed, result.value.project.meta.schemaVersion)
+      return this.finishRead(id, { directory, bytes, result, secondFile, listed })
     }
     return result.failure.kind === 'newer-version'
-      ? this.readBesideNewer(id, result.failure)
+      ? this.readBesideNewer(id, directory, result.failure)
       : { failure: result.failure }
   }
 
   /** The decode of the newest second file that this build can read, or the newer-version failure. */
   private async readBesideNewer(
     id: string,
+    directory: DirectoryPort,
     newerFailure: Extract<DecodeFailure, { readonly kind: 'newer-version' }>,
   ): Promise<StoredRead> {
-    const directory = this.files.projectDirectory(id)
-    const second = await newestSecondFile(directory, newerFailure.buildVersion)
+    const listed = await listSecondFiles(directory)
+    const second = await readNewestSecondFile(directory, listed, newerFailure.buildVersion)
     if (second === undefined) {
       return { failure: newerFailure }
     }
     const result = decodeDocument(second.bytes, this.options)
     const secondFile = { name: second.name, read: 'second' as const }
-    return this.decodeFile(id, { bytes: second.bytes, result, secondFile })
+    return this.finishRead(id, { directory, bytes: second.bytes, result, secondFile, listed })
   }
 
-  /** Keeps the migration backup of a migrated file and gives the outcome of its decode. */
-  private async decodeFile(id: string, file: FileToRead): Promise<StoredRead> {
-    const { bytes, result, secondFile } = file
+  /** Keeps the migration backup of a migrated file and builds the read from its decode. */
+  private async finishRead(id: string, file: FileToRead): Promise<StoredRead> {
+    const { directory, bytes, result, secondFile, listed } = file
     if (!result.ok) {
       return { failure: result.failure }
     }
     if (result.value.migratedFrom !== undefined) {
-      await writeBackup(this.files.projectDirectory(id), 'pre-migration', {
-        version: result.value.migratedFrom,
-        bytes,
-      })
+      await writeBackup(directory, 'pre-migration', { version: result.value.migratedFrom, bytes })
     }
-    const lastChangedAt = await this.changedAt(id)
-    const { value } = result
+    const lastChangedAt = await this.changedAt(id, listed)
     const decoded: DecodedRead = {
       ok: true,
-      value,
+      value: result.value,
       ...(lastChangedAt === undefined ? {} : { lastChangedAt }),
       ...(secondFile === undefined ? {} : { secondFile }),
     }
@@ -220,9 +218,9 @@ export class DocumentStore {
   }
 
   /**
-   * Replaces the stored document with the project, encoded with no previous document. Keeps the
-   * stored bytes as a `pre-repair` backup before the write. Rejects with ProjectNotFoundError
-   * when no document is stored.
+   * Replaces the stored document with the project, encoded with no previous document: the main
+   * file, or under a newer main file the second file this build reads. Keeps the overwritten bytes
+   * as a `pre-repair` backup. Rejects with ProjectNotFoundError when no document is stored.
    */
   async replaceStored(id: string, project: Project): Promise<ReplaceReport> {
     if (!this.files.holds(id)) {

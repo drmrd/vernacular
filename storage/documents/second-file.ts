@@ -13,41 +13,67 @@ export interface SecondFileBytes {
   readonly bytes: Uint8Array
 }
 
-async function secondFileNames(directory: DirectoryPort): Promise<string[]> {
-  const names = await directory.list('')
-  return names.filter((name) => secondDocumentFileVersion(name) !== undefined)
+/** A second document file named in the project directory, with the version its name carries. */
+export interface SecondFileEntry {
+  readonly name: string
+  readonly version: number
+}
+
+/** Every second document file in the project directory, in listing order. */
+export async function listSecondFiles(directory: DirectoryPort): Promise<SecondFileEntry[]> {
+  const entries: SecondFileEntry[] = []
+  for (const name of await directory.list('')) {
+    const version = secondDocumentFileVersion(name)
+    if (version !== undefined) {
+      entries.push({ name, version })
+    }
+  }
+  return entries
+}
+
+function newestUpTo(
+  files: readonly SecondFileEntry[],
+  version: number,
+): SecondFileEntry | undefined {
+  return files.filter((file) => file.version <= version).sort((a, b) => b.version - a.version)[0]
 }
 
 /**
- * The second files at or below the version, highest version first. The order is numeric, so
- * `vernacular.format-10.json` comes before `vernacular.format-9.json`.
+ * What a read of the main file reports about the second files: the one with the highest version
+ * at or below the build's. The order is numeric, so `vernacular.format-10.json` comes before
+ * `vernacular.format-9.json`.
  */
-export async function secondFilesUpTo(
-  directory: DirectoryPort,
+export function secondFileBesideMain(
+  files: readonly SecondFileEntry[],
   version: number,
-): Promise<string[]> {
-  const versionOf = (name: string): number => secondDocumentFileVersion(name) ?? 0
-  return (await secondFileNames(directory))
-    .filter((name) => versionOf(name) <= version)
-    .sort((first, second) => versionOf(second) - versionOf(first))
+): SecondFileState | undefined {
+  const newest = newestUpTo(files, version)
+  return newest === undefined ? undefined : { name: newest.name, read: 'main' }
 }
 
-/** The second file with the highest version at or below the given one, with its bytes. */
-export async function newestSecondFile(
+/**
+ * The bytes of the second file with the highest version at or below the given one, whether or not
+ * they decode. Undefined when there is no such file or it has gone.
+ */
+export async function readNewestSecondFile(
   directory: DirectoryPort,
+  files: readonly SecondFileEntry[],
   version: number,
 ): Promise<SecondFileBytes | undefined> {
-  const [name] = await secondFilesUpTo(directory, version)
-  const bytes = name === undefined ? undefined : await directory.readFile(name)
-  return name === undefined || bytes === undefined ? undefined : { name, bytes }
+  const newest = newestUpTo(files, version)
+  const bytes = newest === undefined ? undefined : await directory.readFile(newest.name)
+  return newest === undefined || bytes === undefined ? undefined : { name: newest.name, bytes }
 }
 
 /**
  * The latest time of last change among the main file and every second file, whatever its
  * version. Undefined when one of the times is unknown.
  */
-export async function latestChangeOf(directory: DirectoryPort): Promise<string | undefined> {
-  const names = [PROJECT_FILE, ...(await secondFileNames(directory))]
+export async function latestChangeOf(
+  directory: DirectoryPort,
+  files: readonly SecondFileEntry[],
+): Promise<string | undefined> {
+  const names = [PROJECT_FILE, ...files.map((file) => file.name)]
   const times = await Promise.all(names.map((name) => directory.modifiedAt(name)))
   const known = times.filter((time): time is string => time !== undefined)
   if (known.length < times.length) {
