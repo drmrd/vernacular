@@ -33,6 +33,10 @@ export const ASSET_KINDS: readonly AssetKind[] = Object.freeze([
 
 export const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
 
+const MEDIA_TYPE_FORMAT_VERSION = 2
+const MODEL_MEDIA_TYPES: readonly string[] = Object.freeze(['model/gltf-binary'])
+const TEXTURE_MEDIA_TYPES: readonly string[] = Object.freeze(['image/png', 'image/webp'])
+
 export interface PackValidationResult {
   valid: boolean
   errors: string[]
@@ -135,11 +139,36 @@ function validateDimensions(dimensions: unknown, label: string, errors: string[]
   }
 }
 
-function validateAssetFields(
+interface AssetContext {
+  label: string
+  formatVersion: unknown
+}
+
+function allowedMediaTypes(kind: unknown, formatVersion: unknown): readonly string[] {
+  return kind === 'texture' && formatVersion === MEDIA_TYPE_FORMAT_VERSION
+    ? TEXTURE_MEDIA_TYPES
+    : MODEL_MEDIA_TYPES
+}
+
+function validateMediaType(
   source: Record<string, unknown>,
-  label: string,
+  context: AssetContext,
   errors: string[],
 ): void {
+  const mediaType = source['mediaType']
+  if (mediaType === undefined && context.formatVersion !== MEDIA_TYPE_FORMAT_VERSION) return
+  const allowed = allowedMediaTypes(source['kind'], context.formatVersion)
+  if (!allowed.includes(mediaType as string)) {
+    errors.push(`${context.label}.mediaType must be one of: ${allowed.join(', ')}`)
+  }
+}
+
+function validateAssetFields(
+  source: Record<string, unknown>,
+  context: AssetContext,
+  errors: string[],
+): void {
+  const { label } = context
   if (
     validateRequiredString(source, { key: 'contentHash', label: `${label}.contentHash` }, errors) &&
     !SHA256_PATTERN.test(String(source['contentHash']))
@@ -158,6 +187,7 @@ function validateAssetFields(
   if (!ASSET_KINDS.includes(source['kind'] as AssetKind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
+  validateMediaType(source, context, errors)
   if (source['kind'] === 'texture') {
     validateTextureFields(source, label, errors)
   } else {
@@ -165,22 +195,22 @@ function validateAssetFields(
   }
 }
 
-function validateAsset(asset: unknown, index: number, errors: string[]): void {
-  const label = `assets[${index}]`
+function validateAsset(asset: unknown, context: AssetContext, errors: string[]): void {
+  const { label } = context
   if (typeof asset !== 'object' || asset === null) {
     errors.push(`${label} must be an object`)
     return
   }
-  validateAssetFields(asset as Record<string, unknown>, label, errors)
+  validateAssetFields(asset as Record<string, unknown>, context, errors)
 }
 
-function validateAssets(assets: unknown, errors: string[]): void {
+function validateAssets(assets: unknown, formatVersion: unknown, errors: string[]): void {
   if (!Array.isArray(assets)) {
     errors.push('assets must be an array')
     return
   }
   assets.forEach((asset, index) => {
-    validateAsset(asset, index, errors)
+    validateAsset(asset, { label: `assets[${index}]`, formatVersion }, errors)
   })
 }
 
@@ -213,7 +243,7 @@ function validatePackFields(source: Record<string, unknown>, errors: string[]): 
   }
   validateRequiredStringArray(source, { key: 'eras' }, errors)
   validateRequiredStringArray(source, { key: 'categories' }, errors)
-  validateAssets(source['assets'], errors)
+  validateAssets(source['assets'], source['formatVersion'], errors)
 }
 
 /**
