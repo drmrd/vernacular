@@ -1,5 +1,5 @@
 import { repairOfferFor, type RepairOffer } from '../../core'
-import type { DocumentStore } from '../../storage'
+import type { DocumentStore, PackSupplies } from '../../storage'
 import { findDocumentStore } from '../handle/find-document-store'
 import type { DocumentHandle } from '../handle/handle-types'
 import { storageUnavailable } from '../handle/thrown-failures'
@@ -18,6 +18,8 @@ export interface RepairedCopyRequest {
   readonly id: string
   /** The offer that the user saw. */
   readonly offer: RepairOffer
+  /** The assets that installed packs supply. A `pack:` reference that a pack supplies is not a missing asset. */
+  readonly packSupplies?: PackSupplies
 }
 
 export type RepairedCopyResult = NewProjectResult
@@ -84,6 +86,7 @@ export function openRepairedAsNew(
 ): Promise<RepairedCopyResult> {
   return openAsNewProject(ports, current, {
     project: repairedCopyOf(request.offer),
+    ...(request.packSupplies === undefined ? {} : { packSupplies: request.packSupplies }),
     supplied: (needed) => assetsOfFolder(ports, request.id, needed),
   })
 }
