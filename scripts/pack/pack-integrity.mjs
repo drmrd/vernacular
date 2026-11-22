@@ -19,6 +19,7 @@ import { MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
 const MODEL_EXTENSION = '.glb'
+const TEXTURE_KIND = 'texture'
 const THUMBNAIL_EXTENSION = '.webp'
 const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
@@ -96,7 +97,7 @@ async function checkAssetHashes(assets, reader, errors) {
 }
 
 /**
- * Confirm each asset has a thumbnail file in the pack.
+ * Confirm each model asset has a thumbnail file in the pack; textures need none.
  * @param {object[]} assets
  * @param {PackReader} reader
  * @param {string[]} errors
@@ -104,7 +105,7 @@ async function checkAssetHashes(assets, reader, errors) {
  */
 async function checkThumbnails(assets, reader, errors) {
   for (const asset of assets) {
-    if (!SHA256_PATTERN.test(asset.contentHash)) continue
+    if (!SHA256_PATTERN.test(asset.contentHash) || asset.kind === TEXTURE_KIND) continue
     const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
     if (!(await reader.exists(file))) {
       errors.push(`asset ${asset.contentHash}: thumbnail missing`)
