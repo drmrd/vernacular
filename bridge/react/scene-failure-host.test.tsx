@@ -26,10 +26,12 @@ describe('SceneFailureHost', () => {
     expect(onReload).toHaveBeenCalledTimes(1)
   })
 
-  it.each([
-    { props: { kind: 'start' } as SceneFailureViewProps, role: 'status' },
-    { props: { kind: 'load', onReload: vi.fn() } as SceneFailureViewProps, role: 'alert' },
-  ])(
+  const markedRows: { props: SceneFailureViewProps; role: string }[] = [
+    { props: { kind: 'start' }, role: 'status' },
+    { props: { kind: 'load', onReload: vi.fn() }, role: 'alert' },
+  ]
+
+  it.each(markedRows)(
     'marks the element around the view with the failure kind and fills its parent ($props.kind)',
     ({ props, role }) => {
       const { container } = render(<SceneFailureHost {...props} />)
