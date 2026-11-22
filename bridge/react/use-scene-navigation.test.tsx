@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import type { CameraPose, WalkState } from '../../core'
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
-import { openPartsWith } from './open-parts-test-support'
+import { openPartsWith } from '../open-parts-test-support'
 import { useSceneNavigation } from './use-scene-navigation'
 
 const SOME_POSE: CameraPose = {

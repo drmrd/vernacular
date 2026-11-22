@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createSceneSessionStore } from '../index'
-import { openPartsWith } from '../react/open-parts-test-support'
+import { openPartsWith } from '../open-parts-test-support'
 import { interactiveObjectsAtDefault, resetInteractiveObjects } from './interactive-objects'
 
 const FRONT_DOOR_ID = 'opening:front-door'

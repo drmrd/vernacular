@@ -10,7 +10,7 @@ import {
   WALK_EYE_HEIGHT_MM,
 } from '../../core'
 
-import { openPartsWith } from './open-parts-test-support'
+import { openPartsWith } from '../open-parts-test-support'
 import { walkKeyHandlers } from './walk-session'
 
 const DOOR_ID = 'opening:front-door'

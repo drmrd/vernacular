@@ -6,7 +6,7 @@ import type {
 } from '../../core'
 import { buildScene, NeutralMaterialProvider, type SceneRoot } from '../../engine'
 
-import { openPartsWith } from './open-parts-test-support'
+import { openPartsWith } from '../open-parts-test-support'
 
 export type HungWindowType = 'double-hung-window' | 'single-hung-window'
 

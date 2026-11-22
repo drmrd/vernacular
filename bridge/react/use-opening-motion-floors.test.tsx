@@ -3,7 +3,7 @@ import { act, cleanup } from '@testing-library/react'
 
 import type { OpenParts } from '../../core'
 
-import { openPartsWith } from './open-parts-test-support'
+import { openPartsWith } from '../open-parts-test-support'
 import { tickOpeningMotion } from './use-opening-motion'
 import {
   FLOOR_A_ID,

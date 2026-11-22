@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
-import { openPartsWith } from './open-parts-test-support'
+import { openPartsWith } from '../open-parts-test-support'
 import { useInteractiveObjects } from './use-interactive-objects'
 
 const FRONT_DOOR_ID = 'opening:front-door'

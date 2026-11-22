@@ -14,7 +14,7 @@ import { createActiveFloorStore } from '../active-floor/active-floor-store'
 import { createEditorSession } from '../../session/testing'
 import { ActiveFloorProvider } from './active-floor-provider'
 import { EditorSessionProvider } from './editor-session-provider'
-import { openPartsWith } from './open-parts-test-support'
+import { openPartsWith } from '../open-parts-test-support'
 import { tickOpeningMotion, useOpeningMotion } from './use-opening-motion'
 
 afterEach(cleanup)

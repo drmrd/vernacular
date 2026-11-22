@@ -75,7 +75,7 @@ function pocketDoor(): OpeningSceneNode {
 }
 
 describe('applyOpeningPose on a door', () => {
-  it('resolves a node motion and slides a pocket door along the wall', () => {
+  it('slides a pocket door along the wall at its primary openness', () => {
     const node = pocketDoor()
     const root = rootWith(node)
 

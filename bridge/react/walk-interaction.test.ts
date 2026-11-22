@@ -17,7 +17,7 @@ import {
   restoreOpenings,
   tickOpenings,
 } from './walk-interaction'
-import { openPartsWith } from './open-parts-test-support'
+import { openPartsWith } from '../open-parts-test-support'
 
 const DOOR_ID = 'opening:front-door'
 const DOOR_REF = { openingId: DOOR_ID, part: 'primary' } as const

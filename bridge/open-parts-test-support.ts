@@ -1,4 +1,4 @@
-import type { OpenParts, OpeningPartId } from '../../core'
+import type { OpenParts, OpeningPartId } from '../core'
 
 /** Builds an open-parts map from opening ids to the parts open in each, for tests. */
 export function openPartsWith(entries: Record<string, readonly OpeningPartId[]>): OpenParts {
