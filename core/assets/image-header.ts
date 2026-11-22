@@ -59,6 +59,27 @@ function readPngHeader(bytes: Uint8Array): PngImageHeader | undefined {
   }
 }
 
+const PNG_CHUNK_TYPE_BYTES = PNG_IHDR_TYPE.length
+const PNG_CHUNK_CRC_BYTES = UINT32_BYTES
+const PNG_CHUNK_HEADER_BYTES = PNG_CHUNK_LENGTH_BYTES + PNG_CHUNK_TYPE_BYTES
+
+export function pngChunkTypes(bytes: Uint8Array): string[] {
+  const types: string[] = []
+  if (!hasTextAt(bytes, 0, PNG_SIGNATURE)) return types
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let chunkOffset = PNG_SIGNATURE.length
+  while (chunkOffset + PNG_CHUNK_HEADER_BYTES <= bytes.byteLength) {
+    const typeOffset = chunkOffset + PNG_CHUNK_LENGTH_BYTES
+    const dataOffset = typeOffset + PNG_CHUNK_TYPE_BYTES
+    const dataEnd = dataOffset + view.getUint32(chunkOffset)
+    if (dataEnd <= bytes.byteLength) {
+      types.push(String.fromCharCode(...bytes.subarray(typeOffset, dataOffset)))
+    }
+    chunkOffset = dataEnd + PNG_CHUNK_CRC_BYTES
+  }
+  return types
+}
+
 const WEBP_RIFF_TAG = 'RIFF'
 const WEBP_FORM_TAG = 'WEBP'
 const WEBP_FORM_OFFSET = 8
