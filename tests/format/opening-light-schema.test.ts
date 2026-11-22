@@ -1,26 +1,30 @@
 // @vitest-environment node
 // Pure byte/zip logic; node aligns Uint8Array realms with the fflate-backed codec.
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { bytesOf, metaOf } from '../fixtures/projects/versions/fixture-documents'
 import type { Json } from '../fixtures/projects/versions/fixture-documents'
 import {
   CURRENT_SCHEMA_REVISION,
-  CURRENT_SCHEMA_VERSION,
   createEmptyProject,
   decodeDocument,
   encodeDocument,
 } from '../../core'
-import type { DecodedDocument, DecodeResult, OpeningLight, Project } from '../../core'
-import { schemaPath } from '../../scripts/schema/build-schema.mjs'
+import type { OpeningLight, Project } from '../../core'
 import { unzipFolder, zipFolder } from '../../storage/zip/zip-codec'
+import {
+  definitionsOf,
+  schemaAt,
+  valueOf,
+  withSortedRequired,
+  writtenDocument,
+} from './schema-revision-test-support'
 
 const OBSERVED_AT = '2026-06-21T08:00'
 const CLOUD_COVER = 0.4
 const EXTENSION_NAMESPACE = 'com.example'
 const ARCHIVE_ENTRY_NAME = 'vernacular.json'
-const PREVIOUS_REVISION = CURRENT_SCHEMA_REVISION - 1
+const REVISION_WITH_THE_OPENING_LIGHT = 3
+const REVISION_BEFORE_THE_OPENING_LIGHT = 2
 
 const STORED_LIGHT: OpeningLight = { observedAt: OBSERVED_AT, weather: { cloudCover: CLOUD_COVER } }
 const LIGHT_WITH_EXTENSIONS: OpeningLight = {
@@ -38,40 +42,9 @@ function projectWith(openingLight?: OpeningLight): Project {
   return openingLight === undefined ? project : { ...project, openingLight }
 }
 
-function valueOf(result: DecodeResult): DecodedDocument {
-  if (!result.ok) {
-    throw new Error(`Expected the decode to succeed: ${JSON.stringify(result.failure)}`)
-  }
-  return result.value
-}
-
-function writtenDocument(project: Project): Json {
-  const { bytes } = encodeDocument(project, undefined)
-  return JSON.parse(new TextDecoder().decode(bytes))
-}
-
 function failureKindOf(document: Json): string | undefined {
   const result = decodeDocument(bytesOf(document))
   return result.ok ? undefined : result.failure.kind
-}
-
-function schemaAt(revision: number): Json {
-  const text = readFileSync(resolve(schemaPath(CURRENT_SCHEMA_VERSION, revision)), 'utf8')
-  return JSON.parse(text)
-}
-
-function definitionsOf(schema: Json): Record<string, Json> {
-  return schema.definitions as Record<string, Json>
-}
-
-function withSortedRequired(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withSortedRequired)
-  if (typeof value !== 'object' || value === null) return value
-  const entries = Object.entries(value).map(([key, entry]) => {
-    const sorted = key === 'required' && Array.isArray(entry) ? [...entry].sort() : entry
-    return [key, withSortedRequired(sorted)]
-  })
-  return Object.fromEntries(entries)
 }
 
 function withoutTheOpeningLight(schema: Json): unknown {
@@ -168,8 +141,8 @@ describe('the opening light on a project', () => {
 
 describe('the schema revision that adds the opening light', () => {
   it('differs from the previous revision only by the opening light', () => {
-    const current = schemaAt(CURRENT_SCHEMA_REVISION)
-    const previous = schemaAt(PREVIOUS_REVISION)
+    const current = schemaAt(REVISION_WITH_THE_OPENING_LIGHT)
+    const previous = schemaAt(REVISION_BEFORE_THE_OPENING_LIGHT)
 
     const light = definitionsOf(current).OpeningLight
     expect(light).toBeDefined()
@@ -179,8 +152,8 @@ describe('the schema revision that adds the opening light', () => {
   })
 
   it('leaves the EnvironmentScene definition as it was', () => {
-    const current = definitionsOf(schemaAt(CURRENT_SCHEMA_REVISION)).EnvironmentScene
-    const previous = definitionsOf(schemaAt(PREVIOUS_REVISION)).EnvironmentScene
+    const current = definitionsOf(schemaAt(REVISION_WITH_THE_OPENING_LIGHT)).EnvironmentScene
+    const previous = definitionsOf(schemaAt(REVISION_BEFORE_THE_OPENING_LIGHT)).EnvironmentScene
 
     expect(withSortedRequired(current)).toEqual(withSortedRequired(previous))
   })

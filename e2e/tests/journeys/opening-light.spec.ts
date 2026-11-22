@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import {
   drawClosedRoom,
+  editAndWaitForTheSave,
   gotoEditor,
   observationDateTime,
   SAVING_STATUS_TEXT,
@@ -40,14 +41,11 @@ async function openRealisticProject(page: Page): Promise<void> {
     .click()
 }
 
-// Clicks the store button and waits until the click is stored. "All changes saved" is already on
-// screen from the save of the drawing, so it cannot tell the two saves apart. The wait for the
-// "Saving..." state starts before the click, in the page, so it cannot miss the state.
-async function storeTheLightAndWaitForTheSave(page: Page): Promise<void> {
-  const saveStarted = page.getByText(SAVING_STATUS_TEXT).waitFor()
-  await page.getByRole('button', { name: STORE_BUTTON_NAME }).click()
-  await saveStarted
-  await expect(selectors.savedStatus(page)).toBeVisible()
+// Clicks the store button and waits until the click is stored.
+async function storeTheLight(page: Page): Promise<void> {
+  await editAndWaitForTheSave(page, () =>
+    page.getByRole('button', { name: STORE_BUTTON_NAME }).click(),
+  )
 }
 
 async function reloadIntoTheEditor(page: Page): Promise<void> {
@@ -61,9 +59,8 @@ test('stores the light the project opens in and reopens in it', async ({ page })
 
   await observationInput(page).fill(STORED_DATE_TIME_INPUT)
   await expect(observationDateTime(page)).toHaveText(STORED_DATE_TIME_OUTPUT)
-  await expect(selectors.savedStatus(page)).toBeVisible()
 
-  await storeTheLightAndWaitForTheSave(page)
+  await storeTheLight(page)
   await expect(openingLightStatus(page)).toHaveText(STORED_LIGHT_STATUS)
 
   await reloadIntoTheEditor(page)
@@ -75,10 +72,13 @@ test('stores the light the project opens in and reopens in it', async ({ page })
 test('keeps the stored light when the time moves without a click', async ({ page }) => {
   await openRealisticProject(page)
   await observationInput(page).fill(STORED_DATE_TIME_INPUT)
-  await storeTheLightAndWaitForTheSave(page)
+  await storeTheLight(page)
 
   await observationInput(page).fill(MOVED_DATE_TIME_INPUT)
   await expect(observationDateTime(page)).toHaveText(MOVED_DATE_TIME_OUTPUT)
+  // The fixed wait and the count check only prove the move saved nothing together with the reload
+  // below: a wrong save still running fails the count check, and one that has finished shows 16:00
+  // after the reload. Keep both halves.
   await page.waitForTimeout(AUTOSAVE_QUIET_PERIOD_MS)
   await expect(page.getByText(SAVING_STATUS_TEXT)).toHaveCount(0)
   await expect(selectors.savedStatus(page)).toBeVisible()

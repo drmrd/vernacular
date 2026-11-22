@@ -1,6 +1,7 @@
 // Sample parameters for the commands that act on the project as a whole: the
-// project and its list of floors, palettes, rooms, stairs, paint, the site, and
-// environment scenes, and the opening light. Built against the ids of the extensions fixture.
+// project and its list of floors, palettes, rooms, stairs, paint, the site, the
+// environment scenes, and the opening light. Built against the ids of the
+// extensions fixture.
 
 import { colorFromHex } from '../../color/color'
 import { createStair } from '../../model/factories'
