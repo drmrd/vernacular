@@ -773,6 +773,14 @@ export {
   removeEnvironmentScene,
   renameEnvironmentScene,
 } from './commands/handlers/environment-scene-commands'
+export type { SetOpeningLightParams } from './commands/handlers/opening-light-commands'
+export {
+  CLEAR_OPENING_LIGHT,
+  SET_OPENING_LIGHT,
+  clearOpeningLight,
+  registerOpeningLightCommands,
+  setOpeningLight,
+} from './commands/handlers/opening-light-commands'
 export {
   createDocumentValidator,
   createLoadValidationGate,
