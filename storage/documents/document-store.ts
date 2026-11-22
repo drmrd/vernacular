@@ -3,6 +3,7 @@ import type {
   CodecOptions,
   DecodedDocument,
   DecodeFailure,
+  DecodeResult,
   FormatFault,
   GraftDropped,
   Project,
@@ -20,6 +21,8 @@ import type { ProjectSnapshots } from './project-snapshots'
 import { replaceStoredDocument } from './replace-stored'
 import { encodeForSave } from './save-target'
 import type { SecondFileWritten } from './save-target'
+import { latestChangeOf, newestSecondFile, secondFilesUpTo } from './second-file'
+import type { SecondFileState } from './second-file'
 import { listStoredFiles } from './stored-files'
 
 /** Why a read gave no document. */
@@ -29,7 +32,13 @@ export type StoreReadFailure =
 
 /** The outcome of reading one project: its decoded document, or why there is none. */
 export type StoreRead =
-  | { readonly ok: true; readonly value: DecodedDocument; readonly lastChangedAt?: string }
+  | {
+      readonly ok: true
+      readonly value: DecodedDocument
+      readonly lastChangedAt?: string
+      /** Absent when the project has no second file at or below the build's version. */
+      readonly secondFile?: SecondFileState
+    }
   | { readonly ok: false; readonly failure: StoreReadFailure }
 
 /** What a save found, besides the write itself. */
@@ -62,6 +71,13 @@ type DecodedRead = Extract<StoreRead, { readonly ok: true }>
 
 /** A stored document file with the outcome of decoding exactly those bytes. */
 type StoredRead = { readonly decoded: DecodedRead } | { readonly failure: DecodeFailure }
+
+/** Document bytes that a read decodes, the outcome of that decode, and the second file beside them. */
+interface FileToRead {
+  readonly bytes: Uint8Array
+  readonly result: DecodeResult
+  readonly secondFile: SecondFileState | undefined
+}
 
 function hashesToCopy(project: Project): string[] {
   const references = collectReferencedAssets(project).filter(
@@ -96,10 +112,10 @@ export class DocumentStore {
     return Promise.all(ids.map(async (id) => ({ id, lastChangedAt: await this.changedAt(id) })))
   }
 
-  /** The time of the last change, or undefined whenever it cannot be read, for any reason. */
+  /** The latest change of a document file, or undefined whenever it cannot be read, for any reason. */
   private async changedAt(id: string): Promise<string | undefined> {
     try {
-      return await this.files.projectDirectory(id).modifiedAt(PROJECT_FILE)
+      return await latestChangeOf(this.files.projectDirectory(id))
     } catch {
       return undefined
     }
@@ -127,11 +143,39 @@ export class DocumentStore {
       return undefined
     }
     const result = decodeDocument(bytes, this.options)
+    if (result.ok) {
+      const [name] = await secondFilesUpTo(directory, result.value.project.meta.schemaVersion)
+      const secondFile = name === undefined ? undefined : { name, read: 'main' as const }
+      return this.decodeFile(id, { bytes, result, secondFile })
+    }
+    return result.failure.kind === 'newer-version'
+      ? this.readBesideNewer(id, result.failure)
+      : { failure: result.failure }
+  }
+
+  /** The decode of the newest second file that this build can read, or the newer-version failure. */
+  private async readBesideNewer(
+    id: string,
+    newerFailure: Extract<DecodeFailure, { readonly kind: 'newer-version' }>,
+  ): Promise<StoredRead> {
+    const directory = this.files.projectDirectory(id)
+    const second = await newestSecondFile(directory, newerFailure.buildVersion)
+    if (second === undefined) {
+      return { failure: newerFailure }
+    }
+    const result = decodeDocument(second.bytes, this.options)
+    const secondFile = { name: second.name, read: 'second' as const }
+    return this.decodeFile(id, { bytes: second.bytes, result, secondFile })
+  }
+
+  /** Keeps the migration backup of a migrated file and gives the outcome of its decode. */
+  private async decodeFile(id: string, file: FileToRead): Promise<StoredRead> {
+    const { bytes, result, secondFile } = file
     if (!result.ok) {
       return { failure: result.failure }
     }
     if (result.value.migratedFrom !== undefined) {
-      await writeBackup(directory, 'pre-migration', {
+      await writeBackup(this.files.projectDirectory(id), 'pre-migration', {
         version: result.value.migratedFrom,
         bytes,
       })
@@ -142,6 +186,7 @@ export class DocumentStore {
       ok: true,
       value,
       ...(lastChangedAt === undefined ? {} : { lastChangedAt }),
+      ...(secondFile === undefined ? {} : { secondFile }),
     }
     return { decoded }
   }
