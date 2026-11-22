@@ -129,6 +129,36 @@ describe('importProjectFile for a .building archive', () => {
     })
   })
 
+  it('an archive whose document breaks the format rules gives the failure with its checked assets', async () => {
+    const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
+    const bytes = buildZip([
+      documentEntry(bytesOf(document)),
+      await assetEntry(MODEL),
+      await misnamedAssetEntry(MODEL, IMAGE),
+    ])
+
+    expect(await importProjectFile('plan.building', bytes)).toMatchObject({
+      ok: false,
+      failure: {
+        kind: 'decode',
+        decode: { kind: 'format-rules' },
+        supplied: {
+          assets: new Map([[await contentHashOf(MODEL), MODEL]]),
+          rejectedAssets: [await contentHashOf(IMAGE)],
+        },
+      },
+    })
+  })
+
+  it('a JSON file that breaks the format rules gives the failure with no assets', async () => {
+    const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
+
+    const read = await importProjectFile('plan.json', bytesOf(document))
+
+    expect(read).toMatchObject({ ok: false, failure: { kind: 'decode' } })
+    expect(read).not.toHaveProperty('failure.supplied')
+  })
+
   it('an archive whose document is not JSON gives decode with not-json', async () => {
     const bytes = archiveOf({ [DOCUMENT_FILE]: NOT_JSON })
 
