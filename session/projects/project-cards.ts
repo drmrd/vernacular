@@ -88,6 +88,11 @@ function linesOf(
   return lines
 }
 
+/** A card shows the second file when the record has one and the last open succeeded. */
+function showsSecondFile(record: ProjectRecord): boolean {
+  return record.secondFile !== undefined && record.lastOpen.opened
+}
+
 function actionsOf(record: ProjectRecord, openElsewhere: boolean): ProjectCardAction[] {
   if (openElsewhere) {
     return ['export']
@@ -97,9 +102,9 @@ function actionsOf(record: ProjectRecord, openElsewhere: boolean): ProjectCardAc
   if (!record.lastOpen.opened) {
     return ['export', removal]
   }
-  return record.secondFile === undefined
-    ? ['rename', 'export', removal]
-    : ['rename', 'export', 'choose-file', removal]
+  return showsSecondFile(record)
+    ? ['rename', 'export', 'choose-file', removal]
+    : ['rename', 'export', removal]
 }
 
 /** The locks held and the project open here, which decide the state lines of every card. */
@@ -126,7 +131,7 @@ async function cardOf(
     stateLines: linesOf(record.id, openId, {
       openElsewhere,
       needsPermission: needsAccess,
-      secondFile: record.secondFile !== undefined && record.lastOpen.opened,
+      secondFile: showsSecondFile(record),
     }),
     actions: actionsOf(record, openElsewhere),
   }

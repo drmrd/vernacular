@@ -25,8 +25,7 @@ export interface CardListProps {
 }
 
 /** The handler of an action, or undefined when the page was given none. */
-function handlerOf(action: ProjectCardAction, cardActions: ProjectCardActions | undefined) {
-  const handlers = cardActions ?? {}
+function handlerOf(action: ProjectCardAction, handlers: ProjectCardActions) {
   switch (action) {
     case 'rename':
       return handlers.onRename
@@ -44,7 +43,7 @@ function handlerOf(action: ProjectCardAction, cardActions: ProjectCardActions | 
 /** The actions of the card that have a handler, in the card's order. */
 function offeredActions(
   card: ProjectCardModel,
-  cardActions: ProjectCardActions | undefined,
+  cardActions: ProjectCardActions,
 ): readonly ProjectCardAction[] {
   return card.actions.filter((action) => handlerOf(action, cardActions) !== undefined)
 }
@@ -57,10 +56,9 @@ interface ActionStarts {
 
 /** The runner of a chosen action: rename and delete open their form or dialog, the rest call. */
 function actionRunner(
-  cardActions: ProjectCardActions | undefined,
+  handlers: ProjectCardActions,
   starts: ActionStarts,
 ): (id: string, action: ProjectCardAction) => void {
-  const handlers = cardActions ?? {}
   return (id, action) => {
     switch (action) {
       case 'rename':
@@ -129,10 +127,10 @@ function useDeleteDialog(
 }
 
 export function CardList(props: CardListProps): ReactElement {
-  const { cards, hrefFor, onOpen, cardActions, page } = props
+  const { cards, hrefFor, onOpen, cardActions = {}, page } = props
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const list = useRef<HTMLUListElement>(null)
-  const { dialog, startDelete } = useDeleteDialog(cards, cardActions?.onDelete, { list, page })
+  const { dialog, startDelete } = useDeleteDialog(cards, cardActions.onDelete, { list, page })
   // A card that left the list takes its form with it, also when it comes back.
   if (renamingId !== null && !cards.some(({ id }) => id === renamingId)) {
     setRenamingId(null)
@@ -142,7 +140,7 @@ export function CardList(props: CardListProps): ReactElement {
   }
   const chooseAction = actionRunner(cardActions, { rename: setRenamingId, delete: startDelete })
   const renameOf = (id: string): CardRename | undefined =>
-    renamingId === id && cardActions?.onRename
+    renamingId === id && cardActions.onRename
       ? {
           onSave: (name) => cardActions.onRename?.(id, name) ?? Promise.resolve(false),
           onClose: () => setRenamingId((shown) => (shown === id ? null : shown)),

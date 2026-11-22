@@ -14,7 +14,7 @@ export interface ProjectRecord {
   readonly lastUsedAt: string | undefined // an open or a save
   /** `reason` is the kind of the decode or open failure. */
   readonly lastOpen: { readonly opened: boolean; readonly build: string; readonly reason?: string }
-  /** Present when a second document file sits beside the main file. */
+  /** What the last open or save found of a second document file beside the main file. */
   readonly secondFile?: SecondFileState
 }
 

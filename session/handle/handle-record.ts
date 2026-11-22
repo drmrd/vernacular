@@ -215,12 +215,11 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
   const askAt = askerAtNow(ports, queue, warn)
   let secondFile: SecondFileState | undefined
   return {
-    opened(asked, lastChangedAt, readSecondFile) {
-      secondFile = readSecondFile
-      const moment = { mark: whileLockHeld(asked, lockFreed), passedCheck: true, lastChangedAt }
-      askAt((lastUsedAt) =>
-        recordOfOpen(ports, request, { ...moment, lastUsedAt, secondFile: readSecondFile }),
-      )
+    opened(asked, lastChangedAt, fromRead) {
+      secondFile = fromRead
+      const mark = whileLockHeld(asked, lockFreed)
+      const moment = { mark, passedCheck: true, lastChangedAt, secondFile }
+      askAt((lastUsedAt) => recordOfOpen(ports, request, { ...moment, lastUsedAt }))
     },
     saved(asked, report) {
       secondFile = secondFileAfterSave(secondFile, report)
