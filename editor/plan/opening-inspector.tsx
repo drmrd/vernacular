@@ -3,13 +3,13 @@ import './opening-inspector.css'
 import {
   clampOpeningWidth,
   clearMainEntrance,
-  markMainEntrance,
-  openingKindOfType,
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   formatAdaptiveLength,
   inchesToMillimeters,
+  markMainEntrance,
   millimetersToInches,
+  openingKindOfType,
   resizeOpening,
   roundToDecimalPlaces,
   setOpeningType,
@@ -252,11 +252,13 @@ function MainEntranceField({
   if (openingKindOfType(opening.type) !== 'door') {
     return null
   }
+  const noteId = `opening-entrance-note-${opening.id}`
   return (
     <Stack gap="space-2">
       <label>
         <input
           type="checkbox"
+          aria-describedby={entranceRole === 'guessed' ? noteId : undefined}
           checked={entranceRole === 'marked'}
           onChange={() =>
             dispatch(
@@ -269,7 +271,9 @@ function MainEntranceField({
         Main entrance
       </label>
       {entranceRole === 'guessed' ? (
-        <p>Vernacular treats this door as the entrance until one is marked.</p>
+        <p className="ds-field__hint" id={noteId}>
+          Vernacular treats this door as the entrance until one is marked.
+        </p>
       ) : null}
     </Stack>
   )
