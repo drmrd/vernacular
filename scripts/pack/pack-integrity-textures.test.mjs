@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { checkPackIntegrity } from './pack-integrity.mjs'
-import { RIFF, TEXTURE_SIDE, WEBP, animatedWebp, lossyWebp, rgbPng } from './texture-test-bytes.mjs'
+import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
+import {
+  TEXTURE_SIDE,
+  animatedWebp,
+  lossyWebp,
+  rgbPng,
+  thumbnailSignature,
+} from './texture-test-bytes.mjs'
 
 const HASH = 'a'.repeat(64)
 const SMALLER_SIDE = 128
@@ -14,6 +21,7 @@ const COLOR_TYPE_PALETTE = 3
 const ADAM7_INTERLACE = 1
 const GAMA_CHUNK = [0, 0, 0, 4, 0x67, 0x41, 0x4d, 0x41, 0, 1, 0x86, 0xa0, 0x20, 0x0b, 0xcf, 0x8a]
 
+// The readers do not check CRCs, so a patched IHDR byte keeps its old CRC harmlessly.
 function withHeaderByte(bytes, offset, value) {
   const patched = Uint8Array.from(bytes)
   patched[offset] = value
@@ -41,10 +49,10 @@ function textureAsset(mediaType = 'image/png') {
 }
 
 /** A format 2 pack with one texture whose file holds `bytes`. */
-async function integrityOf(asset, bytes) {
+async function integrityOf(asset, bytes, overrides = {}) {
   const extension = asset.mediaType === 'image/webp' ? 'webp' : 'png'
   const file = `assets/${HASH}.${extension}`
-  const thumbnailBytes = Uint8Array.from([...RIFF, 1, 0, 0, 0, ...WEBP])
+  const thumbnailBytes = thumbnailSignature()
   const files = new Set([file, `thumbnails/${HASH}.webp`, 'LICENSE', 'NOTICE', 'CHANGELOG.md'])
   const listings = { assets: [`${HASH}.${extension}`], thumbnails: [`${HASH}.webp`] }
   const reader = {
@@ -52,7 +60,9 @@ async function integrityOf(asset, bytes) {
     listDir: async (relative) => listings[relative] ?? [],
     exists: async (relative) => files.has(relative),
     sha256: async () => HASH,
-    readBytes: async (relative) => (relative === file ? bytes : thumbnailBytes),
+    readBytes: async (relative, length) =>
+      relative === file ? bytes.subarray(0, length) : thumbnailBytes,
+    ...overrides,
   }
   const manifest = { packId: 'grass-pack', version: '1.0.0', formatVersion: 2, assets: [asset] }
   return checkPackIntegrity(manifest, reader)
@@ -96,5 +106,29 @@ describe('checkPackIntegrity for a texture file', () => {
     expect(result.errors).toHaveLength(1)
     expect(result.errors[0]).toContain(HASH)
     expect(result.errors[0]).toMatch(/animat/i)
+  })
+
+  it('asks to read as many texture bytes as the texture limit allows', async () => {
+    const lengths = []
+    const readBytes = async (relative, length) => {
+      lengths.push(length)
+      return rgbPng(TEXTURE_SIDE)
+    }
+    await integrityOf(textureAsset(), rgbPng(TEXTURE_SIDE), { readBytes })
+    expect(lengths).toContain(TEXTURE_LIMITS.maxFileBytes)
+  })
+
+  it('gives one error for a hash-mismatched texture whose bytes are not an image', async () => {
+    const reader = { sha256: async () => 'b'.repeat(64) }
+    const result = await integrityOf(textureAsset(), Uint8Array.of(1, 2, 3), reader)
+    expect(result.errors).toEqual([
+      `asset ${HASH}: content hash does not match the file bytes of assets/${HASH}.png`,
+    ])
+  })
+
+  it('gives one error for a missing texture file', async () => {
+    const reader = { exists: async (relative) => !relative.startsWith('assets/') }
+    const result = await integrityOf(textureAsset(), Uint8Array.of(1, 2, 3), reader)
+    expect(result.errors).toEqual([`asset ${HASH}: asset file missing at assets/${HASH}.png`])
   })
 })
