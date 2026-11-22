@@ -167,4 +167,26 @@ describe('ShellProviders opening light', () => {
     expectSchematicAt(latestEnvironment, SOUTH_FRONT_OPENING)
     expect(latestEnvironment?.cloudCover).toBe(DEFAULT_CLOUD_COVER)
   })
+
+  it('leaves the light on screen alone when the stored light is cleared or undone after the project opened', () => {
+    let latestEnvironment: EnvironmentState | undefined
+    const session = sessionWithClosedRoom(NORTH_UP)
+    const { rerender } = render(shellAround(session, (value) => (latestEnvironment = value)))
+    const rerenderShell = () =>
+      rerender(shellAround(session, (value) => (latestEnvironment = value)))
+
+    session.dispatch(setOpeningLight(STORED_LIGHT))
+    rerenderShell()
+    session.dispatch(clearOpeningLight())
+    rerenderShell()
+
+    expectSchematicAt(latestEnvironment, SOUTH_FRONT_OPENING)
+    expect(latestEnvironment?.cloudCover).toBe(DEFAULT_CLOUD_COVER)
+
+    session.undo()
+    rerenderShell()
+
+    expectSchematicAt(latestEnvironment, SOUTH_FRONT_OPENING)
+    expect(latestEnvironment?.cloudCover).toBe(DEFAULT_CLOUD_COVER)
+  })
 })
