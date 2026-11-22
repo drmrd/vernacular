@@ -18,7 +18,8 @@
   outline-offset: 1px;
 }
 
-.ds-button:disabled {
+.ds-button:disabled,
+.ds-button[aria-disabled='true'] {
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -94,12 +95,12 @@
 }
 
 /* Hover brightens a border, never blooms a glow (the Arris spec, section 8). */
-[data-design-language='arris'] .ds-button:hover:not(:disabled)::before {
+[data-design-language='arris'] .ds-button:hover:not(:disabled):not([aria-disabled='true'])::before {
   border-width: var(--border-width-active);
 }
 
 /* Pressing translates the label down 1px (the Arris spec, section 8). The
    impression stays put: the label moves, the tool does not. */
-[data-design-language='arris'] .ds-button:active:not(:disabled) {
+[data-design-language='arris'] .ds-button:active:not(:disabled):not([aria-disabled='true']) {
   transform: translateY(1px);
 }
