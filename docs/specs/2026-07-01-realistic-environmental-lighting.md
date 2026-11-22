@@ -45,7 +45,11 @@ Five design forks were settled in the brainstorming session that produced this s
 3. **Environment-state ownership: location and timezone persist on `Site`**; the active
    date, time, and weather are per-view session state, scrubbed live and kept out of undo,
    the way camera and color temperature already work; named environment scenes persist on
-   the project so a paint can be checked across several saved conditions.
+   the project so a paint can be checked across several saved conditions. A third, persisted
+   kind joined them later: the opening light, an optional record on the project that holds the
+   time, the date, and the cloud cover a project opens in. It is written only when the user
+   clicks to store it, and it never changes the scrubbed session light while the project is open
+   (ADR-0205, extension of 2026-11-22).
 4. **First slice and sequencing: the spine is 0, then 1, then 2, then 3.** Foundations,
    then the solar provider with the Environment panel, then daylight through glass, then
    physically based materials. Slice 1 splits into 1a (the engine-side provider) and 1b

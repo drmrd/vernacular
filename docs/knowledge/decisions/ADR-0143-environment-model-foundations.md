@@ -37,7 +37,7 @@ sourceFiles:
     session/editor-session/editor-session.ts,
   ]
 status: current
-updated: 2026-07-02
+updated: 2026-11-22
 ---
 
 # ADR-0143: Environment model foundations
@@ -144,3 +144,14 @@ editor-session registry, which closes that gap (a prerequisite for issue #407).
 - [[ADR-0067-three-dimensional-painted-preview]] and
   [[ADR-0130-finishes-system-architecture]] (the material seams and finishes system that later
   slices drive from this model).
+
+## Amendment (2026-11-22): a third persisted kind, the opening light
+
+`Project` now persists a third kind of environment record, beside `Site` and the saved scenes:
+the opening light, `openingLight?: OpeningLight`
+([[ADR-0205-opening-time-chosen-for-the-house]], the extension of 2026-11-22). It holds an
+`observedAt` in the same form as a scene, an optional `weather`, and `extensions`. A scene and the
+opening light share the type `ViewingConditions` in code. The field is optional, with no backfill,
+so a project that never stored a light has no key. Its commands, `opening-light/set` and
+`opening-light/clear`, mutate through dispatch and undo like the scene commands. The decisions
+above stand.

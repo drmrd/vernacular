@@ -395,7 +395,13 @@ When it is written (answer 8): only on the user's click.
 - Setting the light marks the project as changed once. Autosave writes it like any other command.
 - No migration, repair, or autosave path writes the field. If the session layer's repairs ever offer to drop a malformed opening light, that is a write on the user's click of the repair.
 
-Left to the builder: the command names, the final wording of the status line, and whether the control can also apply the stored light to the screen.
+Left to the builder: the command names, the final wording of the status line, and whether the control can also apply the stored light to the screen. The builder chose as follows (ADR-0205, extension of 2026-11-22):
+
+- The commands are `opening-light/set` and `opening-light/clear`. They follow `environment-scene/add` and `site/set-location`.
+- The status line reads "Opens at 21 June 2026, 08:00, clear sky." or "Opens in the default light.". A cloud cover of 0 reads "clear sky", 1 reads "overcast sky", and any other value reads "<percent>% cloud cover". A stored light with no weather reads "clear sky". A stored light that is ignored reads "Opens in the default light.".
+- The control does not apply the stored light to the screen. The stored light shows at the next open, and a saved scene covers going back to a light by hand.
+- The clear control is a button, disabled while nothing is stored.
+- A stored light is well formed only when its `observedAt` is a real calendar instant: a date that exists, hour 0 to 23, minute 0 to 59. A stored light that fails the check is ignored when the project opens.
 
 ### 5.6 The format change
 

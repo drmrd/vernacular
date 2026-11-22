@@ -137,6 +137,8 @@ Fence. May touch:
 
 Must not touch: `editor/environment/environment-panel.tsx` and its stories (so its three story baselines stay), `core/scene/`, `session/`, `storage/`, `app/`, `engine/`, `core/migrations/`.
 
+Fence deviations as built: the schema revision is 3 of version 17, since the entrance mark took revision 2 first. `core/environment/environment-state.ts` joined the fence, because `openingEnvironmentFor` is the seam the shell calls and it now takes the stored light. `core/environment/observation-time.ts` joined it for the real-calendar check on `observedAt` and for the shared time format. The stored-light cases went into a new file, `core/environment/opening-conditions-stored.test.ts`, because `opening-conditions.test.ts` was at its line cap. The extensions fixture retrofit moved into cycle 2.1, since the extensions check fails as soon as the new schema type has `extensions`.
+
 ### Cycle 2.1: the field is a schema revision
 
 - Test file: `tests/format/opening-light-schema.test.ts` (new). The test author also updates the reminder case of `tests/format/schema-drift.test.ts` (`:58-63`) to the new revision.

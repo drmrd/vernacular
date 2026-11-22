@@ -55,7 +55,7 @@ sourceFiles:
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # ADR-0193: Sample daylight for a project with no site location
@@ -414,3 +414,18 @@ beyond what the amendment above says.
 - The "Not decided" bullet "The entrance" is decided. The mark is built, and it wins over the
   guess. The camera of #627 and the sun still call the same function, and the camera is the part
   that stays open.
+
+## Amendment (2026-11-22): a stored opening light wins, also under sample daylight
+
+A project can now store the light it opens in
+([[ADR-0205-opening-time-chosen-for-the-house]], the extension of 2026-11-22). Two passages of this
+record change.
+
+- The consequence "Nothing is added to the document" held for the sample daylight itself, and it
+  still does. But the project document now has an optional `openingLight`, written only on the
+  user's click. A project with no site location, which opens in sample daylight, opens in its
+  stored light when it has a well-formed one, at the stored time and cloud cover.
+- The "Not decided" bullet on the opening light as stored state (#737) is decided. The stored light
+  is built, and `openingConditions` reads it before any rule, the implied north included. A stored
+  light whose time is malformed is ignored, and the project opens as this record and ADR-0205
+  describe.

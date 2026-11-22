@@ -104,7 +104,11 @@ surface of the format.
 
 ### 4.1 Entities
 
-- **Project**: `meta`, `floors[]`, optional `roomOverrides` (a map keyed by room key).
+- **Project**: `meta`, `floors[]`, optional `roomOverrides` (a map keyed by room key), and optional
+  `openingLight` (`observedAt`, optional `weather`, optional `extensions`), the light the project
+  opens in. `observedAt` is a civil datetime `YYYY-MM-DDThh:mm`. The record is written only when
+  the user stores it, and a cleared light removes the key (schema version 17, revision 3;
+  ADR-0205).
 - **ProjectMeta**: `name`, `units` (`imperial` or `metric`), `period` (a registry id),
   optional `style` (a registry id with an optional vernacular modifier), `schemaVersion`,
   `appVersion`, and `registryVersions` (a map of registry name to the version the project was

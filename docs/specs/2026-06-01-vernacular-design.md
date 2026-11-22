@@ -118,6 +118,7 @@ Project
 ├── meta (name, units, era, schemaVersion, appVersion,
 │         registryVersions, packsRequired[], writeHistory[])
 ├── site (optional: latLong, northBearing, obstructions[])
+├── openingLight (optional: observedAt, weather?; the light the project opens in, stored on the user's click, ADR-0205)
 ├── floors[]
 │   ├── meta (name, elevation, defaultCeilingHeight, eraOverride?)
 │   ├── walls[]
