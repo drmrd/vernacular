@@ -235,7 +235,7 @@ function retypeOpening(opening: Opening, type: string): Opening {
   const newKind = openingKindOfType(type)
   const newEntry = getEntry(builtinElementTypes, type)
   const isCrossCategory = oldKind !== undefined && newKind !== undefined && oldKind !== newKind
-  const carried = newKind === 'door' ? opening : withoutEntranceMark(opening)
+  const carried = oldKind === 'door' && newKind === 'door' ? opening : withoutEntranceMark(opening)
   if (!isCrossCategory || !newEntry?.opening) {
     return { ...carried, type }
   }
