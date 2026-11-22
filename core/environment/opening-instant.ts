@@ -129,7 +129,9 @@ function firstQualifyingInstant(
 }
 
 /**
- * The instant and the cloud cover a project opens at. A site whose north is implied opens at
+ * The instant and the cloud cover a project opens at. A valid stored light comes first, because
+ * the light the user last chose outranks any guess from the site; a stored light that does not
+ * parse is ignored and the rules below apply. A site whose north is implied opens at
  * the fixed instant. Any other site opens at the qualifying minute nearest 10:30, the earlier
  * of two equally near, on the first date that has one. The dates are tried in order: 20 March
  * 2026, then 21 June 2026 at a latitude of 0 or more or 21 December 2026 below 0. When no minute
