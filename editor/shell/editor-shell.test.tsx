@@ -294,7 +294,7 @@ describe('EditorShell', () => {
 
     // New lives in the project menu near the wordmark; Export is the single
     // dominant header action now that autosave persists every change.
-    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('button', { name: /^project$/i }))
     await user.click(screen.getByRole('menuitem', { name: /new project/i }))
     await user.click(screen.getByRole('button', { name: /^export$/i }))
     await user.click(screen.getByRole('menuitem', { name: /bundle/i }))
@@ -331,7 +331,7 @@ describe('EditorShell', () => {
 
     renderShell({ onSave })
 
-    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('button', { name: /^project$/i }))
     await user.click(screen.getByRole('menuitem', { name: /save/i }))
 
     expect(onSave).toHaveBeenCalledTimes(1)
@@ -355,7 +355,7 @@ describe('EditorShell', () => {
 
     renderShell({ onOpenFolder })
 
-    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('button', { name: /^project$/i }))
     await user.click(screen.getByRole('menuitem', { name: /open folder/i }))
 
     expect(onOpenFolder).toHaveBeenCalledTimes(1)
@@ -374,7 +374,7 @@ describe('EditorShell', () => {
       onOpenRecent,
     })
 
-    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('button', { name: /^project$/i }))
     expect(screen.getByRole('menuitem', { name: /alpha/i })).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: /beta/i }))
 
@@ -388,7 +388,7 @@ describe('EditorShell', () => {
 
     const { session } = renderShell()
 
-    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('button', { name: /^project$/i }))
     await user.click(screen.getByRole('menuitem', { name: /^rename$/i }))
     const input = screen.getByRole('textbox', { name: /project name/i })
     await user.clear(input)
@@ -403,7 +403,7 @@ describe('EditorShell', () => {
 
     // A blank or whitespace-only name is not a real rename, so the shown name
     // stays exactly what it was before this second attempt.
-    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('button', { name: /^project$/i }))
     await user.click(screen.getByRole('menuitem', { name: /^rename$/i }))
     const blankInput = screen.getByRole('textbox', { name: /project name/i })
     await user.clear(blankInput)
@@ -478,7 +478,7 @@ describe('EditorShell', () => {
       onImportDroppedFile: vi.fn(),
     })
 
-    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('button', { name: /^project$/i }))
     expect(screen.getByRole('menuitem', { name: /import file/i })).toBeInTheDocument()
 
     expect(screen.getByTestId('import-drop-target')).toBeInTheDocument()

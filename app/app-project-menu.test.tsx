@@ -46,7 +46,7 @@ afterEach(() => {
 
 /** Opens the project menu. */
 async function openTheProjectMenu(): Promise<void> {
-  await userEvent.click(await screen.findByRole('button', { name: /project/i }))
+  await userEvent.click(await screen.findByRole('button', { name: /^project$/i }))
 }
 
 /** Waits until the ports hold the lock of exactly one of the two projects with one name, and gives its id. */
