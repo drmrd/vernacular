@@ -97,6 +97,16 @@ export function cameraDepthRange(diagonal: number): { near: number; far: number 
   return { near: diagonal * NEAR_FRACTION, far: diagonal * FAR_MULTIPLE }
 }
 
+/** The pose with its near and far planes taken from the diagonal of `depthBounds`,
+ *  for a view that frames one box but must still reach everything in another.
+ *  Null or zero-size `depthBounds` leave the pose unchanged. */
+export function withDepthRangeOf(pose: CameraPose, depthBounds: Bounds3 | null): CameraPose {
+  if (depthBounds === null) return pose
+  const { diagonal } = centerAndDiagonal(depthBounds)
+  if (diagonal === 0) return pose
+  return { ...pose, ...cameraDepthRange(diagonal) }
+}
+
 /** The per-axis distance from the target along the (1, 1, 1) view direction.
  *  Without a viewport this keeps the loose `diagonal` placement; with one it fits
  *  the bounding sphere to the frustum. Dividing by the length of the (1, 1, 1)
