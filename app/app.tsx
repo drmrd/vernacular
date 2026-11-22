@@ -120,7 +120,7 @@ function AppWorkspace(props: AppProps) {
   const { navigation, libraryAssets, ports } = boot
   const { screen } = navigation
   const capabilities = useStorageCapabilities()
-  useDegradedStorageBanner(openHandleOrPorts(navigation.handle, ports), capabilities)
+  useDegradedStorageBanner(durabilityOfWork(navigation.handle, ports), capabilities)
   // Lives above the editor, which unmounts while the page shows over the open project.
   const [offeredRecovery] = useState(() => new WeakSet<DocumentHandle>())
 
@@ -144,9 +144,10 @@ function AppWorkspace(props: AppProps) {
   )
 }
 
-// What the storage banner reads: the open project, or with none open, the store of the ports, so
-// the empty Projects page of a temporary workspace says so too.
-function openHandleOrPorts(
+// Whether the work lives beyond the tab: the open project's durability, or with none open, the
+// workspace's, so the empty Projects page of a temporary workspace says so too. Null until the
+// ports are ready.
+function durabilityOfWork(
   handle: DocumentHandle | null,
   ports: SessionPorts | null,
 ): Pick<DocumentHandle, 'durable'> | null {
