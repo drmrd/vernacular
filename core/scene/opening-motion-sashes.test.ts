@@ -1,38 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  openingMotion,
-  openingPartMotion,
-  openingParts,
-  type OpeningSceneNode,
-  type SlideMotion,
-} from '../index'
+import { openingMotion, openingPartMotion, openingParts, type SlideMotion } from '../index'
+import { openingNode } from './opening-motion-test-support'
 
 const DOUBLE_HUNG = 'double-hung-window'
 const SINGLE_HUNG = 'single-hung-window'
 const DOOR = 'single-swing-door'
 const WINDOW_HEIGHT_MM = 1200
 const TOO_SHORT_HEIGHT_MM = 50
+const DOOR_HEIGHT_MM = 2032
 /** Rise of a sash in a 1200 mm window: 1200 / 2 - 60 / 2. */
 const RISE_MM = 570
-
-function openingNode(type: string, height: number): OpeningSceneNode {
-  return {
-    id: `opening:${type}`,
-    kind: 'opening',
-    floorId: 'g',
-    type,
-    center: { x: 1000, y: 2000 },
-    along: { x: 1, y: 0 },
-    normal: { x: 0, y: 1 },
-    width: 900,
-    height,
-    sillHeight: 900,
-    hostThickness: 120,
-    orientation: { hinge: 'start', facing: 'positive' },
-    hostWallId: 'south',
-  }
-}
 
 function slideOf(type: string, height: number, part: 'lower' | 'upper'): SlideMotion {
   const motion = openingPartMotion(type, openingNode(type, height), part)
@@ -84,7 +62,7 @@ describe('openingPartMotion', () => {
   })
 
   it('gives the opening motion to the primary part of a door, and no motion to a part the type lacks', () => {
-    const door = openingNode(DOOR, 2032)
+    const door = openingNode(DOOR, DOOR_HEIGHT_MM)
     const hung = openingNode(DOUBLE_HUNG, WINDOW_HEIGHT_MM)
 
     expect(openingPartMotion(DOOR, door, 'primary')).toEqual(openingMotion(DOOR, door))
