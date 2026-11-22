@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { FLOOR_NODE_PREFIX, frameSceneCamera, sceneGraphForFloor } from '../../core'
 import type { Bounds3, SceneGraph, SceneNode } from '../../core'
+import { emptySceneGraph } from '../../core/scene/scene-graph-test-fixtures'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 
 const WALL_THICKNESS_MM = 120
@@ -30,16 +31,7 @@ function floorWall(floorId: string, length: number): SceneGraph['walls'][number]
 }
 
 function graphOf(nodes: SceneNode[], walls: SceneGraph['walls']): SceneGraph {
-  return {
-    nodes,
-    walls,
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
+  return { ...emptySceneGraph(), nodes, walls }
 }
 
 const twoFloors = (): SceneGraph =>
@@ -48,9 +40,7 @@ const twoFloors = (): SceneGraph =>
     [floorWall('g', GROUND_WALL_LENGTH_MM), floorWall('u', UPPER_WALL_LENGTH_MM)],
   )
 
-const emptyGraph = (): SceneGraph => graphOf([], [])
-
-function boxOf(box: Bounds3 | null): Bounds3 {
+function presentBox(box: Bounds3 | null): Bounds3 {
   if (box === null) throw new Error('expected a box, got null')
   return box
 }
@@ -64,8 +54,8 @@ function expectPointClose(actual: Point3, expected: Point3): void {
 }
 
 function expectBoxClose(actual: Bounds3 | null, expected: Bounds3 | null): void {
-  expectPointClose(boxOf(actual).min, boxOf(expected).min)
-  expectPointClose(boxOf(actual).max, boxOf(expected).max)
+  expectPointClose(presentBox(actual).min, presentBox(expected).min)
+  expectPointClose(presentBox(actual).max, presentBox(expected).max)
 }
 
 function corners(box: Bounds3): Point3[] {
@@ -75,7 +65,7 @@ function corners(box: Bounds3): Point3[] {
   )
 }
 
-describe('the framed scene of a graph that names a framed floor', () => {
+describe('the framing box of a reconciled scene', () => {
   it.each(['u', 'g'])('frames floor %s alone in a scene that draws both floors', (id) => {
     const framed = createFramedSceneReconciler().reconcile({ ...twoFloors(), framedFloorId: id })
     const alone = createFramedSceneReconciler().reconcile(sceneGraphForFloor(twoFloors(), id))
@@ -92,8 +82,8 @@ describe('the framed scene of a graph that names a framed floor', () => {
   it('still draws the floors below the framed floor', () => {
     const framed = createFramedSceneReconciler().reconcile({ ...twoFloors(), framedFloorId: 'u' })
 
-    expect(boxOf(framed.bounds).min.y).toBeLessThan(UPPER_FLOOR_ELEVATION_MM)
-    expect(boxOf(framed.framingBounds).min.y).toBeGreaterThanOrEqual(UPPER_FLOOR_ELEVATION_MM)
+    expect(presentBox(framed.bounds).min.y).toBeLessThan(UPPER_FLOOR_ELEVATION_MM)
+    expect(presentBox(framed.framingBounds).min.y).toBeGreaterThanOrEqual(UPPER_FLOOR_ELEVATION_MM)
   })
 
   it('reaches every corner of the drawn box with the far plane', () => {
@@ -101,7 +91,7 @@ describe('the framed scene of a graph that names a framed floor', () => {
     const alone = createFramedSceneReconciler().reconcile(sceneGraphForFloor(twoFloors(), 'u'))
     const { position } = framed.pose
 
-    for (const corner of corners(boxOf(framed.bounds))) {
+    for (const corner of corners(presentBox(framed.bounds))) {
       const distance = Math.hypot(
         corner.x - position.x,
         corner.y - position.y,
@@ -116,7 +106,7 @@ describe('the framed scene of a graph that names a framed floor', () => {
     const building = createFramedSceneReconciler().reconcile(twoFloors())
 
     expect(building.framingBounds).toEqual(building.bounds)
-    expect(building.pose).toEqual(frameSceneCamera(boxOf(building.bounds)))
+    expect(building.pose).toEqual(frameSceneCamera(presentBox(building.bounds)))
   })
 
   it('frames every drawn floor when the framed floor has no built content', () => {
@@ -128,7 +118,7 @@ describe('the framed scene of a graph that names a framed floor', () => {
     const framed = createFramedSceneReconciler().reconcile({ ...graph, framedFloorId: 'u' })
 
     expect(framed.framingBounds).toEqual(framed.bounds)
-    expect(framed.pose).toEqual(frameSceneCamera(boxOf(framed.bounds)))
+    expect(framed.pose).toEqual(frameSceneCamera(presentBox(framed.bounds)))
   })
 
   it('frames every drawn floor when the framed floor is not in the graph', () => {
@@ -138,7 +128,10 @@ describe('the framed scene of a graph that names a framed floor', () => {
   })
 
   it('has no framing box for a graph with no floors', () => {
-    const framed = createFramedSceneReconciler().reconcile({ ...emptyGraph(), framedFloorId: 'g' })
+    const framed = createFramedSceneReconciler().reconcile({
+      ...emptySceneGraph(),
+      framedFloorId: 'g',
+    })
 
     expect(framed.framingBounds).toBeNull()
     expect(framed.bounds).toBeNull()
@@ -164,7 +157,9 @@ describe('the scene cache of a reconciler that is asked to frame different floor
     const upper = reconciler.reconcile({ ...graph, framedFloorId: 'u' })
     const ground = reconciler.reconcile({ ...graph, framedFloorId: 'g' })
 
-    expect(boxOf(ground.framingBounds).max.y).toBeLessThan(boxOf(upper.framingBounds).min.y)
+    expect(presentBox(ground.framingBounds).max.y).toBeLessThan(
+      presentBox(upper.framingBounds).min.y,
+    )
   })
 
   it('returns the cached scene for the same floors and framed floor', () => {
