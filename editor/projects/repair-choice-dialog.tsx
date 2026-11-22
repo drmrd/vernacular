@@ -45,8 +45,10 @@ function ReplaceChoice({
 }
 
 /**
- * The two ways to open a repaired project. Mount it only while it shows: the focus trap arms in a
- * mount effect, so a dialog that stayed mounted would not take the focus the second time.
+ * The two ways to open a repaired project. The replace choice exists only for a stored project, so
+ * a dialog with no `onReplace` is the one for a file, and it shows the file text. Mount it only
+ * while it shows: the focus trap arms in a mount effect, so a dialog that stayed mounted would not
+ * take the focus the second time.
  */
 export function RepairChoiceDialog({
   onReplace,

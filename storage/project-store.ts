@@ -4,7 +4,8 @@ export type { ProjectSummary }
 
 /**
  * Thrown when a project that should hold a document has none under the given id: by the import of
- * an archive that holds no document for the id.
+ * an archive that holds no document for the id, and by any write that needs an existing project
+ * (`replaceStored` and `replaceStoredDocument`).
  */
 export class ProjectNotFoundError extends Error {
   constructor(public readonly projectId: string) {
