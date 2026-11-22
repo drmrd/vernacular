@@ -56,6 +56,11 @@
       "status": "required"
     },
     {
+      "id": "mark-main-entrance",
+      "title": "keeps the main entrance mark on a door across a reload",
+      "status": "required"
+    },
+    {
       "id": "opening-time-for-the-house",
       "title": "opens a house whose front faces west at the time its front takes the sun",
       "status": "required"

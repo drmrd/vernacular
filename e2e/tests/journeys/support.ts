@@ -140,6 +140,24 @@ export async function drawWall(
   await page.keyboard.press('Enter')
 }
 
+const ROOM_LEFT = 200
+const ROOM_RIGHT = 500
+const ROOM_TOP = 150
+const ROOM_BOTTOM = 400
+
+// The closed room that the journeys share, closed by clicking back on the first corner. Its
+// top wall runs along y = 150 from x = 200 to x = 500 in canvas pixels.
+export async function drawClosedRoom(page: Page): Promise<void> {
+  await selectWallTool(page)
+  const canvas = selectors.planCanvas(page)
+  await canvas.click({ position: { x: ROOM_LEFT, y: ROOM_TOP } })
+  await canvas.click({ position: { x: ROOM_RIGHT, y: ROOM_TOP } })
+  await canvas.click({ position: { x: ROOM_RIGHT, y: ROOM_BOTTOM } })
+  await canvas.click({ position: { x: ROOM_LEFT, y: ROOM_BOTTOM } })
+  await canvas.click({ position: { x: ROOM_LEFT, y: ROOM_TOP } })
+  await expect(selectors.roomProxies(page)).toHaveCount(1)
+}
+
 // Assert the plan exposes the given number of walls. The wall count is observed
 // through the accessibility entity proxies (one "Wall, <length>" option per wall),
 // the durable observable now that the debug wall-count readout is gone.
