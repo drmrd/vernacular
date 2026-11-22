@@ -6,6 +6,7 @@
 // the pack CLI so both gates run on one definition.
 
 import { licenseProblems } from './license-policy.ts'
+import { validateTextureFields } from './texture-asset-rules.ts'
 
 export type AssetKind =
   | 'furniture'
@@ -155,7 +156,11 @@ function validateAssetFields(
   if (!ASSET_KINDS.includes(source['kind'] as AssetKind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
-  validateDimensions(source['dimensions'], label, errors)
+  if (source['kind'] === 'texture') {
+    validateTextureFields(source, label, errors)
+  } else {
+    validateDimensions(source['dimensions'], label, errors)
+  }
 }
 
 function validateAsset(asset: unknown, index: number, errors: string[]): void {
