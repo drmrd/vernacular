@@ -6,7 +6,8 @@
 // loader lands (phase 3) these checks graduate to core/ as shared TypeScript.
 
 import { MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
-import { TEXTURE_LIMITS, textureFileProblems } from '../../core/assets/texture-asset-rules.ts'
+import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
+import { textureFileProblems } from '../../core/assets/texture-file-rules.ts'
 
 /**
  * @typedef {object} PackReader
@@ -74,6 +75,15 @@ function assetFileName(asset) {
 }
 
 /**
+ * The pack-relative path of an asset file.
+ * @param {{ contentHash: string, mediaType?: string }} asset
+ * @returns {string}
+ */
+function assetPath(asset) {
+  return `${ASSET_DIR}/${assetFileName(asset)}`
+}
+
+/**
  * Confirm each asset's file bytes hash to its declared content hash.
  * @param {object[]} assets
  * @param {PackReader} reader
@@ -84,7 +94,7 @@ async function checkAssetHashes(assets, reader, errors) {
   const verified = []
   for (const asset of assets) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
-    const file = `${ASSET_DIR}/${assetFileName(asset)}`
+    const file = assetPath(asset)
     if (!(await reader.exists(file))) {
       errors.push(`asset ${asset.contentHash}: asset file missing at ${file}`)
       continue
@@ -110,7 +120,7 @@ async function checkAssetHashes(assets, reader, errors) {
  */
 async function checkTextureFiles(assets, reader, errors) {
   for (const asset of assets.filter((a) => a.kind === TEXTURE_KIND)) {
-    const file = `${ASSET_DIR}/${assetFileName(asset)}`
+    const file = assetPath(asset)
     const bytes = await reader.readBytes(file, TEXTURE_LIMITS.maxFileBytes)
     for (const problem of textureFileProblems(asset, bytes)) {
       errors.push(`asset ${asset.contentHash}: ${problem}`)
