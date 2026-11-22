@@ -44,15 +44,15 @@ sourceFiles:
     editor/paint/entity-surface.ts,
     editor/paint/use-entity-surface-bridge.ts,
     editor/plan/wall-finish-section.tsx,
+    editor/plan/room-finish-section.tsx,
     engine/scene/wall-surface-table.ts,
-    engine/scene/pick-surface.ts,
-    engine/scene/pick-entity.ts,
+    engine/scene/pick-scene.ts,
     engine/scene/faded-for-picking.ts,
     engine/scene/near-wall-transparency.ts,
     e2e/tests/journeys/edit-color.spec.ts,
   ]
 status: current
-updated: 2026-11-20
+updated: 2026-11-21
 ---
 
 # ADR-0056: Surface selection, 2D paint rendering, and the surface-treatment union
@@ -222,3 +222,26 @@ no paint target and no selection. The rule "a wall decides at its first hit" now
 
 Two points in the list above stay open: a line hit on the edge overlay of a faded wall (#742), and
 the fade that depends on the camera's distance (#744).
+
+## Amendment 2026-11-21: one scene pick is built
+
+The rule of the 2026-11-20 amendment is built (ADR-0224). `pickScene` and `pickSceneAt` in
+`engine/scene/pick-scene.ts` replace the two earlier picks. The nearest hit on an object that is
+not faded gives both the entity to select and the surface to paint, so the two cannot differ.
+
+- A wall face gives the wall and that face. A wall cap, end, or opening reveal gives the wall and
+  no surface.
+- A room floor and a ceiling give the room and their own surface. The ceiling mesh now carries its
+  surface, which it did not before.
+- Furniture, an opening, and glass in a wall that is not faded give that object and no surface.
+- A junction fill gives neither, and a click on it clears the selection.
+- A click that gives no surface also clears the perceived-color sample, so the readout never names
+  a surface other than the one under the pointer.
+
+The editor does the rest. When the selected object has no paintable face, the paint target is
+cleared. When a room is selected, its floor becomes the paint target, unless its floor or ceiling
+already is. The room finish section in the inspector follows the active surface, so after a click
+on a ceiling it shows the ceiling, and choosing Floor or Ceiling there selects that surface.
+
+The decided points are no longer open. A line hit on the edge overlay of a faded wall and the fade
+that depends on the camera's distance (#744) stay open.

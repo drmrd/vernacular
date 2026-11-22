@@ -86,7 +86,8 @@ coverage-excluded glue, proven end to end.
 **Amendment 2026-11-20 (ADR-0224).** This section changes in three ways. The
 nearest hit on an object that is not faded decides the click, and a faded object
 never takes it (ADR-0056). One pick in `engine/` replaces `pickEntityId` and the
-surface pick, and its one hit gives both the selection and the paint target. A
+surface pick (it is `pickScene`, and `pickSceneAt` for a pointer, in
+`engine/scene/pick-scene.ts`), and its one hit gives both the selection and the paint target. A
 junction fill gives no entity id: the pick does not take the level id from the
 group above it, so a click on a junction fill clears the selection. The
 nearest-ancestor rule still holds for the parts of a wall, an opening, a room, and
