@@ -52,12 +52,19 @@ export function createHandleNotices(): HandleNotices {
 }
 
 /** Raises the notices that what an open found calls for. */
-export function raiseOpenNotices(notices: HandleNotices, opened: OpenedProject): void {
+export function raiseOpenNotices(
+  notices: HandleNotices,
+  opened: OpenedProject,
+  recoveryCopyKept: boolean | undefined,
+): void {
   if (opened.savedByNewerBuild) {
     notices.raise('saved-by-newer-build')
   }
   if (opened.secondFile?.read === 'second') {
     notices.raise('saved-in-second-file')
+  }
+  if (recoveryCopyKept === true) {
+    notices.raise('recovery-copy-kept')
   }
 }
 

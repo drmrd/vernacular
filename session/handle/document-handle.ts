@@ -143,10 +143,7 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
   const session = parts.session ?? createEditorSession(opened.project)
   const status = createSaveStatusCell(store.durable)
   const notices = createHandleNotices()
-  raiseOpenNotices(notices, opened)
-  if (parts.recoveryCopyKept === true) {
-    notices.raise('recovery-copy-kept')
-  }
+  raiseOpenNotices(notices, opened, parts.recoveryCopyKept)
   const { snapshots } = parts
   const reportNotices = reportNoticesTo(notices)
   const storedFlag = createStoredFlag(parts.stored ?? false)

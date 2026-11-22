@@ -48,8 +48,7 @@ async function readStored(store: DocumentStore, request: OpenRequest): Promise<R
   if (read.ok) {
     const { project, savedByNewerBuild } = read.value
     const { secondFile } = read
-    const flags =
-      secondFile === undefined ? { savedByNewerBuild } : { savedByNewerBuild, secondFile }
+    const flags = { savedByNewerBuild, ...(secondFile === undefined ? {} : { secondFile }) }
     return foundStored(openedProject(project, flags), read.lastChangedAt)
   }
   if (read.failure.kind === 'not-found') {
