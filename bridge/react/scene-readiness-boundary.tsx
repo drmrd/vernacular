@@ -3,7 +3,8 @@ import { sceneReadinessProps, sceneRevisionProps } from './scene-readiness'
 
 // The wrapper carries the shared readiness props (scene-readiness.ts) so the editor
 // pane's observer can tell, from outside the bridge layer, when the canvas inside has
-// drawn its first frame. It fills its flex-item parent the same way React Three
+// drawn its first frame. It also publishes the scene revision and the drawn revision
+// (sceneRevisionProps). It fills its flex-item parent the same way React Three
 // Fiber's own Canvas wrapper div would if it were the direct child here.
 export function SceneReadinessBoundary({
   sceneRevision,
