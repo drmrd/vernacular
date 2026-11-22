@@ -432,6 +432,8 @@ export type {
   SlideMotion,
 } from './scene/opening-motion'
 export { openingMotion, openingPartMotion, openingParts } from './scene/opening-motion'
+export type { OpeningPose } from './scene/opening-pose'
+export { openingPartTarget, openingTargetPose } from './scene/opening-pose'
 export { openingHeadArcs } from './scene/opening-head'
 export type { OpeningHeadArc } from './scene/opening-head'
 export { resolveTrimProfileSection, trimProfileSection } from './scene/trim-profile'
