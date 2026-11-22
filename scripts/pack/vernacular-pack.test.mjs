@@ -218,6 +218,32 @@ describe('runPackCli build', () => {
   })
 })
 
+describe('runPackCli malformed manifests', () => {
+  it('validate reports an invalid pack for a manifest that is null', async () => {
+    const cliDeps = deps(null)
+
+    const code = await runPackCli(['validate', 'packs/x'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.error).toHaveBeenCalled()
+  })
+
+  it.each([
+    ['is null', null],
+    ['has an asset entry that is not an object', { ...validManifest(), assets: [null] }],
+  ])('build writes an empty FAIL report for a manifest that %s', async (_label, manifest) => {
+    const cliDeps = deps(manifest)
+
+    const code = await runPackCli(['build', 'packs/x'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.writeReport).toHaveBeenCalledTimes(1)
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.status).toBe('FAIL')
+    expect(report.assets).toEqual([])
+  })
+})
+
 describe('node adapters', () => {
   it('exposes the node-backed adapters', () => {
     expect(typeof readManifestFromDisk).toBe('function')
