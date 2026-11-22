@@ -57,6 +57,16 @@ export class ReadCountingDirectory extends PassThroughDirectory {
   }
 }
 
+/** Test support: passes every call through and lists the path of each write, in order. */
+export class WriteLoggingDirectory extends PassThroughDirectory {
+  readonly writes: string[] = []
+
+  override writeFile(path: string, bytes: Uint8Array): Promise<void> {
+    this.writes.push(path)
+    return super.writeFile(path, bytes)
+  }
+}
+
 /** A store over the workspace that `root` holds. */
 export function storeOver(
   root: DirectoryPort,
