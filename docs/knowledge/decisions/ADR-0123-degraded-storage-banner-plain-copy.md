@@ -3,8 +3,17 @@ slug: decisions/ADR-0123-degraded-storage-banner-plain-copy
 title: 'ADR-0123: Degraded-storage banner uses plain user-facing copy'
 type: decision
 tags: [storage, notifications, banner, copy, accessibility]
-related: [decisions/ADR-0118-notification-subsystem]
-sourceFiles: [app/use-degraded-storage-banner.ts, storage/storage-capabilities.ts]
+related:
+  [
+    decisions/ADR-0118-notification-subsystem,
+    decisions/ADR-0104-unsaved-changes-guard-and-dirty-state-model,
+  ]
+sourceFiles:
+  [
+    app/use-degraded-storage-banner.ts,
+    storage/storage-capabilities.ts,
+    app/use-before-unload-guard.ts,
+  ]
 status: current
 updated: 2026-11-22
 ---
@@ -19,14 +28,17 @@ plain sentence about the consequence rather than a technical capability summary.
 > Updated on 2026-11-22. The banner now follows the open project instead of the storage probe. It
 > shows when the open project lives in the tab alone, on a store that does not outlive the tab. A
 > browser with neither OPFS nor IndexedDB gets such a store, and so does a browser whose storage
-> lookup throws. Where the browser offers folder access, the banner reads "This browser is not
-> keeping your projects. They last until this tab closes. To keep one, export it, or open a
-> folder." Elsewhere it reads "This browser is not keeping your projects. They last until this tab
-> closes. To keep one, export it." The Projects page shows the banner as well as the editor. It
-> shows once for each load of the page, and a dismissal holds. For a project in temporary storage,
-> the save status in the editor reads "In this tab only", and since that status does not count as
-> unsaved, closing the tab asks nothing. The sentence under Decision is the first text of the
-> banner, and it is no longer shown.
+> lookup throws. With no project open, the banner follows the workspace: the empty Projects page of
+> a temporary workspace shows it, and so does the address of a project there, beside the notice
+> "This project is not stored in this browser." Where the browser offers folder access, the banner
+> reads "This browser is not keeping your projects. They last until this tab closes. To keep one,
+> export it, or open a folder." Elsewhere it reads "This browser is not keeping your projects. They
+> last until this tab closes. To keep one, export it." The Projects page shows the banner as well as
+> the editor. It shows once for each load of the page, and a dismissal holds. For a project in
+> temporary storage, the save status in the editor reads "In this tab only". Closing or reloading
+> the tab asks first: while the open project lives in the tab alone, even after an export, the
+> browser shows its own leave warning (`app/use-before-unload-guard.ts`, session spec section
+> 5.10). The sentence under Decision is the first text of the banner, and it is no longer shown.
 
 ## Context
 

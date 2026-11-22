@@ -22,6 +22,7 @@ related:
     decisions/ADR-0019-bridge-dispatch-boundary,
     decisions/ADR-0119-write-ahead-crash-recovery,
     decisions/ADR-0187-projects-page-with-document-identity,
+    decisions/ADR-0123-degraded-storage-banner-plain-copy,
   ]
 sourceFiles:
   [
@@ -42,7 +43,7 @@ sourceFiles:
     editor/shell/editor-shell.tsx,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-22
 ---
 
 # ADR-0104: Unsaved-changes guard and dirty-state model
@@ -83,6 +84,11 @@ flight stays dirty.
 > recovered copy only: Restore asks first when the project has unsaved work
 > (`app/use-workspace-state.ts` calls `guardDestructive` of the session layer), and Discard always
 > asks.
+
+> Updated on 2026-11-22. `useUnsavedChangesGuard` is renamed `useLeaveWarningGuard(handle)`, and
+> the parameter of `useBeforeUnloadGuard` is renamed `armed`. The guard also arms for a project held
+> only by the tab (a handle that is not durable), whatever its save status. See
+> [[ADR-0123-degraded-storage-banner-plain-copy]] and session spec section 5.10.
 
 ## Context
 
@@ -153,7 +159,8 @@ the tracker, the confirm prompt, and the handlers. A `DiscardDialog`
 browser's native leave warning while the project is dirty and disarms it
 otherwise. `markSaved()` is called on an explicit-save success (the
 `commitProject` path) and, implicitly through the per-session tracker, on every
-fresh-session adoption.
+fresh-session adoption. (Since 2026-11-22 the parameter is `armed`; see the
+update under Status.)
 
 **Revision-based saved marking (revised 2026-06-23).** The tracker counts the
 mutating dispatches it has seen and exposes that count as `revision()`. Marking a

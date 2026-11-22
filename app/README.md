@@ -80,7 +80,8 @@ Where things happen:
   pending changes into the folder and closes the project. When that save fails, nothing is
   forgotten and a sentence says so.
 - `use-degraded-storage-banner.ts` raises the storage banner once for each load of the page, when
-  the open project lives in the tab alone. The banner shows in the editor and on the Projects page.
+  the open project lives in the tab alone or, with no project open, when the workspace does. The
+  banner shows in the editor and on the Projects page, the empty page included.
 - `use-open-project.ts` is the one owner of the open project. It holds the one open document
   handle, runs the start, and runs one flow at a time through `runFlow`, which resolves `undefined`
   while the start or another flow runs. It closes the handle when its effects are cleaned up.
@@ -90,11 +91,11 @@ Where things happen:
   the recent list (the records of the project index used last, apart from the open project), the
   recovery prompt, and the menu actions. It mounts three small hooks on the handle.
   `useLeaveWarningGuard` (in `use-before-unload-guard.ts`) arms the browser's leave warning
-  while a change is not stored, `useFlushOnHidden` asks for a write when the page hides, and
-  `useHandleNotices` shows each notice of the handle once. The content cache of the editor is
-  the open project's own, from `assetsOf(handle)` in `asset-providers.tsx`, so a folder project
-  reads its assets from its folder first, while the library keeps the shared pool that the ports
-  builder returns beside the ports.
+  while a change is not stored or the project lives in the tab alone, `useFlushOnHidden` asks for
+  a write when the page hides, and `useHandleNotices` shows each notice of the handle once. The
+  content cache of the editor is the open project's own, from `assetsOf(handle)` in
+  `asset-providers.tsx`, so a folder project reads its assets from its folder first, while the
+  library keeps the shared pool that the ports builder returns beside the ports.
 - The action adapters `use-project-actions.ts`, `use-open-file-action.ts`, and
   `use-export-actions.ts` back the project menu. New project, Import file, Open folder, and a recent
   project run their flow through the owner; Save and the exports work on the open handle.
