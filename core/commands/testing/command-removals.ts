@@ -6,6 +6,7 @@
 
 import * as dimensions from '../handlers/dimension-commands'
 import * as scenes from '../handlers/environment-scene-commands'
+import * as lights from '../handlers/opening-light-commands'
 import * as openings from '../handlers/opening-commands'
 import * as palettes from '../handlers/palette-commands'
 import * as projects from '../handlers/project-commands'
@@ -27,6 +28,8 @@ export const REMOVED_OBJECTS: Readonly<Record<string, readonly string[]>> = {
   ],
   [underlays.REMOVE_UNDERLAY]: [`Underlay#${ids.spareUnderlay}`],
   [openings.REMOVE_OPENING]: [`Opening#${ids.sideOpening}`],
+  // The opening light is a root key of the project, so its identity is its path.
+  [lights.CLEAR_OPENING_LIGHT]: ['Project/openingLight'],
   [dimensions.REMOVE_DIMENSION]: [`Dimension#${ids.spareDimension}`],
   // Deleting the side wall also deletes the opening hosted by it.
   [transforms.DELETE_ENTITIES]: [`Wall#${ids.sideWall}`, `Opening#${ids.sideOpening}`],

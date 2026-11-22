@@ -10,7 +10,9 @@ import {
   registerAllProjectCommands,
   setFloorPeriod,
   setFurnitureName,
+  setOpeningLight,
   setProjectStyle,
+  clearOpeningLight,
 } from '../../core'
 import type { Command, Project } from '../../core'
 import { readProject } from '../../storage/documents/document-store-test-kit'
@@ -20,6 +22,7 @@ import { DocumentStore, FolderFiles } from '../../storage'
 const FLOOR_ID = 'floor-1'
 const FURNITURE_ID = 'furniture-1'
 const PROJECT_ID = 'house'
+const OPENING_LIGHT = { observedAt: '2026-06-21T08:00' }
 
 function dispatcherFor(project: Project): Dispatcher<Project> {
   return new Dispatcher(project, registerAllProjectCommands(new CommandRegistry<Project>()))
@@ -49,6 +52,7 @@ function projectWithEveryFieldSet(): Project {
     ),
   )
   dispatcher.dispatch(setFurnitureName(FLOOR_ID, FURNITURE_ID, 'Armchair'))
+  dispatcher.dispatch(setOpeningLight(OPENING_LIGHT))
   return project
 }
 
@@ -59,6 +63,7 @@ interface StoredFurniture {
 
 interface StoredDocument {
   meta: { style?: unknown }
+  openingLight?: unknown
   floors: { periodOverride?: unknown; furniture: StoredFurniture[] }[]
 }
 
@@ -99,6 +104,7 @@ describe('a cleared field stays cleared across a document store save', () => {
     expect(stored.meta.style).toEqual({ styleId: 'italianate' })
     expect(stored.floors[0]?.periodOverride).toBe('edwardian')
     expect(stored.floors[0]?.furniture[0]?.name).toBe('Armchair')
+    expect(stored.openingLight).toEqual(OPENING_LIGHT)
   })
 
   it('keeps the project style cleared', async () => {
@@ -117,5 +123,11 @@ describe('a cleared field stays cleared across a document store save', () => {
     const saved = await clearSaveAndReload(setFurnitureName(FLOOR_ID, FURNITURE_ID, ''))
 
     expect('name' in saved.floors[0]!.furniture[0]!).toBe(false)
+  })
+
+  it('keeps the opening light cleared', async () => {
+    const saved = await clearSaveAndReload(clearOpeningLight())
+
+    expect('openingLight' in saved).toBe(false)
   })
 })
