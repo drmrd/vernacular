@@ -16,6 +16,7 @@ import { textureFileProblems } from '../../core/assets/texture-file-rules.ts'
  * @property {(rel: string) => Promise<boolean>} exists
  * @property {(rel: string) => Promise<string>} sha256          hex digest of a file's bytes
  * @property {(rel: string, length: number) => Promise<Uint8Array>} readBytes
+ * @property {(rel: string) => Promise<number>} size            file size in bytes
  */
 
 const ASSET_DIR = 'assets'
@@ -121,6 +122,12 @@ async function checkAssetHashes(assets, reader, errors) {
 async function checkTextureFiles(assets, reader, errors) {
   for (const asset of assets.filter((a) => a.kind === TEXTURE_KIND)) {
     const file = assetPath(asset)
+    const fileBytes = await reader.size(file)
+    if (fileBytes > TEXTURE_LIMITS.maxFileBytes) {
+      errors.push(
+        `asset ${asset.contentHash}: file is ${fileBytes} bytes, above the ${TEXTURE_LIMITS.maxFileBytes} byte limit for a texture`,
+      )
+    }
     const bytes = await reader.readBytes(file, TEXTURE_LIMITS.maxFileBytes)
     for (const problem of textureFileProblems(asset, bytes)) {
       errors.push(`asset ${asset.contentHash}: ${problem}`)

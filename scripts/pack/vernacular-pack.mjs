@@ -6,7 +6,7 @@
 // performs the same validation and reports a summary; content-hash verification,
 // thumbnail baking, and publishing are deferred to phase 3.
 
-import { access, readFile, readdir, writeFile } from 'node:fs/promises'
+import { access, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -173,6 +173,7 @@ export function createNodePackReader(packDir) {
         .digest('hex'),
     readBytes: async (rel, length) =>
       new Uint8Array((await readFile(join(packDir, rel))).subarray(0, length)),
+    size: async (rel) => (await stat(join(packDir, rel))).size,
   }
 }
 
