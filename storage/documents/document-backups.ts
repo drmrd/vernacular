@@ -1,5 +1,5 @@
 import { CURRENT_SCHEMA_VERSION } from '../../core'
-import type { DecodeResult, GraftDropped } from '../../core'
+import type { DecodeFailure, DecodeResult, GraftDropped } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 
 /**
@@ -61,7 +61,7 @@ export async function keepUnreadablePrevious(
   graftDropped: GraftDropped | undefined,
 ): Promise<void> {
   if (previous === undefined || graftDropped === undefined) return
-  const version = storedVersionOf({ ok: false, failure: graftDropped })
+  const version = versionOfFailure(graftDropped)
   await writeBackup(directory, 'unreadable-previous', { version, bytes: previous })
 }
 
@@ -70,7 +70,11 @@ export function storedVersionOf(decoded: DecodeResult): number {
   if (decoded.ok) {
     return decoded.value.migratedFrom ?? CURRENT_SCHEMA_VERSION
   }
-  const failure = decoded.failure
+  return versionOfFailure(decoded.failure)
+}
+
+/** The schema version that bytes failed to decode at; unknown when they carry none. */
+function versionOfFailure(failure: DecodeFailure): number {
   switch (failure.kind) {
     case 'format-rules':
       return failure.migratedFrom ?? CURRENT_SCHEMA_VERSION

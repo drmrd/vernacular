@@ -192,8 +192,8 @@ export class DocumentStore {
   /**
    * Writes the project over its previous file so unknown data carries over. A failed check never
    * blocks the write; it is reported. The assets the folder lacks are copied first, so a failed
-   * copy rejects before any write. It rejects when any step fails: the read of the previous file,
-   * the encode, the asset copy, the backup of the last valid file, or the write.
+   * copy rejects before any write. It rejects when the read of the previous file, the encode, the
+   * asset copy, the copy of an unreadable previous file, the last-valid backup, or the write fails.
    */
   async save(id: string, project: Project): Promise<SaveReport> {
     const directory = this.files.projectDirectory(id)
