@@ -76,7 +76,7 @@ describe('whether the project of a handle is stored', () => {
   })
 
   it('says stored by the time a listener hears that the first save was stored', async () => {
-    const { handle } = await openNew()
+    const { handle } = await openNew(createTestPorts({ durable: true }))
     const answersWhenSaved: boolean[] = []
     handle.subscribe(() => {
       if (handle.saveStatus() === 'saved') answersWhenSaved.push(isStored(handle))

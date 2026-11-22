@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from './app'
 import { createMemoryAddressBar, type MemoryAddressBar } from './address-bar'
@@ -26,6 +26,8 @@ const BANNER_WITHOUT_FOLDERS =
   'This browser is not keeping your projects. They last until this tab closes. To keep one, export it.'
 const WARNING = 'The storage of this browser was not found. Projects stay in this tab.'
 const DISMISS = 'Dismiss notification'
+const TAB_ONLY_STATUS = 'In this tab only'
+const TAB_ONLY_CARD_TEXT = 'In this tab only.'
 /** What the shell says once a change is stored, or once it is held by the tab alone. */
 const STORED_LABEL = /all changes saved|in this tab only/i
 
@@ -53,6 +55,11 @@ function renderWithNoStorage(): { bar: MemoryAddressBar; resolvePorts: () => Pro
 async function editAndWaitForTheStore(floors = 1): Promise<void> {
   for (let done = 0; done < floors; done += 1) await editTheProject()
   await screen.findByText(STORED_LABEL, {}, { timeout: AUTOSAVE_TIMEOUT_MS })
+}
+
+/** The text of each live region of the open editor, in the order of the page. */
+function statusReadouts(): string[] {
+  return screen.queryAllByRole('status').map((region) => region.textContent ?? '')
 }
 
 /** Dismisses the banner of the tab. */
@@ -189,6 +196,45 @@ describe('The application whose builder of the ports rejects', () => {
     await userEvent.click(cards[1] as HTMLElement)
 
     expect(await screen.findByRole('button', { name: /3rd floor/i })).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('The application over ports that keep nothing after the tab closes: the save status', () => {
+  it('reads that the project is in this tab only after an edit, and never that all changes are saved', async () => {
+    stubCapableStorage()
+    renderAppAt(createTestPorts(), '')
+    await findTheShell()
+
+    await editTheProject()
+
+    await waitFor(() => expect(statusReadouts().join(' ')).toContain(TAB_ONLY_STATUS), {
+      timeout: AUTOSAVE_TIMEOUT_MS,
+    })
+    expect(screen.queryByText(/all changes saved/i)).not.toBeInTheDocument()
+  })
+
+  it('reads on the card of the project that it is in this tab only', async () => {
+    stubCapableStorage()
+    const { bar } = renderAppAt(createTestPorts(), '')
+    await findTheShell()
+    await editAndWaitForTheStore()
+
+    await visit(bar, PROJECTS_ADDRESS)
+
+    const page = await findTheProjectsPage()
+    expect(await within(page).findByText(TAB_ONLY_CARD_TEXT)).toBeInTheDocument()
+  })
+
+  it('shows no discard dialog on a move to the Projects page after an edit', async () => {
+    stubCapableStorage()
+    const { bar } = renderAppAt(createTestPorts(), '')
+    await findTheShell()
+    await editAndWaitForTheStore()
+
+    await visit(bar, PROJECTS_ADDRESS)
+
+    await findTheProjectsPage()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })

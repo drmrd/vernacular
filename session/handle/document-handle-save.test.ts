@@ -11,13 +11,15 @@ import {
   storedProject,
   workspaceRequest,
 } from './handle-test-kit'
-import type { TestPorts } from './handle-test-kit'
+import type { TestPorts, TestPortsOptions } from './handle-test-kit'
 
 const PROJECT_ID = 'a'
 
 /** The ports, and a handle on a stored sound document of the project `a`. */
-async function openStored(): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
-  const ports = createTestPorts()
+async function openStored(
+  options: TestPortsOptions = {},
+): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
+  const ports = createTestPorts(options)
   await placeDocument(ports, PROJECT_ID, currentBytes())
   const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
   return { ports, handle }
@@ -41,7 +43,7 @@ afterEach(() => {
 
 describe('the save status of a document handle', () => {
   it('a new handle is idle, an edit makes it pending, and the autosave delay stores the edit and makes it saved', async () => {
-    const { ports, handle } = await openStored()
+    const { ports, handle } = await openStored({ durable: true })
     expect(handle.saveStatus()).toBe('idle')
 
     rename(handle, 'Edited')
@@ -53,7 +55,7 @@ describe('the save status of a document handle', () => {
   })
 
   it('subscribe calls its listener once for each new status and not after it unsubscribes', async () => {
-    const { handle } = await openStored()
+    const { handle } = await openStored({ durable: true })
     const seen: SaveStatus[] = []
     const stop = handle.subscribe(() => seen.push(handle.saveStatus()))
 
@@ -83,7 +85,7 @@ describe('the save status of a document handle', () => {
   })
 
   it('the status stays pending when an edit arrives during a write, and becomes saved after the next write', async () => {
-    const { ports, handle } = await openStored()
+    const { ports, handle } = await openStored({ durable: true })
     const gate = gateSaves(ports.workspace)
     rename(handle, 'First edit')
     await vi.advanceTimersByTimeAsync(DEFAULT_AUTOSAVE_DELAY_MS)

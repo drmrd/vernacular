@@ -142,7 +142,7 @@ describe('an import of a .json file', () => {
   })
 
   it('the copy is stored before the flow resolves, with no edit', async () => {
-    const ports = createTestPorts()
+    const ports = createTestPorts({ durable: true })
 
     const handle = handleOf(await importFile(ports, undefined, jsonFile()))
 

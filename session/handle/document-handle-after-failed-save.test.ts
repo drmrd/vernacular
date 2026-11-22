@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe('a flush after a save that failed', () => {
   it('a flush after a failed save with no change writes again', async () => {
-    const ports = createTestPorts()
+    const ports = createTestPorts({ durable: true })
     await placeDocument(ports, PROJECT_ID, currentBytes())
     const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
     const save = vi.spyOn(ports.workspace, 'save').mockRejectedValueOnce(new Error(DISK_FULL))

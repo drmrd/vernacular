@@ -206,7 +206,7 @@ describe('an open and an index that is slow or refuses', () => {
 
   it('an index that rejects every call does not fail an open, a save, or a close, and warns once', async () => {
     const index = failingIndex()
-    const ports = createTestPorts({ index, build: BUILD })
+    const ports = createTestPorts({ index, build: BUILD, durable: true })
     await placeDocument(ports, PROJECT_ID, currentBytes())
 
     const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))

@@ -51,7 +51,7 @@ afterEach(() => {
 
 describe('a document handle after a failed close', () => {
   it('after a failed close, autosave still stores the next edit', async () => {
-    const ports = createTestPorts()
+    const ports = createTestPorts({ durable: true })
     await placeDocument(ports, PROJECT_ID, currentBytes())
     const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
     vi.spyOn(ports.workspace, 'save').mockRejectedValueOnce(new Error('disk full'))
