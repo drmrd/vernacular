@@ -749,7 +749,7 @@ export {
   markMainEntrance,
   registerEntranceCommands,
 } from './commands/handlers/entrance-commands'
-export { withoutEntranceMark } from './commands/entrance-rule'
+export { countMarkedDoors, withoutEntranceMark } from './commands/entrance-rule'
 export type { EnvironmentScene, WeatherConditions } from './model/environment-scene'
 export type {
   AddEnvironmentSceneParams,
