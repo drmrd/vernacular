@@ -23,8 +23,10 @@ plain sentence about the consequence rather than a technical capability summary.
 > keeping your projects. They last until this tab closes. To keep one, export it, or open a
 > folder." Elsewhere it reads "This browser is not keeping your projects. They last until this tab
 > closes. To keep one, export it." The Projects page shows the banner as well as the editor. It
-> shows once for each load of the page, and a dismissal holds. The sentence under Decision is the
-> first text of the banner, and it is no longer shown.
+> shows once for each load of the page, and a dismissal holds. For a project in temporary storage,
+> the save status in the editor reads "In this tab only", and since that status does not count as
+> unsaved, closing the tab asks nothing. The sentence under Decision is the first text of the
+> banner, and it is no longer shown.
 
 ## Context
 

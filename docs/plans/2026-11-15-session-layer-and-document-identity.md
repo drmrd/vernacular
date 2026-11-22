@@ -1844,7 +1844,7 @@ Spec 5.10.
 
 - [ ] RED: on a store that is not durable, `saveStatus()` is never `'saved'` and is `'tab-only'`
       after a write (`session/handle/document-handle.test.ts`); `'tab-only'` reads "In this tab
-      only" (`editor/shell/editor-shell.test.tsx`); the card reads "In this tab only."
+      only" (`app/temporary-storage.test.tsx`); the card reads "In this tab only."
       (`app/temporary-storage.test.tsx`); a folder project opened from a temporary workspace is
       durable, and its record is in the memory index only.
 - [ ] GREEN: `'tab-only'` joins `SaveStatus` and the label maps in `editor/shell/editor-shell.tsx`.

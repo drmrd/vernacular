@@ -168,8 +168,9 @@ function UnsavedWorkGuards({ handle }: { readonly handle: DocumentHandle }) {
 }
 
 // Storage capabilities are a fixed property of the host environment, so probe
-// once at mount and reuse the result for both the degraded-storage warning and
-// the open-folder capability gate. Resolves to null until the probe completes.
+// once at mount and reuse the result both to choose the text of the storage
+// banner and to gate the open-folder control. Resolves to null until the probe
+// completes.
 function useStorageCapabilities(): StorageCapabilities | null {
   const [capabilities, setCapabilities] = useState<StorageCapabilities | null>(null)
   useEffect(() => {

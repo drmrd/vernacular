@@ -33,7 +33,9 @@ function defaultBackend(capabilities: StorageCapabilities): ProjectStoreBackend 
   }
   // A host offering neither durable backend is the ADR-0022 degraded case,
   // already surfaced by the separate storage-degraded warning. Return 'opfs'
-  // as the universal target rather than throwing.
+  // as the universal target rather than throwing. The application's store
+  // lookup (`resolveProjectStorage`) rejects on such a host before this value
+  // is used.
   return 'opfs'
 }
 
