@@ -1,8 +1,9 @@
 /**
- * Which backend the live 3D preview will actually render through. The engine's
- * `WebGPURenderer` targets WebGPU when the runtime exposes an adapter and falls back to
- * its own WebGL 2 backend when it does not, so `'webgl2'` is a working preview and only
- * `'unsupported'` means no preview at all.
+ * Which backend the live 3D preview will render through. The probe is synchronous: it
+ * answers `'webgpu'` when the browser exposes the WebGPU API (`navigator.gpu`), without
+ * asking for an adapter. When the API exists but no adapter comes, the engine's
+ * `WebGPURenderer` falls back to its own WebGL 2 backend at start, so `'webgl2'` is a
+ * working preview and only `'unsupported'` means no preview at all.
  */
 export type RenderBackend = 'webgpu' | 'webgl2' | 'unsupported'
 
@@ -29,6 +30,7 @@ function canCreateWebGl2Context(): boolean {
 }
 
 function probeRenderBackend(): RenderBackend {
+  // The API's presence is enough here; no adapter is requested, to keep the probe synchronous.
   if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
     return 'webgpu'
   }
