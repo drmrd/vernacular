@@ -53,7 +53,7 @@ export const AccessibilityGate: Story = {
   },
 }
 
-// A default button beside a disabled one. Hover and active need a pointer held in
+// A default button beside a disabled one and an unavailable one. Hover and active need a pointer held in
 // place, which a static states sheet cannot capture, so these are the two states
 // left to compare here.
 function ArrisButtonStates() {
@@ -61,6 +61,7 @@ function ArrisButtonStates() {
     <div style={{ display: 'flex', gap: '0.5rem' }}>
       <Button>Save</Button>
       <Button disabled>Save</Button>
+      <Button aria-disabled="true">Save</Button>
     </div>
   )
 }
@@ -69,6 +70,10 @@ async function playArrisButtonStates(canvasElement: HTMLElement) {
   await expectArrisWrapper(canvasElement)
   const screen = within(canvasElement)
   await expect(screen.getAllByRole('button', { name: 'Save' })[1]).toBeDisabled()
+  await expect(screen.getAllByRole('button', { name: 'Save' })[2]).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
 }
 
 export const ArrisLight: Story = {
