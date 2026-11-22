@@ -144,8 +144,12 @@ interface AssetContext {
   formatVersion: unknown
 }
 
+function declaresMediaTypes(formatVersion: unknown): boolean {
+  return formatVersion === MEDIA_TYPE_FORMAT_VERSION
+}
+
 function allowedMediaTypes(kind: unknown, formatVersion: unknown): readonly string[] {
-  return kind === 'texture' && formatVersion === MEDIA_TYPE_FORMAT_VERSION
+  return kind === 'texture' && declaresMediaTypes(formatVersion)
     ? TEXTURE_MEDIA_TYPES
     : MODEL_MEDIA_TYPES
 }
@@ -156,9 +160,9 @@ function validateMediaType(
   errors: string[],
 ): void {
   const mediaType = source['mediaType']
-  if (mediaType === undefined && context.formatVersion !== MEDIA_TYPE_FORMAT_VERSION) return
+  if (mediaType === undefined && !declaresMediaTypes(context.formatVersion)) return
   const allowed = allowedMediaTypes(source['kind'], context.formatVersion)
-  if (!allowed.includes(mediaType as string)) {
+  if (!(typeof mediaType === 'string' && allowed.includes(mediaType))) {
     errors.push(`${context.label}.mediaType must be one of: ${allowed.join(', ')}`)
   }
 }
