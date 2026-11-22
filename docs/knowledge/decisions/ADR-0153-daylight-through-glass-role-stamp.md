@@ -19,7 +19,7 @@ sourceFiles:
     engine/lighting/basic-lighting-provider.ts,
     engine/lighting/solar-lighting-provider.ts,
     bridge/react/scene-harness-view.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     app/harness-environment.ts,
     e2e/tests/scene-solar.spec.ts,
   ]

@@ -18,13 +18,13 @@ sourceFiles:
     bridge/react/editor-session-context.ts,
     bridge/react/editor-session-provider.tsx,
     bridge/react/scene-canvas.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/use-scene-graph.ts,
     editor/shell/editor-shell.tsx,
     app/app.tsx,
   ]
 status: current
-updated: 2026-06-03
+updated: 2026-11-21
 ---
 
 # ADR-0019: Editor session as the bridge dispatch boundary
@@ -122,6 +122,15 @@ This ADR previously deferred selection because nothing was selectable. With wall
 now selectable, selection landed as a separate bridge store rather than inside the
 session, to keep it out of the command/undo machinery. ADR-0020 records that
 decision and its mechanism.
+
+## Amendment 2026-11-21: SceneCanvas gates on any backend
+
+The sentence above, "The bridge's `SceneCanvas` remains the WebGPU gate for the 3D path", has been
+stale since ADR-0174. That ADR made the probe three-valued: `SceneCanvas` mounts the live view on
+WebGPU and on WebGL 2, and shows the fallback message only when the runtime can drive neither. The
+probe now lives in the engine's `detectRenderBackend()` (ADR-0174, amendment of 2026-11-21). Also,
+`WebGPUSceneView` is now `LiveSceneView` in `bridge/react/live-scene-view.tsx`. The earlier lines
+stay as the record of what this ADR first decided.
 
 ## Consequences
 

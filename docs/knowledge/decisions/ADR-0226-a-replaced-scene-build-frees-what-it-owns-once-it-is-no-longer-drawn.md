@@ -25,7 +25,7 @@ sourceFiles:
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/use-framed-scene.ts,
     bridge/react/live-scene-root.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/renderer-memory-probe.tsx,
     bridge/react/renderer-memory-attributes.ts,
     bridge/react/e2e-runtime-flag.ts,

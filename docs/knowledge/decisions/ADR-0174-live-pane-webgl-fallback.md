@@ -12,13 +12,14 @@ related:
   ]
 sourceFiles:
   [
-    bridge/react/live-preview-backend.ts,
+    engine/renderer/detect-backend.ts,
+    bridge/react/live-scene-view.tsx,
     bridge/react/scene-canvas.tsx,
     editor/shell/scene-pane.tsx,
     engine/renderer/create-renderer.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-21
 ---
 
 # ADR-0174: The live 3D pane renders on WebGL 2 instead of refusing to render
@@ -104,8 +105,32 @@ WebGL 2 context, so those tests keep the fallback branch they had.
   is what keeps that difference from reading as a defect, and the pane has no way to know how large
   the difference is on a given frame.
 - `detectRenderBackend()` is now called from one place, the bridge probe. Folding the WebGL 2 leg
-  into the engine helper and retiring the bridge module is a follow-up, along with a live-view
-  end-to-end case that pins the WebGL 2 branch and the notice.
+  into the engine helper and retiring the bridge module was a follow-up, along with a live-view
+  end-to-end case that pins the WebGL 2 branch and the notice. Both landed; see the amendment
+  of 2026-11-21 below.
+
+## Amendment 2026-11-21: the probe moves into the engine
+
+Issue #666. `detectRenderBackend()` in `engine/renderer/detect-backend.ts` now returns `'webgpu'`,
+`'webgl2'`, or `'unsupported'`. It keeps the once-per-page cache and the rule that a throw from the
+probe means `'unsupported'`, for the reasons given in decision points 1 and 2. The bridge module
+`bridge/react/live-preview-backend.ts` is gone, along with the names `detectLivePreviewBackend` and
+`LivePreviewBackend`. The bridge barrel re-exports `detectRenderBackend` and `RenderBackend` from the
+engine, because `editor/` may not import `engine/` and `ScenePane` still needs the answer.
+
+The section "The probe lives in `bridge/`, not `engine/`" describes the first landing, and this
+amendment supersedes its outcome. Its reason still holds: the probe needs no Three.js, and the moved
+code still imports none.
+
+`WebGPUSceneView` is now `LiveSceneView`, in `bridge/react/live-scene-view.tsx`. The component mounts
+on both backends, so a name tied to WebGPU was wrong. "Live" is the word the code base already uses
+to contrast the editor's view with the deterministic harness render (`SceneHarnessView`, the
+`live-scene-canvas` test id, `LiveSceneRoot`).
+
+`e2e/tests/scene-live-view-webgl-fallback.spec.ts` pins the WebGL 2 branch (the pane draws and shows
+the notice), the dismissal of the notice, and the unsupported branch. Earlier ADRs that name
+`WebGPUSceneView` or the bridge probe are dated records and keep those names in their text; their
+`sourceFiles` point at the current paths.
 
 ## References
 

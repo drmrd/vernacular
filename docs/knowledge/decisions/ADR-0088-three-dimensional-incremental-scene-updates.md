@@ -18,7 +18,7 @@ sourceFiles:
     bridge/react/framed-scene-reconciler.test.ts,
     bridge/react/floor-build.ts,
     bridge/react/framed-scene.ts,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
   ]
 status: current
 updated: 2026-07-12

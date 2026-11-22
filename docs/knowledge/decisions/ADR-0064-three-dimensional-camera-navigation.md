@@ -45,7 +45,7 @@ sourceFiles:
     bridge/react/orbit-camera-controls.tsx,
     bridge/react/walk-camera-controls.tsx,
     bridge/react/scene-nav-toolbar.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/scene-view-toolbar.tsx,
     e2e/tests/scene-navigation.spec.ts,
     bridge/react/walk-session.ts,

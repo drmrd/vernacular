@@ -18,13 +18,12 @@ sourceFiles:
     engine/renderer/detect-backend.ts,
     bridge/react/scene-renderer-canvas.tsx,
     bridge/react/scene-canvas.tsx,
-    bridge/react/live-preview-backend.ts,
     engine/scene/build-scene.ts,
     engine/lighting/lighting-provider.ts,
     engine/lighting/basic-lighting-provider.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-21
 ---
 
 # ADR-0004: Three.js + React Three Fiber on WebGPU renderer stack
@@ -85,7 +84,10 @@ It exposes a small, renderer-agnostic surface through `engine/index.ts`:
   union still has no WebGL 2 member, but WebGL 2 is no longer deferred: the
   `WebGPURenderer` falls back to its own WebGL 2 backend, and the bridge's
   `detectLivePreviewBackend()` reports that case. (Corrected 2026-11-17: this
-  called WebGL 2 the deferred fallback; ADR-0174 made it live.)
+  called WebGL 2 the deferred fallback; ADR-0174 made it live. Corrected
+  2026-11-21: the union now has a `'webgl2'` member and `detectRenderBackend()`
+  reports that case itself, because the bridge probe moved into the engine;
+  ADR-0174 amendment.)
 - One renderer factory, reached through `loadSceneRendererFactory()`
   (`engine/renderer/create-renderer.ts`), which lazily `import('three/webgpu')`
   once and resolves to a synchronous factory that constructs the `WebGPURenderer`
@@ -104,7 +106,9 @@ the renderer's WebGL 2 fallback, and renders the accessible status "This browser
 cannot render the 3D view." (`role="status"`) only when the runtime can drive
 neither. (Corrected 2026-11-17: this said `SceneCanvas` consulted
 `detectRenderBackend()` and mounted the canvas only when WebGPU was present,
-which ADR-0174 changed.) See ADR-0019 for the bridge side of this seam.
+which ADR-0174 changed. Corrected 2026-11-21: it consults
+`detectRenderBackend()` again, now three-valued, since `detectLivePreviewBackend()`
+was retired; ADR-0174 amendment.) See ADR-0019 for the bridge side of this seam.
 
 ## Alternatives considered
 

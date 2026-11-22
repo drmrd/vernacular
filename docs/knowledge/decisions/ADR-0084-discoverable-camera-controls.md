@@ -14,7 +14,7 @@ sourceFiles:
     docs/specs/2026-06-15-discoverable-camera-controls.md,
     docs/plans/2026-06-15-discoverable-camera-controls.md,
     bridge/react/camera-controls-hint.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/scene-pane-shell.tsx,
     e2e/tests/scene-camera-controls.spec.ts,
   ]

@@ -20,7 +20,7 @@ sourceFiles:
     core/scene/interior-viewpoint.ts,
     core/scene/camera-outside-building.ts,
     engine/scene/near-wall-transparency.ts,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/framed-scene.ts,
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/near-wall-fade.tsx,
@@ -130,7 +130,7 @@ camera is grounded (issue #256).
 - The deferred user toggle shipped (issue #257). A "Reveal interior" control sits in the
   primary cluster of the three-dimensional scene navigation toolbar and defaults to on; its
   `revealInterior` state threads through `useSceneNavigation` in
-  `bridge/react/webgpu-scene-view.tsx` and gates the fade at
+  `bridge/react/live-scene-view.tsx` and gates the fade at
   `<NearWallFade enabled={mode === 'orbit' && revealInterior}>`. The shared `ToolbarToggle`
   in `bridge/react/scene-nav-toolbar.tsx` renders it, and it stays inert while walking
   because the fade still needs orbit mode.

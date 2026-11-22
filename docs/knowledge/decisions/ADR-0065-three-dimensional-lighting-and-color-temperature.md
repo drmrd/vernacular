@@ -48,7 +48,7 @@ sourceFiles:
     engine/renderer/create-renderer.ts,
     bridge/react/scene-lighting.tsx,
     bridge/react/scene-nav-toolbar.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/framed-scene.ts,
     e2e/tests/scene-color-temperature.spec.ts,
   ]

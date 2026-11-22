@@ -19,7 +19,7 @@ sourceFiles:
     bridge/react/use-building-view-state.ts,
     bridge/react/use-view-scene-graph.ts,
     bridge/react/scene-nav-toolbar.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
   ]
 status: current
 updated: 2026-11-20

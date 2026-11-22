@@ -15,7 +15,7 @@ sourceFiles:
     docs/specs/2026-06-14-three-dimensional-preview-camera-fit.md,
     docs/plans/2026-06-14-three-dimensional-preview-camera-fit.md,
     core/scene/camera-framing.ts,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/scene-harness-view.tsx,
     e2e/tests/scene-camera-fit.spec.ts,
   ]
