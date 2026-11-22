@@ -5,6 +5,7 @@ import { getEntry } from '../../registries/registry'
 import { assertNonNegativeLength, assertPositiveLength } from '../../units/length-bounds'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
+import { withoutEntranceMark } from '../entrance-rule'
 import { mapTargetFloor } from './map-target-floor'
 
 // Returns a new floor whose opening matching `openingId` is replaced by `update(opening)`;
@@ -49,7 +50,7 @@ const placeOpeningHandler: CommandHandler<Project, PlaceOpeningParams> = {
   apply(state, params) {
     mapTargetFloor(state, params.floorId, (floor) => ({
       ...floor,
-      openings: [...floor.openings, params.opening],
+      openings: [...floor.openings, withoutEntranceMark(params.opening)],
     }))
   },
 }
@@ -234,11 +235,12 @@ function retypeOpening(opening: Opening, type: string): Opening {
   const newKind = openingKindOfType(type)
   const newEntry = getEntry(builtinElementTypes, type)
   const isCrossCategory = oldKind !== undefined && newKind !== undefined && oldKind !== newKind
+  const carried = newKind === 'door' ? opening : withoutEntranceMark(opening)
   if (!isCrossCategory || !newEntry?.opening) {
-    return { ...opening, type }
+    return { ...carried, type }
   }
   return {
-    ...opening,
+    ...carried,
     type,
     sillHeight: newEntry.opening.defaultSillHeight,
     height: newEntry.opening.defaultHeight,
