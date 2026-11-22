@@ -12,6 +12,9 @@ export const MAX_LENGTH_MM = 100_000
 
 /** A dimension fell outside the accepted length range. */
 export class InvalidLengthError extends Error {
+  // Fields are declared, not constructor parameter properties: the pack command
+  // line tool loads this file under plain node, which accepts only erasable
+  // TypeScript syntax (scripts/pack/plain-node-load.test.mjs guards it).
   readonly label: string
   readonly valueMm: number
 
