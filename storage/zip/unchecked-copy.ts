@@ -1,6 +1,6 @@
 import type { AssetCache } from '../asset-cache'
-import { DOCUMENT_ENTRY_NAME, assetEntryName, isContentHash } from './archive-layout'
 import { secondDocumentFileVersion } from '../project-files/project-file-name'
+import { DOCUMENT_ENTRY_NAME, assetEntryName, isContentHash } from './archive-layout'
 import { isSidecarPath } from './sidecar-paths'
 import { zipFolder } from './zip-codec'
 import type { FolderEntries } from './zip-codec'
@@ -51,10 +51,10 @@ async function readAssetBytes(assets: AssetCache, hash: string): Promise<Uint8Ar
 
 /**
  * Builds a .building archive from the raw files of a project folder without opening the project.
- * The document bytes are copied as they are (they are not decoded or checked), together with a
- * second document file, the snapshots and backups, and the bytes of each listed asset that the pool can supply. A value
- * that is not a content hash, an asset the pool lacks, and a pool read that fails are all left
- * out, so a project that did not open still gets a copy.
+ * The document bytes are copied as they are (not decoded or checked), together with each second
+ * document file, the snapshots and backups, and the bytes of each listed asset that the pool can
+ * supply. A value that is not a content hash, an asset the pool lacks, and a pool read that fails
+ * are all left out, so a project that did not open still gets a copy.
  */
 export async function buildUncheckedCopy(
   files: ReadonlyMap<string, Uint8Array>,
