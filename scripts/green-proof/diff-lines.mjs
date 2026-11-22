@@ -4,6 +4,7 @@ import { isTestAsset } from '../rgb-audit/test-files.mjs'
 /** @typedef {import('../policy-check/git-input.mjs').AddedLine} AddedLine */
 
 const PROOF_SOURCE_EXTENSION = /\.(?:ts|tsx|mjs|js)$/
+const GENERATED_VALIDATORS_FOLDER = 'core/format/generated/'
 
 /**
  * Parse `git show --format= --unified=0` output into the text of each removed line.
@@ -39,10 +40,17 @@ export function provableAddedLines(added, removed) {
 }
 
 /**
- * Whether a path is production source that the GREEN proof must cover: not a test asset or a declaration file.
+ * Whether a path is production source that the GREEN proof must cover: not a test asset, a declaration file,
+ * or a generated schema validator. `pnpm schema:check` regenerates the validators and compares them with the
+ * committed files, and they are minified one-line files that would flood the mutation check.
  * @param {string} path
  * @returns {boolean}
  */
 export function isProofSource(path) {
-  return PROOF_SOURCE_EXTENSION.test(path) && !path.endsWith('.d.ts') && !isTestAsset(path)
+  return (
+    PROOF_SOURCE_EXTENSION.test(path) &&
+    !path.endsWith('.d.ts') &&
+    !path.startsWith(GENERATED_VALIDATORS_FOLDER) &&
+    !isTestAsset(path)
+  )
 }
