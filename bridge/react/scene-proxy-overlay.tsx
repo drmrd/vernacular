@@ -1,5 +1,6 @@
 import { type KeyboardEvent } from 'react'
 
+import { useSceneChromeHidden } from './scene-chrome-context'
 import { useProxyRovingFocus } from './use-proxy-roving-focus'
 
 export interface EntityProxy {
@@ -65,6 +66,7 @@ function EntityProxyOption({ proxy, selected, tabIndex, onSelect }: OptionProps)
  */
 export function SceneProxyOverlay({ proxies, selectedIds, onSelect }: SceneProxyOverlayProps) {
   const roving = useProxyRovingFocus(proxies.length)
+  if (useSceneChromeHidden()) return null
   return (
     <div
       className="scene-proxy-overlay"
