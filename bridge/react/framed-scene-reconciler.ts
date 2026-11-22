@@ -39,6 +39,10 @@ const NO_PAINT: Paint = {}
 // reused only when the exact same floors, in the same order, are reconciled again.
 const FLOOR_SET_SEPARATOR = '|'
 
+// Splits the floor set from the framed floor in that key, so the same floors framed on a
+// different floor are different scenes. No framed floor and a null one are the same key.
+const FRAMED_FLOOR_SEPARATOR = '>'
+
 export interface FramedSceneReconciler {
   reconcile(graph: ScopedSceneGraph, paint?: Paint, models?: FurnitureModelLookup): FramedScene
   /**
@@ -258,7 +262,8 @@ function reconcileStackedScene(
   const { graph, cache, retired } = pass
   const builds = graph.nodes.map((node) => reuseOrBuildFloor(node, pass))
   evictScenesOfReplacedBuilds(scenes, cache, retired)
-  const key = graph.nodes.map((node) => node.id).join(FLOOR_SET_SEPARATOR)
+  const floorSetKey = graph.nodes.map((node) => node.id).join(FLOOR_SET_SEPARATOR)
+  const key = `${floorSetKey}${FRAMED_FLOOR_SEPARATOR}${graph.framedFloorId ?? ''}`
   const cached = scenes.get(key)
   if (cached !== undefined && sameRefs(cached.builds, builds)) {
     refreshGroundPlane(cached.framed.root, graph.gradeElevation)
