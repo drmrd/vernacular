@@ -56,7 +56,7 @@ async function addASecondFloor(handle: DocumentHandle): Promise<void> {
 describe('The unsaved-changes guard of the workspace', () => {
   it('arms the beforeunload guard while work is unsaved and disarms it after an explicit Save', async () => {
     stubCapableStorage()
-    const handle = await openDrafthouse(createTestPorts())
+    const handle = await openDrafthouse(createTestPorts({ durable: true }))
     renderWorkspace(handle)
     await findTheShell()
 
@@ -72,7 +72,7 @@ describe('The unsaved-changes guard of the workspace', () => {
 
   it('disarms the beforeunload guard after autosave persists the change', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
+    const ports = createTestPorts({ durable: true })
     const save = vi.spyOn(ports.workspace, 'save')
     const handle = await openDrafthouse(ports)
     save.mockClear()

@@ -12,7 +12,7 @@ import {
 } from '../session/handle/handle-test-kit'
 import type { DocumentHandle } from '../session'
 import { createInitialProject } from './create-initial-project'
-import { useUnsavedChangesGuard } from './use-before-unload-guard'
+import { useLeaveWarningGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 
 /** Makes the page look hidden or visible, and tells the listeners of the document. */
@@ -76,7 +76,7 @@ describe('useFlushOnHidden', () => {
     const gate = gateSaves(ports.workspace)
     const handle = await openNewProject(ports, 'a')
     renderHook(() => {
-      useUnsavedChangesGuard(handle)
+      useLeaveWarningGuard(handle)
       useFlushOnHidden(handle)
     })
     act(() => {
@@ -95,9 +95,9 @@ describe('useFlushOnHidden', () => {
   })
 
   it('the prompt before unload stays quiet after the write of a hidden page ended well', async () => {
-    const handle = await openNewProject(createTestPorts(), 'a')
+    const handle = await openNewProject(createTestPorts({ durable: true }), 'a')
     renderHook(() => {
-      useUnsavedChangesGuard(handle)
+      useLeaveWarningGuard(handle)
       useFlushOnHidden(handle)
     })
     act(() => {
