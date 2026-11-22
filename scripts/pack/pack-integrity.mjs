@@ -5,6 +5,8 @@
 // injected PackReader, and returns the accumulated errors. When the in-app pack
 // loader lands (phase 3) these checks graduate to core/ as shared TypeScript.
 
+import { MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
+
 /**
  * @typedef {object} PackReader
  * @property {string} dirName                                   basename of the pack directory
@@ -17,10 +19,6 @@
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
 const MODEL_EXTENSION = '.glb'
-const EXTENSION_BY_MEDIA_TYPE = {
-  'image/png': '.png',
-  'image/webp': '.webp',
-}
 const THUMBNAIL_EXTENSION = '.webp'
 const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
@@ -69,7 +67,8 @@ function manifestAssets(manifest) {
  * @returns {string}
  */
 function assetFileName(asset) {
-  return `${asset.contentHash}${EXTENSION_BY_MEDIA_TYPE[asset.mediaType] ?? MODEL_EXTENSION}`
+  const known = Object.hasOwn(MEDIA_TYPE_EXTENSIONS, asset.mediaType)
+  return `${asset.contentHash}${known ? MEDIA_TYPE_EXTENSIONS[asset.mediaType] : MODEL_EXTENSION}`
 }
 
 /**
@@ -84,7 +83,7 @@ async function checkAssetHashes(assets, reader, errors) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
     const file = `${ASSET_DIR}/${assetFileName(asset)}`
     if (!(await reader.exists(file))) {
-      errors.push(`asset ${asset.contentHash}: asset file missing`)
+      errors.push(`asset ${asset.contentHash}: asset file missing at ${file}`)
       continue
     }
     const digest = await reader.sha256(file)

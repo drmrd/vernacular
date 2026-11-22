@@ -35,8 +35,19 @@ export const ASSET_KINDS: readonly AssetKind[] = Object.freeze([
 export const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
 
 const MEDIA_TYPE_FORMAT_VERSION = 2
-const MODEL_MEDIA_TYPES: readonly string[] = Object.freeze(['model/gltf-binary'])
-const TEXTURE_MEDIA_TYPES: readonly string[] = Object.freeze(['image/png', 'image/webp'])
+/* eslint-disable @typescript-eslint/naming-convention -- media types are the wire keys */
+export const MEDIA_TYPE_EXTENSIONS: Readonly<Record<string, string>> = Object.freeze({
+  'model/gltf-binary': '.glb',
+  'image/png': '.png',
+  'image/webp': '.webp',
+})
+/* eslint-enable @typescript-eslint/naming-convention */
+const MODEL_MEDIA_TYPES: readonly string[] = Object.freeze(
+  Object.keys(MEDIA_TYPE_EXTENSIONS).filter((type) => type.startsWith('model/')),
+)
+const TEXTURE_MEDIA_TYPES: readonly string[] = Object.freeze(
+  Object.keys(MEDIA_TYPE_EXTENSIONS).filter((type) => type.startsWith('image/')),
+)
 
 export interface PackValidationResult {
   valid: boolean
