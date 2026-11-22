@@ -153,7 +153,7 @@ function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewRe
 // The interactive React Three Fiber canvas: the WebGPU renderer setup, the readiness
 // boundary around it, and the two post-processing hooks that must stay directly under
 // this function (they need the perceived-color store and drawn-frame callback that
-// live here). Extracted from WebGPUSceneView so each function stays within the length
+// live here). Extracted from LiveSceneView so each function stays within the length
 // limit. frameloop="always" renders every frame so interactive camera moves and
 // color-temperature changes show continuously, not only when React remounts the scene.
 // Props arrive unflattened (the navigation state travels whole, as it does into
@@ -203,7 +203,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
 // layer. The framed-scene wiring lives in useFramedScene, which subscribes to the live
 // scene graph scoped to the active floor, so the pane rebuilds and reframes as the plan
 // is edited.
-export function WebGPUSceneView() {
+export function LiveSceneView() {
   const framedScene = useFramedScene()
   const { graph, buildingView, edgeOverlay, toggleEdgeOverlay, framed, modelsVersion } = framedScene
   const nav = useSceneNavigation()

@@ -1,4 +1,4 @@
-// The producer (the live canvas in webgpu-scene-view.tsx, which writes the attribute through
+// The producer (the live canvas in live-scene-view.tsx, which writes the attribute through
 // the boundary in scene-readiness-boundary.tsx) and the consumer (the
 // editor pane's readiness observer in scene-pane.tsx) both need to agree on the
 // same test id and attribute name to talk to each other through the DOM. This
