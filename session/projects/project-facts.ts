@@ -1,5 +1,10 @@
 import { createPlanPreview, type Project } from '../../core'
-import { collectReferencedAssets, type ProjectLocation, type ProjectRecord } from '../../storage'
+import {
+  collectReferencedAssets,
+  type ProjectLocation,
+  type ProjectRecord,
+  type SecondFileState,
+} from '../../storage'
 
 /** What a record takes from a document. */
 export interface ProjectFacts {
@@ -53,6 +58,7 @@ export interface OpenedRecordBasis {
   readonly passedCheck: boolean
   readonly lastChangedAt: string | undefined
   readonly lastUsedAt: string | undefined
+  readonly secondFile?: SecondFileState | undefined
 }
 
 /** The whole record of a document that this build opened, made from its facts. */
@@ -69,5 +75,6 @@ export function recordOfOpened(project: Project, basis: OpenedRecordBasis): Proj
     lastChangedAt: basis.lastChangedAt,
     lastUsedAt: basis.lastUsedAt,
     lastOpen: { opened: true, build: basis.build },
+    ...(basis.secondFile === undefined ? {} : { secondFile: basis.secondFile }),
   }
 }

@@ -52,6 +52,19 @@ export const Default: Story = {
   },
 }
 
+export const WithASecondFile: Story = {
+  args: {
+    card: cardWith({
+      stateLines: ['second-file'],
+      actions: ['rename', 'export', 'choose-file', 'delete'],
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByText('This project has a second plan file.')).toBeInTheDocument()
+  },
+}
+
 export const InThisBrowser: Story = {
   args: { card: cardWith({ stateLines: [], preview: { svg: DRAWING } }) },
   play: async ({ canvasElement }) => {

@@ -9,6 +9,7 @@ export interface ProjectCardActions {
   /** Resolves true when the name is stored, so the form closes. False keeps the form open. */
   readonly onRename?: (id: string, name: string) => Promise<boolean>
   readonly onExport?: (id: string) => void
+  readonly onChooseFile?: (id: string) => void
   /** Called once the dialog of a delete is confirmed. The dialog shows before it. */
   readonly onDelete?: (id: string) => void
   readonly onRemoveFromList?: (id: string) => void
@@ -25,15 +26,18 @@ export interface CardListProps {
 
 /** The handler of an action, or undefined when the page was given none. */
 function handlerOf(action: ProjectCardAction, cardActions: ProjectCardActions | undefined) {
+  const handlers = cardActions ?? {}
   switch (action) {
     case 'rename':
-      return cardActions?.onRename
+      return handlers.onRename
     case 'export':
-      return cardActions?.onExport
+      return handlers.onExport
+    case 'choose-file':
+      return handlers.onChooseFile
     case 'delete':
-      return cardActions?.onDelete
+      return handlers.onDelete
     case 'remove-from-list':
-      return cardActions?.onRemoveFromList
+      return handlers.onRemoveFromList
   }
 }
 
@@ -56,19 +60,23 @@ function actionRunner(
   cardActions: ProjectCardActions | undefined,
   starts: ActionStarts,
 ): (id: string, action: ProjectCardAction) => void {
+  const handlers = cardActions ?? {}
   return (id, action) => {
     switch (action) {
       case 'rename':
         starts.rename(id)
         break
       case 'export':
-        cardActions?.onExport?.(id)
+        handlers.onExport?.(id)
+        break
+      case 'choose-file':
+        handlers.onChooseFile?.(id)
         break
       case 'delete':
         starts.delete(id)
         break
       case 'remove-from-list':
-        cardActions?.onRemoveFromList?.(id)
+        handlers.onRemoveFromList?.(id)
         break
     }
   }

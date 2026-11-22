@@ -41,6 +41,8 @@ export function stateLineText(line: ProjectCardStateLine): string {
       return 'Already open in another tab.'
     case 'needs-permission':
       return 'This folder needs permission again.'
+    case 'second-file':
+      return 'This project has a second plan file.'
   }
 }
 
@@ -50,6 +52,8 @@ export function actionLabel(action: ProjectCardAction): string {
       return 'Rename'
     case 'export':
       return 'Export'
+    case 'choose-file':
+      return 'Choose a plan file'
     case 'delete':
       return 'Delete'
     case 'remove-from-list':

@@ -25,6 +25,14 @@ function isLastOpen(value: unknown): boolean {
   )
 }
 
+function isSecondFile(value: unknown): boolean {
+  if (value === undefined) return true
+  if (!isFields(value)) return false
+  return (
+    typeof value['name'] === 'string' && (value['read'] === 'main' || value['read'] === 'second')
+  )
+}
+
 function isStringArray(value: unknown): boolean {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
 }
@@ -48,6 +56,7 @@ export function isProjectRecord(value: unknown): value is ProjectRecord {
     (value['floorCount'] === undefined || typeof value['floorCount'] === 'number') &&
     isStringArray(value['assetHashes']) &&
     typeof value['assetListComplete'] === 'boolean' &&
-    isLastOpen(value['lastOpen'])
+    isLastOpen(value['lastOpen']) &&
+    isSecondFile(value['secondFile'])
   )
 }

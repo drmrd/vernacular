@@ -1,3 +1,4 @@
+import type { SecondFileState } from '../documents/second-file'
 import type { ProjectLocation } from '../project-files/project-location'
 
 /** What the workspace knows of one project without opening it. */
@@ -13,6 +14,8 @@ export interface ProjectRecord {
   readonly lastUsedAt: string | undefined // an open or a save
   /** `reason` is the kind of the decode or open failure. */
   readonly lastOpen: { readonly opened: boolean; readonly build: string; readonly reason?: string }
+  /** Present when a second document file sits beside the main file. */
+  readonly secondFile?: SecondFileState
 }
 
 /** One record for each project, readable before any project loads. */

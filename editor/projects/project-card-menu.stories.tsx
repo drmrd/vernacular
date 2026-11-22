@@ -39,6 +39,18 @@ export const FolderProject: Story = {
   },
 }
 
+export const WithASecondFile: Story = {
+  args: { actions: ['rename', 'export', 'choose-file', 'delete'] },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for Hubbard House' }))
+    await expect(
+      await screen.findByRole('menuitem', { name: 'Choose a plan file' }),
+    ).toBeInTheDocument()
+    await expect(screen.getAllByRole('menuitem')).toHaveLength(4)
+  },
+}
+
 export const OpenInAnotherTab: Story = {
   args: { actions: ['export'] },
   play: async ({ canvasElement }) => {

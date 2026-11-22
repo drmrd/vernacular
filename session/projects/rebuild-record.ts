@@ -120,7 +120,11 @@ async function recordOfRead(
   }
   if (read.ok) {
     return {
-      record: recordOfOpened(read.value.project, { ...basis, passedCheck: true }),
+      record: recordOfOpened(read.value.project, {
+        ...basis,
+        passedCheck: true,
+        secondFile: read.secondFile,
+      }),
       putInIndex: true,
     }
   }
