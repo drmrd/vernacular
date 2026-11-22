@@ -42,11 +42,12 @@ sourceFiles:
     bridge/react/scene-selection.tsx,
     bridge/react/scene-overlay.tsx,
     bridge/react/webgpu-scene-view.tsx,
+    bridge/react/use-scene-proxies.ts,
     bridge/react/entity-labels.ts,
     bridge/react/use-catalog-names.ts,
   ]
 status: current
-updated: 2026-08-31
+updated: 2026-11-21
 ---
 
 # ADR-0066: Selection and accessibility for the three-dimensional preview: shared store, pure pick, reconciled luminance outline

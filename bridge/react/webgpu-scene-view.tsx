@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { type LightingMode, type SceneGraph, type Site } from '../../core'
+import { useEffect } from 'react'
+import { type Site } from '../../core'
 import { type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
-import { CameraControlsHint } from './camera-controls-hint'
 import { effectiveLightingMode } from './effective-lighting-mode'
-import { entityLabels } from './entity-labels'
-import { useCatalogNames } from './use-catalog-names'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
@@ -19,44 +16,22 @@ import { FrameCamera, PresetCamera, type DoorwayStand } from './scene-camera-eff
 import { initialCamera, orbitPivot } from './scene-camera-seed'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SceneLighting } from './scene-lighting'
-import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
+import { ScenePaneShell } from './scene-pane-shell'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
-import { sceneReadinessProps } from './scene-readiness'
+import { SceneReadinessBoundary } from './scene-readiness-boundary'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
-import { useSelection, useSelectionIds } from './selection-context'
-import type { BuildingViewState } from './use-building-view-state'
-import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
+import { SceneViewToolbar } from './scene-view-toolbar'
+import { useDoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
-import { useInteractiveObjects } from './use-interactive-objects'
 import { useLiveViewReadiness, type LiveViewReadinessNotes } from './use-live-view-readiness'
 import { useFrontDirection } from './use-front-direction'
 import { useProjectSite } from './use-project-site'
+import { useSceneProxies } from './use-scene-proxies'
 import { useSceneEnvironment, type SceneEnvironmentState } from './use-scene-environment'
 import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
 import { WalkCameraControls } from './walk-camera-controls'
-
-// The accessibility proxy state: the live projected screen positions (fed by the in-canvas
-// projector), joined with entity labels, plus the shared selection the proxies read and
-// write. The positions are session view state, like the camera and color temperature.
-// eslint-disable-next-line react-refresh/only-export-components -- the hook ships beside the component that calls it and this slice's test imports useSceneProxies from ./webgpu-scene-view.
-export function useSceneProxies(graph: SceneGraph) {
-  const [positions, setPositions] = useState<EntityScreenPosition[]>([])
-  const selection = useSelection()
-  const selectedIds = useSelectionIds()
-  const catalogNames = useCatalogNames()
-  const labels = useMemo(() => entityLabels(graph, catalogNames), [graph, catalogNames])
-  const proxies = useMemo(
-    () => positions.map((p) => ({ id: p.id, x: p.x, y: p.y, label: labels.get(p.id) ?? p.id })),
-    [positions, labels],
-  )
-  const onSelect = useCallback(
-    (id: string, additive: boolean) => (additive ? selection.toggle(id) : selection.select(id)),
-    [selection],
-  )
-  return { proxies, selectedIds, onSelect, setPositions }
-}
 
 interface SceneCameraRigProps {
   nav: SceneNavigationState
@@ -141,18 +116,6 @@ interface LiveSceneCanvasProps {
   onSceneAttached: (scene: FramedScene) => () => void
 }
 
-// The wrapper carries the shared readiness props (scene-readiness.ts) so the editor
-// pane's observer can tell, from outside the bridge layer, when the canvas inside has
-// drawn its first frame. It fills its flex-item parent the same way React Three
-// Fiber's own Canvas wrapper div would if it were the direct child here.
-function SceneReadinessBoundary({ ready, children }: { ready: boolean; children: ReactNode }) {
-  return (
-    <div style={{ width: '100%', height: '100%' }} {...sceneReadinessProps(ready)}>
-      {children}
-    </div>
-  )
-}
-
 // The scene-graph elements that render inside the Canvas: the scene root, the
 // lighting, the selection and proxy wiring, the camera rig, and the ambient-occlusion
 // takeover. Grouped apart from LiveSceneCanvas so that function keeps to the Canvas's
@@ -228,103 +191,6 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
         <RendererMemoryProbe />
       </SceneRendererCanvas>
     </SceneReadinessBoundary>
-  )
-}
-
-// Tracks whether a pointer drag is underway on the preview pane so the cursor can switch
-// between grab and grabbing. Native canvas pointer events bubble to the pane wrapper, so
-// an orbit or look drag flips this; pointer up or leaving the pane clears it.
-function useDragging() {
-  const [dragging, setDragging] = useState(false)
-  const start = useCallback(() => setDragging(true), [])
-  const stop = useCallback(() => setDragging(false), [])
-  return {
-    dragging,
-    paneHandlers: { onPointerDown: start, onPointerUp: stop, onPointerLeave: stop },
-  }
-}
-
-// The camera pane's floor within the preview column: even when the nav toolbar above it
-// wraps onto every row it has, the canvas keeps at least this share of the column's height
-// (issue #457). The toolbar carries min-height: 0 and overflow-y: auto in
-// scene-nav-toolbar.css so it shrinks to whatever share this leaves it and scrolls
-// internally instead of pushing the canvas below a usable size.
-export const CAMERA_PANE_MIN_HEIGHT_SHARE = '55%'
-
-// The interactive preview pane: it wraps the canvas and overlay (passed as children), shows
-// the grab/grabbing cursor that signals the canvas is draggable, and overlays the per-mode
-// controls hint. The hint is inert to pointer events, so it never blocks a drag.
-export function ScenePaneShell({ mode, children }: { mode: NavMode; children: ReactNode }) {
-  const { dragging, paneHandlers } = useDragging()
-  return (
-    <div
-      className="scene-camera-pane"
-      style={{
-        position: 'relative',
-        flex: 1,
-        minHeight: CAMERA_PANE_MIN_HEIGHT_SHARE,
-        cursor: dragging ? 'grabbing' : 'grab',
-      }}
-      {...paneHandlers}
-    >
-      {children}
-      <CameraControlsHint mode={mode} />
-    </div>
-  )
-}
-
-interface SceneViewToolbarProps {
-  nav: SceneNavigationState
-  buildingView: BuildingViewState
-  edgeOverlay: boolean
-  onToggleEdgeOverlay: () => void
-  viewEnvironment: SceneEnvironmentState
-  doorway: DoorwayTarget | null
-  lightingMode: LightingMode
-}
-
-// Feeds the navigation toolbar from the view's grouped session state: the camera
-// navigation, the building-view scope, the edge-overlay display option, and the
-// view-local color temperature, plus whether the doorway preset has a target. The
-// toolbar's own props stay flat so it can be exercised in isolation. The shared
-// environment session (observation instant, cloud cover) is still written by the editor's
-// Environment panel; the toolbar sees only the two fields that decide whether the
-// color-temperature slider reaches the render, the effective lighting mode and the color
-// check.
-function SceneViewToolbar({
-  nav,
-  buildingView,
-  edgeOverlay,
-  onToggleEdgeOverlay,
-  viewEnvironment,
-  doorway,
-  lightingMode,
-}: SceneViewToolbarProps) {
-  const interactiveObjects = useInteractiveObjects()
-  return (
-    <SceneNavToolbar
-      mode={nav.mode}
-      onModeChange={nav.setMode}
-      lightingMode={lightingMode}
-      colorCheck={viewEnvironment.environment.colorCheck}
-      selectionEnabled={nav.selectionEnabled}
-      onToggleSelection={nav.toggleSelection}
-      revealInterior={nav.revealInterior}
-      onToggleRevealInterior={nav.toggleRevealInterior}
-      onReset={nav.resetView}
-      colorTemperatureK={viewEnvironment.colorTemperatureK}
-      onColorTemperatureChange={viewEnvironment.setColorTemperatureK}
-      onPreset={nav.applyPreset}
-      doorway={doorway}
-      scope={buildingView.scope}
-      onScopeChange={buildingView.setScope}
-      showUnderground={buildingView.showUnderground}
-      onToggleUnderground={buildingView.toggleUnderground}
-      edgeOverlay={edgeOverlay}
-      onToggleEdgeOverlay={onToggleEdgeOverlay}
-      interactiveObjectsAtDefault={interactiveObjects.atDefault}
-      onResetInteractiveObjects={interactiveObjects.reset}
-    />
   )
 }
 

@@ -20,6 +20,7 @@ sourceFiles:
     bridge/react/scene-load-failed-status.tsx,
     bridge/react/scene-unsupported-status.tsx,
     bridge/react/scene-readiness.ts,
+    bridge/react/scene-readiness-boundary.tsx,
     editor/shell/scene-pane.tsx,
     e2e/tests/scene-live-view-reopen.spec.ts,
     e2e/tests/live-pane-frames.ts,
@@ -27,7 +28,7 @@ sourceFiles:
     scripts/story-coverage/uncovered-components.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-21
 ---
 
 # ADR-0197: The 3D canvas wrapper releases every renderer it builds and tells a failed load from a failed start

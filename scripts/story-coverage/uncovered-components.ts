@@ -192,6 +192,12 @@ export const UNCOVERED_COMPONENTS: {
       'the scene-objects group (the close doors and windows control) that sits between the camera presets and the display options, a component of its own that scene-nav-toolbar.tsx renders; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
   },
   {
+    component: 'ScenePaneShell',
+    file: 'bridge/react/scene-pane-shell.tsx',
+    reason:
+      'the live preview pane wrapper (grab cursor and camera controls hint) split out of webgpu-scene-view.tsx to keep that module under its size budget; it is only rendered inside WebGPUSceneView, which is itself recorded here, and its DOM is exercised through the scene-pane-shell tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
     component: 'SceneProxyProjector',
     file: 'bridge/react/scene-proxies.tsx',
     reason:
@@ -202,6 +208,12 @@ export const UNCOVERED_COMPONENTS: {
     file: 'bridge/react/scene-proxy-overlay.tsx',
     reason:
       'DOM overlay positioned from the live scene projection; it requires the R3F scene context, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
+    component: 'SceneReadinessBoundary',
+    file: 'bridge/react/scene-readiness-boundary.tsx',
+    reason:
+      "the wrapper that carries the live view's readiness attributes around the canvas; split out of webgpu-scene-view.tsx to keep that module under its size budget. It is only rendered inside WebGPUSceneView, which is itself recorded here, and it draws nothing of its own, so an isolated story would show an empty box (see ADR-0111).",
   },
   {
     component: 'SceneSessionProvider',
@@ -220,6 +232,12 @@ export const UNCOVERED_COMPONENTS: {
     file: 'bridge/react/scene-selection.tsx',
     reason:
       'requires a live R3F Canvas and selection raycasting against the scene; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
+    component: 'SceneViewToolbar',
+    file: 'bridge/react/scene-view-toolbar.tsx',
+    reason:
+      "wires the live view's grouped session state into SceneNavToolbar; split out of webgpu-scene-view.tsx to keep that module under its size budget. It is only rendered inside WebGPUSceneView, which is itself recorded here, and the toolbar it renders has its own coverage through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).",
   },
   {
     component: 'SelectionProvider',
