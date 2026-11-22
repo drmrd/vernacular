@@ -40,7 +40,7 @@ export interface DocumentHandleParts {
 
 interface SaveStatusCell {
   get(): SaveStatus
-  set(status: AutosaveStatus): void
+  set(reported: AutosaveStatus): void
   subscribe(listener: () => void): () => void
 }
 

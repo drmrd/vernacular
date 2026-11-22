@@ -40,6 +40,7 @@ import { ViewToggles } from './view-toggles'
 import { ShellProviders } from './shell-providers'
 import './editor-shell.css'
 
+// A computed key, because the naming lint rejects a quoted key with a hyphen.
 const TAB_ONLY = 'tab-only'
 
 const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
