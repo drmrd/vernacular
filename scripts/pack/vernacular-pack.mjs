@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validatePackManifest } from '../../core/assets/pack-manifest.ts'
-import { checkPackIntegrity } from './pack-integrity.mjs'
+import { checkPackIntegrity, manifestAssets } from './pack-integrity.mjs'
 import { isShareAlike, shareAlikeWarning } from '../../core/assets/license-policy.ts'
 import { isRecord } from '../../core/assets/is-record.ts'
 
@@ -36,7 +36,7 @@ const USAGE = 'Usage: vernacular-pack <validate|build> <packDir>'
  * @returns {boolean}
  */
 function isReadableManifest(manifest) {
-  return manifest != null && typeof manifest === 'object' && Array.isArray(manifest.assets)
+  return isRecord(manifest) && Array.isArray(manifest.assets)
 }
 
 /**
@@ -48,8 +48,8 @@ function collectLicenses(manifest) {
   const licenses = []
   if (!isRecord(manifest)) return licenses
   if (typeof manifest.license === 'string') licenses.push(manifest.license)
-  for (const asset of Array.isArray(manifest.assets) ? manifest.assets : []) {
-    if (isRecord(asset) && typeof asset.license === 'string') licenses.push(asset.license)
+  for (const asset of manifestAssets(manifest)) {
+    if (typeof asset.license === 'string') licenses.push(asset.license)
   }
   return licenses
 }
@@ -63,7 +63,7 @@ function collectLicenses(manifest) {
 async function reviewPack(manifest, reader) {
   const manifestResult = validatePackManifest(manifest)
   const integrity = isReadableManifest(manifest)
-    ? await checkPackIntegrity({ ...manifest, assets: manifest.assets.filter(isRecord) }, reader)
+    ? await checkPackIntegrity(manifest, reader)
     : { errors: [] }
   const warning = shareAlikeWarning(collectLicenses(manifest))
   return {
@@ -91,9 +91,7 @@ function reportAsset(asset) {
  * @returns {object}
  */
 function buildReport(manifest, review) {
-  const assets = (Array.isArray(manifest?.assets) ? manifest.assets : [])
-    .filter(isRecord)
-    .map(reportAsset)
+  const assets = manifestAssets(manifest).map(reportAsset)
   const licenses = collectLicenses(manifest)
   return {
     status: review.errors.length === 0 ? 'PASS' : 'FAIL',

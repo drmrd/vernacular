@@ -6,6 +6,7 @@
 // loader lands (phase 3) these checks graduate to core/ as shared TypeScript.
 
 import { MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
+import { isRecord } from '../../core/assets/is-record.ts'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
 import {
   textureFileProblems,
@@ -60,12 +61,12 @@ export function isWebp(bytes) {
 }
 
 /**
- * The asset entries declared by a manifest, or [] when none are present.
- * @param {object} manifest
+ * The object asset entries declared by a manifest, or [] when none are present.
+ * @param {unknown} manifest
  * @returns {object[]}
  */
-function manifestAssets(manifest) {
-  return Array.isArray(manifest?.assets) ? manifest.assets : []
+export function manifestAssets(manifest) {
+  return Array.isArray(manifest?.assets) ? manifest.assets.filter(isRecord) : []
 }
 
 /**
