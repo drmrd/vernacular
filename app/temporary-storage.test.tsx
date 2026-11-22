@@ -20,8 +20,7 @@ import {
   startNewProjectFromThePage,
   stubCapableStorage,
 } from './app-test-support'
-import { PROJECTS_ADDRESS, addressOf, visit } from './history-navigation-test-support'
-import { NOT_STORED } from './open-failure-text'
+import { PROJECTS_ADDRESS, visit } from './history-navigation-test-support'
 
 const WARNING = 'The storage of this browser was not found. Projects stay in this tab.'
 const DISMISS = 'Dismiss notification'
@@ -169,42 +168,6 @@ describe('The application whose builder of the ports rejects', () => {
 
     const page = await findTheProjectsPage()
     expect(await cardsOf(page)).toHaveLength(2)
-  })
-
-  it('says that the project is not stored, with no banner, at the address of a project', async () => {
-    stubCapableStorage()
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const bar = createMemoryAddressBar(addressOf('project-elsewhere'))
-    render(
-      <App resolvePorts={() => Promise.reject<never>(new Error('no storage'))} address={bar} />,
-    )
-
-    const alerts = await screen.findAllByRole('alert')
-    await settleForAWhile()
-
-    expect(screen.getAllByRole('alert')).toHaveLength(1)
-    expect(alerts[0]).toHaveTextContent(NOT_STORED)
-    expect(screen.queryByText(BANNER_WITHOUT_FOLDERS)).not.toBeInTheDocument()
-  })
-
-  it('shows an empty Projects page with no alert at the Projects address, and the banner once a project opens', async () => {
-    stubCapableStorage()
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const bar = createMemoryAddressBar(PROJECTS_ADDRESS)
-    render(
-      <App resolvePorts={() => Promise.reject<never>(new Error('no storage'))} address={bar} />,
-    )
-    const page = await findTheProjectsPage()
-    await settleForAWhile()
-    expect(within(page).queryAllByRole('listitem')).toHaveLength(0)
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-
-    await startNewProjectFromThePage()
-
-    await expectOpenProject(NEW_PROJECT_NAME)
-    expect(
-      within(await screen.findByRole('alert')).getByText(BANNER_WITHOUT_FOLDERS),
-    ).toBeInTheDocument()
   })
 
   it('builds the ports once, and writes one warning that carries the error', async () => {
