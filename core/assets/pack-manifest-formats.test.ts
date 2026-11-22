@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validatePackManifest } from './pack-manifest'
+import { isModelAsset, validatePackManifest } from './pack-manifest'
 
 function validManifest(): Record<string, unknown> {
   return {
@@ -159,5 +159,51 @@ describe('validatePackManifest - format 1 manifests read as before', () => {
     const message = result.errors[0] ?? ''
     expect(message).toMatch(scenario.expectedLabel)
     expect(message).toMatch(scenario.expectedHint)
+  })
+})
+
+describe('isModelAsset', () => {
+  it.each([
+    {
+      label: 'no format version, no media type',
+      formatVersion: undefined,
+      mediaType: undefined,
+      expected: true,
+    },
+    { label: 'format 1, no media type', formatVersion: 1, mediaType: undefined, expected: true },
+    {
+      label: 'format 1, image media type',
+      formatVersion: 1,
+      mediaType: 'image/png',
+      expected: true,
+    },
+    {
+      label: 'format 1, model media type',
+      formatVersion: 1,
+      mediaType: 'model/gltf-binary',
+      expected: true,
+    },
+    {
+      label: 'format 2, model media type',
+      formatVersion: 2,
+      mediaType: 'model/gltf-binary',
+      expected: true,
+    },
+    {
+      label: 'format 2, png media type',
+      formatVersion: 2,
+      mediaType: 'image/png',
+      expected: false,
+    },
+    {
+      label: 'format 2, webp media type',
+      formatVersion: 2,
+      mediaType: 'image/webp',
+      expected: false,
+    },
+    { label: 'format 2, no media type', formatVersion: 2, mediaType: undefined, expected: false },
+  ])('$label', ({ formatVersion, mediaType, expected }) => {
+    const asset = mediaType === undefined ? {} : { mediaType }
+    expect(isModelAsset(asset, formatVersion)).toBe(expected)
   })
 })
