@@ -71,3 +71,22 @@ export const Default: Story = {
     })
   },
 }
+
+export const MarkedEntrance: Story = {
+  args: { ...Default.args, entranceRole: 'marked' },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByRole('checkbox', { name: 'Main entrance' })).toBeChecked()
+  },
+}
+
+export const GuessedEntrance: Story = {
+  args: { ...Default.args, entranceRole: 'guessed' },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByRole('checkbox', { name: 'Main entrance' })).not.toBeChecked()
+    await expect(
+      screen.getByText('Vernacular treats this door as the entrance until one is marked.'),
+    ).toBeVisible()
+  },
+}

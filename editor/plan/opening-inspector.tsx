@@ -2,6 +2,9 @@ import type { ReactElement } from 'react'
 import './opening-inspector.css'
 import {
   clampOpeningWidth,
+  clearMainEntrance,
+  markMainEntrance,
+  openingKindOfType,
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   formatAdaptiveLength,
@@ -11,6 +14,7 @@ import {
   roundToDecimalPlaces,
   setOpeningType,
   type Command,
+  type EntranceRole,
   type Opening,
   type OpeningDimensions,
   type UnitPreferences,
@@ -119,6 +123,8 @@ export interface OpeningInspectorProps {
   siblingOpenings?: readonly Opening[]
   /** True when the opening's wall has a room along only one side, which sets a hung window's sashes. */
   wallHasOneRoomSide?: boolean | undefined
+  /** How the door relates to the main entrance; a door that is neither marked nor guessed is 'other'. */
+  entranceRole?: EntranceRole | undefined
   dispatch: (command: Command) => void
 }
 
@@ -230,12 +236,52 @@ function OpeningTypeField({ opening, onChangeType }: OpeningTypeFieldProps): Rea
   )
 }
 
+interface MainEntranceFieldProps {
+  floorId: string
+  opening: Opening
+  entranceRole: EntranceRole
+  dispatch: (command: Command) => void
+}
+
+function MainEntranceField({
+  floorId,
+  opening,
+  entranceRole,
+  dispatch,
+}: MainEntranceFieldProps): ReactElement | null {
+  if (openingKindOfType(opening.type) !== 'door') {
+    return null
+  }
+  return (
+    <Stack gap="space-2">
+      <label>
+        <input
+          type="checkbox"
+          checked={entranceRole === 'marked'}
+          onChange={() =>
+            dispatch(
+              entranceRole === 'marked'
+                ? clearMainEntrance()
+                : markMainEntrance(floorId, opening.id),
+            )
+          }
+        />
+        Main entrance
+      </label>
+      {entranceRole === 'guessed' ? (
+        <p>Vernacular treats this door as the entrance until one is marked.</p>
+      ) : null}
+    </Stack>
+  )
+}
+
 export function OpeningInspector({
   floorId,
   opening,
   units,
   siblingOpenings = [],
   wallHasOneRoomSide = false,
+  entranceRole = 'other',
   dispatch,
 }: OpeningInspectorProps): ReactElement {
   const preferences = PREFERENCES_BY_UNITS[units]
@@ -260,6 +306,7 @@ export function OpeningInspector({
           )
         }
       />
+      <MainEntranceField {...{ floorId, opening, entranceRole, dispatch }} />
       <OpeningControls
         opening={opening}
         floorId={floorId}
