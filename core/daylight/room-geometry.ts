@@ -47,17 +47,20 @@ export interface CellView {
 }
 
 /**
- * Where an aperture's light comes from: the sky toward a world direction (unit vector, Y up), or
- * the room it opens to. `openingArea` is the width times the height from sill to head, in plan
- * square millimetres. `netTransmittance` is the share of light that the opening passes.
- * `fluxShare` is the share of the opening's area that counts in the entering flux: one half for a
- * window, and for a doorway into a room open to the sky, which face only the half of their view
- * above the horizon; 1 for a doorway into any other room, which faces the whole room.
+ * `openingArea` is the width times the height from sill to head, in plan square millimetres.
+ * `netTransmittance` is the share of light that the opening passes. `fluxShare` is the share of the
+ * opening's area that counts in the entering flux: one half for a window, and for a doorway into a
+ * room open to the sky, which face only the half of their view above the horizon; 1 for a doorway
+ * into any other room, which faces the whole room.
  */
-export interface ApertureOpening extends OpeningArea {
+interface ApertureOpening extends OpeningArea {
   netTransmittance: number
 }
 
+/**
+ * Where an aperture's light comes from: the sky toward a world direction (unit vector, Y up), or
+ * the room it opens to.
+ */
 export type ApertureGeometry = ApertureOpening &
   ({ kind: 'sky'; direction: Vector3 } | { kind: 'doorway'; neighbor: number })
 
