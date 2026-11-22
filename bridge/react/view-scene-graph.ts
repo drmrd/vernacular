@@ -60,6 +60,14 @@ export function sceneGraphForBuilding(graph: SceneGraph, options: BuildingViewOp
   }
 }
 
+/**
+ * A scene graph scoped for the 3D view. framedFloorId is the model id of the floor the camera
+ * frames; absent or null frames every floor drawn.
+ */
+export interface ScopedSceneGraph extends SceneGraph {
+  framedFloorId?: string | null
+}
+
 /** Whether the 3D view shows a single active floor or the whole building stacked. */
 export type SceneScope = 'floor' | 'building'
 

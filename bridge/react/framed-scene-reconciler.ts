@@ -25,6 +25,7 @@ import {
   type FloorAssembly,
   type FramedScene,
 } from './framed-scene'
+import type { ScopedSceneGraph } from './view-scene-graph'
 
 const BOX_ONLY: FurnitureModelLookup = { get: () => undefined }
 
@@ -39,7 +40,7 @@ const NO_PAINT: Paint = {}
 const FLOOR_SET_SEPARATOR = '|'
 
 export interface FramedSceneReconciler {
-  reconcile(graph: SceneGraph, paint?: Paint, models?: FurnitureModelLookup): FramedScene
+  reconcile(graph: ScopedSceneGraph, paint?: Paint, models?: FurnitureModelLookup): FramedScene
   /**
    * Frees what earlier reconciles replaced, but only when `displayed` is the scene the latest
    * reconcile returned. For any other scene it frees nothing and keeps the queue for a later call:
@@ -144,7 +145,7 @@ function floorAssembly(build: CachedFloorBuild): FloorAssembly {
 /** The per-reconcile inputs each floor's build is derived from, bundled to stay within
  *  the argument limit. */
 interface ReconcilePass {
-  graph: SceneGraph
+  graph: ScopedSceneGraph
   paint: Paint
   models: FurnitureModelLookup
   view: EdgeOverlayOptions
@@ -263,7 +264,11 @@ function reconcileStackedScene(
     refreshGroundPlane(cached.framed.root, graph.gradeElevation)
     return cached.framed
   }
-  const framed = frameStackedScene(builds.map(floorAssembly), graph.gradeElevation)
+  const framed = frameStackedScene(
+    builds.map(floorAssembly),
+    graph.gradeElevation,
+    graph.framedFloorId,
+  )
   evictScenesSharingBuilds(scenes, { key, builds }, retired)
   if (cached !== undefined) retireGroundPlanes(cached.framed, retired)
   scenes.set(key, { framed, builds })
@@ -297,7 +302,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
   let emptyScene: EmptyGraphScene | undefined
   let latest: FramedScene | undefined
 
-  function reconcileGraph(graph: SceneGraph, paint: Paint, models: FurnitureModelLookup) {
+  function reconcileGraph(graph: ScopedSceneGraph, paint: Paint, models: FurnitureModelLookup) {
     if (emptyScene !== undefined) {
       if (isSameEmptyGraph(emptyScene, graph, paint)) return emptyScene.framed
       retired.objects.add(emptyScene.framed.root)

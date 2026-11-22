@@ -2,6 +2,8 @@ import {
   ceilingHeight,
   frameSceneCamera,
   kelvinToLinearRgb,
+  withDepthRangeOf,
+  FLOOR_NODE_PREFIX,
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
@@ -33,6 +35,9 @@ export interface FramedScene {
   root: SceneRoot
   pose: CameraPose
   bounds: Bounds3 | null
+  // The box the camera frames: the framed floor's built content, or every drawn floor's when
+  // no floor is framed. It equals `bounds` in the building scope.
+  framingBounds: Bounds3 | null
   nearWallTargets: NearWallTarget[]
   // The floor's room outlines, in plan millimeters, so the per-frame near-wall
   // fade can tell whether the orbit camera sits inside the building footprint.
@@ -89,7 +94,15 @@ export function buildFramedScene(
   // first node's elevation here.
   const floorElevation = graph.nodes[0]?.elevation ?? 0
   const buildingTopWorld = floorTopWorld(floorElevation, graph.rooms)
-  return { root, pose, bounds, nearWallTargets, roomPolygons, buildingTopWorld }
+  return {
+    root,
+    pose,
+    bounds,
+    framingBounds: bounds,
+    nearWallTargets,
+    roomPolygons,
+    buildingTopWorld,
+  }
 }
 
 /**
@@ -135,6 +148,8 @@ export function refreshGroundPlane(root: SceneRoot, gradeElevation: number | und
 interface StackedFloors {
   root: SceneRoot
   nearWallTargets: NearWallTarget[]
+  // The box of the framed floor's group alone, read before it joins the shared root.
+  framedBounds: Bounds3 | null
 }
 
 // Stacks every floor group under one root, each seated at its elevation (assembleFloorRoot),
@@ -143,11 +158,15 @@ interface StackedFloors {
 // as soon as its group is assembled, while the floor's own sub-groups are the ones under it,
 // and the scene unions them. The caller passes a non-empty list; the final guard only
 // narrows the type.
-function stackFloorRoot(floors: FloorAssembly[]): StackedFloors {
+function stackFloorRoot(floors: FloorAssembly[], framedFloorId?: string | null): StackedFloors {
   let root: SceneRoot | undefined
+  let framedBounds: Bounds3 | null = null
   const nearWallTargets: NearWallTarget[] = []
   for (const floor of floors) {
     const floorRoot = assembleFloorRoot(floor.node, floor.subgroups)
+    if (floor.node.id === `${FLOOR_NODE_PREFIX}${framedFloorId}`) {
+      framedBounds = sceneBounds(floorRoot)
+    }
     nearWallTargets.push(...enrollNearWallTargets(floorRoot, floor.entities))
     if (root === undefined) {
       root = floorRoot
@@ -157,7 +176,7 @@ function stackFloorRoot(floors: FloorAssembly[]): StackedFloors {
     if (floorGroup !== undefined) root.add(floorGroup)
   }
   if (root === undefined) throw new Error('cannot frame a scene with no floors')
-  return { root, nearWallTargets }
+  return { root, nearWallTargets, framedBounds }
 }
 
 /**
@@ -170,16 +189,19 @@ function stackFloorRoot(floors: FloorAssembly[]): StackedFloors {
 export function frameStackedScene(
   floors: FloorAssembly[],
   gradeElevation: number | undefined,
+  framedFloorId?: string | null,
 ): FramedScene {
-  const { root, nearWallTargets } = stackFloorRoot(floors)
+  const { root, nearWallTargets, framedBounds } = stackFloorRoot(floors, framedFloorId)
   // Read the bounds before seating the ground (sceneBounds excludes the ground either way),
   // then seat the shared ground plane sized to the whole footprint already in the root.
   const bounds = sceneBounds(root)
+  const framingBounds = framedBounds ?? bounds
   refreshGroundPlane(root, gradeElevation)
   return {
     root,
-    pose: frameSceneCamera(bounds),
+    pose: withDepthRangeOf(frameSceneCamera(framingBounds), bounds),
     bounds,
+    framingBounds,
     nearWallTargets,
     roomPolygons: floors.flatMap((floor) => floor.roomPolygons),
     buildingTopWorld: Math.max(...floors.map((floor) => floor.topWorld)),
