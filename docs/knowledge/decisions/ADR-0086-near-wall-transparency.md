@@ -20,7 +20,7 @@ sourceFiles:
     core/scene/interior-viewpoint.ts,
     core/scene/camera-outside-building.ts,
     engine/scene/near-wall-transparency.ts,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/framed-scene.ts,
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/near-wall-fade.tsx,

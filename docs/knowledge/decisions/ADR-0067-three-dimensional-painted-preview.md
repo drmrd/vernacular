@@ -41,7 +41,7 @@ sourceFiles:
     engine/scene/room-builder.ts,
     bridge/react/framed-scene.ts,
     bridge/react/floor-build.ts,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     engine/materials/surface-material-provider.ts,
     engine/materials/physical-material-provider.ts,
   ]

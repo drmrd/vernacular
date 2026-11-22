@@ -47,7 +47,7 @@ export default defineConfig({
         'src/service-worker.ts',
         'src/setupTests.ts',
         'engine/renderer/create-renderer.ts',
-        'bridge/react/webgpu-scene-view.tsx',
+        'bridge/react/live-scene-view.tsx',
         'bridge/react/use-scene-graph.ts',
         'editor/plan/plan-view.tsx',
         'editor/plan/plan-overlay.tsx',

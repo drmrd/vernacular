@@ -15,7 +15,7 @@ import { resolve } from 'node:path'
 // Both views render the shared SceneRendererCanvas wrapper, which forwards every prop but `gl`
 // to the real React Three Fiber Canvas. So the guard has two halves: each view passes `shadows`
 // to the wrapper, and the wrapper spreads its props onto the real `<Canvas>`.
-const VIEW_FILES = ['bridge/react/scene-harness-view.tsx', 'bridge/react/webgpu-scene-view.tsx']
+const VIEW_FILES = ['bridge/react/scene-harness-view.tsx', 'bridge/react/live-scene-view.tsx']
 const WRAPPER_FILE = 'bridge/react/scene-renderer-canvas.tsx'
 
 // Finds the `>` that closes the opening tag: the first `>` not preceded by `=`, so the `=>` of

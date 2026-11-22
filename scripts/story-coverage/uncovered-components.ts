@@ -96,6 +96,12 @@ export const UNCOVERED_COMPONENTS: {
       'the library root of the live scene that reports when a new framed scene is attached so the retired build can be freed; it renders the R3F scene primitive and no DOM, and it only has meaning inside a live R3F Canvas, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111 and ADR-0226).',
   },
   {
+    component: 'LiveSceneView',
+    file: 'bridge/react/live-scene-view.tsx',
+    reason:
+      'requires a live R3F Canvas and a GPU renderer (WebGPU or its WebGL 2 fallback); an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
     component: 'NearWallFade',
     file: 'bridge/react/near-wall-fade.tsx',
     reason:
@@ -195,7 +201,7 @@ export const UNCOVERED_COMPONENTS: {
     component: 'ScenePaneShell',
     file: 'bridge/react/scene-pane-shell.tsx',
     reason:
-      'the live preview pane wrapper (grab cursor and camera controls hint) split out of webgpu-scene-view.tsx to keep that module under its size budget; it is only rendered inside WebGPUSceneView, which is itself recorded here, and its DOM is exercised through the scene-pane-shell tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+      'the live preview pane wrapper (grab cursor and camera controls hint) split out of live-scene-view.tsx to keep that module under its size budget; it is only rendered inside LiveSceneView, which is itself recorded here, and its DOM is exercised through the scene-pane-shell tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
   },
   {
     component: 'SceneProxyProjector',
@@ -213,7 +219,7 @@ export const UNCOVERED_COMPONENTS: {
     component: 'SceneReadinessBoundary',
     file: 'bridge/react/scene-readiness-boundary.tsx',
     reason:
-      "the wrapper that carries the live view's readiness attributes around the canvas; split out of webgpu-scene-view.tsx to keep that module under its size budget. It is only rendered inside WebGPUSceneView, which is itself recorded here, and it draws nothing of its own, so an isolated story would show an empty box (see ADR-0111).",
+      "the wrapper that carries the live view's readiness attributes around the canvas; split out of live-scene-view.tsx to keep that module under its size budget. It is only rendered inside LiveSceneView, which is itself recorded here, and it draws nothing of its own, so an isolated story would show an empty box (see ADR-0111).",
   },
   {
     component: 'SceneSessionProvider',
@@ -237,7 +243,7 @@ export const UNCOVERED_COMPONENTS: {
     component: 'SceneViewToolbar',
     file: 'bridge/react/scene-view-toolbar.tsx',
     reason:
-      "wires the live view's grouped session state into SceneNavToolbar; split out of webgpu-scene-view.tsx to keep that module under its size budget. It is only rendered inside WebGPUSceneView, which is itself recorded here, and the toolbar it renders has its own coverage through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).",
+      "wires the live view's grouped session state into SceneNavToolbar; split out of live-scene-view.tsx to keep that module under its size budget. It is only rendered inside LiveSceneView, which is itself recorded here, and the toolbar it renders has its own coverage through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).",
   },
   {
     component: 'SelectionProvider',
@@ -256,12 +262,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'bridge/react/walk-camera-controls.tsx',
     reason:
       'requires a live R3F Canvas and a Three.js camera; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
-  },
-  {
-    component: 'WebGPUSceneView',
-    file: 'bridge/react/webgpu-scene-view.tsx',
-    reason:
-      'requires a live R3F Canvas and a WebGPU renderer; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
 
   // --- editor/commands (command palette + bar; multi-context) -------------

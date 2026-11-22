@@ -41,7 +41,7 @@ sourceFiles:
     engine/scene/selection-outline.ts,
     bridge/react/scene-selection.tsx,
     bridge/react/scene-overlay.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/use-scene-proxies.ts,
     bridge/react/entity-labels.ts,
     bridge/react/use-catalog-names.ts,

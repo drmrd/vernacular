@@ -44,7 +44,7 @@ sourceFiles:
     bridge/react/use-ambient-occlusion.ts,
     bridge/react/use-front-direction.ts,
     bridge/react/scene-lighting.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/scene-harness-view.tsx,
     editor/shell/shell-providers.tsx,
     editor/environment/environment-panel.tsx,

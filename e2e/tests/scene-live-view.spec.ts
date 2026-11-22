@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
 import { settledLiveFrame, waitForDrawnSceneChange } from './live-pane-frames'
 
-// This exercises the editor's LIVE three-dimensional preview pane (`WebGPUSceneView`),
+// This exercises the editor's LIVE three-dimensional preview pane (`LiveSceneView`),
 // not the deterministic `?fixture=scene-harness` render harness. It reproduces the
 // user-reported bug: in Split view the 3D pane stays blank because the live view never
 // frames its camera (React Three Fiber's default camera cannot contain the

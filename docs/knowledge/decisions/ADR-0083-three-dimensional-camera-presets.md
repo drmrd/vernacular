@@ -24,7 +24,7 @@ sourceFiles:
     core/scene/camera-framing.ts,
     bridge/react/fit-camera.ts,
     bridge/react/scene-nav-toolbar.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/use-view-scene-graph.ts,
     e2e/tests/scene-camera-presets.spec.ts,
   ]

@@ -23,7 +23,7 @@ sourceFiles:
     bridge/react/walk-session.ts,
     bridge/react/scene-object-controls.tsx,
     bridge/react/scene-nav-toolbar.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/use-opening-motion-floors.test.tsx,
     bridge/react/use-opening-motion-floors-test-support.tsx,
     bridge/react/walk-interaction-settle.test.ts,

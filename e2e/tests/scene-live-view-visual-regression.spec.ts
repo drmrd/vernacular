@@ -3,7 +3,7 @@ import { webFontsSettled } from './journeys/support'
 import { drawnRoomCanvas, stableFrame } from './scene-helpers'
 
 // The first committed pixel baseline on the render path users actually see: the editor's
-// live three-dimensional pane (`WebGPUSceneView`) on the WebGPU backend, not the
+// live three-dimensional pane (`LiveSceneView`) on the WebGPU backend, not the
 // `?fixture=scene-harness` render harness, which forces WebGL 2 and is pinned separately by
 // scene-visual-regression.spec.ts. Slice A3 of
 // docs/specs/2026-08-31-rendering-realism-gates-occlusion-coverings.md (issue #469) exists so

@@ -1,6 +1,52 @@
-/** Which 3D backend the runtime can use. The WebGL2 fallback is a later phase. */
-export type RenderBackend = 'webgpu' | 'unsupported'
+/**
+ * Which backend the live 3D preview will render through. The probe is synchronous: it
+ * answers `'webgpu'` when the browser exposes the WebGPU API (`navigator.gpu`), without
+ * asking for an adapter. `'webgl2'` (no WebGPU API, a WebGL 2 context available) renders
+ * through `WebGPURenderer`'s own WebGL 2 backend, so it is a working preview, and only
+ * `'unsupported'` means none. The same backend also serves a browser whose API has no
+ * adapter, which this probe still reports as `'webgpu'` (#1082).
+ */
+export type RenderBackend = 'webgpu' | 'webgl2' | 'unsupported'
 
+// Browsers cap how many live WebGL contexts one document may hold, and the answer cannot
+// change within a page load, so the probe context is created once and the verdict reused.
+// A probe per render would exhaust the cap and take the scene canvas down with it.
+let probedBackend: RenderBackend | null = null
+
+function canCreateWebGl2Context(): boolean {
+  if (typeof document === 'undefined') {
+    return false
+  }
+  try {
+    // A runtime can carry the WebGL2RenderingContext constructor and still refuse a context
+    // (a blocked GPU, WebGL switched off), so this asks for the context rather than the type.
+    return Boolean(document.createElement('canvas').getContext('webgl2'))
+  } catch {
+    // Privacy-hardening extensions throw from getContext rather than returning null, to
+    // defeat probes like this one. The probe runs during render and the application mounts
+    // no error boundary, so a throw escaping here would blank the whole editor instead of
+    // costing the user a 3D preview.
+    return false
+  }
+}
+
+function probeRenderBackend(): RenderBackend {
+  // The API's presence is enough here; no adapter is requested, to keep the probe synchronous.
+  if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+    return 'webgpu'
+  }
+  return canCreateWebGl2Context() ? 'webgl2' : 'unsupported'
+}
+
+/**
+ * Reports the backend the live 3D preview will render through on this runtime.
+ *
+ * The answer is probed once and then cached for the life of the module, so a test that
+ * renders a real consumer without mocking this module gets whichever runtime the first
+ * caller in that file saw. Drive the answer with a module mock, or reload the module with
+ * `vi.resetModules()` between cases.
+ */
 export function detectRenderBackend(): RenderBackend {
-  return typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'unsupported'
+  probedBackend ??= probeRenderBackend()
+  return probedBackend
 }

@@ -35,7 +35,7 @@ sourceFiles:
     bridge/react/furniture-model-cache.ts,
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/use-furniture-model-cache.ts,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     bridge/react/furniture-model-signals.tsx,
     bridge/react/furniture-model-unusable-geometry.test.ts,
     e2e/tests/scene-furniture-model-swap.spec.ts,

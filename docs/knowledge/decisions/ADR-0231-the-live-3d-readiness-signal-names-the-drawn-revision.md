@@ -16,7 +16,7 @@ sourceFiles:
     bridge/react/live-scene-frame-signal.tsx,
     bridge/react/scene-readiness.ts,
     bridge/react/scene-readiness-boundary.tsx,
-    bridge/react/webgpu-scene-view.tsx,
+    bridge/react/live-scene-view.tsx,
     e2e/tests/live-pane-frames.ts,
     e2e/tests/scene-helpers.ts,
   ]
