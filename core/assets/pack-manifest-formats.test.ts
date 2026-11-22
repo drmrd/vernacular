@@ -62,8 +62,11 @@ describe('validatePackManifest - format version', () => {
 
       expect(result.valid).toBe(false)
       expect(result.errors).toHaveLength(1)
-      expect(result.errors[0]).toMatch(/^formatVersion\b/)
-      expect(result.errors[0]).toContain('2')
+      const message = result.errors[0] ?? ''
+      const rejectedValue = JSON.stringify(formatVersion)
+      expect(message).toMatch(/^formatVersion\b/)
+      expect(message).toContain(rejectedValue)
+      expect(message.replace(rejectedValue, '')).toContain('2')
     },
   )
 })
