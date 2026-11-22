@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../../core'
 import { fixtureDocument } from '../../fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
@@ -122,5 +122,29 @@ export function describeSecondDocumentFile(begin: BeginRun, holdsMany: boolean):
     describeSavingBesideNewerFile(begin)
     describeReadingBesideSecondFile(begin)
     describeProjectsWithSecondFile(begin, holdsMany)
+  })
+}
+
+/** A save over a stored file that cannot be read keeps a copy of that file first. */
+export function describeUnreadablePreviousFile(begin: BeginRun): void {
+  describe('a save over a stored file that cannot be read', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('keeps a copy of the bytes that it replaces, and the document reads back', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      const run = await begin()
+      const unreadable = new TextEncoder().encode('{ not json')
+      await run.place(unreadable)
+
+      await run.open().save(PROJECT_ID, renamed(soundProject(), SAVED_NAME))
+
+      const copies = await run.backups()
+      expect(copies).toHaveLength(1)
+      expect(copies[0]?.name.startsWith('unreadable-previous-')).toBe(true)
+      expect(copies[0]?.bytes).toEqual(unreadable)
+      expect(decodedOf(await run.open().read(PROJECT_ID)).project.meta.name).toBe(SAVED_NAME)
+    })
   })
 }

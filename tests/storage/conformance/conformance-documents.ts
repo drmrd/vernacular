@@ -7,6 +7,7 @@ import {
   setProjectStyle,
 } from '../../../core'
 import type { DecodedDocument, Project } from '../../../core'
+import type { SecondFileState } from '../../../storage'
 import type { StoreRead } from '../../../storage/documents/document-store'
 import { versionFixtureBytes } from '../../fixtures/projects/versions'
 import {
@@ -98,7 +99,7 @@ export function decodedOf(read: StoreRead): DecodedDocument {
 }
 
 /** What a read says about the second file; undefined when the read has no word on it. */
-export function secondFileOf(read: StoreRead): unknown {
+export function secondFileOf(read: StoreRead): SecondFileState | undefined {
   return 'secondFile' in read ? read.secondFile : undefined
 }
 

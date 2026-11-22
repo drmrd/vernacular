@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../core'
+import { encodeDocument } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
   currentBytes,
@@ -13,6 +13,7 @@ import {
 import type { DirectoryPort } from '../fs/directory-port'
 import {
   DOCUMENT_PATH,
+  NEWER_SECOND_FILE_PATH,
   SECOND_FILE_NAME,
   SECOND_FILE_PATH,
   backupsOf,
@@ -26,7 +27,6 @@ import {
 const OLDER_VERSION = 8
 const OLDER_SECOND_FILE_NAME = `vernacular.format-${OLDER_VERSION}.json`
 const OLDER_SECOND_FILE_PATH = `a/${OLDER_SECOND_FILE_NAME}`
-const NEWER_SECOND_FILE_PATH = `a/vernacular.format-${CURRENT_SCHEMA_VERSION + 1}.json`
 const SECOND_FILE_PROJECT_NAME = 'Saved beside the newer file'
 const NOT_JSON = new TextEncoder().encode('{ not json')
 

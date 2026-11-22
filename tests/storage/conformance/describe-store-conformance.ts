@@ -3,7 +3,7 @@ import { runsOf } from './conformance-run'
 import { describeFormatRules, describeVersionFixtures } from './migration-cases'
 import { describeListing, describeManyProjects, describeSingleProject } from './placement-cases'
 import { describeAssetDurability, describeSavePreservation } from './preservation-cases'
-import { describeSecondDocumentFile } from './second-file-cases'
+import { describeSecondDocumentFile, describeUnreadablePreviousFile } from './second-file-cases'
 import type { StoreConformanceTarget } from './store-conformance-target'
 
 export type {
@@ -24,6 +24,7 @@ export function describeStoreConformance(target: StoreConformanceTarget): void {
     describeVersionFixtures(begin)
     describeSavePreservation(begin)
     describeSecondDocumentFile(begin, target.holdsMany)
+    describeUnreadablePreviousFile(begin)
     describeAssetDurability(begin)
     describeListing(begin, target.holdsMany)
     describeFormatRules(begin)

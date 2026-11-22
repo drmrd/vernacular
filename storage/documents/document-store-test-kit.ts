@@ -5,6 +5,7 @@ import {
   fixtureDocument,
   metaOf,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
+import { SECOND_FILE_NAME } from '../../tests/storage/conformance/conformance-run'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { ProjectNotFoundError } from '../project-store'
@@ -18,11 +19,13 @@ import type { DocumentStore } from './document-store'
 /** The document of the project `a`. */
 export const DOCUMENT_PATH = 'a/vernacular.json'
 
-/** The name of the second document file that this build writes beside a newer main file. */
-export const SECOND_FILE_NAME = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
+export { SECOND_FILE_NAME }
 
 /** The second document file of the project `a`. */
 export const SECOND_FILE_PATH = `a/${SECOND_FILE_NAME}`
+
+/** A second document file of the project `a` that a build with the next schema version wrote. */
+export const NEWER_SECOND_FILE_PATH = `a/vernacular.format-${CURRENT_SCHEMA_VERSION + 1}.json`
 
 /** The directory that holds the backups of the project `a`. */
 export const BACKUP_DIRECTORY = 'a/.house-backups'

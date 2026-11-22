@@ -1,5 +1,6 @@
 import { afterEach } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from '../../../core'
+import { BACKUP_DIRECTORY } from '../../../storage/documents/document-backups'
 import { PROJECT_FILE } from '../../../storage/project-files/project-file-name'
 import type {
   DocumentStore,
@@ -43,6 +44,18 @@ export class ConformanceRun {
   /** The bytes of the second document file as they are in the root; undefined when there is none. */
   secondFileBytes(id: string = PROJECT_ID): Promise<Uint8Array | undefined> {
     return this.root.readFile(this.secondFilePath(id))
+  }
+
+  /** Every file of the backups directory of the project: its name and its bytes. */
+  async backups(id: string = PROJECT_ID): Promise<{ name: string; bytes: Uint8Array }[]> {
+    const directory = this.target.holdsMany ? `${id}/${BACKUP_DIRECTORY}` : BACKUP_DIRECTORY
+    const names = await this.root.list(directory)
+    return Promise.all(
+      names.map(async (name) => ({
+        name,
+        bytes: (await this.root.readFile(`${directory}/${name}`)) ?? new Uint8Array(),
+      })),
+    )
   }
 
   /** Puts raw bytes where the store reads the document of the project. */

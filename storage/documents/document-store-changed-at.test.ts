@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CURRENT_SCHEMA_VERSION } from '../../core'
 import {
   currentBytes,
   faultyProject,
@@ -12,6 +11,7 @@ import { FolderFiles } from '../project-files/folder-files'
 import { DocumentStore } from './document-store'
 import {
   DOCUMENT_PATH,
+  NEWER_SECOND_FILE_PATH,
   PassThroughDirectory,
   SECOND_FILE_PATH,
   newerVersionBytes,
@@ -25,7 +25,6 @@ const SAVED_AT = new Date('2026-03-05T06:07:08.000Z')
 const FOLDER_DOCUMENT = 'vernacular.json'
 const FOLDER_PROJECT_ID = 'p'
 const NEW_NAME = 'Saved under a new name'
-const NEWER_SECOND_FILE_PATH = `a/vernacular.format-${CURRENT_SCHEMA_VERSION + 1}.json`
 const NOT_JSON = new TextEncoder().encode('{ not json')
 
 /** Test support: a directory whose lookup of the time of change always rejects. */
@@ -46,6 +45,13 @@ class DirectoryWithNoTimeToTell extends PassThroughDirectory {
 class DirectoryWhoseLookupThrows extends PassThroughDirectory {
   override modifiedAt(): Promise<string | undefined> {
     throw new Error('the lookup of the time of change broke at once')
+  }
+}
+
+/** Test support: a directory whose listing always rejects. */
+class DirectoryThatCannotList extends PassThroughDirectory {
+  override list(): Promise<string[]> {
+    return Promise.reject(new Error('the directory cannot be listed'))
   }
 }
 
@@ -181,6 +187,16 @@ describe('the time of last change beside the other members of the report', () =>
 
     expect(report.backedUp).toBe(true)
     expect(report.lastChangedAt).toBe(SAVED_AT.toISOString())
+  })
+
+  it('a listing that rejects still saves, and reports no time', async () => {
+    const root = await rootHolding(currentBytes())
+    const store = storeOver(new DirectoryThatCannotList(root))
+
+    const report = await store.save('a', renamed(soundProject(), NEW_NAME))
+
+    expect(report).toEqual({ faults: [], backedUp: false })
+    expect((await readProject(storeOver(root), 'a')).meta.name).toBe(NEW_NAME)
   })
 
   it('a lookup that rejects changes no other member of a plain save report', async () => {
