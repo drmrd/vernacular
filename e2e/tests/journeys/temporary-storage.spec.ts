@@ -23,7 +23,7 @@ function removeEveryStore(): void {
 
 // The banner reads the clause about folders only where the browser offers folder access.
 async function bannerOfThisBrowser(page: Page): Promise<string> {
-  const offersFolders = await page.evaluate(() => 'showDirectoryPicker' in window)
+  const offersFolders = await page.evaluate(() => typeof window.showDirectoryPicker === 'function')
   return offersFolders ? BANNER_WITH_FOLDERS : BANNER_WITHOUT_FOLDERS
 }
 
@@ -49,5 +49,7 @@ test('says that projects stay in this tab in a browser that keeps none', async (
   await showProjectsPage(page)
 
   await expect(selectors.storageBanner(page).getByText(banner, { exact: true })).toBeVisible()
-  await expect(selectors.projectsPage(page).getByText(TAB_ONLY_CARD_TEXT)).toBeVisible()
+  await expect(
+    selectors.projectsPage(page).getByText(TAB_ONLY_CARD_TEXT, { exact: true }),
+  ).toBeVisible()
 })
