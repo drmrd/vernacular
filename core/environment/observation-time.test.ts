@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MINUTES_PER_DAY,
   formatObservationDateTime,
+  isObservationInstantIso,
   observationInstantToIso,
   parseObservationInstant,
   type ObservationInstant,
@@ -46,4 +47,22 @@ describe('observation-time helpers', () => {
       '2026-06-21 12:00',
     )
   })
+
+  it.each([
+    '2026-13-01T08:00',
+    '2026-00-10T08:00',
+    '2026-02-30T08:00',
+    '2025-02-29T08:00',
+    '2026-06-21T24:00',
+    '2026-06-21T08:60',
+  ])('rejects the impossible civil datetime %s', (iso) => {
+    expect(isObservationInstantIso(iso)).toBe(false)
+  })
+
+  it.each(['2024-02-29T08:00', '2026-12-31T23:59'])(
+    'accepts the real civil datetime %s, leap day and last minute included',
+    (iso) => {
+      expect(isObservationInstantIso(iso)).toBe(true)
+    },
+  )
 })

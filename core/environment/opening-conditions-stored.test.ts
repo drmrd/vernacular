@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CLOUD_COVER, openingConditions } from '../index'
+import { DEFAULT_CLOUD_COVER, openingConditions, storedOpeningConditions } from '../index'
 import type { PlanDirection, ViewingConditions } from '../index'
 import type { Site } from '../model/site'
 
@@ -82,5 +82,11 @@ describe('openingConditions with a stored light', () => {
       observedAt: GUESSED_WEST_INSTANT,
       cloudCover: DEFAULT_CLOUD_COVER,
     })
+  })
+})
+
+describe('storedOpeningConditions with an impossible stored date', () => {
+  it('ignores a stored light whose month is out of range', () => {
+    expect(storedOpeningConditions({ observedAt: '2026-13-01T08:00' })).toBeUndefined()
   })
 })

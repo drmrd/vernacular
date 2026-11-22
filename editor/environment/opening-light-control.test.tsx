@@ -138,6 +138,17 @@ describe('OpeningLightControl status line', () => {
   })
 })
 
+describe('OpeningLightControl with an impossible stored date', () => {
+  it('renders in the default light and still allows clearing it', () => {
+    renderControl({ observedAt: '2026-13-01T08:00', weather: { cloudCover: CLEAR } })
+
+    expect(screen.getByRole('status').textContent).toBe(DEFAULT_LIGHT_STATUS)
+    expect((screen.getByRole('button', { name: CLEAR_BUTTON }) as HTMLButtonElement).disabled).toBe(
+      false,
+    )
+  })
+})
+
 describe('OpeningLightControl clearing the stored light', () => {
   it('dispatches one clear command when the clear button is clicked', async () => {
     const dispatch = vi.fn()
