@@ -283,8 +283,8 @@ The front of a marked door is the outward normal of its exterior run. When the d
 exterior run, the front is the side of the wall that faces away from the center of its floor. The
 center is the middle of the bounds of every wall endpoint on that floor. Of the door's two normals,
 the one with a positive dot product against the vector from that center to the door wins
-(`awayFromWallCenter`). When the two normals are equal within `DIRECTION_TIE_TOLERANCE`, the one
-nearer plan-down wins, and when they are equal on that too, the one nearer plan-right wins
+(`awayFromWallCenter`). When that dot product is within `DIRECTION_TIE_TOLERANCE` of zero, the one
+nearer plan-down wins, and when they tie on that too, the one nearer plan-right wins
 (`tieBrokenNormal`).
 
 ### The two commands and the one-mark rule
@@ -307,7 +307,7 @@ marked afterward, and only on a door.
 
 A copy and a paste, a new floor, a new opening, and a retype to a window never carry the mark. The
 paste, add-opening, and add-floor handlers drop it, and `retypeOpening` drops it when the new type
-is not a door. A retype from one door kind to another keeps it, and so do a move, a resize, and
+is not a door. A retype keeps the mark only from a door to a door, so a window that carries a stray mark does not pass it to a door. A retype from one door kind to another keeps it, and so do a move, a resize, and
 every other command that rewrites an opening in place. All of these use one function,
 `withoutEntranceMark` in `core/commands/entrance-rule.ts`.
 
@@ -348,7 +348,7 @@ marked door itself leave it disabled. It is `createEntranceCommands()` in
   built. `SelectionInspector` returns early for each kind of selection, and a hook called after
   those returns would break the rules of hooks. `selectedOpeningContext` in
   `editor/plan/opening-inspector-context.ts` calls `entranceOf(graph)` instead, with the graph the
-  inspector already holds. `bridge/react/use-front-direction.ts` is unchanged, because it already
+  inspector already holds. The palette command in `editor/commands/entrance-commands.ts` calls it too. `bridge/react/use-front-direction.ts` is unchanged, because it already
   calls `frontDirection` on the whole scene graph and so follows the mark.
 - The branch is `feat/mark-the-main-entrance`, not `feat/main-entrance-mark`.
 - The names the specification left to the builder are the two command ids above, the scene node
