@@ -25,7 +25,7 @@ afterEach(() => {
 
 /** Ports with the start project stored, and a recovered copy of it in the snapshots of `id`. */
 async function portsWithRecoveredWork(id: string = START_ID): Promise<TestPorts> {
-  const ports = createTestPorts()
+  const ports = createTestPorts({ durable: true })
   await plantProject(ports, START_ID, CURRENT_NAME)
   await ports.workspace.snapshots(id).writeSnapshot(projectWithWalls(RECOVERED_NAME, 1))
   return ports
@@ -105,7 +105,7 @@ describe('The application after the recovered copy was restored', () => {
 describe('No recovery prompt', () => {
   it('shows no recovery prompt when nothing is recoverable', async () => {
     stubCapableStorage()
-    const ports = createTestPorts()
+    const ports = createTestPorts({ durable: true })
     await plantProject(ports, START_ID, CURRENT_NAME)
 
     renderApp(ports)

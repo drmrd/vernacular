@@ -1,22 +1,14 @@
 import { StrictMode } from 'react'
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, act, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { App } from './app'
 import { reconcileIndex } from '../session'
+import { createTestPorts, holdNextRead, type TestPorts } from '../session/handle/handle-test-kit'
 import {
-  createTestPorts,
-  holdNextRead,
-  recordingPorts,
-  type TestPorts,
-} from '../session/handle/handle-test-kit'
-import {
-  AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
   LOADING_TEXT,
   builtPorts,
   clickCardOf,
-  editTheProject,
   expectOpenProject,
   findCardLink,
   findTheProjectsPage,
@@ -28,7 +20,6 @@ import {
   renderApp,
   resetWindowAddress,
   secondTab,
-  startNewProjectFromTheFailureView,
   startNewProjectFromThePage,
   storedIds,
   stubCapableStorage,
@@ -44,6 +35,24 @@ async function portsThatFailOnceOnAKeptProject(): Promise<TestPorts> {
   await plantProject(ports, FAILED_ID, KEPT_NAME)
   await reconcileIndex(ports)
   vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
+  return ports
+}
+
+/** Durable ports whose locks put `lock:<id>` and `unlock:<id>` in `log`, in the order of the calls. */
+function durableRecordingPorts(log: string[]): TestPorts {
+  const ports = createTestPorts({ durable: true })
+  const acquire = ports.locks.tryAcquire.bind(ports.locks)
+  vi.spyOn(ports.locks, 'tryAcquire').mockImplementation(async (id) => {
+    log.push(`lock:${id}`)
+    const hold = await acquire(id)
+    if (hold === undefined) return undefined
+    return {
+      release: () => {
+        log.push(`unlock:${id}`)
+        return hold.release()
+      },
+    }
+  })
   return ports
 }
 
@@ -64,21 +73,11 @@ describe('The application boots from its ports', () => {
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
   })
 
-  it('raises a banner when booting into a storage-degraded environment', async () => {
-    vi.stubGlobal('navigator', {})
-    vi.stubGlobal('indexedDB', undefined)
-
-    renderApp(createTestPorts())
-
-    await findTheShell()
-    expect(await screen.findByRole('alert')).toHaveTextContent(/storage/i)
-  })
-
   it('stays silent when storage is healthy', async () => {
     stubCapableStorage()
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    renderApp(createTestPorts())
+    renderApp(createTestPorts({ durable: true }))
 
     await findTheShell()
     // Flush the storage-probe microtask chain so the negative assertion is deterministic.
@@ -113,7 +112,7 @@ describe('The application boots from its ports', () => {
   it('under StrictMode the application opens its project once and shows the shell', async () => {
     stubCapableStorage()
     const log: string[] = []
-    const ports = recordingPorts(log)
+    const ports = durableRecordingPorts(log)
 
     render(
       <StrictMode>
@@ -130,7 +129,7 @@ describe('The application boots from its ports', () => {
   it('opens the project again after an unmount and a new render on the same ports', async () => {
     stubCapableStorage()
     const log: string[] = []
-    const ports = recordingPorts(log)
+    const ports = durableRecordingPorts(log)
     await plantProject(ports, FAILED_ID, KEPT_NAME)
     const { unmount } = renderApp(ports)
     await expectOpenProject(KEPT_NAME)
@@ -265,45 +264,5 @@ describe('The application that resolves its ports', () => {
     // Resolving again would hand the open project other ports, and a resolution that
     // failed the second time would throw away a working start.
     expect(resolvePorts).toHaveBeenCalledTimes(1)
-  })
-
-  it('renders the error state when the ports do not resolve', async () => {
-    stubCapableStorage()
-    const resolvePorts = vi.fn(() => Promise.reject(new Error('no storage backend')))
-
-    render(<App resolvePorts={resolvePorts} />)
-
-    expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(resolvePorts).toHaveBeenCalledTimes(1)
-  })
-
-  it('starts a new project that is not durable when the ports do not resolve, and builds no ports again', async () => {
-    stubCapableStorage()
-    const resolvePorts = vi.fn(() => Promise.reject(new Error('no storage backend')))
-    render(<App resolvePorts={resolvePorts} />)
-
-    await startNewProjectFromTheFailureView()
-    await editTheProject()
-
-    expect(
-      await screen.findByText(/all changes saved/i, {}, { timeout: AUTOSAVE_TIMEOUT_MS }),
-    ).toBeInTheDocument()
-    expect(resolvePorts).toHaveBeenCalledTimes(1)
-  })
-
-  it('a Retry after the ports did not resolve builds them again and opens the project', async () => {
-    stubCapableStorage()
-    const ports = createTestPorts()
-    await plantProject(ports, FAILED_ID, KEPT_NAME)
-    const resolvePorts = vi
-      .fn(() => Promise.resolve(builtPorts(ports)))
-      .mockRejectedValueOnce(new Error('no storage backend'))
-    render(<App resolvePorts={resolvePorts} />)
-    await screen.findByRole('alert')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
-
-    await expectOpenProject(KEPT_NAME)
-    expect(resolvePorts).toHaveBeenCalledTimes(2)
   })
 })

@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import { DID_NOT_OPEN } from '../editor/projects'
+import { App } from './app'
 import { reconcileIndex } from '../session'
 import { createTestPorts, recordOf, type TestPorts } from '../session/handle/handle-test-kit'
 import {
@@ -13,6 +14,7 @@ import {
   expectOpenProject,
   findCardLink,
   findTheProjectsPage,
+  findTheShell,
   lockedIds,
   openProjectName,
   plantFailedProject,
@@ -151,5 +153,19 @@ describe('The application that starts from the records of the index', () => {
     renderApp(reloadOf(ports))
 
     await expectOpenProject('Old Cottage')
+  })
+})
+
+describe('The application whose storage lookup throws', () => {
+  it('shows the editor, with no way to start a new project and no Retry', async () => {
+    stubCapableStorage()
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const resolvePorts = () => Promise.reject(new Error('no storage backend'))
+
+    render(<App resolvePorts={resolvePorts} />)
+
+    expect(await findTheShell()).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start a new project' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
   })
 })

@@ -1,39 +1,115 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { NotificationProvider, BannerRegion } from '../editor/design-system'
-import { useDegradedStorageBanner } from './use-degraded-storage-banner'
+import type { DocumentHandle } from '../session'
 import type { StorageCapabilities } from '../storage'
+import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 
-const degraded: StorageCapabilities = {
-  opfs: false,
-  indexedDb: false,
-  fileSystemAccess: false,
-  persisted: false,
-  estimatedQuotaBytes: null,
+type HandleDurability = Pick<DocumentHandle, 'durable'>
+
+const TAB_ONLY: HandleDurability = { durable: false }
+const KEPT: HandleDurability = { durable: true }
+
+const BANNER_WITH_FOLDERS =
+  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it, or open a folder.'
+const BANNER_WITHOUT_FOLDERS =
+  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it.'
+
+function capabilitiesWith(fileSystemAccess: boolean): StorageCapabilities {
+  return {
+    opfs: false,
+    indexedDb: false,
+    fileSystemAccess,
+    persisted: false,
+    estimatedQuotaBytes: null,
+  }
 }
 
-function Harness({ capabilities }: { capabilities: StorageCapabilities | null }) {
-  useDegradedStorageBanner(capabilities)
+interface HarnessProps {
+  handle: HandleDurability | null
+  capabilities: StorageCapabilities | null
+}
+
+function Harness({ handle, capabilities }: HarnessProps) {
+  useDegradedStorageBanner(handle, capabilities)
   return <BannerRegion />
 }
 
+function renderHarness(props: HarnessProps) {
+  const inProvider = (each: HarnessProps) => (
+    <NotificationProvider>
+      <Harness {...each} />
+    </NotificationProvider>
+  )
+  const { rerender, container } = render(inProvider(props))
+  return { container, show: (each: HarnessProps) => rerender(inProvider(each)) }
+}
+
 describe('useDegradedStorageBanner', () => {
-  it('raises a dismissible storage-degraded banner when degraded', () => {
-    render(
-      <NotificationProvider>
-        <Harness capabilities={degraded} />
-      </NotificationProvider>,
-    )
-    expect(screen.getByRole('alert')).toHaveTextContent(/storage/i)
-    expect(screen.getByRole('button', { name: /dismiss/i })).toBeInTheDocument()
+  it('says that projects last until the tab closes, and offers a folder, where the browser opens folders', () => {
+    renderHarness({ handle: TAB_ONLY, capabilities: capabilitiesWith(true) })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
   })
 
-  it('raises nothing while capabilities are still resolving', () => {
-    const { container } = render(
-      <NotificationProvider>
-        <Harness capabilities={null} />
-      </NotificationProvider>,
-    )
+  it('says the same without the folder offer where the browser opens no folders', () => {
+    renderHarness({ handle: TAB_ONLY, capabilities: capabilitiesWith(false) })
+
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(BANNER_WITHOUT_FOLDERS)
+    expect(alert).not.toHaveTextContent(/open a folder/i)
+  })
+
+  it('raises nothing for a project that the store keeps', () => {
+    const { container } = renderHarness({ handle: KEPT, capabilities: capabilitiesWith(true) })
+
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('raises nothing while no project is open', () => {
+    const { container } = renderHarness({ handle: null, capabilities: capabilitiesWith(true) })
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('raises nothing while the capabilities are still resolving', () => {
+    const { container } = renderHarness({ handle: TAB_ONLY, capabilities: null })
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('raises the banner once the capabilities are known', () => {
+    const { show } = renderHarness({ handle: TAB_ONLY, capabilities: null })
+
+    show({ handle: TAB_ONLY, capabilities: capabilitiesWith(true) })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
+  })
+
+  it('can be dismissed', () => {
+    renderHarness({ handle: TAB_ONLY, capabilities: capabilitiesWith(true) })
+
+    expect(screen.getByRole('button', { name: 'Dismiss notification' })).toBeInTheDocument()
+  })
+
+  it('stays away after a dismissal when a later project is also not kept', async () => {
+    const capabilities = capabilitiesWith(true)
+    const { show } = renderHarness({ handle: TAB_ONLY, capabilities })
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss notification' }))
+
+    show({ handle: null, capabilities })
+    show({ handle: { durable: false }, capabilities })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('stays in place when a project that the store keeps opens after it', () => {
+    const capabilities = capabilitiesWith(true)
+    const { show } = renderHarness({ handle: TAB_ONLY, capabilities })
+
+    show({ handle: KEPT, capabilities })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
   })
 })
