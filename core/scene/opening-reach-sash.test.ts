@@ -12,8 +12,6 @@ import {
 import type { OpeningSceneNode } from './scene-graph'
 
 const WINDOW_ID = 'opening:hung-window'
-const WINDOW_HEIGHT_MM = 1200
-const DOOR_HEIGHT_MM = 2032
 // The meeting rail's top sits 630mm above the sill, so 1530mm above the floor for this window.
 const RAIL_TOP_MM = 630
 const JUST_ABOVE_RAIL_Y = 1531
@@ -34,10 +32,12 @@ function hitAt(
 
 describe('openingUnderReach on a hung window', () => {
   it('picks the upper sash for a hit above the meeting rail', () => {
-    const hit = hitAt(JUST_ABOVE_RAIL_Y)
+    const window = hungWindowAtZ2000(WINDOW_ID)
+
+    const hit = hitAt(JUST_ABOVE_RAIL_Y, { window })
 
     expect(hit?.part).toBe('upper')
-    expect(hit?.band).toEqual({ bottomMm: RAIL_TOP_MM, topMm: WINDOW_HEIGHT_MM })
+    expect(hit?.band).toEqual({ bottomMm: RAIL_TOP_MM, topMm: window.height })
     expect(hitAt(IN_TOP_GAP_Y)?.part).toBe('upper')
   })
 
@@ -68,7 +68,7 @@ describe('openingUnderReach on a hung window', () => {
     const hit = hitAt(IN_TOP_GAP_Y, { window: singleHung })
 
     expect(hit?.part).toBe('lower')
-    expect(hit?.band).toEqual({ bottomMm: 0, topMm: WINDOW_HEIGHT_MM })
+    expect(hit?.band).toEqual({ bottomMm: 0, topMm: singleHung.height })
   })
 
   it('closes the lowered upper sash when aimed at the gap it opened', () => {
@@ -97,6 +97,6 @@ describe('openingUnderReach on a door', () => {
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], { reachMm: REACH_MM })
 
     expect(hit?.part).toBe('primary')
-    expect(hit?.band).toEqual({ bottomMm: 0, topMm: DOOR_HEIGHT_MM })
+    expect(hit?.band).toEqual({ bottomMm: 0, topMm: door.height })
   })
 })

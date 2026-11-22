@@ -55,12 +55,11 @@ function sashMeshes(node: OpeningSceneNode): { lower: number[]; upper: number[] 
 // Checks that each mesh of the lower sash sits `lower` above its built place, each mesh of the
 // upper sash `upper` above it, and every other mesh exactly where it was built.
 function expectMeshShifts(
-  root: SceneRoot,
-  node: OpeningSceneNode,
+  scene: { root: SceneRoot; node: OpeningSceneNode },
+  sashes: { lower: number[]; upper: number[] },
   shifts: { lower: number; upper: number },
 ): void {
-  const sashes = sashMeshes(node)
-  meshesOf(root, node).forEach((mesh, index) => {
+  meshesOf(scene.root, scene.node).forEach((mesh, index) => {
     if (sashes.lower.includes(index)) {
       expect(mesh.position.y).toBeCloseTo(shifts.lower, PRECISION)
     } else if (sashes.upper.includes(index)) {
@@ -80,7 +79,7 @@ function expectSashShifts(
   const sashes = sashMeshes(node)
   expect(sashes.lower.length).toBeGreaterThan(0)
   expect(sashes.upper.length).toBeGreaterThan(0)
-  expectMeshShifts(root, node, shifts)
+  expectMeshShifts({ root, node }, sashes, shifts)
 }
 
 // A single-hung window has a lower sash only: no mesh answers to the upper sash.
@@ -88,8 +87,12 @@ function expectLowerSashOnly(root: SceneRoot, node: OpeningSceneNode, lower: num
   const sashes = sashMeshes(node)
   expect(sashes.lower.length).toBeGreaterThan(0)
   expect(sashes.upper).toEqual([])
-  expectMeshShifts(root, node, { lower, upper: 0 })
+  expectMeshShifts({ root, node }, sashes, { lower, upper: 0 })
 }
+
+// The eye stands 50mm below the window head, above the meeting rail, 1000mm in front of the wall.
+const HEAD_GAP_MM = 50
+const EYE_DISTANCE_MM = 1000
 
 describe('walk interaction on a hung window', () => {
   it('lowers only the upper sash when the upper sash is open', () => {
@@ -214,8 +217,12 @@ describe('walk interaction on a hung window', () => {
     const node = hungWindowNode('double-hung-window')
     const root = sceneWithOpening(node)
     const openness = new Map<string, OpeningPose>()
-    // The eye sits at world y 2050, above the meeting rail of a window whose sill is at 900.
-    const aimedHigh: WalkState = { position: { x: 1000, y: 2050, z: -1000 }, yaw: 0, pitch: 0 }
+    const eyeHeightMm = node.sillHeight + node.height - HEAD_GAP_MM
+    const aimedHigh: WalkState = {
+      position: { x: node.center.x, y: eyeHeightMm, z: -node.center.y + EYE_DISTANCE_MM },
+      yaw: 0,
+      pitch: 0,
+    }
 
     const interaction = interactFromWalk(aimedHigh, [node], emptyOpeningInteraction())
     tickOpenings({ root, openings: [node], interaction, openness }, FULL_STEP)
