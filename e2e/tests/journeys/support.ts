@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
+const SAVING_STATUS_TEXT = 'Saving...'
+
 // Every app selector the journeys depend on lives here, so that when a later
 // makeover slice restyles the shell only this module changes, not each spec.
 export const selectors = {
@@ -140,22 +142,32 @@ export async function drawWall(
   await page.keyboard.press('Enter')
 }
 
-const ROOM_LEFT = 200
-const ROOM_RIGHT = 500
-const ROOM_TOP = 150
-const ROOM_BOTTOM = 400
+// The closed room that the journeys share, in canvas pixels.
+export const CLOSED_ROOM = { left: 200, right: 500, top: 150, bottom: 400 }
 
-// The closed room that the journeys share, closed by clicking back on the first corner. Its
-// top wall runs along y = 150 from x = 200 to x = 500 in canvas pixels.
+// Draws the shared closed room, closed by clicking back on the first corner.
 export async function drawClosedRoom(page: Page): Promise<void> {
   await selectWallTool(page)
   const canvas = selectors.planCanvas(page)
-  await canvas.click({ position: { x: ROOM_LEFT, y: ROOM_TOP } })
-  await canvas.click({ position: { x: ROOM_RIGHT, y: ROOM_TOP } })
-  await canvas.click({ position: { x: ROOM_RIGHT, y: ROOM_BOTTOM } })
-  await canvas.click({ position: { x: ROOM_LEFT, y: ROOM_BOTTOM } })
-  await canvas.click({ position: { x: ROOM_LEFT, y: ROOM_TOP } })
+  const { left, right, top, bottom } = CLOSED_ROOM
+  await canvas.click({ position: { x: left, y: top } })
+  await canvas.click({ position: { x: right, y: top } })
+  await canvas.click({ position: { x: right, y: bottom } })
+  await canvas.click({ position: { x: left, y: bottom } })
+  await canvas.click({ position: { x: left, y: top } })
   await expect(selectors.roomProxies(page)).toHaveCount(1)
+}
+
+// Runs an edit and waits until it is stored. "All changes saved" is already on screen from the
+// save of an earlier edit, so it cannot tell the two saves apart. The status shows "Saving..."
+// from the edit until the write ends, which is never shorter than the autosave delay. The wait for
+// that state starts before the edit, in the page, so it cannot miss the state; the saved text that
+// is read after it can only belong to the edit.
+export async function editAndWaitForTheSave(page: Page, edit: () => Promise<void>): Promise<void> {
+  const saveStarted = page.getByText(SAVING_STATUS_TEXT).waitFor()
+  await edit()
+  await saveStarted
+  await expect(selectors.savedStatus(page)).toBeVisible()
 }
 
 // Assert the plan exposes the given number of walls. The wall count is observed
