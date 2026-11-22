@@ -6,7 +6,7 @@ import type { PageNotice } from './resolve-place'
  * Why the project did not open, in one sentence. A failure with a fixed text shows it alone; every
  * other failure names its reason after a fixed opening.
  */
-export function failureText(failure: SwitchFailure): string {
+function failureText(failure: SwitchFailure): string {
   const fixed = fixedFailureReason(failure)
   if (fixed !== undefined && fixed !== '') {
     return fixed

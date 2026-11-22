@@ -3,10 +3,10 @@ import { useNotifications } from '../editor/design-system'
 import type { DocumentHandle } from '../session'
 import type { StorageCapabilities } from '../storage'
 
-const TAB_ONLY_MESSAGE =
-  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it'
-const OPEN_A_FOLDER = ', or open a folder.'
-const WITHOUT_FOLDERS = '.'
+const BANNER_WITH_FOLDERS =
+  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it, or open a folder.'
+const BANNER_WITHOUT_FOLDERS =
+  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it.'
 
 // Raise the storage-degraded banner once for each mount, when the open project lives in the tab
 // alone and the capabilities are known. The text offers a folder only where the browser opens
@@ -27,7 +27,7 @@ export function useDegradedStorageBanner(
     banner({
       id: 'storage-degraded',
       severity: 'warning',
-      message: TAB_ONLY_MESSAGE + (capabilities.fileSystemAccess ? OPEN_A_FOLDER : WITHOUT_FOLDERS),
+      message: capabilities.fileSystemAccess ? BANNER_WITH_FOLDERS : BANNER_WITHOUT_FOLDERS,
       dismissible: true,
     })
   }, [tabOnly, capabilities, banner])
