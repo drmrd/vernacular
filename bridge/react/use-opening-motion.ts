@@ -5,7 +5,12 @@
  * the live scene.
  */
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
-import { sceneGraphForFloor, type OpeningInteractionState, type OpeningSceneNode } from '../../core'
+import {
+  sceneGraphForFloor,
+  type OpenParts,
+  type OpeningInteractionState,
+  type OpeningSceneNode,
+} from '../../core'
 import type { SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { useSceneGraph } from './use-scene-graph'
@@ -62,7 +67,7 @@ function useShownOpenings(): OpeningSceneNode[] {
 // the R key in a walk resets the state before the store echoes it, so the settle must not wait
 // for the state to differ.
 function useOpeningMotionRefs(
-  storedOpenDoorIds: ReadonlySet<string>,
+  storedOpenDoorIds: OpenParts,
   shownOpenings: OpeningSceneNode[],
 ): OpeningMotionRefs {
   const openings = useActiveFloorOpenings()
@@ -70,7 +75,7 @@ function useOpeningMotionRefs(
   openingsRef.current = openings
   const shownOpeningsRef = useRef<OpeningSceneNode[]>(shownOpenings)
   shownOpeningsRef.current = shownOpenings
-  const interactionRef = useRef<OpeningInteractionState>({ openIds: new Set(storedOpenDoorIds) })
+  const interactionRef = useRef<OpeningInteractionState>({ openParts: new Map(storedOpenDoorIds) })
   const opennessRef = useRef<Map<string, number>>(new Map())
   useEffect(() => {
     interactionRef.current = followStoredOpenings(interactionRef.current, storedOpenDoorIds)
@@ -125,10 +130,7 @@ function useRestoreOpenings(
  * render as a new open set reads that set, and a return to a floor reads the settled openness.
  * The caller swings the openings each frame with tickOpeningMotion.
  */
-export function useOpeningMotion(
-  root: SceneRoot,
-  storedOpenDoorIds: ReadonlySet<string>,
-): OpeningMotionRefs {
+export function useOpeningMotion(root: SceneRoot, storedOpenDoorIds: OpenParts): OpeningMotionRefs {
   const shownOpenings = useShownOpenings()
   const refs = useOpeningMotionRefs(storedOpenDoorIds, shownOpenings)
   useRestoreOpenings(root, shownOpenings, refs)

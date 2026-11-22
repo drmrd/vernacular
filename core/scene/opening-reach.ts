@@ -1,8 +1,10 @@
 import { openingTypeHasFill } from '../registries/opening-kind'
 import {
   openingMotion,
+  openingParts,
   type HingeMotion,
   type OpeningMotion,
+  type OpeningPartId,
   type SlideMotion,
 } from './opening-motion'
 import { planToWorld } from './plan-to-world'
@@ -166,8 +168,18 @@ function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit)
   return hits.length === 0 ? null : Math.min(...hits)
 }
 
+/** The opening the walker looks at and the part of it that E acts on. */
+export interface OpeningReachHit {
+  readonly openingId: string
+  readonly part: OpeningPartId
+}
+
+function reachHit(node: OpeningSceneNode | null): OpeningReachHit | null {
+  return node && { openingId: node.id, part: openingParts(node.type)[0] ?? 'primary' }
+}
+
 /**
- * The id of the opening the walker looks at within reach, or null when none is in
+ * The opening the walker looks at within reach and its part, or null when none is in
  * view. A short ray runs from the eye along the look direction; each opening is
  * tested as its shut frame and, once open, the rectangle its leaf or sash fills (spec
  * section 3.2), and the
@@ -183,10 +195,10 @@ export function openingUnderReach(
   direction: Vector3,
   openings: readonly OpeningSceneNode[],
   options?: { openness?: ReadonlyMap<string, number>; reachMm?: number },
-): string | null {
+): OpeningReachHit | null {
   const reachMm = options?.reachMm ?? DEFAULT_INTERACT_REACH_MM
   const ray: ReachRay = { origin: eye, direction: normalize(direction) }
-  let nearestId: string | null = null
+  let nearest: OpeningSceneNode | null = null
   let nearestDistance = Infinity
   for (const node of openings) {
     if (!openingTypeHasFill(node.type)) continue
@@ -194,8 +206,8 @@ export function openingUnderReach(
     const distance = reachDistance(ray, node, { reachMm, openness })
     if (distance !== null && distance < nearestDistance) {
       nearestDistance = distance
-      nearestId = node.id
+      nearest = node
     }
   }
-  return nearestId
+  return reachHit(nearest)
 }

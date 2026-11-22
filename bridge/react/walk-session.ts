@@ -9,9 +9,11 @@ import {
   emptyOpeningInteraction,
   WALK_EYE_HEIGHT_MM,
   advanceWalk,
+  openOpeningIds,
   passableDoorIds,
   walkLookTarget,
   wallSegmentsForWalk,
+  type OpenParts,
   type OpeningSceneNode,
   type SceneGraph,
   type WallSceneNode,
@@ -143,7 +145,7 @@ export interface WalkSession extends WalkRefs, WalkSessionHost {
   /** Reports the pose the walker ended on, so the next session can resume it. */
   onWalkPose: (pose: WalkState) => void
   /** Reports which doors stand open, so the store and the other view follow the walker at once. */
-  onOpenDoors: (openIds: ReadonlySet<string>) => void
+  onOpenDoors: (openParts: OpenParts) => void
 }
 
 // Builds the keydown and keyup handlers. Keydown routes the interact key to the
@@ -169,14 +171,14 @@ export function walkKeyHandlers(session: WalkSession): {
         interaction.current,
         openness.current,
       )
-      onOpenDoors(interaction.current.openIds)
+      onOpenDoors(interaction.current.openParts)
       onUserControl()
       return
     }
     if (event.code === RESET_KEY) {
       // The per-frame tick animates each opening shut from its current openness.
       interaction.current = emptyOpeningInteraction()
-      onOpenDoors(interaction.current.openIds)
+      onOpenDoors(interaction.current.openParts)
       onUserControl()
       return
     }
@@ -218,7 +220,7 @@ export interface WalkFrameContext extends WalkRefs {
 // leafless doorways that have nothing to open; shut doors and windows stay solid.
 function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
   const { walls, openings, furnitureSegments, radius } = ctx.collisionInputs
-  const passable = passableDoorIds(openings, ctx.interaction.current.openIds)
+  const passable = passableDoorIds(openings, openOpeningIds(ctx.interaction.current.openParts))
   return {
     segments: [...wallSegmentsForWalk(walls, openings, passable), ...furnitureSegments],
     radius,

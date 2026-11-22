@@ -1,6 +1,7 @@
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   type CameraPose,
+  type OpenParts,
   type Vector3,
   type WalkState,
 } from '../../core'
@@ -33,7 +34,7 @@ export interface SceneSessionState {
   showUnderground: boolean
   edgeOverlay: boolean
   /** Replace this set on every change; mutating it in place will not notify subscribers. */
-  openDoorIds: ReadonlySet<string>
+  openDoorIds: OpenParts
   savedCamera: SavedCamera | null
   walkPose: WalkState | null
   /** True once the stored session has been applied to the live view. */
@@ -47,7 +48,7 @@ export interface SceneSessionState {
 }
 
 /** The empty door set behind the default snapshot. Stores copy it, they never hold it. */
-const NO_OPEN_DOORS: ReadonlySet<string> = Object.freeze(new Set<string>())
+const NO_OPEN_DOORS: OpenParts = new Map()
 
 export const DEFAULT_SCENE_SESSION_STATE: SceneSessionState = Object.freeze({
   cameraMode: 'orbit',
@@ -82,7 +83,7 @@ export function createSceneSessionStore(
   let sceneSession: SceneSessionState = {
     ...DEFAULT_SCENE_SESSION_STATE,
     ...initial,
-    openDoorIds: new Set(initial.openDoorIds ?? NO_OPEN_DOORS),
+    openDoorIds: new Map(initial.openDoorIds ?? NO_OPEN_DOORS),
   }
   const listeners = new Set<() => void>()
 

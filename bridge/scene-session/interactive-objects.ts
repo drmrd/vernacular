@@ -17,5 +17,5 @@ export function resetInteractiveObjects(store: SceneSessionStore): void {
   if (interactiveObjectsAtDefault(store.getSceneSession())) {
     return
   }
-  store.updateSceneSession({ openDoorIds: new Set<string>() })
+  store.updateSceneSession({ openDoorIds: new Map() })
 }

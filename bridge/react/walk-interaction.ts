@@ -2,9 +2,11 @@ import {
   advanceOpenness,
   isOpeningOpen,
   openingUnderReach,
+  sameOpenParts,
   toggleOpening,
   walkLookDirection,
   type OpeningInteractionState,
+  type OpenParts,
   type OpeningSceneNode,
   type WalkState,
 } from '../../core'
@@ -29,8 +31,8 @@ export function interactFromWalk(
   // `openness?` field, so build options only when a map is present (a Map is always
   // truthy); omitting it leaves the field genuinely absent.
   const options = openness ? { openness } : undefined
-  const targetId = openingUnderReach(walk.position, walkLookDirection(walk), openings, options)
-  return targetId === null ? interaction : toggleOpening(interaction, targetId)
+  const hit = openingUnderReach(walk.position, walkLookDirection(walk), openings, options)
+  return hit === null ? interaction : toggleOpening(interaction, hit)
 }
 
 /** The per-frame inputs that drive the opening motion animation. */
@@ -70,12 +72,9 @@ export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
  */
 export function followStoredOpenings(
   interaction: OpeningInteractionState,
-  storedOpenIds: ReadonlySet<string>,
+  stored: OpenParts,
 ): OpeningInteractionState {
-  const { openIds } = interaction
-  const sameDoors =
-    openIds.size === storedOpenIds.size && [...storedOpenIds].every((id) => openIds.has(id))
-  return sameDoors ? interaction : { openIds: new Set(storedOpenIds) }
+  return sameOpenParts(interaction.openParts, stored) ? interaction : { openParts: new Map(stored) }
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   accumulatePointerLook,
   furnitureSegmentsForWalk,
   sceneGraphForFloor,
+  type OpenParts,
   type WalkInput,
   type WalkState,
 } from '../../core'
@@ -99,9 +100,9 @@ interface WalkCameraControlsProps {
    * The doors the session store holds open. The live openings follow this set whenever it
    * changes, in both camera modes, so a reset made outside a walk animates the doors shut.
    */
-  storedOpenDoorIds: ReadonlySet<string>
+  storedOpenDoorIds: OpenParts
   /** Reports which doors stand open after each E or R press. */
-  onOpenDoors: (openIds: ReadonlySet<string>) => void
+  onOpenDoors: (openParts: OpenParts) => void
 }
 
 // The pose handoff, held in refs refreshed on every render so that neither the saved pose
