@@ -3,9 +3,9 @@ import {
   frameSceneCamera,
   kelvinToLinearRgb,
   withDepthRangeOf,
-  FLOOR_NODE_PREFIX,
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_COLOR_TEMPERATURE_K,
+  FLOOR_NODE_PREFIX,
   type Bounds3,
   type CameraPose,
   type Point,
@@ -36,7 +36,8 @@ export interface FramedScene {
   pose: CameraPose
   bounds: Bounds3 | null
   // The box the camera frames: the framed floor's built content, or every drawn floor's when
-  // no floor is framed. It equals `bounds` in the building scope.
+  // no floor is framed or the framed floor is absent or has no built content. It equals
+  // `bounds` in the building scope.
   framingBounds: Bounds3 | null
   nearWallTargets: NearWallTarget[]
   // The floor's room outlines, in plan millimeters, so the per-frame near-wall
@@ -149,7 +150,7 @@ interface StackedFloors {
   root: SceneRoot
   nearWallTargets: NearWallTarget[]
   // The box of the framed floor's group alone, read before it joins the shared root.
-  framedBounds: Bounds3 | null
+  framedFloorBounds: Bounds3 | null
 }
 
 // Stacks every floor group under one root, each seated at its elevation (assembleFloorRoot),
@@ -158,14 +159,14 @@ interface StackedFloors {
 // as soon as its group is assembled, while the floor's own sub-groups are the ones under it,
 // and the scene unions them. The caller passes a non-empty list; the final guard only
 // narrows the type.
-function stackFloorRoot(floors: FloorAssembly[], framedFloorId?: string | null): StackedFloors {
+function stackFloorRoot(floors: FloorAssembly[], framedNodeId?: string): StackedFloors {
   let root: SceneRoot | undefined
-  let framedBounds: Bounds3 | null = null
+  let framedFloorBounds: Bounds3 | null = null
   const nearWallTargets: NearWallTarget[] = []
   for (const floor of floors) {
     const floorRoot = assembleFloorRoot(floor.node, floor.subgroups)
-    if (floor.node.id === `${FLOOR_NODE_PREFIX}${framedFloorId}`) {
-      framedBounds = sceneBounds(floorRoot)
+    if (floor.node.id === framedNodeId) {
+      framedFloorBounds = sceneBounds(floorRoot)
     }
     nearWallTargets.push(...enrollNearWallTargets(floorRoot, floor.entities))
     if (root === undefined) {
@@ -176,13 +177,15 @@ function stackFloorRoot(floors: FloorAssembly[], framedFloorId?: string | null):
     if (floorGroup !== undefined) root.add(floorGroup)
   }
   if (root === undefined) throw new Error('cannot frame a scene with no floors')
-  return { root, nearWallTargets, framedBounds }
+  return { root, nearWallTargets, framedFloorBounds }
 }
 
 /**
  * Frames pre-built floors into a FramedScene: the shared root of every floor group seated
- * at its elevation, a camera framed over the whole building's bounds, and one site ground
- * plane sized to the whole footprint at the graph grade. Bounds are read before the ground
+ * at its elevation, a camera framed on the framed floor's box (every drawn floor's when no
+ * floor is framed, or when the framed floor is absent or has no built content) with near and far
+ * planes from the box of everything drawn, and one site ground plane sized to the whole
+ * footprint at the graph grade. Bounds are read before the ground
  * plane is seated (sceneBounds excludes the ground either way). This is the caching
  * reconciler's counterpart to buildScene's stacked, grounded root (issue #479).
  */
@@ -191,11 +194,12 @@ export function frameStackedScene(
   gradeElevation: number | undefined,
   framedFloorId?: string | null,
 ): FramedScene {
-  const { root, nearWallTargets, framedBounds } = stackFloorRoot(floors, framedFloorId)
+  const framedNodeId = framedFloorId == null ? undefined : `${FLOOR_NODE_PREFIX}${framedFloorId}`
+  const { root, nearWallTargets, framedFloorBounds } = stackFloorRoot(floors, framedNodeId)
   // Read the bounds before seating the ground (sceneBounds excludes the ground either way),
   // then seat the shared ground plane sized to the whole footprint already in the root.
   const bounds = sceneBounds(root)
-  const framingBounds = framedBounds ?? bounds
+  const framingBounds = framedFloorBounds ?? bounds
   refreshGroundPlane(root, gradeElevation)
   return {
     root,
