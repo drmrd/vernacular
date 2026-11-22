@@ -113,11 +113,13 @@ The visible sides of a junction fill stay unpainted. No work to paint them is pl
   floor and its ceiling. A door or a window has no paintable face, so a click on a door leaf, a
   frame, or glass clears the paint target too.
 - Some pinned engine tests change. No scene baseline moves, because a click draws nothing.
+- A line never takes the click. The edge overlay and the selection outline are drawing aids, so
+  the pick skips every line hit and goes on to the mesh behind it. A click a millimetre from a wall
+  edge still gets that wall's face, and a click on the edge line of a faded wall gets the surface
+  behind the wall. Engine pick tests with the edge overlay on pin both cases. This settles #1070.
 
 ## Not decided here
 
-- What a line hit on the edge overlay of a faded wall does. The build keeps today's treatment of a
-  line hit and pins nothing about it, and #1070 tracks it.
 - At what opacity a wall counts as faded once the fade becomes gradual. Issue #744 tracks the fade
   that depends on the camera's distance.
 
