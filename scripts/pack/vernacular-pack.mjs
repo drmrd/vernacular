@@ -71,16 +71,25 @@ async function reviewPack(manifest, reader) {
 }
 
 /**
+ * The report entry for one manifest asset; `mediaType` appears only when the manifest declares it.
+ * @param {{ name: string, kind: string, contentHash: string, mediaType?: string }} asset
+ */
+function reportAsset(asset) {
+  const entry = { name: asset.name, kind: asset.kind, contentHash: asset.contentHash }
+  if (asset.mediaType !== undefined) {
+    entry.mediaType = asset.mediaType
+  }
+  return entry
+}
+
+/**
  * Build a build report from a manifest and its review outcome.
  * @param {object} manifest
  * @param {{ errors: string[], warnings: string[] }} review
  * @returns {object}
  */
 function buildReport(manifest, review) {
-  const assets = (Array.isArray(manifest?.assets) ? manifest.assets : []).map((asset) => ({
-    name: asset.name,
-    contentHash: asset.contentHash,
-  }))
+  const assets = (Array.isArray(manifest?.assets) ? manifest.assets : []).map(reportAsset)
   const licenses = collectLicenses(manifest)
   return {
     status: review.errors.length === 0 ? 'PASS' : 'FAIL',
