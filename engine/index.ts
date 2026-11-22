@@ -27,7 +27,12 @@ export { pickScene, pickSceneAt } from './scene/pick-scene'
 export type { EntityScreenPosition } from './scene/entity-screen-positions'
 export { entityScreenPositions } from './scene/entity-screen-positions'
 export { createSelectionOutlineGroup, reconcileSelectionOutline } from './scene/selection-outline'
-export type { NearWallTarget } from './scene/near-wall-transparency'
+export type {
+  ConditionalFillFadeTarget,
+  HeldFillFadeTarget,
+  NearWallTarget,
+  WallFadeTarget,
+} from './scene/near-wall-transparency'
 export {
   cameraFacesWallOutside,
   prepareNearWallTransparency,
