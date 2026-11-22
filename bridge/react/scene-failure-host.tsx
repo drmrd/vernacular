@@ -1,10 +1,8 @@
-import { useContext } from 'react'
-import type { ReactElement } from 'react'
-import { SceneFailureViewContext } from './scene-failure-view-context'
-import type { SceneFailureViewProps } from './scene-failure-view-context'
+import { useContext, type ReactElement } from 'react'
+import { SceneFailureViewContext, type SceneFailureViewProps } from './scene-failure-view-context'
 import { sceneRendererFailedProps } from './scene-readiness'
 
-/** Renders the failure view that fills the slot, inside the element that marks the failure kind. */
+/** Carries the failure marker itself, so a view that fills the slot cannot leave it out. */
 export function SceneFailureHost(props: SceneFailureViewProps): ReactElement {
   const FailureView = useContext(SceneFailureViewContext)
   return (
