@@ -16,6 +16,8 @@ export interface UprightRectangle {
 /** How far a dot product of unit normals may sit from -1 or 0 and still count as facing or square. */
 const ORIENTATION_TOLERANCE = 1e-9
 
+const LOGARITHM_DIVISOR = 4
+
 interface SignedPosition {
   position: number
   sign: number
@@ -66,11 +68,23 @@ function facingAntiderivative(offset: number, height: number, gap: number): numb
   )
 }
 
-function signedHeightSum(offset: number, terms: readonly HeightTerm[], gap: number): number {
-  return terms.reduce(
-    (sum, term) => sum + term.sign * facingAntiderivative(offset, term.height, gap),
-    0,
+/**
+ * The fourfold antiderivative g(m, v) of the right-angle exchange, in square millimetres, where m is
+ * the sum of the squared distances of a glazing end and a doorway end from the other's plane.
+ */
+function rightAngleAntiderivative(squaredReach: number, height: number): number {
+  const squaredSum = squaredReach + height * height
+  if (squaredSum === 0) return 0
+  const reach = Math.sqrt(squaredReach)
+  return (
+    (-height * reach * Math.atan2(height, reach) +
+      ((squaredReach - height * height) * Math.log(squaredSum)) / LOGARITHM_DIVISOR) /
+    (2 * Math.PI)
   )
+}
+
+function signedHeightSum(terms: readonly HeightTerm[], kernel: (height: number) => number): number {
+  return terms.reduce((sum, term) => sum + term.sign * kernel(term.height), 0)
 }
 
 function faceEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
@@ -90,8 +104,43 @@ function facingWallsExchangeArea(doorway: UprightRectangle, glazing: UprightRect
   let exchangeArea = 0
   for (const glazingEnd of signedEnds(glazing.span, wallDirection)) {
     for (const doorwayEnd of signedEnds(doorway.span, wallDirection)) {
-      const signedSum = signedHeightSum(glazingEnd.position - doorwayEnd.position, terms, gap)
+      const offset = glazingEnd.position - doorwayEnd.position
+      const signedSum = signedHeightSum(terms, (height) =>
+        facingAntiderivative(offset, height, gap),
+      )
       exchangeArea -= glazingEnd.sign * doorwayEnd.sign * signedSum
+    }
+  }
+  return exchangeArea
+}
+
+function squareToEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
+  return Math.abs(dot(doorway.facing, glazing.facing)) <= ORIENTATION_TOLERANCE
+}
+
+/** The ends of a span, each at its distance in front of the plane of a rectangle, cut off at 0. */
+function distancesInFront(
+  span: readonly [Point, Point],
+  plane: UprightRectangle,
+): SignedPosition[] {
+  const planeOffset = dot(plane.span[0], plane.facing)
+  return signedEnds(span, plane.facing).map(({ position, sign }) => ({
+    position: Math.max(position - planeOffset, 0),
+    sign,
+  }))
+}
+
+/** The exchange area, in square millimetres, between two walls at a right angle. */
+function rightAngleExchangeArea(doorway: UprightRectangle, glazing: UprightRectangle): number {
+  const terms = heightTerms(doorway, glazing)
+  let exchangeArea = 0
+  for (const glazingEnd of distancesInFront(glazing.span, doorway)) {
+    for (const doorwayEnd of distancesInFront(doorway.span, glazing)) {
+      const squaredReach = glazingEnd.position ** 2 + doorwayEnd.position ** 2
+      const signedSum = signedHeightSum(terms, (height) =>
+        rightAngleAntiderivative(squaredReach, height),
+      )
+      exchangeArea += glazingEnd.sign * doorwayEnd.sign * signedSum
     }
   }
   return exchangeArea
@@ -100,11 +149,15 @@ function facingWallsExchangeArea(doorway: UprightRectangle, glazing: UprightRect
 /**
  * The form factor from the doorway to the glazing, over only the point pairs where the glazing point
  * is higher than the doorway point; the doorway's area times it is the exchange area that carries
- * window light downward onto the doorway. Walls that do not face each other give 0.
+ * window light downward onto the doorway. Walls that neither face each other nor meet at a right
+ * angle give 0.
  */
 export function doorwayToGlazingFormFactor(
   doorway: UprightRectangle,
   glazing: UprightRectangle,
 ): number {
-  return facingWallsExchangeArea(doorway, glazing) / rectangleArea(doorway)
+  const exchangeArea = squareToEachOther(doorway, glazing)
+    ? rightAngleExchangeArea(doorway, glazing)
+    : facingWallsExchangeArea(doorway, glazing)
+  return exchangeArea / rectangleArea(doorway)
 }
