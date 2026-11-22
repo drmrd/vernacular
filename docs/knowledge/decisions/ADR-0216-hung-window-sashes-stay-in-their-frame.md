@@ -411,8 +411,8 @@ in front of the upper sash; from outside the upper sash is nearer. No automated 
 those views.
 
 A live check runs on a real WebGPU view, in one browser, on a development Mac and in the macOS
-live-view job of CI. It is the case "keeps the sashes of an open hung window inside its frame, and
-reaches it again with the open key" in `e2e/tests/journeys/close-doors-and-windows.spec.ts`, with
+live-view job of CI. It is the case "lowers the upper sash of a hung window inside its frame, and
+shuts it again with the open key" in `e2e/tests/journeys/close-doors-and-windows.spec.ts`, with
 its steps in `e2e/tests/journeys/close-openings-window.ts`. It selects the shut window through the
 list of 3D entities and takes the box of pixels its outline changes as the box of the frame. It
 then opens the window with the E key and checks three things. The box of pixels the open window
