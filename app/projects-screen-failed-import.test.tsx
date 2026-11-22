@@ -1,7 +1,12 @@
 import { screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { ARCHIVE_LIMITS } from '../storage'
-import { REPAIRED_NAME, mixedPaintBytes } from '../session/flows/open-failed-test-kit'
+import { IMAGE } from '../session/flows/import-file-test-kit'
+import {
+  REPAIRED_NAME,
+  mixedPaintBytes,
+  mixedPaintReferringTo,
+} from '../session/flows/open-failed-test-kit'
 import type { TestPorts } from '../session/handle/handle-test-kit'
 import { buildZip, documentEntry } from '../storage/zip/zip-test-kit'
 import { unreadableFile } from './action-test-support'
@@ -46,6 +51,7 @@ const NEWER_VERSION_CAUSE = 'A newer version of Vernacular made this project.'
 const NOT_A_PROJECT_CAUSE = 'The file is not a Vernacular project.'
 const FILE_CHOICE_SENTENCE =
   'A new file stores a repaired version of this project. The file that you chose stays unchanged.'
+const FILE_MISSING_ASSETS = /The file did not include \d+ of the assets this project uses\./
 const GARBAGE_SIZE = 1
 
 setUpProjectsScreenTests()
@@ -102,6 +108,7 @@ describe('A file that does not import, on the Projects page', () => {
     const choice = await findTheChoiceDialog()
 
     expect(choice).toHaveTextContent(FILE_CHOICE_SENTENCE)
+    expect(screen.queryByRole('alertdialog', { name: FILE_TITLE })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Replace the stored project' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Open as a new project' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
@@ -116,6 +123,17 @@ describe('A file that does not import, on the Projects page', () => {
     await expectOpenProject(REPAIRED_NAME)
     expect(await storedIds(ports)).toHaveLength(2)
     expect(screen.queryByRole('alertdialog', { name: CHOICE_TITLE })).not.toBeInTheDocument()
+  })
+
+  it('"Open as a new project" warns that the repaired copy lacks the assets that the file did not include', async () => {
+    const { bytes } = await mixedPaintReferringTo(IMAGE)
+    await importFromThePicker(new File([bytes.buffer as ArrayBuffer], 'house.json'))
+    await clickInTheDialog(await findTheFailedOpenDialog(FILE_TITLE), 'Open with the repair')
+
+    await clickInTheDialog(await findTheChoiceDialog(), 'Open as a new project')
+
+    await expectOpenProject(REPAIRED_NAME)
+    expect(await screen.findByText(FILE_MISSING_ASSETS)).toBeInTheDocument()
   })
 
   it('an archive over a limit says "The file is larger than Vernacular can open."', async () => {
@@ -180,6 +198,8 @@ describe('A file that the page cannot import at all, or that is closed again', (
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(await findCardLink(nameOf(FIRST_ID))).toBeInTheDocument()
+    await settleForAWhile()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(await storedIds(ports)).toEqual(idsBefore)
     expect(await recordIds(ports)).toEqual(recordsBefore)
   })

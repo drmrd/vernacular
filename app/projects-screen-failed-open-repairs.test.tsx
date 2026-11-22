@@ -12,6 +12,7 @@ import { addressOf } from './history-navigation-test-support'
 import {
   CHOICE_TITLE,
   PAINT_REPAIR_SENTENCE,
+  STORED_TITLE,
   clickInTheDialog,
   filesOfTheRepairableProject,
   findTheFailedOpenDialog,
@@ -44,6 +45,7 @@ describe('The repair choices of the failed-open dialog on the Projects page', ()
     const choice = await openTheChoice(dialog)
 
     expect(choice).toHaveTextContent(STORED_CHOICE_SENTENCE)
+    expect(screen.queryByRole('alertdialog', { name: STORED_TITLE })).not.toBeInTheDocument()
     expect(within(choice).getByRole('button', { name: 'Open as a new project' })).toBeEnabled()
     expect(within(choice).getByRole('button', { name: 'Replace the stored project' })).toBeEnabled()
     await clickInTheDialog(choice, 'Cancel')

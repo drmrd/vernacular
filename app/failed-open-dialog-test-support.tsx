@@ -54,11 +54,18 @@ export async function clickInTheDialog(dialog: HTMLElement, name: string): Promi
   await userEvent.click(within(dialog).getByRole('button', { name }))
 }
 
+/** Where the dialog to close shows and what its title is; the page and the stored title by default. */
+export interface CloseTheDialogOptions {
+  readonly container?: HTMLElement
+  readonly title?: string
+}
+
 /**
  * Waits for the failed-open dialog of `container` or of the page, presses Close, and waits until no
  * dialog shows in `container` or, without one, in the page.
  */
-export async function closeTheDialog(container?: HTMLElement, title = STORED_TITLE): Promise<void> {
+export async function closeTheDialog(options: CloseTheDialogOptions = {}): Promise<void> {
+  const { container, title = STORED_TITLE } = options
   await clickInTheDialog(await findTheFailedOpenDialog(title, container), 'Close')
   const scope = within(container ?? document.body)
   await waitFor(() => expect(scope.queryByRole('alertdialog')).not.toBeInTheDocument())

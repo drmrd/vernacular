@@ -96,6 +96,8 @@ describe('The failed-open dialog on the Projects page', () => {
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(await findTheCardThatDidNotOpen()).toHaveTextContent(DID_NOT_OPEN)
+    await settleForAWhile()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(filesBefore.size).toBeGreaterThan(0)
     expect(await filesUnder(ports.root, FAILED_ID)).toEqual(filesBefore)

@@ -83,8 +83,8 @@ describe('Two tabs that start a new project after a failed load', () => {
     const failedBefore = await filesUnder(firstPorts.root, FAILED_ID)
     const first = boot(firstPorts)
     const second = boot(secondPorts)
-    await closeTheDialog(first)
-    await closeTheDialog(second)
+    await closeTheDialog({ container: first })
+    await closeTheDialog({ container: second })
 
     await startNewProjectFromThePage(first)
     await editTheProjectIn(first)
@@ -115,7 +115,7 @@ describe('The Projects page after a failed load', () => {
     const tab = boot(ports)
 
     expect(await findTheFailedOpenDialog(STORED_TITLE, tab)).toHaveTextContent(NEWER_VERSION_CAUSE)
-    await closeTheDialog(tab)
+    await closeTheDialog({ container: tab })
     const page = await findTheProjectsPage(tab)
     expect(within(page).getByText(DID_NOT_OPEN)).toBeInTheDocument()
     expect(within(page).getByRole('button', { name: 'New project' })).toBeInTheDocument()

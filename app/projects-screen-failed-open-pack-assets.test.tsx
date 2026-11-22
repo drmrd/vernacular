@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AssetReference } from '../core'
@@ -27,7 +27,13 @@ import { PROJECTS_ADDRESS, durablePortsWith } from './history-navigation-test-su
 import { setUpProjectsScreenTests } from './projects-screen-test-support'
 
 const PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
-const MISSING_WARNING = /shows as missing/
+const MISSING_WARNING = /Vernacular could not find \d+ of the assets this project uses\./
+
+/** The sentence for a repaired copy that lacks `count` assets, with its ending for one or several. */
+function missingSentence(count: number): string {
+  const ending = count === 1 ? 'It shows as missing.' : 'They show as missing.'
+  return `Vernacular could not find ${count} of the assets this project uses. ${ending}`
+}
 
 /** What the library of the application lists now. A case sets it before it renders. */
 const library = vi.hoisted(() => ({ items: [] as LibraryItem[] }))
@@ -103,11 +109,21 @@ describe('The repaired copy of a folder project that refers to an asset of a pac
     expect(screen.queryByText(MISSING_WARNING)).not.toBeInTheDocument()
   })
 
-  it('warns that the asset shows as missing when no pack supplies it', async () => {
-    const { ports } = await portsWithAFolderProjectReferringToPackAssets()
+  it('warns that every asset shows as missing when no pack supplies any', async () => {
+    const { ports, supplies } = await portsWithAFolderProjectReferringToPackAssets()
 
     await openTheRepairedCopy(ports)
 
-    await waitFor(() => expect(screen.getByText(MISSING_WARNING)).toBeInTheDocument())
+    expect(supplies.length).toBeGreaterThan(1)
+    expect(await screen.findByText(missingSentence(supplies.length))).toBeInTheDocument()
+  })
+
+  it('warns that one asset shows as missing when a pack supplies all the others', async () => {
+    const { ports, supplies } = await portsWithAFolderProjectReferringToPackAssets()
+    library.items = supplies.slice(1)
+
+    await openTheRepairedCopy(ports)
+
+    expect(await screen.findByText(missingSentence(1))).toBeInTheDocument()
   })
 })

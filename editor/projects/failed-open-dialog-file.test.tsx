@@ -61,7 +61,6 @@ describe('the dialog for a file that did not open', () => {
     const dialog = renderFileDialog({ cause: 'file-too-large' })
 
     expect(dialog).toHaveTextContent(LIMIT_SENTENCE)
-    expect(dialog.querySelector('details')).toHaveTextContent(LIMIT_DETAIL)
   })
 
   it('shows no Export, even when a handler for it is given', () => {

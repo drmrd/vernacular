@@ -180,7 +180,7 @@ describe('Importing a file from the Projects page', () => {
     await clickPageAction('Import file')
 
     expect(await findTheFailedOpenDialog(FILE_TITLE)).toHaveTextContent(TOO_LARGE_CAUSE)
-    await closeTheDialog(undefined, FILE_TITLE)
+    await closeTheDialog({ title: FILE_TITLE })
     expect(await findTheProjectsPage()).toBeInTheDocument()
     expect(lockedIds(ports)).toEqual([])
   })
