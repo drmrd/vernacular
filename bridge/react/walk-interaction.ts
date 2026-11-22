@@ -46,20 +46,16 @@ export interface OpeningTick {
   openness: Map<string, OpeningPose>
 }
 
-function shutPoseOf(target: OpeningPose): OpeningPose {
-  return Object.fromEntries(Object.keys(target).map((part) => [part, 0]))
-}
-
 /**
- * Advances every opening one timestep toward its open or closed target and moves
- * its fill group to match, playing the motion its type resolves to. An opening
+ * Advances every opening one timestep: eases each part toward its target openness
+ * and moves that part's meshes to match. An opening
  * already at rest on its target is skipped, so the motion runs only while a door
  * or window is in motion.
  */
 export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
   for (const node of tick.openings) {
     const target = openingTargetPose(node.type, tick.interaction.openParts.get(node.id))
-    const current = tick.openness.get(node.id) ?? shutPoseOf(target)
+    const current = tick.openness.get(node.id) ?? openingTargetPose(node.type, undefined)
     const next = advanceOpeningPose(current, target, dtSeconds)
     if (next === current) continue
     tick.openness.set(node.id, next)
@@ -95,7 +91,7 @@ export function settleUnshownOpenings(settle: Omit<OpeningTick, 'root'>): void {
 /**
  * Poses every opening on the given root where the session left it, so a newly built or rebuilt
  * root never shows a door out of place: an opening that carries an openness is posed at that
- * openness, an opening held open with none is seated fully open and recorded so, and every other
+ * openness, an opening held open with none is seated at its target pose and recorded so, and every other
  * opening keeps its built pose.
  */
 export function restoreOpenings(tick: OpeningTick): void {

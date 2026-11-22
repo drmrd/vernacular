@@ -35,17 +35,16 @@ export function advanceOpeningPose(
   target: OpeningPose,
   dtSeconds: number,
 ): OpeningPose {
-  const advanced: Partial<Record<OpeningPartId, number>> = { ...current }
-  let moved = false
+  let advanced: Partial<Record<OpeningPartId, number>> | undefined
   for (const [part, goal] of Object.entries(target) as [OpeningPartId, number][]) {
     const before = current[part] ?? 0
     const after = advanceOpenness(before, goal, dtSeconds)
     if (after !== before) {
+      advanced ??= { ...current }
       advanced[part] = after
-      moved = true
     }
   }
-  return moved ? advanced : current
+  return advanced ?? current
 }
 
 /** Jumps every part named in the pose or in the open set straight to its target openness. */

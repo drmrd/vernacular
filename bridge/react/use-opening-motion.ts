@@ -140,7 +140,7 @@ export function useOpeningMotion(root: SceneRoot, storedOpenDoorIds: OpenParts):
 
 /**
  * Swings every opening one frame toward the open parts, in either camera mode. An opening at
- * rest on its target costs two lookups (its open state and its openness).
+ * rest on its target is skipped after its target pose is built.
  */
 export function tickOpeningMotion(root: SceneRoot, refs: OpeningMotionRefs, delta: number): void {
   tickOpenings(
