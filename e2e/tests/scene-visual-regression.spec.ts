@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openHarnessScene } from './scene-helpers'
+import { settledHarnessCanvas } from './scene-helpers'
 
 // The three-dimensional render harness boots a deterministic, fixed-size scene via the
 // `?fixture=scene-harness` seam (see app/app.tsx) and screenshots the rendered canvas.
@@ -20,23 +20,12 @@ const SHELL_THRESHOLD = 0.35
 const SHELL_MAX_DIFF_PIXEL_RATIO = 0.05
 
 async function captureShell(page: Page, query: string, snapshot: string): Promise<void> {
-  const canvas = await openHarnessScene(page, query, 'scene harness')
-
-  // The harness renders a single static frame on mount (no animation). Wait for the
-  // canvas backing store to reach its pinned size so the rendered frame is in the
-  // compositor before screenshotting. The frame contents are verified out of band
-  // against the committed baseline; with preserveDrawingBuffer off a 2D-readback of the
-  // canvas reads an already-cleared buffer, so the compositor screenshot is the source
-  // of truth, not an in-page pixel poll.
-  await expect
-    .poll(() => canvas.evaluate((element) => (element as HTMLCanvasElement).width), {
-      message: 'waiting for the harness canvas to size its backing store',
-    })
-    .toBeGreaterThan(0)
-
-  // The attribute turns true once the harness has drawn its ready frame, so the screenshot
-  // captures that frame and not an earlier one.
-  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
+  // The harness renders a single static frame on mount (no animation). The helper waits until
+  // the harness has drawn its ready frame (data-harness-ready), so the screenshot captures that
+  // frame and not an earlier one. With preserveDrawingBuffer off a 2D-readback of the canvas
+  // reads an already-cleared buffer, so the compositor screenshot is the source of truth, not
+  // an in-page pixel poll.
+  const canvas = await settledHarnessCanvas(page, query, 'scene harness')
 
   await expect(canvas).toHaveScreenshot(snapshot, {
     threshold: SHELL_THRESHOLD,
