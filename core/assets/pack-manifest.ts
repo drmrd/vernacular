@@ -149,6 +149,11 @@ function declaresMediaTypes(formatVersion: unknown): boolean {
   return formatVersion === MEDIA_TYPE_FORMAT_VERSION
 }
 
+export function isModelAsset(asset: { mediaType?: string }, formatVersion: unknown): boolean {
+  if (!declaresMediaTypes(formatVersion)) return true
+  return asset.mediaType !== undefined && MODEL_MEDIA_TYPES.includes(asset.mediaType)
+}
+
 function allowedMediaTypes(kind: unknown): readonly string[] {
   return kind === 'texture' ? TEXTURE_MEDIA_TYPES : MODEL_MEDIA_TYPES
 }
