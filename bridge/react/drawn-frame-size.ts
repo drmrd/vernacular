@@ -15,7 +15,7 @@ export interface FrameSizeState {
  */
 export const ASPECT_TOLERANCE = 1e-6
 
-/** Whether a finished frame was drawn at the canvas's current size. */
+/** Whether a finished frame was drawn at the size the renderer holds for the canvas. */
 export function frameMatchesCanvasSize(state: FrameSizeState): boolean {
   const { gl, size, camera } = state
   // A zero size means the canvas is not laid out yet, so nothing was drawn at it.

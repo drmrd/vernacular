@@ -5,7 +5,7 @@ import { frameMatchesCanvasSize } from './drawn-frame-size'
 // The live canvas's per-frame readiness signal, extracted from the scene view so that
 // file stays within its size budget: the drawn scene revision the readiness boundary
 // reads, and the in-canvas component that reports every counted frame to both readers
-// that wait on one. A frame counts only when it was drawn at the canvas's current size.
+// that wait on one. A frame counts only when it was drawn at the size the renderer holds for the canvas.
 
 // The scene revision of the last counted frame on this mount, null until the first one.
 // The wrapper advertises it so the editor pane's readiness observer knows the scene has

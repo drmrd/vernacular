@@ -37,13 +37,18 @@ The live 3D pane said only one thing about its frames: `data-harness-ready` turn
 renderer of a mount had drawn its first frame. Nothing told a reader which scene that frame held,
 or whether a later edit had reached the screen. Scene tests filled the gap by comparing
 screenshots. They captured a frame, made an edit, and polled until the picture changed. That wait
-is slow and indirect, and it cannot tell an edit that arrived from a frame drawn during a resize.
+is slow and indirect.
 One selection test compared two frames of a blank pane and passed without seeing the room it was
 meant to check.
 
-A frame drawn during a resize is a real case. The drawing buffer and the camera aspect follow the
-canvas size one step behind it, so a frame can be drawn at the old size and stretched to the new
-one. The old flag counted such a frame as drawn.
+The old flag also took every frame on trust. It did not ask whether the renderer and the camera had
+been sized for the canvas. Today they always are: the renderer library sets the drawing buffer, the
+canvas's CSS size, and the camera aspect in one step when its measured size changes, so no frame is
+stretched. That has not always held here. An earlier setup race built a second renderer and a second
+default camera that were never sized (`bridge/react/scene-renderer-canvas.tsx`), and the library
+does not size a camera that is swapped in later. What does lag is the library's measured size. It
+follows the pane's laid-out box after a 50 ms debounce and a render, and the canvas keeps its old
+box until then. This signal does not cover that lag.
 
 ## Decision
 
@@ -56,7 +61,7 @@ The wrapper with the test id `live-scene-canvas` carries two attributes:
 `data-harness-ready` stays on the same element. It now means that the mount has drawn its first
 counted frame, so `editor/shell/scene-pane.tsx` reads it unchanged.
 
-**A frame counts only when it was drawn at the canvas's current size.** `frameMatchesCanvasSize` in
+**A frame counts only when it was drawn at the size the renderer holds for the canvas.** `frameMatchesCanvasSize` in
 `bridge/react/drawn-frame-size.ts` accepts a frame when the CSS size is above zero, the drawing
 buffer equals the CSS size times the pixel ratio, floored the way the renderer floors it, and the
 camera aspect sits within `ASPECT_TOLERANCE` (1e-6) of the canvas aspect. An orthographic camera has
@@ -98,8 +103,9 @@ never assert an exact number.
 
 ## Consequences
 
-- A test can tell that an edit is on screen without reading pixels, and a frame drawn during a
-  resize no longer passes for a finished one.
+- A test can tell that an edit is on screen without reading pixels. A frame from a renderer or a
+  camera that was never sized for the canvas does not count, so that fault shows as a wait that
+  times out and not as a wrong picture.
 - The product can read the same attributes to notice a canvas that stopped drawing, for example a
   scene revision that stays ahead of the drawn revision.
 - A grade-only edit does not advance the revision. When the floor set is unchanged, the reconciler
@@ -107,8 +113,12 @@ never assert an exact number.
   A test that needs to see a grade change must still compare frames. No current test does.
 - `waitForDrawnSceneChange` has to take its first reading after any view switch. Across a remount
   the revision restarts, and a wait that read the old mount's value could hang.
-- A resize neither resets nor advances the drawn revision. Frames during the resize are rejected,
-  and the next counted frame draws the revision the pane already reported.
+- A resize neither resets nor advances the drawn revision. The size check holds by construction
+  through a resize, because the library resizes the buffer, the canvas, and the camera together. So
+  the signal does not say that the pane has caught up with a new laid-out box: for a short time
+  after a resize the canvas still shows a frame at the old size, unstretched, while the drawn
+  revision already equals the scene revision. No current test resizes a mounted pane, because every
+  view switch remounts it. Issue #1074 tracks publishing the drawn size.
 - The scene harness keeps its own ready frame and does not run the size check yet. Adopting it
   there is separate work.
 
@@ -122,8 +132,8 @@ never assert an exact number.
   1, 2, 1, so the revision could go backwards and a wait for "later than before" would break. The
   counter gives 1, 2, 3.
 - **Keeping `onDrawnFrame` ungated and gating only the revision.** The pane would then have two
-  meanings of a drawn frame, and the live-view readiness fact could still settle on a frame drawn at
-  the old size.
+  meanings of a drawn frame, and the live-view readiness fact could still settle on a frame from an
+  unsized renderer or camera.
 - **Logic in `webgpu-scene-view.tsx`.** The file is excluded from coverage, so a rule placed there
   could not be proven by a test.
 

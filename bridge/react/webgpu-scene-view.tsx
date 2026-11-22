@@ -152,7 +152,7 @@ function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewRe
 
 // The interactive React Three Fiber canvas: the WebGPU renderer setup, the readiness
 // boundary around it, and the two post-processing hooks that must stay directly under
-// this function (they need the perceived-color store and first-frame callback that
+// this function (they need the perceived-color store and drawn-frame callback that
 // live here). Extracted from WebGPUSceneView so each function stays within the length
 // limit. frameloop="always" renders every frame so interactive camera moves and
 // color-temperature changes show continuously, not only when React remounts the scene.
