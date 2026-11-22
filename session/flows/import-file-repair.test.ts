@@ -6,9 +6,10 @@ import {
   bytesOf,
   fixtureDocument,
   metaOf,
+  projectOf,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { assetsOf } from '../handle/handle-assets'
-import { createTestPorts, handleOf, storedName } from '../handle/handle-test-kit'
+import { createTestPorts, handleOf, storedName, storedProject } from '../handle/handle-test-kit'
 import { importFile } from './import-file'
 import type { ImportedFile } from './import-file'
 import { IMAGE, importedOf } from './import-file-test-kit'
@@ -86,10 +87,13 @@ describe('an import with the repair', () => {
     const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
     metaOf(document).name = SOUND_NAME
 
-    const handle = handleOf(
-      await importFile(ports, undefined, repairing('house.json', bytesOf(document))),
-    )
+    const bytes = bytesOf(document)
+
+    const handle = handleOf(await importFile(ports, undefined, repairing('house.json', bytes)))
 
     expect(handle.session.getProject().meta.name).toBe(SOUND_NAME)
+    expect(withoutMeta(await storedProject(ports.workspace, handle.id))).toEqual(
+      withoutMeta(projectOf(bytes)),
+    )
   })
 })

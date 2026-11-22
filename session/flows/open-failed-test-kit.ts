@@ -81,16 +81,19 @@ export function repairedBody(): unknown {
 
 /**
  * The mixed document with its first underlay image replaced by `image`, as bytes, with the hash
- * of `image`.
+ * of `image`. The reference has the asset scope `scope` when one is given.
  */
 export async function mixedPaintReferringTo(
   image: Uint8Array,
+  scope?: string,
 ): Promise<{ readonly bytes: Uint8Array; readonly imageHash: string }> {
   const imageHash = await contentHashOf(image)
   const document = withMixedPaintEntries()
   const underlay = (firstFloorOf(document).underlays as Json[])[0]
   if (underlay === undefined) throw new Error('The document has no underlay')
-  ;(underlay.source as { image: { contentHash: string } }).image.contentHash = imageHash
+  const reference = (underlay.source as { image: { contentHash: string; scope: string } }).image
+  reference.contentHash = imageHash
+  if (scope !== undefined) reference.scope = scope
   return { bytes: bytesOf(document), imageHash }
 }
 
@@ -117,16 +120,29 @@ export function placeInFolder(
 }
 
 /**
+ * Remembers a folder as the project `a`, with `bytes` as its document and a record in the index
+ * that names the folder. Gives the folder's directory.
+ */
+export async function placeFolderProject(
+  ports: TestPorts,
+  bytes: Uint8Array,
+): ReturnType<typeof rememberFolder> {
+  const folder = await placeInFolder(ports, bytes)
+  await ports.index.put(folderRecord(PROJECT_ID, { location: IN_FOLDER }))
+  return folder
+}
+
+/**
  * Remembers a folder as the project `a`, with a record in the index that names the folder. Its
- * mixed document refers to the image `IMAGE`, which the folder does not hold yet.
+ * mixed document refers to the image `IMAGE`, which the folder does not hold yet, with the asset
+ * scope `scope` when one is given.
  */
 export async function placeFolderProjectReferringToImage(
   ports: TestPorts,
+  scope?: string,
 ): Promise<{ readonly folder: DirectoryPort; readonly imageHash: string }> {
-  const { bytes, imageHash } = await mixedPaintReferringTo(IMAGE)
-  const folder = await placeInFolder(ports, bytes)
-  await ports.index.put(folderRecord(PROJECT_ID, { location: IN_FOLDER }))
-  return { folder, imageHash }
+  const { bytes, imageHash } = await mixedPaintReferringTo(IMAGE, scope)
+  return { folder: await placeFolderProject(ports, bytes), imageHash }
 }
 
 /** The request to open the project `a` from the folder that `placeInFolder` remembered. */

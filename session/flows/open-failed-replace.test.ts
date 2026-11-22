@@ -17,7 +17,6 @@ import {
   workspaceRequest,
 } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
-import { folderRecord } from '../projects/rebuild-test-kit'
 import { replaceWithRepaired } from './open-failed'
 import {
   EDITED_NAME,
@@ -32,7 +31,7 @@ import {
   offerOf,
   openAnotherProject,
   otherRepairBytes,
-  placeInFolder,
+  placeFolderProject,
   placeInWorkspace,
   repairedBody,
   replaceRequest,
@@ -106,8 +105,7 @@ describe('Replace the stored project', () => {
 
   it('a replace of a folder project writes into the folder, with the backup in the folder', async () => {
     const ports = createTestPorts()
-    const folder = await placeInFolder(ports, mixedPaintBytes())
-    await ports.index.put(folderRecord(PROJECT_ID, { location: IN_FOLDER }))
+    const folder = await placeFolderProject(ports, mixedPaintBytes())
     const offer = await offerOf(ports, folderRequest())
 
     const handle = handleOf(await replaceWithRepaired(ports, undefined, replaceRequest(offer)))
@@ -187,6 +185,40 @@ describe('a replace that the stored project does not allow', () => {
     await replaceWithRepaired(ports, undefined, replaceRequest(offer))
 
     expect(await ports.locks.heldIds()).toEqual(new Set())
+  })
+})
+
+describe('a replace over a storage that throws', () => {
+  const DISK_GONE = new Error('The disk is gone')
+  const UNAVAILABLE = {
+    ok: false,
+    failure: { kind: 'storage-unavailable', message: expect.stringContaining(DISK_GONE.message) },
+  }
+
+  it('a read that throws under the lock gives storage-unavailable, writes nothing, and frees the lock', async () => {
+    const { ports, offer } = await refusedProject()
+    vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(DISK_GONE)
+
+    const result = await replaceWithRepaired(ports, undefined, replaceRequest(offer))
+
+    expect(result).toEqual(UNAVAILABLE)
+    await expectNothingWritten(ports, mixedPaintBytes())
+    expect(handleOf(await replaceWithRepaired(ports, undefined, replaceRequest(offer))).id).toBe(
+      PROJECT_ID,
+    )
+  })
+
+  it('a replace that throws gives storage-unavailable, writes nothing, and frees the lock', async () => {
+    const { ports, offer } = await refusedProject()
+    vi.spyOn(ports.workspace, 'replaceStored').mockRejectedValueOnce(DISK_GONE)
+
+    const result = await replaceWithRepaired(ports, undefined, replaceRequest(offer))
+
+    expect(result).toEqual(UNAVAILABLE)
+    await expectNothingWritten(ports, mixedPaintBytes())
+    expect(handleOf(await replaceWithRepaired(ports, undefined, replaceRequest(offer))).id).toBe(
+      PROJECT_ID,
+    )
   })
 })
 

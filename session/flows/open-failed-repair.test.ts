@@ -1,8 +1,11 @@
 // @vitest-environment node
 // Hashes assets with the real digest.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AssetReference, RepairOffer } from '../../core'
 import { DirectoryAssetCache } from '../../storage'
+import type { PackSupplies } from '../../storage'
 import { treeOf } from '../../storage/documents/document-store-test-kit'
+import type { TestPorts } from '../handle/handle-test-kit'
 import {
   IN_WORKSPACE,
   createTestPorts,
@@ -49,6 +52,13 @@ async function refusedProject() {
   const ports = createTestPorts()
   await placeInWorkspace(ports, mixedPaintBytes())
   return { ports, offer: await offerOf(ports, workspaceRequest(PROJECT_ID)) }
+}
+
+const PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
+
+/** Opens the repaired copy of the offer, with the assets that installed packs supply. */
+function openCopySuppliedBy(ports: TestPorts, offer: RepairOffer, packSupplies: PackSupplies) {
+  return openRepairedAsNew(ports, undefined, { ...repairedCopyRequest(offer), packSupplies })
 }
 
 describe('Open as a new project', () => {
@@ -145,5 +155,34 @@ describe('Open as a new project', () => {
 
   it('the name of a repaired copy is the name with " (repaired copy)" after it', () => {
     expect(repairedCopyName(STORED_NAME)).toBe(REPAIRED_NAME)
+  })
+})
+
+describe('Open as a new project, with the assets that installed packs supply', () => {
+  /** A folder project whose underlay image is a pack asset that the folder does not hold. */
+  async function refusedPackProject() {
+    const ports = createTestPorts()
+    const { imageHash } = await placeFolderProjectReferringToImage(ports, PACK_SCOPE)
+    return { ports, imageHash, offer: await offerOf(ports, folderRequest()) }
+  }
+
+  it('a pack reference that an installed pack supplies is not a missing asset', async () => {
+    const { ports, imageHash, offer } = await refusedPackProject()
+    const supplied = (reference: AssetReference) => reference.contentHash === imageHash
+
+    const result = await openCopySuppliedBy(ports, offer, supplied)
+
+    expect(result).toMatchObject({
+      ok: true,
+      missingAssets: expect.not.arrayContaining([imageHash]),
+    })
+  })
+
+  it('a pack reference that no installed pack supplies, and no pool holds, is a missing asset', async () => {
+    const { ports, imageHash, offer } = await refusedPackProject()
+
+    const result = await openCopySuppliedBy(ports, offer, () => false)
+
+    expect(result).toMatchObject({ ok: true, missingAssets: expect.arrayContaining([imageHash]) })
   })
 })

@@ -11,6 +11,8 @@ const REPLACE = 'Replace the stored project'
 const CANCEL = 'Cancel'
 const NEW_PROJECT_SENTENCE =
   'A new file stores a repaired version of this project. The stored file stays unchanged.'
+const FILE_SENTENCE =
+  'A new file stores a repaired version of this project. The file that you chose stays unchanged.'
 const WARNING = 'The data that the repair removes is lost. You cannot undo this action.'
 
 /** Renders the dialog with a handler for each choice, and gives a user, the handlers, and the dialog. */
@@ -85,6 +87,21 @@ describe('the dialog that offers a repaired project as a new one or in place of 
     const buttons = within(dialog).getAllByRole('button')
     expect(buttons.map((button) => button.textContent)).toEqual([OPEN_AS_NEW, CANCEL])
     expect(screen.queryByText(WARNING)).not.toBeInTheDocument()
+  })
+
+  it('without a replace handler, says that the file that you chose stays unchanged', () => {
+    const { dialog } = renderDialog({ onReplace: undefined })
+
+    expect(dialog).toHaveTextContent(FILE_SENTENCE)
+    expect(dialog).not.toHaveTextContent('stored file')
+  })
+
+  it('while a choice runs, Escape does nothing', async () => {
+    const { user, onCancel } = renderDialog({ busy: true })
+
+    await user.keyboard('{Escape}')
+
+    expect(onCancel).not.toHaveBeenCalled()
   })
 
   it('while a choice runs, every control is disabled', () => {

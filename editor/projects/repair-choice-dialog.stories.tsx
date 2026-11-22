@@ -14,7 +14,7 @@ const meta: Meta<typeof RepairChoiceDialog> = {
   decorators: [
     (story) => (
       // The dialog's backdrop is pinned to the viewport. A transform on this wrapper makes it the
-      // containing block for fixed descendants, so the entry shows the dialog on a bounded stage.
+      // containing block for fixed descendants, so the entry shows the dialog in a bounded area.
       <div style={{ height: '24rem', transform: 'translate(0)' }}>{story()}</div>
     ),
   ],
