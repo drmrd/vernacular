@@ -1,4 +1,4 @@
-import { decodeDocument, encodeDocument } from '../../core'
+import { decodeDocument } from '../../core'
 import type {
   CodecOptions,
   DecodedDocument,
@@ -18,6 +18,7 @@ import { warnAboutEncodeProblems } from './open-decoded'
 import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
 import { replaceStoredDocument } from './replace-stored'
+import { encodeForSave } from './save-target'
 import { listStoredFiles } from './stored-files'
 
 /** Why a read gave no document. */
@@ -39,6 +40,8 @@ export interface SaveReport {
   readonly graftDropped?: GraftDropped
   /** The time of last change of the document file after the write; absent when the store cannot tell. */
   readonly lastChangedAt?: string
+  /** Set when the save wrote the second file because the main file is newer than this build. */
+  readonly secondFile?: { readonly name: string; readonly newerVersion: number }
 }
 
 /** What a replace of the stored document did: it wrote, or it found faults and wrote nothing. */
@@ -150,17 +153,21 @@ export class DocumentStore {
    */
   async save(id: string, project: Project): Promise<SaveReport> {
     const directory = this.files.projectDirectory(id)
-    const previous = await directory.readFile(PROJECT_FILE)
-    const encoded = encodeDocument(project, previous, this.options)
+    const { fileName, previous, encoded, secondFile } = await encodeForSave(
+      directory,
+      project,
+      this.options,
+    )
     await this.files.prepareAssets(id, hashesToCopy(project))
     const backedUp = await this.backUpLastValid(directory, previous, encoded.faults)
     warnAboutEncodeProblems(encoded)
-    await directory.writeFile(PROJECT_FILE, encoded.bytes)
+    await directory.writeFile(fileName, encoded.bytes)
     const lastChangedAt = await this.changedAt(id)
     const { faults, graftDropped } = encoded
     return {
       faults,
       backedUp,
+      ...(secondFile === undefined ? {} : { secondFile }),
       ...(graftDropped === undefined ? {} : { graftDropped }),
       ...(lastChangedAt === undefined ? {} : { lastChangedAt }),
     }

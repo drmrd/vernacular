@@ -43,7 +43,11 @@ export { FileSystemDirectory } from './fs/file-system-directory'
 export { SubdirectoryPort } from './fs/subdirectory-port'
 export type { ProjectFiles, RemovableProjectFiles } from './project-files/project-files'
 export type { ProjectLocation } from './project-files/project-location'
-export { PROJECT_FILE } from './project-files/project-file-name'
+export {
+  PROJECT_FILE,
+  secondDocumentFileName,
+  secondDocumentFileVersion,
+} from './project-files/project-file-name'
 export { InvalidProjectIdError } from './project-files/project-id-guard'
 export { WorkspaceFiles } from './project-files/workspace-files'
 export { FolderFiles } from './project-files/folder-files'
