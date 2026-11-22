@@ -53,9 +53,9 @@ export const AccessibilityGate: Story = {
   },
 }
 
-// A default button beside a disabled one and an unavailable one. Hover and active need a pointer held in
-// place, which a static states sheet cannot capture, so these are the two states
-// left to compare here.
+// A default button beside a disabled one and an unavailable one. Hover and active need a
+// pointer held in place, which a static states sheet cannot capture, so these three are
+// the states left to compare here.
 function ArrisButtonStates() {
   return (
     <div style={{ display: 'flex', gap: '0.5rem' }}>
