@@ -475,16 +475,17 @@ is the same on every surface of the source room:
   sees only the half of its hemisphere that lies above the horizon, which is why it keeps one half.
 
 The bound comes out of the same algebra. With the source's balance written as
-`S'(1 - rho') = S(1 - rho) + sum of A`, the hall's flux is `tau * A * F * rhoFloor / (S(1 - rho) +
-sum of A)`. Because `S(1 - rho)` is never negative and `tau` is at most 1, that is at most
+`S'(1 - rho') = S(1 - rho) + sum of A`, the flux that the hall takes through the doorway is
+`tau * A * F * rhoFloor / (S(1 - rho) + sum of A)`. Because `S(1 - rho)` is never negative and `tau` is at most 1, that is at most
 `rhoFloor * tau * F`, which is at most `F`. The bound holds for any room shape. Several doorways
 out of one source share it, because every one of them adds to the same sum. Adding the doorway's
 area, rather than cutting it out of the wall, is what keeps the bound unconditional: `S'(1 - rho')`
 is then never less than the sum of the doorway areas. No cap or clamp is needed, and the code has
 none. `core/daylight/doorway-flux-bound.test.ts` checks the closed form for the sweep of ordinary
-rooms, the 100 by 40000 mm source, two halls of one source, and 36 room shapes.
+rooms, the 100 by 40000 mm source, and two halls on each of two sources. It checks the bound alone
+for 36 room shapes.
 
-The owner also settled two edge cases:
+This change settles two edge cases by the literal reading of the decision:
 
 - A doorway into a room that is open to the sky faces the outdoors, like an open exterior door,
   which the inputs already treat as a window with a net transmittance of 1. It keeps a weight of 1
