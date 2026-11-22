@@ -14,7 +14,11 @@ import {
 import type { WallRectangle } from './form-factor'
 import { horizontalPointToWallRectangle, visibleThroughReveal } from './form-factor'
 import type { RoomSurfaces } from './room-average'
-import { measureRoomSurfaces } from './room-average'
+import {
+  DOORWAY_HEMISPHERE_SHARE,
+  measureRoomSurfaces,
+  VERTICAL_OPENING_SKY_SHARE,
+} from './room-average'
 import type { DaylightInputLocation } from './room-validation'
 import { daylightInputError, OUTLINE_TOLERANCE_MM, validateDaylightRooms } from './room-validation'
 
@@ -46,10 +50,25 @@ export interface CellView {
  * Where an aperture's light comes from: the sky toward a world direction (unit vector, Y up), or
  * the room it opens to. `openingArea` is the width times the height from sill to head, in plan
  * square millimetres. `netTransmittance` is the share of light that the opening passes.
+ * `fluxShare` is the share of the opening's area that counts in the entering flux: one half for a
+ * window, and for a doorway into a room open to the sky, which face only the half of their view
+ * above the horizon; 1 for a doorway into any other room, which faces the whole room.
  */
 export type ApertureGeometry =
-  | { kind: 'sky'; direction: Vector3; openingArea: number; netTransmittance: number }
-  | { kind: 'doorway'; neighbor: number; openingArea: number; netTransmittance: number }
+  | {
+      kind: 'sky'
+      direction: Vector3
+      openingArea: number
+      netTransmittance: number
+      fluxShare: number
+    }
+  | {
+      kind: 'doorway'
+      neighbor: number
+      openingArea: number
+      netTransmittance: number
+      fluxShare: number
+    }
 
 /** What a room keeps between calls: its apertures, its cells, and its surfaces. */
 export interface RoomGeometry {
@@ -116,7 +135,7 @@ function skyDirection(normal: Point): Vector3 {
   }
 }
 
-function apertureGeometry(opening: Opening): ApertureGeometry {
+function apertureGeometry(opening: Opening, rooms: readonly DaylightRoom[]): ApertureGeometry {
   const { aperture } = opening
   const [start, end] = aperture.span
   const width = Math.hypot(end.x - start.x, end.y - start.y)
@@ -127,13 +146,17 @@ function apertureGeometry(opening: Opening): ApertureGeometry {
       direction: skyDirection(opening.outwardNormal),
       openingArea,
       netTransmittance: aperture.netTransmittance ?? DEFAULT_WINDOW_NET_TRANSMITTANCE,
+      fluxShare: VERTICAL_OPENING_SKY_SHARE,
     }
   }
+  const neighbor = aperture.opensTo.room
   return {
     kind: 'doorway',
-    neighbor: aperture.opensTo.room,
+    neighbor,
     openingArea,
     netTransmittance: aperture.netTransmittance ?? OPEN_DOORWAY_NET_TRANSMITTANCE,
+    fluxShare:
+      rooms[neighbor]?.openToSky === true ? VERTICAL_OPENING_SKY_SHARE : DOORWAY_HEMISPHERE_SHARE,
   }
 }
 
@@ -221,7 +244,9 @@ export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry 
   const grid = createDaylightField(rooms)
   const openings = rooms.map(roomOpenings)
   const { cellsByRoom, roomOfCell } = assignCells(grid, rooms, openings)
-  const apertures = openings.map((ofRoom) => ofRoom.map(apertureGeometry))
+  const apertures = openings.map((ofRoom) =>
+    ofRoom.map((opening) => apertureGeometry(opening, rooms)),
+  )
   const doorwayAreas = doorwayAreasInto(apertures, rooms.length)
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
     openToSky: room.openToSky === true,

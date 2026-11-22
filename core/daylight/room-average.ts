@@ -12,7 +12,13 @@ export const UNPAINTED_SURFACE_REFLECTANCE = 0.66
  * Share of the open sky that a vertical opening sees: the form factor from a vertical plane to the
  * half of its view that lies above the horizon.
  */
-const VERTICAL_OPENING_SKY_SHARE = 0.5
+export const VERTICAL_OPENING_SKY_SHARE = 0.5
+
+/**
+ * Share of the light of a room that crosses a doorway into it: the form factors from a doorway to
+ * the surfaces of the room it faces sum to 1, because the doorway sees the whole room.
+ */
+export const DOORWAY_HEMISPHERE_SHARE = 1
 
 /** The surfaces of a room that pass light back and forth. */
 export interface RoomSurfaces {
@@ -37,6 +43,8 @@ export interface RoomSurfaces {
 export interface OpeningArea {
   /** Width times the height from sill to head, in plan square millimetres. */
   openingArea: number
+  /** Share of the opening's area that counts in the entering flux, from 0 to 1. */
+  fluxShare: number
 }
 
 function floorReflectance(color: LinearRgb): number {
@@ -71,13 +79,12 @@ export function measureRoomSurfaces(room: DaylightRoom, doorwayArea: number): Ro
 
 /**
  * Light that enters a room, in plan square millimetres of open sky: the sum over its openings of
- * half the opening area times the opening's weight (the radiance it faces times its net
+ * the opening's flux share times its area times its weight (the radiance it faces times its net
  * transmittance, relative to the open sky).
  */
 export function enteringFlux(openings: readonly OpeningArea[], weights: readonly number[]): number {
   return openings.reduce(
-    (sum, opening, index) =>
-      sum + VERTICAL_OPENING_SKY_SHARE * (weights[index] ?? 0) * opening.openingArea,
+    (sum, opening, index) => sum + opening.fluxShare * (weights[index] ?? 0) * opening.openingArea,
     0,
   )
 }
