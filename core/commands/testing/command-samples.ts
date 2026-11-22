@@ -3,6 +3,7 @@
 // fails for a registered type that has no entry here.
 
 import type { Project } from '../../model/types'
+import { FIXTURE_IDS } from './extensions-fixture'
 import { FLOOR_COMMAND_SAMPLES } from './floor-command-samples'
 import { PROJECT_COMMAND_SAMPLES } from './project-command-samples'
 
@@ -10,4 +11,9 @@ import { PROJECT_COMMAND_SAMPLES } from './project-command-samples'
 export const COMMAND_SAMPLES: Record<string, (project: Project) => unknown> = {
   ...PROJECT_COMMAND_SAMPLES,
   ...FLOOR_COMMAND_SAMPLES,
+  ['project/mark-main-entrance']: () => ({
+    floorId: FIXTURE_IDS.groundFloor,
+    openingId: FIXTURE_IDS.sideOpening,
+  }),
+  ['project/clear-main-entrance']: () => ({}),
 }

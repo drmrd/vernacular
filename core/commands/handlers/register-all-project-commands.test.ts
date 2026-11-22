@@ -4,6 +4,7 @@ import type { Project } from '../../model/types'
 import { registerAllProjectCommands } from './register-all-project-commands'
 import { ADD_DIMENSION } from './dimension-commands'
 import { ADD_ENVIRONMENT_SCENE } from './environment-scene-commands'
+import { MARK_MAIN_ENTRANCE } from './entrance-commands'
 import { PLACE_FURNITURE } from './furniture-commands'
 import { PLACE_OPENING } from './opening-commands'
 import { ASSIGN_SURFACE_TREATMENT } from './paint-commands'
@@ -16,11 +17,12 @@ import { TRANSLATE_ENTITIES } from './transform-commands'
 import { PLACE_UNDERLAY } from './underlay-commands'
 import { ADD_WALL } from './wall-commands'
 
-const REGISTERED_COMMAND_COUNT = 68
+const REGISTERED_COMMAND_COUNT = 70
 
 const ONE_COMMAND_PER_HANDLER_FILE: readonly (readonly [string, string])[] = [
   ['dimension-commands', ADD_DIMENSION],
   ['environment-scene-commands', ADD_ENVIRONMENT_SCENE],
+  ['entrance-commands', MARK_MAIN_ENTRANCE],
   ['furniture-commands', PLACE_FURNITURE],
   ['opening-commands', PLACE_OPENING],
   ['paint-commands', ASSIGN_SURFACE_TREATMENT],
