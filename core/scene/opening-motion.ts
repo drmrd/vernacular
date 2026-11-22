@@ -38,8 +38,8 @@ export interface HingeMotion {
 export type SlideAxis = 'along-wall' | 'vertical'
 
 /**
- * Translation of a leaf or sash along an axis. A hung window moves its lower sash only, by
- * the height of that sash.
+ * Translation of a leaf or sash along an axis. A hung window's lower sash rises and its upper
+ * sash lowers, each by the rise of the lower sash.
  */
 export interface SlideMotion {
   kind: 'slide'
@@ -105,7 +105,7 @@ export function openingPartMotion(
  * Resolves how an opening moves from its element type, reading the type's
  * operation family from the registry. A swing door hinges on a jamb; a fixed
  * window or a cased opening has no moving part. A hung window raises its lower
- * sash only.
+ * sash only; openingPartMotion gives the motion of each sash.
  */
 export function openingMotion(type: string, opening: OpeningSceneNode): OpeningMotion {
   const params = getEntry(builtinElementTypes, type)?.opening
