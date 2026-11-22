@@ -3,6 +3,7 @@ import { webFontsSettled } from './journeys/support'
 import { expectSameView, frameAfterChange, navButton } from './journeys/close-openings-support'
 import { frameReader } from './frame-pixels'
 import { LIVE_VIEW_READY } from './live-pane'
+import { waitForDrawnSceneChange, waitForDrawnSceneRevision } from './live-pane-frames'
 import {
   drawnRoomCanvas,
   drawnRoomWithDoorCanvas,
@@ -99,12 +100,12 @@ async function showWholeBuilding(page: Page): Promise<void> {
   await expect(wholeBuilding).toHaveAttribute('aria-pressed', 'true')
 }
 
-// Presses the inspector's Flip swing for the selected door, then waits for the view to settle.
-async function flipSelectedSwing(page: Page, canvas: Locator): Promise<void> {
+// Presses the inspector's Flip swing for the selected door, then waits until the pane has drawn
+// the scene that holds the flipped door.
+async function flipSelectedSwing(page: Page): Promise<void> {
   const flip = page.getByRole('button', { name: 'Flip swing' })
   await expect(flip).toBeVisible()
-  await flip.click()
-  await stableFrame(canvas)
+  await waitForDrawnSceneChange(page, () => flip.click())
 }
 
 // Picks the wall tool, clicks the given points on the plan, and waits until the plan lists the
@@ -149,8 +150,9 @@ async function showFloor(page: Page, name: string): Promise<void> {
 
 // The settled Doorway frame of the shown floor. The Top down step comes first so that the wait
 // for a changed frame is safe: a Doorway frame may equal the frame before it, but never the
-// top-down frame.
+// top-down frame. The pane has drawn the scene it holds before the first frame is read.
 async function doorwayFrame(page: Page, canvas: Locator): Promise<Buffer> {
+  await waitForDrawnSceneRevision(page)
   const settled = await stableFrame(canvas)
   await navButton(page, 'Top down').click()
   const topDown = await frameAfterChange(canvas, settled)
@@ -194,7 +196,7 @@ async function doorwayFramesOfTwoFloors(
   const canvas = await settledSceneCanvas(page)
   await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
   const ground = await doorwayFrame(page, canvas)
-  await showFloor(page, other.name)
+  await waitForDrawnSceneChange(page, () => showFloor(page, other.name))
   return { ground, other: await doorwayFrame(page, canvas) }
 }
 
@@ -279,7 +281,7 @@ test.describe('Live three-dimensional camera presets', () => {
     const canvas = await settledSceneCanvas(page)
     await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
     const floorView = await doorwayFrame(page, canvas)
-    await showWholeBuilding(page)
+    await waitForDrawnSceneChange(page, () => showWholeBuilding(page))
     const buildingView = await doorwayFrame(page, canvas)
 
     await expectSameView(
@@ -327,7 +329,7 @@ test.describe('Live three-dimensional camera presets', () => {
     const canvas = await settledSceneCanvas(page)
     await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
     const before = await doorwayFrame(page, canvas)
-    await flipSelectedSwing(page, canvas)
+    await flipSelectedSwing(page)
     const after = await doorwayFrame(page, canvas)
 
     await expectDifferentView(
