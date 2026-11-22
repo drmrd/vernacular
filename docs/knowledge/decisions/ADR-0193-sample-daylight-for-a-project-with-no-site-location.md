@@ -376,7 +376,7 @@ the opening light amends this record again.
 
 With no door marked, the front now comes from a guessed entrance
 ([[ADR-0204-the-main-entrance-and-the-view-from-the-front]]). `frontDirection` returns the front of
-`entranceOf`, in the same file. Three passages of this record change. The text above stays as it
+`entranceOf`, in the same file. Four passages of this record change. The text above stays as it
 was written.
 
 - "The front direction" says that the function "returns the outward normal of the wall that hosts
@@ -395,3 +395,7 @@ was written.
   wider sliding, folding, or cased door beside a hinged front door. A door can also turn it without
   being wider: any door on a level tried earlier, or a hinged door on a level whose front door
   slides, folds, or is cased.
+- The "Not decided" bullet "The entrance" says that until #627 `frontDirection` "uses the widest
+  exterior door". The guess part of that bullet is settled by ADR-0204: the function now uses the
+  guessed entrance. What stays open is the door marked by the user, and the camera and the sun
+  calling the same function.

@@ -157,7 +157,7 @@ record.
 ## Consequences
 
 - On a project whose widest exterior door slides, is upstairs, or is below grade, the front turns
-  to the hinged door of the ground floor. With no stored location and no stored north bearing, the
+  to the likely entrance, which is a hinged door of the ground floor when there is one. With no stored location and no stored north bearing, the
   implied north and the sample sun turn with it.
 - For a site whose north is set, the opening time of ADR-0205 reads the same front, so it can move
   too.
@@ -193,7 +193,7 @@ record.
 - The view from the front: the camera pose the first view opens on and its preset. That part also
   extends this record.
 - `DIRECTION_TIE_TOLERANCE` is meant to move to the kernel tolerance module of #687.
-- No rule was checked against drawn plans that could test it. The five projects of the test corpus
+- No rule was checked against drawn plans that could test it. The five projects of the test corpus (`tests/fixtures/projects/corpus/`)
   have one floor and single swing doors each.
 
 ## Evidence
