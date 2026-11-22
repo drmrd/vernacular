@@ -31,9 +31,6 @@ import {
   type SceneRoot,
 } from '../../engine'
 
-/** The two boxes the camera reads: the one it frames and the one of everything drawn. */
-export type FramingBoxes = Pick<FramedScene, 'framingBounds' | 'bounds'>
-
 export interface FramedScene {
   root: SceneRoot
   pose: CameraPose
@@ -52,6 +49,9 @@ export interface FramedScene {
   // (issue #609).
   buildingTopWorld?: number
 }
+
+/** The two boxes the camera reads: the one it frames and the one of everything drawn. */
+export type FramingBoxes = Pick<FramedScene, 'framingBounds' | 'bounds'>
 
 /**
  * A floor's reach toward the building top, in Three.js world millimeters: its elevation

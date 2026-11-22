@@ -8,7 +8,7 @@ import {
   type Bounds3,
   type CameraPose,
 } from '../../core'
-import { applyCameraPose, fovToRadians, type FittableCamera } from './fit-camera'
+import { applyCameraPose, cameraViewport, type FittableCamera } from './fit-camera'
 import type { FramingBoxes } from './framed-scene'
 import type { PresetChoice } from './scene-nav-toolbar'
 import type { DoorwayTarget } from './use-doorway-target'
@@ -17,8 +17,10 @@ import type { DoorwayTarget } from './use-doorway-target'
 // view so that file stays within its size budget. Each helper is an in-canvas component
 // that reads the live camera through useThree and applies a pose as a layout effect.
 
-// Frames the camera on the scene bounds, fitting the model to the live canvas
-// aspect ratio and field of view (ADR-0075), while the user has not taken control
+// Frames the camera on the framing box (the framed floor, or everything drawn when no
+// floor is framed), fitting it to the live canvas aspect ratio and field of view
+// (ADR-0075), and takes the near and far planes from the box of everything drawn so the
+// floors outside the frame still render. It does so while the user has not taken control
 // of the camera. It reruns when the canvas size changes, so a pane resize or a move
 // between full and split view refits the model instead of leaving a stale frame.
 // Once the user orbits or walks, `active` goes false and the fit stops being
@@ -31,10 +33,7 @@ export function FrameCamera({ boxes, active }: { boxes: FramingBoxes; active: bo
   const { framingBounds, bounds } = boxes
   useLayoutEffect(() => {
     if (!active) return
-    const fit = frameSceneCamera(framingBounds, {
-      aspect: size.width / size.height,
-      fovRadians: fovToRadians(camera),
-    })
+    const fit = frameSceneCamera(framingBounds, cameraViewport(camera, size))
     applyCameraPose(camera, withDepthRangeOf(fit, bounds))
   }, [camera, framingBounds, bounds, active, size])
   return null
@@ -68,9 +67,7 @@ function poseForRequest(request: PresetRequest, view: PresetView): CameraPose | 
       ? null
       : doorwayPose(view.doorway.opening, view.bounds, view.doorway.floorElevationMm)
   }
-  const aspect = view.size.width / view.size.height
-  const fovRadians = fovToRadians(view.camera)
-  return cameraPresetPose(request.preset, view.bounds, { aspect, fovRadians })
+  return cameraPresetPose(request.preset, view.bounds, cameraViewport(view.camera, view.size))
 }
 
 // Snaps the live camera to a preset whenever a new request arrives. It reads the
