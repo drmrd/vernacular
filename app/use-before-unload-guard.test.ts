@@ -6,8 +6,9 @@ import {
   rename,
   workspaceRequest,
 } from '../session/handle/handle-test-kit'
+import type { DocumentHandle } from '../session'
 import { createInitialProject } from './create-initial-project'
-import { useBeforeUnloadGuard, useUnsavedChangesGuard } from './use-before-unload-guard'
+import { useBeforeUnloadGuard, useLeaveWarningGuard } from './use-before-unload-guard'
 
 // Dispatch a fresh `beforeunload` event on window and report what the guard did
 // to it. jsdom delivers the event to registered listeners, so a spy on the
@@ -79,12 +80,17 @@ describe('useBeforeUnloadGuard', () => {
   })
 })
 
-describe('useUnsavedChangesGuard', () => {
+/** Opens the initial project over new in-memory ports that keep their files, or do not. */
+async function openHandle(durable: boolean): Promise<DocumentHandle> {
+  const request = { ...workspaceRequest('current'), create: createInitialProject }
+  return openOrThrow(createTestPorts({ durable }), request)
+}
+
+describe('useLeaveWarningGuard', () => {
   it('warns before unload while the handle has an unsaved change, and not after it is saved', async () => {
-    const request = { ...workspaceRequest('current'), create: createInitialProject }
-    const handle = await openOrThrow(createTestPorts(), request)
+    const handle = await openHandle(true)
     const { unmount } = renderHook(() => {
-      useUnsavedChangesGuard(handle)
+      useLeaveWarningGuard(handle)
     })
 
     act(() => {
@@ -95,6 +101,51 @@ describe('useUnsavedChangesGuard', () => {
     await act(async () => {
       await handle.save()
     })
+    expect(handle.saveStatus()).toBe('saved')
+    expect(dispatchBeforeUnload().preventDefault).not.toHaveBeenCalled()
+
+    unmount()
+    await handle.close()
+  })
+
+  it('warns before unload while the handle is not durable, before its first save', async () => {
+    const handle = await openHandle(false)
+    const { unmount } = renderHook(() => {
+      useLeaveWarningGuard(handle)
+    })
+
+    expect(dispatchBeforeUnload().preventDefault).toHaveBeenCalled()
+
+    unmount()
+    await handle.close()
+  })
+
+  it('keeps warning before unload after a save that only the tab holds', async () => {
+    const handle = await openHandle(false)
+    const { unmount } = renderHook(() => {
+      useLeaveWarningGuard(handle)
+    })
+    act(() => {
+      rename(handle, 'Edited in the tab')
+    })
+
+    await act(async () => {
+      await handle.save()
+    })
+
+    expect(handle.saveStatus()).toBe('tab-only')
+    expect(dispatchBeforeUnload().preventDefault).toHaveBeenCalled()
+
+    unmount()
+    await handle.close()
+  })
+
+  it('stays silent before unload while the handle is durable and nothing is unsaved', async () => {
+    const handle = await openHandle(true)
+    const { unmount } = renderHook(() => {
+      useLeaveWarningGuard(handle)
+    })
+
     expect(dispatchBeforeUnload().preventDefault).not.toHaveBeenCalled()
 
     unmount()

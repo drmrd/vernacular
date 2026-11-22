@@ -1,7 +1,5 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
-import { App } from './app'
-import { createMemoryAddressBar } from './address-bar'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { cleanup, screen, within } from '@testing-library/react'
 import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
   BANNER_WITHOUT_FOLDERS,
@@ -10,6 +8,7 @@ import {
   findThePageAlert,
   findTheProjectsPage,
   renderAppAt,
+  renderWithNoStorageAt,
   resetWindowAddress,
   settleForAWhile,
   startNewProjectFromThePage,
@@ -18,19 +17,16 @@ import {
 import { PROJECTS_ADDRESS, addressOf } from './history-navigation-test-support'
 import { NOT_STORED } from './open-failure-text'
 
+beforeEach(() => {
+  vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+})
+
 afterEach(() => {
   cleanup()
   resetWindowAddress()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-
-/** Renders the application on a builder of ports that rejects, at `address`. */
-function renderWithNoStorageAt(address: string): void {
-  vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-  const bar = createMemoryAddressBar(address)
-  render(<App resolvePorts={() => Promise.reject<never>(new Error('no storage'))} address={bar} />)
-}
 
 /** Waits for the one banner of the tab, and gives it. */
 async function findTheOnlyBanner(): Promise<HTMLElement> {

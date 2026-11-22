@@ -1,8 +1,6 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { App } from './app'
-import { createMemoryAddressBar, type MemoryAddressBar } from './address-bar'
 import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
@@ -15,6 +13,7 @@ import {
   findTheShell,
   renderApp,
   renderAppAt,
+  renderWithNoStorageAt,
   resetWindowAddress,
   settleForAWhile,
   startNewProjectFromThePage,
@@ -41,12 +40,11 @@ function offerFolderAccess(): void {
   vi.stubGlobal('showDirectoryPicker', vi.fn())
 }
 
-/** Renders the application on a builder of ports that rejects, and on an address bar of its own. */
-function renderWithNoStorage(): { bar: MemoryAddressBar; resolvePorts: () => Promise<never> } {
-  const bar = createMemoryAddressBar()
-  const resolvePorts = vi.fn(() => Promise.reject<never>(new Error('no storage backend')))
-  render(<App resolvePorts={resolvePorts} address={bar} />)
-  return { bar, resolvePorts }
+/** Dispatches a cancelable `beforeunload` event on the window, and says whether the application vetoed it. */
+function leaveIsPrevented(): boolean {
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  return event.defaultPrevented
 }
 
 /** The text of each live region of the open editor, in the order of the page. */
@@ -153,7 +151,7 @@ describe('The application whose builder of the ports rejects', () => {
   it('opens a new project with no click, raises the banner, and lists the projects that were made', async () => {
     stubCapableStorage()
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const { bar } = renderWithNoStorage()
+    const { bar } = renderWithNoStorageAt()
     expect(await findTheShell()).toBeInTheDocument()
     expect(
       within(await screen.findByRole('alert')).getByText(BANNER_WITHOUT_FOLDERS),
@@ -174,7 +172,7 @@ describe('The application whose builder of the ports rejects', () => {
     stubCapableStorage()
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
 
-    const { resolvePorts } = renderWithNoStorage()
+    const { resolvePorts } = renderWithNoStorageAt()
 
     await findTheShell()
     await settleForAWhile()
@@ -186,7 +184,7 @@ describe('The application whose builder of the ports rejects', () => {
   it('opens the other project from its card with no dialog', async () => {
     stubCapableStorage()
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const { bar } = renderWithNoStorage()
+    const { bar } = renderWithNoStorageAt()
     await findTheShell()
     await editAndWaitForTheStore(2)
     await visit(bar, PROJECTS_ADDRESS)
@@ -241,5 +239,36 @@ describe('The application over ports that keep nothing after the tab closes: the
 
     await findTheProjectsPage()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('The application over ports that keep nothing after the tab closes: the leave warning', () => {
+  beforeEach(() => {
+    stubCapableStorage()
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  })
+
+  it('asks before the tab closes while the open project is in the tab only, from the first moment', async () => {
+    renderWithNoStorageAt()
+    await findTheShell()
+
+    expect(leaveIsPrevented()).toBe(true)
+  })
+
+  it('asks before the tab closes on the Projects page over the open project', async () => {
+    const { bar } = renderWithNoStorageAt()
+    await findTheShell()
+    await visit(bar, PROJECTS_ADDRESS)
+    await findTheProjectsPage()
+
+    expect(leaveIsPrevented()).toBe(true)
+  })
+
+  it('lets the tab close on the empty Projects page, where no project can be lost', async () => {
+    renderWithNoStorageAt(PROJECTS_ADDRESS)
+    await findTheProjectsPage()
+    await settleForAWhile()
+
+    expect(leaveIsPrevented()).toBe(false)
   })
 })

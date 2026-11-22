@@ -160,6 +160,20 @@ export function renderApp(ports: TestPorts, props: Omit<AppProps, 'ports'> = {})
   return render(<App ports={ports} {...props} />)
 }
 
+/**
+ * Renders the application on a builder of ports that rejects, so that it falls back to temporary
+ * ports, at `address` and on an address bar of its own. The builder is a spy that gives the count of its calls.
+ */
+export function renderWithNoStorageAt(address = ''): {
+  bar: MemoryAddressBar
+  resolvePorts: () => Promise<never>
+} {
+  const bar = createMemoryAddressBar(address)
+  const resolvePorts = vi.fn(() => Promise.reject<never>(new Error('no storage backend')))
+  render(<App resolvePorts={resolvePorts} address={bar} />)
+  return { bar, resolvePorts }
+}
+
 /** The application that `renderAppAt` rendered, and the address bar that it follows. */
 export type RenderedApp = RenderResult & { readonly bar: MemoryAddressBar }
 
