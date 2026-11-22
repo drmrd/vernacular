@@ -77,9 +77,36 @@ describe('readImageHeader', () => {
     expect(readImageHeader(bytes)).toBeUndefined()
   })
 
-  it('gives undefined when fewer than 33 bytes are given', () => {
+  it('gives undefined when the header is cut short', () => {
     const bytes = pngFirst33Bytes(rgbImage).slice(0, 20)
 
     expect(readImageHeader(bytes)).toBeUndefined()
+  })
+
+  it('gives undefined when the header ends just before the interlace byte', () => {
+    const bytes = pngFirst33Bytes(rgbImage).slice(0, 28)
+
+    expect(readImageHeader(bytes)).toBeUndefined()
+  })
+
+  it('gives undefined when the first chunk is not IHDR', () => {
+    const bytes = pngFirst33Bytes(rgbImage)
+    bytes[12] = 0x58
+
+    expect(readImageHeader(bytes)).toBeUndefined()
+  })
+
+  it('reads the header through a view that starts partway into a larger buffer', () => {
+    const padding = [1, 2, 3, 4, 5]
+    const buffer = Uint8Array.from([...padding, ...pngFirst33Bytes(rgbImage)])
+
+    expect(readImageHeader(buffer.subarray(padding.length))).toEqual({
+      mediaType: 'image/png',
+      width: 256,
+      height: 128,
+      bitDepth: 8,
+      colorType: 2,
+      interlaced: false,
+    })
   })
 })
