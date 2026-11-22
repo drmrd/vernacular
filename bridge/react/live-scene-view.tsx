@@ -150,7 +150,8 @@ function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewRe
   )
 }
 
-// The interactive React Three Fiber canvas: the WebGPU renderer setup, the readiness
+// The interactive React Three Fiber canvas: the renderer setup (WebGPU or its WebGL 2
+// fallback), the readiness
 // boundary around it, and the two post-processing hooks that must stay directly under
 // this function (they need the perceived-color store and drawn-frame callback that
 // live here). Extracted from LiveSceneView so each function stays within the length
@@ -197,9 +198,10 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   )
 }
 
-// Mounts the React Three Fiber canvas with the WebGPU renderer, with a navigation toolbar
-// above it and the accessibility proxy overlay beside it. It is rendered only when WebGPU
-// is available, so it never executes under jsdom; the renderer is constructed in the engine
+// Mounts the React Three Fiber canvas with the engine renderer (WebGPU, or its WebGL 2
+// fallback), with a navigation toolbar above it and the accessibility proxy overlay
+// beside it. It is rendered only when a backend is available (WebGPU or WebGL 2), so it
+// never executes under jsdom; the renderer is constructed in the engine
 // layer. The framed-scene wiring lives in useFramedScene, which subscribes to the live
 // scene graph scoped to the active floor, so the pane rebuilds and reframes as the plan
 // is edited.
