@@ -7,6 +7,7 @@ import {
   type OpeningPartId,
   type SlideMotion,
 } from './opening-motion'
+import type { OpeningPose } from './opening-pose'
 import { planToWorld } from './plan-to-world'
 import type { OpeningSceneNode } from './scene-graph'
 import type { Vector3 } from './vector3'
@@ -168,6 +169,12 @@ function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit)
   return hits.length === 0 ? null : Math.min(...hits)
 }
 
+/** How far the part that the opening's motion drives stands open in the pose. */
+function partOpenness(node: OpeningSceneNode, pose: OpeningPose | undefined): number {
+  const motion = openingMotion(node.type, node)
+  return motion.kind === 'none' ? 0 : (pose?.[motion.partId] ?? 0)
+}
+
 /** The opening the walker looks at and the part of it that E acts on. */
 export interface OpeningReachHit {
   readonly openingId: string
@@ -194,7 +201,7 @@ export function openingUnderReach(
   eye: Vector3,
   direction: Vector3,
   openings: readonly OpeningSceneNode[],
-  options?: { openness?: ReadonlyMap<string, number>; reachMm?: number },
+  options?: { openness?: ReadonlyMap<string, OpeningPose>; reachMm?: number },
 ): OpeningReachHit | null {
   const reachMm = options?.reachMm ?? DEFAULT_INTERACT_REACH_MM
   const ray: ReachRay = { origin: eye, direction: normalize(direction) }
@@ -202,7 +209,7 @@ export function openingUnderReach(
   let nearestDistance = Infinity
   for (const node of openings) {
     if (!openingTypeHasFill(node.type)) continue
-    const openness = options?.openness?.get(node.id) ?? 0
+    const openness = partOpenness(node, options?.openness?.get(node.id))
     const distance = reachDistance(ray, node, { reachMm, openness })
     if (distance !== null && distance < nearestDistance) {
       nearestDistance = distance

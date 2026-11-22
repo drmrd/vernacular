@@ -1,16 +1,18 @@
 import {
-  advanceOpenness,
-  isOpeningOpen,
+  advanceOpeningPose,
+  openingTargetPose,
   openingUnderReach,
   sameOpenParts,
+  settledPose,
   toggleOpening,
   walkLookDirection,
   type OpeningInteractionState,
   type OpenParts,
+  type OpeningPose,
   type OpeningSceneNode,
   type WalkState,
 } from '../../core'
-import { applyOpeningMotionForNode, type SceneRoot } from '../../engine'
+import { applyOpeningPose, type SceneRoot } from '../../engine'
 
 /**
  * The "use" action: casts a short ray from the walker's eye and toggles the
@@ -25,7 +27,7 @@ export function interactFromWalk(
   walk: WalkState,
   openings: readonly OpeningSceneNode[],
   interaction: OpeningInteractionState,
-  openness?: ReadonlyMap<string, number>,
+  openness?: ReadonlyMap<string, OpeningPose>,
 ): OpeningInteractionState {
   // exactOptionalPropertyTypes rejects `{ openness: undefined }` for openingUnderReach's
   // `openness?` field, so build options only when a map is present (a Map is always
@@ -40,13 +42,13 @@ export interface OpeningTick {
   root: SceneRoot
   openings: readonly OpeningSceneNode[]
   interaction: OpeningInteractionState
-  /** Each opening's live openness (0 shut, 1 open), advanced in place each frame. */
-  openness: Map<string, number>
+  /** Each opening's live pose (each part 0 shut, 1 open), advanced in place each frame. */
+  openness: Map<string, OpeningPose>
 }
 
-// Openness targets, from the interaction state: 1 when the opening is held open.
-const OPEN = 1
-const SHUT = 0
+function shutPoseOf(target: OpeningPose): OpeningPose {
+  return Object.fromEntries(Object.keys(target).map((part) => [part, 0]))
+}
 
 /**
  * Advances every opening one timestep toward its open or closed target and moves
@@ -56,12 +58,12 @@ const SHUT = 0
  */
 export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
   for (const node of tick.openings) {
-    const target = isOpeningOpen(tick.interaction, node.id) ? OPEN : SHUT
-    const current = tick.openness.get(node.id) ?? SHUT
-    if (current === target) continue
-    const next = advanceOpenness(current, target, dtSeconds)
+    const target = openingTargetPose(node.type, tick.interaction.openParts.get(node.id))
+    const current = tick.openness.get(node.id) ?? shutPoseOf(target)
+    const next = advanceOpeningPose(current, target, dtSeconds)
+    if (next === current) continue
     tick.openness.set(node.id, next)
-    applyOpeningMotionForNode(tick.root, node, next)
+    applyOpeningPose(tick.root, node, next)
   }
 }
 
@@ -84,9 +86,9 @@ export function followStoredOpenings(
  */
 export function settleUnshownOpenings(settle: Omit<OpeningTick, 'root'>): void {
   const shownIds = new Set(settle.openings.map((node) => node.id))
-  for (const id of settle.openness.keys()) {
+  for (const [id, pose] of settle.openness) {
     if (shownIds.has(id)) continue
-    settle.openness.set(id, isOpeningOpen(settle.interaction, id) ? OPEN : SHUT)
+    settle.openness.set(id, settledPose(pose, settle.interaction.openParts.get(id)))
   }
 }
 
@@ -99,11 +101,13 @@ export function settleUnshownOpenings(settle: Omit<OpeningTick, 'root'>): void {
 export function restoreOpenings(tick: OpeningTick): void {
   for (const node of tick.openings) {
     const carried = tick.openness.get(node.id)
+    const open = tick.interaction.openParts.get(node.id)
     if (carried !== undefined) {
-      applyOpeningMotionForNode(tick.root, node, carried)
-    } else if (isOpeningOpen(tick.interaction, node.id)) {
-      tick.openness.set(node.id, OPEN)
-      applyOpeningMotionForNode(tick.root, node, OPEN)
+      applyOpeningPose(tick.root, node, carried)
+    } else if (open !== undefined) {
+      const pose = openingTargetPose(node.type, open)
+      tick.openness.set(node.id, pose)
+      applyOpeningPose(tick.root, node, pose)
     }
   }
 }

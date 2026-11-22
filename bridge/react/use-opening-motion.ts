@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import {
   sceneGraphForFloor,
   type OpenParts,
+  type OpeningPose,
   type OpeningInteractionState,
   type OpeningSceneNode,
 } from '../../core'
@@ -37,7 +38,7 @@ export interface OpeningMotionRefs {
    */
   shownOpenings: RefObject<OpeningSceneNode[]>
   interaction: RefObject<OpeningInteractionState>
-  openness: RefObject<Map<string, number>>
+  openness: RefObject<Map<string, OpeningPose>>
 }
 
 // The openings on the active floor, the candidates an interact ray can land on.
@@ -76,7 +77,7 @@ function useOpeningMotionRefs(
   const shownOpeningsRef = useRef<OpeningSceneNode[]>(shownOpenings)
   shownOpeningsRef.current = shownOpenings
   const interactionRef = useRef<OpeningInteractionState>({ openParts: new Map(storedOpenDoorIds) })
-  const opennessRef = useRef<Map<string, number>>(new Map())
+  const opennessRef = useRef<Map<string, OpeningPose>>(new Map())
   useEffect(() => {
     interactionRef.current = followStoredOpenings(interactionRef.current, storedOpenDoorIds)
     settleUnshownOpenings({
