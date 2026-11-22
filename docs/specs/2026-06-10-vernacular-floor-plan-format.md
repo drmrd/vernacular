@@ -41,6 +41,7 @@ The working, incremental-write form is a directory:
 ```
 my-project/
   vernacular.json         the Document
+  vernacular.format-<N>.json   a second Document, kept beside a newer one (optional)
   assets/
     <contentHash>.<ext>   content-addressed bytes (underlay rasters, later models)
   previews/               generated thumbnails (optional)
@@ -54,13 +55,22 @@ Only `vernacular.json` is required. `assets/` is required when the Document refe
 `scope: "project"` asset. Incremental writes touch only changed files, so autosave never
 rewrites large binaries.
 
+A Folder MAY hold second document files beside `vernacular.json`. Their names have the form
+`vernacular.format-<N>.json`, where `<N>` is a `schemaVersion` in decimal digits with no leading
+zero. The format reserves every name of that form. A second document file is a complete Document
+at `schemaVersion` N. A writer creates one only under the writing rule of section 7. It never
+stands in for a missing `vernacular.json`: a Folder without `vernacular.json` holds no project. A
+person can make a second document file the project's Document by renaming it to `vernacular.json`
+(ADR-0214).
+
 ### 2.3 Archive (`*.building`)
 
 The shareable, single-file form is a ZIP archive of the Folder, with the extension
 `.building` (for example `maple-street.building`). Opening a `.building` archive unpacks it to
 a working Folder (or to an origin-private file system where direct file access is limited). The
 archive MUST contain the Folder layout at its root and MUST include `ATTRIBUTIONS.md` when it
-carries any attribution-bearing asset.
+carries any attribution-bearing asset. An archive carries one Document. A writer does not put a
+second document file into an archive, and a reader ignores one.
 
 Vernacular reads an archive as an untrusted file (ADR-0213). Its reader refuses an archive longer
 than 512 MiB, one whose entries declare more than 1 GiB in total once inflated, one with more than
@@ -284,6 +294,15 @@ accompanying ADR.
     (section 6.4).
 
   Unknown `extensions` are always preserved regardless of version or revision.
+
+- **Writing rule.** A writer at version N that finds a stored `vernacular.json` at version M > N
+  MUST NOT replace or remove that file unless the user chose so. It writes its Document to
+  `vernacular.format-<N>.json` in the same Folder and SHOULD tell the user. A reader at version N
+  that cannot read `vernacular.json` because M > N MAY open the second document file with the
+  highest version that is not above N. While a second document file is present, an application
+  SHOULD let the user choose between the files, and it MUST keep a copy of every file that a
+  choice replaces or removes. A higher `schemaRevision` at the same `schemaVersion` is not a newer
+  version under this rule (ADR-0214).
 
 - **Adoption (non-normative).** Versions 8 through 17 predate the revision and each incremented
   `schemaVersion`, including for additive changes. The application writes `schemaRevision` on

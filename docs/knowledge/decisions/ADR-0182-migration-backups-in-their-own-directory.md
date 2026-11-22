@@ -11,6 +11,7 @@ related:
     decisions/ADR-0047-published-floor-plan-data-format-standard,
     decisions/ADR-0190-strict-check-refuses-and-two-classes-of-repair,
     decisions/ADR-0191-export-on-every-card-and-unchecked-copy,
+    decisions/ADR-0214-a-save-keeps-a-newer-stored-file-and-writes-beside-it,
   ]
 sourceFiles:
   [
@@ -23,7 +24,7 @@ sourceFiles:
     storage/snapshots/set-aside-refused.ts,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # ADR-0182: Migration backups live in their own directory until the project is deleted
@@ -58,6 +59,12 @@ prune (`storage/snapshots/snapshot-store.ts`) removes only the snapshot files it
 > Amended by [[ADR-0191-export-on-every-card-and-unchecked-copy]] on 2026-11-15. One export carries
 > backups and recovery snapshots: the unchecked copy of a project that did not open. An ordinary
 > export still carries neither, and an import ignores those entries.
+
+> Amended by [[ADR-0214-a-save-keeps-a-newer-stored-file-and-writes-beside-it]] on 2026-11-22. Three more kinds of backup
+> exist: `unreadable-previous` for a stored file that a save could not read and replaced,
+> `replaced-by-second-file` for a `vernacular.json` that the user replaced with a second document
+> file, and `set-aside-second-file` for a second document file that the user's choice removed. The
+> never-replace rule holds for all three.
 
 ## Context
 
