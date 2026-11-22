@@ -4,7 +4,13 @@ import { Dispatcher } from '../dispatcher'
 import { createEmptyProject, createFloor, createOpening, createWall } from '../../model/factories'
 import type { InstantiatedEntities } from '../../clipboard/clipboard'
 import type { Floor, Opening, Project } from '../../model/types'
-import { addFloor, placeOpening, pasteEntities, setOpeningType } from '../../index'
+import {
+  addFloor,
+  countMarkedDoors,
+  placeOpening,
+  pasteEntities,
+  setOpeningType,
+} from '../../index'
 import { registerAllProjectCommands } from './register-all-project-commands'
 
 const FLOOR_ID = 'g'
@@ -35,6 +41,17 @@ function projectWithMarkedDoor(): Project {
       openings: [markedDoor('front', DOOR_POSITION)],
     },
   ]
+  return project
+}
+
+function projectWithMarkedWindow(keepMarkedDoor: boolean): Project {
+  const project = projectWithMarkedDoor()
+  const floor = project.floors[0]
+  if (floor === undefined) {
+    throw new Error('expected a ground floor')
+  }
+  const markedWindow = markedDoor('stray', PASTE_POSITION, 'double-hung-window')
+  floor.openings = keepMarkedDoor ? [...floor.openings, markedWindow] : [markedWindow]
   return project
 }
 
@@ -103,5 +120,21 @@ describe('setOpeningType', () => {
     dispatcherFor(project).dispatch(setOpeningType(FLOOR_ID, 'front', 'sliding-glass-door'))
 
     expect(openingNamed(project.floors[0], 'front').entrance).toBe(true)
+  })
+
+  it('drops a stray mark when a window becomes a door', () => {
+    const project = projectWithMarkedWindow(false)
+
+    dispatcherFor(project).dispatch(setOpeningType(FLOOR_ID, 'stray', 'single-swing-door'))
+
+    expect('entrance' in openingNamed(project.floors[0], 'stray')).toBe(false)
+  })
+
+  it('keeps one marked door when a window that carries a mark becomes a door', () => {
+    const project = projectWithMarkedWindow(true)
+
+    dispatcherFor(project).dispatch(setOpeningType(FLOOR_ID, 'stray', 'single-swing-door'))
+
+    expect(countMarkedDoors(project)).toBe(1)
   })
 })
