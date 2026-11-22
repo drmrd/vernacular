@@ -43,3 +43,23 @@ export const Default: Story = {
     await expect(screen.getByRole('button', { name: 'Export' })).toBeInTheDocument()
   },
 }
+
+export const ForAFile: Story = {
+  args: {
+    cause: 'file-too-large',
+    source: 'file',
+    onExport: undefined,
+    details: {
+      error: 'The file is larger than 512 MB.',
+      faults: [],
+      build: '0.3.0',
+      removedPaths: [],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByRole('alertdialog', { name: 'This file did not open.' })).toBeVisible()
+    await expect(screen.getByText('The file is larger than Vernacular can open.')).toBeVisible()
+    await expect(screen.queryByRole('button', { name: 'Export' })).toBeNull()
+  },
+}

@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { failSaves } from '../session/handle/handle-test-kit'
 import {
-  failedOpenSentence,
   findCardLink,
   findThePageAlert,
   findTheProjectsPage,
@@ -11,6 +10,7 @@ import {
   settleForAWhile,
 } from './app-test-support'
 import { renameFromTheCard, theRenameField } from './card-actions-test-support'
+import { closeTheDialog } from './failed-open-dialog-test-support'
 import {
   FIRST_ID,
   PROJECTS_ADDRESS,
@@ -106,7 +106,7 @@ describe('A rename from the card of a project on the Projects page', () => {
     const ports = await portsWithAProjectThatDoesNotOpen()
     renderAppAt(ports, PROJECTS_ADDRESS)
     await userEvent.click(await findTheCardThatDidNotOpen())
-    expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
+    await closeTheDialog()
     await settleForAWhile()
     ports.lockRegistry.add(FIRST_ID)
 
