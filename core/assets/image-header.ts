@@ -23,16 +23,22 @@ const PNG_SIGNATURE = '\x89PNG\r\n\x1a\n'
 const PNG_IHDR_TYPE = 'IHDR'
 
 const UINT32_BYTES = 4
-const PNG_CHUNK_LENGTH_BYTES = 4
+const PNG_CHUNK_LENGTH_BYTES = UINT32_BYTES
+const PNG_CHUNK_TYPE_BYTES = 4
+const PNG_CHUNK_CRC_BYTES = UINT32_BYTES
 const PNG_COMPRESSION_AND_FILTER_BYTES = 2
 const PNG_IHDR_TYPE_OFFSET = PNG_SIGNATURE.length + PNG_CHUNK_LENGTH_BYTES
-const PNG_WIDTH_OFFSET = PNG_IHDR_TYPE_OFFSET + PNG_IHDR_TYPE.length
+const PNG_WIDTH_OFFSET = PNG_IHDR_TYPE_OFFSET + PNG_CHUNK_TYPE_BYTES
 const PNG_HEIGHT_OFFSET = PNG_WIDTH_OFFSET + UINT32_BYTES
 const PNG_BIT_DEPTH_OFFSET = PNG_HEIGHT_OFFSET + UINT32_BYTES
 const PNG_COLOR_TYPE_OFFSET = PNG_BIT_DEPTH_OFFSET + 1
 const PNG_INTERLACE_OFFSET = PNG_COLOR_TYPE_OFFSET + 1 + PNG_COMPRESSION_AND_FILTER_BYTES
 const PNG_BYTES_THROUGH_INTERLACE = PNG_INTERLACE_OFFSET + 1
 const PNG_INTERLACE_ADAM7 = 1
+
+function viewOf(bytes: Uint8Array): DataView {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+}
 
 function hasTextAt(bytes: Uint8Array, offset: number, expected: string): boolean {
   return Array.from(expected).every(
@@ -48,7 +54,7 @@ function readPngHeader(bytes: Uint8Array): PngImageHeader | undefined {
   ) {
     return undefined
   }
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const view = viewOf(bytes)
   return {
     mediaType: 'image/png',
     width: view.getUint32(PNG_WIDTH_OFFSET),
@@ -59,22 +65,19 @@ function readPngHeader(bytes: Uint8Array): PngImageHeader | undefined {
   }
 }
 
-const PNG_CHUNK_TYPE_BYTES = PNG_IHDR_TYPE.length
-const PNG_CHUNK_CRC_BYTES = UINT32_BYTES
 const PNG_CHUNK_HEADER_BYTES = PNG_CHUNK_LENGTH_BYTES + PNG_CHUNK_TYPE_BYTES
 
 export function pngChunkTypes(bytes: Uint8Array): string[] {
   const types: string[] = []
   if (!hasTextAt(bytes, 0, PNG_SIGNATURE)) return types
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const view = viewOf(bytes)
   let chunkOffset = PNG_SIGNATURE.length
   while (chunkOffset + PNG_CHUNK_HEADER_BYTES <= bytes.byteLength) {
     const typeOffset = chunkOffset + PNG_CHUNK_LENGTH_BYTES
     const dataOffset = typeOffset + PNG_CHUNK_TYPE_BYTES
     const dataEnd = dataOffset + view.getUint32(chunkOffset)
-    if (dataEnd <= bytes.byteLength) {
-      types.push(String.fromCharCode(...bytes.subarray(typeOffset, dataOffset)))
-    }
+    if (dataEnd > bytes.byteLength) break
+    types.push(String.fromCharCode(...bytes.subarray(typeOffset, dataOffset)))
     chunkOffset = dataEnd + PNG_CHUNK_CRC_BYTES
   }
   return types
@@ -173,7 +176,7 @@ function readWebpHeader(bytes: Uint8Array): WebpImageHeader | undefined {
   if (chunkReader === undefined || bytes.length < chunkReader.bytesNeeded) {
     return undefined
   }
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const view = viewOf(bytes)
   return chunkReader.read(bytes, view)
 }
 
