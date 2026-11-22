@@ -54,10 +54,14 @@ export async function clickInTheDialog(dialog: HTMLElement, name: string): Promi
   await userEvent.click(within(dialog).getByRole('button', { name }))
 }
 
-/** Waits for the failed-open dialog of `container` or of the page, presses Close, and waits until no dialog shows. */
+/**
+ * Waits for the failed-open dialog of `container` or of the page, presses Close, and waits until no
+ * dialog shows in `container` or, without one, in the page.
+ */
 export async function closeTheDialog(container?: HTMLElement, title = STORED_TITLE): Promise<void> {
   await clickInTheDialog(await findTheFailedOpenDialog(title, container), 'Close')
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  const scope = within(container ?? document.body)
+  await waitFor(() => expect(scope.queryByRole('alertdialog')).not.toBeInTheDocument())
 }
 
 /** Durable ports with an ordinary project and a project that a newer build wrote, used last. */
