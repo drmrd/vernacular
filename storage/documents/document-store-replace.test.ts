@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../core'
+import {
+  CURRENT_SCHEMA_VERSION,
+  createEmptyProject,
+  createFloor,
+  createFurnitureInstance,
+  encodeDocument,
+} from '../../core'
 import type { Project } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
@@ -13,8 +19,13 @@ import {
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
+import { ASSET_DIRECTORY_PREFIX } from '../directory-asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
+import { InMemoryDirectory } from '../fs/in-memory-directory'
+import { InMemoryAssetCache } from '../in-memory-asset-cache'
+import { FolderFiles } from '../project-files/folder-files'
 import { ProjectNotFoundError } from '../project-store'
+import { DocumentStore } from './document-store'
 import type { ReplaceReport } from './document-store'
 import {
   BACKUP_DIRECTORY,
@@ -35,6 +46,9 @@ const NOT_JSON = new TextEncoder().encode('{ not json')
 const PATTERN_FIELDS: Json = { patternId: 'plank', scale: 100 }
 const NAMESPACE = 'org.example.probe'
 const EXTENSIONS: Json = { [NAMESPACE]: { tags: ['kept'] } }
+const HASH_LENGTH = 64
+const ASSET_HASH = 'ab'.repeat(HASH_LENGTH / 2)
+const ASSET_BYTES = Uint8Array.of(1, 2, 3)
 
 /** Test support: rejects each write under a backup directory and passes everything else through. */
 class BackupRefusingDirectory extends PassThroughDirectory {
@@ -146,8 +160,8 @@ describe('the data that a replace leaves out', () => {
   })
 })
 
-describe('a read and a save after a replace', () => {
-  it('give the project, and a save does not bring the removed data back', async () => {
+describe('reading and saving after a replace', () => {
+  it('a read after the replace gives the project, and a save after it does not bring the removed data back', async () => {
     const root = await rootHolding(storedWithUnknownField())
     const store = storeOver(root)
     const project = validProject()
@@ -183,7 +197,7 @@ describe('a replace that cannot go ahead', () => {
 
     const outcome = storeOver(new BackupRefusingDirectory(root)).replaceStored('a', validProject())
 
-    await expect(outcome).rejects.toBeInstanceOf(Error)
+    await expect(outcome).rejects.toThrow('the disk is full')
     expect(await treeOf(root)).toEqual(before)
   })
 
@@ -197,7 +211,7 @@ describe('a replace that cannot go ahead', () => {
 })
 
 describe('a replace over stored bytes that are not JSON', () => {
-  it('replaces them, and names that backup by version 0', async () => {
+  it('replaces stored bytes that are not JSON, and names that backup by version 0', async () => {
     const root = await rootHolding(NOT_JSON)
     const project = validProject()
 
@@ -208,5 +222,48 @@ describe('a replace over stored bytes that are not JSON', () => {
     const [backup] = await preRepairBackups(root)
     expect(backup?.name.startsWith(`${PRE_REPAIR}-v${NOT_A_VERSION}-`)).toBe(true)
     expect(backup?.bytes).toEqual(NOT_JSON)
+  })
+})
+
+/** A valid project whose only furniture refers to one asset of the user's own. */
+function projectReferringToAsset(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.0.0',
+  })
+  const floor = createFloor('Ground', { id: 'g' })
+  floor.furniture = [
+    createFurnitureInstance({
+      assetRef: { scope: 'user', contentHash: ASSET_HASH },
+      position: { x: 100, y: 200 },
+      footprint: { width: 600, depth: 600 },
+    }),
+  ]
+  project.floors = [floor]
+  return project
+}
+
+describe('a replace of a folder project with a shared asset pool', () => {
+  it('brings the assets that the given project uses into the project folder', async () => {
+    const folder = new InMemoryDirectory()
+    const shared = new InMemoryAssetCache()
+    await shared.put(ASSET_HASH, ASSET_BYTES)
+    const store = new DocumentStore(new FolderFiles('p', folder, { durable: true, shared }))
+    await store.save(
+      'p',
+      createEmptyProject({
+        name: 'House',
+        units: 'metric',
+        period: 'victorian',
+        appVersion: '0.0.0',
+      }),
+    )
+
+    const report = await store.replaceStored('p', projectReferringToAsset())
+
+    expect(report).toEqual({ replaced: true })
+    expect(await folder.readFile(`${ASSET_DIRECTORY_PREFIX}/${ASSET_HASH}`)).toEqual(ASSET_BYTES)
   })
 })
