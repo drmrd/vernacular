@@ -81,15 +81,19 @@ function entityIdOfHit(hit: THREE.Intersection): string | null {
   return id?.startsWith(FLOOR_NODE_PREFIX) === true ? null : id
 }
 
+/** Whether a hit on this object can decide a pick: not a drawing-aid line, not faded out. */
+function isPickable(object: THREE.Object3D): boolean {
+  return !(object instanceof THREE.Line) && !isFadedForPicking(object)
+}
+
 /**
  * The nearest hit on an object that is not faded decides both fields. The user sees
  * through a faded wall (and what fades with it), so the click is for what is behind it.
- * An edge-overlay line is a drawing aid, not a surface, so a click passes through it.
+ * An edge-overlay or selection-outline line is a drawing aid, not a surface, so a click
+ * passes through it.
  */
 export function pickScene(raycaster: THREE.Raycaster, root: THREE.Object3D): ScenePick {
-  const hits = raycaster
-    .intersectObject(root, true)
-    .filter((each) => !(each.object instanceof THREE.Line) && !isFadedForPicking(each.object))
+  const hits = raycaster.intersectObject(root, true).filter((each) => isPickable(each.object))
   const hit = decidingHit(hits)
   if (hit === undefined) {
     return NOTHING_PICKED
