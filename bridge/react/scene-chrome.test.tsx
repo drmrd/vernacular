@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { SceneChrome, SceneChromeProvider } from './scene-chrome'
 import { SceneFailureHost } from './scene-failure-host'
-
-const PLAIN_CANNOT_RENDER = 'This browser cannot render the 3D view.'
+import { PLAIN_CANNOT_RENDER } from './scene-failure-probe-test-support'
 
 function ChromeBesideFailure({ failed }: { failed: boolean }) {
   return (

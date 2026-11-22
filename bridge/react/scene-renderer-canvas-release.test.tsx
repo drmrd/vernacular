@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import type { CanvasProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { PLAIN_CANNOT_RENDER } from './scene-failure-probe-test-support'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import {
   buildFakeRenderer,
@@ -39,8 +40,6 @@ vi.mock('@react-three/fiber', () => ({
     return <div data-testid="canvas">{children}</div>
   },
 }))
-
-const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
 
 interface Session {
   built: FakeRenderer[]
@@ -129,7 +128,7 @@ describe('SceneRendererCanvas releasing the renderers it builds', () => {
     await settle(() => session.load())
     await settle(() => session.started.reject(new Error('no usable GPU backend')))
 
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
     expect(collaborators.released).toEqual(session.built)
     expect(session.built).toHaveLength(1)
 

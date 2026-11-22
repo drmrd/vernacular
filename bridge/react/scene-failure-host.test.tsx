@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { SceneFailureHost } from './scene-failure-host'
-import { FailureProbe } from './scene-failure-probe-test-support'
+import {
+  FailureProbe,
+  PLAIN_CANNOT_RENDER,
+  PLAIN_COULD_NOT_LOAD,
+} from './scene-failure-probe-test-support'
 import { SceneFailureViewContext, type SceneFailureViewProps } from './scene-failure-view-context'
-
-const PLAIN_CANNOT_RENDER = 'This browser cannot render the 3D view.'
-const PLAIN_COULD_NOT_LOAD =
-  'Could not load the 3D view. Check your network connection, then reload the page.'
 
 describe('SceneFailureHost', () => {
   it('shows the plain cannot-render status when nothing fills the slot', () => {

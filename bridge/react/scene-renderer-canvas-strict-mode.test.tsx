@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import type { CanvasProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { PLAIN_CANNOT_RENDER } from './scene-failure-probe-test-support'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import {
   buildFakeRenderer,
@@ -45,7 +46,6 @@ vi.mock('@react-three/fiber', () => ({
   },
 }))
 
-const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
 const COULD_NOT_LOAD_MESSAGE =
   'Could not load the 3D view. Check your network connection, then reload the page.'
 const CHILD = <div data-testid="child" />
@@ -174,7 +174,7 @@ describe('SceneRendererCanvas under StrictMode with the other outcomes', () => {
 
     await settle(() => second.reject(new Error('no usable GPU backend')))
 
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
     expect(screen.queryByTestId('child')).toBeNull()
   })
 
@@ -231,7 +231,7 @@ describe('SceneRendererCanvas under StrictMode when the newer renderer fails to 
 
     await settle(() => first.resolve())
 
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
     expect(screen.queryByTestId('child')).toBeNull()
     // A third call would mean that the wrapper mounted the canvas again after the failure.
     expect.soft(factory).toHaveBeenCalledTimes(2)
@@ -244,7 +244,7 @@ describe('SceneRendererCanvas under StrictMode when the newer renderer fails to 
 
     await settle(() => first.reject(new Error('no usable GPU backend')))
 
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
     expect(screen.queryByTestId('child')).toBeNull()
     // A third call would mean that the wrapper mounted the canvas again after the failure.
     expect.soft(factory).toHaveBeenCalledTimes(2)

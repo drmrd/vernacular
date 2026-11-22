@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import type { CanvasProps, GLProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { FailureProbe } from './scene-failure-probe-test-support'
+import { FailureProbe, PLAIN_CANNOT_RENDER } from './scene-failure-probe-test-support'
 import { SceneFailureViewContext, type SceneFailureView } from './scene-failure-view-context'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SCENE_RENDERER_FAILED_ATTRIBUTE } from './scene-readiness'
@@ -196,7 +196,6 @@ describe('SceneRendererCanvas', () => {
 })
 
 // The wording and role that SceneCanvas already uses when the browser has no 3D backend at all.
-const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
 const COULD_NOT_LOAD_MESSAGE =
   'Could not load the 3D view. Check your network connection, then reload the page.'
 
@@ -221,7 +220,7 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     await settle(() => start.loaded.resolve(start.factory))
     await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
 
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
     expect(screen.queryByTestId('child')).toBeNull()
     expect(failureKindIn(container)).toBe('start')
   })
@@ -272,7 +271,7 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     await settle(() => start.loaded.resolve(factory))
 
     expect(warn).toHaveBeenCalled()
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
     expect(failureKindIn(container)).toBe('start')
     expect(screen.queryByTestId('child')).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()

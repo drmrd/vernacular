@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { SceneChromeProvider } from './scene-chrome'
+import { SceneFailureHost } from './scene-failure-host'
+import { PLAIN_CANNOT_RENDER } from './scene-failure-probe-test-support'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 
 afterEach(cleanup)
@@ -65,5 +68,19 @@ describe('SceneProxyOverlay', () => {
 
     const option = screen.getByRole('option', { name: 'Wall 1' })
     expect(option).toBeEmptyDOMElement()
+  })
+
+  it('removes itself and its selection status while a failure view is mounted under the same provider', () => {
+    const { container } = render(
+      <SceneChromeProvider>
+        <SceneProxyOverlay proxies={proxies} selectedIds={new Set()} onSelect={vi.fn()} />
+        <SceneFailureHost kind="start" />
+      </SceneChromeProvider>,
+    )
+
+    expect(container.querySelector('.scene-proxy-overlay')).toBeNull()
+    expect(screen.queryByRole('listbox', { name: '3D entities' })).toBeNull()
+    expect(screen.queryByText('No entity selected')).toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
   })
 })
