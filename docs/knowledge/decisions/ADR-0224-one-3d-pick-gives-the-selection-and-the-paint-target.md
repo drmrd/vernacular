@@ -17,8 +17,7 @@ sourceFiles:
   [
     docs/specs/2026-06-13-three-dimensional-selection-and-accessibility.md,
     bridge/react/scene-selection.tsx,
-    engine/scene/pick-entity.ts,
-    engine/scene/pick-surface.ts,
+    engine/scene/pick-scene.ts,
     engine/scene/faded-for-picking.ts,
     engine/scene/floor-subgroups.ts,
     engine/scene/opening-fill-builder.ts,
@@ -26,17 +25,19 @@ sourceFiles:
     engine/scene/ground-plane.ts,
     engine/materials/role-appearance.ts,
     editor/paint/use-entity-surface-bridge.ts,
+    editor/paint/entity-surface.ts,
+    editor/plan/room-finish-section.tsx,
   ]
 status: current
-updated: 2026-11-20
+updated: 2026-11-21
 ---
 
 # ADR-0224: One 3D pick gives the selection and the paint target
 
 ## Status
 
-Current. The project owner decided the four rules below on 2026-11-20, on issue #742. No build work
-has started. This record settles the click on furniture, door parts, glass, and junction fills that
+Current and built. The project owner decided the four rules below on 2026-11-20, on issue #742,
+and the build landed on 2026-11-21. This record settles the click on furniture, door parts, glass, and junction fills that
 the 2026-11-15 amendment of ADR-0056 left undecided, and ADR-0056 now carries a dated note that
 points here. Section 3 of `docs/specs/2026-06-13-three-dimensional-selection-and-accessibility.md`
 carries a dated amendment that cites this record.
@@ -105,16 +106,20 @@ The visible sides of a junction fill stay unpainted. No work to paint them is pl
 ### What the build changes
 
 - One pick in `engine/scene/` replaces `pickEntityId` and `pickSurface`, and returns the selection
-  and the paint target from the same hit.
+  and the paint target from the same hit. It is `pickScene` and `pickSceneAt` in
+  `engine/scene/pick-scene.ts`.
 - The editor clears the paint target when the selected object has no paintable face. The clear
   belongs in `editor/paint/use-entity-surface-bridge.ts`, which must learn that a room owns its
   floor and its ceiling. A door or a window has no paintable face, so a click on a door leaf, a
   frame, or glass clears the paint target too.
 - Some pinned engine tests change. No scene baseline moves, because a click draws nothing.
+- A line never takes the click. The edge overlay and the selection outline are drawing aids, so
+  the pick skips every line hit and goes on to the mesh behind it. A click a millimetre from a wall
+  edge still gets that wall's face, and a click on the edge line of a faded wall gets the surface
+  behind the wall. Engine pick tests with the edge overlay on pin both cases. This settles #1070.
 
 ## Not decided here
 
-- What a line hit on the edge overlay of a faded wall does. Issue #742 still tracks it.
 - At what opacity a wall counts as faded once the fade becomes gradual. Issue #744 tracks the fade
   that depends on the camera's distance.
 

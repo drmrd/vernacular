@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { PerspectiveCamera, Raycaster } from '../../engine/testing'
 
 import { buildScene } from '../../engine'
-import { planToWorld } from '../../core'
+import { colorFromHex, planToWorld } from '../../core'
 import { createPerceivedColorStore } from '../perceived-color/perceived-color-store'
 import { createSelectionStore } from '../selection/selection-store'
 import { createSurfaceSelectionStore } from '../selection/surface-selection-store'
@@ -98,12 +98,18 @@ const overheadCamera = (): PerspectiveCamera =>
     { plan: { x: AIM_ALONG, y: 0 }, height: WALL_HEIGHT },
   )
 
-function clickWith(camera: PerspectiveCamera) {
+interface ClickStores {
+  readonly surfaceSelection: ReturnType<typeof createSurfaceSelectionStore>
+  readonly perceivedColor: ReturnType<typeof createPerceivedColorStore>
+}
+
+function clickWith(camera: PerspectiveCamera, beforeClick?: (stores: ClickStores) => void) {
   const root = buildScene(graph)
   root.updateMatrixWorld(true)
   const selection = createSelectionStore()
   const surfaceSelection = createSurfaceSelectionStore()
   const perceivedColor = createPerceivedColorStore()
+  beforeClick?.({ surfaceSelection, perceivedColor })
   commitSelectionAt(centreClick(), {
     domElement: stubCanvas(),
     camera,
@@ -147,6 +153,49 @@ describe('commitSelectionAt on a wall', () => {
     expect(selection.getSelectedIds()).toEqual(new Set([wall.id]))
     expect(surfaceSelection.getActiveSurface()).toBeNull()
     expect(perceivedColor.getRequest()).toBeNull()
+  })
+})
+
+// A face click earlier left a paint target and a color sample on screen. A cap click gives no
+// paint target, so it must not leave that sample up: the readout would name a face that is not
+// under the pointer. The active face stays, as an empty-space click leaves it.
+describe('commitSelectionAt on a wall cap after a click on a face', () => {
+  const NDC = { x: 0.5, y: 0.5 }
+  const sampleOnScreen = ({ surfaceSelection, perceivedColor }: ClickStores): void => {
+    surfaceSelection.select(faceRef('left'))
+    perceivedColor.resolveSample({ surface: faceRef('left'), color: colorFromHex('#a1b2c3') })
+  }
+  const requestPending = ({ surfaceSelection, perceivedColor }: ClickStores): void => {
+    surfaceSelection.select(faceRef('left'))
+    perceivedColor.requestSample(faceRef('left'), NDC)
+  }
+
+  it.each([
+    ['a color sample on screen', sampleOnScreen],
+    ['a sample request still pending', requestPending],
+  ])('keeps the active face and drops %s', (_name, beforeClick) => {
+    const { surfaceSelection, perceivedColor } = clickWith(overheadCamera(), beforeClick)
+
+    expect(surfaceSelection.getActiveSurface()).toEqual(faceRef('left'))
+    expect(perceivedColor.getRequest()).toBeNull()
+    expect(perceivedColor.getSample()).toBeNull()
+  })
+
+  it('selects the wall without a perceived-color store mounted', () => {
+    const root = buildScene(graph)
+    root.updateMatrixWorld(true)
+    const selection = createSelectionStore()
+
+    commitSelectionAt(centreClick(), {
+      domElement: stubCanvas(),
+      camera: overheadCamera(),
+      raycaster: new Raycaster(),
+      root,
+      selection,
+      surfaceSelection: createSurfaceSelectionStore(),
+    })
+
+    expect(selection.getSelectedIds()).toEqual(new Set([wall.id]))
   })
 })
 

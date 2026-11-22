@@ -1,4 +1,62 @@
-import { WALL_NODE_PREFIX, type SurfaceRef } from '../../core'
+import { ROOM_ID_PREFIX, WALL_NODE_PREFIX, type RoomSceneNode, type SurfaceRef } from '../../core'
+
+/** What a selection change does to the active paint surface. */
+export type PaintTargetChange =
+  | { kind: 'keep' }
+  | { kind: 'select'; surface: SurfaceRef }
+  | { kind: 'clear' }
+
+/**
+ * The paint target a selection implies. One selected wall targets a face of that wall,
+ * one selected room targets its floor, and any other single entity has no paintable
+ * face, so the target is cleared. An empty or multiple selection, and a room that the
+ * scene graph does not hold, leave the active surface as it is. A surface that already
+ * belongs to the selected entity is kept.
+ */
+export function paintTargetForSelection(
+  selectedIds: ReadonlySet<string>,
+  active: SurfaceRef | null,
+  rooms: readonly RoomSceneNode[],
+): PaintTargetChange {
+  const [entityId] = selectedIds
+  if (selectedIds.size !== 1 || entityId === undefined) {
+    return { kind: 'keep' }
+  }
+  const wallFace = wallFaceForSelection(selectedIds)
+  if (wallFace !== null) {
+    return wallPaintTarget(wallFace, entityId, active)
+  }
+  if (entityId.startsWith(ROOM_ID_PREFIX)) {
+    return roomPaintTarget(entityId, active, rooms)
+  }
+  return { kind: 'clear' }
+}
+
+function wallPaintTarget(
+  wallFace: SurfaceRef,
+  wallEntityId: string,
+  active: SurfaceRef | null,
+): PaintTargetChange {
+  return active !== null && isSurfaceOfEntity(active, wallEntityId)
+    ? { kind: 'keep' }
+    : { kind: 'select', surface: wallFace }
+}
+
+function roomPaintTarget(
+  roomId: string,
+  active: SurfaceRef | null,
+  rooms: readonly RoomSceneNode[],
+): PaintTargetChange {
+  const room = rooms.find((candidate) => candidate.id === roomId)
+  if (room === undefined) {
+    return { kind: 'keep' }
+  }
+  const keepsActive =
+    (active?.kind === 'floor' || active?.kind === 'ceiling') && active.floorId === room.floorId
+  return keepsActive
+    ? { kind: 'keep' }
+    : { kind: 'select', surface: { kind: 'floor', floorId: room.floorId } }
+}
 
 /**
  * The first paintable face of the one selected wall, or null when the selection is
@@ -23,7 +81,8 @@ function wallIdOf(entityId: string): string | null {
 /**
  * Whether a paint surface is one of the surfaces of an entity, so a surface that a
  * 3D click already picked on the entity survives the selection change that follows
- * it. A wall owns both of its faces; any other entity owns none that this module knows.
+ * it. This check covers walls only, which own both of their faces; a room's surfaces are
+ * matched in `roomPaintTarget`.
  */
 export function isSurfaceOfEntity(surface: SurfaceRef, entityId: string): boolean {
   return surface.kind === 'wall-face' && surface.wallId === wallIdOf(entityId)

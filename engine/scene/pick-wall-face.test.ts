@@ -6,7 +6,7 @@ import type { OpeningSceneNode, Point, SceneGraph, SurfaceRef, WallSceneNode } f
 import { PhysicalMaterialProvider } from '../materials/physical-material-provider'
 
 import { buildScene } from './build-scene'
-import { pickSurface } from './pick-surface'
+import { pickScene } from './pick-scene'
 import { worldAt } from './wall-winding-test-support'
 
 // A ray that strikes a long face of a wall picks that face. The side names follow the
@@ -14,6 +14,7 @@ import { worldAt } from './wall-winding-test-support'
 // start -> end direction in plan, and 'right' is the face on the opposite side.
 
 const WALL_ID = 'w1'
+const WALL_ENTITY_ID = `wall:${WALL_ID}`
 const FLOOR_ID = 'g'
 const WALL_THICKNESS = 120
 const WALL_HEIGHT = 2600
@@ -59,11 +60,11 @@ const wall: WallSceneNode = {
   height: WALL_HEIGHT,
 }
 
-const centeredWindow: OpeningSceneNode = {
+const centeredOpening: OpeningSceneNode = {
   id: 'opening:window',
   kind: 'opening',
   floorId: FLOOR_ID,
-  type: 'double-hung-window',
+  type: 'cased-opening',
   hostWallId: WALL_ID,
   center: planAt(WALL_LENGTH * HALF, 0),
   along: ALONG,
@@ -86,7 +87,7 @@ const sceneOf = (path: BuildPath): THREE.Group => {
     walls: [wall],
     rooms: [],
     underlays: [],
-    openings: path === 'opening' ? [centeredWindow] : [],
+    openings: path === 'opening' ? [centeredOpening] : [],
     dimensions: [],
     stairs: [],
     furniture: [],
@@ -112,39 +113,52 @@ const squareOn = (side: Side): Aim => ({
 })
 
 const pickKey = (path: BuildPath, aim: Aim): string | undefined => {
-  const picked = pickSurface(raycasterFor(aim), sceneOf(path))
-  return picked === null ? undefined : surfaceKey(picked)
+  const { surface } = pickScene(raycasterFor(aim), sceneOf(path))
+  return surface === null ? undefined : surfaceKey(surface)
 }
 
 const PATHS = ['plain prism', 'opening'] as const
 const SIDES = ['left', 'right'] as const
 const FACE_CASES = PATHS.flatMap((path) => SIDES.map((side) => ({ path, side })))
 
-describe('pickSurface on a wall', () => {
+describe('pickScene on a wall', () => {
   it.each(FACE_CASES)(
     'picks the $side face when the ray hits it ($path path)',
     ({ path, side }) => {
-      expect(pickSurface(raycasterFor(squareOn(side)), sceneOf(path))).toEqual(faceRef(side))
+      expect(pickScene(raycasterFor(squareOn(side)), sceneOf(path))).toEqual({
+        entityId: WALL_ENTITY_ID,
+        surface: faceRef(side),
+      })
     },
   )
 
   it.each(PATHS)('picks no surface from a ray that strikes the top cap ($path path)', (path) => {
     const above = worldAt(planAt(AIM_ALONG, 0), RAY_START_HEIGHT)
     const onTop = worldAt(planAt(AIM_ALONG, 0), WALL_HEIGHT)
-    expect(pickSurface(raycasterFor({ from: above, to: onTop }), sceneOf(path))).toBeNull()
+    expect(pickScene(raycasterFor({ from: above, to: onTop }), sceneOf(path))).toEqual({
+      entityId: WALL_ENTITY_ID,
+      surface: null,
+    })
   })
 
   it.each(PATHS)('picks no surface from a ray that strikes the end cap ($path path)', (path) => {
     const beyondStart = worldAt(planAt(-RAY_STANDOFF, 0), AIM_HEIGHT)
     const atStart = worldAt(planAt(0, 0), AIM_HEIGHT)
-    expect(pickSurface(raycasterFor({ from: beyondStart, to: atStart }), sceneOf(path))).toBeNull()
+    expect(pickScene(raycasterFor({ from: beyondStart, to: atStart }), sceneOf(path))).toEqual({
+      entityId: WALL_ENTITY_ID,
+      surface: null,
+    })
   })
 
   it('picks no surface from a ray that strikes the reveal of an opening', () => {
-    // Through the window's void, angled to land on the jamb standing inside the wall.
+    // Through the void of a cased opening (it has no sash or leaf, which would take the
+    // hit), angled to land on the jamb standing inside the wall.
     const through = worldAt(planAt(WALL_LENGTH * HALF, RAY_STANDOFF), AIM_HEIGHT)
     const onJamb = worldAt(planAt(JAMB_ALONG, 0), AIM_HEIGHT)
-    expect(pickSurface(raycasterFor({ from: through, to: onJamb }), sceneOf('opening'))).toBeNull()
+    expect(pickScene(raycasterFor({ from: through, to: onJamb }), sceneOf('opening'))).toEqual({
+      entityId: WALL_ENTITY_ID,
+      surface: null,
+    })
   })
 })
 

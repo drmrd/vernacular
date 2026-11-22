@@ -19,10 +19,10 @@ export interface EdgeOverlayOptions {
 /**
  * Adds a dark, depth-tested edge line along every mesh in a built scene, so the
  * surfaces read against each other whatever the lighting and paint are. Each line
- * is a child of its mesh, so it inherits the mesh transform, and it carries no
- * entity id and is a line rather than a mesh, so the hit-test, the accessibility
- * proxies, and the selection traversal (which all collect meshes by entity id)
- * ignore it. Depth testing is on, so the geometry in front hides the lines behind
+ * is a child of its mesh, so it inherits the mesh transform. It carries no entity
+ * id, and `pickScene` skips any `THREE.Line`, so the hit-test passes a click through
+ * it to the face behind; the accessibility proxies and the selection traversal
+ * (which collect meshes by entity id) also ignore it. Depth testing is on, so the geometry in front hides the lines behind
  * it (a hidden-line look). One material is shared by every edge line.
  */
 export function addEdgeOverlay(root: THREE.Object3D): void {

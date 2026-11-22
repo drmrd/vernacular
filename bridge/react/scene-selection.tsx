@@ -3,8 +3,7 @@ import { useEffect, useLayoutEffect, useMemo } from 'react'
 
 import {
   createSelectionOutlineGroup,
-  pickEntityIdAt,
-  pickSurfaceAt,
+  pickSceneAt,
   reconcileSelectionOutline,
   type SceneRoot,
 } from '../../engine'
@@ -29,9 +28,9 @@ import { useSurfaceSelection } from './surface-selection-context'
 // A drag of more than a few pixels is a camera move, not a selection click.
 const CLICK_TOLERANCE_PX = 6
 
-// pickEntityIdAt's argument carries the three camera and raycaster types, so reusing them
+// pickSceneAt's argument carries the three camera and raycaster types, so reusing them
 // here keeps this bridge module free of a direct three import (engine owns three).
-type PickContext = Parameters<typeof pickEntityIdAt>[0]
+type PickContext = Parameters<typeof pickSceneAt>[0]
 
 interface PointerSelectionDeps {
   domElement: HTMLCanvasElement
@@ -44,9 +43,10 @@ interface PointerSelectionDeps {
 }
 
 // Picks the entity under the release point and writes the shared selection: a modifier
-// click toggles, a plain click selects, and a click on empty space clears. A pick that
-// lands on a paintable surface (a room floor today) also targets that surface, so the
-// active paint target stays consistent across the 2D plan and the 3D model (ADR-0056).
+// click toggles, a plain click selects, and a click on empty space clears. A click
+// paints the wall face or floor the pointer hits, so the active paint target stays
+// consistent across the 2D plan and the 3D model (ADR-0056). A pick with no surface
+// clears the perceived-color readout.
 export function commitSelectionAt(event: PointerEvent, deps: PointerSelectionDeps): void {
   const { domElement, camera, raycaster, root, selection, surfaceSelection, perceivedColor } = deps
   const rect = domElement.getBoundingClientRect()
@@ -54,15 +54,16 @@ export function commitSelectionAt(event: PointerEvent, deps: PointerSelectionDep
     x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
     y: -((event.clientY - rect.top) / rect.height) * 2 + 1,
   }
-  const surface = pickSurfaceAt({ raycaster, camera, root, ndc })
-  if (surface !== null) {
+  const { entityId: id, surface } = pickSceneAt({ raycaster, camera, root, ndc })
+  if (surface === null) {
+    perceivedColor?.clear()
+  } else {
     surfaceSelection.select(surface)
     // The readout is an optional enhancement to click-to-select, not a required
     // dependency of it, so selection must keep working when no store is mounted
     // (isolated tests and any host that skips the perceived-color provider).
     perceivedColor?.requestSample(surface, ndc)
   }
-  const id = pickEntityIdAt({ raycaster, camera, root, ndc })
   const additive = event.shiftKey || event.metaKey || event.ctrlKey
   if (id === null) {
     if (!additive) selection.clear()

@@ -10,6 +10,7 @@ import {
   shift,
   type Point,
   type RoomSceneNode,
+  type SurfaceRef,
 } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
@@ -179,17 +180,15 @@ function buildSlabMesh(
   const geometry = geometryFromPositions(sections.flatMap((section) => section.positions))
   addSlabGroups(geometry, sections)
   geometry.computeVertexNormals()
+  const surface: SurfaceRef = { kind: 'floor', floorId }
   const slabMaterials = sections.map((section) =>
-    materials.material(
-      section.role,
-      section.role === 'top' ? { kind: 'floor', floorId } : undefined,
-    ),
+    materials.material(section.role, section.role === 'top' ? surface : undefined),
   )
   const mesh = new THREE.Mesh(geometry, slabMaterials)
   // The slab carries its floor surface ref, so a 3D pick walks up to the same
   // SurfaceRef the 2D plan paints (ADR-0056); the active paint target stays
   // consistent across both views.
-  mesh.userData.surface = { kind: 'floor', floorId }
+  mesh.userData.surface = surface
   return mesh
 }
 
@@ -213,7 +212,11 @@ function buildCeilingMesh(
   )
   const geometry = geometryFromPositions(positions)
   geometry.computeVertexNormals()
-  return new THREE.Mesh(geometry, materials.material('base', { kind: 'ceiling', floorId }))
+  const surface: SurfaceRef = { kind: 'ceiling', floorId }
+  const mesh = new THREE.Mesh(geometry, materials.material('base', surface))
+  // The ceiling carries its own surface ref, so a 3D pick from inside the room paints it.
+  mesh.userData.surface = surface
+  return mesh
 }
 
 /**

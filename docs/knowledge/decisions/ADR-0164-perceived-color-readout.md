@@ -126,7 +126,7 @@ carries it back. The readout renders only when that reference matches the surfac
 showing, so a stale sample can never be captioned with the wrong paint.
 
 The readout does not reinvent picking. `commitSelectionAt` already computes normalized device
-coordinates and calls `pickSurfaceAt` on every click in the 3D view (ADR-0056), so the readout
+coordinates and calls `pickSceneAt` on every click in the 3D view (ADR-0056), so the readout
 requests its sample from that existing call site. Clicking a surface to select it is already the
 gesture a person makes when they want to know about that surface, so no separate eyedropper mode is
 needed.

@@ -37,7 +37,7 @@ sourceFiles:
   [
     docs/specs/2026-06-13-three-dimensional-selection-and-accessibility.md,
     docs/plans/2026-06-13-three-dimensional-selection-and-highlight.md,
-    engine/scene/pick-entity.ts,
+    engine/scene/pick-scene.ts,
     engine/scene/selection-outline.ts,
     bridge/react/scene-selection.tsx,
     bridge/react/scene-overlay.tsx,
@@ -215,3 +215,10 @@ red-green-blue cycle, so each lands as a coherent, reviewed unit.
 - [[ADR-0061-three-dimensional-wall-shell-junctions-and-visual-tier]]: the
   `userData.entityId` the pick reads and the shared per-role materials the highlight
   must not mutate.
+
+## Amendment 2026-11-21: the pick is now `pickScene`
+
+The `pickEntityId` named above no longer exists. `pickScene` and `pickSceneAt` in
+`engine/scene/pick-scene.ts` replace it and the separate surface pick, and one hit gives both the
+selected entity and the paint surface (ADR-0224, ADR-0056). The nearest-ancestor rule for the
+entity id is unchanged, and a hit on a junction fill now gives no entity id.

@@ -117,7 +117,8 @@ function groundMesh(footprint: GroundFootprint, gradeElevation: number): THREE.M
  * Adds a grass-colored ground plane at grade, sized to cover the building footprint
  * with a surrounding site margin. It reads the footprint from the geometry already in
  * `root`, so it must run after the floors are built. The plane carries no entity id or
- * surface ref, so entity picking, surface picking, and selection ignore it. The plane is
+ * surface ref, so it never selects or paints an entity. It is still a pickable surface:
+ * `pickScene` lets the lawn take a click that lands on open ground. The plane is
  * seated at `gradeElevation`, defaulting to the grade datum when none is supplied.
  */
 export function addGroundPlane(

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { WALL_NODE_PREFIX, type SurfaceRef } from '../../core'
-import { isSurfaceOfEntity, wallFaceForSelection } from './entity-surface'
+import { WALL_NODE_PREFIX, type RoomSceneNode, type SurfaceRef } from '../../core'
+import { isSurfaceOfEntity, paintTargetForSelection, wallFaceForSelection } from './entity-surface'
 
 const wallNodeId = (id: string): string => `${WALL_NODE_PREFIX}${id}`
 
@@ -53,5 +53,79 @@ describe('isSurfaceOfEntity', () => {
 
   it('is false for an entity id that only starts like a wall id', () => {
     expect(isSurfaceOfEntity(left, 'wallpaper:w1')).toBe(false)
+  })
+})
+
+describe('paintTargetForSelection', () => {
+  const room: RoomSceneNode = {
+    id: 'room:r1',
+    kind: 'room',
+    floorId: 'g',
+    polygon: [],
+    clearPolygon: [],
+    area: 0,
+  }
+  const rooms = [room]
+  const leftOfW1: SurfaceRef = { kind: 'wall-face', wallId: 'w1', side: 'left' }
+  const rightOfW1: SurfaceRef = { kind: 'wall-face', wallId: 'w1', side: 'right' }
+  const leftOfW2: SurfaceRef = { kind: 'wall-face', wallId: 'w2', side: 'left' }
+  const floorOfG: SurfaceRef = { kind: 'floor', floorId: 'g' }
+  const ceilingOfG: SurfaceRef = { kind: 'ceiling', floorId: 'g' }
+  const floorOfUpper: SurfaceRef = { kind: 'floor', floorId: 'upper' }
+
+  it('keeps a face of the one selected wall', () => {
+    const change = paintTargetForSelection(new Set([wallNodeId('w1')]), rightOfW1, rooms)
+    expect(change).toEqual({ kind: 'keep' })
+  })
+
+  it.each([
+    ['a face of another wall', leftOfW2],
+    ['the floor of a room', floorOfG],
+    ['no surface', null],
+  ])(
+    'selects the left face of the one selected wall when the active surface is %s',
+    (_, active) => {
+      const change = paintTargetForSelection(new Set([wallNodeId('w1')]), active, rooms)
+      expect(change).toEqual({ kind: 'select', surface: leftOfW1 })
+    },
+  )
+
+  it.each([
+    ['floor', floorOfG],
+    ['ceiling', ceilingOfG],
+  ])('keeps the %s of the one selected room when that surface is active', (_, active) => {
+    const change = paintTargetForSelection(new Set([room.id]), active, rooms)
+    expect(change).toEqual({ kind: 'keep' })
+  })
+
+  it.each([
+    ['no surface', null],
+    ['a wall face', leftOfW1],
+    ['the floor of another storey', floorOfUpper],
+  ])('selects the floor of the one selected room when the active surface is %s', (_, active) => {
+    const change = paintTargetForSelection(new Set([room.id]), active, rooms)
+    expect(change).toEqual({ kind: 'select', surface: floorOfG })
+  })
+
+  it('keeps the active surface when the one selected room is not in the scene graph', () => {
+    const change = paintTargetForSelection(new Set(['room:missing']), leftOfW1, rooms)
+    expect(change).toEqual({ kind: 'keep' })
+  })
+
+  it.each(['chair-1', 'opening:o1', 'stair:s1'])(
+    'clears the paint target when the one selected entity is %s, which has no paintable face',
+    (entityId) => {
+      const change = paintTargetForSelection(new Set([entityId]), floorOfG, rooms)
+      expect(change).toEqual({ kind: 'clear' })
+    },
+  )
+
+  it('keeps the active surface when nothing is selected', () => {
+    expect(paintTargetForSelection(new Set(), floorOfG, rooms)).toEqual({ kind: 'keep' })
+  })
+
+  it('keeps the active surface when several entities are selected', () => {
+    const change = paintTargetForSelection(new Set(['chair-1', room.id]), floorOfG, rooms)
+    expect(change).toEqual({ kind: 'keep' })
   })
 })

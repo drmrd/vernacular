@@ -4,15 +4,17 @@ import { describe, expect, it } from 'vitest'
 import type { OpeningSceneNode, Point, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
 
 import { buildScene } from './build-scene'
-import { pickSurface } from './pick-surface'
+import { pickScene } from './pick-scene'
 import { worldAt } from './wall-winding-test-support'
 
 // A wall is opaque: a ray that strikes a wall triangle that is no paintable long face
-// (a cap, an end, a reveal) picks nothing, and does not go on to a floor slab or a
-// second wall behind it. A mesh that is no wall and carries no surface is skipped.
+// (a cap, an end, a reveal) selects the wall and picks no surface, and does not go on to a
+// floor slab or a second wall behind it. A mesh that is no wall and carries no entity or
+// surface also stops the ray: the nearest object that is not faded decides.
 
 const FLOOR_ID = 'g'
 const WALL_ID = 'w1'
+const WALL_ENTITY_ID = `wall:${WALL_ID}`
 const SECOND_WALL_ID = 'w2'
 const WALL_THICKNESS = 120
 const WALL_HEIGHT = 2600
@@ -66,11 +68,11 @@ const secondWall = wallBetween(
   planAt(SECOND_WALL_ALONG, SECOND_WALL_HALF_SPAN),
 )
 
-const centeredWindow: OpeningSceneNode = {
+const centeredOpening: OpeningSceneNode = {
   id: 'opening:window',
   kind: 'opening',
   floorId: FLOOR_ID,
-  type: 'double-hung-window',
+  type: 'cased-opening',
   hostWallId: WALL_ID,
   center: planAt(WALL_LENGTH * HALF, 0),
   along: ALONG,
@@ -98,7 +100,8 @@ const room: RoomSceneNode = {
   area: 4 * SLAB_REACH * SLAB_REACH,
 }
 
-const FLOOR_REF = { kind: 'floor', floorId: FLOOR_ID }
+/** A hit on a triangle of the first wall that is no long face: the wall is selected, nothing is painted. */
+const ON_WALL_ONLY = { entityId: WALL_ENTITY_ID, surface: null }
 
 /** A floor slab under two walls, the first with or without a window in it. */
 const sceneOf = (path: BuildPath): THREE.Group => {
@@ -107,7 +110,7 @@ const sceneOf = (path: BuildPath): THREE.Group => {
     walls: [firstWall, secondWall],
     rooms: [room],
     underlays: [],
-    openings: path === 'opening' ? [centeredWindow] : [],
+    openings: path === 'opening' ? [centeredOpening] : [],
     dimensions: [],
     stairs: [],
     furniture: [],
@@ -123,26 +126,27 @@ interface Aim {
 const pickAlong = ({ from, to }: Aim, root: THREE.Group) => {
   root.updateMatrixWorld(true)
   const raycaster = new THREE.Raycaster(from, to.clone().sub(from).normalize())
-  return pickSurface(raycaster, root)
+  return pickScene(raycaster, root)
 }
 
 const PATHS = ['plain prism', 'opening'] as const
 
-describe('pickSurface behind a wall triangle that is no long face', () => {
+describe('pickScene behind a wall triangle that is no long face', () => {
   it.each(PATHS)(
     'picks no surface from a ray onto the top cap, not the floor ($path path)',
     (path) => {
       const above = worldAt(planAt(1000, 0), RAY_START_HEIGHT)
       const onTop = worldAt(planAt(1000, 0), WALL_HEIGHT)
-      expect(pickAlong({ from: above, to: onTop }, sceneOf(path))).toBeNull()
+      expect(pickAlong({ from: above, to: onTop }, sceneOf(path))).toEqual(ON_WALL_ONLY)
     },
   )
 
   it('picks no surface from a ray into the reveal of an opening, not the floor behind', () => {
-    // Down through the window's void, onto the jamb, and on toward the floor behind it.
+    // Down through the void of a cased opening (it has no sash or leaf, which would take the
+    // hit), onto the jamb, and on toward the floor behind it.
     const through = worldAt(planAt(WALL_LENGTH * HALF, RAY_STANDOFF), REVEAL_START_HEIGHT)
     const onJamb = worldAt(planAt(JAMB_ALONG, 0), AIM_HEIGHT)
-    expect(pickAlong({ from: through, to: onJamb }, sceneOf('opening'))).toBeNull()
+    expect(pickAlong({ from: through, to: onJamb }, sceneOf('opening'))).toEqual(ON_WALL_ONLY)
   })
 
   it.each(PATHS)(
@@ -150,12 +154,12 @@ describe('pickSurface behind a wall triangle that is no long face', () => {
     (path) => {
       const beyondStart = worldAt(planAt(-RAY_STANDOFF, 0), AIM_HEIGHT)
       const atStart = worldAt(planAt(0, 0), AIM_HEIGHT)
-      expect(pickAlong({ from: beyondStart, to: atStart }, sceneOf(path))).toBeNull()
+      expect(pickAlong({ from: beyondStart, to: atStart }, sceneOf(path))).toEqual(ON_WALL_ONLY)
     },
   )
 })
 
-describe('pickSurface on a long face with a floor and a second wall present', () => {
+describe('pickScene on a long face with a floor and a second wall present', () => {
   it.each(PATHS)(
     'still picks the long face struck, not what lies behind it ($path path)',
     (path) => {
@@ -163,16 +167,15 @@ describe('pickSurface on a long face with a floor and a second wall present', ()
       const from = worldAt(planAt(LONG_FACE_START_ALONG, RAY_STANDOFF), AIM_HEIGHT)
       const onFace = worldAt(planAt(LONG_FACE_ALONG, 0), AIM_HEIGHT)
       expect(pickAlong({ from, to: onFace }, sceneOf(path))).toEqual({
-        kind: 'wall-face',
-        wallId: WALL_ID,
-        side: 'left',
+        entityId: WALL_ENTITY_ID,
+        surface: { kind: 'wall-face', wallId: WALL_ID, side: 'left' },
       })
     },
   )
 })
 
-describe('pickSurface through a mesh that is no wall and carries no surface', () => {
-  it('skips the mesh and picks the floor behind it', () => {
+describe('pickScene at a mesh that is no wall and carries no surface', () => {
+  it('stops at the mesh and picks neither the entity nor the floor behind it', () => {
     const root = sceneOf('plain prism')
     const spot: Point = { x: -SLAB_REACH * HALF, y: -SLAB_REACH * HALF }
     const furniture = new THREE.Mesh(
@@ -182,6 +185,9 @@ describe('pickSurface through a mesh that is no wall and carries no surface', ()
     furniture.position.copy(worldAt(spot, AIM_HEIGHT))
     root.add(furniture)
     const above = worldAt(spot, RAY_START_HEIGHT)
-    expect(pickAlong({ from: above, to: worldAt(spot, 0) }, root)).toEqual(FLOOR_REF)
+    expect(pickAlong({ from: above, to: worldAt(spot, 0) }, root)).toEqual({
+      entityId: null,
+      surface: null,
+    })
   })
 })
