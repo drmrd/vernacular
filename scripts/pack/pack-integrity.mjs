@@ -16,7 +16,11 @@
 
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
-const ASSET_EXTENSION = '.glb'
+const MODEL_EXTENSION = '.glb'
+const EXTENSION_BY_MEDIA_TYPE = {
+  'image/png': '.png',
+  'image/webp': '.webp',
+}
 const THUMBNAIL_EXTENSION = '.webp'
 const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
@@ -60,6 +64,15 @@ function manifestAssets(manifest) {
 }
 
 /**
+ * The file name of an asset in assets/; an absent media type is a format 1 model.
+ * @param {{ contentHash: string, mediaType?: string }} asset
+ * @returns {string}
+ */
+function assetFileName(asset) {
+  return `${asset.contentHash}${EXTENSION_BY_MEDIA_TYPE[asset.mediaType] ?? MODEL_EXTENSION}`
+}
+
+/**
  * Confirm each asset's file bytes hash to its declared content hash.
  * @param {object[]} assets
  * @param {PackReader} reader
@@ -69,14 +82,16 @@ function manifestAssets(manifest) {
 async function checkAssetHashes(assets, reader, errors) {
   for (const asset of assets) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
-    const file = `${ASSET_DIR}/${asset.contentHash}${ASSET_EXTENSION}`
+    const file = `${ASSET_DIR}/${assetFileName(asset)}`
     if (!(await reader.exists(file))) {
       errors.push(`asset ${asset.contentHash}: asset file missing`)
       continue
     }
     const digest = await reader.sha256(file)
     if (digest !== asset.contentHash) {
-      errors.push(`asset ${asset.contentHash}: content hash does not match the file bytes`)
+      errors.push(
+        `asset ${asset.contentHash}: content hash does not match the file bytes of ${file}`,
+      )
     }
   }
 }
@@ -111,7 +126,7 @@ async function checkThumbnails(assets, reader, errors) {
  * @returns {Promise<void>}
  */
 async function checkOrphans(assets, reader, errors) {
-  const referencedAssets = new Set(assets.map((a) => `${a.contentHash}${ASSET_EXTENSION}`))
+  const referencedAssets = new Set(assets.map(assetFileName))
   const referencedThumbnails = new Set(assets.map((a) => `${a.contentHash}${THUMBNAIL_EXTENSION}`))
   for (const name of await reader.listDir(ASSET_DIR)) {
     if (!referencedAssets.has(name)) {
