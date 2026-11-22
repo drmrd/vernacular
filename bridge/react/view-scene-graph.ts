@@ -60,6 +60,14 @@ export function sceneGraphForBuilding(graph: SceneGraph, options: BuildingViewOp
   }
 }
 
+/**
+ * A scene graph scoped for the 3D view. framedFloorId is the model id of the floor the camera
+ * frames; absent or null frames every floor drawn.
+ */
+export interface ScopedSceneGraph extends SceneGraph {
+  framedFloorId?: string | null
+}
+
 /** Whether the 3D view shows a single active floor or the whole building stacked. */
 export type SceneScope = 'floor' | 'building'
 
@@ -82,12 +90,15 @@ export interface ViewSceneGraphInput {
  * underground floors dropped when `includeUnderground` is false). While walking, the
  * active floor stays in the building view even when that setting hides its level.
  */
-export function viewSceneGraph(input: ViewSceneGraphInput): SceneGraph {
+export function viewSceneGraph(input: ViewSceneGraphInput): ScopedSceneGraph {
   if (input.scope === 'building') {
     return sceneGraphForBuilding(input.rawGraph, {
       includeUnderground: input.includeUnderground,
       standingFloorId: input.cameraMode === 'walk' ? input.activeFloorId : null,
     })
   }
-  return sceneGraphForFloor(input.rawGraph, input.activeFloorId)
+  return {
+    ...sceneGraphForFloor(input.rawGraph, input.activeFloorId),
+    framedFloorId: input.activeFloorId,
+  }
 }

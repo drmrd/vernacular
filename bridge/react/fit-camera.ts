@@ -1,4 +1,4 @@
-import { frameSceneCamera, type Bounds3, type CameraPose } from '../../core'
+import { frameSceneCamera, type Bounds3, type CameraPose, type CameraViewport } from '../../core'
 
 /** The renderer's default perspective field of view, used when a camera does
  *  not expose its own `fov`. */
@@ -36,6 +36,14 @@ export function fovToRadians(camera: FittableCamera): number {
   return (camera.fov ?? DEFAULT_FOV_DEGREES) * DEGREES_TO_RADIANS
 }
 
+/** The live viewport a framing fit reads: the canvas aspect ratio and the camera's field of view. */
+export function cameraViewport(
+  camera: FittableCamera,
+  size: { width: number; height: number },
+): CameraViewport {
+  return { aspect: size.width / size.height, fovRadians: fovToRadians(camera) }
+}
+
 /**
  * Snaps the camera to an explicit {@link CameraPose}: position, near/far clip
  * planes, up vector, and look-at target. Sets the up vector before `lookAt`
@@ -55,17 +63,13 @@ export function applyCameraPose(camera: FittableCamera, pose: CameraPose): void 
 /**
  * Frames the given world bounds in the camera, delegating the fit math to the
  * pure {@link frameSceneCamera} core function and applying the resulting pose.
- * Shared by the live 3D preview and the deterministic render harness so both
- * fit the model to the live canvas aspect ratio and field of view.
+ * Used by the deterministic render harness, which frames one box; the live preview
+ * frames the framing box and takes its depth range from the drawn box (FrameCamera).
  */
 export function fitCameraToBounds(
   camera: FittableCamera,
   bounds: Bounds3 | null,
   size: { width: number; height: number },
 ): void {
-  const pose = frameSceneCamera(bounds, {
-    aspect: size.width / size.height,
-    fovRadians: fovToRadians(camera),
-  })
-  applyCameraPose(camera, pose)
+  applyCameraPose(camera, frameSceneCamera(bounds, cameraViewport(camera, size)))
 }

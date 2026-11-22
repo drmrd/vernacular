@@ -412,6 +412,7 @@ export {
   cameraDepthRange,
   cameraFitDistance,
   frameSceneCamera,
+  withDepthRangeOf,
   DEFAULT_CAMERA_POSE,
 } from './scene/camera-framing'
 export type { CameraPreset } from './scene/camera-presets'

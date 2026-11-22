@@ -25,6 +25,7 @@ import {
   type FloorAssembly,
   type FramedScene,
 } from './framed-scene'
+import type { ScopedSceneGraph } from './view-scene-graph'
 
 const BOX_ONLY: FurnitureModelLookup = { get: () => undefined }
 
@@ -38,8 +39,12 @@ const NO_PAINT: Paint = {}
 // reused only when the exact same floors, in the same order, are reconciled again.
 const FLOOR_SET_SEPARATOR = '|'
 
+// Splits the floor set from the framed floor in that key, so the same floors framed on a
+// different floor are different scenes. No framed floor and a null one are the same key.
+const FRAMED_FLOOR_SEPARATOR = '>'
+
 export interface FramedSceneReconciler {
-  reconcile(graph: SceneGraph, paint?: Paint, models?: FurnitureModelLookup): FramedScene
+  reconcile(graph: ScopedSceneGraph, paint?: Paint, models?: FurnitureModelLookup): FramedScene
   /**
    * Frees what earlier reconciles replaced, but only when `displayed` is the scene the latest
    * reconcile returned. For any other scene it frees nothing and keeps the queue for a later call:
@@ -144,7 +149,7 @@ function floorAssembly(build: CachedFloorBuild): FloorAssembly {
 /** The per-reconcile inputs each floor's build is derived from, bundled to stay within
  *  the argument limit. */
 interface ReconcilePass {
-  graph: SceneGraph
+  graph: ScopedSceneGraph
   paint: Paint
   models: FurnitureModelLookup
   view: EdgeOverlayOptions
@@ -245,10 +250,10 @@ function evictScenesOfReplacedBuilds(
 }
 
 /**
- * Stacks the pass's floors into a scene, returning the cached scene for the floor set when it
- * holds the exact same builds. Any cached scene this pass drops retires its ground plane: one
- * whose floor builds were replaced, one that shares a build with the new scene, or one the new
- * scene replaces under an ambiguous floor-set key (a floor id containing the separator).
+ * Stacks the pass's floors into a scene, returning the cached scene for the floor set and framed
+ * floor when it holds the exact same builds. Any cached scene this pass drops retires its ground
+ * plane: one whose floor builds were replaced, one that shares a build with the new scene, or one
+ * the new scene replaces under an ambiguous floor-set key (a floor id containing the separator).
  */
 function reconcileStackedScene(
   pass: ReconcilePass,
@@ -257,13 +262,18 @@ function reconcileStackedScene(
   const { graph, cache, retired } = pass
   const builds = graph.nodes.map((node) => reuseOrBuildFloor(node, pass))
   evictScenesOfReplacedBuilds(scenes, cache, retired)
-  const key = graph.nodes.map((node) => node.id).join(FLOOR_SET_SEPARATOR)
+  const floorSetKey = graph.nodes.map((node) => node.id).join(FLOOR_SET_SEPARATOR)
+  const key = `${floorSetKey}${FRAMED_FLOOR_SEPARATOR}${graph.framedFloorId ?? ''}`
   const cached = scenes.get(key)
   if (cached !== undefined && sameRefs(cached.builds, builds)) {
     refreshGroundPlane(cached.framed.root, graph.gradeElevation)
     return cached.framed
   }
-  const framed = frameStackedScene(builds.map(floorAssembly), graph.gradeElevation)
+  const framed = frameStackedScene(
+    builds.map(floorAssembly),
+    graph.gradeElevation,
+    graph.framedFloorId,
+  )
   evictScenesSharingBuilds(scenes, { key, builds }, retired)
   if (cached !== undefined) retireGroundPlanes(cached.framed, retired)
   scenes.set(key, { framed, builds })
@@ -276,8 +286,8 @@ function reconcileStackedScene(
  * reused across reconciles. A single-floor (active-floor) graph is the one-floor case;
  * a whole-building graph (issue #479, ADR-0127) stacks one floor group per node at its
  * elevation, frames the camera over the whole building, and seats a single ground plane
- * sized to the whole footprint. The assembled scene is cached per floor set, so an
- * unchanged floor set returns the same FramedScene with no rebuild and no camera reframe.
+ * sized to the whole footprint. The assembled scene is cached per floor set and framed floor, so
+ * an unchanged pair returns the same FramedScene with no rebuild and no camera reframe.
  *
  * The view options (the surface-edge overlay toggle, ADR-0132) are fixed for the
  * reconciler's lifetime, so every cached sub-group was built with the same setting; the
@@ -297,7 +307,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
   let emptyScene: EmptyGraphScene | undefined
   let latest: FramedScene | undefined
 
-  function reconcileGraph(graph: SceneGraph, paint: Paint, models: FurnitureModelLookup) {
+  function reconcileGraph(graph: ScopedSceneGraph, paint: Paint, models: FurnitureModelLookup) {
     if (emptyScene !== undefined) {
       if (isSameEmptyGraph(emptyScene, graph, paint)) return emptyScene.framed
       retired.objects.add(emptyScene.framed.root)

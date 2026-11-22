@@ -129,6 +129,42 @@ describe('viewSceneGraph', () => {
 
     expect(view.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
   })
+
+  it('names the active floor as the framed floor in floor scope', () => {
+    const view = viewSceneGraph({
+      rawGraph: graph,
+      scope: 'floor',
+      activeFloorId: 'ground',
+      includeUnderground: true,
+      cameraMode: 'orbit',
+    })
+
+    expect(view.framedFloorId).toBe('ground')
+  })
+
+  it('names no framed floor in floor scope with no active floor', () => {
+    const view = viewSceneGraph({
+      rawGraph: graph,
+      scope: 'floor',
+      activeFloorId: null,
+      includeUnderground: true,
+      cameraMode: 'orbit',
+    })
+
+    expect(view.framedFloorId).toBeNull()
+  })
+
+  it('names no framed floor in building scope', () => {
+    const view = viewSceneGraph({
+      rawGraph: graph,
+      scope: 'building',
+      activeFloorId: 'ground',
+      includeUnderground: true,
+      cameraMode: 'orbit',
+    })
+
+    expect(view.framedFloorId).toBeUndefined()
+  })
 })
 
 describe('viewSceneGraph during a walk', () => {
@@ -156,6 +192,12 @@ describe('viewSceneGraph during a walk', () => {
     const nodeIds = view.nodes.map((node) => node.id)
     expect(nodeIds).toContain(`${FLOOR_NODE_PREFIX}basement`)
     expect(nodeIds).not.toContain(`${FLOOR_NODE_PREFIX}subbasement`)
+  })
+
+  it('names no framed floor in building scope during a walk', () => {
+    const view = buildingView('walk', 'basement')
+
+    expect(view.framedFloorId).toBeUndefined()
   })
 
   it.each([

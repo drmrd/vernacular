@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import type { Bounds3 } from './vector3'
-import { frameSceneCamera, DEFAULT_CAMERA_POSE, type CameraPose } from './camera-framing'
+import {
+  frameSceneCamera,
+  withDepthRangeOf,
+  DEFAULT_CAMERA_POSE,
+  type CameraPose,
+} from './camera-framing'
+import { cameraPresetPose } from './camera-presets'
 
 const houseBounds: Bounds3 = {
   min: { x: 0, y: 0, z: 0 },
@@ -117,5 +123,53 @@ describe('frameSceneCamera with a viewport', () => {
     const pose = frameSceneCamera(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
     expect(pose.near).toBeGreaterThan(0)
     expect(pose.far).toBeGreaterThan(pose.near)
+  })
+})
+
+describe('withDepthRangeOf', () => {
+  const PRECISION = 5
+  const UPPER: Bounds3 = {
+    min: { x: 0, y: 3000, z: 0 },
+    max: { x: 10000, y: 5700, z: 8000 },
+  }
+  const DRAWN: Bounds3 = {
+    min: { x: 0, y: 0, z: 0 },
+    max: { x: 10000, y: 5700, z: 8000 },
+  }
+  const DRAWN_NEAR = 140.174891
+  const DRAWN_FAR = 56069.956305
+  const UPPER_FAR = 52351.122242
+  const POINT = 1000
+
+  it('takes the near and far planes from the depth box', () => {
+    const result = withDepthRangeOf(frameSceneCamera(UPPER), DRAWN)
+    expect(result.near).toBeCloseTo(DRAWN_NEAR, PRECISION)
+    expect(result.far).toBeCloseTo(DRAWN_FAR, PRECISION)
+  })
+
+  it('keeps the position, target, and up of the pose', () => {
+    const pose = frameSceneCamera(UPPER)
+    const result = withDepthRangeOf(pose, DRAWN)
+    expect(result.position).toEqual(pose.position)
+    expect(result.target).toEqual(pose.target)
+    const topResult = withDepthRangeOf(cameraPresetPose('top', UPPER), DRAWN)
+    expect(topResult.up).toEqual({ x: 0, y: 0, z: -1 })
+  })
+
+  it('leaves the pose unchanged for null depth bounds', () => {
+    const pose = frameSceneCamera(UPPER)
+    expect(withDepthRangeOf(pose, null)).toEqual(pose)
+  })
+
+  it('leaves the pose unchanged for zero-size depth bounds', () => {
+    const pose = frameSceneCamera(UPPER)
+    const point = { x: POINT, y: POINT, z: POINT }
+    expect(withDepthRangeOf(pose, { min: point, max: point })).toEqual(pose)
+  })
+
+  it('does not change the input pose', () => {
+    const pose = frameSceneCamera(UPPER)
+    withDepthRangeOf(pose, DRAWN)
+    expect(pose.far).toBeCloseTo(UPPER_FAR, PRECISION)
   })
 })
