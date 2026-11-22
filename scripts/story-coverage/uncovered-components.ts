@@ -87,7 +87,7 @@ export const UNCOVERED_COMPONENTS: {
     component: 'LiveSceneFrameSignal',
     file: 'bridge/react/live-scene-frame-signal.tsx',
     reason:
-      'reports each drawn live-view frame through useFrame to the first-frame and readiness readers and renders no DOM (it returns null); it requires a live R3F Canvas and an already drawn frame, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+      'reports each drawn live-view frame through useFrame to the drawn-frame and readiness readers and renders no DOM (it returns null); it requires a live R3F Canvas and an already drawn frame, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
     component: 'LiveSceneRoot',

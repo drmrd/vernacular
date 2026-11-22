@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { gotoEditor } from './support'
+import { waitForDrawnSceneChange } from '../live-pane-frames'
 import { drawnRoomCanvas, stableFrame } from '../scene-helpers'
 import { LIVE_VIEW_READY, inspectorOf, selectionStatusOf } from '../live-pane'
 import { guardLiveSceneSupport, configureGpuChromiumOnMac } from '../live-webgpu'
@@ -69,19 +70,20 @@ async function clickTheFarWallInnerFace(page: Page, canvas: Locator): Promise<vo
 
 // Paints the active face and waits for a settled frame that shows the paint. The inspector
 // offers the finish choices only for a face that carries a solid paint, so their arrival
-// proves the paint landed on that face. The frame must then change before it settles: two
-// equal screenshots taken before the rebuilt meshes draw would also look stable.
-async function paintAndAwaitPaintedFrame(inspector: Locator, canvas: Locator): Promise<void> {
+// proves the paint landed on that face. A paint gives a new framed scene, so the pane must then
+// draw a later scene revision before the frame settles: two equal screenshots taken before the
+// rebuilt meshes draw would also look stable.
+async function paintAndAwaitPaintedFrame(
+  page: Page,
+  inspector: Locator,
+  canvas: Locator,
+): Promise<void> {
   const finishChoices = inspector.getByRole('group', { name: 'Finish', exact: true })
   await expect(finishChoices).toHaveCount(0)
-  const unpaintedFrame = await stableFrame(canvas)
-  await inspector.getByRole('button', { name: PAINT_NAME }).click()
-  await expect(finishChoices).toBeVisible()
-  await expect
-    .poll(async () => (await canvas.screenshot()).equals(unpaintedFrame), {
-      message: 'waiting for the live 3D canvas to draw the painted face',
-    })
-    .toBe(false)
+  await waitForDrawnSceneChange(page, async () => {
+    await inspector.getByRole('button', { name: PAINT_NAME }).click()
+    await expect(finishChoices).toBeVisible()
+  })
   await stableFrame(canvas)
 }
 
@@ -117,7 +119,7 @@ test('shows the perceived color of a painted surface clicked in the live 3D view
   // pixel under the near wall's name. The mechanism is inferred, not proven: painting rebuilds
   // the wall meshes, and the rebuilt near wall is most likely marked as faded only when the
   // next frame draws.
-  await paintAndAwaitPaintedFrame(inspector, canvas)
+  await paintAndAwaitPaintedFrame(page, inspector, canvas)
   await clickTheFarWallInnerFace(page, canvas)
 
   // The readout is read a frame after the click, so this web-first assertion retries until

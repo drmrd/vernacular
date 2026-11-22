@@ -1,14 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { linearLuminance, linearToSrgb, srgbToLinear, type Srgb } from '../../core'
+import { waitForDrawnSceneRevision, waitForLiveCanvasReady } from './live-pane-frames'
 
 // Shared helpers for the live three-dimensional pane specs (navigation, color
 // temperature, selection). The live view renders through the non-deterministic WebGPU
 // backend (ADR-0045), so these specs assert semantically (a settled frame changes after
 // an action) rather than against a committed pixel baseline.
-
-// React Three Fiber mounts the canvas at the HTML default (~150px) height, then resizes
-// it to the real pane box; a settled canvas is past that default.
-const SETTLED_CANVAS_MIN_HEIGHT = 200
 
 // Polls until the canvas reaches a steady frame (two consecutive identical
 // screenshots), then returns that stable frame. The scene has no animation, so a
@@ -35,14 +32,10 @@ export async function stableFrame(canvas: Locator): Promise<Buffer> {
 export async function settledSceneCanvas(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: '3D view' }).click()
 
-  const pane = page.getByRole('region', { name: /3d preview/i })
-  const canvas = pane.locator('canvas')
-  await expect(canvas).toBeVisible()
-  await expect
-    .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
-      message: 'waiting for the live 3D canvas to settle past its default size',
-    })
-    .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
+  const canvas = await waitForLiveCanvasReady(page)
+  // The mount has drawn the scene it holds, so every edit made so far is on screen. The view
+  // switch above can remount the preview, so this wait follows it.
+  await waitForDrawnSceneRevision(page)
   return canvas
 }
 
@@ -107,8 +100,8 @@ export async function drawnRoomWithDoorCanvas(page: Page): Promise<Locator> {
 // `&scene=winter-afternoon`) and returns its canvas once it is visible, WITHOUT waiting for the
 // lit frame. The harness renders through WebGL 2, so it runs on darwin Metal and on the linux
 // SwiftShader lane and self-skips only where no WebGL 2 context can be created; the subject
-// names the spec in the skip message. A caller that screenshots the bare shell, or that needs a
-// step before the readiness wait, uses this and waits for the frame itself.
+// names the spec in the skip message. A caller that needs a step before the readiness wait uses
+// this and waits for the frame itself.
 export async function openHarnessScene(
   page: Page,
   query: string,

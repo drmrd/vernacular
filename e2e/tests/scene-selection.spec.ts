@@ -40,6 +40,7 @@ test.describe('Live three-dimensional default-on selection', () => {
       'true',
     )
     await expect(selectionStatus).toHaveText('No entity selected')
+    // The room is drawn before the reference frame is taken, so the frame is not a blank pane.
     const before = await stableFrame(canvas)
 
     const box = await canvas.boundingBox()
@@ -69,6 +70,8 @@ test.describe('Live three-dimensional default-on selection', () => {
     await expect(selectToggle).toHaveAttribute('aria-pressed', 'false')
     await expect(selectionStatus).toHaveText('No entity selected')
 
+    // The room is drawn before the reference frame is taken: a blank pane would equal the
+    // frame after the click and pass this test without proving that the click is inert.
     const before = await stableFrame(canvas)
 
     const box = await canvas.boundingBox()

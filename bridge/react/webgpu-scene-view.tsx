@@ -5,7 +5,7 @@ import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeo
 import { effectiveLightingMode } from './effective-lighting-mode'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
-import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
+import { LiveSceneFrameSignal, useDrawnRevision } from './live-scene-frame-signal'
 import { LiveSceneRoot } from './live-scene-root'
 import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
@@ -20,6 +20,7 @@ import { ScenePaneShell } from './scene-pane-shell'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { SceneReadinessBoundary } from './scene-readiness-boundary'
+import { useSceneRevision } from './scene-revision'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { SceneViewToolbar } from './scene-view-toolbar'
@@ -151,7 +152,7 @@ function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewRe
 
 // The interactive React Three Fiber canvas: the WebGPU renderer setup, the readiness
 // boundary around it, and the two post-processing hooks that must stay directly under
-// this function (they need the perceived-color store and first-frame callback that
+// this function (they need the perceived-color store and drawn-frame callback that
 // live here). Extracted from WebGPUSceneView so each function stays within the length
 // limit. frameloop="always" renders every frame so interactive camera moves and
 // color-temperature changes show continuously, not only when React remounts the scene.
@@ -159,7 +160,8 @@ function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewRe
 // SceneViewToolbar) and pass straight through to LiveSceneContents.
 function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const perceivedColor = usePerceivedColorStore()
-  const { ready, handleFirstFrame } = useFirstFrameReadiness()
+  const sceneRevision = useSceneRevision(props.framed)
+  const { drawnRevision, noteDrawnRevision } = useDrawnRevision()
   const readiness = useLiveViewReadiness()
   // The stored session reaches the live view as the Canvas below is constructed: initialCamera
   // seeds the camera with the position the departing viewer left behind (ADR-0170), and every
@@ -168,7 +170,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   // reports a frame drawn without the session.
   useEffect(() => readiness.noteSessionApplied(), [readiness])
   return (
-    <SceneReadinessBoundary ready={ready}>
+    <SceneReadinessBoundary sceneRevision={sceneRevision} drawnRevision={drawnRevision}>
       {/* React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
           configuring the Canvas, so create-renderer's shadowMap setup goes dead
           without this prop. The bare boolean also selects PCFSoftShadowMap,
@@ -185,7 +187,8 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
             so it reads a frame that has already been drawn and composited. */}
         <PerceivedColorSampler store={perceivedColor} />
         <LiveSceneFrameSignal
-          onFirstFrame={handleFirstFrame}
+          revision={sceneRevision}
+          onDrawnRevision={noteDrawnRevision}
           onDrawnFrame={readiness.noteFrameDrawn}
         />
         <RendererMemoryProbe />

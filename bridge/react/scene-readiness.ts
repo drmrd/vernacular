@@ -7,6 +7,8 @@
 // already uses for the same purpose in the visual-regression harness.
 export const LIVE_SCENE_CANVAS_TEST_ID = 'live-scene-canvas'
 export const SCENE_READY_ATTRIBUTE = 'data-harness-ready'
+export const SCENE_REVISION_ATTRIBUTE = 'data-scene-revision'
+export const DRAWN_REVISION_ATTRIBUTE = 'data-drawn-revision'
 
 // A local name for the standard testing-library attribute, held as a computed key
 // below rather than a literal object-property name so the hyphenated HTML
@@ -17,6 +19,18 @@ export function sceneReadinessProps(ready: boolean): Record<string, string> {
   return {
     [TEST_ID_ATTRIBUTE]: LIVE_SCENE_CANVAS_TEST_ID,
     [SCENE_READY_ATTRIBUTE]: ready ? 'true' : 'false',
+  }
+}
+
+/** The two revision attributes; drawn is '' until the first counted frame. */
+export function sceneRevisionProps(revisions: {
+  sceneRevision: number
+  drawnRevision: number | null
+}): Record<string, string> {
+  return {
+    [SCENE_REVISION_ATTRIBUTE]: String(revisions.sceneRevision),
+    [DRAWN_REVISION_ATTRIBUTE]:
+      revisions.drawnRevision === null ? '' : String(revisions.drawnRevision),
   }
 }
 
