@@ -108,7 +108,7 @@ describe('walk interaction', () => {
     // The fill group has swung off its built pose.
     expect(group.position.length()).toBeGreaterThan(0)
 
-    const closed = interactFromWalk(facingDoor, [door], opened)
+    const closed = interactFromWalk(facingDoor, [door], opened, openness)
     expect(isOpeningOpen(closed, DOOR_ID)).toBe(false)
 
     tickOpenings({ root, openings: [door], interaction: closed, openness }, FULL_STEP)

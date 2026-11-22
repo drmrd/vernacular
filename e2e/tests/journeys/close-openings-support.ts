@@ -177,6 +177,14 @@ export async function openWithKey(page: Page, canvas: Locator, shut: Buffer): Pr
   return frameAfterChange(canvas, shut)
 }
 
+// Presses the open key a second time, from the pose that opened the door, and returns the settled
+// frame once the door has shut again.
+export async function closeWithKey(page: Page, canvas: Locator, open: Buffer): Promise<Buffer> {
+  await page.keyboard.press(OPEN_KEY)
+  await expect(closeControl(page)).toBeDisabled()
+  return frameAfterChange(canvas, open)
+}
+
 // Presses the reset key and returns the settled frame once the openings are shut again.
 export async function resetWithKey(page: Page, canvas: Locator, open: Buffer): Promise<Buffer> {
   await page.keyboard.press(RESET_KEY)

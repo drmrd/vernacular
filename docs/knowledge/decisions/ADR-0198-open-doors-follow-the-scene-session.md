@@ -27,9 +27,10 @@ sourceFiles:
     bridge/react/use-opening-motion-floors.test.tsx,
     bridge/react/use-opening-motion-floors-test-support.tsx,
     bridge/react/walk-interaction-settle.test.ts,
+    core/scene/opening-reach.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-21
 ---
 
 # ADR-0198: Open doors and windows follow the scene session, and one control closes them in either camera mode
@@ -325,6 +326,26 @@ Tests that hold the amendment:
 
 The three tests in `bridge/react/use-opening-motion.test.tsx` pass unchanged. The close-doors
 journey still covers the active floor only; issue #901 tracks a whole-building case for it.
+
+## Amendment 2026-11-21: a second E closes an open door from where it opened it
+
+Issue #817 asked what the E key must do for a door that stands fully open. The owner decided on
+20 November 2026:
+
+> in walk mode, a second press of E closes a fully open door from the pose that opened it. This
+> matches the hung window, which a second E has closed since #850. The reach test must find a leaf
+> that lies along the reach ray. The R key and the toolbar control keep closing openings as they do
+> now.
+
+Before this change the reach tested only the leaf at its current openness. A fully open swing door
+has its leaf parallel to a head-on ray, so the ray missed it and the second press did nothing.
+
+The rule now is that the shut frame of an opening always counts, at every openness, and the moved
+leaf counts as well once the opening is open. `openingUnderReach` takes the nearer of the two hits.
+It applies to every opening that moves, whether it swings, slides along the wall, or rises in its
+frame. A hung window already kept its shut rectangle, so it behaves as before, and a cased opening
+has no leaf to test. The context above still holds: E opens or shuts the door or window in reach.
+The R key and the toolbar control are unchanged. The code is in `core/scene/opening-reach.ts`.
 
 ## References
 

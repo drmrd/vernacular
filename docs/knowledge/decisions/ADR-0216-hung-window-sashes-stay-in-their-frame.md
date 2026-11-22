@@ -202,7 +202,9 @@ says everything the applier needs.
 `openingUnderReach` keeps a hung window's shut rectangle at every openness. The rule is general: a
 part that slides inside its frame leaves the opening where it is. `slidesInsideFrame` in
 `core/scene/opening-reach.ts` tests it as a vertical slide. A slide along the wall carries its leaf
-out of the opening, so the reach still follows that leaf.
+out of the opening. Since 2026-11-21 the reach tests that moved leaf as well as the shut frame, and
+takes the nearer hit (see the amendment in
+[[ADR-0198-open-doors-follow-the-scene-session]]).
 
 The frame is the target because the frame is what the walker sees as the window. With the moved
 rectangle, the open lower part of the window would be out of reach and the wall above the head
@@ -297,7 +299,8 @@ given above.
   room and the room behind it gains a single room side.
 - The walker can close an open hung window by looking anywhere in its frame, and not by looking at
   the wall above it. So the open key now closes a hung window from the pose that opened it. Doors
-  are unchanged. Issue #817 asks what that key must do for a fully open opening.
+  now work the same way (issue #817): the reach keeps the shut frame of every opening, as the
+  amendment in [[ADR-0198-open-doors-follow-the-scene-session]] describes.
 - A later control for the upper sash of a double-hung window is a slide with `partId: 'upper'` and a
   negative travel. It needs no change to the applier.
 - The closed look of a hung window changes to two stepped sashes. The step is too small to move a
