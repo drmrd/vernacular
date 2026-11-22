@@ -36,7 +36,7 @@ const WALK_RADIUS_MM = 250
 // camera, and wires the keyboard, click-to-capture, and pointer-look listeners. A walk
 // poses no door: the opening motion hook poses the shown openings on each new scene root and
 // on each change of the shown list, and its per-frame tick keeps every opening the view shows
-// on the open set. Movement keys act independently of pointer capture;
+// on the open parts. Movement keys act independently of pointer capture;
 // the pointer only drives look while captured. Returns a teardown that hands the pose back,
 // removes the listeners, releases capture, and clears held input.
 function startWalk(session: WalkSession): () => void {
@@ -97,7 +97,7 @@ interface WalkCameraControlsProps {
   savedWalkPose: WalkState | null
   onWalkPose: (pose: WalkState) => void
   /**
-   * The doors the session store holds open. The live openings follow this set whenever it
+   * The open parts the session store holds, by opening. The live openings follow this map whenever it
    * changes, in both camera modes, so a reset made outside a walk animates the doors shut.
    */
   storedOpenDoorIds: OpenParts
@@ -123,7 +123,7 @@ function useWalkPoseHandoff(
 }
 
 // The props a walk session reads: everything the component takes except the scene root,
-// which only the opening motion hook and the frame callback use, and the stored open set,
+// which only the opening motion hook and the frame callback use, and the stored open parts,
 // which the opening motion hook follows.
 type WalkSessionProps = Omit<WalkCameraControlsProps, 'root' | 'storedOpenDoorIds'>
 
@@ -160,7 +160,7 @@ function useWalkSession(
       floorElevationMm,
       savedWalkPose: savedWalkPoseRef.current,
       onWalkPose: (pose) => onWalkPoseRef.current(pose),
-      onOpenDoors: (openIds) => onOpenDoorsRef.current(openIds),
+      onOpenDoors: (openParts) => onOpenDoorsRef.current(openParts),
     })
     // Four values are deliberately left out of the dependencies below. floorElevationMm is
     // read only as the session starts, and a mid-walk change to it must not restart the walk
@@ -186,7 +186,7 @@ function useWalkSession(
  * reports the pose back, so the walk survives a view switch and a detour through orbit
  * (ADR-0170). The openings stay live in orbit mode too: useOpeningMotion has them follow
  * the doors the session store holds open and poses each new scene root, and the
- * per-frame tick swings every opening the view shows toward that set in either mode. A
+ * per-frame tick swings every opening the view shows toward those parts in either mode. A
  * walk start poses nothing itself. The unit tests of the opening
  * motion hook (use-opening-motion.test.tsx and use-opening-motion-floors.test.tsx) cover the
  * follow of the stored set, the pose of a new root before any tick, the order of the two in one
@@ -197,7 +197,7 @@ function useWalkSession(
  */
 export function WalkCameraControls(props: WalkCameraControlsProps) {
   // Kept as one props object because the session hook reads the same shape minus the root
-  // and the stored open set.
+  // and the stored open parts.
   const { enabled, root, storedOpenDoorIds } = props
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)

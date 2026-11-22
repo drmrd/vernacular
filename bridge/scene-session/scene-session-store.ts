@@ -33,7 +33,7 @@ export interface SceneSessionState {
   scope: 'floor' | 'building'
   showUnderground: boolean
   edgeOverlay: boolean
-  /** Replace this set on every change; mutating it in place will not notify subscribers. */
+  /** Replace this map (and never mutate an inner part set) on every change; mutating either in place will not notify subscribers. */
   openDoorIds: OpenParts
   savedCamera: SavedCamera | null
   walkPose: WalkState | null
@@ -47,7 +47,7 @@ export interface SceneSessionState {
   frameDrawnSincePipelineSettled: boolean
 }
 
-/** The empty door set behind the default snapshot. Stores copy it, they never hold it. */
+/** The empty open-parts map behind the default snapshot. Stores copy it, they never hold it. */
 const NO_OPEN_DOORS: OpenParts = new Map()
 
 export const DEFAULT_SCENE_SESSION_STATE: SceneSessionState = Object.freeze({
