@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { SceneCanvas } from './scene-canvas'
+import { FailureProbe } from './scene-failure-probe-test-support'
+import { SceneFailureViewContext } from './scene-failure-view-context'
 import type { RenderBackend } from '../../engine'
 
 let mockBackend: RenderBackend = 'unsupported'
@@ -33,6 +35,23 @@ describe('SceneCanvas', () => {
     const status = screen.getByRole('status')
     expect(status).toHaveTextContent(/3D view/i)
     expect(screen.queryByTestId('live-scene-view')).toBeNull()
+  })
+
+  it('shows the view that fills the failure slot when the runtime can render no 3D at all', () => {
+    mockBackend = 'unsupported'
+
+    const { container } = render(
+      <SceneFailureViewContext.Provider value={FailureProbe}>
+        <SceneCanvas />
+      </SceneFailureViewContext.Provider>,
+    )
+
+    const probe = screen.getByRole('button', { name: 'filled view' })
+    expect(probe).toHaveAttribute('data-kind', 'start')
+    expect(container.querySelector('[data-scene-renderer-failed="start"]')?.contains(probe)).toBe(
+      true,
+    )
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('mounts the live scene view when the runtime falls back to WebGL 2', () => {

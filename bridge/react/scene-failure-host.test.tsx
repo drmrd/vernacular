@@ -1,23 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { SceneFailureHost } from './scene-failure-host'
+import { FailureProbe } from './scene-failure-probe-test-support'
 import { SceneFailureViewContext, type SceneFailureViewProps } from './scene-failure-view-context'
 
 const PLAIN_CANNOT_RENDER = 'This browser cannot render the 3D view.'
 const PLAIN_COULD_NOT_LOAD =
   'Could not load the 3D view. Check your network connection, then reload the page.'
-
-function Probe(props: SceneFailureViewProps) {
-  return (
-    <button
-      type="button"
-      data-kind={props.kind}
-      onClick={props.kind === 'load' ? props.onReload : undefined}
-    >
-      filled view
-    </button>
-  )
-}
 
 describe('SceneFailureHost', () => {
   it('shows the plain cannot-render status when nothing fills the slot', () => {
@@ -38,20 +27,16 @@ describe('SceneFailureHost', () => {
   })
 
   it.each([
-    { kind: 'start' as const, role: 'status' },
-    { kind: 'load' as const, role: 'alert' },
+    { props: { kind: 'start' } as SceneFailureViewProps, role: 'status' },
+    { props: { kind: 'load', onReload: vi.fn() } as SceneFailureViewProps, role: 'alert' },
   ])(
-    'marks the element around the view with the failure kind and fills its parent ($kind)',
-    ({ kind, role }) => {
-      const { container } = render(
-        kind === 'load' ? (
-          <SceneFailureHost kind="load" onReload={vi.fn()} />
-        ) : (
-          <SceneFailureHost kind="start" />
-        ),
-      )
+    'marks the element around the view with the failure kind and fills its parent ($props.kind)',
+    ({ props, role }) => {
+      const { container } = render(<SceneFailureHost {...props} />)
 
-      const marked = container.querySelector<HTMLElement>(`[data-scene-renderer-failed="${kind}"]`)
+      const marked = container.querySelector<HTMLElement>(
+        `[data-scene-renderer-failed="${props.kind}"]`,
+      )
       expect(marked).not.toBeNull()
       expect(marked?.contains(screen.getByRole(role))).toBe(true)
       expect(marked?.style.width).toBe('100%')
@@ -63,7 +48,7 @@ describe('SceneFailureHost', () => {
     const onReload = vi.fn()
 
     const { container } = render(
-      <SceneFailureViewContext.Provider value={Probe}>
+      <SceneFailureViewContext.Provider value={FailureProbe}>
         <SceneFailureHost kind="load" onReload={onReload} />
       </SceneFailureViewContext.Provider>,
     )
