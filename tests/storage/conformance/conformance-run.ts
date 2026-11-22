@@ -9,7 +9,8 @@ import type { DirectoryPort } from '../../../storage/fs/directory-port'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
 import type { StoreConformanceTarget } from './store-conformance-target'
 
-const SECOND_FILE_NAME = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
+/** The name of the second document file that this build writes beside a newer main file. */
+export const SECOND_FILE_NAME = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
 
 /** The project that every case works on. A store bound to one project is bound to this id. */
 export const PROJECT_ID = 'a'

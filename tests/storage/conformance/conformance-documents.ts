@@ -97,6 +97,11 @@ export function decodedOf(read: StoreRead): DecodedDocument {
   return read.value
 }
 
+/** What a read says about the second file; undefined when the read has no word on it. */
+export function secondFileOf(read: StoreRead): unknown {
+  return 'secondFile' in read ? read.secondFile : undefined
+}
+
 /** Why a read failed; throws when the read succeeded. */
 export function failureOf(read: StoreRead): Exclude<StoreRead, { ok: true }>['failure'] {
   if (read.ok) throw new Error('Expected the read to fail')

@@ -13,6 +13,10 @@ import {
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
 import {
+  EXTENSIONS_PAYLOAD,
+  documentWithExtensions,
+} from '../../tests/storage/conformance/conformance-documents'
+import {
   DOCUMENT_PATH,
   SECOND_FILE_NAME,
   SECOND_FILE_PATH,
@@ -22,9 +26,6 @@ import {
   rootHoldingFiles,
   storeOver,
 } from './document-store-test-kit'
-
-const EXTENSIONS_NAMESPACE = 'org.example.probe'
-const EXTENSIONS_PAYLOAD = { [EXTENSIONS_NAMESPACE]: { tags: ['kept'] } }
 
 function currentBytes(): Uint8Array {
   return versionFixtureBytes(CURRENT_SCHEMA_VERSION)
@@ -44,12 +45,6 @@ function faultyProject(): Project {
 function renamedProject(name: string): Project {
   const project = validProject()
   return { ...project, meta: { ...project.meta, name } }
-}
-
-function documentWithExtensions(): Uint8Array {
-  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  document.extensions = structuredClone(EXTENSIONS_PAYLOAD)
-  return bytesOf(document)
 }
 
 function storedJson(bytes: Uint8Array | undefined): Json {
@@ -158,11 +153,12 @@ describe('saving over a vernacular.json at a newer schema version', () => {
   it('writes the main file when only a second file exists, and leaves the second file as it was', async () => {
     const second = documentWithExtensions()
     const root = await rootHoldingFiles({ second })
+    const project = validProject()
 
-    const report = await storeOver(root).save('a', validProject())
+    const report = await storeOver(root).save('a', project)
 
     expect(report.secondFile).toBeUndefined()
-    expect(await root.readFile(DOCUMENT_PATH)).toBeDefined()
+    expect(await root.readFile(DOCUMENT_PATH)).toEqual(encodeDocument(project, undefined).bytes)
     expect(await root.readFile(SECOND_FILE_PATH)).toEqual(second)
   })
 })
