@@ -19,19 +19,18 @@ import { createHarnessAssetRegistry } from './create-asset-library-registry'
 import type { BuiltSessionPorts } from './create-session-ports'
 import { NotificationProvider, ThemeProvider } from '../editor/design-system'
 import { probeStorageCapabilities, type AssetCache, type StorageCapabilities } from '../storage'
-import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
+import type { DocumentHandle, SessionPorts } from '../session'
 import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
 import type { AddressBar } from './address-bar'
-import { nothingOpenFailureView } from './nothing-open-failure-view'
 import { ProjectsScreen, type ProjectsScreenProps } from './projects-screen'
 import type { PageScreen } from './resolve-place'
 import { useUnsavedChangesGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 import type { HistoryNavigation } from './use-history-navigation'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
-import { useProjectBoot, type ProjectBoot } from './use-project-boot'
+import { useProjectBoot } from './use-project-boot'
 import { useSessionKey } from './use-session-key'
 import { useDiscardPrompt } from './use-discard-prompt'
 import type { RunFlow } from './use-open-project'
@@ -121,13 +120,10 @@ function AppWorkspace(props: AppProps) {
   const { navigation, libraryAssets, ports } = boot
   const { screen } = navigation
   const capabilities = useStorageCapabilities()
-  useDegradedStorageBanner(capabilities)
+  useDegradedStorageBanner(navigation.handle, capabilities)
   // Lives above the editor, which unmounts while the page shows over the open project.
   const [offeredRecovery] = useState(() => new WeakSet<DocumentHandle>())
 
-  if (boot.portsFailure !== null) {
-    return portsFailureView(boot.portsFailure, boot)
-  }
   if (screen?.kind === 'projects') {
     return pageOverProjectView(navigation, screen, { ports, libraryAssets })
   }
@@ -169,15 +165,6 @@ function UnsavedWorkGuards({ handle }: { readonly handle: DocumentHandle }) {
   useUnsavedChangesGuard(handle)
   useFlushOnHidden(handle)
   return null
-}
-
-// The ports did not resolve, so no project can open: build them again, or start in memory.
-function portsFailureView(failure: SwitchFailure, boot: ProjectBoot) {
-  return nothingOpenFailureView({
-    failure,
-    onRetry: boot.rebuildPorts,
-    onStartFresh: boot.startInMemory,
-  })
 }
 
 // Storage capabilities are a fixed property of the host environment, so probe

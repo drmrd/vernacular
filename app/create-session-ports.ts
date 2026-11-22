@@ -52,7 +52,7 @@ export async function createSessionPorts(): Promise<BuiltSessionPorts> {
   })
 }
 
-/** Ports that keep everything in memory, for a project started after the storage did not resolve. */
+/** Ports that keep everything in memory, for a browser whose storage was not found. */
 export function createTemporarySessionPorts(): BuiltSessionPorts {
   return portsOver({
     workspace: new InMemoryProjectStore(),

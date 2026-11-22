@@ -1,6 +1,7 @@
 import {
   createDefaultProjectStorage,
   createOpfsProjectStorage,
+  isStorageDegraded,
   opfsUsable,
   probeStorageCapabilities,
   selectProjectStoreBackend,
@@ -15,10 +16,14 @@ import {
  * user gesture, so they are not constructed at default boot; an unexpected value
  * also falls back to the default so boot never fails. The selection decision
  * lives in the pure `selectProjectStoreBackend`; this seam only constructs the
- * chosen pair (ADR-0042).
+ * chosen pair (ADR-0042). A host with neither OPFS nor IndexedDB has nothing durable to
+ * construct, so the lookup rejects.
  */
 export async function resolveProjectStorage(): Promise<ProjectStorage> {
   const capabilities = await probeStorageCapabilities()
+  if (isStorageDegraded(capabilities)) {
+    throw new Error('This browser offers neither the origin private file system nor IndexedDB.')
+  }
   if (selectProjectStoreBackend(capabilities) === 'opfs' && (await opfsUsable())) {
     return createOpfsProjectStorage()
   }
