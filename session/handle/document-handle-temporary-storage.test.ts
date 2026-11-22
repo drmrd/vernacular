@@ -32,7 +32,7 @@ async function openStored(options: TestPortsOptions): Promise<DocumentHandle> {
   return openOrThrow(ports, workspaceRequest(PROJECT_ID))
 }
 
-describe('the save status of a project that only the tab holds', () => {
+describe('the save status by whether the store outlives the tab', () => {
   it('says that the project is held by the tab alone after an edit is written', async () => {
     const handle = await openStored({ durable: false })
 
@@ -77,6 +77,24 @@ describe('the save status of a project that only the tab holds', () => {
     expect(await recordOf(ports, PROJECT_ID)).toMatchObject({ id: PROJECT_ID, name: 'Written' })
   })
 
+  it('a project created in the tab reads error after a failed write, and tab-only again once a flush writes', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const ports = createTestPorts({ durable: false })
+    const handle = await openOrThrow(ports, {
+      ...workspaceRequest(PROJECT_ID),
+      create: soundProject,
+    })
+    vi.spyOn(ports.workspace, 'save').mockRejectedValueOnce(new Error('disk full'))
+    expect(await handle.save()).toEqual({ ok: false, message: 'disk full' })
+    expect(handle.saveStatus()).toBe('error')
+    expect(isStored(handle)).toBe(false)
+
+    expect(await handle.flush()).toEqual({ ok: true })
+
+    expect(handle.saveStatus()).toBe('tab-only')
+  })
+
   it('reads saved for a project in a folder, which outlives the tab, and records it in the index', async () => {
     const ports = createTestPorts({ durable: false })
     await rememberFolder(ports, PROJECT_ID, currentBytes())
@@ -89,6 +107,7 @@ describe('the save status of a project that only the tab holds', () => {
     expect(handle.saveStatus()).toBe('saved')
     expect(await recordOf(ports, PROJECT_ID)).toMatchObject({
       id: PROJECT_ID,
+      name: 'Written in the folder',
       location: IN_FOLDER,
     })
   })

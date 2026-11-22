@@ -203,12 +203,12 @@ describe('The application whose builder of the ports rejects', () => {
 describe('The application over ports that keep nothing after the tab closes: the save status', () => {
   it('reads that the project is in this tab only after an edit, and never that all changes are saved', async () => {
     stubCapableStorage()
-    renderAppAt(createTestPorts(), '')
+    renderAppAt(createTestPorts({ durable: false }), '')
     await findTheShell()
 
     await editTheProject()
 
-    await waitFor(() => expect(statusReadouts().join(' ')).toContain(TAB_ONLY_STATUS), {
+    await waitFor(() => expect(statusReadouts()).toContain(TAB_ONLY_STATUS), {
       timeout: AUTOSAVE_TIMEOUT_MS,
     })
     expect(screen.queryByText(/all changes saved/i)).not.toBeInTheDocument()
@@ -216,7 +216,7 @@ describe('The application over ports that keep nothing after the tab closes: the
 
   it('reads on the card of the project that it is in this tab only', async () => {
     stubCapableStorage()
-    const { bar } = renderAppAt(createTestPorts(), '')
+    const { bar } = renderAppAt(createTestPorts({ durable: false }), '')
     await findTheShell()
     await editAndWaitForTheStore()
 
@@ -228,7 +228,7 @@ describe('The application over ports that keep nothing after the tab closes: the
 
   it('shows no discard dialog on a move to the Projects page after an edit', async () => {
     stubCapableStorage()
-    const { bar } = renderAppAt(createTestPorts(), '')
+    const { bar } = renderAppAt(createTestPorts({ durable: false }), '')
     await findTheShell()
     await editAndWaitForTheStore()
 
