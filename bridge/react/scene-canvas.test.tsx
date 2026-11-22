@@ -14,10 +14,10 @@ vi.mock('../../engine', () => ({
 // The live view mounts an R3F <Canvas>, which measures its parent through a
 // ResizeObserver jsdom does not define. The stub keeps this file about which branch
 // SceneCanvas takes, not about the renderer.
-vi.mock('./webgpu-scene-view', () => ({
+vi.mock('./live-scene-view', () => ({
   // A component export legitimately keeps its PascalCase name in the mock.
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  WebGPUSceneView: () => <div data-testid="webgpu-scene-view" />,
+  LiveSceneView: () => <div data-testid="live-scene-view" />,
 }))
 
 describe('SceneCanvas', () => {
@@ -32,7 +32,7 @@ describe('SceneCanvas', () => {
 
     const status = screen.getByRole('status')
     expect(status).toHaveTextContent(/3D view/i)
-    expect(screen.queryByTestId('webgpu-scene-view')).toBeNull()
+    expect(screen.queryByTestId('live-scene-view')).toBeNull()
   })
 
   it('mounts the live scene view when the runtime falls back to WebGL 2', () => {
@@ -43,7 +43,7 @@ describe('SceneCanvas', () => {
 
     render(<SceneCanvas />)
 
-    expect(screen.getByTestId('webgpu-scene-view')).toBeInTheDocument()
+    expect(screen.getByTestId('live-scene-view')).toBeInTheDocument()
     expect(screen.queryByRole('status')).toBeNull()
   })
 
@@ -52,6 +52,6 @@ describe('SceneCanvas', () => {
 
     render(<SceneCanvas />)
 
-    expect(screen.getByTestId('webgpu-scene-view')).toBeInTheDocument()
+    expect(screen.getByTestId('live-scene-view')).toBeInTheDocument()
   })
 })
