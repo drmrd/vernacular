@@ -53,3 +53,17 @@ describe('validatePackManifest - format 2 texture assets', () => {
     expect(validatePackManifest(manifest)).toEqual({ valid: true, errors: [] })
   })
 })
+
+describe('validatePackManifest - format version', () => {
+  it.each([3, 0, 1.5, '2'])(
+    'refuses a manifest whose format version is %j and names the newest format this reader knows',
+    (formatVersion) => {
+      const result = validatePackManifest({ ...validManifest(), formatVersion })
+
+      expect(result.valid).toBe(false)
+      expect(result.errors).toHaveLength(1)
+      expect(result.errors[0]).toMatch(/^formatVersion\b/)
+      expect(result.errors[0]).toContain('2')
+    },
+  )
+})
