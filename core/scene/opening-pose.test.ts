@@ -89,6 +89,13 @@ describe('advanceOpeningPose', () => {
     expect(advanceOpeningPose({}, { primary: 1 }, 0.1).primary).toBeCloseTo(0.4, PRECISION)
   })
 
+  it('keeps the openness of a part that is in the pose but not in the target', () => {
+    const partway = advanceOpeningPose({ lower: 0.3, upper: 0.6 }, { lower: 0.9 }, 0.05)
+
+    expect(partway.lower).toBeCloseTo(0.5, PRECISION)
+    expect(partway.upper).toBe(0.6)
+  })
+
   it('returns the same pose when every part is at its target', () => {
     const pose = { lower: 0.5, upper: 0.5 }
     const empty = {}

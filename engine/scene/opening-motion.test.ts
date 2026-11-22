@@ -6,40 +6,21 @@ import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 
 import { buildOpeningFill, openingFillSashOf } from './opening-fill-builder'
 import { applyOpeningMotion, applyOpeningMotionForNode } from './opening-motion'
-
-const PRECISION = 3
-
-// A single-swing door hinged at its start jamb. Plan x maps to world X and plan y
-// to world Z, so the hinge jamb sits at world (550, *, 0) and the far jamb at
-// world (1450, *, 0).
-function singleSwingDoor(): OpeningSceneNode {
-  return {
-    id: 'opening:test-door',
-    kind: 'opening',
-    floorId: 'floor-1',
-    type: 'single-swing-door',
-    center: { x: 1000, y: 0 },
-    along: { x: 1, y: 0 },
-    normal: { x: 0, y: 1 },
-    width: 900,
-    height: 2032,
-    sillHeight: 0,
-    hostThickness: 120,
-    orientation: { hinge: 'start', facing: 'positive' },
-    hostWallId: 'south',
-  }
-}
-
-// A double-hung window on the same wall, for the slide motions.
-function doubleHungWindow(): OpeningSceneNode {
-  return {
-    ...singleSwingDoor(),
-    id: 'opening:test-window',
-    type: 'double-hung-window',
-    height: 1200,
-    sillHeight: 900,
-  }
-}
+import {
+  HEAD,
+  HEIGHT,
+  PRECISION,
+  SILL,
+  TOLERANCE,
+  expectSameBox,
+  fillOf,
+  hungWindow,
+  lowestPointOfLowerSash,
+  meshesOf,
+  rootWith,
+  singleSwingDoor,
+  worldBoxOf,
+} from './opening-motion-test-support'
 
 const HINGE_POINT = new THREE.Vector3(550, 1000, 0)
 const FAR_JAMB = new THREE.Vector3(1450, 1000, 0)
@@ -93,14 +74,6 @@ function pocketDoor(): OpeningSceneNode {
   return { ...singleSwingDoor(), id: 'opening:test-pocket', type: 'pocket-door' }
 }
 
-function rootWith(...nodes: OpeningSceneNode[]): THREE.Object3D {
-  const root = new THREE.Group()
-  for (const node of nodes) {
-    root.add(buildOpeningFill(node, new NeutralMaterialProvider()))
-  }
-  return root
-}
-
 describe('applyOpeningMotionForNode', () => {
   it('resolves a node motion and slides a pocket door along the wall', () => {
     const node = pocketDoor()
@@ -148,47 +121,6 @@ describe('applyOpeningMotionForNode', () => {
     expect(() => applyOpeningMotionForNode(root, pocketDoor(), 1)).not.toThrow()
   })
 })
-
-const SILL = 900
-const HEAD = 2100
-const HEIGHT = 1200
-const TOLERANCE = 1e-3
-
-function hungWindow(type: 'single-hung-window' | 'double-hung-window'): OpeningSceneNode {
-  return { ...doubleHungWindow(), type }
-}
-
-function fillOf(root: THREE.Object3D, node: OpeningSceneNode): THREE.Object3D {
-  const group = root.getObjectByName(node.id)
-  if (group === undefined) throw new Error('the fill group is missing from the root')
-  return group
-}
-
-function meshesOf(group: THREE.Object3D): THREE.Mesh[] {
-  const meshes: THREE.Mesh[] = []
-  group.traverse((child) => {
-    if (child instanceof THREE.Mesh) meshes.push(child)
-  })
-  return meshes
-}
-
-function worldBoxOf(object: THREE.Object3D): THREE.Box3 {
-  object.updateWorldMatrix(true, true)
-  return new THREE.Box3().setFromObject(object)
-}
-
-function expectSameBox(actual: THREE.Box3, expected: THREE.Box3): void {
-  for (const axis of ['x', 'y', 'z'] as const) {
-    expect(actual.min[axis]).toBeCloseTo(expected.min[axis], PRECISION)
-    expect(actual.max[axis]).toBeCloseTo(expected.max[axis], PRECISION)
-  }
-}
-
-function lowestPointOfLowerSash(group: THREE.Object3D): number {
-  const lower = meshesOf(group).filter((mesh) => openingFillSashOf(mesh) === 'lower')
-  expect(lower.length).toBeGreaterThan(0)
-  return Math.min(...lower.map((mesh) => worldBoxOf(mesh).min.y))
-}
 
 describe.each(['double-hung-window', 'single-hung-window'] as const)(
   'applyOpeningMotionForNode on a %s',
