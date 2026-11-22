@@ -131,4 +131,74 @@ describe('pngChunkTypes', () => {
 
     expect(pngChunkTypes(withGamma)).toEqual(['IHDR', 'gAMA', 'IDAT', 'IEND'])
   })
+
+  it('gives no chunk types when the PNG signature is broken', () => {
+    const bytes = Uint8Array.from([...pngFirst33Bytes(rgbImage), ...chunk(IEND_TYPE, [])])
+    bytes[0] = 0x88
+
+    expect(pngChunkTypes(bytes)).toEqual([])
+  })
+
+  it.each([1, 4, 7])('stops before a chunk header cut to %i bytes', (headerBytes) => {
+    const bytes = Uint8Array.from([
+      ...pngFirst33Bytes(rgbImage),
+      ...chunk(GAMA_TYPE, GAMA_DATA),
+      ...chunk(IDAT_TYPE, IDAT_DATA).slice(0, headerBytes),
+    ])
+
+    expect(pngChunkTypes(bytes)).toEqual(['IHDR', 'gAMA'])
+  })
+
+  it('stops without throwing at a declared length of 0xFFFFFFFF', () => {
+    const bytes = Uint8Array.from([
+      ...pngFirst33Bytes(rgbImage),
+      ...uint32BigEndian(0xffffffff),
+      ...IDAT_TYPE,
+      ...IDAT_DATA,
+    ])
+
+    expect(pngChunkTypes(bytes)).toEqual(['IHDR'])
+  })
+
+  describe('at the end of input without a closing IEND', () => {
+    const gamaChunk = chunk(GAMA_TYPE, GAMA_DATA)
+    const crcLength = ANY_CRC.length
+    const withPrefix = (tail: number[]): Uint8Array =>
+      Uint8Array.from([...pngFirst33Bytes(rgbImage), ...tail])
+
+    it('lists a chunk whose data ends exactly at the end of input', () => {
+      const bytes = withPrefix(gamaChunk.slice(0, -crcLength))
+
+      expect(pngChunkTypes(bytes)).toEqual(['IHDR', 'gAMA'])
+    })
+
+    it('omits a chunk whose data is one byte short', () => {
+      const bytes = withPrefix(gamaChunk.slice(0, -crcLength - 1))
+
+      expect(pngChunkTypes(bytes)).toEqual(['IHDR'])
+    })
+
+    it('lists a chunk that ends exactly after its CRC and nothing after it', () => {
+      expect(pngChunkTypes(withPrefix(gamaChunk))).toEqual(['IHDR', 'gAMA'])
+    })
+
+    it('lists a zero-length chunk given only its 8 header bytes', () => {
+      const bytes = withPrefix(chunk(IEND_TYPE, []).slice(0, -crcLength))
+
+      expect(pngChunkTypes(bytes)).toEqual(['IHDR', 'IEND'])
+    })
+  })
+
+  it('lists every chunk type through a view that starts behind non-PNG bytes', () => {
+    const padding = [1, 2, 3, 4, 5]
+    const buffer = Uint8Array.from([
+      ...padding,
+      ...pngFirst33Bytes(rgbImage),
+      ...chunk(GAMA_TYPE, GAMA_DATA),
+      ...chunk(IDAT_TYPE, IDAT_DATA),
+      ...chunk(IEND_TYPE, []),
+    ])
+
+    expect(pngChunkTypes(buffer.subarray(padding.length))).toEqual(['IHDR', 'gAMA', 'IDAT', 'IEND'])
+  })
 })
