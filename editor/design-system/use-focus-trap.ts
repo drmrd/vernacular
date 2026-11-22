@@ -153,7 +153,8 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  *
  * On mount it remembers the focused element as the opener and focuses the first focusable
  * descendant, or the focusable descendant that carries the `data-initial-focus` attribute when
- * there is one. A `summary` counts as focusable. While it is mounted:
+ * there is one. Only the first `summary` child of a `details` element counts as focusable (the
+ * one a browser focuses). While it is mounted:
  * - Tab and Shift+Tab wrap inside the container. When focus is on none of the focusable
  *   descendants (on the container itself, say), Tab goes to the first and Shift+Tab to the last.
  * - The container can hold focus: it gets `tabindex="-1"` unless it already has a tabindex, so a
