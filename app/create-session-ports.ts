@@ -60,3 +60,8 @@ export function createTemporarySessionPorts(): BuiltSessionPorts {
     index: new InMemoryProjectIndex(),
   })
 }
+
+/** Whether the ports keep projects after the tab closes: false for the temporary ports. */
+export function portsAreDurable(ports: SessionPorts): boolean {
+  return ports.workspace.durable
+}

@@ -8,8 +8,9 @@ const BANNER_WITH_FOLDERS =
 const BANNER_WITHOUT_FOLDERS =
   'This browser is not keeping your projects. They last until this tab closes. To keep one, export it.'
 
-// Raise the storage-degraded banner once for each mount, when the open project lives in the tab
-// alone and the capabilities are known. The text offers a folder only where the browser opens
+// Raise the storage-degraded banner once for each mount, when the store that holds the work (the
+// open project's, or with none open, the workspace's) lives in the tab alone and the capabilities
+// are known. The text offers a folder only where the browser opens
 // one. A dismissal holds: the ref remembers that the banner was raised, so a later project does
 // not bring it back, and a durable project that opens later leaves it in place.
 export function useDegradedStorageBanner(

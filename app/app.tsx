@@ -16,7 +16,7 @@ import {
 import { AppSettings, type AppSettingsProps } from './app-settings'
 import { AssetProviders } from './asset-providers'
 import { createHarnessAssetRegistry } from './create-asset-library-registry'
-import type { BuiltSessionPorts } from './create-session-ports'
+import { portsAreDurable, type BuiltSessionPorts } from './create-session-ports'
 import { NotificationProvider, ThemeProvider } from '../editor/design-system'
 import { probeStorageCapabilities, type AssetCache, type StorageCapabilities } from '../storage'
 import type { DocumentHandle, SessionPorts } from '../session'
@@ -120,7 +120,7 @@ function AppWorkspace(props: AppProps) {
   const { navigation, libraryAssets, ports } = boot
   const { screen } = navigation
   const capabilities = useStorageCapabilities()
-  useDegradedStorageBanner(navigation.handle, capabilities)
+  useDegradedStorageBanner(openHandleOrPorts(navigation.handle, ports), capabilities)
   // Lives above the editor, which unmounts while the page shows over the open project.
   const [offeredRecovery] = useState(() => new WeakSet<DocumentHandle>())
 
@@ -142,6 +142,16 @@ function AppWorkspace(props: AppProps) {
       showProjects={navigation.showProjects}
     />
   )
+}
+
+// What the storage banner reads: the open project, or with none open, the store of the ports, so
+// the empty Projects page of a temporary workspace says so too.
+function openHandleOrPorts(
+  handle: DocumentHandle | null,
+  ports: SessionPorts | null,
+): Pick<DocumentHandle, 'durable'> | null {
+  if (handle !== null) return handle
+  return ports === null ? null : { durable: portsAreDurable(ports) }
 }
 
 // The page in place of the editor. A project that stays open under it keeps its guards of unsaved
