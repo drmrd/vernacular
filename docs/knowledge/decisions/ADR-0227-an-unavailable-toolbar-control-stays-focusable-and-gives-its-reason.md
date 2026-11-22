@@ -34,7 +34,7 @@ Update, 2026-11-21: issue #1023 brought the tools panel chips under the same pat
 button and the chip now share `ReasonDescription` (`bridge/react/reason-description.tsx`), which
 renders the hidden span. An empty reason renders no span, so the control gets no description.
 
-Update (2026-11-21): the hinge control in the opening inspector. The rule now applies beyond the
+Update, 2026-11-21: the hinge control in the opening inspector. The rule now applies beyond the
 toolbar. The Flip hinge button in the opening inspector stays focusable and gives the reason "This
 kind of opening has no hinge side to choose." when the opening kind has no hinge side. It stays
 available for the swing, fold, and pivot families and for the casement window (`window-crank` with
