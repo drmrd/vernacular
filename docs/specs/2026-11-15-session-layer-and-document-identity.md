@@ -262,7 +262,7 @@ Design:
 7. The adapter in `app/` asks the handle to flush when the page is hidden. The prompt before unload stays for a write that is still pending at that moment.
 8. Recovery snapshots belong to the handle's id. The prompt that offers to restore unsaved changes works as it does now, for each project.
 9. The undo history ends when the handle closes (ADR-0176).
-10. A save that wrote the second document file, or an open that read it, raises one notice per handle: "A newer version of Vernacular saved this project's file, and this version cannot read it. Your changes are saved in a second file. You can choose between the two files on the Projects page." While saves go to the second file, the save status reads "Saved in a second file". A save that replaced a stored file it could not read raises one notice per handle: "The stored file could not be read. A copy of it is kept with the project's backups."
+10. A save that wrote the second document file, or an open that read it, raises one notice per handle: "A newer version of Vernacular saved this project's plan file, and this version cannot read it. Your changes are saved in a second plan file. You can choose between the two plan files on the Projects page." While saves go to the second file, the save status reads "Saved in a second plan file". A save that replaced a stored file it could not read raises one notice per handle: "The stored plan file could not be read. A copy of it is kept with the project's backups." Both notices show as warning toasts, and the save status of the second plan file uses the icon of "All changes saved".
 
 Left to the builder: the names, the shape of the save state, and how the handle exposes it to the adapters.
 
@@ -402,15 +402,16 @@ The dialog shows on the Projects page in three cases: at start when the most rec
 
 A project whose `vernacular.json` is at a newer version opens from its second document file when it has one (section 5.3, point 10). The dialog of this section does not show for it.
 
-A dialog titled "This project has two files" offers the choice. It opens from the card action "Choose a file". When the build can read both files, it also shows before the project opens, in the three cases in which the failed-open dialog shows.
+A dialog titled "This project has two plan files" offers the choice. It opens from the card action "Choose a plan file". When the build can read both files, it also shows before the project opens, in the three cases in which the failed-open dialog shows.
 
-- While `vernacular.json` is newer, the dialog says: "A newer version of Vernacular saved the file vernacular.json. This version cannot read it. The second file, &lt;name&gt;, holds the changes that this version saved."
-- When the build can read both, it says: "The file vernacular.json changed on &lt;time&gt;. The second file, &lt;name&gt;, changed on &lt;time&gt;. An older version of Vernacular saved the second file."
-- "Keep both files" is the primary control and changes nothing. Before an open it reads "Open and keep both files" and opens `vernacular.json`.
-- "Open the second file as a new project" stores the second file's document as a new project in this browser, named "&lt;name&gt; (second file)". Its sentence is "The new project is stored in this browser. The second file moves to the project's backups." The second file moves only after the new project was saved in durable storage.
-- "Replace vernacular.json with the second file" carries the warning "The file vernacular.json moves to the project's backups. No control brings it back. You cannot undo this action."
-- "Remove the second file" shows only when the build can read both files. Its sentence is "The second file moves to the project's backups."
+- While `vernacular.json` is newer, the dialog says: "A newer version of Vernacular saved the plan file vernacular.json. This version cannot read it. The second plan file, &lt;name&gt;, holds the changes that this version saved."
+- When the build can read both, it says: "The plan file vernacular.json changed on &lt;time&gt;. The second plan file, &lt;name&gt;, changed on &lt;time&gt;. An older version of Vernacular saved the second plan file." When a time of change cannot be read, the sentence says "at an unknown time" in place of "on &lt;time&gt;".
+- "Keep both plan files" is the primary control and changes nothing. Before an open it reads "Open and keep both plan files" and opens `vernacular.json`.
+- "Open the second plan file as a new project" stores the second file's document as a new project in this browser, named "&lt;name&gt; (second plan file)". Its sentence is "The new project is stored in this browser. The second plan file moves to the project's backups." The second file moves only after the new project was saved in durable storage.
+- "Replace vernacular.json with the second plan file" carries the warning "The plan file vernacular.json moves to the project's backups. No control brings it back. You cannot undo this action."
+- "Remove the second plan file" shows only when the build can read both files. Its sentence is "The second plan file moves to the project's backups."
 - Cancel shows before an open and returns to the page.
+- Where no dialog shows, an open of a project with two readable plan files fails with the message "This project has two plan files. Open it from the Projects page to choose one." Those places are Open folder on the Projects page, and the recent list and Open folder in the project menu of the editor.
 
 Each choice runs under the project's lock, reads both files again, and writes nothing when one of them changed since the dialog showed. A choice that replaces or removes a file copies its bytes to the backups first.
 
@@ -431,8 +432,8 @@ Done when:
 - Each cause in the table yields its sentence.
 - The dialog has no control that starts a new project.
 - The dialog for a failed import has no Export and no replace choice.
-- "Open the second file as a new project" leaves `vernacular.json` identical and leaves a backup that holds the bytes of the second file.
-- "Replace vernacular.json with the second file" leaves a backup that holds the bytes of the replaced file, and the folder then holds no second document file.
+- "Open the second plan file as a new project" leaves `vernacular.json` identical and leaves a backup that holds the bytes of the second file.
+- "Replace vernacular.json with the second plan file" leaves a backup that holds the bytes of the replaced file, and the folder then holds no second document file.
 - A project with a newer `vernacular.json` and a second document file opens, and the editor shows the document of the second file.
 
 ### 5.8 The Projects page
@@ -463,7 +464,7 @@ State lines:
 - "Already open in this tab."
 - "Already open in another tab."
 - "This folder needs permission again."
-- "This project has a second file."
+- "This project has a second plan file."
 
 A state line is text. It cannot take focus and it is not a control.
 
@@ -477,15 +478,15 @@ A state line is text. It cannot take focus and it is not a control.
 
 #### Card actions
 
-The order is Rename, Export, Choose a file, Delete.
+The order is Rename, Export, Choose a plan file, Delete.
 
-| Card                                  | Actions                                                       |
-| ------------------------------------- | ------------------------------------------------------------- |
-| A project in this browser             | Rename, Export, Delete                                        |
-| A folder project                      | Rename, Export, Remove from list                              |
-| A project open in another tab         | Export                                                        |
-| A project that did not open           | Export, Delete                                                |
-| A project with a second document file | Rename, Export, Choose a file, and Delete or Remove from list |
+| Card                                  | Actions                                                            |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| A project in this browser             | Rename, Export, Delete                                             |
+| A folder project                      | Rename, Export, Remove from list                                   |
+| A project open in another tab         | Export                                                             |
+| A project that did not open           | Export, Delete                                                     |
+| A project with a second document file | Rename, Export, Choose a plan file, and Delete or Remove from list |
 
 #### Rename
 

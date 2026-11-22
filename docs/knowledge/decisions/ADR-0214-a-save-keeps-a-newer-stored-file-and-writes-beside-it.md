@@ -67,11 +67,12 @@ both documents, and they hold different work that Vernacular cannot merge.
   newer version, as before. A repair's replace writes the file that the read came from.
 - A second document file never stands in for a missing `vernacular.json`. A listing finds a project
   by `vernacular.json` alone.
-- The user is told once per open project, and the save status says that saves go to a second file.
-  The card of the project says that it has a second file.
-- The user chooses in a dialog: keep both files, open the second file as a new project, replace
-  `vernacular.json` with the second file, or, when the build can read both, remove the second
-  file. When the build can read both files, the dialog shows before the project opens.
+- The user is told once per open project, and the save status says that saves go to a second plan file.
+  The card of the project says that it has a second plan file. User-visible text calls `vernacular.json` and
+  the second document file plan files.
+- The user chooses in a dialog: keep both plan files, open the second plan file as a new project, replace
+  `vernacular.json` with the second plan file, or, when the build can read both, remove the second
+  plan file. When the build can read both files, the dialog shows before the project opens.
 - Nothing is replaced or removed before the user chooses. A choice copies the bytes that it
   replaces or removes to `.house-backups/` first, under the never-replace rule of ADR-0182. The
   only file that the picked-folder store removes is a second document file.
