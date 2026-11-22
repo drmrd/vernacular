@@ -1,0 +1,84 @@
+{
+  "packId": "broken-texture-pack",
+  "version": "1.0.0",
+  "formatVersion": 2,
+  "license": "CC0-1.0",
+  "attribution": "Vernacular project",
+  "eras": [
+    "edwardian"
+  ],
+  "categories": [
+    "flooring"
+  ],
+  "assets": [
+    {
+      "contentHash": "79f80a170a422d020f43cd3fe9409854891c494e72fdde4dad9c39afe3d5dc32",
+      "name": "Wrong size",
+      "kind": "texture",
+      "mediaType": "image/png",
+      "license": "CC0-1.0",
+      "attribution": "Vernacular project",
+      "eras": [
+        "edwardian"
+      ],
+      "categories": [
+        "flooring"
+      ],
+      "image": {
+        "width": 128,
+        "height": 128
+      },
+      "tileSize": {
+        "width": 600,
+        "height": 600
+      },
+      "colorSpace": "srgb"
+    },
+    {
+      "contentHash": "c40b60310952d16cb2b7ba41cdda0607c922165cc6601cbc6e860b0d8d6a7e39",
+      "name": "Wrong media type",
+      "kind": "texture",
+      "mediaType": "image/webp",
+      "license": "CC0-1.0",
+      "attribution": "Vernacular project",
+      "eras": [
+        "edwardian"
+      ],
+      "categories": [
+        "flooring"
+      ],
+      "image": {
+        "width": 64,
+        "height": 64
+      },
+      "tileSize": {
+        "width": 600,
+        "height": 600
+      },
+      "colorSpace": "srgb"
+    },
+    {
+      "contentHash": "b73609f15cee3b0d040d2b441e1c9fa0c0ad7d57f15519c75b91db70168af289",
+      "name": "Wrong fields",
+      "kind": "texture",
+      "mediaType": "image/png",
+      "license": "CC0-1.0",
+      "attribution": "Vernacular project",
+      "eras": [
+        "edwardian"
+      ],
+      "categories": [
+        "flooring"
+      ],
+      "image": {
+        "width": 100,
+        "height": 64
+      },
+      "tileSize": {
+        "width": 600,
+        "height": 600
+      },
+      "colorSpace": "display-p3"
+    }
+  ]
+}

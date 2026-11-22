@@ -172,8 +172,22 @@ describe('runPackCli build', () => {
     const [reportDir, report] = cliDeps.writeReport.mock.calls[0]
     expect(reportDir).toBe('packs/x')
     expect(report.status).toBe('PASS')
-    expect(report.assets).toEqual([{ name: 'Chair', contentHash: hash }])
+    expect(report.assets).toEqual([{ name: 'Chair', kind: 'furniture', contentHash: hash }])
     expect(report.licenses.distinct).toContain('CC0-1.0')
+  })
+
+  it('build reports the kind of a format 2 entry that has no media type', async () => {
+    const manifest = validManifestWithAsset()
+    const cliDeps = deps({ ...manifest, formatVersion: 2 })
+    const hash = 'a'.repeat(64)
+    cliDeps.createReader = vi.fn(() => packReader({ hashes: { [`assets/${hash}.glb`]: hash } }))
+
+    await runPackCli(['build', 'packs/x'], cliDeps)
+
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.assets).toHaveLength(1)
+    expect(report.assets[0]).toEqual({ name: 'Chair', kind: 'furniture', contentHash: hash })
+    expect(report.assets[0]).not.toHaveProperty('mediaType')
   })
 
   it('build writes a FAIL report and exits 1 for an invalid pack', async () => {
