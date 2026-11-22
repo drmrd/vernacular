@@ -197,8 +197,7 @@ async function pollDrawnRevision(
   page: Page,
   accepts: (revisions: LiveSceneRevisions & { drawn: number }) => boolean,
   message: string,
-): Promise<number> {
-  let drawnRevision = 0
+): Promise<void> {
   await expect
     .poll(
       async () => {
@@ -206,22 +205,20 @@ async function pollDrawnRevision(
         if (revisions.drawn === null || !accepts({ ...revisions, drawn: revisions.drawn })) {
           return false
         }
-        drawnRevision = revisions.drawn
         return true
       },
       { message, timeout: FRAME_CHANGE_TIMEOUT_MS },
     )
     .toBe(true)
-  return drawnRevision
 }
 
 /**
  * Waits until the current mount has drawn the scene revision it holds: a counted frame at that
- * revision, so every edit made so far is on screen. Returns the revision. The revision restarts
+ * revision, so every edit made so far is on screen. The revision restarts
  * at 1 on each mount, so the wait belongs after any switch of the view.
  */
-export async function waitForDrawnSceneRevision(page: Page): Promise<number> {
-  return pollDrawnRevision(
+export async function waitForDrawnSceneRevision(page: Page): Promise<void> {
+  await pollDrawnRevision(
     page,
     ({ scene, drawn }) => drawn === scene,
     'waiting for the live 3D pane to draw the current scene revision',
@@ -230,17 +227,17 @@ export async function waitForDrawnSceneRevision(page: Page): Promise<number> {
 
 /**
  * Reads the drawn revision, runs the change, then waits until a counted frame at a later revision
- * that is also the current scene revision. Returns that revision. Start it after any view switch
+ * that is also the current scene revision. Start it after any view switch
  * (the preview can remount, and its revision then restarts), never across one. A change that
  * builds no new scene (a camera move, a selection outline) never satisfies it.
  */
 export async function waitForDrawnSceneChange(
   page: Page,
   change: () => Promise<void>,
-): Promise<number> {
+): Promise<void> {
   const before = (await liveSceneRevisions(page)).drawn ?? 0
   await change()
-  return pollDrawnRevision(
+  await pollDrawnRevision(
     page,
     ({ scene, drawn }) => drawn > before && drawn === scene,
     'waiting for the live 3D pane to draw a later scene revision',

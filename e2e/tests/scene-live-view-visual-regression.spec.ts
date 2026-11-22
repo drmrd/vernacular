@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
-import { waitForDrawnSceneRevision } from './live-pane-frames'
 import { drawnRoomCanvas, stableFrame } from './scene-helpers'
 
 // The first committed pixel baseline on the render path users actually see: the editor's
@@ -61,7 +60,6 @@ test.describe('Live three-dimensional view visual baseline', () => {
     await page.getByRole('button', { name: 'Top down' }).click()
 
     await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
-    await waitForDrawnSceneRevision(page)
     await stableFrame(canvas)
 
     await expect(canvas).toHaveScreenshot('live-view-top-down-webgpu.png', {

@@ -3,7 +3,7 @@ import { webFontsSettled } from './journeys/support'
 import { expectSameView, frameAfterChange, navButton } from './journeys/close-openings-support'
 import { frameReader } from './frame-pixels'
 import { LIVE_VIEW_READY } from './live-pane'
-import { waitForDrawnSceneChange, waitForDrawnSceneRevision } from './live-pane-frames'
+import { waitForDrawnSceneChange } from './live-pane-frames'
 import {
   drawnRoomCanvas,
   drawnRoomWithDoorCanvas,
@@ -150,9 +150,8 @@ async function showFloor(page: Page, name: string): Promise<void> {
 
 // The settled Doorway frame of the shown floor. The Top down step comes first so that the wait
 // for a changed frame is safe: a Doorway frame may equal the frame before it, but never the
-// top-down frame. The pane has drawn the scene it holds before the first frame is read.
+// top-down frame. Every caller reaches it through a helper that waits for the drawn revision.
 async function doorwayFrame(page: Page, canvas: Locator): Promise<Buffer> {
-  await waitForDrawnSceneRevision(page)
   const settled = await stableFrame(canvas)
   await navButton(page, 'Top down').click()
   const topDown = await frameAfterChange(canvas, settled)
