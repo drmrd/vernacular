@@ -7,8 +7,7 @@ import {
   type SceneRendererFactory,
   type SceneRendererOptions,
 } from '../../engine'
-import { SceneLoadFailedStatus } from './scene-load-failed-status'
-import { SceneUnsupportedStatus } from './scene-unsupported-status'
+import { SceneFailureHost } from './scene-failure-host'
 
 // The pane shown while the renderer factory loads: the same blank, block-level canvas that
 // React Three Fiber's Canvas shows before it draws its first frame.
@@ -209,8 +208,8 @@ export function SceneRendererCanvas({
   ...canvasProps
 }: SceneRendererCanvasProps) {
   const { createRenderer, status } = useSceneRendererStart(forceWebGL)
-  if (status === 'load-failed') return <SceneLoadFailedStatus onReload={reloadPage} />
-  if (status === 'failed') return <SceneUnsupportedStatus />
+  if (status === 'load-failed') return <SceneFailureHost kind="load" onReload={reloadPage} />
+  if (status === 'failed') return <SceneFailureHost kind="start" />
   if (createRenderer === null) return <canvas style={LOADING_CANVAS_STYLE} />
   const initialized = status === 'ready'
   return (
