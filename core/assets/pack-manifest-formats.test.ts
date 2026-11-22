@@ -70,3 +70,58 @@ describe('validatePackManifest - format version', () => {
     },
   )
 })
+
+describe('validatePackManifest - asset media types', () => {
+  function withoutMediaType(asset: Record<string, unknown>): Record<string, unknown> {
+    const copy = { ...asset }
+    delete copy.mediaType
+    return copy
+  }
+
+  it.each([
+    {
+      case: 'a format 2 model with no media type',
+      formatVersion: 2,
+      asset: withoutMediaType(validModelAsset()),
+      expectedHint: /model\/gltf-binary/,
+    },
+    {
+      case: 'a format 2 texture with no media type',
+      formatVersion: 2,
+      asset: withoutMediaType(validTextureAsset()),
+      expectedHint: /image\/png/,
+    },
+    {
+      case: 'a texture with a model media type',
+      formatVersion: 2,
+      asset: { ...validTextureAsset(), mediaType: 'model/gltf-binary' },
+      expectedHint: /image\/png/,
+    },
+    {
+      case: 'a furniture asset with an image media type',
+      formatVersion: 2,
+      asset: { ...validModelAsset(), mediaType: 'image/png' },
+      expectedHint: /model\/gltf-binary/,
+    },
+    {
+      case: 'a format 1 asset with an image media type',
+      formatVersion: 1,
+      asset: { ...validModelAsset(), mediaType: 'image/png' },
+      expectedHint: /model\/gltf-binary|formatVersion 2/,
+    },
+  ])('refuses $case with one error that names the allowed types', (scenario) => {
+    const manifest = {
+      ...validManifest(),
+      formatVersion: scenario.formatVersion,
+      assets: [scenario.asset],
+    }
+
+    const result = validatePackManifest(manifest)
+
+    expect(result.valid).toBe(false)
+    expect(result.errors).toHaveLength(1)
+    const message = result.errors[0] ?? ''
+    expect(message).toMatch(/^assets\[0\]\.mediaType\b/)
+    expect(message).toMatch(scenario.expectedHint)
+  })
+})
