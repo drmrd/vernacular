@@ -135,7 +135,7 @@ function usePageTries(pageTries: PageTries) {
   const { navigation, screen, refresh } = pageTries
   const [tried, setTried] = useState<TriedNotice | null>(null)
   const actionTries = useActionTries(pageTries, setTried)
-  const onChoiceFailed = (id: string, failure: SwitchFailure) => {
+  const onTryFailed = (id: string, failure: SwitchFailure) => {
     setTried((previous) => withNotice(previous, { id, failure }))
     refresh()
   }
@@ -146,7 +146,7 @@ function usePageTries(pageTries: PageTries) {
     actionTries.onTryStart()
     void navigation.runPageFlow(flow).then((result) => {
       if (result !== undefined && !result.ok) {
-        onChoiceFailed(id, result.failure)
+        onTryFailed(id, result.failure)
       }
     })
   }
@@ -163,7 +163,7 @@ function usePageTries(pageTries: PageTries) {
   const onNewProject =
     openId === undefined ? navigation.startFresh : () => runTry(openId, newProject)
   const notice = shownNotice(screen.notice, tried)
-  return { notice, onOpen, onNewProject, onChoiceFailed, ...actionTries }
+  return { notice, onOpen, onNewProject, onTryFailed, ...actionTries }
 }
 
 /**
@@ -244,14 +244,14 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
   const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
   const { actionNotice, clearActionNotice, onActionEnd } = useActionNotice(refresh)
   const tries = usePageTries({ navigation, screen, refresh, clearActionNotice })
-  const { onTryStart, runActionFlow, onOpen, onChoiceFailed } = tries
+  const { onTryStart, runActionFlow, onOpen, onTryFailed } = tries
   const cardActions = useCardActions({
     ...{ navigation, ports, cards, libraryAssets, onActionEnd },
     onActionStart: onTryStart,
   })
   const packs = useLibraryPacks(libraryAssets)
   const failedOpen = useFailedOpenDialog({
-    ...{ ports, packs, runActionFlow, onOpen, onChoiceFailed },
+    ...{ ports, packs, runActionFlow, onOpen, onTryFailed },
     notice: tries.notice?.id === UNDER_NO_CARD ? undefined : tries.notice,
     runPageFlow: navigation.runPageFlow,
   })

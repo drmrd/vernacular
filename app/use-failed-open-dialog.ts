@@ -26,7 +26,7 @@ export interface FailedOpenDialogParts {
   /** The open of a card: a replace that found another stored file runs it again. */
   readonly onOpen: (id: string) => void
   /** Shows a failure of a repair choice as the failure of a try of the card. */
-  readonly onChoiceFailed: (id: string, failure: SwitchFailure) => void
+  readonly onTryFailed: (id: string, failure: SwitchFailure) => void
   /** The packs of the library, which supply assets. */
   readonly packs: PackCatalog | undefined
 }
@@ -66,7 +66,7 @@ export type ShownFailure = StoredFailure | FileFailure
 /** What a repair choice runs on. */
 type ChoiceContext = Pick<
   FailedOpenDialogParts,
-  'runPageFlow' | 'runActionFlow' | 'onOpen' | 'onChoiceFailed' | 'packs'
+  'runPageFlow' | 'runActionFlow' | 'onOpen' | 'onTryFailed' | 'packs'
 > & { readonly notifications: NotificationApi; readonly clearFile: () => void }
 
 /** The run of a choice with the offered repair. */
@@ -95,7 +95,7 @@ async function openStoredCopy(id: string, offer: RepairOffer, context: ChoiceCon
     return
   }
   if (!result.ok) {
-    context.onChoiceFailed(id, result.failure)
+    context.onTryFailed(id, result.failure)
   } else if (missingAssets.length > 0) {
     context.notifications.warning(repairedCopyMissingAssetsText(missingAssets.length))
   }
@@ -113,7 +113,7 @@ async function replaceStored(id: string, offer: RepairOffer, context: ChoiceCont
   if (failure.kind === 'repair-changed') {
     context.onOpen(id)
   } else {
-    context.onChoiceFailed(id, failure)
+    context.onTryFailed(id, failure)
   }
 }
 
@@ -209,11 +209,11 @@ export type RepairChoice = ReturnType<typeof useRepairChoice>
  * open at the start, on a card, or at an address, and for a file that did not import.
  */
 export function useFailedOpenDialog(parts: FailedOpenDialogParts): FailedOpenDialogState {
-  const { ports, notice, runPageFlow, runActionFlow, onOpen, onChoiceFailed, packs } = parts
+  const { ports, notice, runPageFlow, runActionFlow, onOpen, onTryFailed, packs } = parts
   const failure = useShownFailure(notice, ports?.build ?? '')
   const notifications = useNotifications()
   const choice = useRepairChoice(failure.shown, {
-    ...{ runPageFlow, runActionFlow, onOpen, onChoiceFailed, packs },
+    ...{ runPageFlow, runActionFlow, onOpen, onTryFailed, packs },
     notifications,
     clearFile: failure.clearFile,
   })
