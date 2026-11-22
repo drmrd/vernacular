@@ -1,11 +1,17 @@
 import { toDegrees } from './angle-units'
 import { daylightSiteFor, type DaylightSite } from './daylight-site'
 import { DAYLIGHT_REFERENCE_INSTANT } from './daylight-reference'
-import { MINUTES_PER_DAY, type ObservationInstant } from './observation-time'
+import {
+  isObservationInstantIso,
+  MINUTES_PER_DAY,
+  parseObservationInstant,
+  type ObservationInstant,
+} from './observation-time'
 import { DEFAULT_CLOUD_COVER } from './sky-model'
 import { solarPosition } from './solar-position'
 import { sunWorldDirection } from './sun-world-direction'
 import type { Vector3 } from '../scene/vector3'
+import type { ViewingConditions } from '../model/environment-scene'
 import type { Site } from '../model/site'
 import type { PlanDirection } from '../scene/front-direction'
 
@@ -25,6 +31,7 @@ export function openingInstant(input: OpeningInstantInput): ObservationInstant {
 export type OpeningConditionsInput = {
   readonly site: Site | undefined
   readonly front: PlanDirection
+  readonly stored?: ViewingConditions
 }
 
 export type OpeningConditions = {
@@ -129,6 +136,12 @@ function firstQualifyingInstant(
  * of either date qualifies, the fixed instant applies.
  */
 export function openingConditions(input: OpeningConditionsInput): OpeningConditions {
+  const { stored } = input
+  if (stored !== undefined && isObservationInstantIso(stored.observedAt))
+    return {
+      observedAt: parseObservationInstant(stored.observedAt),
+      cloudCover: stored.weather?.cloudCover ?? DEFAULT_CLOUD_COVER,
+    }
   const fixedInstant = openingInstant({ site: input.site })
   const equinoxSite = daylightSiteFor(input.site, input.front, EQUINOX_DATE)
   if (northIsImplied(equinoxSite))
