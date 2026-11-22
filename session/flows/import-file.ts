@@ -1,16 +1,10 @@
 import { repairOfferFor } from '../../core'
 import type { DecodeFailure, Project, RepairOffer } from '../../core'
-import {
-  copyImportedAssets,
-  importProjectFile,
-  neededAssetHashes,
-  newProjectId,
-} from '../../storage'
+import { importProjectFile } from '../../storage'
 import type {
   ArchiveFailure,
   ArchiveLimitName,
   ArchiveLimits,
-  AssetCache,
   PackSupplies,
   ProjectFileFailure,
   ProjectFileRead,
@@ -18,8 +12,8 @@ import type {
 import type { DocumentHandle } from '../handle/handle-types'
 import type { SessionPorts } from '../ports'
 import type { SwitchFailure } from './flow-result'
+import { openAsNewProject } from './new-project-copy'
 import { repairedCopyOf } from './repaired-copy'
-import { switchProject } from './switch-project'
 
 /** A file that the user chose to open, with its name and its bytes. */
 export interface ImportedFile {
@@ -88,22 +82,6 @@ function archiveFailureOf(archive: ArchiveFailure): ImportFailure {
   }
 }
 
-/**
- * The pool of the new project. A pool that cannot be reached does not fail the import: the copy
- * still opens, and every needed asset shows as missing.
- */
-export function poolOf(ports: SessionPorts, id: string): AssetCache | undefined {
-  try {
-    return ports.workspace.assets(id)
-  } catch (error) {
-    console.error(
-      'The asset pool of the imported project cannot be reached; no asset is copied.',
-      error,
-    )
-    return undefined
-  }
-}
-
 /** The project to open and the assets that the file supplied for it. */
 interface CopySource {
   readonly project: Project
@@ -118,12 +96,12 @@ type SourceRead =
  * The project of the read. With `applyRepair`, a document that breaks the format rules and has a
  * repair gives its repaired copy, with the assets that the archive supplied.
  */
-function sourceOf(read: ProjectFileRead, applyRepair: boolean | undefined): SourceRead {
+function sourceOf(read: ProjectFileRead, file: ImportedFile): SourceRead {
   if (read.ok) {
     return { ok: true, source: read }
   }
   const { failure } = read
-  if (applyRepair === true && failure.kind === 'decode') {
+  if (file.applyRepair === true && failure.kind === 'decode') {
     const offer = repairOfferFor(failure.decode)
     if (offer !== undefined) {
       const assets = failure.supplied?.assets ?? new Map<string, Uint8Array>()
@@ -134,44 +112,12 @@ function sourceOf(read: ProjectFileRead, applyRepair: boolean | undefined): Sour
 }
 
 /**
- * Reads the file, switches to the copy, and copies the assets that its document needs. Nothing is
- * written before the switch, so a refused file or a failed switch leaves every store as it was.
- * The reader's assets are not kept past this function, since they may be views into the file.
- */
-async function openWithAssets(
-  ports: SessionPorts,
-  current: DocumentHandle | undefined,
-  file: ImportedFile,
-): Promise<ImportResult> {
-  const read = sourceOf(
-    await importProjectFile(file.name, file.bytes, file.limits),
-    file.applyRepair,
-  )
-  if (!read.ok) {
-    return read
-  }
-  const { project, assets } = read.source
-  const id = newProjectId([])
-  const switched = await switchProject(ports, current, {
-    id,
-    location: { kind: 'workspace' },
-    create: () => project,
-  })
-  if (!switched.ok) {
-    return switched
-  }
-  const needed = neededAssetHashes(project, file.packSupplies)
-  const pool = poolOf(ports, id)
-  const missingAssets = pool === undefined ? needed : await copyImportedAssets(pool, assets, needed)
-  return { ok: true, handle: switched.handle, missingAssets }
-}
-
-/**
  * Opens a copy of a project file as a new workspace project. The file is read before anything
  * else, so a file that cannot be read leaves the current project untouched. Then the switch
  * flushes and closes the current project, the assets go into the pool, and the copy is saved at
  * once, so the pool has the assets before the stored document refers to them. The result holds
- * the handle whatever that save's outcome; a failed save shows in the save status. The promise
+ * the handle whatever that save's outcome; a failed save shows in the save status. The reader's
+ * assets are not kept past this function, since they may be views into the file. The promise
  * never rejects.
  */
 export async function importFile(
@@ -179,9 +125,14 @@ export async function importFile(
   current: DocumentHandle | undefined,
   file: ImportedFile,
 ): Promise<ImportResult> {
-  const opened = await openWithAssets(ports, current, file)
-  if (opened.ok) {
-    await opened.handle.save()
+  const read = sourceOf(await importProjectFile(file.name, file.bytes, file.limits), file)
+  if (!read.ok) {
+    return read
   }
-  return opened
+  const { project, assets } = read.source
+  return openAsNewProject(ports, current, {
+    project,
+    packSupplies: file.packSupplies,
+    supplied: () => Promise.resolve(assets),
+  })
 }

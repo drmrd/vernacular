@@ -1,12 +1,11 @@
-import { repairOfferFor, type Project, type RepairOffer } from '../../core'
-import { copyImportedAssets, neededAssetHashes, newProjectId } from '../../storage'
+import { repairOfferFor, type RepairOffer } from '../../core'
 import type { DocumentStore } from '../../storage'
 import { findDocumentStore } from '../handle/find-document-store'
 import type { DocumentHandle } from '../handle/handle-types'
 import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import type { FlowResult, SwitchFailure } from './flow-result'
-import { poolOf } from './import-file'
+import { openAsNewProject, type NewProjectResult } from './new-project-copy'
 import { recentTarget, requestFor } from './open-recent'
 import { freeLock, lockFor } from './project-lock-for'
 import { repairedCopyOf } from './repaired-copy'
@@ -21,13 +20,7 @@ export interface RepairedCopyRequest {
   readonly offer: RepairOffer
 }
 
-export type RepairedCopyResult =
-  | {
-      readonly ok: true
-      readonly handle: DocumentHandle
-      readonly missingAssets: readonly string[]
-    }
-  | { readonly ok: false; readonly failure: SwitchFailure }
+export type RepairedCopyResult = NewProjectResult
 
 export interface ReplaceRequest {
   readonly id: string
@@ -38,7 +31,14 @@ export interface ReplaceRequest {
 /** The stored file is not the one that the offer was made for. Nothing was written. */
 export type ReplaceRefusal = { readonly kind: 'repair-changed' }
 
-const REPAIR_CHANGED: ReplaceRefusal = { kind: 'repair-changed' }
+/** Why a replace stopped before the project opens, or that it may open. */
+type ReplaceOutcome =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly failure: SwitchFailure | ReplaceRefusal }
+
+const MAY_OPEN: ReplaceOutcome = { ok: true }
+
+const REPAIR_CHANGED: ReplaceOutcome = { ok: false, failure: { kind: 'repair-changed' } }
 
 /**
  * The needed assets that the pool of the project that did not open holds. A workspace project
@@ -71,41 +71,21 @@ async function assetsOfFolder(
   return supplied
 }
 
-/** Copies into the pool of the copy each asset that it needs and gives the ones still missing. */
-async function copyNeededAssets(
-  ports: SessionPorts,
-  request: RepairedCopyRequest,
-  copy: { readonly id: string; readonly project: Project },
-): Promise<readonly string[]> {
-  const needed = neededAssetHashes(copy.project)
-  const supplied = await assetsOfFolder(ports, request.id, needed)
-  const pool = poolOf(ports, copy.id)
-  return pool === undefined ? needed : copyImportedAssets(pool, supplied, needed)
-}
-
 /**
  * Opens the document of the offer as a new workspace project, named as a repaired copy. The switch
  * flushes the current project first; then the assets that the copy needs go into the pool, and the
- * copy is saved at once. No file of the project that did not open changes. Never rejects.
+ * copy is saved at once. The result holds the handle whatever that save's outcome; a failed save
+ * shows in the save status. No file of the project that did not open changes. Never rejects.
  */
-export async function openRepairedAsNew(
+export function openRepairedAsNew(
   ports: SessionPorts,
   current: DocumentHandle | undefined,
   request: RepairedCopyRequest,
 ): Promise<RepairedCopyResult> {
-  const project = repairedCopyOf(request.offer)
-  const id = newProjectId([])
-  const switched = await switchProject(ports, current, {
-    id,
-    location: { kind: 'workspace' },
-    create: () => project,
+  return openAsNewProject(ports, current, {
+    project: repairedCopyOf(request.offer),
+    supplied: (needed) => assetsOfFolder(ports, request.id, needed),
   })
-  if (!switched.ok) {
-    return switched
-  }
-  const missingAssets = await copyNeededAssets(ports, request, { id, project })
-  await switched.handle.save()
-  return { ok: true, handle: switched.handle, missingAssets }
 }
 
 function samePaths(left: readonly string[], right: readonly string[]): boolean {
@@ -114,30 +94,37 @@ function samePaths(left: readonly string[], right: readonly string[]): boolean {
 
 /**
  * Reads the stored file again and replaces it with its repair when that repair removes the same
- * pointers that the user saw. Gives why nothing was written, or undefined when the project may
- * open: after the replace, or because the stored file now decodes.
+ * pointers that the user saw. Gives why nothing was written, or that the project may open: after
+ * the replace, or because the stored file now decodes.
  */
 async function replaceIfUnchanged(
   store: DocumentStore,
   request: ReplaceRequest,
-): Promise<SwitchFailure | ReplaceRefusal | undefined> {
+): Promise<ReplaceOutcome> {
   const read = await store.read(request.id)
   if (read.ok) {
-    return undefined
+    return MAY_OPEN
   }
   if (read.failure.kind === 'not-found') {
-    return { kind: 'not-found' }
+    return { ok: false, failure: { kind: 'not-found' } }
   }
   const { decode } = read.failure
   if (decode.kind !== 'format-rules') {
-    return { kind: 'did-not-open', decode }
+    return { ok: false, failure: { kind: 'did-not-open', decode } }
   }
   const offer = repairOfferFor(decode)
   if (offer === undefined || !samePaths(offer.removedPaths, request.removedPaths)) {
     return REPAIR_CHANGED
   }
   const report = await store.replaceStored(request.id, offer.document)
-  return report.replaced ? undefined : REPAIR_CHANGED
+  if (!report.replaced) {
+    console.error(
+      'The repair breaks the format rules; the stored file is not replaced.',
+      report.faults,
+    )
+    return REPAIR_CHANGED
+  }
+  return MAY_OPEN
 }
 
 /** The handle that stays open after the lock was taken, or why the replace stopped. */
@@ -156,9 +143,9 @@ async function replaceUnderLock(
     return { ok: false, failure: locked.failure }
   }
   try {
-    const refusal = await replaceIfUnchanged(store, request)
-    if (refusal !== undefined) {
-      return { ok: false, failure: refusal }
+    const replaced = await replaceIfUnchanged(store, request)
+    if (!replaced.ok) {
+      return replaced
     }
     return { ok: true, current: locked.currentClosed ? undefined : current }
   } finally {
