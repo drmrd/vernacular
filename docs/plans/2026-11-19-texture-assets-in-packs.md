@@ -113,9 +113,11 @@ the pull request that depends on it.
 - The ground shows the flat lawn first and the grass when it is ready. The "Building the scene..."
   overlay does not wait for the grass. Only the capture signals wait (pull request 4, cycles 7
   and 8).
-- Starter pack 1.0.0 leaves `public/` when 1.1.0 arrives (pull request 3, cycle 7). A project that
-  names `pack:vernacular-starter@1.0.0` finds the chair in 1.1.0: section 4.2 calls this the pack
-  version fallback (step 3), and in code the registry finds it by kind and hash.
+- Starter pack 1.0.0 stays in `public/` when 1.1.0 arrives (pull request 3, cycle 7). Starter pack
+  1.1.0 holds a new chair with new bytes and a new hash under CC-BY-4.0 (ADR-0229, owner decision of
+  2026-11-22), so the hash of the 1.0.0 chair is not in 1.1.0. A project that names
+  `pack:vernacular-starter@1.0.0` and that hash still resolves it from the 1.0.0 pack. The library
+  lists only the newest starter version, so the 1.0.0 chair does not show there.
 - Within the confirmed limits: no PNG color chunk, no animated WebP and no WebP color profile.
 - The grass lists every period of `core/registries/periods.ts` as its eras, and the category
   `ground-cover`.
@@ -483,12 +485,13 @@ rebuild test of cycle 5 is the tripwire.
    seam: the mean luminance step across each wrap edge (last column to first, last row to first)
    is at most 1.1 times the mean step between neighbors inside. Implementation: `grass-tile.mjs`.
 5. **`scripts/pack/starter/build-starter-pack.test.mjs`: "the build writes a valid starter pack
-   1.1.0 that keeps the chair and adds the grass, and the committed tree is its output".** Setup:
+   1.1.0 that replaces the chair and adds the grass, and the committed tree is its output".** Setup:
    `buildStarterPack()` gives a map of file path to bytes, with no disk write. Assert every entry
    equals the committed file under `public/packs/vernacular-starter-1.1.0/` and no committed file is
    missing from the map; `runPackCli(['validate', dir], …)` with the real readers returns 0;
-   `formatVersion` is 2; the chair's bytes, hash, name, styles, eras, categories, and dimensions
-   equal those of 1.0.0; the grass `contentHash` is the sha256 of the committed PNG; `NOTICE`
+   `formatVersion` is 2; the chair's name, styles, eras, categories, and dimensions equal those of
+   1.0.0, its bytes and `contentHash` differ from 1.0.0's, its `license` is `CC-BY-4.0`, and its
+   `attribution` is `The Vernacular Contributors`; the pack-level `license` is `CC-BY-4.0`; the grass `contentHash` is the sha256 of the committed PNG; `NOTICE`
    names `scripts/pack/starter/build-starter-pack.mjs` and `pnpm pack:starter`. Fails today: no
    build and no directory. Implementation: `build-starter-pack.mjs` (it owns the chair's bytes and
    metadata as constants, so no fixture script feeds the shipped pack), then `pnpm pack:starter`;
@@ -500,15 +503,18 @@ rebuild test of cycle 5 is the tripwire.
 7. **`app/create-asset-library-registry.test.ts`: "the application's library reads starter pack
    1.1.0".** `createStarterPackSource(fetch)` is a new export. Setup: a fetch spy serving the
    committed manifest. Assert `list()` fetched `/packs/vernacular-starter-1.1.0/manifest.json` and
-   listed the chair only. Fails today: no such export, and the address is 1.0.0. Implementation:
-   `app/create-asset-library-registry.ts`; the stories follow; `public/packs/vernacular-starter-1.0.0/`
-   is removed in this GREEN commit if the owner agrees.
+   listed the 1.1.0 chair only, not the chair of 1.0.0. A second test, "a reference to the chair of
+   starter pack 1.0.0 still resolves": a reference with scope `pack:vernacular-starter@1.0.0` and
+   hash `8a8a0cafbecb2446278c8b61e275c1ac78373a7ccd59ddd5ac7684bf1388341e` resolves to the bytes
+   under `/packs/vernacular-starter-1.0.0/`. Fails today: no such export, and the address is 1.0.0.
+   Implementation: `app/create-asset-library-registry.ts`; the stories follow;
+   `public/packs/vernacular-starter-1.0.0/` stays.
 
 **The build of starter pack 1.1.0.** `pnpm pack:starter` runs `build-starter-pack.mjs`. It writes
 the chair and its thumbnail from its own constants, generates the grass, writes the PNG, hashes
 every asset, and writes `manifest.json` (`JSON.stringify` with two spaces and a newline, keys in a
-fixed order), `LICENSE` (`CC0-1.0` for the chair, `CC-BY-4.0` for the grass), `NOTICE` (the
-attribution, the generator's path, and the command), and `CHANGELOG.md` (1.0.0, then 1.1.0: "Add a generated mown-grass texture."). The hash in
+fixed order), `LICENSE` (the full text of `CC-BY-4.0`, the license of both assets), `NOTICE` (the
+attribution, the generator's path, and the command), and `CHANGELOG.md` (1.0.0, then 1.1.0: "Replace the placeholder chair with a new chair under CC-BY-4.0. Add a generated mown-grass texture."). The hash in
 the manifest comes from the bytes the build writes.
 
 **Screenshot baselines.** None move.
