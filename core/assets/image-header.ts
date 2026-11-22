@@ -1,4 +1,4 @@
-export interface ImageHeader {
+export interface PngImageHeader {
   readonly mediaType: 'image/png'
   readonly width: number
   readonly height: number
@@ -6,6 +6,16 @@ export interface ImageHeader {
   readonly colorType: number
   readonly interlaced: boolean
 }
+
+export interface WebpImageHeader {
+  readonly mediaType: 'image/webp'
+  readonly width: number
+  readonly height: number
+  readonly animated: boolean
+  readonly colorProfile: boolean
+}
+
+export type ImageHeader = PngImageHeader | WebpImageHeader
 
 type ImageHeaderReader = (bytes: Uint8Array) => ImageHeader | undefined
 
@@ -30,7 +40,7 @@ function hasTextAt(bytes: Uint8Array, offset: number, expected: string): boolean
   )
 }
 
-function readPngHeader(bytes: Uint8Array): ImageHeader | undefined {
+function readPngHeader(bytes: Uint8Array): PngImageHeader | undefined {
   if (
     bytes.length < PNG_BYTES_THROUGH_INTERLACE ||
     !hasTextAt(bytes, 0, PNG_SIGNATURE) ||
@@ -49,7 +59,104 @@ function readPngHeader(bytes: Uint8Array): ImageHeader | undefined {
   }
 }
 
-const IMAGE_HEADER_READERS: readonly ImageHeaderReader[] = [readPngHeader]
+const WEBP_RIFF_TAG = 'RIFF'
+const WEBP_FORM_TAG = 'WEBP'
+const WEBP_FORM_OFFSET = 8
+const WEBP_CHUNK_TYPE_OFFSET = 12
+const WEBP_CHUNK_TYPE_LENGTH = 4
+const WEBP_PAYLOAD_OFFSET = 20
+const WEBP_LOSSY_START_CODE_FIRST = 0x9d
+const WEBP_LOSSY_START_CODE_LAST = 0x2a
+const WEBP_LOSSY_START_CODE = [WEBP_LOSSY_START_CODE_FIRST, 1, WEBP_LOSSY_START_CODE_LAST]
+const WEBP_LOSSY_FRAME_TAG_BYTES = 3
+const WEBP_LOSSY_START_CODE_OFFSET = WEBP_PAYLOAD_OFFSET + WEBP_LOSSY_FRAME_TAG_BYTES
+const WEBP_LOSSY_WIDTH_OFFSET = WEBP_LOSSY_START_CODE_OFFSET + WEBP_LOSSY_START_CODE.length
+const WEBP_LOSSY_HEIGHT_OFFSET = WEBP_LOSSY_WIDTH_OFFSET + 2
+const WEBP_LOSSY_BYTES_THROUGH_HEIGHT = WEBP_LOSSY_HEIGHT_OFFSET + 2
+const WEBP_LOSSLESS_SIGNATURE = 0x2f
+const WEBP_LOSSLESS_PACKED_OFFSET = WEBP_PAYLOAD_OFFSET + 1
+const WEBP_LOSSLESS_BYTES_THROUGH_PACKED = WEBP_LOSSLESS_PACKED_OFFSET + UINT32_BYTES
+const WEBP_EXTENDED_FLAGS_AND_RESERVED_BYTES = 4
+const WEBP_EXTENDED_WIDTH_OFFSET = WEBP_PAYLOAD_OFFSET + WEBP_EXTENDED_FLAGS_AND_RESERVED_BYTES
+const WEBP_UINT24_BYTES = 3
+const WEBP_EXTENDED_HEIGHT_OFFSET = WEBP_EXTENDED_WIDTH_OFFSET + WEBP_UINT24_BYTES
+const WEBP_BYTES_THROUGH_EXTENDED_HEIGHT = WEBP_EXTENDED_HEIGHT_OFFSET + WEBP_UINT24_BYTES
+const WEBP_EXTENDED_ANIMATION_FLAG = 0x02
+const WEBP_EXTENDED_PROFILE_FLAG = 0x20
+const WEBP_LOSSY_SIZE_MASK = 0x3fff
+const WEBP_LOSSLESS_SIZE_BITS = 14
+const WEBP_LOSSLESS_SIZE_MASK = 0x3fff
+const BITS_PER_TWO_BYTES = 16
+
+function webpHeader(width: number, height: number, flags = 0): WebpImageHeader {
+  return {
+    mediaType: 'image/webp',
+    width,
+    height,
+    animated: (flags & WEBP_EXTENDED_ANIMATION_FLAG) !== 0,
+    colorProfile: (flags & WEBP_EXTENDED_PROFILE_FLAG) !== 0,
+  }
+}
+
+function readUint24(view: DataView, offset: number): number {
+  return view.getUint16(offset, true) + (view.getUint8(offset + 2) << BITS_PER_TWO_BYTES)
+}
+
+function readLossyWebp(bytes: Uint8Array, view: DataView): WebpImageHeader | undefined {
+  const hasStartCode = WEBP_LOSSY_START_CODE.every(
+    (code, index) => bytes[WEBP_LOSSY_START_CODE_OFFSET + index] === code,
+  )
+  return hasStartCode
+    ? webpHeader(
+        view.getUint16(WEBP_LOSSY_WIDTH_OFFSET, true) & WEBP_LOSSY_SIZE_MASK,
+        view.getUint16(WEBP_LOSSY_HEIGHT_OFFSET, true) & WEBP_LOSSY_SIZE_MASK,
+      )
+    : undefined
+}
+
+function readLosslessWebp(bytes: Uint8Array, view: DataView): WebpImageHeader | undefined {
+  const packed = view.getUint32(WEBP_LOSSLESS_PACKED_OFFSET, true)
+  return bytes[WEBP_PAYLOAD_OFFSET] === WEBP_LOSSLESS_SIGNATURE
+    ? webpHeader(
+        (packed & WEBP_LOSSLESS_SIZE_MASK) + 1,
+        ((packed >>> WEBP_LOSSLESS_SIZE_BITS) & WEBP_LOSSLESS_SIZE_MASK) + 1,
+      )
+    : undefined
+}
+
+function readExtendedWebp(bytes: Uint8Array, view: DataView): WebpImageHeader {
+  return webpHeader(
+    readUint24(view, WEBP_EXTENDED_WIDTH_OFFSET) + 1,
+    readUint24(view, WEBP_EXTENDED_HEIGHT_OFFSET) + 1,
+    bytes[WEBP_PAYLOAD_OFFSET] as number,
+  )
+}
+
+interface WebpChunkReader {
+  readonly bytesNeeded: number
+  readonly read: (bytes: Uint8Array, view: DataView) => WebpImageHeader | undefined
+}
+
+const WEBP_CHUNK_READERS = new Map<string, WebpChunkReader>([
+  ['VP8 ', { bytesNeeded: WEBP_LOSSY_BYTES_THROUGH_HEIGHT, read: readLossyWebp }],
+  ['VP8L', { bytesNeeded: WEBP_LOSSLESS_BYTES_THROUGH_PACKED, read: readLosslessWebp }],
+  ['VP8X', { bytesNeeded: WEBP_BYTES_THROUGH_EXTENDED_HEIGHT, read: readExtendedWebp }],
+])
+
+function readWebpHeader(bytes: Uint8Array): WebpImageHeader | undefined {
+  const isRiffWebp =
+    hasTextAt(bytes, 0, WEBP_RIFF_TAG) && hasTextAt(bytes, WEBP_FORM_OFFSET, WEBP_FORM_TAG)
+  const chunkEnd = WEBP_CHUNK_TYPE_OFFSET + WEBP_CHUNK_TYPE_LENGTH
+  const chunkType = String.fromCharCode(...bytes.subarray(WEBP_CHUNK_TYPE_OFFSET, chunkEnd))
+  const chunkReader = isRiffWebp ? WEBP_CHUNK_READERS.get(chunkType) : undefined
+  if (chunkReader === undefined || bytes.length < chunkReader.bytesNeeded) {
+    return undefined
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  return chunkReader.read(bytes, view)
+}
+
+const IMAGE_HEADER_READERS: readonly ImageHeaderReader[] = [readPngHeader, readWebpHeader]
 
 export function readImageHeader(bytes: Uint8Array): ImageHeader | undefined {
   for (const read of IMAGE_HEADER_READERS) {
