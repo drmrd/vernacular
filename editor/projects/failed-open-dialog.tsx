@@ -147,7 +147,9 @@ function Controls({
   const offersRepair = repairSentences.length > 0 && onOpenWithRepair !== undefined
   return (
     <div className="failed-open-dialog__buttons">
-      <Button onClick={onClose}>Close</Button>
+      <Button onClick={onClose} data-initial-focus>
+        Close
+      </Button>
       {offersRetry && <Button onClick={onTryAgain}>Try again</Button>}
       {onExport && <Button onClick={onExport}>Export</Button>}
       {offersRepair && (

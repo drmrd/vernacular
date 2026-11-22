@@ -6,15 +6,22 @@ const FOCUSABLE_SELECTOR = [
   'select:not([disabled])',
   'textarea:not([disabled])',
   'a[href]',
+  'summary',
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
 const PROGRAMMATIC_FOCUS_ONLY = '-1'
+const INITIAL_FOCUS_ATTRIBUTE = 'data-initial-focus'
 
 function focusableDescendants(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
     (element) => element.getAttribute('tabindex') !== PROGRAMMATIC_FOCUS_ONLY,
   )
+}
+
+function firstFocusTarget(container: HTMLElement): HTMLElement | undefined {
+  const focusable = focusableDescendants(container)
+  return focusable.find((element) => element.hasAttribute(INITIAL_FOCUS_ATTRIBUTE)) ?? focusable[0]
 }
 
 function tabTarget(
@@ -143,7 +150,8 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  * Makes the element that holds the returned ref a modal focus trap for as long as it is mounted.
  *
  * On mount it remembers the focused element as the opener and focuses the first focusable
- * descendant. While it is mounted:
+ * descendant, or the focusable descendant that carries the `data-initial-focus` attribute when
+ * there is one. A `summary` counts as focusable. While it is mounted:
  * - Tab and Shift+Tab wrap inside the container. When focus is on none of the focusable
  *   descendants (on the container itself, say), Tab goes to the first and Shift+Tab to the last.
  * - The container can hold focus: it gets `tabindex="-1"` unless it already has a tabindex, so a
@@ -177,7 +185,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T
     }
     const opener = document.activeElement as HTMLElement | null
     const undoFocusable = makeContainerFocusable(container)
-    focusableDescendants(container)[0]?.focus()
+    firstFocusTarget(container)?.focus()
     const onKeyDown = (event: KeyboardEvent) => trapTab(event, container)
     const onMouseDown = (event: MouseEvent) => keepFocusOnPressOutside(event, container)
     const onBodyKeyDown = (event: KeyboardEvent) => pullFocusIntoTrap(event, container)
