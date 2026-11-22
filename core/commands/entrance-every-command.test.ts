@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { CommandRegistry } from './command-registry'
-import { Dispatcher } from './dispatcher'
 import { countMarkedDoors } from './entrance-rule'
-import { registerAllProjectCommands } from './handlers/register-all-project-commands'
-import { COMMAND_SAMPLES } from './testing/command-samples'
 import { FIXTURE_IDS } from './testing/extensions-fixture'
+import { fullRegistry, resultOfSample } from './testing/sample-results'
 import { schemaFixture } from './testing/schema-fixture'
 import { createEmptyProject, createFloor, createOpening, createWall } from '../model/factories'
 import type { Opening, Project } from '../model/types'
@@ -14,10 +11,6 @@ const WALL_LENGTH_MM = 8000
 const POSITION_STEP_MM = 1000
 const DOOR_TYPE = 'single-swing-door'
 const WINDOW_TYPE = 'double-hung-window'
-
-function fullRegistry(): CommandRegistry<Project> {
-  return registerAllProjectCommands(new CommandRegistry<Project>())
-}
 
 function allOpenings(project: Project): Opening[] {
   return project.floors.flatMap((floor) => floor.openings)
@@ -43,21 +36,6 @@ function projectWith(specs: ReadonlyArray<{ type: string; entrance?: true }>): P
     return spec.entrance === undefined ? created : { ...created, entrance: spec.entrance }
   })
   project.floors = [{ ...createFloor('Ground', { id: 'ground', walls: [wall] }), openings }]
-  return project
-}
-
-/** Applies the sample command of `type` to a fresh copy of the fixture. */
-function resultOfSample(registry: CommandRegistry<Project>, type: string): Project {
-  const sample = COMMAND_SAMPLES[type]
-  if (sample === undefined) {
-    throw new Error(`no sample parameters for the registered command ${type}`)
-  }
-  const project = schemaFixture()
-  new Dispatcher<Project>(project, registry).dispatch({
-    type,
-    params: sample(project),
-    description: type,
-  })
   return project
 }
 
