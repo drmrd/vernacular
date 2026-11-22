@@ -1,50 +1,56 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PerceivedColorContext } from '../../bridge/react/perceived-color-context'
 import { createPerceivedColorStore } from '../../bridge/perceived-color/perceived-color-store'
+import {
+  SurfaceSelectionProvider,
+  createSurfaceSelectionStore,
+  type SurfaceSelectionStore,
+} from '../../bridge'
 import { colorFromHex } from '../../core'
 import { RoomFinishSection } from './room-finish-section'
 
 afterEach(cleanup)
 
-describe('RoomFinishSection', () => {
-  it('renders Floor and Ceiling chips for the room floor surfaces', () => {
-    render(
+interface SectionOptions {
+  store?: SurfaceSelectionStore
+  roomsOnFloor?: number
+}
+
+function renderSection({
+  store = createSurfaceSelectionStore(),
+  roomsOnFloor,
+}: SectionOptions = {}) {
+  return render(
+    <SurfaceSelectionProvider store={store}>
       <RoomFinishSection
         floorId="g"
         treatmentFor={() => undefined}
         recent={[]}
         dispatch={vi.fn()}
-      />,
-    )
+        roomsOnFloor={roomsOnFloor}
+      />
+    </SurfaceSelectionProvider>,
+  )
+}
+
+describe('RoomFinishSection', () => {
+  it('renders Floor and Ceiling chips for the room floor surfaces', () => {
+    renderSection()
     expect(screen.getByRole('button', { name: 'Floor' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ceiling' })).toBeInTheDocument()
   })
 
   it('labels the section as covering every room on the floor, not just the selected one', () => {
-    render(
-      <RoomFinishSection
-        floorId="g"
-        treatmentFor={() => undefined}
-        recent={[]}
-        dispatch={vi.fn()}
-      />,
-    )
+    renderSection()
     const label = screen.getByText('Finish (all rooms on this floor)')
     expect(label).toHaveClass('ds-section-label')
     expect(label).not.toHaveClass('finish-section__label')
   })
 
   it('always shows a hint that floor and ceiling finishes cover every room on the floor', () => {
-    render(
-      <RoomFinishSection
-        floorId="g"
-        treatmentFor={() => undefined}
-        recent={[]}
-        dispatch={vi.fn()}
-      />,
-    )
+    renderSection()
     const hint = screen.getByText(
       'Floor and ceiling finishes cover every room on this floor, not just the selected one.',
     )
@@ -52,14 +58,7 @@ describe('RoomFinishSection', () => {
   })
 
   it('routes the surface chips through the design-system Segmented option vocabulary', () => {
-    render(
-      <RoomFinishSection
-        floorId="g"
-        treatmentFor={() => undefined}
-        recent={[]}
-        dispatch={vi.fn()}
-      />,
-    )
+    renderSection()
 
     expect(screen.getByRole('group', { name: 'Surface' })).toBeInTheDocument()
 
@@ -78,14 +77,7 @@ describe('RoomFinishSection', () => {
 
   it('switches the active surface when Ceiling is clicked', async () => {
     const user = userEvent.setup()
-    render(
-      <RoomFinishSection
-        floorId="g"
-        treatmentFor={() => undefined}
-        recent={[]}
-        dispatch={vi.fn()}
-      />,
-    )
+    renderSection()
 
     await user.click(screen.getByRole('button', { name: 'Ceiling' }))
 
@@ -107,12 +99,14 @@ describe('RoomFinishSection perceived-color readout', () => {
 
     render(
       <PerceivedColorContext.Provider value={perceivedColorStore}>
-        <RoomFinishSection
-          floorId="g"
-          treatmentFor={() => undefined}
-          recent={[]}
-          dispatch={vi.fn()}
-        />
+        <SurfaceSelectionProvider store={createSurfaceSelectionStore()}>
+          <RoomFinishSection
+            floorId="g"
+            treatmentFor={() => undefined}
+            recent={[]}
+            dispatch={vi.fn()}
+          />
+        </SurfaceSelectionProvider>
       </PerceivedColorContext.Provider>,
     )
 
@@ -124,14 +118,7 @@ describe('RoomFinishSection perceived-color readout', () => {
     // render without a PerceivedColorContext.Provider. If mounting the
     // readout changed what is rendered in that unwrapped case, every one of
     // those story baselines would move the moment the readout landed.
-    render(
-      <RoomFinishSection
-        floorId="g"
-        treatmentFor={() => undefined}
-        recent={[]}
-        dispatch={vi.fn()}
-      />,
-    )
+    renderSection()
 
     expect(document.querySelector('[data-perceived]')).toBeNull()
   })
@@ -139,15 +126,7 @@ describe('RoomFinishSection perceived-color readout', () => {
 
 describe('RoomFinishSection when the floor holds more than one room', () => {
   it('hides the surface switch and paint controls and shows a note that painting here would repaint every room', () => {
-    render(
-      <RoomFinishSection
-        floorId="g"
-        treatmentFor={() => undefined}
-        recent={[]}
-        dispatch={vi.fn()}
-        roomsOnFloor={2}
-      />,
-    )
+    renderSection({ roomsOnFloor: 2 })
 
     expect(screen.queryByRole('group', { name: 'Surface' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Floor' })).toBeNull()
@@ -160,20 +139,83 @@ describe('RoomFinishSection when the floor holds more than one room', () => {
   })
 
   it('still shows the shared-scope hint even when the note replaces the paint controls', () => {
-    render(
-      <RoomFinishSection
-        floorId="g"
-        treatmentFor={() => undefined}
-        recent={[]}
-        dispatch={vi.fn()}
-        roomsOnFloor={2}
-      />,
-    )
+    renderSection({ roomsOnFloor: 2 })
 
     expect(
       screen.getByText(
         'Floor and ceiling finishes cover every room on this floor, not just the selected one.',
       ),
     ).toBeInTheDocument()
+  })
+})
+
+describe('RoomFinishSection follows the active surface', () => {
+  it('shows Ceiling as chosen when the active surface is the ceiling of its floor', () => {
+    const store = createSurfaceSelectionStore()
+    store.select({ kind: 'ceiling', floorId: 'g' })
+
+    renderSection({ store })
+
+    expect(screen.getByRole('button', { name: 'Ceiling' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Floor' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('renders the perceived-color readout for the ceiling when the ceiling is active', () => {
+    const store = createSurfaceSelectionStore()
+    store.select({ kind: 'ceiling', floorId: 'g' })
+    const perceivedColorStore = createPerceivedColorStore()
+    const sample = colorFromHex('#c3b2a1')
+    perceivedColorStore.resolveSample({
+      surface: { kind: 'ceiling', floorId: 'g' },
+      color: sample,
+    })
+
+    render(
+      <PerceivedColorContext.Provider value={perceivedColorStore}>
+        <SurfaceSelectionProvider store={store}>
+          <RoomFinishSection
+            floorId="g"
+            treatmentFor={() => undefined}
+            recent={[]}
+            dispatch={vi.fn()}
+          />
+        </SurfaceSelectionProvider>
+      </PerceivedColorContext.Provider>,
+    )
+
+    expect(screen.getByText(sample.srgbHex)).toHaveAttribute('data-perceived', sample.srgbHex)
+  })
+
+  it('shows Floor again when the active surface changes from the ceiling to another surface', () => {
+    const store = createSurfaceSelectionStore()
+    store.select({ kind: 'ceiling', floorId: 'g' })
+    renderSection({ store })
+    expect(screen.getByRole('button', { name: 'Ceiling' })).toHaveAttribute('aria-pressed', 'true')
+
+    act(() => store.select({ kind: 'wall-face', wallId: 'w1', side: 'left' }))
+
+    expect(screen.getByRole('button', { name: 'Floor' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Ceiling' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('makes the ceiling of its floor the active surface when Ceiling is chosen', async () => {
+    const user = userEvent.setup()
+    const store = createSurfaceSelectionStore()
+    renderSection({ store })
+
+    await user.click(screen.getByRole('button', { name: 'Ceiling' }))
+
+    expect(store.getActiveSurface()).toEqual({ kind: 'ceiling', floorId: 'g' })
+  })
+
+  it('makes the floor of its floor the active surface when Floor is chosen', async () => {
+    const user = userEvent.setup()
+    const store = createSurfaceSelectionStore()
+    store.select({ kind: 'ceiling', floorId: 'g' })
+    renderSection({ store })
+
+    await user.click(screen.getByRole('button', { name: 'Floor' }))
+
+    expect(store.getActiveSurface()).toEqual({ kind: 'floor', floorId: 'g' })
   })
 })

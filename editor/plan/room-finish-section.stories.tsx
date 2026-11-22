@@ -1,11 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { within, expect, userEvent, fn } from 'storybook/test'
+import { SurfaceSelectionProvider, createSurfaceSelectionStore } from '../../bridge'
 import { RoomFinishSection } from './room-finish-section'
 
 const meta: Meta<typeof RoomFinishSection> = {
   title: 'Editor/RoomFinishSection',
   component: RoomFinishSection,
   tags: ['autodocs'],
+  decorators: [
+    (story) => (
+      <SurfaceSelectionProvider store={createSurfaceSelectionStore()}>
+        {story()}
+      </SurfaceSelectionProvider>
+    ),
+  ],
 }
 
 export default meta
