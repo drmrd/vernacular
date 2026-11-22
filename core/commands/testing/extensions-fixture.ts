@@ -90,6 +90,7 @@ const SITE_LONGITUDE = -71.06
 const OBSTRUCTION_EDGE_MM = 5000
 const OBSTRUCTION_HEIGHT_MM = 8000
 const FIXTURE_SCENE_TIME = '2026-06-21T12:00'
+const FIXTURE_OPENING_LIGHT_TIME = '2026-01-05T09:15'
 
 /** Adds an `extensions` value and the unknown probe key, both naming the carrier. */
 function probed<T extends object>(value: T, carrier: string): T {
@@ -229,6 +230,7 @@ export function createExtensionsFixture(): Project {
         ),
       },
       site: site(),
+      openingLight: probed({ observedAt: FIXTURE_OPENING_LIGHT_TIME }, 'OpeningLight'),
     },
     'root',
   )

@@ -77,7 +77,7 @@ function withoutTheEntranceField(schema: Json): Json {
 }
 
 describe('the main entrance field on an opening', () => {
-  it('survives an encode and a decode, and the written bytes name revision 2', () => {
+  it('survives an encode and a decode, and the written bytes name the current revision', () => {
     const project = projectWithOneDoor(true)
 
     const written = encodeDocument(project, undefined)
@@ -85,7 +85,7 @@ describe('the main entrance field on an opening', () => {
 
     expect(decoded.project.floors[0]?.openings[0]?.entrance).toBe(true)
     expect(decoded.project.floors).toEqual(project.floors)
-    expect(metaOf(writtenDocument(project)).schemaRevision).toBe(REVISION_WITH_THE_ENTRANCE_FIELD)
+    expect(metaOf(writtenDocument(project)).schemaRevision).toBe(CURRENT_SCHEMA_REVISION)
   })
 
   it.each([
@@ -112,8 +112,8 @@ describe('the main entrance field on an opening', () => {
     expect(decoded.project.floors[0]?.openings[0]?.entrance).toBeUndefined()
   })
 
-  it('is the revision of this build', () => {
-    expect(CURRENT_SCHEMA_REVISION).toBe(REVISION_WITH_THE_ENTRANCE_FIELD)
+  it('is at or below the revision of this build', () => {
+    expect(CURRENT_SCHEMA_REVISION).toBeGreaterThanOrEqual(REVISION_WITH_THE_ENTRANCE_FIELD)
   })
 
   it('is the only change between the published revision 1 and revision 2 of the schema', () => {
