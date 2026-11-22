@@ -36,6 +36,18 @@ export function buildOpeningOfWidth(width: number): Opening {
   })
 }
 
+export function buildOpeningOfType(type: string, sillHeight: number = SILL_HEIGHT_MM): Opening {
+  return createOpening({
+    type,
+    hostWallId: 'w1',
+    position: 1000,
+    width: WIDTH_MM,
+    height: HEIGHT_MM,
+    sillHeight,
+    id: OPENING_ID,
+  })
+}
+
 export function renderInspector(
   dispatch: (command: unknown) => void,
   units: 'metric' | 'imperial' = UNITS,

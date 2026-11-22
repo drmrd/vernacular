@@ -48,3 +48,24 @@ export function doorFamilyOfType(typeId: string): DoorFamily | undefined {
 export function openingTypeHasFill(typeId: string): boolean {
   return getEntry(builtinElementTypes, typeId)?.scene3D.fill !== undefined
 }
+
+const hingedFamilies: ReadonlySet<OpeningFamily> = new Set<OpeningFamily>([
+  'swing',
+  'fold',
+  'pivot',
+])
+
+/**
+ * Whether the opening type has a hinge side to choose: a swing, fold, or pivot opening, or a
+ * casement window (a crank window hinged on its jamb). Matches the hinge use in
+ * `core/scene/opening-motion.ts` (`jambHinge` and `crankHinge`); every other kind moves the same
+ * either way. Returns `false` for an unknown id or a type that is not an opening.
+ */
+export function openingTypeHasHingeSide(typeId: string): boolean {
+  const opening = getEntry(builtinElementTypes, typeId)?.opening
+  if (opening === undefined) return false
+  return (
+    hingedFamilies.has(opening.family) ||
+    (opening.family === 'window-crank' && opening.hingeEdge === 'jamb')
+  )
+}

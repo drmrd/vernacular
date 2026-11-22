@@ -17,6 +17,8 @@ sourceFiles:
     bridge/react/scene-object-controls.tsx,
     bridge/react/reason-description.tsx,
     editor/tools/tools-panel.tsx,
+    editor/plan/opening-controls.tsx,
+    core/registries/opening-kind.ts,
   ]
 status: current
 updated: 2026-11-21
@@ -31,6 +33,17 @@ Accepted on 2026-11-21 for issue #779. The 3D toolbar buttons follow it.
 Update, 2026-11-21: issue #1023 brought the tools panel chips under the same pattern. The toolbar
 button and the chip now share `ReasonDescription` (`bridge/react/reason-description.tsx`), which
 renders the hidden span. An empty reason renders no span, so the control gets no description.
+
+Update, 2026-11-21: the hinge control in the opening inspector. The rule now applies beyond the
+toolbar. The Flip hinge button in the opening inspector stays focusable and gives the reason "This
+kind of opening has no hinge side to choose." when the opening kind has no hinge side. It stays
+available for the swing, fold, and pivot families and for the casement window (`window-crank` with
+`hingeEdge: 'jamb'`), because only there does the hinge change the plan symbol or the 3D motion.
+For the other kinds, such as hung and sliding windows, fixed windows, awning and hopper windows,
+sliding doors, and cased openings, a flip changes nothing visible. The rule lives in
+`openingTypeHasHingeSide` in `core/registries/opening-kind.ts`, and the shared button is in
+`editor/plan/opening-controls.tsx`. The flip command itself is unchanged, so a saved file or an
+undo step that flips a hinge still works.
 
 ## Context
 

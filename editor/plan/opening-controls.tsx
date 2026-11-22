@@ -4,6 +4,7 @@ import {
   builtinElementTypes,
   flipOpening,
   getEntry,
+  openingTypeHasHingeSide,
   removeOpening,
   type Command,
   type Opening,
@@ -34,6 +35,49 @@ function facingControl(typeId: string, wallHasOneRoomSide: boolean): FacingContr
   }
 }
 
+const NO_HINGE_SIDE_REASON = 'This kind of opening has no hinge side to choose.'
+
+/** The hinge button says why it is unavailable on a kind that draws and moves the same either way. */
+function hingeDisabledReason(typeId: string): string | undefined {
+  return openingTypeHasHingeSide(typeId) ? undefined : NO_HINGE_SIDE_REASON
+}
+
+interface UnavailableReasonButtonProps {
+  label: string
+  unavailableReason: string | undefined
+  onActivate: () => void
+}
+
+/**
+ * A button that stays focusable when it cannot act: `aria-disabled` marks it inert, and the reason
+ * is both its hover text and a hidden description that `aria-describedby` points at.
+ */
+function UnavailableReasonButton({
+  label,
+  unavailableReason,
+  onActivate,
+}: UnavailableReasonButtonProps): ReactElement {
+  const reasonId = useId()
+  const unavailable = unavailableReason !== undefined
+  return (
+    <>
+      <Button
+        variant="neutral"
+        aria-disabled={unavailable ? true : undefined}
+        aria-describedby={unavailable ? reasonId : undefined}
+        title={unavailableReason}
+        onClick={() => {
+          if (unavailable) return
+          onActivate()
+        }}
+      >
+        {label}
+      </Button>
+      <ReasonDescription id={reasonId} reason={unavailableReason} />
+    </>
+  )
+}
+
 interface OpeningControlsProps {
   opening: Opening
   floorId: string
@@ -47,31 +91,20 @@ export function OpeningControls({
   wallHasOneRoomSide,
   dispatch,
 }: OpeningControlsProps): ReactElement {
-  const reasonId = useId()
   const { label, disabledReason } = facingControl(opening.type, wallHasOneRoomSide)
-  const unavailable = disabledReason !== undefined
   return (
     <Stack direction="horizontal" gap="space-3">
       <Stack direction="horizontal" gap="space-2">
-        <Button
-          variant="neutral"
-          onClick={() => dispatch(flipOpening(floorId, opening.id, 'hinge'))}
-        >
-          Flip hinge
-        </Button>
-        <Button
-          variant="neutral"
-          aria-disabled={unavailable ? true : undefined}
-          aria-describedby={unavailable ? reasonId : undefined}
-          title={disabledReason}
-          onClick={() => {
-            if (unavailable) return
-            dispatch(flipOpening(floorId, opening.id, 'facing'))
-          }}
-        >
-          {label}
-        </Button>
-        <ReasonDescription id={reasonId} reason={disabledReason} />
+        <UnavailableReasonButton
+          label="Flip hinge"
+          unavailableReason={hingeDisabledReason(opening.type)}
+          onActivate={() => dispatch(flipOpening(floorId, opening.id, 'hinge'))}
+        />
+        <UnavailableReasonButton
+          label={label}
+          unavailableReason={disabledReason}
+          onActivate={() => dispatch(flipOpening(floorId, opening.id, 'facing'))}
+        />
       </Stack>
       <RemoveControl
         targetId={opening.id}

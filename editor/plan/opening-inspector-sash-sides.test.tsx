@@ -1,21 +1,12 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createOpening } from '../../core'
-import { HEIGHT_MM, OPENING_ID, WIDTH_MM, renderInspector } from './opening-inspector-test-support'
+import { buildOpeningOfType, renderInspector } from './opening-inspector-test-support'
 
 const HUNG_WINDOW_SILL_MM = 900
 
 function buildHungWindow() {
-  return createOpening({
-    type: 'double-hung-window',
-    hostWallId: 'w1',
-    position: 1000,
-    width: WIDTH_MM,
-    height: HEIGHT_MM,
-    sillHeight: HUNG_WINDOW_SILL_MM,
-    id: OPENING_ID,
-  })
+  return buildOpeningOfType('double-hung-window', HUNG_WINDOW_SILL_MM)
 }
 
 afterEach(cleanup)
