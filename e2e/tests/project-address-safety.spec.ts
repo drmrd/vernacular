@@ -27,7 +27,7 @@ const HOSTILE_ADDRESSES = [
   `#/project/${'a'.repeat(OVERLONG_ID_LENGTH)}`,
 ]
 const UNKNOWN_ID = 'no-such-project'
-const PAGES_SHOWN = 'main[aria-label="Projects"], main[aria-label="Error"]'
+const PAGES_SHOWN = 'main[aria-label="Projects"]'
 
 // Loads the page anew at the given query and fragment. A move from a blank page is a full load,
 // never a move inside the history of the application.
@@ -41,7 +41,7 @@ async function expectStartShown(page: Page): Promise<void> {
   await expect.poll(() => addressFragment(page)).toBe('')
 }
 
-// Records the name of every page of projects or error that is added to the document, from the
+// Records the name of every page of projects that is added to the document, from the
 // first parse of each load on, also one that is removed before anyone could look.
 function recordPagesShown(selector: string): void {
   const shown: string[] = []

@@ -26,7 +26,6 @@ export const selectors = {
   drawReadout: (page: Page) => page.locator('.plan-overlay__readout'),
   projectMenu: (page: Page) => page.getByRole('button', { name: 'Project', exact: true }),
   projectMenuItem: (page: Page, name: string) => page.getByRole('menuitem', { name, exact: true }),
-  failureView: (page: Page) => page.getByRole('main', { name: 'Error' }),
   projectsPage: (page: Page) => page.getByRole('main', { name: 'Projects', exact: true }),
   // A card is the list item that holds the link named after its project.
   projectCard: (page: Page, name: string) =>
