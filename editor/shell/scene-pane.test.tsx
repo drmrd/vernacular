@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import type { SceneGraph } from '../../core'
-import type { LivePreviewBackend } from '../../bridge'
+import type { RenderBackend } from '../../bridge'
 import { ScenePane } from './scene-pane'
 
 // An empty scene graph: no walls/rooms/openings/stairs/furniture, so the real
@@ -38,9 +38,10 @@ const graphWithGeometry: SceneGraph = {
 // Mockable scene-graph state so each test can drive the empty/non-empty branch.
 let mockSceneGraph: SceneGraph = graphWithGeometry
 
-// Which backend the runtime can drive. The pane asks the bridge probe rather than
-// navigator directly, so each test states the runtime it means here.
-let mockBackend: LivePreviewBackend = 'webgpu'
+// Which backend the runtime can drive. The pane asks the engine probe through the
+// bridge barrel rather than navigator directly, so each test states the runtime it
+// means here.
+let mockBackend: RenderBackend = 'webgpu'
 
 // When true, the mocked SceneCanvas suspends on its first render (throws a
 // promise) before resolving to the live stub. This mimics how R3F's <Canvas>
@@ -72,7 +73,7 @@ vi.mock('../../bridge', () => ({
   },
   useSceneGraph: () => mockSceneGraph,
   useActiveFloorId: () => 'g',
-  detectLivePreviewBackend: () => mockBackend,
+  detectRenderBackend: () => mockBackend,
 }))
 
 afterEach(() => {

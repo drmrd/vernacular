@@ -50,7 +50,7 @@ vi.mock('../../bridge', () => ({
   ),
   useSceneGraph: () => mockSceneGraph,
   useActiveFloorId: () => 'g',
-  detectLivePreviewBackend: () => 'webgpu',
+  detectRenderBackend: () => 'webgpu',
 }))
 
 afterEach(() => {

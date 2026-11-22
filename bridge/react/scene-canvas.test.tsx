@@ -1,14 +1,14 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { SceneCanvas } from './scene-canvas'
-import type { LivePreviewBackend } from './live-preview-backend'
+import type { RenderBackend } from '../../engine'
 
-let mockBackend: LivePreviewBackend = 'unsupported'
+let mockBackend: RenderBackend = 'unsupported'
 
 // The probe is mocked at the module edge so each case states the runtime it means
 // rather than reaching for navigator and a canvas context.
-vi.mock('./live-preview-backend', () => ({
-  detectLivePreviewBackend: () => mockBackend,
+vi.mock('../../engine', () => ({
+  detectRenderBackend: () => mockBackend,
 }))
 
 // The live view mounts an R3F <Canvas>, which measures its parent through a
