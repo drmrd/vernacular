@@ -69,7 +69,9 @@ describe('The application over ports that keep nothing after the tab closes', ()
     renderApp(createTestPorts())
 
     await findTheShell()
-    expect(await screen.findByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
+    expect(
+      within(await screen.findByRole('alert')).getByText(BANNER_WITH_FOLDERS),
+    ).toBeInTheDocument()
   })
 
   it('says so without the folder offer where the browser opens no folders', async () => {
@@ -79,7 +81,7 @@ describe('The application over ports that keep nothing after the tab closes', ()
 
     await findTheShell()
     const banner = await screen.findByRole('alert')
-    expect(banner).toHaveTextContent(BANNER_WITHOUT_FOLDERS)
+    expect(within(banner).getByText(BANNER_WITHOUT_FOLDERS)).toBeInTheDocument()
     expect(banner).not.toHaveTextContent(/open a folder/i)
   })
 
@@ -98,12 +100,16 @@ describe('The application over ports that keep nothing after the tab closes', ()
     stubCapableStorage()
     offerFolderAccess()
     const { bar } = renderAppAt(createTestPorts(), '')
-    expect(await screen.findByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
+    expect(
+      within(await screen.findByRole('alert')).getByText(BANNER_WITH_FOLDERS),
+    ).toBeInTheDocument()
 
     await visit(bar, PROJECTS_ADDRESS)
 
     const page = await findTheProjectsPage()
-    expect(await screen.findByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
+    expect(
+      within(await screen.findByRole('alert')).getByText(BANNER_WITH_FOLDERS),
+    ).toBeInTheDocument()
     expect(within(page).queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -137,7 +143,9 @@ describe('The application whose builder of the ports rejects', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const { bar } = renderWithNoStorage()
     expect(await findTheShell()).toBeInTheDocument()
-    expect(await screen.findByRole('alert')).toHaveTextContent(BANNER_WITHOUT_FOLDERS)
+    expect(
+      within(await screen.findByRole('alert')).getByText(BANNER_WITHOUT_FOLDERS),
+    ).toBeInTheDocument()
     await editAndWaitForTheStore()
     await visit(bar, PROJECTS_ADDRESS)
 

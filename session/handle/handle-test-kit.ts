@@ -281,8 +281,8 @@ class RecordingLocks extends InMemoryProjectLockPort {
 }
 
 /** Ports whose store and locks report each call to `log`, in the order of the calls. */
-export function recordingPorts(log: string[]): TestPorts {
-  const ports = createTestPorts()
+export function recordingPorts(log: string[], options: TestPortsOptions = {}): TestPorts {
+  const ports = createTestPorts(options)
   recordStoreCalls(ports.workspace, log)
   return { ...ports, locks: new RecordingLocks(ports.lockRegistry, log) }
 }

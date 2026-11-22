@@ -56,7 +56,7 @@ describe('the ports that the builder gives', () => {
     expect(hasSwitchedToMemory(ports.index)).toBe(true)
   })
 
-  it('the durable ports are not built when the lookup of the storage rejects', async () => {
+  it('rejects when the lookup of the storage rejects', async () => {
     const failure = new Error('no storage backend')
     vi.mocked(resolveProjectStorage).mockRejectedValueOnce(failure)
 

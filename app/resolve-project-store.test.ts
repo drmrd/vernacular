@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { IndexedDbProjectStore } from '../storage'
 import { resolveProjectStorage } from './resolve-project-store'
 
 afterEach(() => {
@@ -10,7 +11,7 @@ describe('The lookup of the project storage', () => {
     vi.stubGlobal('navigator', {})
     vi.stubGlobal('indexedDB', undefined)
 
-    await expect(resolveProjectStorage()).rejects.toBeInstanceOf(Error)
+    await expect(resolveProjectStorage()).rejects.toThrow(/neither/)
   })
 
   it('resolves on a host with IndexedDB alone', async () => {
@@ -19,7 +20,7 @@ describe('The lookup of the project storage', () => {
 
     const storage = await resolveProjectStorage()
 
-    expect(storage.store).toBeDefined()
+    expect(storage.store).toBeInstanceOf(IndexedDbProjectStore)
     expect(storage.assets).toBeDefined()
   })
 })

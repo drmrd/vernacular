@@ -3,7 +3,12 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, act, within } from '@testing-library/react'
 import { App } from './app'
 import { reconcileIndex } from '../session'
-import { createTestPorts, holdNextRead, type TestPorts } from '../session/handle/handle-test-kit'
+import {
+  createTestPorts,
+  holdNextRead,
+  recordingPorts,
+  type TestPorts,
+} from '../session/handle/handle-test-kit'
 import {
   FAILED_ID,
   LOADING_TEXT,
@@ -35,24 +40,6 @@ async function portsThatFailOnceOnAKeptProject(): Promise<TestPorts> {
   await plantProject(ports, FAILED_ID, KEPT_NAME)
   await reconcileIndex(ports)
   vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
-  return ports
-}
-
-/** Durable ports whose locks put `lock:<id>` and `unlock:<id>` in `log`, in the order of the calls. */
-function durableRecordingPorts(log: string[]): TestPorts {
-  const ports = createTestPorts({ durable: true })
-  const acquire = ports.locks.tryAcquire.bind(ports.locks)
-  vi.spyOn(ports.locks, 'tryAcquire').mockImplementation(async (id) => {
-    log.push(`lock:${id}`)
-    const hold = await acquire(id)
-    if (hold === undefined) return undefined
-    return {
-      release: () => {
-        log.push(`unlock:${id}`)
-        return hold.release()
-      },
-    }
-  })
   return ports
 }
 
@@ -112,7 +99,7 @@ describe('The application boots from its ports', () => {
   it('under StrictMode the application opens its project once and shows the shell', async () => {
     stubCapableStorage()
     const log: string[] = []
-    const ports = durableRecordingPorts(log)
+    const ports = recordingPorts(log, { durable: true })
 
     render(
       <StrictMode>
@@ -129,7 +116,7 @@ describe('The application boots from its ports', () => {
   it('opens the project again after an unmount and a new render on the same ports', async () => {
     stubCapableStorage()
     const log: string[] = []
-    const ports = durableRecordingPorts(log)
+    const ports = recordingPorts(log, { durable: true })
     await plantProject(ports, FAILED_ID, KEPT_NAME)
     const { unmount } = renderApp(ports)
     await expectOpenProject(KEPT_NAME)

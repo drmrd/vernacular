@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { NotificationProvider, BannerRegion } from '../editor/design-system'
@@ -50,14 +50,14 @@ describe('useDegradedStorageBanner', () => {
   it('says that projects last until the tab closes, and offers a folder, where the browser opens folders', () => {
     renderHarness({ handle: TAB_ONLY, capabilities: capabilitiesWith(true) })
 
-    expect(screen.getByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
+    expect(within(screen.getByRole('alert')).getByText(BANNER_WITH_FOLDERS)).toBeInTheDocument()
   })
 
   it('says the same without the folder offer where the browser opens no folders', () => {
     renderHarness({ handle: TAB_ONLY, capabilities: capabilitiesWith(false) })
 
     const alert = screen.getByRole('alert')
-    expect(alert).toHaveTextContent(BANNER_WITHOUT_FOLDERS)
+    expect(within(alert).getByText(BANNER_WITHOUT_FOLDERS)).toBeInTheDocument()
     expect(alert).not.toHaveTextContent(/open a folder/i)
   })
 
@@ -84,7 +84,7 @@ describe('useDegradedStorageBanner', () => {
 
     show({ handle: TAB_ONLY, capabilities: capabilitiesWith(true) })
 
-    expect(screen.getByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
+    expect(within(screen.getByRole('alert')).getByText(BANNER_WITH_FOLDERS)).toBeInTheDocument()
   })
 
   it('can be dismissed', () => {
@@ -110,6 +110,6 @@ describe('useDegradedStorageBanner', () => {
 
     show({ handle: KEPT, capabilities })
 
-    expect(screen.getByRole('alert')).toHaveTextContent(BANNER_WITH_FOLDERS)
+    expect(within(screen.getByRole('alert')).getByText(BANNER_WITH_FOLDERS)).toBeInTheDocument()
   })
 })
