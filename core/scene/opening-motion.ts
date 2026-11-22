@@ -71,6 +71,35 @@ const SINGLE_PART = 1
 const PAIRED_PARTS = 2
 
 const NO_MOTION: NoMotion = { kind: 'none' }
+const HUNG_SASHES: readonly HungSash[] = ['lower', 'upper']
+const PRIMARY_ONLY: readonly OpeningPartId[] = ['primary']
+
+/**
+ * The moving parts of an opening type. A hung window has a lower and an upper sash, less the
+ * one its type fixes shut; every other type moves its one primary part.
+ */
+export function openingParts(type: string): readonly OpeningPartId[] {
+  const params = getEntry(builtinElementTypes, type)?.opening
+  if (params?.family !== 'window-hung') {
+    return PRIMARY_ONLY
+  }
+  return HUNG_SASHES.filter((sash) => sash !== params.fixedSash)
+}
+
+/**
+ * The motion of one part of an opening. The upper sash of a hung window lowers by the rise of
+ * the lower sash; a part the type lacks does not move.
+ */
+export function openingPartMotion(
+  type: string,
+  opening: OpeningSceneNode,
+  part: OpeningPartId,
+): OpeningMotion {
+  if (!openingParts(type).includes(part)) {
+    return NO_MOTION
+  }
+  return part === 'upper' ? upperSashLowering(opening) : openingMotion(type, opening)
+}
 
 /**
  * Resolves how an opening moves from its element type, reading the type's
@@ -203,4 +232,10 @@ function lowerSashRise(opening: OpeningSceneNode): SlideMotion {
     partId: 'lower',
     partCount: SINGLE_PART,
   }
+}
+
+/** The upper sash slides down by the same rise the lower sash slides up. */
+function upperSashLowering(opening: OpeningSceneNode): SlideMotion {
+  const rise = lowerSashRise(opening)
+  return { ...rise, travel: { x: 0, y: 0 - rise.travel.y, z: 0 }, partId: 'upper' }
 }
