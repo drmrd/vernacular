@@ -1,4 +1,4 @@
-import type * as THREE from 'three'
+import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
 import { openingMotion, type OpeningPose, type OpeningSceneNode } from '../../core'
@@ -14,6 +14,7 @@ import {
   expectSameBox,
   fillOf,
   hungWindow,
+  lowestPointOfSash,
   meshesOf,
   rootWith,
   singleSwingDoor,
@@ -64,9 +65,7 @@ describe('applyOpeningPose on a double-hung window', () => {
 
     const root = rootWith(node)
     applyOpeningPose(root, node, { upper: 1 })
-    const upper = meshesOf(fillOf(root, node)).filter((mesh) => openingFillSashOf(mesh) === 'upper')
-    expect(upper.length).toBeGreaterThan(0)
-    const lowest = Math.min(...upper.map((mesh) => worldBoxOf(mesh).min.y))
+    const lowest = lowestPointOfSash(fillOf(root, node), 'upper')
     expect(lowest).toBeCloseTo(LOWEST_UPPER_POINT_WHEN_LOWERED, PRECISION)
     expect(lowest).toBeGreaterThanOrEqual(SILL - TOLERANCE)
   })
@@ -138,8 +137,13 @@ describe('applyOpeningPose on other openings', () => {
   })
 
   it('does nothing for an opening that is not in the scene', () => {
-    const root = rootWith(singleSwingDoor())
+    const door = singleSwingDoor()
+    const root = rootWith(door)
 
     expect(() => applyOpeningPose(root, doubleHungWindow(), { lower: 1 })).not.toThrow()
+
+    const fill = fillOf(root, door)
+    expect(fill.position.length()).toBe(0)
+    expect(fill.quaternion.equals(new THREE.Quaternion())).toBe(true)
   })
 })

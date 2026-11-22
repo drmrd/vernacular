@@ -82,8 +82,8 @@ export function expectSameBox(actual: THREE.Box3, expected: THREE.Box3): void {
   }
 }
 
-export function lowestPointOfLowerSash(group: THREE.Object3D): number {
-  const lower = meshesOf(group).filter((mesh) => openingFillSashOf(mesh) === 'lower')
-  expect(lower.length).toBeGreaterThan(0)
-  return Math.min(...lower.map((mesh) => worldBoxOf(mesh).min.y))
+export function lowestPointOfSash(group: THREE.Object3D, sash: 'lower' | 'upper'): number {
+  const meshes = meshesOf(group).filter((mesh) => openingFillSashOf(mesh) === sash)
+  expect(meshes.length).toBeGreaterThan(0)
+  return Math.min(...meshes.map((mesh) => worldBoxOf(mesh).min.y))
 }

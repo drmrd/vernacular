@@ -15,7 +15,7 @@ import {
   expectSameBox,
   fillOf,
   hungWindow,
-  lowestPointOfLowerSash,
+  lowestPointOfSash,
   meshesOf,
   rootWith,
   singleSwingDoor,
@@ -150,7 +150,7 @@ describe.each(['double-hung-window', 'single-hung-window'] as const)(
 
       applyOpeningMotionForNode(root, node, 1)
 
-      const lowest = lowestPointOfLowerSash(fillOf(root, node))
+      const lowest = lowestPointOfSash(fillOf(root, node), 'lower')
       expect(lowest).toBeGreaterThan(SILL)
       expect(lowest).toBeLessThanOrEqual(SILL + HEIGHT / 2 + TOLERANCE)
     })
@@ -174,12 +174,12 @@ describe.each(['double-hung-window', 'single-hung-window'] as const)(
     it('raises the lower sash half as far at half open', () => {
       const root = rootWith(node)
       const group = fillOf(root, node)
-      const shutLowest = lowestPointOfLowerSash(group)
+      const shutLowest = lowestPointOfSash(group, 'lower')
 
       applyOpeningMotionForNode(root, node, 1)
-      const fullRise = lowestPointOfLowerSash(group) - shutLowest
+      const fullRise = lowestPointOfSash(group, 'lower') - shutLowest
       applyOpeningMotionForNode(root, node, 0.5)
-      const halfRise = lowestPointOfLowerSash(group) - shutLowest
+      const halfRise = lowestPointOfSash(group, 'lower') - shutLowest
 
       expect(fullRise).toBeGreaterThan(0)
       expect(halfRise).toBeCloseTo(fullRise / 2, PRECISION)
