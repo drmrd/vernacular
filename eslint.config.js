@@ -337,8 +337,8 @@ export const lintExceptions = [
     max: 152,
   },
   { file: 'engine/scene/wall-builder.test.ts', rule: 'max-lines', issue: 687, max: 356 },
-  { file: 'editor/shell/inspector.tsx', rule: 'max-lines', issue: 688, max: 404 },
-  { file: 'editor/shell/inspector.tsx', rule: 'max-lines-per-function', issue: 688, max: 87 },
+  { file: 'editor/shell/inspector.tsx', rule: 'max-lines', issue: 688, max: 403 },
+  { file: 'editor/shell/inspector.tsx', rule: 'max-lines-per-function', issue: 688, max: 86 },
   { file: 'editor/shell/inspector.tsx', rule: 'complexity', issue: 688, max: 11 },
   { file: 'editor/plan/hit-test.test.ts', rule: 'max-lines', issue: 688, max: 307 },
   {
