@@ -261,6 +261,8 @@ Needs: pull request 3. It can run beside pull request 2. It merges once it is bu
 
 Branch: `feat/main-entrance-mark`.
 
+Note 2026-11-21: the branch is `feat/mark-the-main-entrance`. `bridge/react/use-entrance.ts` was not built, because a hook inside the early returns of `SelectionInspector` breaks the rules of hooks. The editor calls `entranceOf(graph)` through `selectedOpeningContext`, and `bridge/react/use-front-direction.ts` is unchanged.
+
 Fence. May touch:
 
 - `core/model/types.ts` (`Opening.entrance`), `core/model/factories.ts`, `core/model/known-keys.json`, `core/format/generated/`, `schema/<version>/revision-<R>/` (new).

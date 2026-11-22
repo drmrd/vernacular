@@ -41,7 +41,7 @@ sourceFiles:
     core/registries/element-types.ts,
   ]
 status: current
-updated: 2026-06-07
+updated: 2026-11-21
 ---
 
 # ADR-0038: Openings as typed wall-hosted entities with operation-family plan symbols
@@ -200,4 +200,11 @@ deliberate and bounded:
   (the hit-test the openings join), ADR-0035 (the wall-editing interactions the
   opening editing mirrors), ADR-0037 (the additive-per-floor-entity and
   shared-traversal command pattern openings follow).
-  </content>
+
+## Amendment 2026-11-21: the main entrance mark
+
+`Opening` gains one optional field, `entrance`, which is `true` on the project's main entrance and
+absent on every other opening ([[ADR-0204-the-main-entrance-and-the-view-from-the-front]]). It
+applies to door kinds only: a mark on a window is ignored, and a retype to a window drops it. It is
+published as revision 2 of schema version 17, so a file without it loads with no migration step.
+The list of fields above is otherwise unchanged.

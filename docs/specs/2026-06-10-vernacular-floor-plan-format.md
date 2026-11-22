@@ -115,8 +115,9 @@ surface of the format.
   this version (section 6.1 reserves the path generalization).
 - **Opening**: `id`, `type` (an `ElementTypeRegistry` id), `hostWallId`, `position` along the
   host wall, `width`, `height`, `sillHeight`, and `orientation` (hinge end and facing). An
-  opening is typed at the element level; new opening kinds are registry additions, not schema
-  changes.
+  optional `entrance` (`true` only, and only on the one door that is the main entrance) marks the
+  entrance (schema version 17, revision 2; ADR-0204). An opening is typed at the element level;
+  new opening kinds are registry additions, not schema changes.
 - **Underlay**: `id`, `image` (an asset reference), source `width` and `height` in pixels,
   `placement` (`offset`, `millimetersPerPixel`, `rotation`), `opacity`, `visible`.
 - **Dimension**: `id`, `start`, `end`, `offset`.

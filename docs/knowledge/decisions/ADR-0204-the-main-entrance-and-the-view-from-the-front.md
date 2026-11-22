@@ -9,10 +9,19 @@ related:
     decisions/ADR-0218-exterior-walls-follow-the-rooms-along-the-wall,
     decisions/ADR-0205-opening-time-chosen-for-the-house,
     decisions/ADR-0139-plan-to-world-orientation,
+    decisions/ADR-0038-openings-doors-and-windows,
+    decisions/ADR-0179-domain-rules-in-command-handlers,
   ]
 sourceFiles:
   [
     core/scene/front-direction.ts,
+    core/scene/entrance-role.ts,
+    core/commands/entrance-rule.ts,
+    core/commands/handlers/entrance-commands.ts,
+    editor/commands/entrance-commands.ts,
+    editor/plan/opening-inspector-context.ts,
+    editor/plan/opening-inspector.tsx,
+    schema/17/revision-2/vernacular.schema.json,
     core/registries/opening-kind.ts,
     core/index.ts,
     core/scene/front-direction-test-support.ts,
@@ -37,9 +46,11 @@ Current. Accepted on 2026-11-21 with the entrance guess, the first part of #627.
 5.2 of `docs/specs/2026-11-19-first-view-of-a-project.md`, called the first-view specification
 below, and its plan, `docs/plans/2026-11-19-first-view-of-a-project.md`.
 
-The record covers the main entrance of a building and, later, the view that opens on it. This first
-section covers the guess. The mark on the door and the view from the front are the other two parts
-of #627, and each will add a dated section here.
+The record covers the main entrance of a building and, later, the view that opens on it. The
+sections up to "References" cover the guess. The mark on the door is the second part of #627. It
+adds the section "Extension, 2026-11-21: the mark" at the end, and where that section changes a
+sentence above, the sentence says so. The view from the front is the third part and will add a
+dated section of its own.
 
 This record amends [[ADR-0193-sample-daylight-for-a-project-with-no-site-location]], which carries
 a dated amendment that points here. It also explains three edits of the daylight specification,
@@ -119,7 +130,8 @@ With an exterior door, `door` is the opening node of the guessed door, with its 
 `floorId`, `source` is `'guessed'`, and `front` is the outward normal of the run that hosts it. With
 none, `door` is undefined, `source` is `'none'`, and `front` is `PLAN_DOWN`. The type already holds
 `'marked'`, the shape the first-view specification publishes, so the mark and the view build on a
-fixed shape. No code path returns it yet.
+fixed shape. When the guess landed, no code path returned `'marked'`. The mark does now (see the
+extension at the end).
 
 `frontDirection(input)` returns `entranceOf(input).front`. Its callers do not change: among them
 `useFrontDirection` in the bridge and `openingEnvironmentFor` in
@@ -188,8 +200,7 @@ record.
 
 ## What stays open
 
-- The mark on the door. A user will mark the main entrance in the door inspector, and a marked door
-  wins over the guess. That part of #627 extends this record and returns `'marked'`.
+- The mark on the door is built. See "Extension, 2026-11-21: the mark".
 - The view from the front: the camera pose the first view opens on and its preset. That part also
   extends this record.
 - `DIRECTION_TIE_TOLERANCE` is meant to move to the kernel tolerance module of #687.
@@ -235,3 +246,138 @@ On 2026-11-21, `pnpm exec vitest run` with the six files below and `--project un
   exterior door.
 - [[ADR-0205-opening-time-chosen-for-the-house]]: the opening time that reads the front.
 - [[ADR-0139-plan-to-world-orientation]]: the plan frame of the front.
+
+## Extension, 2026-11-21: the mark
+
+The owner marks one door as the main entrance, in the door inspector or from the command palette.
+While a door is marked, `entranceOf` returns it with `source: 'marked'`, and `frontDirection`
+follows it, so the sample sun does too. Clearing the mark brings back the guess above. The rules of
+the guess do not change. The mark only wins over them. This is the second part of #627, and it
+merges without waiting for #744 (answer 10 of the first-view specification).
+
+### The field and its revision
+
+`Opening` gains an optional field, `entrance?: true` (`core/model/types.ts`). It is `true` on the
+one main entrance door and absent everywhere else. It is never written as `false` or `null`, and
+clearing the mark removes the key. The schema publishes it as revision 2 of version 17, at
+`schema/17/revision-2/vernacular.schema.json`, and `CURRENT_SCHEMA_REVISION` is 2. The field is
+additive, so a file without it loads as it is, with no migration step ([[ADR-0178-schema-version-and-revision]]
+sets the revision rule). The table of known keys and the generated validators carry it, and
+the scene node of an opening copies it (`OpeningSceneNode.entrance`, set in `deriveOpeningNode`).
+
+The mark sits on the door and not in a reference from the project, as call 1 of the first-view
+specification says. A reference would need a floor id and an opening id, and it could name a door
+that no longer exists. The field moves with its door and goes with it on delete, and an undo of the
+delete brings both back.
+
+### The first marked door wins
+
+`entranceOf` looks for a marked door before it guesses. It takes the first marked door in document
+order: the floors in the order of the walls, then the openings in the order of their floor. A mark
+on an opening that is not a door is ignored. A marked door wins over the guess on any floor and on
+any wall, also when the wall is not an exterior run, for example while the rooms are not closed yet.
+
+### The front of a marked door
+
+The front of a marked door is the outward normal of its exterior run. When the door is not on an
+exterior run, the front is the side of the wall that faces away from the center of its floor. The
+center is the middle of the bounds of every wall endpoint on that floor. Of the door's two normals,
+the one with a positive dot product against the vector from that center to the door wins
+(`awayFromWallCenter`). When the two normals are equal within `DIRECTION_TIE_TOLERANCE`, the one
+nearer plan-down wins, and when they are equal on that too, the one nearer plan-right wins
+(`tieBrokenNormal`).
+
+### The two commands and the one-mark rule
+
+Two commands in `core/commands/handlers/entrance-commands.ts` change the mark.
+
+- `project/mark-main-entrance`, built by `markMainEntrance(floorId, openingId)`. It marks that door
+  and removes the mark from every other opening on every floor. A target that is missing or is not
+  a door changes nothing.
+- `project/clear-main-entrance`, built by `clearMainEntrance()`. It removes the mark everywhere.
+
+Both reassign the whole `floors` array, which is what the undo capture records, so one undo or one
+redo restores every earlier mark. The rule that a project holds at most one marked door lives in
+these handlers, in kind with [[ADR-0179-domain-rules-in-command-handlers]], and not in the shape of
+the file. A test, `core/commands/entrance-every-command.test.ts`, runs every registered command
+through the command samples on a project with a marked door and checks that at most one door is
+marked afterward, and only on a door.
+
+### What carries the mark
+
+A copy and a paste, a new floor, a new opening, and a retype to a window never carry the mark. The
+paste, add-opening, and add-floor handlers drop it, and `retypeOpening` drops it when the new type
+is not a door. A retype from one door kind to another keeps it, and so do a move, a resize, and
+every other command that rewrites an opening in place. All of these use one function,
+`withoutEntranceMark` in `core/commands/entrance-rule.ts`.
+
+### A file with several marks (open question 6, option a)
+
+Open question 6 of the first-view specification is settled on option (a). Loading reports nothing.
+The first marked door in document order wins everywhere, and the next command that marks or clears
+the entrance removes the extra marks, so the file heals with its first edit of the mark. The file
+passes the strict schema check, because a schema cannot say "at most one". Such a file can come from
+an edit outside Vernacular, or from a build older than the mark, which keeps the unknown field and
+copies it on paste. `countMarkedDoors(project)`, in the same file as `withoutEntranceMark`, counts
+the marked doors and is ready for the load checks of the command layer. Option (b), a notice when
+the project opens, would edit the document handle of the session layer, which is outside this
+change. The issue left the choice to the builder, and the pull request body names it so the owner
+can overrule it.
+
+### The inspector and the palette
+
+The opening inspector shows a "Main entrance" checkbox on a door and not on a window. The box is
+ticked on the marked door. Ticking it dispatches `markMainEntrance`, and unticking it dispatches
+`clearMainEntrance`. With no door marked, the door that the guess picks shows the box unticked,
+with the line "Vernacular treats this door as the entrance until one is marked." Another door shows
+neither the line nor a tick.
+
+What the inspector shows comes from `entranceRoleOf(entrance, floorId, openingId)` in
+`core/scene/entrance-role.ts`. It returns `'marked'`, `'guessed'`, or `'other'`, and it matches the
+door by floor and id together, because opening ids repeat across floors. A copy of the marked door
+on another floor shows no tick.
+
+The command palette lists "Mark as main entrance" (editor command id `mark-main-entrance`) while
+one door is selected and it is not already marked. Nothing, two items, a window, a wall, or the
+marked door itself leave it disabled. It is `createEntranceCommands()` in
+`editor/commands/entrance-commands.ts`, added to `createCommandSet`.
+
+### Where the build departs from the plan
+
+- The plan lists `bridge/react/use-entrance.ts`, a hook that memoizes `entranceOf`. It was not
+  built. `SelectionInspector` returns early for each kind of selection, and a hook called after
+  those returns would break the rules of hooks. `selectedOpeningContext` in
+  `editor/plan/opening-inspector-context.ts` calls `entranceOf(graph)` instead, with the graph the
+  inspector already holds. `bridge/react/use-front-direction.ts` is unchanged, because it already
+  calls `frontDirection` on the whole scene graph and so follows the mark.
+- The branch is `feat/mark-the-main-entrance`, not `feat/main-entrance-mark`.
+- The names the specification left to the builder are the two command ids above, the scene node
+  field `entrance`, and `countMarkedDoors`.
+
+### The inspector edits the opening on the active floor
+
+The work found a defect on `main` that the mark would have made worse. `singleSelectedOpening`, which
+resolves the selected id to a raw opening, searched the floors in order and ignored the active
+floor. A copied floor keeps its opening ids, so on the upper floor the inspector could show and
+edit the opening of the ground floor, and the mark would have landed on the wrong door. It now lives
+in `editor/plan/opening-inspector-context.ts`, takes the active floor id, and searches the active
+floor first and then the other floors in order. A `fix:` commit of its own covers it.
+
+One limit stays. A door that was selected on another floor stays selected, and so markable, after
+a floor switch, because the lookup falls back to the other floors. The inspector behaves the same
+way today. This is a known limit and not a decision to keep it.
+`openingWallHasOneRoomSide` has the same shape of problem, since it finds the opening node by id
+alone over the whole graph. It is not fixed here.
+
+### Consequences of the mark
+
+- A marked door turns the front, and with no stored location or north bearing the implied north and
+  the sample sun turn with it. Clearing the mark returns them to the guess.
+- A marked interior door now wins, so the case "a plan whose only door is interior" of ADR-0193
+  gives that door's front and not plan-down once the door is marked.
+- The story baseline of the default opening inspector moves with the checkbox, and the two new
+  stories, "Marked entrance" and "Guessed entrance", get baselines on CI. No scene harness
+  baseline moves.
+- The mark survives a reload, because it is part of the document. One
+  journey, `e2e/tests/journeys/mark-main-entrance.spec.ts`, marks a door, reloads, and finds the box
+  still ticked.

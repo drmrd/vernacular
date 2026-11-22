@@ -142,6 +142,7 @@ The document is written on the recommended answer of each question still open. T
 4. Settled on 19 November (answer 10). The guess and the mark land before the view from the front, each when it is built and reviewed.
 5. For the design of #744: the entry view needs the front wall solid at the entry distance for a house of any size. That rules out a fixed distance in millimetres. (a) Accept it as a fixed constraint of #744, which then measures relative to the model or the orbit target (call 26). (b) Leave it open, and accept that answer 4 may reopen when #744 is designed.
 6. A file with several marks. It can come from an edit outside Vernacular, or from a build older than the mark: such a build keeps the unknown field, and its paste copies it. (a) No report yet. The first marked door in document order wins everywhere, the next edit of the mark heals the file, and a check that counts marks is ready for the load checks of the command layer. (b) A notice when the project opens, which edits the document handle of the session layer.
+   Settled on 21 November on option (a), by the builder, since the issue left the choice open (ADR-0204, extension of 21 November). The owner can still overrule it.
 7. Which later items of section 9 get an issue now? (a) All five, in the `1.0` milestone, since none blocks the beta. (b) Only some, or later.
 
 ## 5. The design
@@ -226,6 +227,8 @@ When the guess is in use, the inspector of the guessed door shows the checkbox u
 The guess can move when the user adds a door, and the sample sun moves with it. ADR-0193 records that. A mark ends it.
 
 Left to the builder: the command names, the name of the field on the scene node, and the name of the check that counts marked doors.
+
+The builder chose these on 21 November (ADR-0204). The commands are `project/mark-main-entrance` and `project/clear-main-entrance`, built by `markMainEntrance(floorId, openingId)` and `clearMainEntrance()`. The scene node field is `entrance`, the same as the document field. The check is `countMarkedDoors`. The palette command has the id `mark-main-entrance` and the label "Mark as main entrance". The entrance role of a door in the inspector comes from `entranceRoleOf`, and `entranceOf` is called from the editor through `selectedOpeningContext`, with no `use-entrance` hook.
 
 ### 5.3 The entry view
 
