@@ -2,12 +2,10 @@ import type { ReactElement } from 'react'
 import type { Command, EnvironmentState, OpeningLight } from '../../core'
 import {
   clearOpeningLight,
-  DEFAULT_CLOUD_COVER,
-  formatObservationDateTime,
-  isObservationInstantIso,
-  observationInstantToIso,
-  parseObservationInstant,
+  formatObservationTime,
   setOpeningLight,
+  storedOpeningConditions,
+  viewingConditionsOf,
 } from '../../core'
 import { Button, Stack } from '../design-system'
 
@@ -18,8 +16,7 @@ export interface OpeningLightControlProps {
 }
 
 const DEFAULT_LIGHT_STATUS = 'Opens in the default light.'
-const PERCENT_PER_UNIT = 100
-const CLOCK_START = 11
+const PERCENT = 100
 const DAY_FORMAT = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'long',
@@ -30,18 +27,17 @@ const DAY_FORMAT = new Intl.DateTimeFormat('en-GB', {
 function cloudCoverWording(cloudCover: number): string {
   if (cloudCover === 0) return 'clear sky'
   if (cloudCover === 1) return 'overcast sky'
-  return `${Math.round(cloudCover * PERCENT_PER_UNIT)}% cloud cover`
+  return `${Math.round(cloudCover * PERCENT)}% cloud cover`
 }
 
-// A malformed stored light is ignored at open, so the status reads the default light.
+// The status states the light the project opens in, by the same rule the opening applies: an
+// absent or malformed stored light is ignored, so the status reads the default light.
 function statusWording(openingLight: OpeningLight | undefined): string {
-  if (openingLight === undefined || !isObservationInstantIso(openingLight.observedAt)) {
-    return DEFAULT_LIGHT_STATUS
-  }
-  const instant = parseObservationInstant(openingLight.observedAt)
-  const day = DAY_FORMAT.format(new Date(`${instant.date}T00:00:00Z`))
-  const clock = formatObservationDateTime(instant).slice(CLOCK_START)
-  const cloudCover = openingLight.weather?.cloudCover ?? DEFAULT_CLOUD_COVER
+  const conditions = storedOpeningConditions(openingLight)
+  if (conditions === undefined) return DEFAULT_LIGHT_STATUS
+  const { observedAt, cloudCover } = conditions
+  const day = DAY_FORMAT.format(new Date(`${observedAt.date}T00:00:00Z`))
+  const clock = formatObservationTime(observedAt)
   return `Opens at ${day}, ${clock}, ${cloudCoverWording(cloudCover)}.`
 }
 
@@ -50,17 +46,13 @@ export function OpeningLightControl({
   openingLight,
   dispatch,
 }: OpeningLightControlProps): ReactElement {
-  const store = () =>
-    dispatch(
-      setOpeningLight({
-        observedAt: observationInstantToIso(environment.observedAt),
-        weather: { cloudCover: environment.cloudCover },
-      }),
-    )
+  const storeCurrentLight = () => dispatch(setOpeningLight(viewingConditionsOf(environment)))
   return (
     <Stack>
-      <p role="status">{statusWording(openingLight)}</p>
-      <Button onClick={store}>Use this light when the project opens</Button>
+      <p role="status" aria-live="polite">
+        {statusWording(openingLight)}
+      </p>
+      <Button onClick={storeCurrentLight}>Use this light when the project opens</Button>
       <Button disabled={openingLight === undefined} onClick={() => dispatch(clearOpeningLight())}>
         Clear the opening light
       </Button>

@@ -586,6 +586,7 @@ export type { ObservationInstant } from './environment/observation-time'
 export {
   MINUTES_PER_DAY,
   formatObservationDateTime,
+  formatObservationTime,
   isObservationInstantIso,
   observationInstantToIso,
   parseObservationInstant,
@@ -595,7 +596,11 @@ export type {
   OpeningConditionsInput,
   OpeningInstantInput,
 } from './environment/opening-instant'
-export { openingConditions, openingInstant } from './environment/opening-instant'
+export {
+  openingConditions,
+  openingInstant,
+  storedOpeningConditions,
+} from './environment/opening-instant'
 export type { SolarAngles, SolarPositionInput } from './environment/solar-position'
 export { solarPosition } from './environment/solar-position'
 export { utcOffsetMinutesFor } from './environment/timezone-offset'
@@ -656,6 +661,7 @@ export {
   openingEnvironmentFor,
   captureEnvironmentScene,
   applyEnvironmentScene,
+  viewingConditionsOf,
 } from './environment/environment-state'
 export { NEUTRAL_REFERENCE_WHITE, colorCheckLighting } from './environment/color-check'
 export type { ToneMappingOperator } from './environment/tone-mapping'

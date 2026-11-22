@@ -61,8 +61,13 @@ export function parseObservationInstant(iso: string): ObservationInstant {
   return { date, minutesSinceMidnight: hours * MINUTES_PER_HOUR + minutes }
 }
 
+/** Formats the time of day of an instant as `hh:mm`. */
+export function formatObservationTime(instant: ObservationInstant): string {
+  const { hours, minutes } = hoursAndMinutes(instant.minutesSinceMidnight)
+  return `${twoDigits(hours)}:${twoDigits(minutes)}`
+}
+
 /** Formats a readable readout `YYYY-MM-DD hh:mm` for the scrubber. */
 export function formatObservationDateTime(instant: ObservationInstant): string {
-  const { hours, minutes } = hoursAndMinutes(instant.minutesSinceMidnight)
-  return `${instant.date} ${twoDigits(hours)}:${twoDigits(minutes)}`
+  return `${instant.date} ${formatObservationTime(instant)}`
 }

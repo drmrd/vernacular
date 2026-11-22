@@ -4,6 +4,7 @@ import {
   MINUTES_PER_DAY,
   daylightSampleOf,
   formatObservationDateTime,
+  formatObservationTime,
   isObservationInstantIso,
   observationInstantToIso,
   parseObservationInstant,
@@ -115,12 +116,6 @@ const OBSERVATION_DATE_TIME_INPUT_ID = 'environment-observation-date-time'
 const TIME_OF_DAY_INPUT_ID = 'environment-time-of-day'
 const CLOUD_COVER_INPUT_ID = 'environment-cloud-cover'
 
-/** The `hh:mm` portion of `formatObservationDateTime`, for a slider's `aria-valuetext`. */
-function formatTimeOfDay(observedAt: ObservationInstant): string {
-  const [, time = ''] = formatObservationDateTime(observedAt).split(' ')
-  return time
-}
-
 /**
  * The observation date/time scrubber. This guards the parse boundary against both a
  * cleared `datetime-local` input (which reports an empty string) and the arbitrary
@@ -169,7 +164,7 @@ function TimeOfDaySlider({
         min={TIME_OF_DAY_MIN}
         max={LAST_MINUTE_OF_DAY}
         value={observedAt.minutesSinceMidnight}
-        aria-valuetext={formatTimeOfDay(observedAt)}
+        aria-valuetext={formatObservationTime(observedAt)}
         disabled={disabled}
         onChange={handleChange}
       />

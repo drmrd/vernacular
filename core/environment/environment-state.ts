@@ -62,6 +62,14 @@ export interface EnvironmentSceneIdentity {
   name: string
 }
 
+/** The "when and weather" of a state as the serializable conditions a scene or opening light stores. */
+export function viewingConditionsOf(state: EnvironmentState): ViewingConditions {
+  return {
+    observedAt: observationInstantToIso(state.observedAt),
+    weather: { cloudCover: state.cloudCover },
+  }
+}
+
 /** Persists the current "when and weather" as a named scene (observedAt ISO + weather). */
 export function captureEnvironmentScene(
   state: EnvironmentState,
@@ -70,8 +78,7 @@ export function captureEnvironmentScene(
   return {
     id: identity.id,
     name: identity.name,
-    observedAt: observationInstantToIso(state.observedAt),
-    weather: { cloudCover: state.cloudCover },
+    ...viewingConditionsOf(state),
   }
 }
 

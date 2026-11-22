@@ -11,7 +11,7 @@ import { DEFAULT_CLOUD_COVER } from './sky-model'
 import { solarPosition } from './solar-position'
 import { sunWorldDirection } from './sun-world-direction'
 import type { Vector3 } from '../scene/vector3'
-import type { ViewingConditions } from '../model/environment-scene'
+import type { OpeningLight, ViewingConditions } from '../model/environment-scene'
 import type { Site } from '../model/site'
 import type { PlanDirection } from '../scene/front-direction'
 
@@ -129,6 +129,21 @@ function firstQualifyingInstant(
 }
 
 /**
+ * The conditions a stored opening light stands for, or undefined when there is none or its
+ * `observedAt` does not have the `YYYY-MM-DDThh:mm` shape. A stored light that does not parse
+ * is ignored wherever the project opens or reports its opening light.
+ */
+export function storedOpeningConditions(
+  stored: OpeningLight | undefined,
+): OpeningConditions | undefined {
+  if (stored === undefined || !isObservationInstantIso(stored.observedAt)) return undefined
+  return {
+    observedAt: parseObservationInstant(stored.observedAt),
+    cloudCover: stored.weather?.cloudCover ?? DEFAULT_CLOUD_COVER,
+  }
+}
+
+/**
  * The instant and the cloud cover a project opens at. A valid stored light comes first, because
  * the light the user last chose outranks any guess from the site; a stored light that does not
  * parse is ignored and the rules below apply. A site whose north is implied opens at
@@ -138,12 +153,8 @@ function firstQualifyingInstant(
  * of either date qualifies, the fixed instant applies.
  */
 export function openingConditions(input: OpeningConditionsInput): OpeningConditions {
-  const { stored } = input
-  if (stored !== undefined && isObservationInstantIso(stored.observedAt))
-    return {
-      observedAt: parseObservationInstant(stored.observedAt),
-      cloudCover: stored.weather?.cloudCover ?? DEFAULT_CLOUD_COVER,
-    }
+  const stored = storedOpeningConditions(input.stored)
+  if (stored !== undefined) return stored
   const fixedInstant = openingInstant({ site: input.site })
   const equinoxSite = daylightSiteFor(input.site, input.front, EQUINOX_DATE)
   if (northIsImplied(equinoxSite))
