@@ -7,6 +7,7 @@ export type FailedOpenCause =
   | 'storage-unavailable'
   | 'folder-unavailable'
 
+/** The plain sentence that names a cause, for the person at the screen. */
 export function causeSentence(cause: FailedOpenCause): string {
   switch (cause) {
     case 'format-rules':

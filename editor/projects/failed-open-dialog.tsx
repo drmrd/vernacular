@@ -12,6 +12,7 @@ export interface FailedOpenDetails {
   readonly faults: readonly { readonly path: string; readonly message: string }[]
   /** The format version of the stored document. Absent when it could not be read. */
   readonly formatVersion?: number
+  /** The build of the app that tried to open the project. */
   readonly build: string
   /** The JSON pointers that the offered repair removes. Empty with no offer. */
   readonly removedPaths: readonly string[]
@@ -57,8 +58,8 @@ function TechnicalEntry({
   return (
     <>
       <dt className="failed-open-dialog__technical-label">{label}</dt>
-      {values.map((value) => (
-        <dd key={value} className="failed-open-dialog__technical-value">
+      {values.map((value, index) => (
+        <dd key={`${index}:${value}`} className="failed-open-dialog__technical-value">
           {value}
         </dd>
       ))}
@@ -104,19 +105,30 @@ function RepairOffer({ sentences }: { readonly sentences: readonly string[] }): 
   )
 }
 
+interface DescribedSentence {
+  readonly id: string
+  readonly text: string
+}
+
+/** The sentences that describe the dialog, each with the id that `aria-describedby` names. */
+function describedSentences(cause: FailedOpenCause, idBase: string): readonly DescribedSentence[] {
+  return [
+    { id: `${idBase}-cause`, text: causeSentence(cause) },
+    { id: `${idBase}-kept`, text: KEPT_UNCHANGED },
+    { id: `${idBase}-export`, text: EXPORT_HINT },
+  ]
+}
+
 function Sentences({
-  cause,
-  ids,
+  sentences,
 }: {
-  readonly cause: FailedOpenCause
-  readonly ids: readonly string[]
+  readonly sentences: readonly DescribedSentence[]
 }): ReactElement {
-  const sentences = [causeSentence(cause), KEPT_UNCHANGED, EXPORT_HINT]
   return (
     <>
-      {sentences.map((sentence, index) => (
-        <p key={sentence} id={ids[index]} className="failed-open-dialog__sentence">
-          {sentence}
+      {sentences.map(({ id, text }) => (
+        <p key={id} id={id} className="failed-open-dialog__sentence">
+          {text}
         </p>
       ))}
     </>
@@ -157,7 +169,7 @@ export function FailedOpenDialog(props: FailedOpenDialogProps): ReactElement {
   const dialogRef = useFocusTrap<HTMLDivElement>()
   const idBase = useId()
   const titleId = `${idBase}-title`
-  const sentenceIds = ['cause', 'kept', 'export'].map((part) => `${idBase}-${part}`)
+  const sentences = describedSentences(cause, idBase)
   return (
     // The trap and the Escape handler sit on the shade, which the trap makes focusable.
     <div
@@ -169,13 +181,13 @@ export function FailedOpenDialog(props: FailedOpenDialogProps): ReactElement {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={sentenceIds.join(' ')}
+        aria-describedby={sentences.map(({ id }) => id).join(' ')}
         className="failed-open-dialog"
       >
         <h2 id={titleId} className="failed-open-dialog__title">
           {TITLE}
         </h2>
-        <Sentences cause={cause} ids={sentenceIds} />
+        <Sentences sentences={sentences} />
         {repairSentences.length > 0 && <RepairOffer sentences={repairSentences} />}
         <TechnicalDetails details={details} />
         <Controls {...props} repairSentences={repairSentences} />
