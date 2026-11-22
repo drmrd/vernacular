@@ -1,4 +1,13 @@
-import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, type Project } from '../core'
+import {
+  CURRENT_SCHEMA_VERSION,
+  colorFromHex,
+  createEmptyProject,
+  createFloor,
+  encodeDocument,
+  solidTreatment,
+  surfaceKey,
+  type Project,
+} from '../core'
 import {
   ASSET_DIRECTORY_PREFIX,
   createOpfsProjectStore,
@@ -49,6 +58,7 @@ export interface VernacularE2eStorage {
   opfsPersistName(): Promise<string>
   plantRecoverySnapshot(): Promise<boolean>
   plantProjectFromNewerBuild(): Promise<boolean>
+  plantProjectWithMixedPaintEntries(): Promise<string>
   storedFilesOfProject(id: string): Promise<Record<string, string>>
   storedProjectIds(): Promise<string[]>
 }
@@ -191,6 +201,41 @@ async function plantProjectFromNewerBuild(): Promise<boolean> {
   return summaries.some((summary) => summary.id === EARLIER_START_PROJECT_ID)
 }
 
+// The fields of a pattern paint entry, which a solid entry carries here in error.
+const PATTERN_FIELDS = { patternId: 'plank', scale: 100 }
+const MIXED_PAINT_PROJECT_NAME = 'Mixed Paint House'
+
+// The project of an empty browser with a solid paint entry on the floor and another on the ceiling.
+function projectWithTwoPaintEntries(): Project {
+  const project = sampleProject(MIXED_PAINT_PROJECT_NAME)
+  const floorId = project.floors[0]!.id
+  const solid = solidTreatment(colorFromHex('#ffffff'), 'flat')
+  return {
+    ...project,
+    paint: {
+      [surfaceKey({ kind: 'floor', floorId })]: solid,
+      [surfaceKey({ kind: 'ceiling', floorId })]: solid,
+    },
+  }
+}
+
+// Plants a project under the earlier start id whose two paint entries mix two kinds: each is a
+// solid entry that also carries the fields of a pattern entry. The format rules refuse it, and a
+// repair that removes the extra fields opens it. Gives the id that it is stored under.
+async function plantProjectWithMixedPaintEntries(): Promise<string> {
+  const { bytes } = encodeDocument(projectWithTwoPaintEntries(), undefined)
+  const document = JSON.parse(new TextDecoder().decode(bytes)) as {
+    paint: Record<string, object>
+  }
+  for (const entry of Object.values(document.paint)) Object.assign(entry, PATTERN_FIELDS)
+  const root = await opfsRoot()
+  await root.writeFile(
+    `${EARLIER_START_PROJECT_ID}/vernacular.json`,
+    new TextEncoder().encode(JSON.stringify(document)),
+  )
+  return EARLIER_START_PROJECT_ID
+}
+
 // Every file below `prefix`, keyed by path. A listing of a file is empty and a
 // read of a directory is undefined, which tells the two apart. The fatal decoder
 // keeps the byte order mark, so equal text means equal bytes.
@@ -227,6 +272,7 @@ export function install(): void {
     opfsPersistName,
     plantRecoverySnapshot,
     plantProjectFromNewerBuild,
+    plantProjectWithMixedPaintEntries,
     storedFilesOfProject,
     storedProjectIds,
   }

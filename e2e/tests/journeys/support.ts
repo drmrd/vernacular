@@ -40,6 +40,14 @@ export const selectors = {
   // The "..." control of a card, which opens the menu of the actions of its project.
   cardActionsButton: (page: Page, name: string) =>
     selectors.projectCard(page, name).getByRole('button', { name: `Actions for ${name}` }),
+  // The dialog that a project that did not open shows, and the dialog that asks how to open its repair.
+  failedOpenDialog: (page: Page) =>
+    page.getByRole('alertdialog', { name: 'This project did not open.', exact: true }),
+  repairChoiceDialog: (page: Page) =>
+    page.getByRole('alertdialog', { name: 'Open the repaired project', exact: true }),
+  // The path that names the open project, in the header of the editor.
+  breadcrumb: (page: Page) => page.getByRole('navigation', { name: /breadcrumb/i }),
+  projectCards: (page: Page) => selectors.projectsPage(page).getByRole('listitem'),
   cardMenuItems: (page: Page) => page.getByRole('menuitem'),
   cardMenuItem: (page: Page, name: string) => page.getByRole('menuitem', { name, exact: true }),
 }
