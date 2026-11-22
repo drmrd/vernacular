@@ -105,6 +105,22 @@ describe('textureFileProblems for a PNG', () => {
       'image size 256 by 128 pixels differs from the declared 256 by 256',
     ])
   })
+
+  it.each([
+    ['only a width', { width: SIDE }],
+    ['only a height', { height: SIDE }],
+    ['an array of sizes', [SIDE, SIDE]],
+  ])('skips the size check when the entry declares %s', (_label, image) => {
+    const asset = { mediaType: 'image/png', image }
+    expect(textureFileProblems(asset, png([SIDE, SIDE], COLOR_TYPE_RGB))).toEqual([])
+  })
+
+  it('compares against a declared size of zero by zero', () => {
+    const asset = { mediaType: 'image/png', image: { width: 0, height: 0 } }
+    expect(textureFileProblems(asset, png([SIDE, SIDE], COLOR_TYPE_RGB))).toEqual([
+      'image size 256 by 256 pixels differs from the declared 0 by 0',
+    ])
+  })
 })
 
 describe('textureFileProblems for a WebP', () => {
