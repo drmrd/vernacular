@@ -110,3 +110,117 @@ describe('readImageHeader', () => {
     })
   })
 })
+
+const LOSSY_START_CODE = [0x9d, 0x01, 0x2a]
+const ANY_FRAME_TAG = [0x10, 0x02, 0x00]
+const LOSSLESS_SIGNATURE = 0x2f
+const ANIMATION_FLAG = 0x02
+const COLOR_PROFILE_FLAG = 0x20
+const WIDTH_SCALE_BITS = 0xc000
+const HEIGHT_SCALE_BITS = 0x4000
+
+function ascii(text: string): number[] {
+  return [...text].map((character) => character.charCodeAt(0))
+}
+
+function uint16LittleEndian(value: number): number[] {
+  return [value & 0xff, (value >>> 8) & 0xff]
+}
+
+function uint24LittleEndian(value: number): number[] {
+  return [value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff]
+}
+
+function uint32LittleEndian(value: number): number[] {
+  return [...uint24LittleEndian(value), (value >>> 24) & 0xff]
+}
+
+function riffContainer(formType: string, chunkType: string, payload: number[]): Uint8Array {
+  const chunkHeaderLength = 8
+  return Uint8Array.from([
+    ...ascii('RIFF'),
+    ...uint32LittleEndian(ascii(formType).length + chunkHeaderLength + payload.length),
+    ...ascii(formType),
+    ...ascii(chunkType),
+    ...uint32LittleEndian(payload.length),
+    ...payload,
+  ])
+}
+
+function lossyWebp(width: number, height: number, scaleBits = { width: 0, height: 0 }): Uint8Array {
+  return riffContainer('WEBP', 'VP8 ', [
+    ...ANY_FRAME_TAG,
+    ...LOSSY_START_CODE,
+    ...uint16LittleEndian(width | scaleBits.width),
+    ...uint16LittleEndian(height | scaleBits.height),
+  ])
+}
+
+function losslessWebp(width: number, height: number): Uint8Array {
+  const packedSize = (width - 1) | ((height - 1) << 14)
+  return riffContainer('WEBP', 'VP8L', [LOSSLESS_SIGNATURE, ...uint32LittleEndian(packedSize)])
+}
+
+function extendedWebp(width: number, height: number, flags: number): Uint8Array {
+  return riffContainer('WEBP', 'VP8X', [
+    flags,
+    0,
+    0,
+    0,
+    ...uint24LittleEndian(width - 1),
+    ...uint24LittleEndian(height - 1),
+  ])
+}
+
+function webpHeader(
+  width: number,
+  height: number,
+  flags = { animated: false, colorProfile: false },
+) {
+  return { mediaType: 'image/webp', width, height, ...flags }
+}
+
+describe('readImageHeader for WebP', () => {
+  it('reads the size of a lossy WebP and reports no animation or color profile', () => {
+    expect(readImageHeader(lossyWebp(2048, 1024))).toEqual(webpHeader(2048, 1024))
+  })
+
+  it('reads a lossy WebP size from the low 14 bits and ignores the scale bits', () => {
+    const bytes = lossyWebp(300, 200, { width: WIDTH_SCALE_BITS, height: HEIGHT_SCALE_BITS })
+
+    expect(readImageHeader(bytes)).toEqual(webpHeader(300, 200))
+  })
+
+  it.each([
+    [2048, 1024],
+    [300, 200],
+    [16384, 513],
+  ])('reads the size of a %i by %i lossless WebP', (width, height) => {
+    expect(readImageHeader(losslessWebp(width, height))).toEqual(webpHeader(width, height))
+  })
+
+  it.each([
+    ['neither flag', 0, { animated: false, colorProfile: false }],
+    ['animation only', ANIMATION_FLAG, { animated: true, colorProfile: false }],
+    ['a color profile only', COLOR_PROFILE_FLAG, { animated: false, colorProfile: true }],
+  ])('reads an extended WebP with %s', (_label, flagByte, expectedFlags) => {
+    const bytes = extendedWebp(2048, 1024, flagByte)
+
+    expect(readImageHeader(bytes)).toEqual(webpHeader(2048, 1024, expectedFlags))
+  })
+
+  it('reads an extended WebP size that needs all three bytes of each dimension', () => {
+    expect(readImageHeader(extendedWebp(70000, 300000, 0))).toEqual(webpHeader(70000, 300000))
+  })
+
+  it('gives undefined for a RIFF file whose form type is not WEBP', () => {
+    const bytes = riffContainer('WAVE', 'VP8 ', [
+      ...ANY_FRAME_TAG,
+      ...LOSSY_START_CODE,
+      ...uint16LittleEndian(2048),
+      ...uint16LittleEndian(1024),
+    ])
+
+    expect(readImageHeader(bytes)).toBeUndefined()
+  })
+})
