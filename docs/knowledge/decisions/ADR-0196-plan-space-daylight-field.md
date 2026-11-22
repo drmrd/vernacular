@@ -25,7 +25,7 @@ sourceFiles:
     docs/specs/2026-11-15-daylight-and-shadow.md,
   ]
 status: proposed
-updated: 2026-11-16
+updated: 2026-11-22
 ---
 
 # ADR-0196: Interior daylight is a plan-space field computed in core
@@ -44,6 +44,11 @@ strip of open sky along the inside of each wall that issue #753 reported. The th
 that the offset along the surface normal keeps a thin partition from bleeding light between rooms.
 That is not true of floors and ceilings, or of every wall face: with 100 mm cells, a filtered
 lookup near a wall thinner than 200 mm blends its two sides, as the known limits below state.
+
+The amendment of 2026-11-22 at the end of this record changes one more sentence of section 6.8.
+It said that an interior doorway passes a share of the neighbor room's mean. It now says that the
+doorway passes the neighbor room's interreflected light, which that room loses, so a hall borrows
+light and never takes more than its source.
 
 ## Context
 
@@ -122,25 +127,39 @@ visibility is capped.
 ### The room-average term
 
 Light that bounces between the room's surfaces is one number for the whole room. The entering flux
-is the sum over its apertures of half the opening area (width times sill-to-head height) times the
-aperture's net transmittance and its weight. The term added to every cell is the flux times the
-floor's reflectance, which the light from the sky meets first, divided by the total surface area
-times one minus the room's mean reflectance, which governs the later bounces. The surface area is
-twice the floor area plus the perimeter times the ceiling height. The mean reflectance weights the
-floor color's luminance by the floor area and `UNPAINTED_SURFACE_REFLECTANCE` (0.66, the luminance
-of the wall color `#d8d4cc`) by the rest.
+is the sum over its apertures of a share of the opening area (width times sill-to-head height),
+times the aperture's net transmittance and its weight. A window counts half its area, because it
+sees only the half of its view that lies above the horizon (`VERTICAL_OPENING_SKY_SHARE`). A
+doorway counts all of its area, because it sees the whole of the room on its other side
+(`DOORWAY_HEMISPHERE_SHARE`). A doorway into a room that is open to the sky faces the outdoors, as
+an open exterior door does, so it counts half, like a window.
+
+The term added to every cell is the flux times the floor's reflectance, which the light from the
+sky meets first, divided by the total surface area times one minus the room's mean reflectance,
+which governs the later bounces. The surface area is twice the floor area plus the perimeter times
+the ceiling height, plus the opening area of every doorway of another room that opens into this
+one. The mean reflectance weights the floor color's luminance by the floor area,
+`UNPAINTED_SURFACE_REFLECTANCE` (0.66, the luminance of the wall color `#d8d4cc`) by the walls and
+the ceiling, and 0 by those doorways, because light that reaches one of them leaves the room. Such
+a doorway counts its full opening area whatever its net transmittance, so a glazed door makes a
+hole of its whole area in the room's balance, and the light that its glass does not pass is lost.
+Windows are not holes: they keep the reflectance of the wall they sit in.
 
 A cell's visibility is the direct term plus the room-average term, clamped at 1. A room with no
 windows and no lit neighbor therefore returns 0.
 
 ### The doorway pass
 
-A doorway passes a share of the neighbor room's mean visibility, computed from that neighbor's
-sky apertures alone. The doorway's weight is that mean times the neighbor's mean reflectance, the
-luminance of the surfaces that the doorway shows, times the doorway's own net transmittance. So a
-hall next to a lit room borrows light. Light crosses one doorway and no more: a room's own
-doorways count for nothing when it is the source, so two rooms that open only to each other stay
-dark. A doorway into a room that is open to the sky weighs 1 in any direction.
+A doorway's weight is the room-average term of the room it opens into, computed from that room's
+sky apertures alone, times the doorway's own net transmittance. That term is also the mean
+luminance of the surfaces the doorway shows, as the amendment at the end of this record derives.
+The hall uses the weight in two places: in its entering flux, and in the direct term of each of
+its cells, where it multiplies the cell's form factor to the doorway. The room that the doorway
+opens into loses that light, because the doorway is a surface of reflectance 0 in its balance. So
+a hall next to a lit room borrows light, and the lit room reads a little darker for it. Light
+crosses one doorway and no more: a room's own doorways count for nothing when it is the source, so
+two rooms that open only to each other stay dark. A doorway into a room that is open to the sky
+weighs 1 in any direction.
 
 ### The cache
 
@@ -200,7 +219,18 @@ the room has a mean of 0.036, a minimum of 0.011, and a maximum of 0.245 at the 
 window. These are the values measured by `tests/daylight/shell-field.test.ts`, which asserts only
 that the mean lies between 0 and 1, that the cell nearest the window is the brightest, that every
 value is finite, and that the values fall along the row from the window to the far wall. The
-measured numbers are reported, not asserted.
+measured numbers are reported, not asserted. The shell has no doorway, and measured again on
+2026-11-22 it gives the same three values (0.036345, 0.011247, and 0.244666).
+
+The test room of the known limits below, 4000 by 3000 mm with one window, has a mean sky
+visibility of 0.0393 on its own. With the 2000 by 3000 mm hall of
+`core/daylight/doorway-test-support.ts` opening into it through a doorway 1000 mm wide and 2100
+mm high, the test room's room-average term falls from 0.0107 to 0.0098 and its mean from 0.0393 to
+0.0384, because the doorway takes light out of its balance. The hall's entering flux is 20524.5
+square millimetres of open sky, its room-average term is 0.00074, and its mean is 0.00139. The
+flux, the room-average terms, and the drop of every cell of the test room are asserted, in
+`core/daylight/doorway-balance.test.ts` and `core/daylight/doorway-luminance.test.ts`. The hall's
+mean was read with a throwaway probe and is reported, not asserted.
 
 ## Known limits and approximations
 
@@ -213,13 +243,17 @@ measured numbers are reported, not asserted.
   lower walls as its first step. The entering flux ignores the reveal, and issue #804 tracks that
   for 1.0. Light that enters below the work plane is counted, as the split-flux method also counts
   the whole window.
-- Light that a room borrows through a doorway carries the source room's error, because the
-  doorway's weight uses the source's mean visibility. How bright that light reads has not been
-  measured.
-- A doorway's entering flux keeps the factor of one half that a window gets for facing half of the
-  open sky (`core/daylight/room-average.ts`). A doorway faces a whole hemisphere of the neighbor
-  room, so for a neighbor of even luminance the hall's room-average term is half of what that
-  hemisphere passes, and the hall reads dark by that much. Issue #807 tracks it.
+- A doorway passes only the source room's interreflected light, as an even luminance. Direct
+  light from the source's windows and skylights that lands on the doorway plane does not pass, and
+  issue #1096 tracks it as future work. Until then a hall reads somewhat darker than it should. The
+  hall of the test pair reads about 0.54 times its earlier mean (0.00139 against 0.00259). The
+  earlier weight used the source's mean visibility at the work plane, which carried direct light
+  that the source never lost, so the hall was brighter for the wrong reason. Light borrowed through
+  a doorway also carries the source room's error, as the bullet above describes.
+- A hall's share of the source's flux is bounded, as the amendment below derives. In the sweep of
+  ordinary rooms in `core/daylight/doorway-flux-bound.test.ts` it peaks at 0.555, for a source of
+  500 by 6000 mm with a white floor. A source of 100 by 40000 mm with a 6000 mm ceiling and a white
+  floor gives its hall 0.593, and two halls along both of its long walls 0.744 together.
 - With 100 mm cells, a filtered lookup on the floor or the ceiling blends across any wall thinner
   than two cells (200 mm). How much depends on where the grid falls. At the foot of a wall of
   thickness t between two rooms, the other room's share of the reading is at most 1 - t / 200, and
@@ -244,17 +278,13 @@ measured numbers are reported, not asserted.
 - The copy step carries the sky visibility only, so a cell under a wall gets none of its room's
   bounce color. The window-lit rooms work (#789) decides the lookup before the bounce channels
   fill.
-- The code does not cap a hall's flux at the source room's, and a hall can receive more. In the
-  sweep of ordinary rooms in `core/daylight/doorway-luminance.test.ts`, the hall receives at most
-  0.724 of the source's flux, for a source room of 500 by 6000 mm with a white floor. That test
-  holds the ratio at 0.73 or below. A source of 100 by 40000 mm with a 6000 mm ceiling and a white
-  floor gives the hall 1.055 times the source's flux. Issue #807 tracks it.
 - The direct term ignores a concave room's own walls. In an L-shaped room, a cell around the inner
   corner gets light that it cannot see.
 - Furniture and partial walls do not block light, and the field does not vary with height.
 - A cell whose center lies exactly on a shared wall goes to the room that comes first in the input.
 - A self-intersecting outline cancels its own area with no error.
-- A doorway into a room that is open to the sky weighs 1 in any direction.
+- A doorway into a room that is open to the sky weighs 1 in any direction, and it keeps the
+  window's factor of one half in the entering flux.
 - The single sky direction for each opening is an approximation of the cosine-weighted sky in
   front of it.
 
@@ -288,17 +318,19 @@ current, the amendments go into the records named here.
   hook spike passed, so the engine side does not have to wait.
 - The math has no dependency on the renderer, so both backends agree by construction.
 - The field's error is bounded but not small. For the window-lit test room above, the model reads
-  about 1.7 times bright against the rule of thumb at the same net transmittance. Other rooms and
-  light borrowed through a doorway have not been measured against it. Anything that reads the field
-  as a measurement needs the limits above. The reserved photo mode is the accuracy backstop.
+  about 1.7 times bright against the rule of thumb at the same net transmittance. Light borrowed
+  through a doorway has been measured for the test pair above, and it reads dark until direct
+  light crosses the doorway (#1096). Other rooms have not been measured against the rule of thumb.
+  Anything that reads the field as a measurement needs the limits above. The reserved photo mode
+  is the accuracy backstop.
 - The field is built from `DaylightRoom` values only. A short adapter from the scene graph, and
   later a mapper from the plan geometry, supply them.
 - The math is held by the tests in `core/daylight/` (`form-factor.test.ts`,
   `daylight-field.test.ts`, `sky-visibility.test.ts`, `room-average.test.ts`,
   `room-validation.test.ts`, `hard-inputs.test.ts`, `angled-wall.test.ts`,
   `bad-outline-and-sky.test.ts`, `sky-direction.test.ts`, `span-at-tolerance.test.ts`,
-  `doorway-luminance.test.ts`, `net-transmittance.test.ts`, `values-under-walls.test.ts`, and
-  `field-margin.test.ts`) and by
+  `doorway-luminance.test.ts`, `doorway-balance.test.ts`, `doorway-flux-bound.test.ts`,
+  `net-transmittance.test.ts`, `values-under-walls.test.ts`, and `field-margin.test.ts`) and by
   `tests/daylight/shell-field.test.ts`. The first group states closed forms and hand checks. The
   last builds the harness shell and reports its mean, minimum, and maximum, and with
   `PLOT_DAYLIGHT_FIELD=1` it writes a heat map of the room to the system's temporary folder.
@@ -414,3 +446,64 @@ scene.add(new BounceLight())
 Window-lit rooms can land before the scene stage. The field lookup works inside the occlusion
 context on WebGL 2 and on WebGPU, adds no render pass, and reaches the plain level through the
 renderer's context node without a scene pass.
+
+## Amendment, 2026-11-22: one energy balance through a doorway
+
+Issue #807 found two faults in the doorway pass. The doorway's entering flux kept the window's
+factor of one half, so a hall got half the light its doorway sees. And the light that crossed the
+doorway never left the source room, so a hall could take more flux than the room that lit it: a
+source of 100 by 40000 mm under a 6000 mm ceiling, with a white floor, gave its hall 1.055 times its
+own flux. The owner chose one energy balance over both rooms, and the even bounce only.
+
+In the balance of the room it opens into, a doorway is a surface of reflectance 0. Its opening
+area is added to that room's surface area and reflects nothing, so the room loses the light that
+reaches it. The area is added to the room's surfaces, not cut out of the wall the doorway sits in.
+The light that crosses is the source's room-average term, from its sky apertures alone, times the
+doorway's opening area times its net transmittance, with a factor of 1. The hall takes that term as
+the doorway's weight, as "The doorway pass" above describes.
+
+The factor of 1 follows from the room-average model, in which the interreflected illuminance `E`
+is the same on every surface of the source room:
+
+- The balance of the source is `E * S'(1 - rho') = F * rhoFloor`, where `F` is the flux from its
+  sky apertures, and `S'` and `rho'` count each doorway out of the room as area of reflectance 0.
+- The mean exitance of the source's surfaces is `M = (rhoFloor * F + rho' * S' * E) / S'`.
+  Putting `E * S'(1 - rho')` in place of `F * rhoFloor` gives `M = E`.
+- A doorway faces a whole hemisphere of the source room, so its form factors to the source's
+  surfaces sum to 1. The illuminance on the doorway plane is then `1 * M = E`, and the flux that
+  crosses it is `1 * A * tau * E` for a doorway of area `A` and net transmittance `tau`. A window
+  sees only the half of its hemisphere that lies above the horizon, which is why it keeps one half.
+
+The bound comes out of the same algebra. With the source's balance written as
+`S'(1 - rho') = S(1 - rho) + sum of A`, the hall's flux is `tau * A * F * rhoFloor / (S(1 - rho) +
+sum of A)`. Because `S(1 - rho)` is never negative and `tau` is at most 1, that is at most
+`rhoFloor * tau * F`, which is at most `F`. The bound holds for any room shape. Several doorways
+out of one source share it, because every one of them adds to the same sum. Adding the doorway's
+area, rather than cutting it out of the wall, is what keeps the bound unconditional: `S'(1 - rho')`
+is then never less than the sum of the doorway areas. No cap or clamp is needed, and the code has
+none. `core/daylight/doorway-flux-bound.test.ts` checks the closed form for the sweep of ordinary
+rooms, the 100 by 40000 mm source, two halls of one source, and 36 room shapes.
+
+The owner also settled two edge cases:
+
+- A doorway into a room that is open to the sky faces the outdoors, like an open exterior door,
+  which the inputs already treat as a window with a net transmittance of 1. It keeps a weight of 1
+  and the factor of one half.
+- A glazed door, a doorway with a net transmittance below 1, makes a hole of its full opening area
+  in its source's balance, though only `tau` of the light passes, and the rest is lost. A hole of
+  `tau * A` would also keep the bound. The full area is the literal reading of the decision.
+
+The record rejects two other choices:
+
+- A factor of 1 with a clamp on the hall's flux. With the earlier weight and no hole in the
+  source, a factor of 1 doubles every ratio, so the sweep of ordinary rooms would reach about 1.45
+  of the source's flux and the clamp would bind in ordinary rooms. The light would also still be
+  counted twice, once in the source and once in the hall.
+- A view factor alone. The form factors from the doorway sum to 1, which settles the factor, but
+  that does not conserve light by itself: the source still keeps the light that the hall takes.
+
+Direct light from the source's windows and skylights that lands on the doorway plane does not
+cross the doorway, and issue #1096 tracks it as future work. The figures that this amendment
+changes are in "What the numbers look like" and "Known limits and approximations" above. The
+tests are `core/daylight/doorway-balance.test.ts`, `core/daylight/doorway-luminance.test.ts`, and
+`core/daylight/doorway-flux-bound.test.ts`.
