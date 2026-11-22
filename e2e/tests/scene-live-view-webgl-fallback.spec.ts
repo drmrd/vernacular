@@ -21,7 +21,8 @@ import { drawnSceneCanvas } from './scene-helpers'
 
 const NOTICE_TEXT = 'The 3D preview is running without WebGPU.'
 
-// The marker the session provider sets once the live view is ready (bridge/react/scene-session-provider.tsx).
+// The marker the session provider sets once the live view is ready
+// (bridge/react/scene-session-provider.tsx).
 const LIVE_VIEW_READY = '[data-live-view-ready="true"]'
 
 // Removes WebGPU before any page script runs, so the engine probe and three's renderer both see a

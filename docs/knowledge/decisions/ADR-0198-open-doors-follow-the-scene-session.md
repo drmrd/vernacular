@@ -58,7 +58,7 @@ Clearing `openDoorIds` in the store did nothing to the live scene. There were th
    walk step, and the frame callback returned early outside walk mode. In orbit mode each opening
    kept the last pose the tick gave it, because the engine helper moves the fill group itself. A
    door that was part way through its swing at the mode switch stayed part way open.
-3. The toolbar renders outside the React Three Fiber canvas (`bridge/react/live-scene-view.tsx`).
+3. The toolbar renders outside the React Three Fiber canvas (`bridge/react/webgpu-scene-view.tsx`).
    The code that moves an opening needs the live scene root and a frame callback, which exist only
    inside the canvas. A button on the toolbar can reach the openings only through the store.
 

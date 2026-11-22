@@ -10,9 +10,10 @@ import {
 
 // Shared by the journeys that drive the live 3D pane on a real WebGPU adapter. They need one
 // because they assert the WebGPU path, so they self-skip on the linux runners, which have no
-// adapter. The WebGL 2 path of the pane is pinned by scene-live-view-webgl-fallback.spec.ts. Where one must run,
-// E2E_REQUIRE_WEBGPU=1 turns that skip into a failure. The macOS live-view CI job sets it, so a
-// runner image that loses its adapter fails the job instead of passing it with a silent skip.
+// adapter. The WebGL 2 path of the pane is pinned by scene-live-view-webgl-fallback.spec.ts.
+// Where one must run, E2E_REQUIRE_WEBGPU=1 turns that skip into a failure. The macOS
+// live-view CI job sets it, so a runner image that loses its adapter fails the job instead
+// of passing it with a silent skip.
 
 // Set where the journey must run rather than skip: the guard then fails when the runner lacks a
 // WebGPU adapter or a WebGL 2 context.
