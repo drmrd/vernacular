@@ -38,14 +38,22 @@ export function environmentStateOpenedWith(conditions: OpeningConditions): Envir
   }
 }
 
-/** The environment a project opens with: the light chosen from its site and its front, in the default mode. */
+/**
+ * The environment a project opens with: the light chosen from its site and its front, in the default mode.
+ *
+ * @param stored The light saved with the project; when valid, it wins over the chosen one.
+ */
 export function openingEnvironmentFor(
   site: Site | undefined,
   graph: FrontDirectionInput,
   stored?: ViewingConditions,
 ): EnvironmentState {
   return environmentStateOpenedWith(
-    openingConditions({ site, front: frontDirection(graph), ...(stored && { stored }) }),
+    openingConditions({
+      site,
+      front: frontDirection(graph),
+      ...(stored !== undefined ? { stored } : {}),
+    }),
   )
 }
 
