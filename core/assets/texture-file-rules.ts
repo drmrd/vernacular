@@ -20,7 +20,7 @@ const PNG_REFUSED_CHUNKS: readonly string[] = Object.freeze([
 
 export interface TextureFileExpectation {
   readonly mediaType: string
-  readonly image: { readonly width: number; readonly height: number }
+  readonly image?: unknown
 }
 
 function pngProblems(header: PngImageHeader, bytes: Uint8Array): string[] {
@@ -51,18 +51,24 @@ function formatProblems(header: ImageHeader, bytes: Uint8Array): string[] {
   return header.mediaType === 'image/png' ? pngProblems(header, bytes) : webpProblems(header)
 }
 
+function declaredSize(image: unknown): { width: number; height: number } | null {
+  if (typeof image !== 'object' || image === null) return null
+  const { width, height } = image as { width?: unknown; height?: unknown }
+  return typeof width === 'number' && typeof height === 'number' ? { width, height } : null
+}
+
 export function textureFileProblems(asset: TextureFileExpectation, bytes: Uint8Array): string[] {
   const header = readImageHeader(bytes)
   if (header?.mediaType !== asset.mediaType) {
     return [`file bytes do not match the declared media type ${asset.mediaType}`]
   }
-  const { width, height } = asset.image
+  const declared = declaredSize(asset.image)
   const sizeProblems =
-    header.width === width && header.height === height
+    declared === null || (header.width === declared.width && header.height === declared.height)
       ? []
       : [
           `image size ${header.width} by ${header.height} pixels differs from the declared ` +
-            `${width} by ${height}`,
+            `${declared.width} by ${declared.height}`,
         ]
   return [...sizeProblems, ...formatProblems(header, bytes)]
 }
