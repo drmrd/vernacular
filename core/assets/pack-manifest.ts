@@ -6,6 +6,7 @@
 // the pack CLI so both gates run on one definition.
 
 import { licenseProblems } from './license-policy.ts'
+import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
 import { validateTextureFields } from './texture-asset-rules.ts'
 
 export type AssetKind =
@@ -46,9 +47,6 @@ const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 const URL_PREFIX_PATTERN = /^https?:\/\/\S+$/
 
-// A generous 100 m ceiling (in millimeters) that still catches unit mistakes
-// such as meters entered as millimeters.
-const MAX_DIMENSION_MM = 100_000
 const DIMENSION_AXES = ['width', 'depth', 'height'] as const
 
 interface FieldDescriptor {
@@ -125,16 +123,8 @@ function validateDimensions(dimensions: unknown, label: string, errors: string[]
   }
   const source = dimensions as Record<string, unknown>
   for (const axis of DIMENSION_AXES) {
-    const value = source[axis]
-    if (
-      typeof value !== 'number' ||
-      !Number.isFinite(value) ||
-      value <= 0 ||
-      value > MAX_DIMENSION_MM
-    ) {
-      errors.push(
-        `${label}.dimensions.${axis} must be a positive number of millimeters up to ${MAX_DIMENSION_MM}`,
-      )
+    if (!isPositiveLengthMm(source[axis])) {
+      errors.push(positiveLengthMmProblem(`${label}.dimensions.${axis}`))
     }
   }
 }

@@ -2,6 +2,7 @@
 //
 // Field rules for texture assets in a pack manifest (ADR-0219). Pure: it
 // appends human-readable problems to the caller's error list.
+import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
 
 type TextureFieldValidator = (
   asset: Record<string, unknown>,
@@ -14,9 +15,6 @@ export const TEXTURE_LIMITS = Object.freeze({
   maxSidePixels: 2048,
 })
 
-// The same bound as model dimensions in pack-manifest.ts, kept here because
-// pack-manifest.ts imports this module.
-const MAX_TILE_SIZE_MM = 100_000
 const COLOR_SPACES: readonly string[] = Object.freeze(['srgb', 'linear'])
 const SIDES = ['width', 'height'] as const
 
@@ -27,12 +25,6 @@ function isPowerOfTwoInRange(value: unknown): boolean {
     value >= TEXTURE_LIMITS.minSidePixels &&
     value <= TEXTURE_LIMITS.maxSidePixels &&
     (value & (value - 1)) === 0
-  )
-}
-
-function isPositiveTileLength(value: unknown): boolean {
-  return (
-    typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= MAX_TILE_SIZE_MM
   )
 }
 
@@ -57,10 +49,8 @@ function validateTileSize(tileSize: unknown, label: string, errors: string[]): v
     return
   }
   for (const side of SIDES) {
-    if (!isPositiveTileLength((tileSize as Record<string, unknown>)[side])) {
-      errors.push(
-        `${label}.tileSize.${side} must be a positive number of millimeters up to ${MAX_TILE_SIZE_MM}`,
-      )
+    if (!isPositiveLengthMm((tileSize as Record<string, unknown>)[side])) {
+      errors.push(positiveLengthMmProblem(`${label}.tileSize.${side}`))
     }
   }
 }
