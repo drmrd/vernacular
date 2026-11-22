@@ -6,6 +6,7 @@ import {
   WALL_NODE_PREFIX,
   WALK_EYE_HEIGHT_MM,
   type OpeningInteractionState,
+  type OpeningPose,
   type OpeningSceneNode,
   type SceneGraph,
   type WallSceneNode,
@@ -140,7 +141,7 @@ function stepContextOnFloor(pose: WalkState, floorElevationMm: number) {
     input: { current: emptyWalkInput() },
     openings: { current: [] },
     interaction: { current: emptyOpeningInteraction() },
-    openness: { current: new Map<string, number>() },
+    openness: { current: new Map<string, OpeningPose>() },
     collisionInputs: {
       walls: [],
       openings: [],

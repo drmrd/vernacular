@@ -120,7 +120,7 @@ describe('openingUnderReach', () => {
 
     expect(
       openingUnderReach(eye, dir, [door], {
-        openness: new Map([['opening:front-door', 1]]),
+        openness: new Map([['opening:front-door', { primary: 1 }]]),
         reachMm: REACH_MM,
       })?.openingId,
     ).toBe('opening:front-door')
@@ -144,14 +144,14 @@ describe('openingUnderReach', () => {
 
     expect(
       openingUnderReach(eye, dir, [door], {
-        openness: new Map([['opening:pocket-door', 1]]),
+        openness: new Map([['opening:pocket-door', { primary: 1 }]]),
         reachMm: REACH_MM,
       })?.openingId,
     ).toBe('opening:pocket-door')
   })
 
   describe('a double-hung window', () => {
-    const fullyOpen = new Map([['opening:hung-window', 1]])
+    const fullyOpen = new Map([['opening:hung-window', { lower: 1 }]])
 
     it('is reached through the open lower part of its frame', () => {
       const window = hungWindowAtZ2000('opening:hung-window')

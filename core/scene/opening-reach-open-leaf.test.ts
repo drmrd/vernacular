@@ -17,7 +17,7 @@ describe('openingUnderReach for a fully open opening', () => {
     const door = doorAtZ2000('opening:front-door')
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], {
-      openness: new Map([['opening:front-door', 1]]),
+      openness: new Map([['opening:front-door', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 
@@ -28,7 +28,7 @@ describe('openingUnderReach for a fully open opening', () => {
     const door = pocketDoorAtZ2000('opening:pocket-door')
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], {
-      openness: new Map([['opening:pocket-door', 1]]),
+      openness: new Map([['opening:pocket-door', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 
@@ -40,7 +40,7 @@ describe('openingUnderReach for a fully open opening', () => {
     const eye: Vector3 = { x: 1000, y: 1700, z: -1000 }
 
     const hit = openingUnderReach(eye, towardDoor, [window], {
-      openness: new Map([['opening:casement', 1]]),
+      openness: new Map([['opening:casement', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 
@@ -52,7 +52,7 @@ describe('openingUnderReach for a fully open opening', () => {
     const far = doorAtZ2400('opening:far-door')
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [far, near], {
-      openness: new Map([['opening:near-door', 1]]),
+      openness: new Map([['opening:near-door', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 
@@ -64,7 +64,7 @@ describe('openingUnderReach for a fully open opening', () => {
     const alongTheWall: Vector3 = { x: 2000, y: 1700, z: -1000 }
 
     const hit = openingUnderReach(alongTheWall, towardDoor, [door], {
-      openness: new Map([['opening:front-door', 1]]),
+      openness: new Map([['opening:front-door', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 

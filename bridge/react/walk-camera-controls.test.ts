@@ -4,6 +4,7 @@ import {
   emptyOpeningInteraction,
   isOpeningOpen,
   type OpeningInteractionState,
+  type OpeningPose,
   type OpeningSceneNode,
   type WalkState,
   WALK_EYE_HEIGHT_MM,
@@ -58,7 +59,7 @@ function sessionFacing(door: OpeningSceneNode) {
     ...sessionWith(emptyOpeningInteraction()),
     state: { current: FACING_DOOR },
     openings: { current: [door] },
-    openness: { current: new Map<string, number>() },
+    openness: { current: new Map<string, OpeningPose>() },
   }
 }
 
@@ -96,7 +97,7 @@ describe('walk camera controls: reset key', () => {
     expect(session.onUserControl).not.toHaveBeenCalled()
   })
 
-  it('reports an empty set of open doors when KeyR shuts every opening', () => {
+  it('reports an empty map of open parts when KeyR shuts every opening', () => {
     // The session outlives the preview, so the doors the walker shut have to be
     // reported outward or a later mount would reopen them.
     const session = sessionWith({ openParts: DOOR_OPEN })

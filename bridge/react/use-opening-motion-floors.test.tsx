@@ -72,7 +72,7 @@ describe('useOpeningMotion when the shown list changes and the root stays', () =
     rerender({ root, stored })
     tickOpeningMotion(root, result.current, FULL_STEP / 10)
     const midPose = fillGroupPose(root, env.doorAId)
-    const midOpenness = result.current.openness.current.get(env.doorAId)
+    const midOpenness = result.current.openness.current.get(env.doorAId)?.primary
     expect(midPose).not.toEqual(shutPoseA)
     expect(midOpenness).toBeGreaterThan(0)
     expect(midOpenness).toBeLessThan(1)
@@ -86,7 +86,7 @@ describe('useOpeningMotion when the shown list changes and the root stays', () =
     expect(shownAfter).not.toBe(shownBefore)
     expect(shownAfter.map((opening) => opening.id)).toContain(env.doorAId)
     expect(fillGroupPose(root, env.doorAId)).toEqual(midPose)
-    expect(result.current.openness.current.get(env.doorAId)).toBe(midOpenness)
+    expect(result.current.openness.current.get(env.doorAId)?.primary).toBe(midOpenness)
   })
 })
 
@@ -172,7 +172,7 @@ describe('useOpeningMotion when the scope or the shown floors change', () => {
     const { result, rerender } = renderMotion(env, { root: rootB, stored: new Map() })
     rerender({ root: rootB, stored })
     tickOpeningMotion(rootB, result.current, FULL_STEP / 10)
-    const midOpenness = result.current.openness.current.get(env.doorBId)
+    const midOpenness = result.current.openness.current.get(env.doorBId)?.primary
     expect(midOpenness).toBeGreaterThan(0)
     expect(midOpenness).toBeLessThan(1)
 
@@ -182,6 +182,6 @@ describe('useOpeningMotion when the scope or the shown floors change', () => {
     rerender({ root: rootB, stored })
 
     expect(fillGroupPose(rootB, env.doorBId)).toEqual(openPoseB)
-    expect(result.current.openness.current.get(env.doorBId)).toBe(1)
+    expect(result.current.openness.current.get(env.doorBId)?.primary).toBe(1)
   })
 })

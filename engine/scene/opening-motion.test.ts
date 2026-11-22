@@ -5,7 +5,7 @@ import type { HingeMotion, OpeningSceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 
 import { buildOpeningFill, openingFillSashOf } from './opening-fill-builder'
-import { applyOpeningMotion, applyOpeningMotionForNode } from './opening-motion'
+import { applyOpeningMotion, applyOpeningPose } from './opening-motion'
 import {
   HEAD,
   HEIGHT,
@@ -74,12 +74,12 @@ function pocketDoor(): OpeningSceneNode {
   return { ...singleSwingDoor(), id: 'opening:test-pocket', type: 'pocket-door' }
 }
 
-describe('applyOpeningMotionForNode', () => {
+describe('applyOpeningPose on a door', () => {
   it('resolves a node motion and slides a pocket door along the wall', () => {
     const node = pocketDoor()
     const root = rootWith(node)
 
-    applyOpeningMotionForNode(root, node, 1)
+    applyOpeningPose(root, node, { primary: 1 })
 
     const group = root.getObjectByName(node.id)
     expect(group).toBeDefined()
@@ -92,10 +92,10 @@ describe('applyOpeningMotionForNode', () => {
     const node = pocketDoor()
     const root = rootWith(node)
 
-    applyOpeningMotionForNode(root, node, 1)
+    applyOpeningPose(root, node, { primary: 1 })
     expect(fillOf(root, node).position.length()).toBeGreaterThan(0)
 
-    applyOpeningMotionForNode(root, node, 0)
+    applyOpeningPose(root, node, { primary: 0 })
 
     const group = fillOf(root, node)
     expect(group.position.x).toBeCloseTo(0, PRECISION)
@@ -108,22 +108,22 @@ describe('applyOpeningMotionForNode', () => {
     const node = singleSwingDoor()
     const root = rootWith(node)
 
-    applyOpeningMotionForNode(root, node, 1)
+    applyOpeningPose(root, node, { primary: 1 })
     expect(root.getObjectByName(node.id)?.position.length()).toBeGreaterThan(0)
 
-    applyOpeningMotionForNode(root, node, 0)
+    applyOpeningPose(root, node, { primary: 0 })
     expect(root.getObjectByName(node.id)?.position.length()).toBeCloseTo(0, PRECISION)
   })
 
   it('ignores a node whose fill group is absent from the root', () => {
     const root = rootWith(singleSwingDoor())
 
-    expect(() => applyOpeningMotionForNode(root, pocketDoor(), 1)).not.toThrow()
+    expect(() => applyOpeningPose(root, pocketDoor(), { primary: 1 })).not.toThrow()
   })
 })
 
 describe.each(['double-hung-window', 'single-hung-window'] as const)(
-  'applyOpeningMotionForNode on a %s',
+  'applyOpeningPose on a %s',
   (type) => {
     const node = hungWindow(type)
 
@@ -132,7 +132,7 @@ describe.each(['double-hung-window', 'single-hung-window'] as const)(
       const group = fillOf(root, node)
       const built = worldBoxOf(group).clone()
 
-      applyOpeningMotionForNode(root, node, 1)
+      applyOpeningPose(root, node, { lower: 1 })
 
       const opened = worldBoxOf(group)
       expect(opened.max.y).toBeLessThanOrEqual(HEAD + TOLERANCE)
@@ -148,7 +148,7 @@ describe.each(['double-hung-window', 'single-hung-window'] as const)(
     it('opens no more than half of the height', () => {
       const root = rootWith(node)
 
-      applyOpeningMotionForNode(root, node, 1)
+      applyOpeningPose(root, node, { lower: 1 })
 
       const lowest = lowestPointOfSash(fillOf(root, node), 'lower')
       expect(lowest).toBeGreaterThan(SILL)
@@ -160,7 +160,7 @@ describe.each(['double-hung-window', 'single-hung-window'] as const)(
       const builtMeshes = meshesOf(fillOf(rootWith(node), node))
       const builtBoxes = builtMeshes.map((mesh) => worldBoxOf(mesh).clone())
 
-      applyOpeningMotionForNode(root, node, 1)
+      applyOpeningPose(root, node, { lower: 1 })
 
       const meshes = meshesOf(fillOf(root, node))
       expect(meshes).toHaveLength(builtMeshes.length)
@@ -176,9 +176,9 @@ describe.each(['double-hung-window', 'single-hung-window'] as const)(
       const group = fillOf(root, node)
       const shutLowest = lowestPointOfSash(group, 'lower')
 
-      applyOpeningMotionForNode(root, node, 1)
+      applyOpeningPose(root, node, { lower: 1 })
       const fullRise = lowestPointOfSash(group, 'lower') - shutLowest
-      applyOpeningMotionForNode(root, node, 0.5)
+      applyOpeningPose(root, node, { lower: 0.5 })
       const halfRise = lowestPointOfSash(group, 'lower') - shutLowest
 
       expect(fullRise).toBeGreaterThan(0)
@@ -192,8 +192,8 @@ describe.each(['double-hung-window', 'single-hung-window'] as const)(
         worldBoxOf(mesh).clone(),
       )
 
-      applyOpeningMotionForNode(root, node, 1)
-      applyOpeningMotionForNode(root, node, 0)
+      applyOpeningPose(root, node, { lower: 1 })
+      applyOpeningPose(root, node, { lower: 0 })
 
       expect(group.position.length()).toBeCloseTo(0, PRECISION)
       expect(group.quaternion.w).toBeCloseTo(1, PRECISION)

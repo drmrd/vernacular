@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { DEFAULT_COLOR_TEMPERATURE_K, type CameraPose, type WalkState } from '../../core'
+import { openPartsWith } from '../react/open-parts-test-support'
 import { createSceneSessionStore, type SceneSessionState } from './scene-session-store'
 
 const samplePosition = { x: 240, y: 90, z: -160 }
@@ -42,7 +43,8 @@ describe('createSceneSessionStore', () => {
   })
 
   it("holds a copy of a seeded open-parts map, not the caller's own map", () => {
-    const seed = new Map([['opening:front-door', new Set(['primary' as const])]])
+    const frontDoorId = 'opening:front-door'
+    const seed = openPartsWith({ [frontDoorId]: ['primary'] })
 
     const held = createSceneSessionStore({ openDoorIds: seed }).getSceneSession().openDoorIds
 

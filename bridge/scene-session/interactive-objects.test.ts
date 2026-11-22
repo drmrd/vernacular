@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createSceneSessionStore } from '../index'
+import { openPartsWith } from '../react/open-parts-test-support'
 import { interactiveObjectsAtDefault, resetInteractiveObjects } from './interactive-objects'
 
 const FRONT_DOOR_ID = 'opening:front-door'
-const FRONT_DOOR_OPEN = new Map([[FRONT_DOOR_ID, new Set(['primary' as const])]])
+const FRONT_DOOR_OPEN = openPartsWith({ [FRONT_DOOR_ID]: ['primary'] })
 
 describe('resetInteractiveObjects', () => {
   it('closes every opened door and window, leaving the session at its defaults', () => {
@@ -18,7 +19,7 @@ describe('resetInteractiveObjects', () => {
     expect(interactiveObjectsAtDefault(store.getSceneSession())).toBe(true)
   })
 
-  it('replaces the stored open set and never mutates the original in place', () => {
+  it('replaces the stored open-parts map and never mutates the original in place', () => {
     const store = createSceneSessionStore({ openDoorIds: FRONT_DOOR_OPEN })
     const before = store.getSceneSession().openDoorIds
 
