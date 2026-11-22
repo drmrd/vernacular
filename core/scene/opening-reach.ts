@@ -1,4 +1,5 @@
 import { openingTypeHasFill } from '../registries/opening-kind'
+import { SASH_FRAME_WIDTH_MM } from './opening-fill'
 import {
   openingMotion,
   openingParts,
@@ -133,13 +134,19 @@ interface ReachExtent {
   reachMm: number
 }
 
+/** Where a ray meets one rectangle: the distance along it and the height above the rectangle's bottom edge. */
+interface FrameHit {
+  distance: number
+  heightMm: number
+}
+
 /**
- * The ray distance from the eye to one rectangle of the opening, or null when the ray
+ * Where the ray from the eye meets one rectangle of the opening, or null when the ray
  * runs parallel to it, points away from it, lands beyond reach, or crosses the
  * rectangle's plane outside it. The ray direction must be a unit vector, so the
  * returned distance is in millimeters.
  */
-function distanceToFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent): number | null {
+function distanceToFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent): FrameHit | null {
   const denom = dot(ray.direction, frame.normal)
   if (Math.abs(denom) < PARALLEL_EPSILON) return null
   const t = dot(subtract(frame.center, ray.origin), frame.normal) / denom
@@ -147,8 +154,9 @@ function distanceToFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent
   const hit = add(ray.origin, scale(ray.direction, t))
   const local = subtract(hit, frame.center)
   if (Math.abs(dot(local, frame.along)) > extent.width / 2) return null
-  if (Math.abs(dot(local, frame.up)) > extent.height / 2) return null
-  return t
+  const upOffset = dot(local, frame.up)
+  if (Math.abs(upOffset) > extent.height / 2) return null
+  return { distance: t, heightMm: upOffset + extent.height / 2 }
 }
 
 /**
@@ -156,7 +164,7 @@ function distanceToFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent
  * leaf, or null when the ray reaches neither. The shut frame counts at every openness, so
  * an open door is still found from where it was opened.
  */
-function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit): number | null {
+function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit): FrameHit | null {
   const shut = shutFrame(node)
   const frames =
     limit.openness > 0
@@ -165,8 +173,10 @@ function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit)
   const extent: ReachExtent = { width: node.width, height: node.height, reachMm: limit.reachMm }
   const hits = frames
     .map((frame) => distanceToFrame(ray, frame, extent))
-    .filter((distance): distance is number => distance !== null)
-  return hits.length === 0 ? null : Math.min(...hits)
+    .filter((hit): hit is FrameHit => hit !== null)
+  return hits.length === 0
+    ? null
+    : hits.reduce((nearest, hit) => (hit.distance < nearest.distance ? hit : nearest))
 }
 
 /** How far the part that the opening's motion drives stands open in the pose. */
@@ -179,10 +189,27 @@ function partOpenness(node: OpeningSceneNode, pose: OpeningPose | undefined): nu
 export interface OpeningReachHit {
   readonly openingId: string
   readonly part: OpeningPartId
+  /** The band of the shut frame that the part answers for, in millimeters up from the frame's bottom. */
+  readonly band: { readonly bottomMm: number; readonly topMm: number }
 }
 
-function reachHit(node: OpeningSceneNode | null): OpeningReachHit | null {
-  return node && { openingId: node.id, part: openingParts(node.type)[0] ?? 'primary' }
+function reachHit(node: OpeningSceneNode, heightMm: number): OpeningReachHit {
+  const parts = openingParts(node.type)
+  if (parts.length < 2) {
+    return {
+      openingId: node.id,
+      part: parts[0] ?? 'primary',
+      band: { bottomMm: 0, topMm: node.height },
+    }
+  }
+  const railTopMm = Math.min(node.height, node.height / 2 + SASH_FRAME_WIDTH_MM / 2)
+  return heightMm > railTopMm
+    ? {
+        openingId: node.id,
+        part: 'upper',
+        band: { bottomMm: railTopMm, topMm: node.height },
+      }
+    : { openingId: node.id, part: 'lower', band: { bottomMm: 0, topMm: railTopMm } }
 }
 
 /**
@@ -205,16 +232,16 @@ export function openingUnderReach(
 ): OpeningReachHit | null {
   const reachMm = options?.reachMm ?? DEFAULT_INTERACT_REACH_MM
   const ray: ReachRay = { origin: eye, direction: normalize(direction) }
-  let nearest: OpeningSceneNode | null = null
+  let nearest: { node: OpeningSceneNode; heightMm: number } | null = null
   let nearestDistance = Infinity
   for (const node of openings) {
     if (!openingTypeHasFill(node.type)) continue
     const openness = partOpenness(node, options?.openness?.get(node.id))
-    const distance = reachDistance(ray, node, { reachMm, openness })
-    if (distance !== null && distance < nearestDistance) {
-      nearestDistance = distance
-      nearest = node
+    const hit = reachDistance(ray, node, { reachMm, openness })
+    if (hit !== null && hit.distance < nearestDistance) {
+      nearestDistance = hit.distance
+      nearest = { node, heightMm: hit.heightMm }
     }
   }
-  return reachHit(nearest)
+  return nearest && reachHit(nearest.node, nearest.heightMm)
 }
