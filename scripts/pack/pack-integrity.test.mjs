@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { checkPackIntegrity, isWebp } from './pack-integrity.mjs'
+import { TEXTURE_SIDE, lossyWebp, rgbPng } from './texture-test-bytes.mjs'
 
 const HASH = 'a'.repeat(64)
 const ASSET_FILE = `assets/${HASH}.glb`
@@ -126,7 +127,12 @@ describe('checkPackIntegrity', () => {
 describe('checkPackIntegrity for a format 2 asset', () => {
   const OTHER_HASH = 'c'.repeat(64)
   const textureFile = (extension, hash = HASH) => `assets/${hash}.${extension}`
-  const TEXTURE = { kind: 'texture', name: 'Grass', mediaType: 'image/png' }
+  const IMAGE = { width: TEXTURE_SIDE, height: TEXTURE_SIDE }
+  const TEXTURE = { kind: 'texture', name: 'Grass', mediaType: 'image/png', image: IMAGE }
+  const TEXTURE_BYTES = {
+    'image/png': rgbPng(TEXTURE_SIDE),
+    'image/webp': lossyWebp(TEXTURE_SIDE, TEXTURE_SIDE),
+  }
   const MODEL = { kind: 'furniture', mediaType: 'model/gltf-binary' }
 
   /** A format 2 pack whose only asset is stored as `assets/<hash>.<extension>`. */
@@ -138,6 +144,7 @@ describe('checkPackIntegrity for a format 2 asset', () => {
       dirs: { assets: [`${HASH}.${extension}`], ...overrides.dirs },
       files: { [ASSET_FILE]: false, [file]: true, ...overrides.files },
       hashes: { [file]: HASH, ...overrides.hashes },
+      bytes: { [file]: TEXTURE_BYTES[asset.mediaType], ...overrides.bytes },
     })
     return { manifest, reader }
   }
@@ -195,6 +202,7 @@ describe('checkPackIntegrity for a format 2 asset', () => {
       dirs: { assets: [`${HASH}.glb`, `${OTHER_HASH}.png`], thumbnails: [] },
       files: { [THUMBNAIL_FILE]: false, [texturePath]: true },
       hashes: { [texturePath]: OTHER_HASH },
+      bytes: { [texturePath]: TEXTURE_BYTES['image/png'] },
     })
     const result = await checkPackIntegrity(manifest, reader)
     const missing = result.errors.filter((m) => m.includes('thumbnail missing'))
