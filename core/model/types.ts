@@ -113,6 +113,8 @@ export interface Opening {
   /** Height of the sill above the finished floor, in millimeters. */
   sillHeight: number
   orientation: OpeningOrientation
+  /** True on the one door that is the project's main entrance. Absent on every other opening. */
+  entrance?: true
   /** Third-party extension data; see {@link Extensions}. */
   extensions?: Extensions
 }
