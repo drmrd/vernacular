@@ -83,9 +83,9 @@ const WEBP_EXTENDED_HEIGHT_OFFSET = WEBP_EXTENDED_WIDTH_OFFSET + WEBP_UINT24_BYT
 const WEBP_BYTES_THROUGH_EXTENDED_HEIGHT = WEBP_EXTENDED_HEIGHT_OFFSET + WEBP_UINT24_BYTES
 const WEBP_EXTENDED_ANIMATION_FLAG = 0x02
 const WEBP_EXTENDED_PROFILE_FLAG = 0x20
-const WEBP_LOSSY_SIZE_MASK = 0x3fff
-const WEBP_LOSSLESS_SIZE_BITS = 14
-const WEBP_LOSSLESS_SIZE_MASK = 0x3fff
+const WEBP_SIZE_BITS = 14
+const WEBP_SIZE_MASK = (1 << WEBP_SIZE_BITS) - 1
+const WEBP_CHUNK_TYPE_END = WEBP_CHUNK_TYPE_OFFSET + WEBP_CHUNK_TYPE_LENGTH
 const BITS_PER_TWO_BYTES = 16
 
 function webpHeader(width: number, height: number, flags = 0): WebpImageHeader {
@@ -108,20 +108,19 @@ function readLossyWebp(bytes: Uint8Array, view: DataView): WebpImageHeader | und
   )
   return hasStartCode
     ? webpHeader(
-        view.getUint16(WEBP_LOSSY_WIDTH_OFFSET, true) & WEBP_LOSSY_SIZE_MASK,
-        view.getUint16(WEBP_LOSSY_HEIGHT_OFFSET, true) & WEBP_LOSSY_SIZE_MASK,
+        view.getUint16(WEBP_LOSSY_WIDTH_OFFSET, true) & WEBP_SIZE_MASK,
+        view.getUint16(WEBP_LOSSY_HEIGHT_OFFSET, true) & WEBP_SIZE_MASK,
       )
     : undefined
 }
 
 function readLosslessWebp(bytes: Uint8Array, view: DataView): WebpImageHeader | undefined {
+  if (bytes[WEBP_PAYLOAD_OFFSET] !== WEBP_LOSSLESS_SIGNATURE) return undefined
   const packed = view.getUint32(WEBP_LOSSLESS_PACKED_OFFSET, true)
-  return bytes[WEBP_PAYLOAD_OFFSET] === WEBP_LOSSLESS_SIGNATURE
-    ? webpHeader(
-        (packed & WEBP_LOSSLESS_SIZE_MASK) + 1,
-        ((packed >>> WEBP_LOSSLESS_SIZE_BITS) & WEBP_LOSSLESS_SIZE_MASK) + 1,
-      )
-    : undefined
+  return webpHeader(
+    (packed & WEBP_SIZE_MASK) + 1,
+    ((packed >>> WEBP_SIZE_BITS) & WEBP_SIZE_MASK) + 1,
+  )
 }
 
 function readExtendedWebp(bytes: Uint8Array, view: DataView): WebpImageHeader {
@@ -146,8 +145,9 @@ const WEBP_CHUNK_READERS = new Map<string, WebpChunkReader>([
 function readWebpHeader(bytes: Uint8Array): WebpImageHeader | undefined {
   const isRiffWebp =
     hasTextAt(bytes, 0, WEBP_RIFF_TAG) && hasTextAt(bytes, WEBP_FORM_OFFSET, WEBP_FORM_TAG)
-  const chunkEnd = WEBP_CHUNK_TYPE_OFFSET + WEBP_CHUNK_TYPE_LENGTH
-  const chunkType = String.fromCharCode(...bytes.subarray(WEBP_CHUNK_TYPE_OFFSET, chunkEnd))
+  const chunkType = String.fromCharCode(
+    ...bytes.subarray(WEBP_CHUNK_TYPE_OFFSET, WEBP_CHUNK_TYPE_END),
+  )
   const chunkReader = isRiffWebp ? WEBP_CHUNK_READERS.get(chunkType) : undefined
   if (chunkReader === undefined || bytes.length < chunkReader.bytesNeeded) {
     return undefined
