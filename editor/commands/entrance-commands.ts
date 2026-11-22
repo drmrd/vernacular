@@ -1,9 +1,9 @@
 import { entranceOf, entranceRoleOf, markMainEntrance, openingKindOfType } from '../../core'
-import { singleSelectedOpening } from '../plan/opening-inspector-context'
+import { singleSelectedOpening, type SelectedOpening } from '../plan/opening-inspector-context'
 import type { CommandContext, EditorCommand } from './command'
 
 // The selected door that is not yet marked as the main entrance, or null.
-function unmarkedSelectedDoor(context: CommandContext) {
+function unmarkedSelectedDoor(context: CommandContext): SelectedOpening | null {
   const selected = singleSelectedOpening(
     context.selection.getSelectedIds(),
     context.session.getProject(),
