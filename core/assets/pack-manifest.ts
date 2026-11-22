@@ -5,6 +5,7 @@
 // manifest object and returns a result. Shared by the in-app pack loader and
 // the pack CLI so both gates run on one definition.
 
+import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
 import { validateTextureFields } from './texture-asset-rules.ts'
@@ -128,13 +129,12 @@ function validateOptionalUrl(
 }
 
 function validateDimensions(dimensions: unknown, label: string, errors: string[]): void {
-  if (typeof dimensions !== 'object' || dimensions === null) {
+  if (!isRecord(dimensions)) {
     errors.push(`${label}.dimensions are required`)
     return
   }
-  const source = dimensions as Record<string, unknown>
   for (const axis of DIMENSION_AXES) {
-    if (!isPositiveLengthMm(source[axis])) {
+    if (!isPositiveLengthMm(dimensions[axis])) {
       errors.push(positiveLengthMmProblem(`${label}.dimensions.${axis}`))
     }
   }
@@ -207,11 +207,11 @@ function validateAssetFields(
 
 function validateAsset(asset: unknown, context: AssetContext, errors: string[]): void {
   const { label } = context
-  if (typeof asset !== 'object' || asset === null) {
+  if (!isRecord(asset)) {
     errors.push(`${label} must be an object`)
     return
   }
-  validateAssetFields(asset as Record<string, unknown>, context, errors)
+  validateAssetFields(asset, context, errors)
 }
 
 function validateAssets(assets: unknown, formatVersion: unknown, errors: string[]): void {
@@ -260,10 +260,10 @@ function validatePackFields(source: Record<string, unknown>, errors: string[]): 
  * Validate a parsed pack manifest.
  */
 export function validatePackManifest(manifest: unknown): PackValidationResult {
-  if (typeof manifest !== 'object' || manifest === null) {
+  if (!isRecord(manifest)) {
     return { valid: false, errors: ['manifest must be a JSON object'] }
   }
   const errors: string[] = []
-  validatePackFields(manifest as Record<string, unknown>, errors)
+  validatePackFields(manifest, errors)
   return { valid: errors.length === 0, errors }
 }

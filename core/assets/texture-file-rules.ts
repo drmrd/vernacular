@@ -3,6 +3,7 @@
 // Byte rules for a texture file (ADR-0219): the header must agree with the
 // manifest entry, and the PNG or WebP must meet the format constraints. Pure:
 // it reads the bytes and returns a list of human-readable problems.
+import { isRecord } from './is-record.ts'
 import { pngChunkTypes, readImageHeader } from './image-header.ts'
 import type { ImageHeader, PngImageHeader, WebpImageHeader } from './image-header.ts'
 
@@ -51,10 +52,24 @@ function formatProblems(header: ImageHeader, bytes: Uint8Array): string[] {
   return header.mediaType === 'image/png' ? pngProblems(header, bytes) : webpProblems(header)
 }
 
-function declaredSize(image: unknown): { width: number; height: number } | null {
-  if (typeof image !== 'object' || image === null) return null
-  const { width, height } = image as { width?: unknown; height?: unknown }
+interface DeclaredSize {
+  readonly width: number
+  readonly height: number
+}
+
+function declaredSize(image: unknown): DeclaredSize | null {
+  if (!isRecord(image)) return null
+  const { width, height } = image
   return typeof width === 'number' && typeof height === 'number' ? { width, height } : null
+}
+
+function sizeProblems(header: ImageHeader, declared: DeclaredSize | null): string[] {
+  if (declared === null) return []
+  if (header.width === declared.width && header.height === declared.height) return []
+  return [
+    `image size ${header.width} by ${header.height} pixels differs from the declared ` +
+      `${declared.width} by ${declared.height}`,
+  ]
 }
 
 export function textureFileProblems(asset: TextureFileExpectation, bytes: Uint8Array): string[] {
@@ -62,13 +77,5 @@ export function textureFileProblems(asset: TextureFileExpectation, bytes: Uint8A
   if (header?.mediaType !== asset.mediaType) {
     return [`file bytes do not match the declared media type ${asset.mediaType}`]
   }
-  const declared = declaredSize(asset.image)
-  const sizeProblems =
-    declared === null || (header.width === declared.width && header.height === declared.height)
-      ? []
-      : [
-          `image size ${header.width} by ${header.height} pixels differs from the declared ` +
-            `${declared.width} by ${declared.height}`,
-        ]
-  return [...sizeProblems, ...formatProblems(header, bytes)]
+  return [...sizeProblems(header, declaredSize(asset.image)), ...formatProblems(header, bytes)]
 }
