@@ -44,14 +44,17 @@ function validTextureAsset(): Record<string, unknown> {
 }
 
 describe('validatePackManifest - format 2 texture assets', () => {
-  it('accepts a format 2 manifest with a texture asset that has a PNG media type, an image size, a tile size, and a color space, and no dimensions', () => {
-    const manifest = {
-      ...validManifest(),
-      formatVersion: 2,
-      assets: [validModelAsset(), validTextureAsset()],
-    }
-    expect(validatePackManifest(manifest)).toEqual({ valid: true, errors: [] })
-  })
+  it.each(['image/png', 'image/webp'])(
+    'accepts a format 2 manifest with a %s texture asset that has an image size, a tile size, and a color space, and no dimensions',
+    (mediaType) => {
+      const manifest = {
+        ...validManifest(),
+        formatVersion: 2,
+        assets: [validModelAsset(), { ...validTextureAsset(), mediaType }],
+      }
+      expect(validatePackManifest(manifest)).toEqual({ valid: true, errors: [] })
+    },
+  )
 })
 
 describe('validatePackManifest - format version', () => {
