@@ -4,17 +4,13 @@ import { describe, expect, it } from 'vitest'
 import { NotificationProvider, BannerRegion } from '../editor/design-system'
 import type { DocumentHandle } from '../session'
 import type { StorageCapabilities } from '../storage'
+import { BANNER_WITH_FOLDERS, BANNER_WITHOUT_FOLDERS } from './app-test-support'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 
 type HandleDurability = Pick<DocumentHandle, 'durable'>
 
 const TAB_ONLY: HandleDurability = { durable: false }
 const KEPT: HandleDurability = { durable: true }
-
-const BANNER_WITH_FOLDERS =
-  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it, or open a folder.'
-const BANNER_WITHOUT_FOLDERS =
-  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it.'
 
 function capabilitiesWith(fileSystemAccess: boolean): StorageCapabilities {
   return {
@@ -87,7 +83,7 @@ describe('useDegradedStorageBanner', () => {
     expect(within(screen.getByRole('alert')).getByText(BANNER_WITH_FOLDERS)).toBeInTheDocument()
   })
 
-  it('can be dismissed', () => {
+  it('offers a Dismiss notification control', () => {
     renderHarness({ handle: TAB_ONLY, capabilities: capabilitiesWith(true) })
 
     expect(screen.getByRole('button', { name: 'Dismiss notification' })).toBeInTheDocument()

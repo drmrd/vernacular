@@ -6,6 +6,8 @@ import { createMemoryAddressBar, type MemoryAddressBar } from './address-bar'
 import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
   AUTOSAVE_TIMEOUT_MS,
+  BANNER_WITH_FOLDERS,
+  BANNER_WITHOUT_FOLDERS,
   NEW_PROJECT_NAME,
   editTheProject,
   expectOpenProject,
@@ -18,18 +20,15 @@ import {
   startNewProjectFromThePage,
   stubCapableStorage,
 } from './app-test-support'
-import { PROJECTS_ADDRESS, visit } from './history-navigation-test-support'
+import { PROJECTS_ADDRESS, addressOf, visit } from './history-navigation-test-support'
+import { NOT_STORED } from './open-failure-text'
 
-const BANNER_WITH_FOLDERS =
-  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it, or open a folder.'
-const BANNER_WITHOUT_FOLDERS =
-  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it.'
 const WARNING = 'The storage of this browser was not found. Projects stay in this tab.'
 const DISMISS = 'Dismiss notification'
 const TAB_ONLY_STATUS = 'In this tab only'
 const TAB_ONLY_CARD_TEXT = 'In this tab only.'
-/** What the shell says once a change is stored, or once it is held by the tab alone. */
-const STORED_LABEL = /all changes saved|in this tab only/i
+/** The floor that the first project tops out at after its two edits: one floor, plus two added. */
+const FIRST_PROJECT_TOP_FLOOR = /3rd floor/i
 
 afterEach(() => {
   cleanup()
@@ -51,15 +50,22 @@ function renderWithNoStorage(): { bar: MemoryAddressBar; resolvePorts: () => Pro
   return { bar, resolvePorts }
 }
 
-/** Adds `floors` floors to the open project, and waits until the shell says that it holds them. */
-async function editAndWaitForTheStore(floors = 1): Promise<void> {
-  for (let done = 0; done < floors; done += 1) await editTheProject()
-  await screen.findByText(STORED_LABEL, {}, { timeout: AUTOSAVE_TIMEOUT_MS })
-}
-
 /** The text of each live region of the open editor, in the order of the page. */
 function statusReadouts(): string[] {
   return screen.queryAllByRole('status').map((region) => region.textContent ?? '')
+}
+
+/** Adds `floors` floors to the open project, and waits until the shell says that the tab holds them. */
+async function editAndWaitForTheStore(floors = 1): Promise<void> {
+  for (let done = 0; done < floors; done += 1) await editTheProject()
+  await waitFor(() => expect(statusReadouts()).toContain(TAB_ONLY_STATUS), {
+    timeout: AUTOSAVE_TIMEOUT_MS,
+  })
+}
+
+/** The cards of the Projects page, one list item each. */
+function cardsOf(page: HTMLElement): Promise<HTMLElement[]> {
+  return within(page).findAllByRole('listitem')
 }
 
 /** Dismisses the banner of the tab. */
@@ -162,7 +168,43 @@ describe('The application whose builder of the ports rejects', () => {
     await visit(bar, PROJECTS_ADDRESS)
 
     const page = await findTheProjectsPage()
-    expect(await within(page).findAllByRole('link')).toHaveLength(2)
+    expect(await cardsOf(page)).toHaveLength(2)
+  })
+
+  it('says that the project is not stored, with no banner, at the address of a project', async () => {
+    stubCapableStorage()
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const bar = createMemoryAddressBar(addressOf('project-elsewhere'))
+    render(
+      <App resolvePorts={() => Promise.reject<never>(new Error('no storage'))} address={bar} />,
+    )
+
+    const alerts = await screen.findAllByRole('alert')
+    await settleForAWhile()
+
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(alerts[0]).toHaveTextContent(NOT_STORED)
+    expect(screen.queryByText(BANNER_WITHOUT_FOLDERS)).not.toBeInTheDocument()
+  })
+
+  it('shows an empty Projects page with no alert at the Projects address, and the banner once a project opens', async () => {
+    stubCapableStorage()
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const bar = createMemoryAddressBar(PROJECTS_ADDRESS)
+    render(
+      <App resolvePorts={() => Promise.reject<never>(new Error('no storage'))} address={bar} />,
+    )
+    const page = await findTheProjectsPage()
+    await settleForAWhile()
+    expect(within(page).queryAllByRole('listitem')).toHaveLength(0)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await startNewProjectFromThePage()
+
+    await expectOpenProject(NEW_PROJECT_NAME)
+    expect(
+      within(await screen.findByRole('alert')).getByText(BANNER_WITHOUT_FOLDERS),
+    ).toBeInTheDocument()
   })
 
   it('builds the ports once, and writes one warning that carries the error', async () => {
@@ -191,11 +233,11 @@ describe('The application whose builder of the ports rejects', () => {
     await visit(bar, PROJECTS_ADDRESS)
     const page = await findTheProjectsPage()
     // The cards come in the order of their latest use, so the first project is the second card.
-    const cards = await within(page).findAllByRole('link')
+    const cards = await cardsOf(page)
 
-    await userEvent.click(cards[1] as HTMLElement)
+    await userEvent.click(within(cards[1] as HTMLElement).getByRole('link'))
 
-    expect(await screen.findByRole('button', { name: /3rd floor/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: FIRST_PROJECT_TOP_FLOOR })).toBeInTheDocument()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })

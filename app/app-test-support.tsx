@@ -55,6 +55,14 @@ const SETTLE_MS = 300
 /** The name that a new project starts with. */
 export const NEW_PROJECT_NAME = 'Untitled project'
 
+/** The banner of a browser that opens folders, pinned as a whole literal on purpose. */
+export const BANNER_WITH_FOLDERS =
+  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it, or open a folder.'
+
+/** The banner of a browser that opens no folders, pinned as a whole literal on purpose. */
+export const BANNER_WITHOUT_FOLDERS =
+  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it.'
+
 /** The text of the loading view. */
 export const LOADING_TEXT = 'Loading project...'
 
