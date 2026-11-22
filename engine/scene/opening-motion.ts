@@ -2,10 +2,13 @@ import * as THREE from 'three'
 
 import {
   openingMotion,
+  openingPartMotion,
+  openingParts,
   type HingeMotion,
   type HungSash,
   type OpeningMotion,
   type OpeningPartId,
+  type OpeningPose,
   type OpeningSceneNode,
   type SlideMotion,
 } from '../../core'
@@ -17,7 +20,7 @@ import { openingFillSashOf } from './opening-fill-builder'
  * - A hinge, or a slide whose partId is 'primary', transforms the whole group.
  * - A slide whose partId names a hung-window sash leaves the group at its built transform and
  *   translates only the child meshes stamped with that sash (see openingFillSashOf) by
- *   travel * openness. Every other child mesh is left at zero translation.
+ *   travel * openness. Every other child mesh is left as it is.
  * At openness 0 every motion is the identity: the group and every child mesh sit at zero
  * translation and identity rotation, so a shut opening renders exactly as it was built.
  */
@@ -61,6 +64,25 @@ export function applyOpeningMotionForNode(
 }
 
 /**
+ * Plays every part of the opening node's type at its openness in the pose, on the node's fill
+ * group within `root`; a part missing from the pose is shut. Each hung-window sash moves only
+ * its own meshes, so one sash never resets the other. A node with no built group is ignored.
+ */
+export function applyOpeningPose(
+  root: THREE.Object3D,
+  node: OpeningSceneNode,
+  pose: OpeningPose,
+): void {
+  const group = root.getObjectByName(node.id)
+  if (!group) {
+    return
+  }
+  for (const part of openingParts(node.type)) {
+    applyOpeningMotion(group, openingPartMotion(node.type, node, part), pose[part] ?? 0)
+  }
+}
+
+/**
  * Translates the moving part along the motion's travel vector, scaled by openness: the whole
  * group for the 'primary' part, or only the meshes of the named sash for a hung window.
  */
@@ -83,19 +105,24 @@ function isSashPart(partId: OpeningPartId): partId is HungSash {
 }
 
 /**
- * Rests the group at its built transform and translates only the meshes of the motion's sash.
- * This relies on how the fill builder lays a fill out: it adds each part mesh flat to the group,
- * with its vertices built in place and a mesh position of zero. The meshes of a sash are
- * therefore direct children of the group, and a position of zero is the built pose. So every
- * child that is not of the moving sash is put back at zero. A nested child, or a child built
- * with a position other than zero, would break this.
+ * Rests the group at its built transform and translates only the meshes of the motion's sash,
+ * leaving every other child where it is. This relies on how the fill builder lays a fill out: it
+ * adds each part mesh flat to the group, with its vertices built in place and a mesh position of
+ * zero. The meshes of a sash are therefore direct children of the group, and a position of zero
+ * is the built pose. A nested child, or a child built with a position other than zero, would
+ * break this.
  */
 function slideSash(group: THREE.Object3D, motion: SlideMotion, openness: number): void {
   group.quaternion.identity()
   group.position.set(0, 0, 0)
   for (const child of group.children) {
-    const scale = openingFillSashOf(child) === motion.partId ? openness : 0
-    child.position.set(motion.travel.x * scale, motion.travel.y * scale, motion.travel.z * scale)
+    if (openingFillSashOf(child) === motion.partId) {
+      child.position.set(
+        motion.travel.x * openness,
+        motion.travel.y * openness,
+        motion.travel.z * openness,
+      )
+    }
   }
 }
 
