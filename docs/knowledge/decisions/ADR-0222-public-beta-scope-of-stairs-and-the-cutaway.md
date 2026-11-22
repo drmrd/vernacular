@@ -22,9 +22,12 @@ sourceFiles:
     bridge/react/view-scene-graph.ts,
     editor/plan/draw-stair.ts,
     engine/scene/room-builder.ts,
+    bridge/react/framed-scene.ts,
+    bridge/react/scene-camera-effects.tsx,
+    core/scene/camera-framing.ts,
   ]
 status: current
-updated: 2026-11-20
+updated: 2026-11-22
 ---
 
 # ADR-0222: The public beta builds a straight stair, a level cut, and a floor view with the floors below
@@ -34,7 +37,8 @@ updated: 2026-11-20
 Current. The project owner decided the four points below on 2026-11-20, on issue #169. No build
 work has started. This record amends the public beta deliverables and acceptance lines of the
 design specification, section "Phase 5: Multi-floor + stairs", and each changed line cites this
-record.
+record. The amendment of 2026-11-22 decides which floors the camera frames in the floor view
+(issue #978).
 
 ## Context
 
@@ -84,9 +88,7 @@ In the floor view, the active floor and every floor below it are drawn solid, an
 are hidden, so a stair that arrives from below is in view. Today "This floor" draws the active floor
 alone.
 
-Which floors the camera frames in the floor view is not decided here. The first view of a project
-frames what the view shows, so drawing the floors below may change what it frames. That stays
-open (issue #978).
+The camera frames the active floor alone. See the amendment of 2026-11-22 below.
 
 ### The first stair is a straight run with a plain balustrade and newels
 
@@ -140,8 +142,8 @@ These were not decided and stay open for the design round on #169:
 - The shadow rules for the cut plane and its caps.
 - The stair well rule under a sloped ceiling, such as a stair into an attic. This waits for the
   design round on roofs and sloped ceilings.
-- Which floors the camera frames in the floor view, now that the floors below are drawn
-  (issue #978).
+- Decided on 2026-11-22: which floors the camera frames in the floor view, now that the floors
+  below are drawn (issue #978). See the amendment of that date.
 
 ## Consequences
 
@@ -175,6 +177,41 @@ For the stair well, the options were an opening fixed to the stair footprint, or
 the user draws as its own element. A fixed opening cannot draw the short stair wells and wide stair
 halls common in old houses. A drawn opening leaves a new stair rising into a closed floor until the
 user draws it.
+
+## Amendment of 2026-11-22: the floor view frames the active floor
+
+The project owner decided on 2026-11-22, on issue #978, that the floor view frames the active floor
+only.
+
+The fit, "Reset view", and the axis presets (top down and the four elevations) frame the active
+floor. The "Entrance" preset of #627 is not built yet. When it lands, it reads the same framing
+box. The floors below are drawn and lit, but they do not widen the frame.
+
+The near and far planes, the depth range of the doorway view, and the sun and shadow rig read the
+box of everything drawn, so a floor outside the frame is still drawn and lit.
+
+The framed scene carries both boxes: `framingBounds`, the box the camera frames, and `bounds`, the
+box of everything drawn (`bridge/react/framed-scene.ts`). In the building scope the two are equal.
+`withDepthRangeOf` (`core/scene/camera-framing.ts`) gives a pose framed on one box the near and far
+planes of the other, and `FrameCamera` and `PresetCamera` (`bridge/react/scene-camera-effects.tsx`)
+apply it. The scoped scene graph names the framed floor (`framedFloorId`, set to the active floor in
+the floor scope), and the scene cache keys on it as well as on the floor set. The same floors
+framed on another floor make a different scene.
+
+If the active floor has no built content, or is not drawn, the frame falls back to everything
+drawn.
+
+The trade-off: on a deep view, the lowest floors can sit partly below the frame.
+
+The build that draws the floors below has to keep the framed floor in its floor-scope graph. It
+also carries the live check of the frame. Until it lands, the floor view draws the active floor
+alone, so the two boxes are still equal there.
+
+Alternatives considered:
+
+- Every drawn floor. The frame grows with each floor below, and the floor view opens like the
+  building view.
+- The active floor and the one below it. This adds a third rule, and the frame still widens.
 
 ## References
 
