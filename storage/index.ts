@@ -59,7 +59,13 @@ export type {
   StoreRead,
   StoreReadFailure,
 } from './documents/document-store'
-export type { SecondFileState } from './documents/second-file'
+export type {
+  DocumentFileFacts,
+  SecondFileChange,
+  SecondFileRefusal,
+  SecondFileState,
+  TwoDocumentFiles,
+} from './documents/second-file'
 export type { ProjectSnapshots } from './documents/project-snapshots'
 export { OpfsProjectStore, createOpfsProjectStore } from './opfs/opfs-project-store'
 export { ZipBundleProjectStore } from './zip/zip-bundle-project-store'

@@ -23,10 +23,19 @@ import type { SecondFileWritten } from './save-target'
 import {
   latestChangeOf,
   listSecondFiles,
+  promoteSecondFile,
   readNewestSecondFile,
+  readStoredTwoFiles,
   secondFileBesideMain,
+  setAsideSecondFiles,
 } from './second-file'
-import type { SecondFileEntry, SecondFileState } from './second-file'
+import type {
+  SecondFileChange,
+  SecondFileEntry,
+  SecondFileState,
+  StoredTwoFiles,
+  TwoDocumentFiles,
+} from './second-file'
 import { listStoredFiles } from './stored-files'
 
 /** Why a read gave no document. */
@@ -83,6 +92,15 @@ interface FileToRead {
   readonly listed: SecondFileEntry[]
 }
 
+function toStoreRead(stored: StoredRead | undefined): StoreRead {
+  if (stored === undefined) {
+    return { ok: false, failure: { kind: 'not-found' } }
+  }
+  return 'failure' in stored
+    ? { ok: false, failure: { kind: 'decode', decode: stored.failure } }
+    : stored.decoded
+}
+
 /**
  * Puts the document codec in front of any byte store, so no store can skip a step. It decodes on
  * read and encodes on write, keeps the migration backup before a migrated document reaches the
@@ -124,13 +142,49 @@ export class DocumentStore {
    * failed listing of the project directory rejects the read of a readable file.
    */
   async read(id: string): Promise<StoreRead> {
-    const stored = await this.readStored(id)
+    return toStoreRead(await this.readStored(id))
+  }
+
+  /**
+   * The two document files with their facts, or undefined when the project has no main file that
+   * decodes or is newer than the build, or no second file at or below the build's version.
+   */
+  async twoFiles(id: string): Promise<TwoDocumentFiles | undefined> {
+    return (await this.storedTwoFiles(id))?.files
+  }
+
+  /** Decodes the second file that `twoFiles` names; not-found when there is none. */
+  async readSecondFile(id: string): Promise<StoreRead> {
+    const stored = await this.storedTwoFiles(id)
     if (stored === undefined) {
-      return { ok: false, failure: { kind: 'not-found' } }
+      return toStoreRead(undefined)
     }
-    return 'failure' in stored
-      ? { ok: false, failure: { kind: 'decode', decode: stored.failure } }
-      : stored.decoded
+    const { bytes } = stored.second
+    return toStoreRead(
+      await this.finishRead(id, {
+        directory: this.files.projectDirectory(id),
+        bytes,
+        result: decodeDocument(bytes, this.options),
+        secondFile: { name: stored.second.name, read: 'second' },
+        listed: stored.listed,
+      }),
+    )
+  }
+
+  /** Moves every second file at or below the build's version to the backups, if `expected` still holds. */
+  async setAsideSecondFile(id: string, expected: TwoDocumentFiles): Promise<SecondFileChange> {
+    return setAsideSecondFiles(this.files.projectDirectory(id), expected, this.options)
+  }
+
+  /** Makes the main file hold the second file's bytes, if `expected` still holds and it decodes. */
+  async promoteSecondFile(id: string, expected: TwoDocumentFiles): Promise<SecondFileChange> {
+    return promoteSecondFile(this.files.projectDirectory(id), expected, this.options)
+  }
+
+  private async storedTwoFiles(id: string): Promise<StoredTwoFiles | undefined> {
+    return this.files.holds(id)
+      ? readStoredTwoFiles(this.files.projectDirectory(id), this.options)
+      : undefined
   }
 
   /** The document file and its decoded outcome; undefined when the project has no document file. */

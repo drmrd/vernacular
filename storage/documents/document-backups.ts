@@ -15,13 +15,15 @@ export type BackupKind =
   | 'pre-repair'
   | 'refused-snapshot'
   | 'unreadable-previous'
+  | 'replaced-by-second-file'
+  | 'set-aside-second-file'
 
 /** The version of bytes that carry no readable schema version. */
 const UNKNOWN_VERSION = 0
 const HEX_RADIX = 16
 const HEX_BYTE_WIDTH = 2
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
+export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes))
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(HEX_RADIX).padStart(HEX_BYTE_WIDTH, '0'))
