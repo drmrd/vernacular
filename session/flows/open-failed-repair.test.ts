@@ -172,10 +172,8 @@ describe('Open as a new project, with the assets that installed packs supply', (
 
     const result = await openCopySuppliedBy(ports, offer, supplied)
 
-    expect(result).toMatchObject({
-      ok: true,
-      missingAssets: expect.not.arrayContaining([imageHash]),
-    })
+    if (!result.ok) throw new Error('The copy did not open')
+    expect(result.missingAssets).not.toContain(imageHash)
   })
 
   it('a pack reference that no installed pack supplies, and no pool holds, is a missing asset', async () => {

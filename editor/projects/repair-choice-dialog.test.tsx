@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RepairChoiceDialog, type RepairChoiceDialogProps } from './repair-choice-dialog'
@@ -97,7 +97,10 @@ describe('the dialog that offers a repaired project as a new one or in place of 
   })
 
   it('while a choice runs, Escape does nothing', async () => {
-    const { user, onCancel } = renderDialog({ busy: true })
+    const { user, onCancel, dialog } = renderDialog({ busy: true })
+    const shade = dialog.parentElement as HTMLElement
+    act(() => shade.focus())
+    expect(shade).toContainElement(document.activeElement as HTMLElement)
 
     await user.keyboard('{Escape}')
 

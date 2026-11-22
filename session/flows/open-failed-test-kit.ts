@@ -126,7 +126,7 @@ export function placeInFolder(
 export async function placeFolderProject(
   ports: TestPorts,
   bytes: Uint8Array,
-): ReturnType<typeof rememberFolder> {
+): Promise<DirectoryPort> {
   const folder = await placeInFolder(ports, bytes)
   await ports.index.put(folderRecord(PROJECT_ID, { location: IN_FOLDER }))
   return folder

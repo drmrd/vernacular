@@ -195,31 +195,21 @@ describe('a replace over a storage that throws', () => {
     failure: { kind: 'storage-unavailable', message: expect.stringContaining(DISK_GONE.message) },
   }
 
-  it('a read that throws under the lock gives storage-unavailable, writes nothing, and frees the lock', async () => {
-    const { ports, offer } = await refusedProject()
-    vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(DISK_GONE)
+  it.each(['read', 'replaceStored'] as const)(
+    'a %s that throws under the lock gives storage-unavailable, writes nothing, and frees the lock',
+    async (method) => {
+      const { ports, offer } = await refusedProject()
+      vi.spyOn(ports.workspace, method).mockRejectedValueOnce(DISK_GONE)
 
-    const result = await replaceWithRepaired(ports, undefined, replaceRequest(offer))
+      const result = await replaceWithRepaired(ports, undefined, replaceRequest(offer))
 
-    expect(result).toEqual(UNAVAILABLE)
-    await expectNothingWritten(ports, mixedPaintBytes())
-    expect(handleOf(await replaceWithRepaired(ports, undefined, replaceRequest(offer))).id).toBe(
-      PROJECT_ID,
-    )
-  })
-
-  it('a replace that throws gives storage-unavailable, writes nothing, and frees the lock', async () => {
-    const { ports, offer } = await refusedProject()
-    vi.spyOn(ports.workspace, 'replaceStored').mockRejectedValueOnce(DISK_GONE)
-
-    const result = await replaceWithRepaired(ports, undefined, replaceRequest(offer))
-
-    expect(result).toEqual(UNAVAILABLE)
-    await expectNothingWritten(ports, mixedPaintBytes())
-    expect(handleOf(await replaceWithRepaired(ports, undefined, replaceRequest(offer))).id).toBe(
-      PROJECT_ID,
-    )
-  })
+      expect(result).toEqual(UNAVAILABLE)
+      await expectNothingWritten(ports, mixedPaintBytes())
+      expect(handleOf(await replaceWithRepaired(ports, undefined, replaceRequest(offer))).id).toBe(
+        PROJECT_ID,
+      )
+    },
+  )
 })
 
 describe('a replace with another project open', () => {
