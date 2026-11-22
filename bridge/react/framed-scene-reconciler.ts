@@ -250,10 +250,10 @@ function evictScenesOfReplacedBuilds(
 }
 
 /**
- * Stacks the pass's floors into a scene, returning the cached scene for the floor set and framed floor when it
- * holds the exact same builds. Any cached scene this pass drops retires its ground plane: one
- * whose floor builds were replaced, one that shares a build with the new scene, or one the new
- * scene replaces under an ambiguous floor-set key (a floor id containing the separator).
+ * Stacks the pass's floors into a scene, returning the cached scene for the floor set and framed
+ * floor when it holds the exact same builds. Any cached scene this pass drops retires its ground
+ * plane: one whose floor builds were replaced, one that shares a build with the new scene, or one
+ * the new scene replaces under an ambiguous floor-set key (a floor id containing the separator).
  */
 function reconcileStackedScene(
   pass: ReconcilePass,
@@ -286,8 +286,8 @@ function reconcileStackedScene(
  * reused across reconciles. A single-floor (active-floor) graph is the one-floor case;
  * a whole-building graph (issue #479, ADR-0127) stacks one floor group per node at its
  * elevation, frames the camera over the whole building, and seats a single ground plane
- * sized to the whole footprint. The assembled scene is cached per floor set and framed floor, so an
- * unchanged pair returns the same FramedScene with no rebuild and no camera reframe.
+ * sized to the whole footprint. The assembled scene is cached per floor set and framed floor, so
+ * an unchanged pair returns the same FramedScene with no rebuild and no camera reframe.
  *
  * The view options (the surface-edge overlay toggle, ADR-0132) are fixed for the
  * reconciler's lifetime, so every cached sub-group was built with the same setting; the
