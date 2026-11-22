@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { openingMotion, openingPartMotion, openingParts, type SlideMotion } from '../index'
-import { openingNode } from './opening-motion-test-support'
+import { openingMotion, openingPartMotion, openingParts } from '../index'
+import { openingNode, slideMotionOf } from './opening-motion-test-support'
 
 const DOUBLE_HUNG = 'double-hung-window'
 const SINGLE_HUNG = 'single-hung-window'
@@ -12,11 +12,8 @@ const DOOR_HEIGHT_MM = 2032
 /** Rise of a sash in a 1200 mm window: 1200 / 2 - 60 / 2. */
 const RISE_MM = 570
 
-function slideOf(type: string, height: number, part: 'lower' | 'upper'): SlideMotion {
-  const motion = openingPartMotion(type, openingNode(type, height), part)
-  expect(motion.kind).toBe('slide')
-  if (motion.kind !== 'slide') throw new Error('expected a slide motion')
-  return motion
+function slideOf(type: string, height: number, part: 'lower' | 'upper') {
+  return slideMotionOf(openingPartMotion(type, openingNode(type, height), part))
 }
 
 describe('openingParts', () => {
