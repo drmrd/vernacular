@@ -132,6 +132,12 @@ export const UNCOVERED_COMPONENTS: {
       'reads the drawing buffer inside the per-frame callback to fulfil a pending color sample and renders no DOM (it returns null); it requires a live R3F Canvas and an already drawn frame, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'PlainSceneFailureView',
+    file: 'bridge/react/plain-scene-failure-view.tsx',
+    reason:
+      'a switch over the two plain failure views, each of which has a story of its own, so a separate story would repeat them (see ADR-0111).',
+  },
+  {
     component: 'ReasonDescription',
     file: 'bridge/react/reason-description.tsx',
     reason:
@@ -160,6 +166,12 @@ export const UNCOVERED_COMPONENTS: {
     file: 'bridge/react/scene-display-options.tsx',
     reason:
       'the display-options group (the surface-edge overlay toggle) that sits beside the environment controls extracted from scene-nav-toolbar.tsx; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
+    component: 'SceneFailureHost',
+    file: 'bridge/react/scene-failure-host.tsx',
+    reason:
+      'draws nothing of its own: it wraps the failure view that fills the slot in the element that marks the failure kind, and the views it wraps have stories (see ADR-0111).',
   },
   {
     component: 'ScopeToggle',
