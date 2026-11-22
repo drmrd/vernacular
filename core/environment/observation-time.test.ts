@@ -59,6 +59,16 @@ describe('observation-time helpers', () => {
     expect(isObservationInstantIso(iso)).toBe(false)
   })
 
+  it.each([
+    'x2026-06-21T08:00',
+    ' 2026-06-21T08:00',
+    '2026-06-21T08:00x',
+    '2026-06-21T08:00:00',
+    '2026-06-21T08:00Z',
+  ])('rejects %j because the whole text must be a civil datetime', (iso) => {
+    expect(isObservationInstantIso(iso)).toBe(false)
+  })
+
   it.each(['2024-02-29T08:00', '2026-12-31T23:59'])(
     'accepts the real civil datetime %s, leap day and last minute included',
     (iso) => {
