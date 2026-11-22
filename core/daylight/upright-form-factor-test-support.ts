@@ -3,7 +3,10 @@ import type { Point } from '../model/types'
 import type { UprightRectangle } from './upright-form-factor'
 
 const POINTS_PER_AXIS = 40
+const SAMPLES_PER_RECTANGLE = POINTS_PER_AXIS * POINTS_PER_AXIS
 const MIDPOINT = 0.5
+const DEGREES_PER_HALF_TURN = 180
+const QUARTER = 0.25
 
 /**
  * The textbook configuration factor between two identical rectangles `a` by `b` that face each
@@ -18,6 +21,52 @@ export function opposedRectanglesFormFactor(a: number, b: number, c: number): nu
   const atanTerms =
     x * sy * Math.atan(x / sy) + y * sx * Math.atan(y / sx) - x * Math.atan(x) - y * Math.atan(y)
   return (2 / (Math.PI * x * y)) * (logTerm + atanTerms)
+}
+
+/**
+ * The textbook configuration factor between two rectangles at a right angle that share an edge of
+ * length `edge`: from the one of width `from` to the one of width `to` (the standard catalog of
+ * radiation configuration factors).
+ */
+export function commonEdgeFormFactor(edge: number, from: number, to: number): number {
+  const w = from / edge
+  const h = to / edge
+  const r = w * w + h * h
+  const root = Math.sqrt(r)
+  const logArgument =
+    (((1 + w * w) * (1 + h * h)) / (1 + r)) *
+    Math.pow((w * w * (1 + r)) / ((1 + w * w) * r), w * w) *
+    Math.pow((h * h * (1 + r)) / ((1 + h * h) * r), h * h)
+  const terms =
+    w * Math.atan(1 / w) +
+    h * Math.atan(1 / h) -
+    root * Math.atan(1 / root) +
+    QUARTER * Math.log(logArgument)
+  return terms / (Math.PI * w)
+}
+
+function rotate(vector: Point, cos: number, sin: number): Point {
+  return { x: vector.x * cos - vector.y * sin, y: vector.x * sin + vector.y * cos }
+}
+
+/** The rectangle turned by `degrees` about the plan point `about`: its span and its facing rotate. */
+export function turned(
+  rectangle: UprightRectangle,
+  degrees: number,
+  about: Point,
+): UprightRectangle {
+  const angle = (degrees * Math.PI) / DEGREES_PER_HALF_TURN
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  const turnPoint = (point: Point): Point => {
+    const offset = rotate({ x: point.x - about.x, y: point.y - about.y }, cos, sin)
+    return { x: about.x + offset.x, y: about.y + offset.y }
+  }
+  return {
+    ...rectangle,
+    span: [turnPoint(rectangle.span[0]), turnPoint(rectangle.span[1])],
+    facing: rotate(rectangle.facing, cos, sin),
+  }
 }
 
 interface Sample {
@@ -39,9 +88,10 @@ function samples(rectangle: UprightRectangle): Sample[] {
   return result
 }
 
-function spanLength(rectangle: UprightRectangle): number {
+function cellArea(rectangle: UprightRectangle): number {
   const [from, to] = rectangle.span
-  return Math.hypot(to.x - from.x, to.y - from.y)
+  const spanLength = Math.hypot(to.x - from.x, to.y - from.y)
+  return (spanLength / POINTS_PER_AXIS) * ((rectangle.head - rectangle.sill) / POINTS_PER_AXIS)
 }
 
 function pairKernel(doorway: Sample, glazing: Sample, facings: readonly [Point, Point]): number {
@@ -65,14 +115,10 @@ function pairKernel(doorway: Sample, glazing: Sample, facings: readonly [Point, 
 export function directSum(doorway: UprightRectangle, glazing: UprightRectangle): number {
   const doorwaySamples = samples(doorway)
   const glazingSamples = samples(glazing)
-  const doorwayCell =
-    (spanLength(doorway) / POINTS_PER_AXIS) * ((doorway.head - doorway.sill) / POINTS_PER_AXIS)
-  const glazingCell =
-    (spanLength(glazing) / POINTS_PER_AXIS) * ((glazing.head - glazing.sill) / POINTS_PER_AXIS)
   const facings: readonly [Point, Point] = [doorway.facing, glazing.facing]
   let total = 0
   for (const from of doorwaySamples) {
     for (const to of glazingSamples) total += pairKernel(from, to, facings)
   }
-  return (total * doorwayCell * glazingCell) / (doorwayCell * POINTS_PER_AXIS * POINTS_PER_AXIS)
+  return (total * cellArea(glazing)) / SAMPLES_PER_RECTANGLE
 }
