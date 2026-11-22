@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { CURRENT_SCHEMA_VERSION } from '../../core'
+import { secondDocumentFileName } from '../project-files/project-file-name'
 import { isProjectRecord } from './project-record-check'
 import { sampleRecord } from './project-record-test-kit'
 
-const SECOND_FILE_NAME = 'vernacular.format-17.json'
+const SECOND_FILE_NAME = secondDocumentFileName(CURRENT_SCHEMA_VERSION)
 
 /** A whole record as stored, with its `secondFile` field set to `value`. */
 function recordWithSecondFile(value: unknown): unknown {

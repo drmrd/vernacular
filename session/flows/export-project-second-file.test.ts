@@ -3,14 +3,23 @@
 import { describe, expect, it } from 'vitest'
 import { secondDocumentFileVersion } from '../../storage'
 import { documentBreakingFormatRules } from '../../tests/storage/conformance/conformance-documents'
-import { createTestPorts, openOrThrow, workspaceRequest } from '../handle/handle-test-kit'
+import {
+  createTestPorts,
+  openOrThrow,
+  placeDocument,
+  workspaceRequest,
+} from '../handle/handle-test-kit'
 import {
   SECOND_FILE_NAME,
   documentNamed,
+  documentReferring,
+  placeSecondFile,
   storeNewerMainBesideSecondFile,
   storeTwoReadableFiles,
 } from '../handle/second-file-test-kit'
+import { notJsonBytes } from '../projects/rebuild-test-kit'
 import { filesOfArchive, projectOfArchive, storedBytesOf } from './card-flows-test-kit'
+import { putInPool } from './delete-project-test-kit'
 import { exportProject } from './export-project'
 import type { ExportProjectResult } from './export-project'
 
@@ -88,5 +97,17 @@ describe('an export of a project that holds a second document file', () => {
     expect((await projectOfArchive(bytes)).meta.name).toBe(SECOND_NAME)
     expect(secondFilePathsOf(bytes)).toEqual([])
     await handle.close()
+  })
+
+  it('a project that did not open exports an unchecked copy with the pool asset that only its second file uses', async () => {
+    const ports = createTestPorts()
+    const asset = await putInPool(ports, 'the asset that only the second file uses')
+    await placeDocument(ports, ID, notJsonBytes())
+    await placeSecondFile(ports, ID, documentReferring([asset]))
+
+    const copy = uncheckedCopyOf(await exportProject(ports, undefined, { id: ID }))
+
+    expect(filesOfArchive(copy.bytes).has(`assets/${asset}`)).toBe(true)
+    expect(copy.includedAssets).toBe(1)
   })
 })

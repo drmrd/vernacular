@@ -23,6 +23,7 @@ import {
 } from './second-file-test-kit'
 
 const PROJECT_ID = 'a'
+const MAIN_FILE_READ_BESIDE_SECOND_FILE = { name: SECOND_FILE_NAME, read: 'main' }
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -105,10 +106,10 @@ describe('the second file in the record that a handle writes', () => {
   it('a save that writes the main file leaves the field of the record as the open wrote it', async () => {
     const ports = createTestPorts()
     const handle = await openBesideSecondFile(ports)
-    const before = (await onlyRecord(ports))?.secondFile
+    expect((await onlyRecord(ports))?.secondFile).toEqual(MAIN_FILE_READ_BESIDE_SECOND_FILE)
 
     await editAndSave(handle)
 
-    expect((await onlyRecord(ports))?.secondFile).toEqual(before)
+    expect((await onlyRecord(ports))?.secondFile).toEqual(MAIN_FILE_READ_BESIDE_SECOND_FILE)
   })
 })
