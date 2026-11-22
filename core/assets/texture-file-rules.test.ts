@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { textureFileProblems } from './texture-file-rules.ts'
+import { textureFileProblems, textureFileSizeProblem } from './texture-file-rules.ts'
+import { TEXTURE_LIMITS } from './texture-asset-rules.ts'
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 const ANY_CRC = [0, 0, 0, 0]
@@ -159,6 +160,24 @@ describe('textureFileProblems for bytes that are not the declared image', () => 
   it('reports PNG bytes for an image/webp asset', () => {
     expect(textureFileProblems(webpAsset, png([SIDE, SIDE], COLOR_TYPE_RGB))).toEqual(
       mismatch('image/webp'),
+    )
+  })
+})
+
+describe('the texture file size limit', () => {
+  const EIGHT_MIB = 8_388_608
+
+  it('is 8 MiB', () => {
+    expect(TEXTURE_LIMITS.maxFileBytes).toBe(EIGHT_MIB)
+  })
+
+  it.each([0, 1234, EIGHT_MIB - 1, EIGHT_MIB])('accepts a file of %i bytes', (fileSize) => {
+    expect(textureFileSizeProblem(fileSize)).toBeNull()
+  })
+
+  it('reports a file one byte above the limit, naming its size and the limit', () => {
+    expect(textureFileSizeProblem(EIGHT_MIB + 1)).toEqual(
+      'file is 8388609 bytes, above the 8 MiB (8388608 byte) limit for a texture',
     )
   })
 })
