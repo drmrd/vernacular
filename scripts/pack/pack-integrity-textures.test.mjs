@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { checkPackIntegrity } from './pack-integrity.mjs'
+import { runPackCli } from './vernacular-pack.mjs'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
 import {
   TEXTURE_SIDE,
@@ -48,14 +49,14 @@ function textureAsset(mediaType = 'image/png') {
   }
 }
 
-/** A format 2 pack with one texture whose file holds `bytes`. */
-async function integrityOf(asset, bytes, overrides = {}) {
+/** A reader for a pack with one texture whose file holds `bytes`. */
+function readerFor(asset, bytes, overrides = {}) {
   const extension = asset.mediaType === 'image/webp' ? 'webp' : 'png'
   const file = `assets/${HASH}.${extension}`
   const thumbnailBytes = thumbnailSignature()
   const files = new Set([file, `thumbnails/${HASH}.webp`, 'LICENSE', 'NOTICE', 'CHANGELOG.md'])
   const listings = { assets: [`${HASH}.${extension}`], thumbnails: [`${HASH}.webp`] }
-  const reader = {
+  return {
     dirName: 'grass-pack-1.0.0',
     listDir: async (relative) => listings[relative] ?? [],
     exists: async (relative) => files.has(relative),
@@ -64,8 +65,20 @@ async function integrityOf(asset, bytes, overrides = {}) {
       relative === file ? bytes.subarray(0, length) : thumbnailBytes,
     ...overrides,
   }
-  const manifest = { packId: 'grass-pack', version: '1.0.0', formatVersion: 2, assets: [asset] }
-  return checkPackIntegrity(manifest, reader)
+}
+
+function manifestOf(asset) {
+  return { packId: 'grass-pack', version: '1.0.0', formatVersion: 2, assets: [asset] }
+}
+
+/** A format 2 pack with one texture whose file holds `bytes`. */
+async function integrityOf(asset, bytes, overrides = {}) {
+  return checkPackIntegrity(manifestOf(asset), readerFor(asset, bytes, overrides))
+}
+
+function withoutImage(asset) {
+  const { image: _image, ...rest } = asset
+  return rest
 }
 
 describe('checkPackIntegrity for a texture file', () => {
@@ -130,5 +143,34 @@ describe('checkPackIntegrity for a texture file', () => {
     const reader = { exists: async (relative) => !relative.startsWith('assets/') }
     const result = await integrityOf(textureAsset(), Uint8Array.of(1, 2, 3), reader)
     expect(result.errors).toEqual([`asset ${HASH}: asset file missing at assets/${HASH}.png`])
+  })
+
+  describe('for a texture entry without a usable image size', () => {
+    const unusableImages = [
+      ['no image', withoutImage(textureAsset())],
+      ['a null image', { ...textureAsset(), image: null }],
+      ['an image that is a string', { ...textureAsset(), image: 'x' }],
+      ['an image without numeric sides', { ...textureAsset(), image: { width: '256' } }],
+    ]
+
+    it.each(unusableImages)('adds no texture error for %s', async (_label, asset) => {
+      const result = await integrityOf(asset, rgbPng(TEXTURE_SIDE))
+      expect(result).toEqual({ errors: [] })
+    })
+
+    it('leaves the pack review to report that the image is required', async () => {
+      const asset = withoutImage(textureAsset())
+      const cliDeps = {
+        readManifest: vi.fn(async () => manifestOf(asset)),
+        createReader: vi.fn(() => readerFor(asset, rgbPng(TEXTURE_SIDE))),
+        writeReport: vi.fn(async () => {}),
+        log: vi.fn(),
+        error: vi.fn(),
+      }
+      const code = await runPackCli(['validate', 'packs/grass-pack-1.0.0'], cliDeps)
+      const messages = cliDeps.error.mock.calls.map(([message]) => message)
+      expect(code).toBe(1)
+      expect(messages).toContain('  - assets[0].image is required')
+    })
   })
 })
