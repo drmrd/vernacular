@@ -5,7 +5,7 @@ import {
 } from './observation-time'
 import { openingConditions, openingInstant, type OpeningConditions } from './opening-instant'
 import { DEFAULT_CLOUD_COVER } from './sky-model'
-import type { EnvironmentScene } from '../model/environment-scene'
+import type { EnvironmentScene, ViewingConditions } from '../model/environment-scene'
 import type { Site } from '../model/site'
 import { frontDirection, type FrontDirectionInput } from '../scene/front-direction'
 
@@ -42,8 +42,11 @@ export function environmentStateOpenedWith(conditions: OpeningConditions): Envir
 export function openingEnvironmentFor(
   site: Site | undefined,
   graph: FrontDirectionInput,
+  stored?: ViewingConditions,
 ): EnvironmentState {
-  return environmentStateOpenedWith(openingConditions({ site, front: frontDirection(graph) }))
+  return environmentStateOpenedWith(
+    openingConditions({ site, front: frontDirection(graph), ...(stored && { stored }) }),
+  )
 }
 
 export interface EnvironmentSceneIdentity {
