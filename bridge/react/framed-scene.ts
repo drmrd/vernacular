@@ -31,6 +31,9 @@ import {
   type SceneRoot,
 } from '../../engine'
 
+/** The two boxes the camera reads: the one it frames and the one of everything drawn. */
+export type FramingBoxes = Pick<FramedScene, 'framingBounds' | 'bounds'>
+
 export interface FramedScene {
   root: SceneRoot
   pose: CameraPose

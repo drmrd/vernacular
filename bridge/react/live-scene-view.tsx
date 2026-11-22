@@ -48,7 +48,7 @@ function SceneCameraRig({ nav, framed, doorway }: SceneCameraRigProps) {
   const { root, pose, bounds } = framed
   return (
     <>
-      <FrameCamera bounds={bounds} active={!nav.userControlled} />
+      <FrameCamera boxes={framed} active={!nav.userControlled} />
       <PresetCamera
         request={nav.presetRequest}
         bounds={bounds}

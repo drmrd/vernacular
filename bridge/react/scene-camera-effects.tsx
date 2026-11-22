@@ -1,7 +1,15 @@
 import { useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
-import { cameraPresetPose, doorwayPose, type Bounds3, type CameraPose } from '../../core'
-import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
+import {
+  cameraPresetPose,
+  doorwayPose,
+  frameSceneCamera,
+  withDepthRangeOf,
+  type Bounds3,
+  type CameraPose,
+} from '../../core'
+import { applyCameraPose, fovToRadians, type FittableCamera } from './fit-camera'
+import type { FramingBoxes } from './framed-scene'
 import type { PresetChoice } from './scene-nav-toolbar'
 import type { DoorwayTarget } from './use-doorway-target'
 
@@ -17,13 +25,18 @@ import type { DoorwayTarget } from './use-doorway-target'
 // applied, so an edit no longer yanks a navigated camera; clearing user control
 // (the reset button) makes `active` true again, which reframes. The live Canvas is
 // set to frameloop="always" so interactive camera moves render continuously.
-export function FrameCamera({ bounds, active }: { bounds: Bounds3 | null; active: boolean }) {
+export function FrameCamera({ boxes, active }: { boxes: FramingBoxes; active: boolean }) {
   const camera = useThree((state) => state.camera)
   const size = useThree((state) => state.size)
+  const { framingBounds, bounds } = boxes
   useLayoutEffect(() => {
     if (!active) return
-    fitCameraToBounds(camera, bounds, size)
-  }, [camera, bounds, active, size])
+    const fit = frameSceneCamera(framingBounds, {
+      aspect: size.width / size.height,
+      fovRadians: fovToRadians(camera),
+    })
+    applyCameraPose(camera, withDepthRangeOf(fit, bounds))
+  }, [camera, framingBounds, bounds, active, size])
   return null
 }
 
