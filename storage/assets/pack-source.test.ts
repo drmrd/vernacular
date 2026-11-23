@@ -149,12 +149,6 @@ describe('PackSource', () => {
     await expect(source.list()).resolves.toEqual([])
   })
 
-  it('exposes the pack id as source.id after a successful list()', async () => {
-    const source = new PackSource(fakeReader([VALID_MANIFEST]))
-    await source.list()
-    expect(source.id).toBe(PACK_ID)
-  })
-
   it('reads asset bytes from the reader by content hash', async () => {
     const assetBytes = Uint8Array.of(1, 2, 3)
     const source = new PackSource(fakeReader([VALID_MANIFEST], { asset: assetBytes }))
@@ -213,10 +207,22 @@ describe('PackSource loading its manifest', () => {
     expect(reader.calls.manifest).toBe(1)
   })
 
+  it('names the pack after a list', async () => {
+    const source = new PackSource(fakeReader([VALID_MANIFEST]))
+    await source.list()
+    expect(source.id).toBe(PACK_ID)
+  })
+
   it('names the pack after a read that comes before any list', async () => {
-    const source = new PackSource(fakeReader([VALID_MANIFEST], { asset: ASSET_BYTES }))
+    const source = new PackSource(fakeReader([VALID_MANIFEST]))
     await source.read(MODEL_HASH)
     expect(source.id).toBe(PACK_ID)
+  })
+
+  it('keeps the placeholder id while the manifest is invalid', async () => {
+    const source = new PackSource(fakeReader([{ packId: 'x' }]))
+    await source.read(MODEL_HASH)
+    expect(source.id).toBe('pack:unknown@0.0.0')
   })
 
   it('rejects a read when the manifest fails to load', async () => {
