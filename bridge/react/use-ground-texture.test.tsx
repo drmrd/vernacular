@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Mock } from 'vitest'
 import { startTransition, useLayoutEffect } from 'react'
-import { createRoot } from 'react-dom/client'
+import { createRoot, type Root } from 'react-dom/client'
 import { render, waitFor } from '@testing-library/react'
 import { resolvedAsset } from '../../core'
 import type { AssetReference, ResolvedAsset, TextureDescription } from '../../core'
@@ -244,6 +244,7 @@ describe('useGroundTexture in a concurrent root without act', () => {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   const actEnvironment = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean | undefined }
   let wasActEnvironment: boolean | undefined
+  let root: Root | undefined
 
   beforeEach(() => {
     stubImageDecoding()
@@ -252,6 +253,8 @@ describe('useGroundTexture in a concurrent root without act', () => {
   })
 
   afterEach(() => {
+    root?.unmount()
+    root = undefined
     actEnvironment.IS_REACT_ACT_ENVIRONMENT = wasActEnvironment
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
@@ -269,19 +272,18 @@ describe('useGroundTexture in a concurrent root without act', () => {
     }
     const recorded: RecordedState[] = []
     const Probe = committingProbe(recorded, settleOldOnNewCommit)
-    const root = createRoot(document.createElement('div'))
-    onTestFinished(() => root.unmount())
-    root.render(<Probe asset={reference} textureSource={holdable.source} />)
+    root = createRoot(document.createElement('div'))
+    const mounted = root
+    mounted.render(<Probe asset={reference} textureSource={holdable.source} />)
     await drainTasks()
 
     startTransition(() =>
-      root.render(<Probe asset={otherReference} textureSource={holdable.source} />),
+      mounted.render(<Probe asset={otherReference} textureSource={holdable.source} />),
     )
     await drainTasks()
     const forNewReference = () => recorded.filter((entry) => entry.asset === otherReference)
     const beforeNewLoad = forNewReference().map((entry) => entry.state)
     expect(beforeNewLoad.length).toBeGreaterThan(0)
-    expect(beforeNewLoad.map((state) => state.status)).toEqual(beforeNewLoad.map(() => 'loading'))
     expect(beforeNewLoad).toEqual(beforeNewLoad.map(() => LOADING))
 
     newLoad.settle(resolvedAsset(new Uint8Array([4, 5, 6]), otherReference.scope))
