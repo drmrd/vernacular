@@ -1,4 +1,5 @@
 import type { Point } from '../model/types'
+import { SNAP_UNITS_PER_MM } from './tolerance'
 
 /** Cross products below this magnitude treat two edge directions as parallel. */
 const PARALLEL_EPSILON = 1e-9
@@ -8,17 +9,6 @@ const DEGENERATE_EDGE_EPSILON = 1e-9
 
 /** Fewer vertices than this cannot bound an area, so they pass through unchanged. */
 const MINIMUM_POLYGON_VERTICES = 3
-
-/**
- * Snap-grid resolution, in units per millimeter, that offset corners round to:
- * each coordinate is snapped to the nearest 1/SNAP_UNITS_PER_MM of a millimeter.
- * A corner that mixes a zero and a nonzero edge offset comes from a shifted-line
- * intersection that carries IEEE-754 rounding noise far below the junction
- * tolerance, so it can land a fraction of a nanometer off its exact coordinate.
- * Snapping to this sub-micrometer grid clears that noise so abutting geometry
- * meets on exact coordinates, without disturbing any real geometry.
- */
-const SNAP_UNITS_PER_MM = 1e6
 
 /** An infinite line expressed as a point on it and a (non-unit) direction. */
 interface Line {

@@ -564,6 +564,15 @@ export { dimensionGeometry, dimensionLength } from './geometry/dimension'
 export { insetPolygon, pointInPolygon, polygonArea, polygonCentroid } from './geometry/polygon'
 export { lineIntersection, pointOnSegment, segmentIntersection } from './geometry/segment'
 export { dot, leftNormal, leftPerp, shift, subtract, unit } from './geometry/vector'
+export {
+  ANGLE_TOLERANCE_RAD,
+  DERIVED_COORDINATE_GRID_MM,
+  LENGTH_TOLERANCE_MM,
+  SMALLEST_IMPERIAL_DISPLAY_STEP_MM,
+  SMALLEST_METRIC_DISPLAY_STEP_MM,
+  SNAP_UNITS_PER_MM,
+  SUPPORTED_EXTENT_MM,
+} from './geometry/tolerance'
 export type {
   WallFaceCorners,
   WallFaceGap,
