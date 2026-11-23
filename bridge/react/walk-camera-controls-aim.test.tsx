@@ -45,7 +45,9 @@ vi.mock('@react-three/fiber', () => ({
 
 interface DrawnOutline {
   name: string
-  children: { geometry: { getAttribute(name: string): { array: ArrayLike<number> } } }[]
+  children: {
+    geometry: { getAttribute(name: string): { array: ArrayLike<number> }; dispose(): void }
+  }[]
 }
 
 type ControlsProps = ComponentProps<typeof WalkCameraControls>
@@ -119,6 +121,8 @@ describe('WalkCameraControls aim outline', () => {
 
   it('adds its outline group to the scene and takes it away on unmount', () => {
     const { unmount } = renderControls()
+    drawFrame()
+    const disposeGeometry = vi.spyOn(outlineGroup().children[0]!.geometry, 'dispose')
 
     expect(collaborators.threeState.scene.add).toHaveBeenCalledTimes(1)
     expect(outlineGroup().name).toBe('aim-outline')
@@ -126,6 +130,7 @@ describe('WalkCameraControls aim outline', () => {
 
     unmount()
 
+    expect(disposeGeometry).toHaveBeenCalledTimes(1)
     expect(collaborators.threeState.scene.remove).toHaveBeenCalledTimes(1)
     expect(collaborators.threeState.scene.remove).toHaveBeenCalledWith(outlineGroup())
   })
@@ -140,13 +145,20 @@ describe('WalkCameraControls aim outline', () => {
   })
 
   it('shows no outline while the aim guide is off', () => {
-    const { showWith } = renderControls()
+    const onWalkPose = vi.fn()
+    const { showWith } = renderControls({
+      onWalkPose,
+      onUserControl: vi.fn(),
+      onOpenDoors: vi.fn(),
+      storedOpenDoorIds: openPartsWith({}),
+    })
     drawFrame()
 
     showWith({ aimGuide: false })
     drawFrame()
 
     expect(outlineGroup().children).toHaveLength(0)
+    expect(onWalkPose).not.toHaveBeenCalled()
 
     showWith({ aimGuide: true })
     drawFrame()
@@ -155,8 +167,11 @@ describe('WalkCameraControls aim outline', () => {
   })
 
   it('shows no outline outside walk mode', () => {
-    renderControls({ enabled: false })
+    const { showWith } = renderControls()
+    drawFrame()
+    expect(outlineGroup().children).toHaveLength(1)
 
+    showWith({ enabled: false })
     drawFrame()
 
     expect(outlineGroup().children).toHaveLength(0)
