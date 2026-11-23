@@ -7,6 +7,7 @@ import type { TextureState } from './texture-cache'
 import {
   handedOutTextures,
   recordingProbe,
+  drainTasks,
   reference,
   stubImageDecoding,
   type FakeBitmap,
@@ -14,9 +15,7 @@ import {
 
 /** Gives a load that the hook might start the turns it needs to decode and settle. */
 async function letLoadsSettle(): Promise<void> {
-  await act(async () => {
-    for (let task = 0; task < 10; task += 1) await new Promise((done) => setTimeout(done, 0))
-  })
+  await act(drainTasks)
 }
 
 describe('useGroundTexture across hide and show', () => {

@@ -20,6 +20,7 @@ const description: TextureDescription = {
   tileSize: { width: 1000, height: 1500 },
   colorSpace: 'srgb',
 }
+// The decode is stubbed in these tests, so the bytes are never read.
 export const source: TextureSource = {
   resolve: async (asset) => resolvedAsset(new TextEncoder().encode('grass image'), asset.scope),
   describe: async () => description,
@@ -32,6 +33,14 @@ export function recordingProbe(received: TextureState[]) {
     received.push(useGroundTexture(asset, textureSource))
     return null
   }
+}
+
+const DRAINED_TASKS = 10
+
+/** Lets the scheduler run its queued tasks, passive effects among them. */
+export async function drainTasks(): Promise<void> {
+  for (let task = 0; task < DRAINED_TASKS; task += 1)
+    await new Promise((done) => setTimeout(done, 0))
 }
 
 export function handedOutTextures(received: TextureState[]): TextureAppearance['texture'][] {

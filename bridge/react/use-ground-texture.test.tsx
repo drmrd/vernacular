@@ -12,6 +12,7 @@ import {
   handedOutTextures,
   holdableSource,
   otherReference,
+  drainTasks,
   recordingProbe,
   reference,
   stubImageDecoding,
@@ -174,11 +175,6 @@ function committingProbe(recorded: RecordedState[], onCommit: (asset: AssetRefer
     useLayoutEffect(() => onCommit(asset), [asset])
     return null
   }
-}
-
-/** Lets the scheduler run its queued tasks, passive effects among them, without `act`. */
-async function drainTasks(): Promise<void> {
-  for (let task = 0; task < 10; task += 1) await new Promise((done) => setTimeout(done, 0))
 }
 
 describe('useGroundTexture in a concurrent root without act', () => {
