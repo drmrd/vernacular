@@ -10,6 +10,13 @@ export type ImageBitmapDecoder = (
   options: ImageBitmapOptions,
 ) => Promise<{ width: number; height: number; close: () => void }>
 
+export class ImageTextureDecodeError extends Error {
+  constructor(cause: unknown) {
+    super('Image texture bytes could not be decoded', { cause })
+    this.name = 'ImageTextureDecodeError'
+  }
+}
+
 const decodeWithCreateImageBitmap: ImageBitmapDecoder = (blob, options) =>
   createImageBitmap(blob, options)
 
@@ -28,7 +35,12 @@ export async function decodeImageTexture(
   decode: ImageBitmapDecoder = decodeWithCreateImageBitmap,
 ): Promise<THREE.Texture> {
   const blob = new Blob([bytes as BlobPart], { type: options.mediaType })
-  const bitmap = await decode(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' })
+  const bitmap = await decode(blob, {
+    colorSpaceConversion: 'none',
+    premultiplyAlpha: 'none',
+  }).catch((cause: unknown) => {
+    throw new ImageTextureDecodeError(cause)
+  })
   const texture = new THREE.Texture(bitmap)
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
