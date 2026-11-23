@@ -16,7 +16,6 @@ import {
 import type { TwoDocumentFiles } from '../storage'
 import { openFailureReason } from './open-failure-text'
 import type { HistoryNavigation } from './use-history-navigation'
-import { isSwitchFailure } from './use-open-project'
 
 /** What the dialog of the two plan files runs on. */
 export interface TwoFilesDialogParts {
@@ -57,10 +56,19 @@ const NOTHING_CHANGED: Answer = { ok: false, failure: { kind: 'files-changed' } 
 
 const SECOND_FILE_UNREADABLE = 'The second plan file could not be read.'
 
+/**
+ * The sentence of a failure. The switch names every kind of refusal of the second file and sends
+ * the kinds of a failed switch to their own sentences, so a new refusal is a type error here.
+ */
 function failureSentence(failure: SwitchFailure | KeptFileRefusal): string {
-  return isSwitchFailure(failure)
-    ? `Could not change the plan files: ${openFailureReason(failure)}`
-    : SECOND_FILE_UNREADABLE
+  switch (failure.kind) {
+    case 'files-changed':
+    case 'no-second-file':
+    case 'second-file-unreadable':
+      return SECOND_FILE_UNREADABLE
+    default:
+      return `Could not change the plan files: ${openFailureReason(failure)}`
+  }
 }
 
 function readFacts(ports: SessionPorts | null, id: string): Promise<TwoFilesRead> {
@@ -126,8 +134,7 @@ function useChoose(
   const choose = async ({ id, files }: Shown, run: ChoiceRun) => {
     onActionStart()
     setBusy(true)
-    const answer = await run({ id, files })
-    setBusy(false)
+    const answer = await run({ id, files }).finally(() => setBusy(false))
     if (!answer.ok && answer.failure.kind === 'files-changed') {
       show(id, await readFacts(ports, id))
       return
