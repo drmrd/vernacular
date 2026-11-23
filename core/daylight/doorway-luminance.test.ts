@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest'
 import type { Point } from '../model/types'
 import { sampleSkyVisibility } from './daylight-field'
 import {
+  DOORWAY_AREA,
+  SOURCE_BALANCE_AREA,
   STRAIGHT_ON_EXCHANGE_AREA,
+  WINDOW_FLUX,
   WINDOW_TRANSMITTANCE,
   hall,
   testRoom,
@@ -36,11 +39,8 @@ const WINDOW_SKY_SHARE = 0.5
 const DOORWAY_START = 1000
 const DOORWAY_END = 2000
 const DOORWAY_HEAD = 2100
-const DOORWAY_AREA = (DOORWAY_END - DOORWAY_START) * DOORWAY_HEAD
 const DOORWAY_TRANSMITTANCE = 1
 const WORK_PLANE_HEIGHT = 850
-// The test room's window flux: 0.5 * 0.8 * 1000 * 1200 mm squared.
-const SOURCE_FLUX = 480000
 const SOURCE_FLOOR_REFLECTANCE = 0.5
 // S' of the test room with the hall's doorway: 60.4e6 + 2.1e6.
 const SOURCE_AREA = 62500000
@@ -49,7 +49,7 @@ const SOURCE_REFLECTED_AREA = 37944000
 // The window light that lands on the doorway: 0.8 of the exchange area of the test pair.
 const ROUTED_FLUX = WINDOW_TRANSMITTANCE * STRAIGHT_ON_EXCHANGE_AREA
 // (F - Phi) rhoFloor / (S' (1 - rho')): the balance over 62.5e6 - 37.944e6.
-const E_SOURCE = ((SOURCE_FLUX - ROUTED_FLUX) * SOURCE_FLOOR_REFLECTANCE) / 24556000
+const E_SOURCE = ((WINDOW_FLUX - ROUTED_FLUX) * SOURCE_FLOOR_REFLECTANCE) / SOURCE_BALANCE_AREA
 // The hall's S (1 - rho): S = 38e6, floor 3e6 at 0.5, the rest 32e6 at 0.66.
 const HALL_ABSORBING_AREA = 13880000
 const HALL_FLOOR_REFLECTANCE = 0.5
@@ -66,7 +66,7 @@ describe('a doorway passes the interreflected light of the room it opens into, w
 
   it('derives the factor: the mean exitance of the source surfaces equals their interreflected light', () => {
     const meanExitance =
-      (SOURCE_FLOOR_REFLECTANCE * (SOURCE_FLUX - ROUTED_FLUX) + SOURCE_REFLECTED_AREA * E_SOURCE) /
+      (SOURCE_FLOOR_REFLECTANCE * (WINDOW_FLUX - ROUTED_FLUX) + SOURCE_REFLECTED_AREA * E_SOURCE) /
       SOURCE_AREA
     expect(relativeError(meanExitance, E_SOURCE)).toBeLessThan(DERIVATION_TOLERANCE)
   })

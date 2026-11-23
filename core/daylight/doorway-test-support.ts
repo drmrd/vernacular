@@ -108,6 +108,15 @@ export const farHall: DaylightRoom = {
 /** The net transmittance of the test windows (plain glazing under the uniform sky). */
 export const WINDOW_TRANSMITTANCE = 0.8
 
+/** The flux of the one window of either source room: 0.5 * 0.8 * 1000 * 1200 mm squared. */
+export const WINDOW_FLUX = 480000
+
+/** The area of the doorway of `hall`: 1000 mm wide, 2100 mm high. */
+export const DOORWAY_AREA = (DOORWAY_END - DOORWAY_START) * DOORWAY_HEAD
+
+/** S' (1 - rho') of a source room that the doorway of `hall` opens into: 24556000 mm squared. */
+export const SOURCE_BALANCE_AREA = 24556000
+
 /**
  * The exchange area, in square millimetres, from the doorway of `hall` (x = 0, y 1000 to 2000,
  * heights 0 to 2100) to the window of `testRoom` that faces it straight on (x = 4000).

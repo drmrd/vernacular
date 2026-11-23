@@ -2,24 +2,44 @@
 import { describe, expect, it } from 'vitest'
 import {
   ADJOINING_WALL_EXCHANGE_AREA,
+  DOORWAY_AREA,
+  SOURCE_BALANCE_AREA,
   STRAIGHT_ON_EXCHANGE_AREA,
+  WINDOW_FLUX,
   WINDOW_TRANSMITTANCE,
   farHall,
   hall,
   northWindowRoom,
   testRoom,
+  verticalSpan,
 } from './doorway-test-support'
 import type { DaylightRoom } from './daylight-field'
 import { UNIFORM_SKY, createDaylightFieldSolver } from './sky-visibility'
 import { relativeError } from './upright-form-factor-test-support'
 
 const TOLERANCE = 1e-9
-const DOORWAY_AREA = 1000 * 2100
-// F = 0.5 * 0.8 * 1000 * 1200 mm squared, the flux of the one window of either source room.
-const WINDOW_FLUX = 480000
-// S' (1 - rho') of a source room with the hall's doorway: 24556000 mm squared.
-const SOURCE_BALANCE_AREA = 24556000
+const TEST_ROOM_WIDTH = 4000
 const FLOOR_REFLECTANCE = 0.5
+const SECOND_DOORWAY_START = 2200
+const SECOND_DOORWAY_END = 2800
+const SECOND_DOORWAY_HEAD = 2100
+const HALL_FLUX = 44911.6289869
+const SOURCE_BALANCE = 0.009254836446
+
+/** The test room with a doorway of its own, opposite the hall's doorway, that opens to the hall. */
+const testRoomWithDoorwayToHall: DaylightRoom = {
+  ...testRoom,
+  apertures: [
+    ...testRoom.apertures,
+    {
+      span: verticalSpan(TEST_ROOM_WIDTH, SECOND_DOORWAY_START, SECOND_DOORWAY_END),
+      sill: 0,
+      head: SECOND_DOORWAY_HEAD,
+      revealDepth: 0,
+      opensTo: { room: 1 },
+    },
+  ],
+}
 
 /** The light the source room hands to the hall, and the light it loses, as the solver reports them. */
 function routedLight(rooms: readonly DaylightRoom[]) {
@@ -69,8 +89,16 @@ describe('the window light that lands on a doorway leaves its room and enters th
     },
   )
 
+  // A guard: this passed before window light was routed, and it pins the one-crossing rule.
   it('routes no window light across a second doorway', () => {
     const solver = createDaylightFieldSolver([testRoom, hall, farHall])
     expect(solver.enteringFlux(2, UNIFORM_SKY)).toBe(0)
+  })
+
+  it('sends no window light through a doorway of the room that opens to a room, not to the sky', () => {
+    const rooms = [testRoomWithDoorwayToHall, hall]
+    const { hallFlux, sourceBalance } = routedLight(rooms)
+    expect(relativeError(hallFlux, HALL_FLUX)).toBeLessThan(TOLERANCE)
+    expect(relativeError(sourceBalance, SOURCE_BALANCE)).toBeLessThan(TOLERANCE)
   })
 })

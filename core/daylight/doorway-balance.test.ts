@@ -4,8 +4,10 @@ import { sampleSkyVisibility } from './daylight-field'
 import type { DaylightRoom } from './daylight-field'
 import { UNIFORM_SKY, createDaylightFieldSolver } from './sky-visibility'
 import {
+  DOORWAY_AREA,
   SECOND_DOORWAY_EXCHANGE_AREA,
   STRAIGHT_ON_EXCHANGE_AREA,
+  WINDOW_FLUX,
   WINDOW_TRANSMITTANCE,
   hall,
   testRoom,
@@ -17,15 +19,13 @@ const CELL_SIZE = 100
 const COLUMNS = 40
 const ROWS = 30
 const FIELD_TOLERANCE = 1e-6
-// F = 0.5 * 0.8 * 1000 * 1200 mm squared, the window's flux; the floor reflects half of what stays.
-const WINDOW_FLUX = 480000
+// The floor reflects half of what stays.
 const FLOOR_REFLECTANCE = 0.5
 // The window light that lands on the hall's doorway leaves the room before the first reflection.
 const ROUTED_FLUX = WINDOW_TRANSMITTANCE * STRAIGHT_ON_EXCHANGE_AREA
 const SECOND_ROUTED_FLUX = WINDOW_TRANSMITTANCE * SECOND_DOORWAY_EXCHANGE_AREA
 // S (1 - rho) of the test room: S = 60.4e6, floor 12e6 at 0.5, the rest 48.4e6 at 0.66.
 const ROOM_ABSORBING_AREA = 60.4e6 - 12e6 * 0.5 - 48.4e6 * 0.66
-const DOORWAY_AREA = 1000 * 2100
 const SECOND_DOORWAY_AREA = 600 * 2100
 // S (1 - rho) of the hall: S = 38e6, floor 3e6 at 0.5, the rest 32e6 at 0.66.
 const HALL_ABSORBING_AREA = 38e6 - 3e6 - 32e6 * 0.66

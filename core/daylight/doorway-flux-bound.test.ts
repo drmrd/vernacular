@@ -14,6 +14,7 @@ import {
   sourceAndHalls,
 } from './doorway-test-support'
 import type { SweepRow } from './doorway-test-support'
+import type { DaylightRoom } from './daylight-field'
 import { commonEdgeFormFactor } from './upright-form-factor-test-support'
 
 const TOLERANCE = 1e-9
@@ -22,6 +23,16 @@ const WIDTHS = [100, 1000, 4000]
 const DEPTHS = [2000, 40000]
 const CEILING_HEIGHTS = [2400, 6000]
 const FLOOR_COLORS = [BLACK, GRAY, WHITE]
+const SHARE_TOLERANCE = 1e-9
+const ONE_HALL = 1
+const THREE_LISTINGS = 3
+const TWO_LISTINGS = 2
+const ZERO_BALANCE_TOLERANCE = 1e-12
+// A 100 by 40000 mm source under a 6000 mm ceiling: the doorway is the whole 40000 by 6000 wall.
+const EXTREME_DOORWAY_AREA = 40000 * 6000
+// The flux share of the whole-wall doorway to the window, 0.4851307482 for the extreme row: two
+// listings take 0.97026149642 of the window's flux, three would take 1.4553922446.
+const TWO_LISTINGS_SHARE = 0.97026149642
 // 500 by 6000 mm with a white floor, the ordinary row with the largest share.
 const NARROW_WHITE_ROW: SweepRow = {
   width: 500,
@@ -137,5 +148,34 @@ describe('a hall takes A rhoFloor / (S (1 - rho) + A) of the flux that lights it
   it('gives 0.464967258 to a hall behind a black floor of a source 100 by 2000 mm under 2400 mm', () => {
     const row = { width: 100, depth: 2000, ceilingHeight: 2400, floorColor: BLACK, label: 0 }
     expect(Math.abs(hallToSourceFluxRatio(row) / 0.464967258 - 1)).toBeLessThan(PINNED_TOLERANCE)
+  })
+})
+
+/** The source and its one hall, with the hall's doorway listed `times` times. */
+function sourceAndHallWithDoorwayListed(row: SweepRow, times: number): DaylightRoom[] {
+  return sourceAndHalls({ ...row, halls: ONE_HALL }).map((room, index) =>
+    index === 0
+      ? room
+      : { ...room, apertures: Array.from({ length: times }).flatMap(() => room.apertures) },
+  )
+}
+
+describe("the doorways that one window lights never take more than that window's flux", () => {
+  it('scales the window light when one doorway is listed three times', () => {
+    const rooms = sourceAndHallWithDoorwayListed(EXTREME_SWEEP_ROW, THREE_LISTINGS)
+    const solver = createDaylightFieldSolver(rooms)
+    expect(Math.abs(solver.interreflection(0, UNIFORM_SKY))).toBeLessThan(ZERO_BALANCE_TOLERANCE)
+    const ratio = solver.enteringFlux(1, UNIFORM_SKY) / solver.enteringFlux(0, UNIFORM_SKY)
+    expect(Math.abs(ratio - 1)).toBeLessThan(SHARE_TOLERANCE)
+  })
+
+  it("leaves the window light alone when the shares sum to less than the window's flux", () => {
+    const rooms = sourceAndHallWithDoorwayListed(EXTREME_SWEEP_ROW, TWO_LISTINGS)
+    const solver = createDaylightFieldSolver(rooms)
+    const sourceFlux = solver.enteringFlux(0, UNIFORM_SKY)
+    const routed =
+      solver.enteringFlux(1, UNIFORM_SKY) -
+      TWO_LISTINGS * EXTREME_DOORWAY_AREA * solver.interreflection(0, UNIFORM_SKY)
+    expect(Math.abs(routed / sourceFlux / TWO_LISTINGS_SHARE - 1)).toBeLessThan(SHARE_TOLERANCE)
   })
 })
