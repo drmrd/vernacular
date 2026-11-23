@@ -33,18 +33,39 @@ export interface TextureCache {
   get(reference: AssetReference): TextureState
 }
 
+function createSharedDecoder(decode: TextureCacheOptions['decode']) {
+  const decodes = new Map<string, Promise<Texture>>()
+
+  return function decodeOnce(
+    contentHash: string,
+    bytes: Uint8Array,
+    options: ImageTextureOptions,
+  ): Promise<Texture> {
+    const existing = decodes.get(contentHash)
+    if (existing) return existing
+    const started = decode(bytes, options).then((texture) => {
+      markCacheHeld(texture)
+      return texture
+    })
+    decodes.set(contentHash, started)
+    return started
+  }
+}
+
 export function createTextureCache({ source, decode }: TextureCacheOptions): TextureCache {
+  const decodeOnce = createSharedDecoder(decode)
   const loads = new Map<string, Promise<void>>()
   const settled = new Map<string, TextureState>()
-
   async function load(reference: AssetReference, key: string): Promise<void> {
     const [description, resolution] = await Promise.all([
       source.describe(reference),
       source.resolve(reference),
     ])
     const { mediaType, colorSpace, tileSize } = description as TextureDescription
-    const texture = await decode((resolution as ResolvedAsset).bytes, { mediaType, colorSpace })
-    markCacheHeld(texture)
+    const texture = await decodeOnce(reference.contentHash, (resolution as ResolvedAsset).bytes, {
+      mediaType,
+      colorSpace,
+    })
     settled.set(key, {
       status: 'ready',
       appearance: { texture, tileSize },
