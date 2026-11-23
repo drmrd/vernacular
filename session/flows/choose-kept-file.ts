@@ -11,7 +11,7 @@ import { findDocumentStore } from '../handle/find-document-store'
 import type { DocumentHandle, OpenFailed, OpenRequest } from '../handle/handle-types'
 import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
-import type { SwitchFailure } from './flow-result'
+import type { FlowResult, SwitchFailure } from './flow-result'
 import { assetsOfFolder, openAsNewProject } from './new-project-copy'
 import { recentTarget, recordOf } from './open-recent'
 import { freeLock, lockFor } from './project-lock-for'
@@ -160,7 +160,9 @@ async function underLock<Done extends { readonly ok: true }>(
 
 /** A refusal: the project opens again when this tab held it. */
 async function finishRefused(ports: SessionPorts, held: Held, failed: Failed): Promise<Stopped> {
-  const opened = held.wasOpen ? await switchProject(ports, held.other, held.request) : undefined
+  const opened = held.wasOpen
+    ? await switchProject(ports, held.other, { ...held.request, keepBothFiles: true })
+    : undefined
   return { ...failed, handle: opened?.ok ? opened.handle : held.other }
 }
 
@@ -356,4 +358,19 @@ export async function openSecondFileAsNew(
   }
   const result = await underLock(held, () => openCopyOfSecondFile(ports, held, choice))
   return result.ok ? result : finishRefused(ports, held, result)
+}
+
+/**
+ * Opens the main file of a project with two readable plan files and leaves both files where they
+ * are, as the recent list finds the project. Never rejects.
+ */
+export async function openKeepingBothFiles(
+  ports: SessionPorts,
+  current: DocumentHandle | undefined,
+  id: string,
+): Promise<FlowResult> {
+  const located = await locate(ports, id)
+  return located.ok
+    ? switchProject(ports, current, { ...located.request, keepBothFiles: true })
+    : located
 }

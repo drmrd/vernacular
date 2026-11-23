@@ -95,6 +95,7 @@ function otherNoticeModel(kind: OtherNoticeKind): undefined {
     case 'not-found':
     case 'folder-permission':
     case 'flush-failed':
+    case 'two-files':
     case 'unsupported-file':
       return undefined
     default:

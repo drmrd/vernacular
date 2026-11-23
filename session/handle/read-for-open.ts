@@ -1,6 +1,6 @@
 import { repairOfferFor, type DecodeFailure, type Project } from '../../core'
 import { InvalidProjectIdError, type DocumentStore, type SecondFileState } from '../../storage'
-import type { OpenFailed, OpenRequest } from './handle-types'
+import type { OpenRequest, ReadFailed } from './handle-types'
 import { storageUnavailable } from './thrown-failures'
 
 /** The project that an open starts from, and what the read found out about it. */
@@ -25,7 +25,7 @@ export type ReadForOpen =
       /** From the read; undefined for `create` and for a read that could not tell. */
       readonly lastChangedAt: string | undefined
     }
-  | OpenFailed
+  | ReadFailed
 
 function openedProject(
   project: Project,

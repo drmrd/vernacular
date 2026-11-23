@@ -185,7 +185,12 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
   const { actionNotice, clearActionNotice, onActionEnd } = useActionNotice(refresh)
   const tries = usePageTries({ navigation, screen, refresh, clearActionNotice })
   const { onTryStart, runActionFlow, onOpen, onTryFailed } = tries
-  const twoFiles = useTwoFilesDialog({ ports, navigation, onActionStart: onTryStart, onActionEnd })
+  const dialogNotice = tries.notice?.id === UNDER_NO_CARD ? undefined : tries.notice
+  const twoFiles = useTwoFilesDialog({
+    ...{ ports, navigation, onActionEnd },
+    onActionStart: onTryStart,
+    notice: dialogNotice,
+  })
   const cardActions = useCardActions({
     ...{ navigation, ports, cards, libraryAssets, onActionEnd },
     onChooseFile: twoFiles.onChooseFile,
@@ -194,7 +199,7 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
   const packs = useLibraryPacks(libraryAssets)
   const failedOpen = useFailedOpenDialog({
     ...{ ports, packs, runActionFlow, onOpen, onTryFailed },
-    notice: tries.notice?.id === UNDER_NO_CARD ? undefined : tries.notice,
+    notice: dialogNotice,
     runPageFlow: navigation.runPageFlow,
   })
   const { onRefusedFile, clearFile } = failedOpen
@@ -203,7 +208,7 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
     onRefusedFile,
     clearFile,
   })
-  const pageNotice = failedOpen.takesNotice ? undefined : tries.notice
+  const pageNotice = failedOpen.takesNotice || twoFiles.takesNotice ? undefined : tries.notice
   const notice = actionNotice ?? pageNoticeText(pageNotice, cards)
   return { cards, tries, cardActions, actions, failedOpen, twoFiles, notice }
 }

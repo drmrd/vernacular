@@ -69,14 +69,13 @@ export interface OpenProject {
 }
 
 /** The kinds that the first switch of isSwitchFailure leaves to the second one. */
-type OtherKind = Exclude<
-  OpenFailureCause['kind'],
-  SwitchFailure['kind'] | 'cancelled' | 'folder-empty'
->
+type OtherKind = Exclude<OpenFailureCause['kind'], SwitchFailure['kind']>
 
 /** The last kinds of isSwitchFailure. None of them is a kind of a failed switch. */
 function isSwitchKindOfOther(kind: OtherKind): false {
   switch (kind) {
+    case 'cancelled':
+    case 'folder-empty':
     case 'nothing-to-restore':
     case 'archive-too-large':
     case 'did-not-import':
@@ -100,10 +99,8 @@ function isSwitchKind(kind: OpenFailureCause['kind']): boolean {
     case 'folder-unavailable':
     case 'did-not-open':
     case 'storage-unavailable':
+    case 'two-files':
       return true
-    case 'cancelled':
-    case 'folder-empty':
-      return false
     default:
       return isSwitchKindOfOther(kind)
   }

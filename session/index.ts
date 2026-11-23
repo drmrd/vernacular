@@ -44,6 +44,7 @@ export type {
   TwoFilesRead,
 } from './flows/choose-kept-file'
 export {
+  openKeepingBothFiles,
   openSecondFileAsNew,
   readTwoFiles,
   removeSecondFile,

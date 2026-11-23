@@ -1,13 +1,13 @@
 import { DocumentStore } from '../../storage'
 import type { SessionPorts } from '../ports'
-import type { OpenFailed, OpenRequest } from './handle-types'
+import type { OpenRequest, ReadFailed } from './handle-types'
 import { storageUnavailable } from './thrown-failures'
 
 /** The store that holds a project, or why it cannot be reached. */
-export type FoundStore = { readonly ok: true; readonly store: DocumentStore } | OpenFailed
+export type FoundStore = { readonly ok: true; readonly store: DocumentStore } | ReadFailed
 
 /** Why a folder that refused the request to reopen it cannot be used. */
-export function folderRefusal(answer: 'denied' | 'missing'): OpenFailed {
+export function folderRefusal(answer: 'denied' | 'missing'): ReadFailed {
   const kind = answer === 'denied' ? 'folder-permission' : 'folder-unavailable'
   return { ok: false, failure: { kind } }
 }

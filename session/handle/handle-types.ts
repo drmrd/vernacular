@@ -1,10 +1,10 @@
 import type { DecodeFailure, Project, RepairOffer } from '../../core'
-import type { ProjectLocation, ProjectSnapshots } from '../../storage'
+import type { ProjectLocation, ProjectSnapshots, TwoDocumentFiles } from '../../storage'
 import type { AutosaveStatus } from '../autosave/create-autosave'
 import type { EditorSession } from '../editor-session/editor-session'
 
-/** Why a project did not open. */
-export type OpenFailure =
+/** Why a project could not be read for an open. */
+export type ReadFailure =
   | { readonly kind: 'open-elsewhere' | 'not-found' | 'folder-permission' | 'folder-unavailable' }
   | {
       readonly kind: 'did-not-open'
@@ -13,6 +13,12 @@ export type OpenFailure =
       readonly repair?: RepairOffer
     }
   | { readonly kind: 'storage-unavailable'; readonly message: string }
+
+/** Why a project did not open. */
+export type OpenFailure =
+  | ReadFailure
+  /** The main file and a second file both read, and the user has not said which to keep. */
+  | { readonly kind: 'two-files'; readonly files: TwoDocumentFiles }
 
 /**
  * Whether the changes of an open project are stored, whether the store outlives the tab, and
@@ -70,6 +76,11 @@ export interface OpenFailed {
   readonly failure: OpenFailure
 }
 
+/** A read for an open that failed, with the reason. */
+export interface ReadFailed extends OpenFailed {
+  readonly failure: ReadFailure
+}
+
 /** The handle of a project that opened, or why it did not open. */
 export type OpenResult = { readonly ok: true; readonly handle: DocumentHandle } | OpenFailed
 
@@ -79,4 +90,6 @@ export interface OpenRequest {
   readonly location: ProjectLocation
   /** When set, a missing project starts from this document instead of failing. */
   readonly create?: () => Project
+  /** True opens the main file without asking when a second file sits beside it. */
+  readonly keepBothFiles?: boolean
 }
