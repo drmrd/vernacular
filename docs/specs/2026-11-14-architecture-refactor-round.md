@@ -187,19 +187,21 @@ Today every render repaints all 20 passes, the canvas was a fixed 800 by 600 bit
 
 The order is: stop data loss, then document identity and the command layer, then each remaining area together with a public-beta feature that proves it. The round has a tracking issue in the public-beta milestone, #682, that links the issues for every stage. The status of the round lives there.
 
-| Stage | Work                                                                              | Paired feature                                      | Issues it settles            |
-| ----- | --------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
-| 1     | Local fixes for data loss. Lint warnings fail CI. A performance baseline.         | none                                                | #669, #670, #671, #678       |
-| 2     | The `session/` layer, the document handle, the codec, the settings port.          | the Projects page                                   | #588, #591, #631, #672, #673 |
-| 3     | Commands: typed map, data inverses, change sets, rules in handlers, transactions. | live drag feedback in the 3D view and the inspector | #676, #677                   |
-| 4     | Kernel: tolerances, plan geometry, one scene-graph enumeration.                   | the first slice of #80 curved walls                 | #674, #675, #681, #546       |
-| 5     | Kinds of element: descriptors, element references, hosting, run-time registries.  | #428 duplicate and paste, #429 mirror               | #679                         |
-| 6     | The 3D scene view object.                                                         | #169 stair 3D geometry                              | #434, #680, #612, #666       |
-| 7     | The plan drawing model and export.                                                | #432 export at a true scale                         | #646                         |
-| 8     | Tools and input.                                                                  | #430 measure tool, and the Arris tool rack          | #589, #595, #597, #599, #583 |
-| 9     | Closing proof: add a kind without editing a shared list.                          | #431 text annotations, then #364 trim and features  | none                         |
+| Stage | Work                                                                              | Paired feature                                      | Issues it settles                                        |
+| ----- | --------------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------- |
+| 1     | Local fixes for data loss. Lint warnings fail CI. A performance baseline.         | none                                                | #669, #670, #671, #678                                   |
+| 2     | The `session/` layer, the document handle, the codec, the settings port.          | the Projects page                                   | #588, #591, #631, #672, #673                             |
+| 3     | Commands: typed map, data inverses, change sets, rules in handlers, transactions. | live drag feedback in the 3D view and the inspector | #676, #677                                               |
+| 4     | Kernel: tolerances, plan geometry, one scene-graph enumeration.                   | the first slice of #80 curved walls                 | #674, #681, #546 (#675 and #774 closed before the stage) |
+| 5     | Kinds of element: descriptors, element references, hosting, run-time registries.  | #428 duplicate and paste, #429 mirror               | #679                                                     |
+| 6     | The 3D scene view object.                                                         | #169 stair 3D geometry                              | #434, #680, #612, #666                                   |
+| 7     | The plan drawing model and export.                                                | #432 export at a true scale                         | #646                                                     |
+| 8     | Tools and input.                                                                  | #430 measure tool, and the Arris tool rack          | #589, #595, #597, #599, #583                             |
+| 9     | Closing proof: add a kind without editing a shared list.                          | #431 text annotations, then #364 trim and features  | none                                                     |
 
 Stage 2 comes before stage 3 because transactions live in the session. Stage 3 comes before stages 5 and 8 because shared operations and tools emit transactions. Stage 4 comes before stage 5 because descriptors read the plan geometry. Stages 6, 7, and 8 can run in parallel after stage 5, since builders, drawers, and placement tools register through descriptors. Stage 9 needs all of them.
+
+The kernel stage does not wait for stage 3. On 2026-11-18 the owner chose to start stage 4 beside stage 2 (document identity), with the half-edge trial first, and before stage 3 (the command layer). See `docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 11, point 7. On 2026-11-23 he decided that stages 3 and 4 land in the order of section 6 of that specification, where neither waits for the other in the shared handler files.
 
 Why these pairings:
 
@@ -252,7 +254,8 @@ Kernel:
 - A room bounded by construction-profile walls reports the area between the drawn faces.
 - The overlapping-wall cases in #681 each yield the expected rooms.
 - No file outside the kernel reads `wall.start` or `wall.end`.
-- A length typed in the wall tool reads back the same after save and reload, for every inch fraction down to 1/64 and every metric value down to 0.1 mm.
+- A length typed in the Length field of the wall inspector reads back the same after save and reload, for every inch fraction down to 1/64 and every metric value down to 0.1 mm.
+  - The owner decided this wording on 2026-11-23. The wall tool takes no typed length, so the test through the wall tool moves to the stage for tools and input (`docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 11, point 1). ADR-0199 records the Length field.
 
 Kinds of element:
 
@@ -288,9 +291,9 @@ Closing proof:
 
 - The names and exact signatures of the document handle, the codec, the transaction, the descriptors, the scene view object, and the tool contract.
 - How handlers produce data inverses and change sets: recorded patches, or a comparison of the slices they replaced.
-- The tolerance values. They must sit far below the smallest display step (1/256 inch is about 0.1 mm) and far above floating-point rounding at building scale. The kernel specification derives them.
+- The tolerance values. They must sit far below the smallest display step (1/256 inch is about 0.1 mm) and far above floating-point rounding at building scale. The kernel specification derives them. ADR-0199 answers it: the length tolerance is 0.001 mm, the angle tolerance is 1e-8 radians, and derived coordinates are rounded to a grid of 1e-6 mm, with the derivation in `docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 5.1.
 - Whether `coalesceWith` survives once transactions exist. Only the stair and project handlers use it today.
-- How room identity survives a wall split, and the migration for existing room overrides.
+- How room identity survives a wall split, and the migration for existing room overrides. ADR-0203 answers both: a room's data lives in a stored room record that binds to its room by wall faces first and an anchor second, and a migration that loses nothing turns each existing override into a record.
 - The import order inside each layer. The review proposed one for `core/`: units, color, and geometry; then the model; then registries, eras, and assets; then topology; then scene, environment, and paint; then clipboard and commands; then format, migrations, and export.
 - Whether `bridge/` and `editor/` keep any type-only import from `storage/` or `engine/` once their uses have moved behind `session/`. The answer is no for both. For `storage/`, see `docs/specs/2026-11-15-session-layer-and-document-identity.md`, section 5.1. For `engine/`, ADR-0175 lets `bridge/` import it in full, and `editor/` imports nothing from it.
 - What a second tab sees when it opens a document that another tab has locked. The proposal was a read-only view with a notice. ADR-0189 answers it: the second tab shows the Projects page, and there is no read-only view.

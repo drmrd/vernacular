@@ -69,9 +69,10 @@ differently.
    (`LENGTH_TOLERANCE_MM = 0.001`, `ANGLE_TOLERANCE_RAD = 1e-8`,
    `DERIVED_COORDINATE_GRID_MM = LENGTH_TOLERANCE_MM / 1000`, `SUPPORTED_EXTENT_MM = 1_000_000`,
    `SMALLEST_IMPERIAL_DISPLAY_STEP_MM = 25.4 / 256`, `SMALLEST_METRIC_DISPLAY_STEP_MM = 0.1`), the
-   input rule `JOIN_DISTANCE_MM = 1`, and today's constants under named entries. Three exported names
-   keep their names so that no importer of `core/index.ts` changes: `DEFAULT_JUNCTION_TOLERANCE_MM`,
-   `ROOM_RING_TOLERANCE_MM`, `OUTLINE_TOLERANCE_MM`. One constant, `DERIVATION_LENGTH_TOLERANCE_MM`,
+   input rule `JOIN_DISTANCE_MM = 1`, and today's constants under named entries. Two names that
+   `core/index.ts` exports keep their names so that no importer of `core/index.ts` changes:
+   `DEFAULT_JUNCTION_TOLERANCE_MM` and `ROOM_RING_TOLERANCE_MM`. `OUTLINE_TOLERANCE_MM`, now exported
+   from `core/daylight/room-validation.ts`, is imported from the module by the two daylight files. One constant, `DERIVATION_LENGTH_TOLERANCE_MM`,
    is the length the derivation compares with: `DEFAULT_JUNCTION_TOLERANCE_MM` (1) until pull
    request 13, `LENGTH_TOLERANCE_MM` after. Every predicate added before 13 uses it, so 13 has one
    switch. Pull request 13 also adds two frozen entries for the migration's copy of the old graph,
@@ -101,7 +102,7 @@ differently.
 6. **The approximate mark is a leading `≈ ` (U+2248 and a space).** `formatLength` and
    `formatAdaptiveLength` return the marked text; `formatLengthParts` and
    `formatAdaptiveLengthParts` return `{ text, exact }` with the unmarked text. The visual review of
-   pull request 4 may change the glyph; the `exact` flag is the tested contract.
+   the `exact` flag is the tested contract. The owner decided the glyph on 2026-11-23.
 7. **Imperial input steps:** grid, keyboard candidate, and nudge 101.6 mm (4 inches); large nudge
    914.4 mm (3 feet). Metric: 100 mm and 1000 mm. The visible imperial grid steps through 1, 4, and
    12 inches, then 4, 8, 16, and 32 feet; the metric grid keeps today's series.
@@ -115,16 +116,16 @@ differently.
 11. **The room record wrapper is `core/commands/room-record-binding.ts`.** The binding and the
     rewrite stay in `core/topology/room-records.ts`, so that topology does not import commands.
 12. **Decided on 19 November 2026:** pull requests 2 to 8 run beside the trial (spec 6).
+    **Decided on 2026-11-23** (the owner, spec sections named): the anchor condition for a binding
+    score below one (spec 5.6, point 3); the smallest arc radius, equal to the resolved thickness
+    (spec 5.7); the kernel and the command layer land in the order of spec 6, neither waiting for
+    the other (spec 11, point 7); the umbrella's typed-length wording (spec 11, point 1); and the
+    glyph that marks an approximate length, a leading `≈ ` (the tests check the `exact` flag, not
+    the glyph).
     **Working assumptions on open points** (the owner decides each; spec sections named): the
     adoption rule of the trial (spec 5.3, the trial, point 5); the reading of the hole criterion
-    (spec 11, point 10); the anchor condition for a binding score below one, needed before pull
-    request 14 (spec 5.6, point 3); the smallest arc radius equal to the resolved thickness, needed
-    before pull request 15 (spec 5.7); whether the kernel lands before the command layer or only
-    starts before it, needed before pull request 6 (spec 11, point 7); the umbrella's typed-length
-    wording (spec 11, point 1); whether the owner schedules the timing run M9 at the end of the trial
-    (spec 5.3, the trial, point 4). Also to settle before the visual review of pull request 4: the
-    glyph that marks an approximate length (spec 5.8 leaves it to the builder; the tests check the
-    `exact` flag, not the glyph). A different answer changes the cycles that cite the point.
+    (spec 11, point 10); whether the owner schedules the timing run M9 at the end of the trial
+    (spec 5.3, the trial, point 4). A different answer changes the cycles that cite the point.
 
 ## Review focus
 
@@ -214,9 +215,8 @@ second to merge rebases".
 
 **The command layer.** Its first pull request touches every handler file mechanically. If it is
 ready before kernel pull request 6, 12, 14, or 18, it merges first and the kernel rebases. If the
-kernel's is ready first, it merges and the command layer rebases. Neither waits. Whether the kernel
-as a whole must land before the command layer is open (spec section 11, point 7); this plan assumes
-it need not.
+kernel's is ready first, it merges and the command layer rebases. Neither waits. The owner decided on
+2026-11-23 that the kernel as a whole need not land before the command layer (spec section 11, point 7).
 
 | File                                                                                                                  | Edited by, in merge order                                                              |
 | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -1600,7 +1600,7 @@ export const roomRecordsMigration: SchemaMigration
 ### Cycles
 
 - [ ] 14.1 RED: `bindRoomRecords` admits a pair with score one, or with score at least one half when
-      the room holds the record's anchor (the anchor condition is open, spec 5.6 point 3; this is the working assumption);
+      the room holds the record's anchor (the anchor condition decided on 2026-11-23, spec 5.6 point 3);
       takes admitted pairs by score, then anchor, then larger room, then earlier record; gives at most
       one record per room; falls back to the anchor; leaves the rest unbound. One test per rule.
       `feat: bind room records to rooms by wall faces and a point`.
@@ -1698,7 +1698,7 @@ export function flattenRing(ring: PlanRing, maxDeviationMm: number): Point[]
 // PlanRoom gains ring, clearRing, outerRing: PlanRing; its polygons are the rings flattened at 1 mm
 // SetAside gains arcsDrawnStraight: readonly string[] (walls whose arc breaks the radius bound)
 // core/geometry/wall-path.ts
-/** The smallest centerline radius for a wall of this resolved thickness (working assumption: the thickness). */
+/** The smallest centerline radius for a wall of this resolved thickness (decided on 2026-11-23: the thickness). */
 export function minimumArcRadius(resolvedThicknessMm: number): number
 ```
 
