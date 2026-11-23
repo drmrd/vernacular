@@ -1,7 +1,7 @@
 import type { Vector3 } from '../scene/vector3'
 import type { DaylightField, DaylightRoom } from './daylight-field'
 import { OPEN_SKY_VISIBILITY } from './daylight-field'
-import { apertureWeights, doorwayLuminance } from './doorway-light'
+import { apertureWeights, doorwayLuminance, routedOutFluxes } from './doorway-light'
 import { cellVisibility, enteringFlux, roomAverageTerm } from './room-average'
 import type { RoomGeometry, SolverGeometry } from './room-geometry'
 import { measureGeometry } from './room-geometry'
@@ -26,11 +26,14 @@ export interface DaylightFieldSolver {
    * Light that enters the room through its apertures, in plan square millimetres of open sky: each
    * opening's area times its flux share (one half for a window and for a doorway into a room open
    * to the sky, 1 for a doorway into any other room) times its net transmittance times the
-   * radiance it faces, relative to the open sky.
+   * radiance it faces, relative to the open sky. A doorway's weight includes the window light of
+   * the room it opens to that lands on it, so this is the whole flux through the room's apertures.
    */
   enteringFlux(room: number, sky: SkyLuminance): number
   /**
    * Share of open-sky light that reaches every point of the room after bouncing between surfaces.
+   * The flux that bounces is the entering flux less the window light that the doorways listed into
+   * the room carry away before any reflection.
    */
   interreflection(room: number, sky: SkyLuminance): number
   /** How many times the solver has measured the aperture-to-cell form factors. */
@@ -66,13 +69,18 @@ function skyWeights(room: RoomGeometry, sky: SkyLuminance): number[] {
 /** Weights every aperture of every room by the sky, then sums each room's entering flux. */
 function lightRooms(geometry: SolverGeometry, sky: SkyLuminance): RoomLight[] {
   const skyOnly = geometry.rooms.map((room) => skyWeights(room, sky))
-  const doorwayLuminances = geometry.rooms.map((room, index) =>
-    doorwayLuminance(room, skyOnly[index] ?? []),
+  const routedOut = routedOutFluxes(geometry.rooms, skyOnly)
+  const luminances = geometry.rooms.map((room, index) =>
+    doorwayLuminance(room, skyOnly[index] ?? [], routedOut[index] ?? 0),
   )
   return geometry.rooms.map((room, index) => {
-    const weights = apertureWeights(room, skyOnly[index] ?? [], doorwayLuminances)
+    const weights = apertureWeights(room, skyOnly[index] ?? [], { skyWeights: skyOnly, luminances })
     const flux = enteringFlux(room.apertures, weights)
-    return { weights, enteringFlux: flux, interreflection: roomAverageTerm(flux, room.surfaces) }
+    return {
+      weights,
+      enteringFlux: flux,
+      interreflection: roomAverageTerm(flux - (routedOut[index] ?? 0), room.surfaces),
+    }
   })
 }
 
@@ -108,8 +116,9 @@ function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): Dayli
  * apertures of the form factor from the cell center at the work plane to the opening, times the
  * opening's weight, plus the room-average term, capped at 1. A sky aperture weighs the sky's
  * radiance toward its facing times its net transmittance; a doorway weighs the luminance of the
- * room it opens to times its net transmittance (that luminance is the room-average term of that
- * room, lit by its sky apertures alone; 1 for a room open to the sky). A cell whose center lies in
+ * room it opens to, plus the window light of that room that lands on the doorway, times its net
+ * transmittance (that luminance is the room-average term of that room, lit by its sky apertures
+ * alone less the window light its doorways carry away; 1 for a room open to the sky). A cell whose center lies in
  * no room, with a cell of a room (a room open to the sky counts) among its eight neighbors, holds
  * the sky visibility of one such neighbor; only cells whose center lies in a room are sources. The
  * room is the one whose outline lies nearest the cell's center, and on an equal distance the first

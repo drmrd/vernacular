@@ -21,6 +21,8 @@ import {
 } from './room-average'
 import type { DaylightInputLocation } from './room-validation'
 import { daylightInputError, OUTLINE_TOLERANCE_MM, validateDaylightRooms } from './room-validation'
+import type { UprightRectangle } from './upright-form-factor'
+import { doorwayToGlazingFormFactor } from './upright-form-factor'
 
 /** Height of the work plane above the floor, in plan millimetres, where the field is measured. */
 export const DAYLIGHT_WORK_PLANE_HEIGHT_MM = 850
@@ -59,10 +61,15 @@ interface ApertureOpening extends OpeningArea {
 
 /**
  * Where an aperture's light comes from: the sky toward a world direction (unit vector, Y up), or
- * the room it opens to.
+ * the room it opens to. A doorway's `skyFactors` hold, for each aperture of that room in order, the
+ * form factor from the doorway to the glazing when the aperture opens to the sky, and 0 otherwise.
+ * They are empty when the room is open to the sky, because its doorway already shows the sky.
  */
 export type ApertureGeometry = ApertureOpening &
-  ({ kind: 'sky'; direction: Vector3 } | { kind: 'doorway'; neighbor: number })
+  (
+    | { kind: 'sky'; direction: Vector3 }
+    | { kind: 'doorway'; neighbor: number; skyFactors: readonly number[] }
+  )
 
 /** What a room keeps between calls: its apertures, its cells, and its surfaces. */
 export interface RoomGeometry {
@@ -129,7 +136,25 @@ function skyDirection(normal: Point): Vector3 {
   }
 }
 
-function apertureGeometry(opening: Opening, rooms: readonly DaylightRoom[]): ApertureGeometry {
+function uprightRectangle(aperture: DaylightAperture, facing: Point): UprightRectangle {
+  return { span: aperture.span, sill: aperture.sill, head: aperture.head, facing }
+}
+
+/** The doorway's facing points into the neighbor room; the glazing's faces into the room it bounds. */
+function skyFactor(doorway: Opening, glazing: Opening): number {
+  if (glazing.aperture.opensTo !== 'sky') return 0
+  const { x, y } = glazing.outwardNormal
+  return doorwayToGlazingFormFactor(
+    uprightRectangle(doorway.aperture, doorway.outwardNormal),
+    uprightRectangle(glazing.aperture, { x: -x, y: -y }),
+  )
+}
+
+function apertureGeometry(
+  opening: Opening,
+  rooms: readonly DaylightRoom[],
+  openings: readonly (readonly Opening[])[],
+): ApertureGeometry {
   const { aperture } = opening
   const [start, end] = aperture.span
   const width = Math.hypot(end.x - start.x, end.y - start.y)
@@ -151,6 +176,10 @@ function apertureGeometry(opening: Opening, rooms: readonly DaylightRoom[]): Ape
     netTransmittance: aperture.netTransmittance ?? OPEN_DOORWAY_NET_TRANSMITTANCE,
     fluxShare:
       rooms[neighbor]?.openToSky === true ? VERTICAL_OPENING_SKY_SHARE : DOORWAY_HEMISPHERE_SHARE,
+    skyFactors:
+      rooms[neighbor]?.openToSky === true
+        ? []
+        : (openings[neighbor] ?? []).map((glazing) => skyFactor(opening, glazing)),
   }
 }
 
@@ -239,7 +268,7 @@ export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry 
   const openings = rooms.map(roomOpenings)
   const { cellsByRoom, roomOfCell } = assignCells(grid, rooms, openings)
   const apertures = openings.map((ofRoom) =>
-    ofRoom.map((opening) => apertureGeometry(opening, rooms)),
+    ofRoom.map((opening) => apertureGeometry(opening, rooms, openings)),
   )
   const doorwayAreas = doorwayAreasInto(apertures, rooms.length)
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
