@@ -60,7 +60,6 @@ export class PackSource implements AssetSource {
     if (typed === undefined) {
       return []
     }
-    this.scope = `pack:${typed.packId}@${typed.version}`
     // Narrowing holds because only manifests that passed validatePackManifest
     // reach this point, and it requires dimensions on every model asset.
     return typed.assets
@@ -92,7 +91,12 @@ export class PackSource implements AssetSource {
 
   private async fetchValidManifest(): Promise<TypedManifest | undefined> {
     const manifest = await this.reader.manifest()
-    return validatePackManifest(manifest).valid ? (manifest as TypedManifest) : undefined
+    if (!validatePackManifest(manifest).valid) {
+      return undefined
+    }
+    const typed = manifest as TypedManifest
+    this.scope = `pack:${typed.packId}@${typed.version}`
+    return typed
   }
 
   private toLibraryItem(asset: PackModelShape): LibraryItem {
