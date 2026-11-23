@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import type { SceneGraph } from '../../core'
 import { SceneFailureHost } from '../../bridge/react/scene-failure-host'
 import { ScenePane } from './scene-pane'
@@ -37,6 +37,7 @@ const graphWithGeometry: SceneGraph = {
 // Each case states the active floor and whether the canvas wrapper shows a failure view.
 let mockSceneGraph: SceneGraph = graphWithGeometry
 let mockFailureKind: 'load' | 'start' | null = null
+let mockBackend: 'webgpu' | 'webgl2' = 'webgpu'
 
 // The stand-in canvas never reports a first frame (data-harness-ready stays "false"), as a
 // canvas whose renderer failed never does. When a failure kind is set, it renders the real
@@ -53,12 +54,13 @@ vi.mock('../../bridge', () => ({
   ),
   useSceneGraph: () => mockSceneGraph,
   useActiveFloorId: () => 'g',
-  detectRenderBackend: () => 'webgpu',
+  detectRenderBackend: () => mockBackend,
 }))
 
 afterEach(() => {
   mockSceneGraph = graphWithGeometry
   mockFailureKind = null
+  mockBackend = 'webgpu'
 })
 
 describe.each(['load', 'start'] as const)('ScenePane over a renderer that failed to %s', (kind) => {
@@ -91,6 +93,19 @@ describe.each(['load', 'start'] as const)('ScenePane over a renderer that failed
     render(<ScenePane />)
 
     expect(await screen.findByRole('heading', { name: TITLE_FOR_KIND[kind] })).toBeInTheDocument()
+  })
+
+  it('removes the WebGL 2 notice while the failure view is in the pane', async () => {
+    mockBackend = 'webgl2'
+    const { rerender } = render(<ScenePane />)
+    expect(screen.getByText(/running without WebGPU/i)).toBeInTheDocument()
+
+    mockFailureKind = kind
+    rerender(<ScenePane />)
+
+    await waitFor(() => {
+      expect(screen.queryByText(/running without WebGPU/i)).toBeNull()
+    })
   })
 })
 
@@ -139,7 +154,7 @@ describe('ScenePane failure announcement', () => {
     rerender(<ScenePane />)
 
     await waitFor(() => {
-      expect(alert).toHaveTextContent(LOAD_ANNOUNCEMENT)
+      expect(alert.textContent).toBe(LOAD_ANNOUNCEMENT)
     })
     const after = announcerRegions(container)
     expect(after.alert).toBe(alert)
@@ -154,7 +169,7 @@ describe('ScenePane failure announcement', () => {
     rerender(<ScenePane />)
 
     await waitFor(() => {
-      expect(status).toHaveTextContent(START_ANNOUNCEMENT)
+      expect(status.textContent).toBe(START_ANNOUNCEMENT)
     })
     const after = announcerRegions(container)
     expect(after.status).toBe(status)
@@ -168,15 +183,16 @@ describe('ScenePane failure announcement', () => {
         <ScenePane />
       </>
     )
-    const { rerender } = render(tree())
+    const { container, rerender } = render(tree())
     const outside = screen.getByRole('button', { name: 'outside' })
     outside.focus()
 
     mockFailureKind = 'load'
     rerender(tree())
 
-    await screen.findByRole('heading', { name: TITLE_FOR_KIND.load })
-    await act(async () => {})
+    await waitFor(() => {
+      expect(announcerRegions(container).alert.textContent).toBe(LOAD_ANNOUNCEMENT)
+    })
     expect(document.activeElement).toBe(outside)
   })
 
@@ -185,7 +201,7 @@ describe('ScenePane failure announcement', () => {
     mockFailureKind = 'load'
     rerender(<ScenePane />)
     await waitFor(() => {
-      expect(announcerRegions(container).alert).toHaveTextContent(LOAD_ANNOUNCEMENT)
+      expect(announcerRegions(container).alert.textContent).toBe(LOAD_ANNOUNCEMENT)
     })
 
     mockFailureKind = null
