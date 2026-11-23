@@ -27,8 +27,8 @@ export interface ScopedAssetSource {
  * Aggregates asset sources. `resolve` follows the graceful-degradation
  * precedence of design specification section 4.2: the exactly-requested scope
  * first, then a hash match in another source by precedence. `describe` asks the
- * source named by the reference scope first, then the rest by the same
- * precedence. `list` concatenates every source in scope precedence order.
+ * sources by the same precedence and returns at once the description from the
+ * source named by the reference scope, else the first description found. `list` concatenates every source in scope precedence order.
  */
 export class AssetRegistry {
   constructor(
@@ -57,26 +57,20 @@ export class AssetRegistry {
   }
 
   async describe(reference: AssetReference): Promise<AssetDescription | undefined> {
-    for (const scoped of this.describeCandidates(reference)) {
+    const kinds = orderScopesByPrecedence(reference, this.availableKinds())
+    let firstFound: AssetDescription | undefined
+    for (const scoped of this.sourcesInOrder(kinds)) {
       const description = await scoped.source.describe?.(reference.contentHash)
-      if (description !== undefined) {
-        return description
-      }
+      if (description === undefined) continue
+      // A pack source learns its id only once its manifest loads, so compare after the call.
+      if (scoped.source.id === reference.scope) return description
+      firstFound ??= description
     }
-    return undefined
+    return firstFound
   }
 
   private availableKinds(): ScopeKind[] {
     return this.sources.map((scoped) => scoped.kind)
-  }
-
-  private *describeCandidates(reference: AssetReference): Generator<ScopedAssetSource> {
-    const exact = this.sources.find((scoped) => scoped.source.id === reference.scope)
-    if (exact) yield exact
-    const kinds = orderScopesByPrecedence(reference, this.availableKinds())
-    for (const scoped of this.sourcesInOrder(kinds)) {
-      if (scoped !== exact) yield scoped
-    }
   }
 
   private *sourcesInOrder(kinds: Iterable<ScopeKind>): Generator<ScopedAssetSource> {
