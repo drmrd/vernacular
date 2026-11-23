@@ -231,7 +231,7 @@ export function LiveSceneView() {
           lightingMode={lightingMode}
         />
       </SceneChrome>
-      <ScenePaneShell mode={nav.mode}>
+      <ScenePaneShell mode={nav.mode} aimGuide={nav.aimGuide}>
         <LiveSceneCanvas
           framed={framed}
           nav={nav}
