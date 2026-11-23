@@ -95,10 +95,11 @@ function assetPath(asset) {
  * Confirm each asset's file bytes hash to its declared content hash.
  * @param {object[]} assets
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {Promise<object[]>} the assets whose file is present and hashes correctly
  */
-async function checkAssetHashes(assets, reader, errors) {
+async function checkAssetHashes(assets, reader, context) {
+  const { errors } = context
   const verified = []
   for (const asset of assets) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
@@ -155,8 +156,9 @@ async function checkThumbnails(assets, reader, context) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
     const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
     if (!(await reader.exists(file))) {
-      if (isModelAsset(asset, formatVersion))
+      if (isModelAsset(asset, formatVersion)) {
         errors.push(`asset ${asset.contentHash}: thumbnail missing`)
+      }
       continue
     }
     const bytes = await reader.readBytes(file, WEBP_HEADER_LENGTH)
@@ -170,10 +172,11 @@ async function checkThumbnails(assets, reader, context) {
  * Flag files in a directory that no manifest asset references.
  * @param {object[]} assets
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {Promise<void>}
  */
-async function checkOrphans(assets, reader, errors) {
+async function checkOrphans(assets, reader, context) {
+  const { errors } = context
   const referencedAssets = new Set(assets.map(packAssetFileName))
   const referencedThumbnails = new Set(assets.map((a) => `${a.contentHash}${THUMBNAIL_EXTENSION}`))
   for (const name of await reader.listDir(ASSET_DIR)) {
@@ -191,10 +194,11 @@ async function checkOrphans(assets, reader, errors) {
 /**
  * Confirm each required pack file is present.
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {Promise<void>}
  */
-async function checkRequiredFiles(reader, errors) {
+async function checkRequiredFiles(reader, context) {
+  const { errors } = context
   for (const name of REQUIRED_FILES) {
     if (!(await reader.exists(name))) {
       errors.push(`${name}: required pack file missing`)
@@ -206,10 +210,11 @@ async function checkRequiredFiles(reader, errors) {
  * Confirm the pack directory name matches the packId and version.
  * @param {object} manifest
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {void}
  */
-function checkDirName(manifest, reader, errors) {
+function checkDirName(manifest, reader, context) {
+  const { errors } = context
   const expected = `${manifest.packId}-${manifest.version}`
   if (reader.dirName !== expected) {
     errors.push(`pack directory name "${reader.dirName}" does not match expected "${expected}"`)
@@ -225,11 +230,11 @@ function checkDirName(manifest, reader, errors) {
 export async function checkPackIntegrity(manifest, reader) {
   const errors = []
   const context = { errors, formatVersion: manifest?.formatVersion }
-  const verifiedAssets = await checkAssetHashes(manifestAssets(manifest), reader, errors)
+  const verifiedAssets = await checkAssetHashes(manifestAssets(manifest), reader, context)
   await checkTextureFiles(verifiedAssets, reader, context)
   await checkThumbnails(manifestAssets(manifest), reader, context)
-  await checkOrphans(manifestAssets(manifest), reader, errors)
-  await checkRequiredFiles(reader, errors)
-  checkDirName(manifest, reader, errors)
+  await checkOrphans(manifestAssets(manifest), reader, context)
+  await checkRequiredFiles(reader, context)
+  checkDirName(manifest, reader, context)
   return { errors }
 }
