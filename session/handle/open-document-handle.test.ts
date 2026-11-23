@@ -1,5 +1,5 @@
 import { describe, it, expect, expectTypeOf, vi, afterEach } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, renameProject } from '../../core'
+import { renameProject } from '../../core'
 import type { Project } from '../../core'
 import { InMemoryDirectory, WorkspaceDocumentStore, WorkspaceFiles } from '../../storage'
 import {
@@ -11,7 +11,6 @@ import {
 import {
   bytesOf,
   fixtureDocument,
-  metaOf,
   projectOf,
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
@@ -29,6 +28,7 @@ import {
   storedProject,
   workspaceRequest,
 } from './handle-test-kit'
+import { documentNamed } from './second-file-test-kit'
 
 const PROJECT_ID = 'a'
 const OTHER_ID = 'b'
@@ -57,13 +57,6 @@ function createdProject(): Project {
 
 function createRequest(id: string): OpenRequest {
   return { ...workspaceRequest(id), create: createdProject }
-}
-
-/** The bytes of a current document whose project has the given name. */
-function documentNamed(name: string): Uint8Array {
-  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  metaOf(document).name = name
-  return bytesOf(document)
 }
 
 /** Every notice that reaches a listener attached now, while it stays attached. */

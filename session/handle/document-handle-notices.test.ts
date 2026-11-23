@@ -14,8 +14,8 @@ import {
   placeDocument,
   storedProject,
   workspaceRequest,
+  type TestPorts,
 } from './handle-test-kit'
-import type { TestPorts } from './handle-test-kit'
 import {
   documentNamed,
   openBesideSecondFile,

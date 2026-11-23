@@ -181,10 +181,13 @@ describe('the save status of a handle whose project is saved in a second file', 
   it('in temporary storage the status is tab-only after a save that wrote the second file', async () => {
     const { ports, handle } = await openStored({ durable: false })
     await storeNewerMain(ports)
+    const notices: string[] = []
+    handle.onNotice((notice) => notices.push(notice))
 
     rename(handle, 'Edited')
     expect(await handle.save()).toEqual({ ok: true })
 
+    expect(notices).toEqual(['saved-in-second-file'])
     expect(handle.saveStatus()).toBe('tab-only')
   })
 
