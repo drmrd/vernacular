@@ -255,6 +255,55 @@ function doorwayAreasInto(
   return areas
 }
 
+/** The flux that the doorways into `neighbor` take from its aperture `index`, per unit of sky light. */
+function doorwayFluxFromAperture(
+  apertures: readonly (readonly ApertureGeometry[])[],
+  neighbor: number,
+  index: number,
+): number {
+  let total = 0
+  for (const roomApertures of apertures) {
+    for (const aperture of roomApertures) {
+      if (aperture.kind === 'doorway' && aperture.neighbor === neighbor) {
+        total += aperture.openingArea * (aperture.skyFactors[index] ?? 0)
+      }
+    }
+  }
+  return total
+}
+
+/**
+ * The ratio by which to scale every doorway's form factor to one sky aperture of `neighbor`, so
+ * that the doorways together take no more than the aperture's flux share of its opening area.
+ */
+function skyFactorScale(
+  apertures: readonly (readonly ApertureGeometry[])[],
+  neighbor: number,
+  index: number,
+): number {
+  const glazing = apertures[neighbor]?.[index]
+  const limit = (glazing?.fluxShare ?? 0) * (glazing?.openingArea ?? 0)
+  const total = doorwayFluxFromAperture(apertures, neighbor, index)
+  return total > limit ? limit / total : 1
+}
+
+function withBoundedSkyFactors(
+  apertures: readonly (readonly ApertureGeometry[])[],
+): ApertureGeometry[][] {
+  return apertures.map((ofRoom) =>
+    ofRoom.map((aperture) =>
+      aperture.kind === 'doorway'
+        ? {
+            ...aperture,
+            skyFactors: aperture.skyFactors.map(
+              (factor, index) => factor * skyFactorScale(apertures, aperture.neighbor, index),
+            ),
+          }
+        : aperture,
+    ),
+  )
+}
+
 /**
  * Checks the rooms, then measures the form factor from every cell center at the work plane to
  * every aperture of the cell's room, and finds the room cell that each cell under a wall copies.
@@ -266,8 +315,8 @@ export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry 
   const grid = createDaylightField(rooms)
   const openings = rooms.map(roomOpenings)
   const { cellsByRoom, roomOfCell } = assignCells(grid, rooms, openings)
-  const apertures = openings.map((ofRoom) =>
-    ofRoom.map((opening) => apertureGeometry(opening, rooms, openings)),
+  const apertures = withBoundedSkyFactors(
+    openings.map((ofRoom) => ofRoom.map((opening) => apertureGeometry(opening, rooms, openings))),
   )
   const doorwayAreas = doorwayAreasInto(apertures, rooms.length)
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
