@@ -33,15 +33,18 @@ export interface TextureCache {
   get(reference: AssetReference): TextureState
 }
 
+function decodeKey(contentHash: string, colorSpace: ImageTextureOptions['colorSpace']): string {
+  return JSON.stringify([contentHash, colorSpace])
+}
+
 function createSharedDecoder(decode: TextureCacheOptions['decode']) {
   const decodes = new Map<string, Promise<Texture>>()
 
   return function decodeOnce(
-    contentHash: string,
+    key: string,
     bytes: Uint8Array,
     options: ImageTextureOptions,
   ): Promise<Texture> {
-    const key = `${contentHash}\n${options.colorSpace}`
     const existing = decodes.get(key)
     if (existing) return existing
     const started = decode(bytes, options).then((texture) => {
@@ -70,10 +73,11 @@ export function createTextureCache({ source, decode }: TextureCacheOptions): Tex
       source.resolve(reference),
     ])
     const { mediaType, colorSpace, tileSize } = description as TextureDescription
-    const texture = await decodeOnce(reference.contentHash, (resolution as ResolvedAsset).bytes, {
-      mediaType,
-      colorSpace,
-    })
+    const texture = await decodeOnce(
+      decodeKey(reference.contentHash, colorSpace),
+      (resolution as ResolvedAsset).bytes,
+      { mediaType, colorSpace },
+    )
     return { status: 'ready', appearance: { texture, tileSize } }
   }
 
