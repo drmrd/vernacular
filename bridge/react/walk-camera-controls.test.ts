@@ -135,4 +135,19 @@ describe('walk camera controls: interact key', () => {
     expect(isOpeningOpen(session.interaction.current, DOOR_ID)).toBe(true)
     expect(session.onOpenDoors).toHaveBeenCalledWith(DOOR_OPEN)
   })
+
+  it('reports no stale sash part of a retyped door when KeyE opens and then shuts it', () => {
+    const door = frontDoor()
+    const session = {
+      ...sessionFacing(door),
+      interaction: { current: { openParts: openPartsWith({ [DOOR_ID]: ['upper'] }) } },
+    }
+    const handlers = handlersFor(session)
+
+    handlers.onKeyDown(new KeyboardEvent('keydown', { code: 'KeyE' }))
+    expect(session.onOpenDoors).toHaveBeenLastCalledWith(DOOR_OPEN)
+
+    handlers.onKeyDown(new KeyboardEvent('keydown', { code: 'KeyE' }))
+    expect(session.onOpenDoors).toHaveBeenLastCalledWith(new Map())
+  })
 })

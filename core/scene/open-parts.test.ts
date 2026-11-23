@@ -7,6 +7,7 @@ import {
   type OpenParts,
   type OpeningPartId,
 } from '../index'
+import { keepOpenPartsOfTypes } from './open-parts'
 
 const WINDOW_ID = 'w'
 const DOOR_ID = 'd'
@@ -94,5 +95,79 @@ describe('sameOpenParts', () => {
     const upperAndPrimary: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'primary')]])
 
     expect(sameOpenParts(upperAndLower, upperAndPrimary)).toBe(false)
+  })
+})
+
+describe('keepOpenPartsOfTypes', () => {
+  it('drops the open sash a single-hung window lacks and keeps the one it has', () => {
+    const parts: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'lower')]])
+
+    const kept = keepOpenPartsOfTypes(parts, [{ id: WINDOW_ID, type: 'single-hung-window' }])
+
+    expect(kept.get(WINDOW_ID)).toEqual(partsOf('lower'))
+  })
+
+  it('keeps both sashes of a double-hung window', () => {
+    const parts: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'lower')]])
+
+    const kept = keepOpenPartsOfTypes(parts, [{ id: WINDOW_ID, type: 'double-hung-window' }])
+
+    expect(kept.get(WINDOW_ID)).toEqual(partsOf('upper', 'lower'))
+  })
+
+  it('drops the opening when no part its type has is left open', () => {
+    const parts: OpenParts = new Map([[DOOR_ID, partsOf('upper')]])
+
+    const kept = keepOpenPartsOfTypes(parts, [{ id: DOOR_ID, type: 'single-swing-door' }])
+
+    expect(kept.has(DOOR_ID)).toBe(false)
+    expect(kept.size).toBe(0)
+  })
+
+  it('drops the primary part of a hung window and keeps the primary part of a door', () => {
+    const parts: OpenParts = new Map([
+      [WINDOW_ID, partsOf('primary')],
+      [DOOR_ID, partsOf('primary', 'lower')],
+    ])
+
+    const kept = keepOpenPartsOfTypes(parts, [
+      { id: WINDOW_ID, type: 'double-hung-window' },
+      { id: DOOR_ID, type: 'single-swing-door' },
+    ])
+
+    expect(kept.has(WINDOW_ID)).toBe(false)
+    expect(kept.get(DOOR_ID)).toEqual(partsOf('primary'))
+  })
+
+  it('returns the very map it was given when every open part belongs to its opening type', () => {
+    const parts: OpenParts = new Map([
+      [WINDOW_ID, partsOf('upper', 'lower')],
+      [DOOR_ID, partsOf('primary')],
+    ])
+
+    const kept = keepOpenPartsOfTypes(parts, [
+      { id: WINDOW_ID, type: 'double-hung-window' },
+      { id: DOOR_ID, type: 'single-swing-door' },
+    ])
+
+    expect(kept).toBe(parts)
+  })
+
+  it('keeps the open parts of an opening the list does not name, such as one on another floor', () => {
+    const parts: OpenParts = new Map([[DOOR_ID, partsOf('upper')]])
+
+    const kept = keepOpenPartsOfTypes(parts, [{ id: WINDOW_ID, type: 'double-hung-window' }])
+
+    expect(kept).toBe(parts)
+  })
+
+  it('never changes the map or the set it was given', () => {
+    const upperAndLower = partsOf('upper', 'lower')
+    const parts: OpenParts = new Map([[WINDOW_ID, upperAndLower]])
+
+    keepOpenPartsOfTypes(parts, [{ id: WINDOW_ID, type: 'single-hung-window' }])
+
+    expect(parts.get(WINDOW_ID)).toBe(upperAndLower)
+    expect(upperAndLower.size).toBe(2)
   })
 })

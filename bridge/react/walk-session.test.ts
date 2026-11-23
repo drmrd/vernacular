@@ -244,4 +244,12 @@ describe('walk session: doors in the way', () => {
 
     expect(z).toBeLessThan(-WALL_PLAN_Y_MM)
   })
+
+  it('a swing door holding only a stale sash part stays solid to the walker', () => {
+    const stale = toggleOpening(emptyOpeningInteraction(), { openingId: DOOR_ID, part: 'upper' })
+
+    const z = zAfterWalkingAtDoor(stale)
+
+    expect(z).toBeGreaterThan(-WALL_PLAN_Y_MM)
+  })
 })
