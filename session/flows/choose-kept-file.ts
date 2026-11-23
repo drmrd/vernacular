@@ -212,6 +212,15 @@ async function clearSecondFileOfRecord(ports: SessionPorts, id: string): Promise
   }
 }
 
+/** The change of the stored files stands when the record cannot follow it, so this never rejects. */
+async function clearSecondFileOfRecordBestEffort(ports: SessionPorts, id: string): Promise<void> {
+  try {
+    await clearSecondFileOfRecord(ports, id)
+  } catch (error) {
+    console.warn('The record of the project could not drop its second file.', error)
+  }
+}
+
 async function unchanged(store: DocumentStore, choice: KeptFileChoice): Promise<boolean> {
   return sameFiles(await store.twoFiles(choice.id), choice.files)
 }
@@ -240,7 +249,7 @@ async function chooseUnderLock(
     if (!changed.ok) {
       return refusalOf(changed.refusal)
     }
-    await clearSecondFileOfRecord(ports, choice.id)
+    await clearSecondFileOfRecordBestEffort(ports, choice.id)
     return CHOSEN
   })
   return finish(ports, held, outcome)
@@ -295,7 +304,7 @@ async function setAsideAfterCopy(
   try {
     const changed = await store.setAsideSecondFile(choice.id, choice.files)
     if (changed.ok) {
-      await clearSecondFileOfRecord(ports, choice.id)
+      await clearSecondFileOfRecordBestEffort(ports, choice.id)
     }
     return changed.ok
   } catch (error) {
