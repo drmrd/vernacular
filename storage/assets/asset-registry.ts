@@ -28,7 +28,8 @@ export interface ScopedAssetSource {
  * precedence of design specification section 4.2: the exactly-requested scope
  * first, then a hash match in another source by precedence. `describe` asks the
  * sources by the same precedence and returns at once the description from the
- * source named by the reference scope, else the first description found. `list` concatenates every source in scope precedence order.
+ * source named by the reference scope, else the first description found. `list`
+ * concatenates every source in scope precedence order.
  */
 export class AssetRegistry {
   constructor(
@@ -58,8 +59,11 @@ export class AssetRegistry {
 
   async describe(reference: AssetReference): Promise<AssetDescription | undefined> {
     const kinds = orderScopesByPrecedence(reference, this.availableKinds())
+    const [requestedKind] = kinds
     let firstFound: AssetDescription | undefined
     for (const scoped of this.sourcesInOrder(kinds)) {
+      // Requested kind comes first; past a fallback hit only that kind can still name the scope.
+      if (firstFound !== undefined && scoped.kind !== requestedKind) break
       const description = await scoped.source.describe?.(reference.contentHash)
       if (description === undefined) continue
       // A pack source learns its id only once its manifest loads, so compare after the call.
