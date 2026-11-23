@@ -5,7 +5,7 @@ import type {
   AssetReference,
   ColorSpaceName,
   MediaType,
-  TextureDescription,
+  TextureMediaType,
 } from '../../core'
 import type { AssetSource, LibraryItem } from './asset-source'
 
@@ -33,6 +33,13 @@ interface PackAssetShape {
 
 type PackModelShape = PackAssetShape & { dimensions: NonNullable<PackAssetShape['dimensions']> }
 
+type PackTextureShape = PackAssetShape & {
+  mediaType: TextureMediaType
+  image: NonNullable<PackAssetShape['image']>
+  tileSize: NonNullable<PackAssetShape['tileSize']>
+  colorSpace: ColorSpaceName
+}
+
 interface TypedManifest {
   packId: string
   version: string
@@ -42,6 +49,13 @@ interface TypedManifest {
 
 function packScopeOf(manifest: TypedManifest): AssetReference['scope'] {
   return `pack:${manifest.packId}@${manifest.version}`
+}
+
+function isPackTexture(
+  asset: PackAssetShape,
+  formatVersion: number | undefined,
+): asset is PackTextureShape {
+  return isTextureAsset(asset, formatVersion)
 }
 
 export class PackSource implements AssetSource {
@@ -56,12 +70,11 @@ export class PackSource implements AssetSource {
   }
 
   async read(contentHash: string): Promise<Uint8Array | undefined> {
-    const manifest = await this.loadManifest()
-    const asset = manifest?.assets.find((candidate) => candidate.contentHash === contentHash)
+    const asset = await this.findAsset(contentHash)
     if (asset === undefined) {
       return undefined
     }
-    return this.reader.readAsset(contentHash, packAssetMediaType(asset))
+    return this.reader.readAsset(contentHash, packAssetMediaType(asset.shape))
   }
 
   async readThumbnail(contentHash: string): Promise<Uint8Array | undefined> {
@@ -69,25 +82,25 @@ export class PackSource implements AssetSource {
   }
 
   async describe(contentHash: string): Promise<AssetDescription | undefined> {
-    const manifest = await this.loadManifest()
-    const asset = manifest?.assets.find((candidate) => candidate.contentHash === contentHash)
-    if (asset === undefined) {
+    const found = await this.findAsset(contentHash)
+    if (found === undefined) {
       return undefined
     }
-    if (isTextureAsset(asset, manifest?.formatVersion)) {
-      // Format 2 validation requires these fields on every texture asset.
+    const { shape, formatVersion } = found
+    // Format 2 validation requires these fields on every texture asset.
+    if (isPackTexture(shape, formatVersion)) {
       return {
         kind: 'texture',
-        mediaType: asset.mediaType as TextureDescription['mediaType'],
-        image: asset.image as NonNullable<PackAssetShape['image']>,
-        tileSize: asset.tileSize as NonNullable<PackAssetShape['tileSize']>,
-        colorSpace: asset.colorSpace as ColorSpaceName,
+        mediaType: shape.mediaType,
+        image: shape.image,
+        tileSize: shape.tileSize,
+        colorSpace: shape.colorSpace,
       }
     }
     return {
       kind: 'model',
       mediaType: 'model/gltf-binary',
-      dimensions: asset.dimensions as NonNullable<PackAssetShape['dimensions']>,
+      dimensions: shape.dimensions as NonNullable<PackAssetShape['dimensions']>,
     }
   }
 
@@ -101,6 +114,14 @@ export class PackSource implements AssetSource {
     return typed.assets
       .filter((asset): asset is PackModelShape => isModelAsset(asset, typed.formatVersion))
       .map((asset) => this.toLibraryItem(asset))
+  }
+
+  private async findAsset(
+    contentHash: string,
+  ): Promise<{ shape: PackAssetShape; formatVersion: number | undefined } | undefined> {
+    const manifest = await this.loadManifest()
+    const shape = manifest?.assets.find((candidate) => candidate.contentHash === contentHash)
+    return shape === undefined ? undefined : { shape, formatVersion: manifest?.formatVersion }
   }
 
   private loadManifest(): Promise<TypedManifest | undefined> {

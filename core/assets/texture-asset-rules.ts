@@ -2,6 +2,7 @@
 //
 // Manifest field rules for texture assets in a pack (ADR-0219). Pure: it
 // appends human-readable problems to the caller's error list.
+import type { ColorSpaceName } from './asset-description.ts'
 import { isRecord } from './is-record.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
 
@@ -11,7 +12,7 @@ export const TEXTURE_LIMITS = Object.freeze({
   maxFileBytes: 8_388_608,
 })
 
-const COLOR_SPACES: readonly string[] = Object.freeze(['srgb', 'linear'])
+const COLOR_SPACES: readonly ColorSpaceName[] = Object.freeze(['srgb', 'linear'])
 const SIDES = ['width', 'height'] as const
 
 function isPowerOfTwoInRange(value: unknown): boolean {
@@ -58,7 +59,7 @@ export function validateTextureFields(
 ): void {
   validateImage(asset['image'], label, errors)
   validateTileSize(asset['tileSize'], label, errors)
-  if (!COLOR_SPACES.includes(asset['colorSpace'] as string)) {
+  if (!COLOR_SPACES.includes(asset['colorSpace'] as ColorSpaceName)) {
     errors.push(`${label}.colorSpace must be one of: ${COLOR_SPACES.join(', ')}`)
   }
   if (asset['dimensions'] !== undefined) {

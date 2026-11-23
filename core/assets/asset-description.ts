@@ -1,13 +1,19 @@
 // core/assets/asset-description.ts
 //
 // What a pack asset is, by media type: the media types a pack can carry, the
-// file extension of each, which are models and which are textures, and how a
-// pack format version decides between them. Pure: no filesystem access.
+// file extension of each, which are models and which are textures, how a
+// pack format version decides between them, and the description of each kind
+// (model size, texture image size, tile size, and color space). Pure: no
+// filesystem access.
 
 // The media types a pack asset can carry.
 export type MediaType = 'model/gltf-binary' | 'image/png' | 'image/webp'
 
+/** How a texture's pixel values are interpreted: gamma-encoded color, or raw linear data. */
 export type ColorSpaceName = 'srgb' | 'linear'
+
+// The media types a pack texture can carry.
+export type TextureMediaType = Extract<MediaType, `image/${string}`>
 
 /** A model asset: its media type and its real-world size in millimeters. */
 export interface ModelDescription {
@@ -19,7 +25,7 @@ export interface ModelDescription {
 /** A texture asset: pixel size of the image and the millimeters one repeat covers. */
 export interface TextureDescription {
   kind: 'texture'
-  mediaType: 'image/png' | 'image/webp'
+  mediaType: TextureMediaType
   image: { width: number; height: number }
   tileSize: { width: number; height: number }
   colorSpace: ColorSpaceName

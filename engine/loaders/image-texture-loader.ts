@@ -1,8 +1,9 @@
 import * as THREE from 'three'
+import type { ColorSpaceName, TextureMediaType } from '../../core'
 
 export interface ImageTextureOptions {
-  mediaType: 'image/png' | 'image/webp'
-  colorSpace: 'srgb' | 'linear'
+  mediaType: TextureMediaType
+  colorSpace: ColorSpaceName
 }
 
 export type ImageBitmapDecoder = (

@@ -97,6 +97,7 @@ export type {
   MediaType,
   ModelDescription,
   TextureDescription,
+  TextureMediaType,
 } from './assets/asset-description'
 export {
   assetFileName,
