@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { textureFileProblems, textureFileSizeProblems } from './texture-file-rules.ts'
 import { TEXTURE_LIMITS } from './texture-asset-rules.ts'
+import {
+  ANIMATION_FLAG,
+  ANY_CRC,
+  COLOR_PROFILE_FLAG,
+  PNG_SIGNATURE,
+  ascii,
+  extendedWebp,
+  losslessWebp,
+  uint32BigEndian,
+} from './image-bytes-test-support.ts'
 
-const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
-const ANY_CRC = [0, 0, 0, 0]
 const IEND_CHUNK = [0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, ...ANY_CRC]
-const LOSSLESS_SIGNATURE = 0x2f
-const ANIMATION_FLAG = 0x02
-const COLOR_PROFILE_FLAG = 0x20
 const COLOR_TYPE_RGB = 2
 const COLOR_TYPE_RGBA = 6
 const SIDE = 256
@@ -16,22 +21,6 @@ const WIDE = 512
 const ANIMATION_CONTROL_OFFSET = PNG_SIGNATURE.length + 25
 const ANIMATION_FRAME_COUNT = 2
 const ENDLESS_PLAY_COUNT = 0
-
-function ascii(text: string): number[] {
-  return [...text].map((character) => character.charCodeAt(0))
-}
-
-function uint32BigEndian(value: number): number[] {
-  return [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff]
-}
-
-function uint24LittleEndian(value: number): number[] {
-  return [value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff]
-}
-
-function uint32LittleEndian(value: number): number[] {
-  return [...uint24LittleEndian(value), (value >>> 24) & 0xff]
-}
 
 function pngChunk(type: string, data: number[]): number[] {
   return [...uint32BigEndian(data.length), ...ascii(type), ...data, ...ANY_CRC]
@@ -59,33 +48,6 @@ function animatedPng(still: Uint8Array): Uint8Array {
     ...animationControl,
     ...still.subarray(ANIMATION_CONTROL_OFFSET),
   ])
-}
-
-function riffWebp(chunkType: string, payload: number[]): Uint8Array {
-  const chunkHeaderLength = 8
-  return Uint8Array.from([
-    ...ascii('RIFF'),
-    ...uint32LittleEndian(4 + chunkHeaderLength + payload.length),
-    ...ascii('WEBP'),
-    ...ascii(chunkType),
-    ...uint32LittleEndian(payload.length),
-    ...payload,
-  ])
-}
-
-function extendedWebp(flags: number): Uint8Array {
-  const reserved = [0, 0, 0]
-  return riffWebp('VP8X', [
-    flags,
-    ...reserved,
-    ...uint24LittleEndian(SIDE - 1),
-    ...uint24LittleEndian(SIDE - 1),
-  ])
-}
-
-function losslessWebp(width: number, height: number): Uint8Array {
-  const packedSize = (width - 1) | ((height - 1) << 14)
-  return riffWebp('VP8L', [LOSSLESS_SIGNATURE, ...uint32LittleEndian(packedSize)])
 }
 
 const pngAsset = { mediaType: 'image/png', image: { width: SIDE, height: SIDE } }
@@ -151,13 +113,13 @@ describe('textureFileProblems for a WebP', () => {
   })
 
   it('refuses a WebP with a color profile', () => {
-    expect(textureFileProblems(webpAsset, extendedWebp(COLOR_PROFILE_FLAG))).toEqual([
+    expect(textureFileProblems(webpAsset, extendedWebp(SIDE, SIDE, COLOR_PROFILE_FLAG))).toEqual([
       'WebP carries a color profile',
     ])
   })
 
   it('refuses an animated WebP', () => {
-    expect(textureFileProblems(webpAsset, extendedWebp(ANIMATION_FLAG))).toEqual([
+    expect(textureFileProblems(webpAsset, extendedWebp(SIDE, SIDE, ANIMATION_FLAG))).toEqual([
       'WebP is animated',
     ])
   })

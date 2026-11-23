@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { assetFileName, isModelAsset, isTextureAsset } from './asset-description'
 import { validatePackManifest } from './pack-manifest'
-
-function validManifest(): Record<string, unknown> {
-  return {
-    packId: 'vernacular-starter',
-    version: '1.0.0',
-    license: 'CC0-1.0',
-    attribution: 'Vernacular project',
-    eras: ['mid-century'],
-    categories: ['seating'],
-    assets: [],
-  }
-}
+import { validManifest, validTextureAsset } from './pack-manifest-test-support'
 
 function validModelAsset(): Record<string, unknown> {
   return {
@@ -25,22 +14,6 @@ function validModelAsset(): Record<string, unknown> {
     eras: ['mid-century'],
     categories: ['seating'],
     dimensions: { width: 500, depth: 520, height: 800 },
-  }
-}
-
-function validTextureAsset(): Record<string, unknown> {
-  return {
-    contentHash: '1'.repeat(64),
-    name: 'Mown grass',
-    kind: 'texture',
-    mediaType: 'image/png',
-    image: { width: 256, height: 256 },
-    tileSize: { width: 1000, height: 1000 },
-    colorSpace: 'srgb',
-    license: 'CC0-1.0',
-    attribution: 'Vernacular project',
-    eras: ['mid-century'],
-    categories: ['ground'],
   }
 }
 

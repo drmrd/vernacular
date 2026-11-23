@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { pngChunkTypes, readImageHeader } from './image-header.ts'
+import { ANY_CRC, PNG_SIGNATURE, uint32BigEndian } from './image-bytes-test-support.ts'
 
-const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 const IHDR_DATA_LENGTH = 13
 const IHDR_TYPE = [0x49, 0x48, 0x44, 0x52]
-const ANY_CRC = [0, 0, 0, 0]
 const GAMA_TYPE = [0x67, 0x41, 0x4d, 0x41]
 const IDAT_TYPE = [0x49, 0x44, 0x41, 0x54]
 const IEND_TYPE = [0x49, 0x45, 0x4e, 0x44]
@@ -17,10 +16,6 @@ interface HeaderFields {
   bitDepth: number
   colorType: number
   interlace: number
-}
-
-function uint32BigEndian(value: number): number[] {
-  return [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff]
 }
 
 function pngFirst33Bytes(fields: HeaderFields): Uint8Array {

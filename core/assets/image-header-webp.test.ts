@@ -1,50 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import { readImageHeader } from './image-header.ts'
+import {
+  ANIMATION_FLAG,
+  COLOR_PROFILE_FLAG,
+  WEBP_FILE,
+  extendedWebp,
+  losslessWebp,
+  riffContainer,
+} from './image-bytes-test-support.ts'
 
 const LOSSY_START_CODE = [0x9d, 0x01, 0x2a]
 const ANY_FRAME_TAG = [0x10, 0x02, 0x00]
-const LOSSLESS_SIGNATURE = 0x2f
-const ANIMATION_FLAG = 0x02
 const EXIF_FLAG = 0x08
 const ALPHA_FLAG = 0x10
-const COLOR_PROFILE_FLAG = 0x20
 const LOSSLESS_ALPHA_BIT = 1 << 28
 const WIDTH_SCALE_BITS = 0xc000
 const HEIGHT_SCALE_BITS = 0x4000
-const WEBP_FILE: [string, string] = ['RIFF', 'WEBP']
 const START_CODE_OFFSET = 23
 const LOSSLESS_SIGNATURE_OFFSET = 20
 
-function ascii(text: string): number[] {
-  return [...text].map((character) => character.charCodeAt(0))
-}
-
 function uint16LittleEndian(value: number): number[] {
   return [value & 0xff, (value >>> 8) & 0xff]
-}
-
-function uint24LittleEndian(value: number): number[] {
-  return [value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff]
-}
-
-function uint32LittleEndian(value: number): number[] {
-  return [...uint24LittleEndian(value), (value >>> 24) & 0xff]
-}
-
-function riffContainer(
-  [riffTag, formType]: [string, string],
-  chunkType: string,
-  payload: number[],
-): Uint8Array {
-  const chunkHeaderLength = 8
-  return Uint8Array.from([
-    ...ascii(riffTag),
-    ...uint32LittleEndian(ascii(formType).length + chunkHeaderLength + payload.length),
-    ...ascii(formType),
-    ...ascii(chunkType),
-    ...uint32LittleEndian(payload.length),
-    ...payload,
-  ])
 }
 
 function lossyPayload(width: number, height: number, scaleBits = { width: 0, height: 0 }) {
@@ -58,22 +34,6 @@ function lossyPayload(width: number, height: number, scaleBits = { width: 0, hei
 
 function lossyWebp(width: number, height: number, scaleBits?: { width: number; height: number }) {
   return riffContainer(WEBP_FILE, 'VP8 ', lossyPayload(width, height, scaleBits))
-}
-
-function losslessWebp(width: number, height: number, extraBits = 0): Uint8Array {
-  const packedSize = (width - 1) | ((height - 1) << 14) | extraBits
-  return riffContainer(WEBP_FILE, 'VP8L', [LOSSLESS_SIGNATURE, ...uint32LittleEndian(packedSize)])
-}
-
-function extendedWebp(width: number, height: number, flags: number): Uint8Array {
-  return riffContainer(WEBP_FILE, 'VP8X', [
-    flags,
-    0,
-    0,
-    0,
-    ...uint24LittleEndian(width - 1),
-    ...uint24LittleEndian(height - 1),
-  ])
 }
 
 function webpHeader(
