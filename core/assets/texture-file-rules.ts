@@ -12,6 +12,7 @@ const PNG_BIT_DEPTH = 8
 const PNG_COLOR_TYPE_RGB = 2
 const PNG_COLOR_TYPE_RGBA = 6
 const PNG_COLOR_TYPES: readonly number[] = Object.freeze([PNG_COLOR_TYPE_RGB, PNG_COLOR_TYPE_RGBA])
+const PNG_ANIMATION_CONTROL_CHUNK = 'acTL'
 const PNG_REFUSED_CHUNKS: readonly string[] = Object.freeze([
   'gAMA',
   'cHRM',
@@ -34,7 +35,9 @@ function pngProblems(header: PngImageHeader, bytes: Uint8Array): string[] {
   if (!PNG_COLOR_TYPES.includes(header.colorType)) {
     problems.push(`PNG color type ${header.colorType} is not RGB or RGBA`)
   }
-  for (const chunkType of pngChunkTypes(bytes)) {
+  const chunkTypes = pngChunkTypes(bytes)
+  if (chunkTypes.includes(PNG_ANIMATION_CONTROL_CHUNK)) problems.push('PNG is animated')
+  for (const chunkType of chunkTypes) {
     if (PNG_REFUSED_CHUNKS.includes(chunkType)) {
       problems.push(`PNG carries the refused color chunk ${chunkType}`)
     }
