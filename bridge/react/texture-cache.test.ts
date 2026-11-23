@@ -38,4 +38,31 @@ describe('createTextureCache', () => {
     })
     expect(isCacheHeld(decoded)).toBe(true)
   })
+
+  it('two references to one image with one color space share one decoded texture and keep their own tile sizes', async () => {
+    const small: AssetReference = { scope: 'pack:lawn@1.0.0', contentHash: 'sha256-grass' }
+    const large: AssetReference = { scope: 'pack:meadow@1.0.0', contentHash: 'sha256-grass' }
+    const tileSizes = new Map([
+      [small.scope, { width: 1000, height: 1000 }],
+      [large.scope, { width: 2000, height: 2000 }],
+    ])
+    const decode = vi.fn(async () => new Texture())
+    const cache = createTextureCache({
+      source: {
+        resolve: async (asset) => resolvedAsset(bytes, asset.scope),
+        describe: async (asset) => ({ ...description, tileSize: tileSizes.get(asset.scope)! }),
+      },
+      decode,
+      dispose: () => {},
+    })
+
+    await Promise.all([cache.request(small), cache.request(large)])
+
+    const smallState = cache.get(small)
+    const largeState = cache.get(large)
+    expect(decode).toHaveBeenCalledTimes(1)
+    expect(smallState.appearance?.texture).toBe(largeState.appearance?.texture)
+    expect(smallState.appearance?.tileSize).toEqual({ width: 1000, height: 1000 })
+    expect(largeState.appearance?.tileSize).toEqual({ width: 2000, height: 2000 })
+  })
 })
