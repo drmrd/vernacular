@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { MediaType } from '../../core'
 import { createFetchPackReader } from './fetch-pack-reader'
 
 const BASE = '/packs/vernacular-starter-1.0.0'
@@ -33,22 +34,31 @@ describe('createFetchPackReader', () => {
     expect(result).toEqual(MANIFEST)
   })
 
-  it('fetches the asset bytes from <baseUrl>/assets/<hash>.glb', async () => {
-    const requestedUrls: string[] = []
-    const routes: Record<string, Response> = {
-      [`${BASE}/assets/${HASH}.glb`]: new Response(ASSET_BYTES, { status: 200 }),
-    }
-    const trackingFetch: typeof fetch = (async (input: RequestInfo | URL) => {
-      requestedUrls.push(String(input))
-      return fakeFetch(routes)(input)
-    }) as typeof fetch
+  const ASSET_ROWS: ReadonlyArray<{ mediaType: MediaType; url: string }> = [
+    { mediaType: 'model/gltf-binary', url: `${BASE}/assets/${HASH}.glb` },
+    { mediaType: 'image/png', url: `${BASE}/assets/${HASH}.png` },
+    { mediaType: 'image/webp', url: `${BASE}/assets/${HASH}.webp` },
+  ]
 
-    const reader = createFetchPackReader(BASE, trackingFetch)
-    const result = await reader.readAsset(HASH, 'model/gltf-binary')
+  it.each(ASSET_ROWS)(
+    'fetches an asset at the extension of its media type ($mediaType)',
+    async ({ mediaType, url }) => {
+      const requestedUrls: string[] = []
+      const routes: Record<string, Response> = {
+        [url]: new Response(ASSET_BYTES, { status: 200 }),
+      }
+      const trackingFetch: typeof fetch = (async (input: RequestInfo | URL) => {
+        requestedUrls.push(String(input))
+        return fakeFetch(routes)(input)
+      }) as typeof fetch
 
-    expect(requestedUrls).toContain(`${BASE}/assets/${HASH}.glb`)
-    expect(result).toEqual(ASSET_BYTES)
-  })
+      const reader = createFetchPackReader(BASE, trackingFetch)
+      const result = await reader.readAsset(HASH, mediaType)
+
+      expect(requestedUrls).toEqual([url])
+      expect(result).toEqual(ASSET_BYTES)
+    },
+  )
 
   it('resolves undefined for readAsset when the server returns a non-ok response', async () => {
     const reader = createFetchPackReader(BASE, fakeFetch({}))
