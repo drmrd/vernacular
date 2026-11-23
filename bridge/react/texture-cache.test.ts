@@ -191,44 +191,42 @@ describe('createTextureCache failure handling', () => {
     )
   })
 
-  it('a texture that fails without an error still warns once with its content hash and the reason', async () => {
-    const scenarios: Array<FailureScenario & { reason: RegExp }> = [
-      {
-        name: 'with no description',
-        resolveAsset: async () => resolvedAsset(bytes, reference.scope),
-        describeAsset: async () => undefined,
-        decodeAsset: async () => new Texture(),
-        reachesDecode: false,
-        reason: /description/i,
-      },
-      {
-        name: 'of another kind',
-        resolveAsset: async () => resolvedAsset(bytes, reference.scope),
-        describeAsset: async () => modelDescription,
-        decodeAsset: async () => new Texture(),
-        reachesDecode: false,
-        reason: /kind|model/i,
-      },
-      {
-        name: 'whose image is missing',
-        resolveAsset: async () => missingAsset(reference),
-        describeAsset: async () => description,
-        decodeAsset: async () => new Texture(),
-        reachesDecode: false,
-        reason: /missing|not found|resolve/i,
-      },
-    ]
-
-    for (const scenario of scenarios) {
+  it.each<FailureScenario & { reason: string }>([
+    {
+      name: 'with no description',
+      resolveAsset: async () => resolvedAsset(bytes, reference.scope),
+      describeAsset: async () => undefined,
+      decodeAsset: async () => new Texture(),
+      reachesDecode: false,
+      reason: 'no description for the asset',
+    },
+    {
+      name: 'of another kind',
+      resolveAsset: async () => resolvedAsset(bytes, reference.scope),
+      describeAsset: async () => modelDescription,
+      decodeAsset: async () => new Texture(),
+      reachesDecode: false,
+      reason: `description kind is ${modelDescription.kind}, not texture`,
+    },
+    {
+      name: 'whose image is missing',
+      resolveAsset: async () => missingAsset(reference),
+      describeAsset: async () => description,
+      decodeAsset: async () => new Texture(),
+      reachesDecode: false,
+      reason: `image is missing: the asset did not resolve in ${reference.scope}`,
+    },
+  ])(
+    'a texture $name fails without an error and warns once with its hash and reason',
+    async (scenario) => {
       const warn = await requestFailure(scenario)
 
-      expect(warn, scenario.name).toHaveBeenCalledTimes(1)
-      const logged = warn.mock.calls[0]?.map(String).join(' ')
-      expect(logged, scenario.name).toContain(reference.contentHash)
-      expect(logged, scenario.name).toMatch(scenario.reason)
-      warn.mockRestore()
-    }
-  })
+      expect(warn).toHaveBeenCalledExactlyOnceWith(
+        `Failed to load texture ${reference.contentHash}`,
+        scenario.reason,
+      )
+    },
+  )
 })
 
 describe('createTextureCache disposal', () => {
