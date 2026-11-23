@@ -131,7 +131,7 @@ export function formatRetryAnnotations(passes) {
 
 function describeCaught(error) {
   try {
-    const [firstLine] = String(error?.message).split(/\r?\n|\r/)
+    const [firstLine] = String(error?.message ?? error).split(/\r?\n|\r/)
     return ` (${firstLine.slice(0, FIRST_ERROR_MAX_LENGTH)})`
   } catch {
     return ' (an error that cannot be printed)'
