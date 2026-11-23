@@ -96,6 +96,8 @@ start goes into the polite status region. A module that did not load goes into t
 region, because the user has something to do: reload the page. The pane learns the failure kind by
 reading the host's marker through the observer it already runs for the readiness attribute.
 
+The regions mount with the pane, and both failures arrive after an awaited import or `init()`, so the regions are in the page at least one frame before the text.
+
 The visible view has no live role, and focus does not move.
 
 This has a known cost. A screen reader user who browses the pane meets the failure text twice, once
