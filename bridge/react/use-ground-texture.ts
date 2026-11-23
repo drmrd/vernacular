@@ -8,17 +8,24 @@ interface TextureInputs {
   readonly source: TextureSource
 }
 
+interface SettledTexture {
+  readonly inputs: TextureInputs
+  readonly state: TextureState
+}
+
 /**
  * The cache lives inside one effect so that StrictMode's re-run builds a fresh cache, and a
  * load that settles after cleanup is ignored. `source` must keep the same identity across
  * renders, or the hook reloads the texture on each render. A state from an earlier reference or
- * source is never returned: the render that sees a new reference or source drops the settled
- * state and returns LOADING, so only a load settled by the current effect run is shown, even when
- * the reference or source returns to an earlier value whose texture the cache already freed.
+ * source is never returned, for two reasons. The render that sees a new reference or source drops
+ * the settled state, so a reference that returns to an earlier value does not show a texture the
+ * cache already freed. The settled state also carries the inputs of the effect run that settled
+ * it and is returned only while they match the current inputs, because a non-urgent commit runs
+ * the old effect's cleanup after the new inputs commit, and the old load can settle in between.
  */
 export function useGroundTexture(reference: AssetReference, source: TextureSource): TextureState {
   const referenceKey = formatAssetReference(reference)
-  const [settled, setSettled] = useState<TextureState | undefined>(undefined)
+  const [settled, setSettled] = useState<SettledTexture | undefined>(undefined)
   const [seen, setSeen] = useState<TextureInputs>({ key: referenceKey, source })
   const inputsChanged = seen.key !== referenceKey || seen.source !== source
   if (inputsChanged) {
@@ -36,7 +43,10 @@ export function useGroundTexture(reference: AssetReference, source: TextureSourc
     const textureReference = parseAssetReference(referenceKey)
     void cache.request(textureReference).then(() => {
       if (!cancelled) {
-        setSettled(cache.get(textureReference))
+        setSettled({
+          inputs: { key: referenceKey, source },
+          state: cache.get(textureReference),
+        })
       }
     })
     return () => {
@@ -45,5 +55,7 @@ export function useGroundTexture(reference: AssetReference, source: TextureSourc
     }
   }, [referenceKey, source])
 
-  return inputsChanged ? LOADING : (settled ?? LOADING)
+  const settledForCurrentInputs =
+    settled !== undefined && settled.inputs.key === referenceKey && settled.inputs.source === source
+  return inputsChanged || !settledForCurrentInputs ? LOADING : settled.state
 }
