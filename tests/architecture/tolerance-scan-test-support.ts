@@ -41,8 +41,11 @@ function isConstDeclaration(node: ts.Node): node is ts.VariableDeclaration {
   )
 }
 
-function collectNodes(node: ts.Node, matches: (candidate: ts.Node) => boolean): ts.Node[] {
-  const found = matches(node) ? [node] : []
+function collectNodes<T extends ts.Node>(
+  node: ts.Node,
+  matches: (candidate: ts.Node) => candidate is T,
+): T[] {
+  const found: T[] = matches(node) ? [node] : []
   ts.forEachChild(node, (child) => void found.push(...collectNodes(child, matches)))
   return found
 }
@@ -53,10 +56,14 @@ function parse(path: string, text: string): ts.SourceFile {
 
 /** Every `const` declaration of a file, at any depth. */
 export function constDeclarations(path: string, text: string): ConstDeclaration[] {
-  return collectNodes(parse(path, text), isConstDeclaration).map((node) => {
-    const declaration = node as ts.VariableDeclaration
-    return { name: (declaration.name as ts.Identifier).text, initializer: declaration.initializer }
-  })
+  return constDeclarationsOf(parse(path, text))
+}
+
+function constDeclarationsOf(sourceFile: ts.SourceFile): ConstDeclaration[] {
+  return collectNodes(sourceFile, isConstDeclaration).map((declaration) => ({
+    name: (declaration.name as ts.Identifier).text,
+    initializer: declaration.initializer,
+  }))
 }
 
 function numericValue(expression: ts.Expression | undefined): number | undefined {
@@ -94,31 +101,28 @@ function smallValued(path: string, declarations: readonly ConstDeclaration[]): s
     .map((declaration) => declaration.name)
 }
 
-function isExponentComparison(node: ts.Node, sourceFile: ts.SourceFile): boolean {
-  if (!ts.isBinaryExpression(node) || !COMPARISON_OPERATORS.has(node.operatorToken.kind)) {
-    return false
-  }
-  return [node.left, node.right].some(
-    (operand) =>
-      ts.isNumericLiteral(operand) && EXPONENT_LITERAL_PATTERN.test(operand.getText(sourceFile)),
-  )
+function isComparison(node: ts.Node): node is ts.BinaryExpression {
+  return ts.isBinaryExpression(node) && COMPARISON_OPERATORS.has(node.operatorToken.kind)
 }
 
-function exponentLiterals(path: string, text: string): string[] {
-  const sourceFile = parse(path, text)
-  return collectNodes(sourceFile, (node) => isExponentComparison(node, sourceFile)).flatMap(
-    (node) =>
-      [(node as ts.BinaryExpression).left, (node as ts.BinaryExpression).right]
-        .filter((operand) => ts.isNumericLiteral(operand))
-        .map((operand) => operand.getText(sourceFile))
-        .filter((literal) => EXPONENT_LITERAL_PATTERN.test(literal)),
+function exponentOperands(node: ts.BinaryExpression, sourceFile: ts.SourceFile): string[] {
+  return [node.left, node.right]
+    .filter((operand) => ts.isNumericLiteral(operand))
+    .map((operand) => operand.getText(sourceFile))
+    .filter((literal) => EXPONENT_LITERAL_PATTERN.test(literal))
+}
+
+function exponentLiterals(sourceFile: ts.SourceFile): string[] {
+  return collectNodes(sourceFile, isComparison).flatMap((node) =>
+    exponentOperands(node, sourceFile),
   )
 }
 
 function findingsOfFile(path: string, text: string): string[] {
-  const declarations = constDeclarations(path, text)
+  const sourceFile = parse(path, text)
+  const declarations = constDeclarationsOf(sourceFile)
   const names = [...namedTolerances(declarations), ...smallValued(path, declarations)]
-  return [...new Set([...names, ...exponentLiterals(path, text)])].map(
+  return [...new Set([...names, ...exponentLiterals(sourceFile)])].map(
     (finding) => `${path}: ${finding}`,
   )
 }
