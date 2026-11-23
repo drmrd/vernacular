@@ -20,7 +20,10 @@ export interface TwoFilesDialogParts {
   readonly navigation: PageRunners
   /** The start of a choice clears the page's sentence. */
   readonly onActionStart: () => void
-  /** The end of a choice: the sentence to show, or null. The page reads the cards again. */
+  /**
+   * The end of a choice that is not shown as a failed open: the sentence to show, or null. The
+   * page reads the cards again.
+   */
   readonly onActionEnd: (notice: string | null) => void
   /** Shows a failure of an open that keeps both files as the failure of a try of the card. */
   readonly onTryFailed: (id: string, failure: SwitchFailure) => void
@@ -71,6 +74,9 @@ function readFacts(ports: SessionPorts | null, id: string): Promise<TwoFilesRead
   return ports === null ? Promise.resolve(NO_SECOND_FILE) : readTwoFiles(ports, id)
 }
 
+/** How a failed choice ends: the project it ran on, and the failure it came back with. */
+type FailureEnd = (id: string, failure: SwitchFailure | KeptFileRefusal) => void
+
 /** The state of a running choice, and the run of a choice with the page around it. */
 function useChoose(
   { ports, navigation, onActionStart, onActionEnd, onTryFailed }: TwoFilesDialogParts,
@@ -78,7 +84,10 @@ function useChoose(
 ) {
   const notifications = useNotifications()
   const [busy, setBusy] = useState(false)
-  const choose = async (shown: Shown, run: ChoiceRun, failsAsOpen = false) => {
+  const endAsChange: FailureEnd = (_id, failure) => onActionEnd(failureSentence(failure))
+  const endAsOpen: FailureEnd = (id, failure) =>
+    isSwitchFailure(failure) ? onTryFailed(id, failure) : endAsChange(id, failure)
+  const choose = async (shown: Shown, run: ChoiceRun, endFailure = endAsChange) => {
     const { id, files, open } = shown
     hold(shown)
     onActionStart()
@@ -89,13 +98,15 @@ function useChoose(
       return
     }
     close()
-    if (!answer.ok && failsAsOpen && isSwitchFailure(answer.failure)) {
-      onTryFailed(id, answer.failure)
-      return
+    // The page decides how each kind shows: a notice, the failed-open dialog, or only the card
+    // line through refresh().
+    if (answer.ok) {
+      onActionEnd(null)
+    } else {
+      endFailure(id, answer.failure)
     }
-    onActionEnd(answer.ok ? null : failureSentence(answer.failure))
   }
-  return { busy, choose, choices: choicesOn(navigation, notifications) }
+  return { busy, choose, endAsOpen, choices: choicesOn(navigation, notifications) }
 }
 
 /**
@@ -188,13 +199,15 @@ export function useTwoFilesDialog(parts: TwoFilesDialogParts): TwoFilesDialogSta
     },
     [ports, onActionStart, show],
   )
-  const { busy, choose, choices } = useChoose(parts, shownFiles)
+  const { busy, choose, endAsOpen, choices } = useChoose(parts, shownFiles)
   const dialog =
     shown &&
     dialogPropsOf(
       shown,
       {
-        onKeepBoth: shown.open ? () => void choose(shown, choices.openKeepingBoth, true) : close,
+        onKeepBoth: shown.open
+          ? () => void choose(shown, choices.openKeepingBoth, endAsOpen)
+          : close,
         onOpenAsNew: () => void choose(shown, choices.openAsNew),
         onReplace: () => void choose(shown, choices.replace),
         onRemove: () => void choose(shown, choices.remove),
