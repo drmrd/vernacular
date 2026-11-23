@@ -205,3 +205,71 @@ describe('createTextureCache failure handling', () => {
     }
   })
 })
+
+describe('createTextureCache disposal', () => {
+  const lawn: AssetReference = { scope: 'pack:lawn@1.0.0', contentHash: 'sha256-grass' }
+  const meadow: AssetReference = { scope: 'pack:meadow@1.0.0', contentHash: 'sha256-grass' }
+  const lawnData: AssetReference = { scope: 'pack:lawn-data@1.0.0', contentHash: 'sha256-grass' }
+
+  function cacheWithDisposer(decode: () => Promise<Texture>) {
+    const dispose = vi.fn<(texture: Texture) => void>()
+    const cache = createTextureCache({
+      source: {
+        resolve: async (asset) => resolvedAsset(bytes, asset.scope),
+        describe: async (asset) => ({
+          ...description,
+          colorSpace: asset.scope === lawnData.scope ? 'linear' : 'srgb',
+        }),
+      },
+      decode,
+      dispose,
+    })
+    return { cache, dispose }
+  }
+
+  it('the cache frees each texture once, when the cache is disposed, and never before', async () => {
+    const { cache, dispose } = cacheWithDisposer(async () => new Texture())
+    const references = [lawn, meadow, lawnData]
+
+    await Promise.all(references.map((asset) => cache.request(asset)))
+    for (let round = 0; round < 5; round += 1) {
+      await Promise.all(references.map((asset) => cache.request(asset)))
+      references.forEach((asset) => cache.get(asset))
+    }
+
+    expect(dispose).not.toHaveBeenCalled()
+
+    const sharedTexture = cache.get(lawn).appearance?.texture
+    const dataTexture = cache.get(lawnData).appearance?.texture
+    expect(sharedTexture).not.toBe(dataTexture)
+
+    cache.dispose()
+
+    expect(dispose).toHaveBeenCalledTimes(2)
+    expect(dispose).toHaveBeenCalledWith(sharedTexture)
+    expect(dispose).toHaveBeenCalledWith(dataTexture)
+  })
+
+  it('a texture that finishes decoding after the cache is disposed is freed', async () => {
+    const late = new Texture()
+    let finishDecode: (texture: Texture) => void = () => {}
+    let decodeStarted: () => void = () => {}
+    const started = new Promise<void>((resolve) => (decodeStarted = resolve))
+    const { cache, dispose } = cacheWithDisposer(
+      () =>
+        new Promise<Texture>((resolve) => {
+          finishDecode = resolve
+          decodeStarted()
+        }),
+    )
+
+    const loading = cache.request(lawn)
+    await started
+    cache.dispose()
+    finishDecode(late)
+    await loading
+
+    expect(dispose).toHaveBeenCalledTimes(1)
+    expect(dispose).toHaveBeenCalledWith(late)
+  })
+})
