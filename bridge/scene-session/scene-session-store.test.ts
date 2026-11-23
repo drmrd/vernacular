@@ -23,6 +23,7 @@ const defaultSceneSession: SceneSessionState = {
   scope: 'floor',
   showUnderground: true,
   edgeOverlay: false,
+  aimGuide: true,
   openDoorIds: new Map(),
   savedCamera: null,
   walkPose: null,
@@ -50,6 +51,16 @@ describe('createSceneSessionStore', () => {
 
     expect(held).toEqual(seed)
     expect(held).not.toBe(seed)
+  })
+
+  it('holds the aim guide on until it is turned off', () => {
+    const store = createSceneSessionStore()
+    expect(store.getSceneSession().aimGuide).toBe(true)
+
+    store.updateSceneSession({ aimGuide: false })
+
+    expect(store.getSceneSession().aimGuide).toBe(false)
+    expect(createSceneSessionStore({ aimGuide: false }).getSceneSession().aimGuide).toBe(false)
   })
 
   it('starts a fresh session with no saved camera', () => {
