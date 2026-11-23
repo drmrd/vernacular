@@ -3,6 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import type { CanvasProps, GLProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import {
+  FailureProbe,
+  PLAIN_CANNOT_RENDER,
+  PLAIN_COULD_NOT_LOAD,
+} from './scene-failure-probe-test-support'
+import { SceneFailureViewContext, type SceneFailureView } from './scene-failure-view-context'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SCENE_RENDERER_FAILED_ATTRIBUTE } from './scene-readiness'
 import {
@@ -84,8 +90,20 @@ function failureKindIn(container: HTMLElement): string | null {
   return marked?.getAttribute(SCENE_RENDERER_FAILED_ATTRIBUTE) ?? null
 }
 
-function renderWrapper(props: Parameters<typeof SceneRendererCanvas>[0] = {}) {
-  const ui = (): ReactNode => <SceneRendererCanvas {...props}>{CHILD}</SceneRendererCanvas>
+function renderWrapper(
+  props: Parameters<typeof SceneRendererCanvas>[0] = {},
+  failureView?: SceneFailureView,
+) {
+  const ui = (): ReactNode => {
+    const wrapper = <SceneRendererCanvas {...props}>{CHILD}</SceneRendererCanvas>
+    return failureView ? (
+      <SceneFailureViewContext.Provider value={failureView}>
+        {wrapper}
+      </SceneFailureViewContext.Provider>
+    ) : (
+      wrapper
+    )
+  }
   const view = render(ui())
   return { ...view, again: () => view.rerender(ui()) }
 }
@@ -181,11 +199,6 @@ describe('SceneRendererCanvas', () => {
   })
 })
 
-// The wording and role that SceneCanvas already uses when the browser has no 3D backend at all.
-const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
-const COULD_NOT_LOAD_MESSAGE =
-  'Could not load the 3D view. Check your network connection, then reload the page.'
-
 describe('SceneRendererCanvas when the renderer cannot start', () => {
   let start: Harness
   let rejections: ReturnType<typeof recordUnhandledRejections>
@@ -207,9 +220,28 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     await settle(() => start.loaded.resolve(start.factory))
     await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
 
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
     expect(screen.queryByTestId('child')).toBeNull()
     expect(failureKindIn(container)).toBe('start')
+  })
+
+  it('shows the view that fills the failure slot in place of the cannot-render status when init() rejects', async () => {
+    const { container } = renderWrapper({}, FailureProbe)
+    await settle(() => start.loaded.resolve(start.factory))
+    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+
+    const filled = screen.getByRole('button', { name: 'filled view' })
+    expect(filled).toHaveAttribute('data-kind', 'start')
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(failureKindIn(container)).toBe('start')
+  })
+
+  it('marks exactly one element as the failure view when init() rejects', async () => {
+    const { container } = renderWrapper()
+    await settle(() => start.loaded.resolve(start.factory))
+    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+
+    expect(container.querySelectorAll(`[${SCENE_RENDERER_FAILED_ATTRIBUTE}]`)).toHaveLength(1)
   })
 
   it('offers no Reload page button when init() rejects', async () => {
@@ -237,7 +269,7 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     await settle(() => start.loaded.resolve(factory))
 
     expect(warn).toHaveBeenCalled()
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('status')).toHaveTextContent(PLAIN_CANNOT_RENDER)
     expect(failureKindIn(container)).toBe('start')
     expect(screen.queryByTestId('child')).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()
@@ -270,11 +302,30 @@ describe('SceneRendererCanvas when the renderer module does not load', () => {
     const { container } = renderWrapper()
     await settle(() => start.loaded.reject(LOAD_FAILURE))
 
-    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(screen.getByRole('alert')).toHaveTextContent(PLAIN_COULD_NOT_LOAD)
     expect(failureKindIn(container)).toBe('load')
     expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()
+  })
+
+  it('hands reloadPage to the view that fills the failure slot', async () => {
+    const reloadPage = vi.fn()
+    renderWrapper({ reloadPage }, FailureProbe)
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+
+    const probe = screen.getByRole('button', { name: 'filled view' })
+    expect(probe).toHaveAttribute('data-kind', 'load')
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.click(probe)
+    expect(reloadPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks exactly one element as the failure view when the renderer module does not load', async () => {
+    const { container } = renderWrapper()
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+
+    expect(container.querySelectorAll(`[${SCENE_RENDERER_FAILED_ATTRIBUTE}]`)).toHaveLength(1)
   })
 
   it('leaves no unhandled rejection when the renderer factory fails to load', async () => {
@@ -319,7 +370,7 @@ describe('SceneRendererCanvas when the renderer module does not load', () => {
     await settle(() => {})
 
     expect(loadFactory).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(screen.getByRole('alert')).toHaveTextContent(PLAIN_COULD_NOT_LOAD)
     expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
     expect(screen.queryByTestId('canvas')).toBeNull()
     expect(await rejections.read()).toEqual([])

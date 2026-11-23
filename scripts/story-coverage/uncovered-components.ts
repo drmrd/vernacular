@@ -132,6 +132,12 @@ export const UNCOVERED_COMPONENTS: {
       'reads the drawing buffer inside the per-frame callback to fulfil a pending color sample and renders no DOM (it returns null); it requires a live R3F Canvas and an already drawn frame, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'PlainSceneFailureView',
+    file: 'bridge/react/plain-scene-failure-view.tsx',
+    reason:
+      'a switch over the two plain failure views, each of which has a story of its own, so a separate story would repeat them (see ADR-0111).',
+  },
+  {
     component: 'ReasonDescription',
     file: 'bridge/react/reason-description.tsx',
     reason:
@@ -160,6 +166,30 @@ export const UNCOVERED_COMPONENTS: {
     file: 'bridge/react/scene-display-options.tsx',
     reason:
       'the display-options group (the surface-edge overlay toggle) that sits beside the environment controls extracted from scene-nav-toolbar.tsx; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
+    component: 'SceneChrome',
+    file: 'bridge/react/scene-chrome.tsx',
+    reason:
+      'draws nothing of its own: it shows or removes the scene controls it wraps while a failure view is mounted, and the controls have their own coverage (see ADR-0111).',
+  },
+  {
+    component: 'SceneChromeProvider',
+    file: 'bridge/react/scene-chrome.tsx',
+    reason:
+      'context provider that only has meaning around the live scene view and a failure view that stands in for it; an isolated browser-mode story is not feasible (see ADR-0111).',
+  },
+  {
+    component: 'SceneFailureHost',
+    file: 'bridge/react/scene-failure-host.tsx',
+    reason:
+      'draws nothing of its own: it wraps the failure view that fills the slot in the element that marks the failure kind, and the views it wraps have stories (see ADR-0111).',
+  },
+  {
+    component: 'FailureProbe',
+    file: 'bridge/react/scene-failure-probe-test-support.tsx',
+    reason:
+      'test-only probe that fills the failure slot in the scene-canvas and failure-host tests: one button that shows the failure kind it was given and hands a click to the reload callback; it is never rendered by the app, so an isolated story would document nothing a user sees (permanent allowlist candidate, see ADR-0111).',
   },
   {
     component: 'ScopeToggle',

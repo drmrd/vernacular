@@ -1,0 +1,6 @@
+.scene-pane__failure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}

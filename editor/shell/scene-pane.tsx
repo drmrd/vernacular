@@ -9,12 +9,16 @@ import {
 
 import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
 import { SceneCanvas, detectRenderBackend, useActiveFloorId, useSceneGraph } from '../../bridge'
+import { SceneFailureViewContext } from '../../bridge/react/scene-failure-view-context'
 import {
   LIVE_SCENE_CANVAS_TEST_ID,
   SCENE_READY_ATTRIBUTE,
   SCENE_RENDERER_FAILED_ATTRIBUTE,
+  type SceneRendererFailureKind,
 } from '../../bridge/react/scene-readiness'
 import { Banner, EmptyState, LoadingState, type Notification } from '../design-system'
+import { sceneFailureAnnouncement } from './scene-failure-copy'
+import { ScenePaneFailureView } from './scene-pane-failure-view'
 import './scene-pane.css'
 
 const LIVE_SCENE_CANVAS_SELECTOR = `[data-testid="${LIVE_SCENE_CANVAS_TEST_ID}"]`
@@ -48,25 +52,42 @@ function readSceneState(paneNode: HTMLElement): SceneState {
   return isReady ? 'ready' : 'building'
 }
 
+// The kind of failure the pane's failure view reports through its marker, or null when
+// no failure view is inside the pane.
+function readFailureKind(paneNode: HTMLElement): SceneRendererFailureKind | null {
+  const markerNode = paneNode.querySelector(SCENE_RENDERER_FAILED_SELECTOR)
+  return markerNode === null
+    ? null
+    : (markerNode.getAttribute(SCENE_RENDERER_FAILED_ATTRIBUTE) as SceneRendererFailureKind)
+}
+
 // Watches the pane's own wrapper for the live canvas flipping its data-harness-ready
 // attribute, or for the canvas node itself being inserted (the Suspense-resolve path),
 // so the loading placeholder clears the moment the canvas reports its first frame
-// without requiring a React re-render from the bridge layer to drive it.
+// without requiring a React re-render from the bridge layer to drive it. It also reports
+// the failure view's kind, which the pane's announcer turns into text.
 //
 // Reads with a layout effect, not a plain effect, so the corrected readiness is in
 // place before the browser paints; a plain effect runs after paint and would flash
 // one unready frame on the synchronous-mount path.
-function useSceneState(paneRef: RefObject<HTMLDivElement | null>): SceneState {
+function useSceneState(paneRef: RefObject<HTMLDivElement | null>): {
+  sceneState: SceneState
+  failureKind: SceneRendererFailureKind | null
+} {
   const [sceneState, setSceneState] = useState<SceneState>('ready')
+  const [failureKind, setFailureKind] = useState<SceneRendererFailureKind | null>(null)
   useLayoutEffect(() => {
     const paneNode = paneRef.current
     if (!paneNode) return
-    setSceneState(readSceneState(paneNode))
+    const readPane = (): void => {
+      setSceneState(readSceneState(paneNode))
+      setFailureKind(readFailureKind(paneNode))
+    }
+    readPane()
     // Observing subtree childList also catches this pane's own overlay divs being
     // inserted or removed, which retriggers the callback below. That is harmless:
-    // readSceneState is idempotent, so the extra firings just recompute the same
-    // answer.
-    const observer = new MutationObserver(() => setSceneState(readSceneState(paneNode)))
+    // readPane is idempotent, so the extra firings just recompute the same answer.
+    const observer = new MutationObserver(readPane)
     observer.observe(paneNode, {
       attributes: true,
       attributeFilter: [SCENE_READY_ATTRIBUTE],
@@ -75,7 +96,7 @@ function useSceneState(paneRef: RefObject<HTMLDivElement | null>): SceneState {
     })
     return () => observer.disconnect()
   }, [paneRef])
-  return sceneState
+  return { sceneState, failureKind }
 }
 
 // The notice shown while the preview renders through the renderer's WebGL 2 fallback.
@@ -93,13 +114,38 @@ function BackendNotice(): ReactElement | null {
   )
 }
 
+function SceneCanvasWithPaneFailureView(): ReactElement {
+  return (
+    <SceneFailureViewContext.Provider value={ScenePaneFailureView}>
+      <SceneCanvas />
+    </SceneFailureViewContext.Provider>
+  )
+}
+
+// Two empty live regions are in the pane from its first render, because a region that
+// appears together with its text is often not announced. The failure text goes into the
+// assertive one when the 3D view could not load and into the polite one when it cannot render.
+function SceneFailureAnnouncer({
+  failureKind,
+}: {
+  failureKind: SceneRendererFailureKind | null
+}): ReactElement {
+  const announcement = failureKind === null ? null : sceneFailureAnnouncement(failureKind)
+  return (
+    <div className="scene-pane__announcer">
+      <div role="status">{failureKind === 'start' ? announcement : null}</div>
+      <div role="alert">{failureKind === 'load' ? announcement : null}</div>
+    </div>
+  )
+}
+
 // The pane lives in the editor layer so the styled fallback can use the design
 // system, which the bridge layer cannot import.
 export function ScenePane(): ReactElement {
   const graph = useSceneGraph()
   const activeFloorId = useActiveFloorId()
   const paneRef = useRef<HTMLDivElement | null>(null)
-  const sceneState = useSceneState(paneRef)
+  const { sceneState, failureKind } = useSceneState(paneRef)
   const backend = detectRenderBackend()
   if (backend === 'unsupported') {
     return (
@@ -110,14 +156,13 @@ export function ScenePane(): ReactElement {
       />
     )
   }
-  const floorGraph = sceneGraphForFloor(graph, activeFloorId)
-  const isActiveFloorEmpty = !sceneGraphHasGeometry(floorGraph)
+  const isActiveFloorEmpty = !sceneGraphHasGeometry(sceneGraphForFloor(graph, activeFloorId))
   return (
     <div className="scene-pane" ref={paneRef}>
       <Suspense fallback={<LoadingState message="Preparing 3D view..." />}>
-        <SceneCanvas />
+        <SceneCanvasWithPaneFailureView />
       </Suspense>
-      {backend === 'webgl2' ? <BackendNotice /> : null}
+      {backend === 'webgl2' && failureKind === null ? <BackendNotice /> : null}
       {sceneState === 'building' ? (
         <div className="scene-pane__overlay">
           <LoadingState message="Building the scene..." />
@@ -132,6 +177,7 @@ export function ScenePane(): ReactElement {
           />
         </div>
       ) : null}
+      <SceneFailureAnnouncer failureKind={failureKind} />
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { CameraControlsHint } from './camera-controls-hint'
+import { SceneChrome } from './scene-chrome'
+import { useSceneChromeHidden } from './scene-chrome-context'
 import type { NavMode } from './scene-nav-toolbar'
 
 // Tracks whether a pointer drag is underway on the preview pane so the cursor can switch
@@ -22,11 +24,17 @@ function useDragging() {
 // internally instead of pushing the canvas below a usable size.
 export const CAMERA_PANE_MIN_HEIGHT_SHARE = '55%'
 
+function paneCursor(chromeHidden: boolean, dragging: boolean): string | undefined {
+  if (chromeHidden) return undefined
+  return dragging ? 'grabbing' : 'grab'
+}
+
 // The interactive preview pane: it wraps the canvas and overlay (passed as children), shows
 // the grab/grabbing cursor that signals the canvas is draggable, and overlays the per-mode
 // controls hint. The hint is inert to pointer events, so it never blocks a drag.
 export function ScenePaneShell({ mode, children }: { mode: NavMode; children: ReactNode }) {
   const { dragging, paneHandlers } = useDragging()
+  const chromeHidden = useSceneChromeHidden()
   return (
     <div
       className="scene-camera-pane"
@@ -34,12 +42,14 @@ export function ScenePaneShell({ mode, children }: { mode: NavMode; children: Re
         position: 'relative',
         flex: 1,
         minHeight: CAMERA_PANE_MIN_HEIGHT_SHARE,
-        cursor: dragging ? 'grabbing' : 'grab',
+        cursor: paneCursor(chromeHidden, dragging),
       }}
       {...paneHandlers}
     >
       {children}
-      <CameraControlsHint mode={mode} />
+      <SceneChrome>
+        <CameraControlsHint mode={mode} />
+      </SceneChrome>
     </div>
   )
 }
