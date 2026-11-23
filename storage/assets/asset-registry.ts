@@ -24,11 +24,11 @@ export interface ScopedAssetSource {
 }
 
 /**
- * Aggregates asset sources and resolves a content-addressed reference with the
- * graceful-degradation precedence of design specification section 4.2: the
- * exactly-requested scope first, then a hash match in another source by
- * precedence. Pack-version fallback and the missing-asset placeholder are added
- * in later slices of this track.
+ * Aggregates asset sources. `resolve` follows the graceful-degradation
+ * precedence of design specification section 4.2: the exactly-requested scope
+ * first, then a hash match in another source by precedence. `describe` asks the
+ * source named by the reference scope first, then the rest by the same
+ * precedence. `list` concatenates every source in scope precedence order.
  */
 export class AssetRegistry {
   constructor(
@@ -37,11 +37,11 @@ export class AssetRegistry {
   ) {}
 
   async resolve(reference: AssetReference): Promise<AssetResolution> {
-    const order = orderScopesByPrecedence(reference, this.availableKinds())
-    for (const kind of order) {
-      const resolution = await this.readFromKind(kind, reference)
-      if (resolution !== undefined) {
-        return resolution
+    const kinds = orderScopesByPrecedence(reference, this.availableKinds())
+    for (const scoped of this.sourcesInOrder(kinds)) {
+      const bytes = await scoped.source.read(reference.contentHash)
+      if (bytes !== undefined) {
+        return resolvedAsset(bytes, resolvedScopeFor(scoped, reference))
       }
     }
     return this.notResolved(reference)
@@ -49,12 +49,9 @@ export class AssetRegistry {
 
   async list(): Promise<LibraryItem[]> {
     const items: LibraryItem[] = []
-    for (const kind of SCOPE_PRECEDENCE) {
-      for (const scoped of this.sources) {
-        if (scoped.kind !== kind) continue
-        const listed = (await scoped.source.list?.()) ?? []
-        items.push(...listed)
-      }
+    for (const scoped of this.sourcesInOrder(SCOPE_PRECEDENCE)) {
+      const listed = (await scoped.source.list?.()) ?? []
+      items.push(...listed)
     }
     return items
   }
@@ -69,13 +66,12 @@ export class AssetRegistry {
     if (exactDescription !== undefined) {
       return exactDescription
     }
-    for (const kind of orderScopesByPrecedence(reference, this.availableKinds())) {
-      for (const scoped of this.sources) {
-        if (scoped.kind !== kind) continue
-        const description = await scoped.source.describe?.(reference.contentHash)
-        if (description !== undefined) {
-          return description
-        }
+    const kinds = orderScopesByPrecedence(reference, this.availableKinds())
+    for (const scoped of this.sourcesInOrder(kinds)) {
+      if (scoped === exact) continue
+      const description = await scoped.source.describe?.(reference.contentHash)
+      if (description !== undefined) {
+        return description
       }
     }
     return undefined
@@ -85,20 +81,14 @@ export class AssetRegistry {
     return this.sources.map((scoped) => scoped.kind)
   }
 
-  private async readFromKind(
-    kind: ScopeKind,
-    reference: AssetReference,
-  ): Promise<AssetResolution | undefined> {
-    for (const scoped of this.sources) {
-      if (scoped.kind !== kind) {
-        continue
-      }
-      const bytes = await scoped.source.read(reference.contentHash)
-      if (bytes !== undefined) {
-        return resolvedAsset(bytes, resolvedScopeFor(scoped, reference))
+  private *sourcesInOrder(kinds: Iterable<ScopeKind>): Generator<ScopedAssetSource> {
+    for (const kind of kinds) {
+      for (const scoped of this.sources) {
+        if (scoped.kind === kind) {
+          yield scoped
+        }
       }
     }
-    return undefined
   }
 
   // Design specification section 4.2 step 4: a clearly-labeled placeholder with
