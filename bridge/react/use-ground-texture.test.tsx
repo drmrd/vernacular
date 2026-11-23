@@ -1,83 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Mock } from 'vitest'
 import { startTransition, useLayoutEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { render, waitFor } from '@testing-library/react'
 import { resolvedAsset } from '../../core'
-import type { AssetReference, ResolvedAsset, TextureDescription } from '../../core'
+import type { AssetReference } from '../../core'
 import { Texture } from '../../engine/testing'
 import { LOADING } from './texture-cache'
-import type { TextureSource, TextureState } from './texture-cache'
+import type { TextureState } from './texture-cache'
 import { useGroundTexture } from './use-ground-texture'
-
-type FakeBitmap = { width: number; height: number; close: Mock }
-
-const reference: AssetReference = { scope: 'pack:grass@1.0.0', contentHash: 'sha256-grass' }
-const otherReference: AssetReference = { scope: 'pack:gravel@1.0.0', contentHash: 'sha256-gravel' }
-const description: TextureDescription = {
-  kind: 'texture',
-  mediaType: 'image/png',
-  image: { width: 512, height: 768 },
-  tileSize: { width: 1000, height: 1500 },
-  colorSpace: 'srgb',
-}
-const source: TextureSource = {
-  resolve: async (asset) => resolvedAsset(new Uint8Array([1, 2, 3]), asset.scope),
-  describe: async () => description,
-}
-
-type ProbeProps = { asset?: AssetReference; textureSource?: TextureSource }
-
-function recordingProbe(received: TextureState[]) {
-  return function Probe({ asset = reference, textureSource = source }: ProbeProps) {
-    received.push(useGroundTexture(asset, textureSource))
-    return null
-  }
-}
-
-function handedOutTextures(received: TextureState[]): Texture[] {
-  return received.flatMap((state) => (state.appearance ? [state.appearance.texture] : []))
-}
-
-function stubImageDecoding(): FakeBitmap[] {
-  const decoded: FakeBitmap[] = []
-  vi.stubGlobal(
-    'createImageBitmap',
-    vi.fn(async () => {
-      const bitmap = { width: 512, height: 768, close: vi.fn() }
-      decoded.push(bitmap)
-      return bitmap
-    }),
-  )
-  return decoded
-}
-
-function deferredAsset() {
-  let settle: (asset: ResolvedAsset) => void = () => {}
-  const promise = new Promise<ResolvedAsset>((resolve) => {
-    settle = resolve
-  })
-  return { promise, settle }
-}
-
-type Deferred = ReturnType<typeof deferredAsset>
-
-/** A source that answers each held asset with a deferred, and every other asset at once. */
-function holdableSource() {
-  const holds = new Map<string, Deferred>()
-  const holding: TextureSource = {
-    ...source,
-    resolve: (asset) => holds.get(asset.contentHash)?.promise ?? source.resolve(asset),
-  }
-  return {
-    source: holding,
-    hold: (asset: AssetReference) => {
-      const deferred = deferredAsset()
-      holds.set(asset.contentHash, deferred)
-      return deferred
-    },
-  }
-}
+import {
+  handedOutTextures,
+  holdableSource,
+  otherReference,
+  recordingProbe,
+  reference,
+  stubImageDecoding,
+  type Deferred,
+  type FakeBitmap,
+  type ProbeProps,
+} from './use-ground-texture-test-support'
 
 type Journey = {
   first: ProbeProps
