@@ -50,7 +50,7 @@ specification, and the format specification's description of `roomOverrides` cha
 request that brings the records.
 
 The code arrives in the kernel stage (#687). Until then a room's data is found by the key of its
-bounding walls. One point is open; see "Open points".
+bounding walls.
 
 ## Context
 
@@ -87,8 +87,8 @@ The kernel binds records to rooms with one rule, and the binding is a pure funct
 
 1. The score of a record for a room is the share of the record's boundary faces that bound that room.
 2. A pair is admitted when its score is one, or when its score is at least one half and the room
-   holds the record's anchor. The condition on the anchor for a score below one is open (see "Open
-   points"); this is the working assumption.
+   holds the record's anchor. The owner decided the condition on the anchor for a score below one on
+   2026-11-23 (see "Decided points").
 3. Admitted pairs are taken in order: highest score first, then the room that holds the record's
    anchor, then the larger room, then the earlier record. Each record gets at most one room and each
    room at most one record.
@@ -201,16 +201,17 @@ two halves of a divided round room apart.
 - The room commands, the inspector, and the lookups in `core/architecture-era/` move from the wall
   key to the record id.
 
-## Open points
+## Decided points
 
-- The owner decides the anchor condition for a score below one (kernel specification, section 5.6,
-  point 3). It is needed before the room records pull request. The working assumption, recommended,
-  is the rule above: a score below one is admitted only when the room holds the record's anchor.
-  Without it a common edit names the wrong room. In a row of rooms under one long outside wall,
+- The owner decided on 2026-11-23 the anchor condition for a score below one (kernel specification,
+  section 5.6, point 3): a score of at least one half admits a pair only when the room holds the
+  record's anchor. The reason he accepted: a user's room name never moves silently to a neighbor,
+  and an unbound name is kept and listed, which is easier to recover than a wrong name. Without the
+  condition a common edit names the wrong room. In a row of rooms under one long outside wall,
   deleting the end wall of a named room leaves its neighbor bounded by half of the record's faces,
-  and an unnamed neighbor takes the name for good. The other options are to score by the length of
-  the shared face stretches, which needs a new stored field, or to keep the rule without the
-  condition and accept that case.
+  and an unnamed neighbor takes the name for good. He did not choose scoring by the length of
+  the shared face stretches, which needs a new stored field, or keeping the rule without the
+  condition.
 
 ## References
 

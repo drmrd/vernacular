@@ -54,11 +54,12 @@ This record gives [[ADR-0181-millimetre-numbers-and-one-tolerance-model]] the to
 it left to the kernel specification, and ADR-0181 carries a note that points here. The other notes
 this record calls for (ADR-0026 on the merge, ADR-0134 on the grid, and ADR-0218 on the room ring) land with
 the kernel pull requests that make them true. ADR-0181's consequence changes to the Length field only
-if the owner accepts the wording in "Open points".
+as the owner decided on 2026-11-23 (see "Decided points").
 
 The code arrives in the kernel stage of the architecture refactor round (#687). Until then the wall
 graph merges ends within 1 mm, each module keeps its own epsilon, and the formatter rounds at the
-user's precision. Two points are open; see "Open points".
+user's precision. The owner has decided the two wording points on
+2026-11-23; see "Decided points".
 
 ## Context
 
@@ -273,19 +274,19 @@ of 1/256 inch.
 - The read-back guarantee of ADR-0181 is tested through the Length field: a property test types
   every inch fraction down to 1/64 and every metric value down to 0.1 mm, saves, loads, and compares.
 
-## Open points
+## Decided points
 
-- The owner decides the wording of the umbrella's sixth kernel condition and of ADR-0181's
-  consequence (kernel specification, section 11, point 1). Both name the wall tool, which takes no
-  typed length on `main`. The working assumption, recommended: "A length typed in the Length field
+- The owner decided on 2026-11-23 the wording of the umbrella's sixth kernel condition and of
+  ADR-0181's consequence (kernel specification, section 11, point 1). Both named the wall tool, which
+  takes no typed length on `main`. The condition reads: "A length typed in the Length field
   of the wall inspector reads back the same after save and reload, for every inch fraction down to
   1/64 and every metric value down to 0.1 mm", with the test through the wall tool moved to the
-  stage for tools and input under an issue of its own. If he accepts it, ADR-0181's consequence
-  changes from "typed in the wall tool" to "typed in the Length field of the wall inspector". The
-  other options are to add typed length entry to the wall tool in this stage, or to keep the wording
-  and leave the condition open after this stage.
-- The glyph that marks an approximate length is settled in the visual review of the formatter's
-  pull request. The plan works with a leading "≈ ". The tests check an `exact` flag, not the glyph.
+  stage for tools and input under an issue of its own. ADR-0181's consequence changes from "typed
+  in the wall tool" to "typed in the Length field of the wall inspector". He did not choose adding
+  typed length entry to the wall tool in this stage, or keeping the wording and leaving the
+  condition open after this stage.
+- The owner decided on 2026-11-23 that the glyph that marks an approximate length is a leading
+  "≈ " (U+2248 and a space). The tests check an `exact` flag, not the glyph.
 
 ## References
 

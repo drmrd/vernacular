@@ -201,7 +201,7 @@ The order is: stop data loss, then document identity and the command layer, then
 
 Stage 2 comes before stage 3 because transactions live in the session. Stage 3 comes before stages 5 and 8 because shared operations and tools emit transactions. Stage 4 comes before stage 5 because descriptors read the plan geometry. Stages 6, 7, and 8 can run in parallel after stage 5, since builders, drawers, and placement tools register through descriptors. Stage 9 needs all of them.
 
-The kernel stage does not wait for stage 3. On 2026-11-18 the owner chose to start stage 4 beside stage 2 (document identity), with the half-edge trial first, and before stage 3 (the command layer). See `docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 11, point 7. He has not decided whether the kernel also lands before stage 3. Open: the owner decides. The working assumption, recommended in that specification: stages 3 and 4 land in the order of its section 6, where neither waits for the other in the shared handler files.
+The kernel stage does not wait for stage 3. On 2026-11-18 the owner chose to start stage 4 beside stage 2 (document identity), with the half-edge trial first, and before stage 3 (the command layer). See `docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 11, point 7. On 2026-11-23 he decided that stages 3 and 4 land in the order of section 6 of that specification, where neither waits for the other in the shared handler files.
 
 Why these pairings:
 
@@ -254,8 +254,8 @@ Kernel:
 - A room bounded by construction-profile walls reports the area between the drawn faces.
 - The overlapping-wall cases in #681 each yield the expected rooms.
 - No file outside the kernel reads `wall.start` or `wall.end`.
-- A length typed in the wall tool reads back the same after save and reload, for every inch fraction down to 1/64 and every metric value down to 0.1 mm.
-  - Open: the owner decides the wording of this condition. The wall tool takes no typed length. The kernel specification (`docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 11, point 1) proposes "A length typed in the Length field of the wall inspector reads back the same after save and reload, for every inch fraction down to 1/64 and every metric value down to 0.1 mm", with the test through the wall tool moved to the stage for tools and input. ADR-0199 records the Length field. Until the owner agrees, the wording above stands.
+- A length typed in the Length field of the wall inspector reads back the same after save and reload, for every inch fraction down to 1/64 and every metric value down to 0.1 mm.
+  - The owner decided this wording on 2026-11-23. The wall tool takes no typed length, so the test through the wall tool moves to the stage for tools and input (`docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`, section 11, point 1). ADR-0199 records the Length field.
 
 Kinds of element:
 

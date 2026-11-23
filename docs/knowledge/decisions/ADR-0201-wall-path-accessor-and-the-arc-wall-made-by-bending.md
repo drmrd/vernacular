@@ -49,7 +49,7 @@ specification, and ADR-0047 and section 2.4 of the design specification are upda
 and the note in ADR-0034 that the seam exists, land with the pull requests that make them true.
 
 The code arrives in the kernel stage (#687). Until then a wall is two end points, a wall scene node
-repeats them, and `wall.curve` is a reserved name. One point is open; see "Open points".
+repeats them, and `wall.curve` is a reserved name.
 
 ## Context
 
@@ -135,8 +135,8 @@ typed radius is converted to a bulge exactly enough, far below the length tolera
 back as typed.
 
 The centerline radius has a lower bound against the wall's resolved thickness, because the inner face
-of a thick wall on a tight arc does not exist below half the thickness. The bound itself is open (see
-"Open points"). The derivation stays total for a stored arc that breaks the bound, from an older
+of a thick wall on a tight arc does not exist below half the thickness. The owner decided the bound on
+2026-11-23 (see "Decided points"). The derivation stays total for a stored arc that breaks the bound, from an older
 build or a hand-edited file: it draws that wall straight and lists it with what was set aside.
 
 ### The file format change
@@ -259,13 +259,12 @@ trial and error.
 - Miters between a line and an arc, and between two arcs, are new geometry and the most likely place
   for a wrong corner. A corner property test and a scene baseline at a tight radius guard them.
 
-## Open points
+## Decided points
 
-- The owner decides the smallest centerline radius against the wall's resolved thickness (kernel
-  specification, section 5.7, point 2). It is needed before the arc paths pull request. The working
-  assumption, recommended: the centerline radius is at least the wall's resolved thickness. Under it
-  the bend handle stops at the bound, the Radius field refuses a radius below it with a reason, and
-  the thickness command refuses a thickness that would break it on an arc wall. The other options are
+- The owner decided on 2026-11-23 the smallest centerline radius against the wall's resolved
+  thickness (kernel specification, section 5.7, point 2): the centerline radius is at least the
+  wall's resolved thickness. Under the bound the bend handle stops at the bound, the Radius field refuses a radius below it with a reason, and
+  the thickness command refuses a thickness that would break it on an arc wall. He did not choose
   a bound just above half the thickness, where the inner face can come to a point, or no bound in this
   stage.
 
