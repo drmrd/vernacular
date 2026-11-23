@@ -74,3 +74,5 @@ export {
 export type { AmbientOcclusionPipeline } from './postprocessing/render-scene-frame'
 export { renderSceneFrame } from './postprocessing/render-scene-frame'
 export { buildAmbientOcclusionPipeline } from './postprocessing/ambient-occlusion'
+export type { ImageBitmapDecoder, ImageTextureOptions } from './loaders/image-texture-loader'
+export { decodeImageTexture } from './loaders/image-texture-loader'
