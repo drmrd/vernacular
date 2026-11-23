@@ -93,7 +93,7 @@ function useChoose(
     setBusy(true)
     const answer = await run({ id, files, open }).finally(() => setBusy(false))
     if (!answer.ok && answer.failure.kind === 'files-changed') {
-      show({ id, open }, await readFacts(ports, id))
+      show({ id, open }, await readFacts(ports, id), failureSentence)
       return
     }
     close()
@@ -165,12 +165,16 @@ function useShownFiles(
   )
   const close = useCallback(() => hold(undefined), [hold])
   const show = useCallback(
-    ({ id, open }: Pick<Shown, 'id' | 'open'>, read: TwoFilesRead) => {
+    (
+      { id, open }: Pick<Shown, 'id' | 'open'>,
+      read: TwoFilesRead,
+      describe: typeof failureReason = failureReason,
+    ) => {
       if (read.ok && read.files !== undefined) {
         hold({ id, files: read.files, open })
       } else {
         close()
-        onActionEnd(read.ok ? null : failureReason(read.failure))
+        onActionEnd(read.ok ? null : describe(read.failure))
       }
     },
     [hold, close, onActionEnd],
