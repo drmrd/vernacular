@@ -69,6 +69,20 @@ describe('openingTargetPose', () => {
   })
 })
 
+describe('openingTargetPose for an open set that holds parts the type lacks', () => {
+  it('targets the full rise of a single-hung lower sash when the open set also holds a stale upper part', () => {
+    expect(openingTargetPose(SINGLE_HUNG, parts('lower', 'upper'))).toEqual({ lower: 1 })
+  })
+
+  it('targets a single-hung window shut when the open set holds only a stale upper part', () => {
+    expect(openingTargetPose(SINGLE_HUNG, parts('upper'))).toEqual({ lower: 0 })
+  })
+
+  it('targets a double-hung window shut when the open set holds only a stale primary part', () => {
+    expect(openingTargetPose(DOUBLE_HUNG, parts('primary'))).toEqual({ lower: 0, upper: 0 })
+  })
+})
+
 describe('advanceOpeningPose', () => {
   it('eases each part toward its own target at the openness rate', () => {
     const target = { lower: 0.5, upper: 0.5 }

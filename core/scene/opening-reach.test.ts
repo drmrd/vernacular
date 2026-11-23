@@ -197,3 +197,39 @@ describe('openingUnderReach', () => {
     })
   })
 })
+
+describe('openingUnderReach with several openings on the ray', () => {
+  it('picks the nearer opening when two line up along the ray, listed nearest first', () => {
+    const near = doorAtZ2000('opening:near-door')
+    const far: OpeningSceneNode = {
+      ...doorAtZ2000('opening:far-door'),
+      center: { x: 1000, y: 2400 },
+    }
+
+    const hit = openingUnderReach(eyeFacingDoor, towardDoor, [near, far], { reachMm: REACH_MM })
+
+    expect(hit?.openingId).toBe('opening:near-door')
+  })
+
+  it('picks a swung door leaf over a shut opening farther along the same ray', () => {
+    const swung = doorAtZ2000('opening:swung-door')
+    // A shut door on a wall that runs along world Z at x = 1000, across the same ray.
+    const shutBeyond: OpeningSceneNode = {
+      ...doorAtZ2000('opening:shut-door'),
+      center: { x: 1000, y: 1550 },
+      along: { x: 0, y: 1 },
+      normal: { x: 1, y: 0 },
+    }
+    // The swung leaf stands in the plane x = 550 (see the swung-open case below), 750mm
+    // ahead of this eye; the shut leaf lies in the plane x = 1000, 1200mm ahead.
+    const eye: Vector3 = { x: -200, y: 1700, z: -1550 }
+    const dir: Vector3 = { x: 1, y: 0, z: 0 }
+
+    const hit = openingUnderReach(eye, dir, [shutBeyond, swung], {
+      openness: new Map([['opening:swung-door', { primary: 1 }]]),
+      reachMm: REACH_MM,
+    })
+
+    expect(hit?.openingId).toBe('opening:swung-door')
+  })
+})

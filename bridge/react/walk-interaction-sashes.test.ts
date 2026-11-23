@@ -94,6 +94,15 @@ function expectLowerSashOnly(root: SceneRoot, node: OpeningSceneNode, lower: num
 const HEAD_GAP_MM = 50
 const EYE_DISTANCE_MM = 1000
 
+function walkerAimedHigh(node: OpeningSceneNode): WalkState {
+  const eyeHeightMm = node.sillHeight + node.height - HEAD_GAP_MM
+  return {
+    position: { x: node.center.x, y: eyeHeightMm, z: -node.center.y + EYE_DISTANCE_MM },
+    yaw: 0,
+    pitch: 0,
+  }
+}
+
 describe('walk interaction on a hung window', () => {
   it('lowers only the upper sash when the upper sash is open', () => {
     const node = hungWindowNode('double-hung-window')
@@ -217,16 +226,60 @@ describe('walk interaction on a hung window', () => {
     const node = hungWindowNode('double-hung-window')
     const root = sceneWithOpening(node)
     const openness = new Map<string, OpeningPose>()
-    const eyeHeightMm = node.sillHeight + node.height - HEAD_GAP_MM
-    const aimedHigh: WalkState = {
-      position: { x: node.center.x, y: eyeHeightMm, z: -node.center.y + EYE_DISTANCE_MM },
-      yaw: 0,
-      pitch: 0,
-    }
-
-    const interaction = interactFromWalk(aimedHigh, [node], emptyOpeningInteraction())
+    const interaction = interactFromWalk(walkerAimedHigh(node), [node], emptyOpeningInteraction())
     tickOpenings({ root, openings: [node], interaction, openness }, FULL_STEP)
 
     expect(openness.get(node.id)).toEqual({ lower: 0, upper: 1 })
+  })
+})
+
+describe('walk interaction on a hung window with a sash already open', () => {
+  it('moves both sashes to half travel when the walker presses E aimed high with the lower sash open', () => {
+    const node = hungWindowNode('double-hung-window')
+    const root = sceneWithOpening(node)
+    const openness = new Map<string, OpeningPose>()
+    const lowerOpen = holdingOpen(node.id, ['lower'])
+    tickOpenings({ root, openings: [node], interaction: lowerOpen, openness }, FULL_STEP)
+
+    const interaction = interactFromWalk(walkerAimedHigh(node), [node], lowerOpen)
+    tickOpenings({ root, openings: [node], interaction, openness }, FULL_STEP)
+
+    expect(openness.get(node.id)).toEqual({ lower: 0.5, upper: 0.5 })
+    expectSashShifts(root, node, { lower: HALF_RISE, upper: -HALF_RISE })
+  })
+
+  it('raises the lower sash of a single-hung window the full rise when its open set also holds a stale upper part', () => {
+    const node = hungWindowNode('single-hung-window')
+    const root = sceneWithOpening(node)
+    const openness = new Map<string, OpeningPose>()
+
+    tickOpenings(
+      {
+        root,
+        openings: [node],
+        interaction: holdingOpen(node.id, ['upper', 'lower']),
+        openness,
+      },
+      FULL_STEP,
+    )
+
+    expect(openness.get(node.id)).toEqual({ lower: 1 })
+    expectLowerSashOnly(root, node, FULL_RISE)
+  })
+
+  it('restores a single-hung window to its full rise when its open set also holds a stale upper part', () => {
+    const node = hungWindowNode('single-hung-window')
+    const root = sceneWithOpening(node)
+    const openness = new Map<string, OpeningPose>()
+
+    restoreOpenings({
+      root,
+      openings: [node],
+      interaction: holdingOpen(node.id, ['upper', 'lower']),
+      openness,
+    })
+
+    expect(openness.get(node.id)).toEqual({ lower: 1 })
+    expectLowerSashOnly(root, node, FULL_RISE)
   })
 })
