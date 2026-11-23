@@ -13,6 +13,9 @@ const COLOR_TYPE_RGBA = 6
 const SIDE = 256
 const OTHER_SIDE = 128
 const WIDE = 512
+const ANIMATION_CONTROL_OFFSET = PNG_SIGNATURE.length + 25
+const ANIMATION_FRAME_COUNT = 2
+const ENDLESS_PLAY_COUNT = 0
 
 function ascii(text: string): number[] {
   return [...text].map((character) => character.charCodeAt(0))
@@ -42,6 +45,19 @@ function png([width, height]: [number, number], colorType: number, extraChunks: 
     ...pngChunk('IHDR', ihdr),
     ...extraChunks.flatMap((type) => pngChunk(type, [0, 0, 0, 0])),
     ...IEND_CHUNK,
+  ])
+}
+
+/** The PNG with an animation control chunk inserted straight after its header chunk. */
+function animatedPng(still: Uint8Array): Uint8Array {
+  const animationControl = pngChunk('acTL', [
+    ...uint32BigEndian(ANIMATION_FRAME_COUNT),
+    ...uint32BigEndian(ENDLESS_PLAY_COUNT),
+  ])
+  return Uint8Array.from([
+    ...still.subarray(0, ANIMATION_CONTROL_OFFSET),
+    ...animationControl,
+    ...still.subarray(ANIMATION_CONTROL_OFFSET),
   ])
 }
 
@@ -93,6 +109,11 @@ describe('textureFileProblems for a PNG', () => {
     expect(textureFileProblems(pngAsset, png([SIDE, SIDE], COLOR_TYPE_RGB, [chunk]))).toEqual([
       `PNG carries the refused color chunk ${chunk}`,
     ])
+  })
+
+  it('refuses an animated PNG', () => {
+    const bytes = animatedPng(png([SIDE, SIDE], COLOR_TYPE_RGB))
+    expect(textureFileProblems(pngAsset, bytes)).toEqual(['PNG is animated'])
   })
 
   it('reports a width that differs from the declared width', () => {
