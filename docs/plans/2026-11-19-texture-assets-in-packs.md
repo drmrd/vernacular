@@ -970,10 +970,10 @@ catalog read that includes textures, for the check of missing assets on import.
 | Pull request                | Cycles                                                                                                                                                    |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1, the format               | 18                                                                                                                                                        |
-| 2, the loader and the cache | 18                                                                                                                                                        |
+| 2, the loader and the cache | 16                                                                                                                                                        |
 | 3, starter pack 1.1.0       | 7                                                                                                                                                         |
 | 4, the ground               | 9, after one `test(e2e)` commit (the capture wait) and before the scene work (the grass spec, the gate readings, the live spec limits, and the baselines) |
-| Total                       | 52                                                                                                                                                        |
+| Total                       | 50                                                                                                                                                        |
 
 ## Risks
 
