@@ -3,6 +3,7 @@ import {
   missingAsset,
   orderScopesByPrecedence,
   resolvedAsset,
+  type AssetDescription,
   type AssetFootprint,
   type AssetReference,
   type AssetResolution,
@@ -56,6 +57,28 @@ export class AssetRegistry {
       }
     }
     return items
+  }
+
+  /**
+   * Describes a reference from the source named by its scope first, then from
+   * the first source in precedence order whose `describe` knows the hash.
+   */
+  async describe(reference: AssetReference): Promise<AssetDescription | undefined> {
+    const exact = this.sources.find((scoped) => scoped.source.id === reference.scope)
+    const exactDescription = await exact?.source.describe?.(reference.contentHash)
+    if (exactDescription !== undefined) {
+      return exactDescription
+    }
+    for (const kind of orderScopesByPrecedence(reference, this.availableKinds())) {
+      for (const scoped of this.sources) {
+        if (scoped.kind !== kind) continue
+        const description = await scoped.source.describe?.(reference.contentHash)
+        if (description !== undefined) {
+          return description
+        }
+      }
+    }
+    return undefined
   }
 
   private availableKinds(): ScopeKind[] {
