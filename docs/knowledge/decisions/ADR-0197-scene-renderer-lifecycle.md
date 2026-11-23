@@ -12,6 +12,7 @@ related:
     decisions/ADR-0111-story-coverage-guardrail-and-backfill-policy,
     decisions/ADR-0019-bridge-dispatch-boundary,
     decisions/ADR-0231-the-live-3d-readiness-signal-names-the-drawn-revision,
+    decisions/ADR-0232-the-editor-fills-the-failure-view-slot-of-the-3d-pane,
   ]
 sourceFiles:
   [
@@ -29,7 +30,7 @@ sourceFiles:
     scripts/story-coverage/uncovered-components.ts,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # ADR-0197: The 3D canvas wrapper releases every renderer it builds and tells a failed load from a failed start
@@ -187,6 +188,12 @@ boundary, no error taxonomy, and no notification channel. Issue #692 and section
 `docs/specs/2026-11-14-architecture-refactor-round.md` own those. Failures still log through
 `console.warn`.
 
+> Amended by [[ADR-0232-the-editor-fills-the-failure-view-slot-of-the-3d-pane]] on 2026-11-22.
+> The two plain views are now the default of a bridge slot, `SceneFailureViewContext`, and the scene
+> harness and the timing page still show them. The editor's 3D pane fills the slot with its own
+> view, built from the design system's `EmptyState` and `Button`, so in the application the failure
+> views are styled. The bridge itself still imports nothing from the design system.
+
 ### The scene pane drops its overlays over a failed renderer
 
 Both failure views carry the attribute `data-scene-renderer-failed`. Its value is the failure kind:
@@ -196,6 +203,13 @@ type, beside the readiness attribute that the bridge and the pane already share.
 (`editor/shell/scene-pane.tsx`) reads the attribute through its existing observer. Over a failed
 renderer the pane shows neither "Building the scene..." nor the empty-floor guidance. The live view
 itself does not change.
+
+> Amended by [[ADR-0232-the-editor-fills-the-failure-view-slot-of-the-3d-pane]] on 2026-11-22. The
+> marker now sits on `SceneFailureHost`, which wraps whatever view fills the slot, and not on the
+> two plain views. The live view does change while a failure view is mounted: the host hides the
+> scene chrome, which is the 3D navigation toolbar, the camera controls hint, the grab cursor, and
+> the proxy overlay with its selection status. The editor's pane also drops its WebGL 2 notice and
+> announces the failure through two live regions that were in the pane before the failure.
 
 ### The two status views have stories
 
@@ -225,6 +239,11 @@ the renderer it asked for last. The wrapper would follow a renderer the library 
 the application. It needs a small failure channel, through a bridge context or a prop, and #692
 would replace that channel. A prop would also pass through `bridge/react/webgpu-scene-view.tsx`,
 which is close to its line limit. Rejected for now.
+
+> Amended by [[ADR-0232-the-editor-fills-the-failure-view-slot-of-the-3d-pane]] on 2026-11-22. This
+> alternative is taken up in a different form. The editor supplies a styled view through a bridge
+> context, not a banner, and no prop passes through the live view. Issue #692 may still replace the
+> slot.
 
 **A retry in place that imports the module a second time.** This was the first design, and it was
 built. It would keep the page and its session state. Rejected because it does not work: in the live
@@ -260,6 +279,10 @@ would grow into a list of lifecycle patches. ADR-0004 is corrected in place inst
 - The failure kind and the marker attribute are seams. Issue #692 may reuse or replace them when it
   routes failures into a pane boundary and the session's notification channel.
 - The failure views are still unstyled. `.scene-canvas__fallback` has no CSS rule, as before.
+
+  > Amended by [[ADR-0232-the-editor-fills-the-failure-view-slot-of-the-3d-pane]] on 2026-11-22.
+  > This holds only for the plain views, which are now the default of a slot. The editor's 3D pane
+  > fills the slot with a styled view.
 
 ## Evidence
 
