@@ -71,7 +71,7 @@ describe('a doorway passes the interreflected light of the room it opens into, w
     expect(relativeError(meanExitance, E_SOURCE)).toBeLessThan(DERIVATION_TOLERANCE)
   })
 
-  it('lets into the hall 1 times the doorway area times its transmittance times the source interreflection', () => {
+  it('lets into the hall the transmittance times (1 times the doorway area times the source interreflection plus the routed window light)', () => {
     const solver = createDaylightFieldSolver(rooms)
     const flux = solver.enteringFlux(1, UNIFORM_SKY)
     const expected =

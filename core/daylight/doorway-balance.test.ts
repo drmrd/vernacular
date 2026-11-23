@@ -92,7 +92,7 @@ describe('a doorway counts in the balance of the room it opens into as a surface
     expect(relativeError(interreflectionOf(rooms, 1), expected)).toBeLessThan(TOLERANCE)
   })
 
-  it('opens a hole of the full doorway area even when the doorway glazing passes half the light', () => {
+  it('takes the routed window light and a hole of the full doorway area from the source balance when the doorway glazing passes half the light', () => {
     const rooms = [testRoom, glazedHall]
     const expectedBalance =
       ((WINDOW_FLUX - ROUTED_FLUX) * FLOOR_REFLECTANCE) / (ROOM_ABSORBING_AREA + DOORWAY_AREA)

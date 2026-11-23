@@ -23,6 +23,8 @@ const FLOOR_REFLECTANCE = 0.5
 const SECOND_DOORWAY_START = 2200
 const SECOND_DOORWAY_END = 2800
 const SECOND_DOORWAY_HEAD = 2100
+// The source's own doorway has sky factor 0, so these equal the one-doorway case, except that the
+// source balance sees its own doorway's change of absorbing area.
 const HALL_FLUX = 44911.6289869
 const SOURCE_BALANCE = 0.009254836446
 
@@ -95,7 +97,7 @@ describe('the window light that lands on a doorway leaves its room and enters th
     expect(solver.enteringFlux(2, UNIFORM_SKY)).toBe(0)
   })
 
-  it('sends no window light through a doorway of the room that opens to a room, not to the sky', () => {
+  it("counts only the source room's windows, not its own doorway, in the window light on the hall's doorway", () => {
     const rooms = [testRoomWithDoorwayToHall, hall]
     const { hallFlux, sourceBalance } = routedLight(rooms)
     expect(relativeError(hallFlux, HALL_FLUX)).toBeLessThan(TOLERANCE)

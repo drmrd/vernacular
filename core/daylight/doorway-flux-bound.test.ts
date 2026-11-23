@@ -14,7 +14,7 @@ import {
   sourceAndHalls,
 } from './doorway-test-support'
 import type { SweepRow } from './doorway-test-support'
-import type { DaylightRoom } from './daylight-field'
+import type { DaylightAperture, DaylightRoom } from './daylight-field'
 import { commonEdgeFormFactor } from './upright-form-factor-test-support'
 
 const TOLERANCE = 1e-9
@@ -23,11 +23,12 @@ const WIDTHS = [100, 1000, 4000]
 const DEPTHS = [2000, 40000]
 const CEILING_HEIGHTS = [2400, 6000]
 const FLOOR_COLORS = [BLACK, GRAY, WHITE]
-const SHARE_TOLERANCE = 1e-9
 const ONE_HALL = 1
 const THREE_LISTINGS = 3
 const TWO_LISTINGS = 2
 const ZERO_BALANCE_TOLERANCE = 1e-12
+const SECOND_PAIR_OFFSET = 5000
+const ROOMS_PER_PAIR = 2
 // A 100 by 40000 mm source under a 6000 mm ceiling: the doorway is the whole 40000 by 6000 wall.
 const EXTREME_DOORWAY_AREA = 40000 * 6000
 // The flux share of the whole-wall doorway to the window, 0.4851307482 for the extreme row: two
@@ -108,9 +109,9 @@ describe('a hall never takes more flux than the room that lights it', () => {
   )
 })
 
-describe('a hall takes A rhoFloor / (S (1 - rho) + A) of the flux that lights its source', () => {
+describe('a hall takes the window share plus the floor-reflected remainder of the flux that lights its source', () => {
   it.each([...ORDINARY_SWEEP_ROWS, EXTREME_SWEEP_ROW])(
-    'gives the hall A rhoFloor / (S (1 - rho) + A) of the source flux for a source $width by $depth mm with a floor of reflectance $label',
+    'gives the hall s + (1 - s) A rhoFloor / (S (1 - rho) + A) of the source flux for a source $width by $depth mm with a floor of reflectance $label',
     (row) => {
       const ratio = hallToSourceFluxRatio(row)
       expect(Math.abs(ratio / expectedHallShare(row, 1) - 1)).toBeLessThan(TOLERANCE)
@@ -166,7 +167,7 @@ describe("the doorways that one window lights never take more than that window's
     const solver = createDaylightFieldSolver(rooms)
     expect(Math.abs(solver.interreflection(0, UNIFORM_SKY))).toBeLessThan(ZERO_BALANCE_TOLERANCE)
     const ratio = solver.enteringFlux(1, UNIFORM_SKY) / solver.enteringFlux(0, UNIFORM_SKY)
-    expect(Math.abs(ratio - 1)).toBeLessThan(SHARE_TOLERANCE)
+    expect(Math.abs(ratio - 1)).toBeLessThan(TOLERANCE)
   })
 
   it("leaves the window light alone when the shares sum to less than the window's flux", () => {
@@ -176,6 +177,40 @@ describe("the doorways that one window lights never take more than that window's
     const routed =
       solver.enteringFlux(1, UNIFORM_SKY) -
       TWO_LISTINGS * EXTREME_DOORWAY_AREA * solver.interreflection(0, UNIFORM_SKY)
-    expect(Math.abs(routed / sourceFlux / TWO_LISTINGS_SHARE - 1)).toBeLessThan(SHARE_TOLERANCE)
+    expect(Math.abs(routed / sourceFlux / TWO_LISTINGS_SHARE - 1)).toBeLessThan(TOLERANCE)
+  })
+})
+
+/** The pair of rooms moved `SECOND_PAIR_OFFSET` mm east, its doorways opening to rooms shifted by two. */
+function secondPairOf(rooms: DaylightRoom[]): DaylightRoom[] {
+  const moved = (aperture: DaylightAperture): DaylightAperture => ({
+    ...aperture,
+    span: [
+      { x: aperture.span[0].x + SECOND_PAIR_OFFSET, y: aperture.span[0].y },
+      { x: aperture.span[1].x + SECOND_PAIR_OFFSET, y: aperture.span[1].y },
+    ],
+    opensTo: aperture.opensTo === 'sky' ? 'sky' : { room: aperture.opensTo.room + ROOMS_PER_PAIR },
+  })
+  return rooms.map((room) => ({
+    ...room,
+    outline: room.outline.map((point) => ({ x: point.x + SECOND_PAIR_OFFSET, y: point.y })),
+    apertures: room.apertures.map(moved),
+  }))
+}
+
+describe("a window's flux bound counts only the doorways that open into the window's room", () => {
+  it("does not count the doorways into a second source room against the first source room's window", () => {
+    const pair = sourceAndHallWithDoorwayListed(EXTREME_SWEEP_ROW, TWO_LISTINGS)
+    const solver = createDaylightFieldSolver([...pair, ...secondPairOf(pair)])
+    for (const [source, hall] of [
+      [0, 1],
+      [2, 3],
+    ] as const) {
+      const routed =
+        solver.enteringFlux(hall, UNIFORM_SKY) -
+        TWO_LISTINGS * EXTREME_DOORWAY_AREA * solver.interreflection(source, UNIFORM_SKY)
+      const share = routed / solver.enteringFlux(source, UNIFORM_SKY)
+      expect(Math.abs(share / TWO_LISTINGS_SHARE - 1)).toBeLessThan(TOLERANCE)
+    }
   })
 })
