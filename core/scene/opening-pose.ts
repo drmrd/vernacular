@@ -24,6 +24,7 @@ export function openingTargetPose(
   open: ReadonlySet<OpeningPartId> | undefined,
 ): OpeningPose {
   const parts = openingParts(type)
+  // Open parts the type lacks are ignored, so a stale part cannot change the target.
   const openOfType = new Set(parts.filter((part) => open?.has(part)))
   return Object.fromEntries(parts.map((part) => [part, openingPartTarget(openOfType, part)]))
 }
@@ -49,7 +50,11 @@ export function advanceOpeningPose(
   return advanced ?? current
 }
 
-/** Jumps every part named in the pose or in the open set straight to its target openness. */
+/**
+ * Jumps every part named in the pose or in the open set straight to its target openness.
+ * An unshown opening has no type here, so a stale part in the open set can reach this pose;
+ * the next tick that shows the opening eases it to the pose filtered by its type.
+ */
 export function settledPose(
   pose: OpeningPose,
   open: ReadonlySet<OpeningPartId> | undefined,

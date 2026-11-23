@@ -16,7 +16,7 @@ import { applyOpeningPose, type SceneRoot } from '../../engine'
 
 /**
  * The "use" action: casts a short ray from the walker's eye and toggles the
- * opening it lands on within reach, returning the updated interaction state. With
+ * part of the opening it lands on within reach (the sash under the aim for a hung window), returning the updated interaction state. With
  * nothing in reach the state is returned unchanged, so pressing the interact key
  * in open space is a no-op. The per-opening `openness` lets the ray test each leaf
  * at its open position, so looking at an opened door or a slid-back pocket door

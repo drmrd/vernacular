@@ -152,7 +152,7 @@ export interface WalkSession extends WalkRefs, WalkSessionHost {
 // opening under the walker's gaze and every other code to its movement flag;
 // keyup clears the movement flag. The interact key takes no movement flag, so it
 // never leaves a key stuck down. Both keys that change what stands open report the
-// resulting door set, so a session that ends after them can be resumed.
+// resulting open parts, so a session that ends after them can be resumed.
 export function walkKeyHandlers(session: WalkSession): {
   onKeyDown: (event: KeyboardEvent) => void
   onKeyUp: (event: KeyboardEvent) => void
@@ -208,7 +208,7 @@ export interface WalkCollisionInputs {
 }
 
 // The live inputs the per-frame walk step reads: the camera it drives, the collision
-// inputs, the walk refs it advances, and the open set collision reads.
+// inputs, the walk refs it advances, and the openings with any part open that collision reads.
 export interface WalkFrameContext extends WalkRefs {
   camera: WalkCamera
   collisionInputs: WalkCollisionInputs

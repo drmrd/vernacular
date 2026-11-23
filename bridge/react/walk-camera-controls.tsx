@@ -189,7 +189,7 @@ function useWalkSession(
  * per-frame tick swings every opening the view shows toward those parts in either mode. A
  * walk start poses nothing itself. The unit tests of the opening
  * motion hook (use-opening-motion.test.tsx and use-opening-motion-floors.test.tsx) cover the
- * follow of the stored set, the pose of a new root before any tick, the order of the two in one
+ * follow of the stored open parts, the pose of a new root before any tick, the order of the two in one
  * render, and the openings of every shown floor. The
  * frame callback below runs only under a real WebGPU canvas (foundation 6.3). The
  * close-doors-and-windows journey runs it on a live view and sees the openings swing in
