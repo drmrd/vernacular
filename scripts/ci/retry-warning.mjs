@@ -130,12 +130,16 @@ export function formatRetryAnnotations(passes) {
 }
 
 function describeCaught(error) {
-  const [firstLine] = String(error?.message).split(/\r?\n|\r/)
-  return ` (${firstLine.slice(0, FIRST_ERROR_MAX_LENGTH)})`
+  try {
+    const [firstLine] = String(error?.message).split(/\r?\n|\r/)
+    return ` (${firstLine.slice(0, FIRST_ERROR_MAX_LENGTH)})`
+  } catch {
+    return ' (an error that cannot be printed)'
+  }
 }
 
-function warnCaught(log, problem, error) {
-  log(`::warning title=Retry check::${escapeAnnotationMessage(problem + describeCaught(error))}`)
+function warnRetryCheck(log, message) {
+  log(`::warning title=Retry check::${escapeAnnotationMessage(message)}`)
 }
 
 function isPlaywrightReport(value) {
@@ -148,10 +152,7 @@ function analyzeReport(report, cwd) {
 
 function readReport(reportPath, deps) {
   const skip = (problem) => {
-    const message = escapeAnnotationMessage(
-      `${problem}, so its tests were not checked for retries.`,
-    )
-    deps.log(`::warning title=Retry check::${message}`)
+    warnRetryCheck(deps.log, `${problem}, so its tests were not checked for retries.`)
     return undefined
   }
   let text
@@ -182,7 +183,10 @@ function formatSummaryOrWarn(passes, counts, log) {
   try {
     return formatRetrySummary(passes, counts)
   } catch (error) {
-    warnCaught(log, 'Could not format the retry check result', error)
+    warnRetryCheck(
+      log,
+      `Could not format the retry check result${describeCaught(error)}, so it is missing from the job summary.`,
+    )
     return undefined
   }
 }
@@ -191,7 +195,10 @@ function writeSummaryOrWarn(summary, deps, log) {
   try {
     deps.appendSummary(summary)
   } catch (error) {
-    warnCaught(log, 'Could not write the job summary', error)
+    warnRetryCheck(
+      log,
+      `Could not write the job summary${describeCaught(error)}, so the retry check result is missing from it.`,
+    )
   }
 }
 
@@ -199,7 +206,10 @@ function logAnnotation(pass, log) {
   try {
     log(formatRetryAnnotations([pass])[0])
   } catch (error) {
-    warnCaught(log, 'Could not format a retry annotation', error)
+    warnRetryCheck(
+      log,
+      `Could not format the annotation of a test in ${pass.file} that passed only on a retry${describeCaught(error)}, so that test has no annotation.`,
+    )
   }
 }
 
