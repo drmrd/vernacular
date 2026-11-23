@@ -1,5 +1,12 @@
-import { isModelAsset, packAssetMediaType, validatePackManifest } from '../../core'
-import type { AssetKind, AssetReference, MediaType } from '../../core'
+import { isModelAsset, isTextureAsset, packAssetMediaType, validatePackManifest } from '../../core'
+import type {
+  AssetDescription,
+  AssetKind,
+  AssetReference,
+  ColorSpaceName,
+  MediaType,
+  TextureDescription,
+} from '../../core'
 import type { AssetSource, LibraryItem } from './asset-source'
 
 export interface PackReader {
@@ -19,6 +26,9 @@ interface PackAssetShape {
   eras: string[]
   styles?: string[]
   dimensions?: { width: number; depth: number; height: number }
+  image?: { width: number; height: number }
+  tileSize?: { width: number; height: number }
+  colorSpace?: ColorSpaceName
 }
 
 type PackModelShape = PackAssetShape & { dimensions: NonNullable<PackAssetShape['dimensions']> }
@@ -56,6 +66,29 @@ export class PackSource implements AssetSource {
 
   async readThumbnail(contentHash: string): Promise<Uint8Array | undefined> {
     return this.reader.readThumbnail(contentHash)
+  }
+
+  async describe(contentHash: string): Promise<AssetDescription | undefined> {
+    const manifest = await this.loadManifest()
+    const asset = manifest?.assets.find((candidate) => candidate.contentHash === contentHash)
+    if (asset === undefined) {
+      return undefined
+    }
+    if (isTextureAsset(asset, manifest?.formatVersion)) {
+      // Format 2 validation requires these fields on every texture asset.
+      return {
+        kind: 'texture',
+        mediaType: asset.mediaType as TextureDescription['mediaType'],
+        image: asset.image as NonNullable<PackAssetShape['image']>,
+        tileSize: asset.tileSize as NonNullable<PackAssetShape['tileSize']>,
+        colorSpace: asset.colorSpace as ColorSpaceName,
+      }
+    }
+    return {
+      kind: 'model',
+      mediaType: 'model/gltf-binary',
+      dimensions: asset.dimensions as NonNullable<PackAssetShape['dimensions']>,
+    }
   }
 
   async list(): Promise<LibraryItem[]> {

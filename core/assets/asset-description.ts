@@ -7,6 +7,26 @@
 // The media types a pack asset can carry.
 export type MediaType = 'model/gltf-binary' | 'image/png' | 'image/webp'
 
+export type ColorSpaceName = 'srgb' | 'linear'
+
+/** A model asset: its media type and its real-world size in millimeters. */
+export interface ModelDescription {
+  kind: 'model'
+  mediaType: 'model/gltf-binary'
+  dimensions: { width: number; depth: number; height: number }
+}
+
+/** A texture asset: pixel size of the image and the millimeters one repeat covers. */
+export interface TextureDescription {
+  kind: 'texture'
+  mediaType: 'image/png' | 'image/webp'
+  image: { width: number; height: number }
+  tileSize: { width: number; height: number }
+  colorSpace: ColorSpaceName
+}
+
+export type AssetDescription = ModelDescription | TextureDescription
+
 const MEDIA_TYPE_FORMAT_VERSION = 2
 const FORMAT_ONE_MEDIA_TYPE: MediaType = 'model/gltf-binary'
 

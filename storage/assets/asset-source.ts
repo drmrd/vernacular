@@ -1,4 +1,4 @@
-import type { AssetKind } from '../../core'
+import type { AssetDescription, AssetKind } from '../../core'
 import type { AssetReference } from '../../core'
 import type { FurnitureFootprint } from '../../core'
 
@@ -31,6 +31,8 @@ export interface AssetSource {
   read(contentHash: string): Promise<Uint8Array | undefined>
   list?(): Promise<LibraryItem[]>
   readThumbnail?(contentHash: string): Promise<Uint8Array | undefined>
+  /** What the asset is (model size, or texture image and tile size), or undefined if unknown. */
+  describe?(contentHash: string): Promise<AssetDescription | undefined>
 }
 
 /** Re-exported for callers that build a source keyed off a reference's hash. */

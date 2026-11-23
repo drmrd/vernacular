@@ -91,7 +91,13 @@ export {
   orderScopesByPrecedence,
   resolvedAsset,
 } from './assets/asset-resolution'
-export type { MediaType } from './assets/asset-description'
+export type {
+  AssetDescription,
+  ColorSpaceName,
+  MediaType,
+  ModelDescription,
+  TextureDescription,
+} from './assets/asset-description'
 export {
   assetFileName,
   isModelAsset,
