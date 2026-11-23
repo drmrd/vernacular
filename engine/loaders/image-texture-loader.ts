@@ -17,6 +17,10 @@ const decodeWithCreateImageBitmap: ImageBitmapDecoder = (blob, options) =>
  * Decodes image bytes into a repeating, mipmapped texture. The bitmap is decoded without
  * color conversion or alpha premultiplication so the declared color space is the only
  * interpretation applied.
+ *
+ * The decode options carry these choices, and `flipY` stays false, because three ignores its
+ * own flip, premultiply, and color-conversion upload flags for an ImageBitmap. Setting
+ * `flipY = true` here would not change orientation.
  */
 export async function decodeImageTexture(
   bytes: Uint8Array,
@@ -25,7 +29,7 @@ export async function decodeImageTexture(
 ): Promise<THREE.Texture> {
   const blob = new Blob([bytes as BlobPart], { type: options.mediaType })
   const bitmap = await decode(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' })
-  const texture = new THREE.Texture(bitmap as unknown as ImageBitmap)
+  const texture = new THREE.Texture(bitmap)
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
   texture.colorSpace = options.colorSpace === 'srgb' ? THREE.SRGBColorSpace : THREE.NoColorSpace
