@@ -7,7 +7,7 @@
 
 import {
   assetFileName,
-  isModelAsset,
+  isTextureAsset,
   MEDIA_TYPE_EXTENSIONS,
 } from '../../core/assets/pack-manifest.ts'
 import { isRecord } from '../../core/assets/is-record.ts'
@@ -129,7 +129,7 @@ async function checkAssetHashes(assets, reader, context) {
  */
 async function checkTextureFiles(assets, reader, context) {
   const { errors, formatVersion } = context
-  for (const asset of assets.filter((a) => !isModelAsset(a, formatVersion))) {
+  for (const asset of assets.filter((a) => isTextureAsset(a, formatVersion))) {
     const file = assetPath(asset)
     const fileSize = await reader.size(file)
     for (const problem of textureFileSizeProblems(fileSize)) {
@@ -156,7 +156,7 @@ async function checkThumbnails(assets, reader, context) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
     const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
     if (!(await reader.exists(file))) {
-      if (isModelAsset(asset, formatVersion)) {
+      if (!isTextureAsset(asset, formatVersion)) {
         errors.push(`asset ${asset.contentHash}: thumbnail missing`)
       }
       continue

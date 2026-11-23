@@ -160,6 +160,12 @@ export function isModelAsset(asset: { mediaType?: string }, formatVersion: unkno
   return asset.mediaType !== undefined && MODEL_MEDIA_TYPES.includes(asset.mediaType)
 }
 
+/** True only for a format-2 asset whose declared media type is a texture type. */
+export function isTextureAsset(asset: { mediaType?: string }, formatVersion: unknown): boolean {
+  if (!declaresMediaTypes(formatVersion)) return false
+  return asset.mediaType !== undefined && TEXTURE_MEDIA_TYPES.includes(asset.mediaType)
+}
+
 function allowedMediaTypes(kind: unknown): readonly string[] {
   return kind === 'texture' ? TEXTURE_MEDIA_TYPES : MODEL_MEDIA_TYPES
 }

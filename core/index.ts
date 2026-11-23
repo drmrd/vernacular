@@ -97,6 +97,7 @@ export {
   ASSET_KINDS,
   assetFileName,
   isModelAsset,
+  isTextureAsset,
   validatePackManifest,
 } from './assets/pack-manifest'
 export type { Registry, RegistryEntry } from './registries/registry'
