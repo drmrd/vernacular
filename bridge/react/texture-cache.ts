@@ -37,7 +37,7 @@ export function createTextureCache({ source, decode }: TextureCacheOptions): Tex
   const loads = new Map<string, Promise<void>>()
   const settled = new Map<string, TextureState>()
 
-  async function load(reference: AssetReference): Promise<void> {
+  async function load(reference: AssetReference, key: string): Promise<void> {
     const [description, resolution] = await Promise.all([
       source.describe(reference),
       source.resolve(reference),
@@ -45,7 +45,7 @@ export function createTextureCache({ source, decode }: TextureCacheOptions): Tex
     const { mediaType, colorSpace, tileSize } = description as TextureDescription
     const texture = await decode((resolution as ResolvedAsset).bytes, { mediaType, colorSpace })
     markCacheHeld(texture)
-    settled.set(formatAssetReference(reference), {
+    settled.set(key, {
       status: 'ready',
       appearance: { texture, tileSize },
     })
@@ -54,9 +54,11 @@ export function createTextureCache({ source, decode }: TextureCacheOptions): Tex
   return {
     request(reference) {
       const key = formatAssetReference(reference)
-      const inFlight = loads.get(key) ?? load(reference)
-      loads.set(key, inFlight)
-      return inFlight
+      const existing = loads.get(key)
+      if (existing) return existing
+      const started = load(reference, key)
+      loads.set(key, started)
+      return started
     },
     get(reference) {
       return settled.get(formatAssetReference(reference)) ?? { status: 'loading' }
