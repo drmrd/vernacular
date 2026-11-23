@@ -1,6 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
-import { resolvedAsset } from '../../core'
-import type { AssetReference, TextureDescription } from '../../core'
+import { missingAsset, resolvedAsset } from '../../core'
+import type {
+  AssetDescription,
+  AssetReference,
+  AssetResolution,
+  ModelDescription,
+  TextureDescription,
+} from '../../core'
 import { Texture, isCacheHeld } from '../../engine/testing'
 import { createTextureCache } from './texture-cache'
 
@@ -12,6 +18,26 @@ const description: TextureDescription = {
   image: { width: 512, height: 768 },
   tileSize: { width: 1000, height: 1500 },
   colorSpace: 'srgb',
+}
+
+const modelDescription: ModelDescription = {
+  kind: 'model',
+  mediaType: 'model/gltf-binary',
+  dimensions: { width: 1000, depth: 500, height: 800 },
+}
+
+function cacheDescribing(
+  describeFor: (asset: AssetReference) => TextureDescription,
+  decode: () => Promise<Texture>,
+) {
+  return createTextureCache({
+    source: {
+      resolve: async (asset) => resolvedAsset(bytes, asset.scope),
+      describe: async (asset) => describeFor(asset),
+    },
+    decode,
+    dispose: () => {},
+  })
 }
 
 describe('createTextureCache', () => {
@@ -79,20 +105,103 @@ describe('createTextureCache', () => {
     expect(decode).toHaveBeenCalledTimes(2)
     expect(decode).toHaveBeenCalledWith(bytes, { mediaType: 'image/png', colorSpace: 'srgb' })
     expect(decode).toHaveBeenCalledWith(bytes, { mediaType: 'image/png', colorSpace: 'linear' })
-    expect(cache.get(color).appearance?.texture).not.toBe(cache.get(data).appearance?.texture)
+    const colorTexture = cache.get(color).appearance?.texture as Texture
+    const dataTexture = cache.get(data).appearance?.texture as Texture
+    expect(colorTexture).not.toBe(dataTexture)
+    expect(isCacheHeld(colorTexture)).toBe(true)
+    expect(isCacheHeld(dataTexture)).toBe(true)
   })
 })
 
-function cacheDescribing(
-  describeFor: (asset: AssetReference) => TextureDescription,
-  decode: () => Promise<Texture>,
-) {
-  return createTextureCache({
-    source: {
-      resolve: async (asset) => resolvedAsset(bytes, asset.scope),
-      describe: async (asset) => describeFor(asset),
+describe('createTextureCache failure handling', () => {
+  const corruptImage = new Error('corrupt image')
+  const describeFailure = new Error('description store unavailable')
+  const resolveFailure = new Error('pack store unavailable')
+
+  it.each<{
+    name: string
+    resolveAsset: () => Promise<AssetResolution>
+    describeAsset: () => Promise<AssetDescription | undefined>
+    decodeAsset: () => Promise<Texture>
+    reachesDecode: boolean
+    rejection?: Error
+  }>([
+    {
+      name: 'with no description',
+      resolveAsset: async () => resolvedAsset(bytes, reference.scope),
+      describeAsset: async () => undefined,
+      decodeAsset: async () => new Texture(),
+      reachesDecode: false,
     },
-    decode,
-    dispose: () => {},
+    {
+      name: 'of another kind',
+      resolveAsset: async () => resolvedAsset(bytes, reference.scope),
+      describeAsset: async () => modelDescription,
+      decodeAsset: async () => new Texture(),
+      reachesDecode: false,
+    },
+    {
+      name: 'that does not decode',
+      resolveAsset: async () => resolvedAsset(bytes, reference.scope),
+      describeAsset: async () => description,
+      decodeAsset: async () => {
+        throw corruptImage
+      },
+      reachesDecode: true,
+      rejection: corruptImage,
+    },
+    {
+      name: 'whose image is missing',
+      resolveAsset: async () => missingAsset(reference),
+      describeAsset: async () => description,
+      decodeAsset: async () => new Texture(),
+      reachesDecode: false,
+    },
+    {
+      name: 'whose description lookup rejects',
+      resolveAsset: async () => resolvedAsset(bytes, reference.scope),
+      describeAsset: async () => {
+        throw describeFailure
+      },
+      decodeAsset: async () => new Texture(),
+      reachesDecode: false,
+      rejection: describeFailure,
+    },
+    {
+      name: 'whose image lookup rejects',
+      resolveAsset: async () => {
+        throw resolveFailure
+      },
+      describeAsset: async () => description,
+      decodeAsset: async () => new Texture(),
+      reachesDecode: false,
+      rejection: resolveFailure,
+    },
+  ])('a texture $name settles as failed and disposes nothing', async (scenario) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const decode = vi.fn(scenario.decodeAsset)
+    const dispose = vi.fn()
+    const cache = createTextureCache({
+      source: { resolve: scenario.resolveAsset, describe: scenario.describeAsset },
+      decode,
+      dispose,
+    })
+
+    try {
+      await expect(cache.request(reference)).resolves.toBeUndefined()
+
+      expect(cache.get(reference)).toEqual({ status: 'failed' })
+      expect(dispose).not.toHaveBeenCalled()
+      expect(decode.mock.calls.length > 0).toBe(scenario.reachesDecode)
+      if (scenario.rejection) {
+        expect(warn).toHaveBeenCalledTimes(1)
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining(reference.contentHash),
+          scenario.rejection,
+        )
+      }
+    } finally {
+      warn.mockRestore()
+    }
   })
-}
+})
