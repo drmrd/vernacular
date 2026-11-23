@@ -1,17 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ASSET_KINDS, validatePackManifest } from './pack-manifest'
-
-function validManifest(): Record<string, unknown> {
-  return {
-    packId: 'vernacular-starter',
-    version: '1.0.0',
-    license: 'CC0-1.0',
-    attribution: 'Vernacular project',
-    eras: ['mid-century'],
-    categories: ['seating'],
-    assets: [],
-  }
-}
+import { validManifest } from './pack-manifest-test-support'
 
 function validAsset(): Record<string, unknown> {
   return {
@@ -64,6 +53,11 @@ describe('validatePackManifest - top-level fields', () => {
     expect(result.errors.join(' ')).toContain('version')
     expect(result.errors.join(' ')).toContain('license')
     expect(result.errors.join(' ')).toContain('attribution')
+  })
+
+  it('still accepts a manifest with no format version, read as format 1', () => {
+    const manifest = { ...validManifest(), assets: [validAsset()] }
+    expect(validatePackManifest(manifest)).toEqual({ valid: true, errors: [] })
   })
 
   it('rejects a non-semver version string', () => {

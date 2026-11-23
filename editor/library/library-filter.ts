@@ -111,10 +111,18 @@ function matchesStyle(item: LibraryItem, style: string | null): boolean {
   return (item.styles ?? []).includes(style)
 }
 
-// Keep only the items satisfying every active filter (search AND source AND era
+const FURNITURE_KIND: LibraryItem['kind'] = 'furniture'
+
+// The furniture-only rule, fixed rather than a user filter: the panel lists, counts,
+// and offers chips for furniture alone.
+export function furnitureItems(items: LibraryItem[]): LibraryItem[] {
+  return items.filter((item) => item.kind === FURNITURE_KIND)
+}
+
+// Keep only furniture satisfying every active filter (search AND source AND era
 // AND style).
 export function visibleLibraryItems(items: LibraryItem[], filters: LibraryFilters): LibraryItem[] {
-  return items.filter(
+  return furnitureItems(items).filter(
     (item) =>
       matchesQuery(item, filters.query) &&
       matchesSource(item, filters.source) &&

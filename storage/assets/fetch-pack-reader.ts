@@ -1,3 +1,4 @@
+import { assetFileName } from '../../core'
 import type { PackReader } from './pack-source'
 
 async function fetchBytes(fetchFn: typeof fetch, url: string): Promise<Uint8Array | undefined> {
@@ -10,8 +11,8 @@ async function fetchBytes(fetchFn: typeof fetch, url: string): Promise<Uint8Arra
 
 /**
  * Builds a PackReader that reads a pack served as static files under `baseUrl`
- * (manifest.json, assets/<hash>.glb, thumbnails/<hash>.webp) through an injected
- * fetch. A non-ok asset/thumbnail response reads as undefined; a non-ok manifest
+ * (manifest.json, assets/<hash><media type extension>, thumbnails/<hash>.webp) through an
+ * injected fetch. A non-ok asset/thumbnail response reads as undefined; a non-ok manifest
  * reads as an empty object so PackSource treats it as an invalid (empty) pack.
  */
 export function createFetchPackReader(baseUrl: string, fetchFn: typeof fetch): PackReader {
@@ -23,8 +24,8 @@ export function createFetchPackReader(baseUrl: string, fetchFn: typeof fetch): P
       }
       return response.json() as Promise<unknown>
     },
-    readAsset(contentHash) {
-      return fetchBytes(fetchFn, `${baseUrl}/assets/${contentHash}.glb`)
+    readAsset(contentHash, mediaType) {
+      return fetchBytes(fetchFn, `${baseUrl}/assets/${assetFileName(contentHash, mediaType)}`)
     },
     readThumbnail(contentHash) {
       return fetchBytes(fetchFn, `${baseUrl}/thumbnails/${contentHash}.webp`)

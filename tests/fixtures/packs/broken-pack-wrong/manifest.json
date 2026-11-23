@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "license": "CC0-1.0",
   "attribution": "Vernacular project",
-  "eras": ["edwardian"],
-  "categories": ["seating"],
+  "eras": [
+    "edwardian"
+  ],
+  "categories": [
+    "seating"
+  ],
   "assets": [
     {
       "contentHash": "3cc6604e701e4f60d2b8dffe89a86afafd75505ef4ca60d911aabe6e4fc16c2c",
@@ -12,8 +16,12 @@
       "kind": "furniture",
       "license": "CC-BY-NC-4.0",
       "attribution": "Vernacular project",
-      "eras": ["edwardian"],
-      "categories": ["seating"],
+      "eras": [
+        "edwardian"
+      ],
+      "categories": [
+        "seating"
+      ],
       "dimensions": {
         "width": 500,
         "depth": 520,

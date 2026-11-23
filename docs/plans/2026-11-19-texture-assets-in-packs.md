@@ -283,7 +283,10 @@ height: 1000 }`, `colorSpace: 'srgb'`, license, attribution, eras, categories). 
 14. **`scripts/pack/vernacular-pack.integration.test.mjs`: "the build report of the texture fixture
     pack lists each asset's kind and media type".** The RED commit adds the two new fixture packs
     through `generate-fixtures.mjs` (its PNG from `encodePng`) and a guard test that
-    `broken-texture-pack-1.0.0` fails with the messages of cycles 6, 12, and 13. Assert exit code 0
+    `broken-texture-pack-1.0.0` fails with the messages of cycles 6 and 12. A second guard builds a
+    pack in a temporary directory at test time, with a 2048 by 2048 PNG from `encodePng` (above
+    8 MiB, since the encoder stores deflate blocks), and asserts the cycle 13 size message through
+    the real CLI, so no file above 8 MiB is committed. Assert exit code 0
     and the report entries for `vernacular-textures-1.0.0`. Fails today: the report has no `kind`
     or `mediaType`. Implementation: `buildReport` in `vernacular-pack.mjs`.
 15. **`storage/assets/pack-source.test.ts`: "a format 2 pack lists only its models".** Setup: a fake

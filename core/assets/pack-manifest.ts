@@ -3,9 +3,14 @@
 // Pure validation for the vernacular-pack manifest format (design specification
 // sections 4.3 and 4.5). No filesystem or process access: it takes a parsed
 // manifest object and returns a result. Shared by the in-app pack loader and
-// the pack CLI so both gates run on one definition.
+// the pack CLI so both gates run on one definition. The media type knowledge
+// it relies on lives in asset-description.ts.
 
+import { declaresMediaTypes, MODEL_MEDIA_TYPES, TEXTURE_MEDIA_TYPES } from './asset-description.ts'
+import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
+import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
+import { validateTextureFields } from './texture-asset-rules.ts'
 
 export type AssetKind =
   | 'furniture'
@@ -30,6 +35,8 @@ export const ASSET_KINDS: readonly AssetKind[] = Object.freeze([
   'preview-only',
 ])
 
+const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
+
 export interface PackValidationResult {
   valid: boolean
   errors: string[]
@@ -39,9 +46,6 @@ const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 const URL_PREFIX_PATTERN = /^https?:\/\/\S+$/
 
-// A generous 100 m ceiling (in millimeters) that still catches unit mistakes
-// such as meters entered as millimeters.
-const MAX_DIMENSION_MM = 100_000
 const DIMENSION_AXES = ['width', 'depth', 'height'] as const
 
 interface FieldDescriptor {
@@ -112,31 +116,52 @@ function validateOptionalUrl(
 }
 
 function validateDimensions(dimensions: unknown, label: string, errors: string[]): void {
-  if (typeof dimensions !== 'object' || dimensions === null) {
+  if (!isRecord(dimensions)) {
     errors.push(`${label}.dimensions are required`)
     return
   }
-  const source = dimensions as Record<string, unknown>
   for (const axis of DIMENSION_AXES) {
-    const value = source[axis]
-    if (
-      typeof value !== 'number' ||
-      !Number.isFinite(value) ||
-      value <= 0 ||
-      value > MAX_DIMENSION_MM
-    ) {
+    if (!isPositiveLengthMm(dimensions[axis])) {
+      errors.push(positiveLengthMmProblem(`${label}.dimensions.${axis}`))
+    }
+  }
+}
+
+interface AssetContext {
+  label: string
+  formatVersion: unknown
+}
+
+function allowedMediaTypes(kind: unknown): readonly string[] {
+  return kind === 'texture' ? TEXTURE_MEDIA_TYPES : MODEL_MEDIA_TYPES
+}
+
+function validateMediaType(
+  source: Record<string, unknown>,
+  context: AssetContext,
+  errors: string[],
+): void {
+  const mediaType = source['mediaType']
+  if (!declaresMediaTypes(context.formatVersion)) {
+    if (mediaType !== undefined) {
       errors.push(
-        `${label}.dimensions.${axis} must be a positive number of millimeters up to ${MAX_DIMENSION_MM}`,
+        `${context.label}.mediaType needs formatVersion 2; format 1 assets name no media type`,
       )
     }
+    return
+  }
+  const allowed = allowedMediaTypes(source['kind'])
+  if (!(typeof mediaType === 'string' && allowed.includes(mediaType))) {
+    errors.push(`${context.label}.mediaType must be one of: ${allowed.join(', ')}`)
   }
 }
 
 function validateAssetFields(
   source: Record<string, unknown>,
-  label: string,
+  context: AssetContext,
   errors: string[],
 ): void {
+  const { label } = context
   if (
     validateRequiredString(source, { key: 'contentHash', label: `${label}.contentHash` }, errors) &&
     !SHA256_PATTERN.test(String(source['contentHash']))
@@ -155,29 +180,49 @@ function validateAssetFields(
   if (!ASSET_KINDS.includes(source['kind'] as AssetKind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
-  validateDimensions(source['dimensions'], label, errors)
+  validateMediaType(source, context, errors)
+  if (source['kind'] === 'texture' && declaresMediaTypes(context.formatVersion)) {
+    validateTextureFields(source, label, errors)
+  } else {
+    validateDimensions(source['dimensions'], label, errors)
+  }
 }
 
-function validateAsset(asset: unknown, index: number, errors: string[]): void {
-  const label = `assets[${index}]`
-  if (typeof asset !== 'object' || asset === null) {
+function validateAsset(asset: unknown, context: AssetContext, errors: string[]): void {
+  const { label } = context
+  if (!isRecord(asset)) {
     errors.push(`${label} must be an object`)
     return
   }
-  validateAssetFields(asset as Record<string, unknown>, label, errors)
+  validateAssetFields(asset, context, errors)
 }
 
-function validateAssets(assets: unknown, errors: string[]): void {
+function validateAssets(assets: unknown, formatVersion: unknown, errors: string[]): void {
   if (!Array.isArray(assets)) {
     errors.push('assets must be an array')
     return
   }
   assets.forEach((asset, index) => {
-    validateAsset(asset, index, errors)
+    validateAsset(asset, { label: `assets[${index}]`, formatVersion }, errors)
   })
 }
 
+function isKnownFormatVersion(formatVersion: unknown): boolean {
+  return typeof formatVersion === 'number' && PACK_FORMAT_VERSIONS.includes(formatVersion)
+}
+
+function validateFormatVersion(formatVersion: unknown, errors: string[]): void {
+  if (formatVersion === undefined || isKnownFormatVersion(formatVersion)) return
+  const newest = Math.max(...PACK_FORMAT_VERSIONS)
+  errors.push(
+    `formatVersion must be ${PACK_FORMAT_VERSIONS.join(' or ')}, ` +
+      `but this pack declares ${JSON.stringify(formatVersion)}; ` +
+      `the newest format this reader knows is ${newest}`,
+  )
+}
+
 function validatePackFields(source: Record<string, unknown>, errors: string[]): void {
+  validateFormatVersion(source['formatVersion'], errors)
   validateRequiredString(source, { key: 'packId' }, errors)
   if (validateRequiredString(source, { key: 'license' }, errors)) {
     errors.push(...licenseProblems(String(source['license'])))
@@ -191,17 +236,17 @@ function validatePackFields(source: Record<string, unknown>, errors: string[]): 
   }
   validateRequiredStringArray(source, { key: 'eras' }, errors)
   validateRequiredStringArray(source, { key: 'categories' }, errors)
-  validateAssets(source['assets'], errors)
+  validateAssets(source['assets'], source['formatVersion'], errors)
 }
 
 /**
  * Validate a parsed pack manifest.
  */
 export function validatePackManifest(manifest: unknown): PackValidationResult {
-  if (typeof manifest !== 'object' || manifest === null) {
+  if (!isRecord(manifest)) {
     return { valid: false, errors: ['manifest must be a JSON object'] }
   }
   const errors: string[] = []
-  validatePackFields(manifest as Record<string, unknown>, errors)
+  validatePackFields(manifest, errors)
   return { valid: errors.length === 0, errors }
 }

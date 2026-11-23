@@ -2,12 +2,15 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { AssetRegistry } from '../../storage'
+import { AssetRegistry, type LibraryItem } from '../../storage'
 import { AssetRegistryProvider } from '../../bridge/react/asset-registry-context'
 
 import {
   MID_CENTURY_CHAIR_NAME,
+  PACK_SCOPE,
   VICTORIAN_TABLE_NAME,
+  libraryItem,
+  listingSource,
   searchBox,
   stockedRegistry,
 } from './library-test-support'
@@ -81,5 +84,24 @@ describe('LibraryPanel with nothing in the library at all', () => {
 
     expect(await screen.findByRole('heading', { name: EMPTY_LIBRARY })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: CLEAR_FILTERS })).toBeNull()
+  })
+})
+
+describe('LibraryPanel holding a material that carries a style', () => {
+  it('offers no style chip for a style only a non-furniture item carries', async () => {
+    const plaster: LibraryItem = libraryItem({
+      name: 'Painted plaster',
+      kind: 'material',
+      reference: { scope: PACK_SCOPE, contentHash: 'm1' },
+      styles: ['queen-anne'],
+    })
+    const chair = libraryItem({ styles: ['shaker'] })
+    renderPanel(
+      new AssetRegistry([{ kind: 'pack', source: listingSource(PACK_SCOPE, [chair, plaster]) }]),
+    )
+    await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })
+
+    expect(screen.getByRole('button', { name: 'shaker' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'queen-anne' })).toBeNull()
   })
 })

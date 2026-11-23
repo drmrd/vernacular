@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 // scripts/pack/vernacular-pack.mjs
 //
-// vernacular-pack CLI scaffold (design specification section 4.3; phase 0 deliverable).
-// Subcommands: `validate <packDir>` and `build <packDir>`. For this scaffold, `build`
-// performs the same validation and reports a summary; content-hash verification,
-// thumbnail baking, and publishing are deferred to phase 3.
+// vernacular-pack CLI (design specification section 4.3). Subcommands:
+// `validate <packDir>` and `build <packDir>`. Both validate the manifest and
+// check the pack's files on disk (content hashes, texture headers, thumbnails).
+// `build` also writes a build report beside the pack; thumbnail baking and
+// publishing are not done here.
 
-import { access, readFile, readdir, writeFile } from 'node:fs/promises'
+import { access, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validatePackManifest } from '../../core/assets/pack-manifest.ts'
-import { checkPackIntegrity } from './pack-integrity.mjs'
+import { checkPackIntegrity, manifestAssets } from './pack-integrity.mjs'
 import { isShareAlike, shareAlikeWarning } from '../../core/assets/license-policy.ts'
+import { isRecord } from '../../core/assets/is-record.ts'
 
 const EXIT_OK = 0
 const EXIT_INVALID = 1
@@ -35,18 +37,19 @@ const USAGE = 'Usage: vernacular-pack <validate|build> <packDir>'
  * @returns {boolean}
  */
 function isReadableManifest(manifest) {
-  return manifest != null && typeof manifest === 'object' && Array.isArray(manifest.assets)
+  return isRecord(manifest) && Array.isArray(manifest.assets)
 }
 
 /**
  * The license strings declared by a pack and its assets.
- * @param {object} manifest
+ * @param {unknown} manifest
  * @returns {string[]}
  */
 function collectLicenses(manifest) {
   const licenses = []
+  if (!isRecord(manifest)) return licenses
   if (typeof manifest.license === 'string') licenses.push(manifest.license)
-  for (const asset of Array.isArray(manifest.assets) ? manifest.assets : []) {
+  for (const asset of manifestAssets(manifest)) {
     if (typeof asset.license === 'string') licenses.push(asset.license)
   }
   return licenses
@@ -71,16 +74,26 @@ async function reviewPack(manifest, reader) {
 }
 
 /**
+ * The report entry for one manifest asset; `mediaType` appears only when the manifest declares it.
+ * @param {{ name: string, kind: string, contentHash: string, mediaType?: string }} asset
+ * @returns {{ name: string, kind: string, contentHash: string, mediaType?: string }}
+ */
+function reportAsset(asset) {
+  const entry = { name: asset.name, kind: asset.kind, contentHash: asset.contentHash }
+  if (asset.mediaType !== undefined) {
+    entry.mediaType = asset.mediaType
+  }
+  return entry
+}
+
+/**
  * Build a build report from a manifest and its review outcome.
  * @param {object} manifest
  * @param {{ errors: string[], warnings: string[] }} review
  * @returns {object}
  */
 function buildReport(manifest, review) {
-  const assets = (Array.isArray(manifest?.assets) ? manifest.assets : []).map((asset) => ({
-    name: asset.name,
-    contentHash: asset.contentHash,
-  }))
+  const assets = manifestAssets(manifest).map(reportAsset)
   const licenses = collectLicenses(manifest)
   return {
     status: review.errors.length === 0 ? 'PASS' : 'FAIL',
@@ -173,6 +186,7 @@ export function createNodePackReader(packDir) {
         .digest('hex'),
     readBytes: async (rel, length) =>
       new Uint8Array((await readFile(join(packDir, rel))).subarray(0, length)),
+    size: async (rel) => (await stat(join(packDir, rel))).size,
   }
 }
 

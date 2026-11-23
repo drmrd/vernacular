@@ -2,8 +2,21 @@
 //
 // Pure on-disk integrity checks for a vernacular-pack (design specification
 // section 4.6). No direct filesystem access: it takes a parsed manifest and an
-// injected PackReader, and returns the accumulated errors. When the in-app pack
-// loader lands (phase 3) these checks graduate to core/ as shared TypeScript.
+// injected PackReader, and returns the accumulated errors. The byte rules for
+// texture files live in core/assets; this module reads the files and applies
+// them.
+
+import {
+  assetFileName,
+  isTextureAsset,
+  packAssetMediaType,
+} from '../../core/assets/asset-description.ts'
+import { isRecord } from '../../core/assets/is-record.ts'
+import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
+import {
+  textureFileProblems,
+  textureFileSizeProblems,
+} from '../../core/assets/texture-file-rules.ts'
 
 /**
  * @typedef {object} PackReader
@@ -12,11 +25,11 @@
  * @property {(rel: string) => Promise<boolean>} exists
  * @property {(rel: string) => Promise<string>} sha256          hex digest of a file's bytes
  * @property {(rel: string, length: number) => Promise<Uint8Array>} readBytes
+ * @property {(rel: string) => Promise<number>} size            file size in bytes
  */
 
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
-const ASSET_EXTENSION = '.glb'
 const THUMBNAIL_EXTENSION = '.webp'
 const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
@@ -51,49 +64,100 @@ export function isWebp(bytes) {
 }
 
 /**
- * The asset entries declared by a manifest, or [] when none are present.
- * @param {object} manifest
+ * The object asset entries declared by a manifest, or [] when none are present.
+ * @param {unknown} manifest
  * @returns {object[]}
  */
-function manifestAssets(manifest) {
-  return Array.isArray(manifest?.assets) ? manifest.assets : []
+export function manifestAssets(manifest) {
+  return Array.isArray(manifest?.assets) ? manifest.assets.filter(isRecord) : []
+}
+
+/**
+ * The file name of an asset in assets/; an absent or unknown media type is the format 1 model.
+ * @param {{ contentHash: string, mediaType?: string }} asset
+ * @returns {string}
+ */
+function packAssetFileName(asset) {
+  return assetFileName(asset.contentHash, packAssetMediaType(asset))
+}
+
+/**
+ * The pack-relative path of an asset file.
+ * @param {{ contentHash: string, mediaType?: string }} asset
+ * @returns {string}
+ */
+function assetPath(asset) {
+  return `${ASSET_DIR}/${packAssetFileName(asset)}`
 }
 
 /**
  * Confirm each asset's file bytes hash to its declared content hash.
  * @param {object[]} assets
  * @param {PackReader} reader
- * @param {string[]} errors
- * @returns {Promise<void>}
+ * @param {{ errors: string[], formatVersion: unknown }} context
+ * @returns {Promise<object[]>} the assets whose file is present and hashes correctly
  */
-async function checkAssetHashes(assets, reader, errors) {
+async function checkAssetHashes(assets, reader, context) {
+  const { errors } = context
+  const verified = []
   for (const asset of assets) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
-    const file = `${ASSET_DIR}/${asset.contentHash}${ASSET_EXTENSION}`
+    const file = assetPath(asset)
     if (!(await reader.exists(file))) {
-      errors.push(`asset ${asset.contentHash}: asset file missing`)
+      errors.push(`asset ${asset.contentHash}: asset file missing at ${file}`)
       continue
     }
     const digest = await reader.sha256(file)
     if (digest !== asset.contentHash) {
-      errors.push(`asset ${asset.contentHash}: content hash does not match the file bytes`)
+      errors.push(
+        `asset ${asset.contentHash}: content hash does not match the file bytes of ${file}`,
+      )
+      continue
+    }
+    verified.push(asset)
+  }
+  return verified
+}
+
+/**
+ * Confirm each texture file's header agrees with its manifest entry.
+ * @param {object[]} assets   assets whose files are present and hash correctly
+ * @param {PackReader} reader
+ * @param {{ errors: string[], formatVersion: unknown }} context
+ * @returns {Promise<void>}
+ */
+async function checkTextureFiles(assets, reader, context) {
+  const { errors, formatVersion } = context
+  for (const asset of assets.filter((a) => isTextureAsset(a, formatVersion))) {
+    const file = assetPath(asset)
+    const fileSize = await reader.size(file)
+    for (const problem of textureFileSizeProblems(fileSize)) {
+      errors.push(`asset ${asset.contentHash}: ${problem}`)
+    }
+    const bytes = await reader.readBytes(file, TEXTURE_LIMITS.maxFileBytes)
+    for (const problem of textureFileProblems(asset, bytes)) {
+      errors.push(`asset ${asset.contentHash}: ${problem}`)
     }
   }
 }
 
 /**
- * Confirm each asset has a thumbnail file in the pack.
+ * Confirm each model asset has a WebP thumbnail in the pack; a texture's thumbnail is optional
+ * but must be WebP when present.
  * @param {object[]} assets
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {Promise<void>}
  */
-async function checkThumbnails(assets, reader, errors) {
+async function checkThumbnails(assets, reader, context) {
+  const { errors, formatVersion } = context
   for (const asset of assets) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
     const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
     if (!(await reader.exists(file))) {
-      errors.push(`asset ${asset.contentHash}: thumbnail missing`)
+      if (!isTextureAsset(asset, formatVersion)) {
+        errors.push(`asset ${asset.contentHash}: thumbnail missing`)
+      }
       continue
     }
     const bytes = await reader.readBytes(file, WEBP_HEADER_LENGTH)
@@ -107,11 +171,12 @@ async function checkThumbnails(assets, reader, errors) {
  * Flag files in a directory that no manifest asset references.
  * @param {object[]} assets
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {Promise<void>}
  */
-async function checkOrphans(assets, reader, errors) {
-  const referencedAssets = new Set(assets.map((a) => `${a.contentHash}${ASSET_EXTENSION}`))
+async function checkOrphans(assets, reader, context) {
+  const { errors } = context
+  const referencedAssets = new Set(assets.map(packAssetFileName))
   const referencedThumbnails = new Set(assets.map((a) => `${a.contentHash}${THUMBNAIL_EXTENSION}`))
   for (const name of await reader.listDir(ASSET_DIR)) {
     if (!referencedAssets.has(name)) {
@@ -128,10 +193,11 @@ async function checkOrphans(assets, reader, errors) {
 /**
  * Confirm each required pack file is present.
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {Promise<void>}
  */
-async function checkRequiredFiles(reader, errors) {
+async function checkRequiredFiles(reader, context) {
+  const { errors } = context
   for (const name of REQUIRED_FILES) {
     if (!(await reader.exists(name))) {
       errors.push(`${name}: required pack file missing`)
@@ -143,10 +209,11 @@ async function checkRequiredFiles(reader, errors) {
  * Confirm the pack directory name matches the packId and version.
  * @param {object} manifest
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {void}
  */
-function checkDirName(manifest, reader, errors) {
+function checkDirName(manifest, reader, context) {
+  const { errors } = context
   const expected = `${manifest.packId}-${manifest.version}`
   if (reader.dirName !== expected) {
     errors.push(`pack directory name "${reader.dirName}" does not match expected "${expected}"`)
@@ -161,10 +228,13 @@ function checkDirName(manifest, reader, errors) {
  */
 export async function checkPackIntegrity(manifest, reader) {
   const errors = []
-  await checkAssetHashes(manifestAssets(manifest), reader, errors)
-  await checkThumbnails(manifestAssets(manifest), reader, errors)
-  await checkOrphans(manifestAssets(manifest), reader, errors)
-  await checkRequiredFiles(reader, errors)
-  checkDirName(manifest, reader, errors)
+  const context = { errors, formatVersion: manifest?.formatVersion }
+  const assets = manifestAssets(manifest)
+  const verifiedAssets = await checkAssetHashes(assets, reader, context)
+  await checkTextureFiles(verifiedAssets, reader, context)
+  await checkThumbnails(assets, reader, context)
+  await checkOrphans(assets, reader, context)
+  await checkRequiredFiles(reader, context)
+  checkDirName(manifest, reader, context)
   return { errors }
 }

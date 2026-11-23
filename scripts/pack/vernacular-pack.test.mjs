@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   runPackCli,
@@ -57,6 +60,7 @@ function packReader(overrides = {}) {
     exists: overrides.exists ?? (async () => true),
     sha256: async (rel) => overrides.hashes?.[rel] ?? '',
     readBytes: async () => WEBP_BYTES,
+    size: async () => WEBP_BYTES.length,
     ...overrides.reader,
   }
 }
@@ -168,8 +172,32 @@ describe('runPackCli build', () => {
     const [reportDir, report] = cliDeps.writeReport.mock.calls[0]
     expect(reportDir).toBe('packs/x')
     expect(report.status).toBe('PASS')
-    expect(report.assets).toEqual([{ name: 'Chair', contentHash: hash }])
+    expect(report.assets).toEqual([{ name: 'Chair', kind: 'furniture', contentHash: hash }])
     expect(report.licenses.distinct).toContain('CC0-1.0')
+  })
+
+  it('build reports the kind of a format 2 entry that has no media type', async () => {
+    const manifest = validManifestWithAsset()
+    const cliDeps = deps({ ...manifest, formatVersion: 2 })
+    const hash = 'a'.repeat(64)
+    cliDeps.createReader = vi.fn(() => packReader({ hashes: { [`assets/${hash}.glb`]: hash } }))
+
+    await runPackCli(['build', 'packs/x'], cliDeps)
+
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.assets).toHaveLength(1)
+    expect(report.assets[0]).toEqual({ name: 'Chair', kind: 'furniture', contentHash: hash })
+    expect(report.assets[0]).not.toHaveProperty('mediaType')
+  })
+
+  it('build reports an empty asset list when the manifest has no assets array', async () => {
+    const { assets: _omitted, ...manifest } = validManifest()
+    const cliDeps = deps(manifest)
+
+    await runPackCli(['build', 'packs/x'], cliDeps)
+
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.assets).toEqual([])
   })
 
   it('build writes a FAIL report and exits 1 for an invalid pack', async () => {
@@ -190,6 +218,60 @@ describe('runPackCli build', () => {
   })
 })
 
+describe('runPackCli non-object manifest or asset entries', () => {
+  const withEntries = (...assets) => ({ ...validManifest(), assets })
+
+  it.each([
+    ['null', null],
+    ['a string', 'a string'],
+    ['a number', 42],
+  ])('validate reports an invalid pack for a manifest that is %s', async (_label, manifest) => {
+    const cliDeps = deps(manifest)
+
+    const code = await runPackCli(['validate', 'packs/x'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.error).toHaveBeenCalled()
+  })
+
+  it('validate does not throw for an asset entry that is null', async () => {
+    const cliDeps = deps(withEntries(null))
+
+    const code = await runPackCli(['validate', 'packs/x'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.error).toHaveBeenCalled()
+  })
+
+  it.each([
+    ['is null', null],
+    ['has a null asset entry', withEntries(null)],
+    ['has a string asset entry', withEntries('a string')],
+    ['has a number asset entry', withEntries(42)],
+  ])('build writes an empty FAIL report for a manifest that %s', async (_label, manifest) => {
+    const cliDeps = deps(manifest)
+
+    const code = await runPackCli(['build', 'packs/x'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.writeReport).toHaveBeenCalledTimes(1)
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.status).toBe('FAIL')
+    expect(report.assets).toEqual([])
+  })
+
+  it('build still reports the license of a valid entry next to a non-object entry', async () => {
+    const [asset] = validManifestWithAsset().assets
+    const cliDeps = deps(withEntries(null, { ...asset, license: 'CC-BY-4.0' }))
+
+    await runPackCli(['build', 'packs/x'], cliDeps)
+
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.licenses.distinct).toContain('CC-BY-4.0')
+    expect(report.assets).toHaveLength(1)
+  })
+})
+
 describe('node adapters', () => {
   it('exposes the node-backed adapters', () => {
     expect(typeof readManifestFromDisk).toBe('function')
@@ -201,5 +283,15 @@ describe('node adapters', () => {
     expect(createNodePackReader('packs/vernacular-starter-1.0.0').dirName).toBe(
       'vernacular-starter-1.0.0',
     )
+  })
+
+  it('reports the byte size of a file in the pack directory', async () => {
+    const packDir = await mkdtemp(join(tmpdir(), 'pack-reader-size-'))
+    try {
+      await writeFile(join(packDir, 'LICENSE'), new Uint8Array(1234))
+      expect(await createNodePackReader(packDir).size('LICENSE')).toBe(1234)
+    } finally {
+      await rm(packDir, { recursive: true, force: true })
+    }
   })
 })

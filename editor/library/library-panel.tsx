@@ -11,6 +11,7 @@ import {
   activeFiltersDescription,
   distinctEras,
   distinctStyles,
+  furnitureItems,
   visibleLibraryItems,
   type LibraryFilters,
   type SourceFilter,
@@ -234,15 +235,16 @@ interface LibraryBodyProps extends LibraryFilterState {
 }
 
 // Pick the body to render: a loading state while listing, the empty message when
-// there are no items, otherwise the filter controls above the matching grid, with
-// a persistently mounted status region that only speaks up when the filters keep
-// everything out.
+// there are no furniture items, otherwise the filter controls above the matching
+// grid, with a persistently mounted status region that only speaks up when the
+// filters keep everything out.
 function LibraryBody(props: LibraryBodyProps): ReactElement | null {
   const { items, onPick, armed, filters, setFilters } = props
   if (items === null) {
     return <LoadingState message={LOADING_MESSAGE} />
   }
-  if (items.length === 0) {
+  const furniture = furnitureItems(items)
+  if (furniture.length === 0) {
     return <EmptyState title={EMPTY_MESSAGE} asRegion={false} />
   }
   const visible = visibleLibraryItems(items, filters)
@@ -251,8 +253,8 @@ function LibraryBody(props: LibraryBodyProps): ReactElement | null {
     <>
       <LibraryControls
         filters={filters}
-        eras={distinctEras(items)}
-        styles={distinctStyles(items)}
+        eras={distinctEras(furniture)}
+        styles={distinctStyles(furniture)}
         setFilters={setFilters}
       />
       {armed ? (

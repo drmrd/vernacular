@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { checkPackIntegrity, isWebp } from './pack-integrity.mjs'
+import { checkPackIntegrity, isWebp, manifestAssets } from './pack-integrity.mjs'
+import { TEXTURE_SIDE, lossyWebp, rgbPng } from './texture-test-bytes.mjs'
 
 const HASH = 'a'.repeat(64)
 const ASSET_FILE = `assets/${HASH}.glb`
@@ -45,6 +46,7 @@ function fakeReader(overrides = {}) {
     exists: async (rel) => Boolean(files[rel]),
     sha256: async (rel) => hashes[rel] ?? '',
     readBytes: async (rel) => bytes[rel] ?? new Uint8Array(),
+    size: async (rel) => (bytes[rel] ?? new Uint8Array()).length,
     ...overrides.reader,
   }
 }
@@ -123,6 +125,139 @@ describe('checkPackIntegrity', () => {
   })
 })
 
+describe('checkPackIntegrity for a format 2 asset', () => {
+  const OTHER_HASH = 'c'.repeat(64)
+  const textureFile = (extension, hash = HASH) => `assets/${hash}.${extension}`
+  const IMAGE = { width: TEXTURE_SIDE, height: TEXTURE_SIDE }
+  const TEXTURE = { kind: 'texture', name: 'Grass', mediaType: 'image/png', image: IMAGE }
+  const TEXTURE_BYTES = {
+    'image/png': rgbPng(TEXTURE_SIDE),
+    'image/webp': lossyWebp(TEXTURE_SIDE, TEXTURE_SIDE),
+  }
+  const MODEL = { kind: 'furniture', mediaType: 'model/gltf-binary' }
+
+  /** A format 2 pack whose only asset is stored as `assets/<hash>.<extension>`. */
+  function formatTwoPack(asset, extension, overrides = {}) {
+    const file = textureFile(extension)
+    const manifest = { ...manifestWith(asset), formatVersion: 2 }
+    const reader = fakeReader({
+      ...overrides,
+      dirs: { assets: [`${HASH}.${extension}`], ...overrides.dirs },
+      files: { [ASSET_FILE]: false, [file]: true, ...overrides.files },
+      hashes: { [file]: HASH, ...overrides.hashes },
+      bytes: { [file]: TEXTURE_BYTES[asset.mediaType], ...overrides.bytes },
+    })
+    return { manifest, reader }
+  }
+
+  it.each([
+    ['an image/png texture', { ...TEXTURE, mediaType: 'image/png' }, 'png'],
+    ['an image/webp texture', { ...TEXTURE, mediaType: 'image/webp' }, 'webp'],
+    ['a model/gltf-binary model', MODEL, 'glb'],
+  ])('reads %s from the file with the .%s extension', async (_label, asset, extension) => {
+    const { manifest, reader } = formatTwoPack(asset, extension)
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result).toEqual({ errors: [] })
+  })
+
+  it('flags a texture whose bytes hash to a different digest than declared', async () => {
+    const file = textureFile('png')
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png', {
+      hashes: { [file]: 'b'.repeat(64) },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(
+      result.errors.some((m) => m.includes('content hash does not match') && m.includes(file)),
+    ).toBe(true)
+  })
+
+  it('flags a texture whose file is missing and names the expected path', async () => {
+    const file = textureFile('png')
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png', { files: { [file]: false } })
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result.errors.some((m) => m.includes('asset file missing') && m.includes(file))).toBe(
+      true,
+    )
+  })
+
+  it('reports a stray .glb as an orphan but not the referenced .png', async () => {
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png', {
+      dirs: { assets: [`${HASH}.png`, `${OTHER_HASH}.glb`] },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result.errors.some((m) => m.includes(`${OTHER_HASH}.glb`))).toBe(true)
+    expect(result.errors.some((m) => m.includes(`${HASH}.png`))).toBe(false)
+  })
+
+  it('requires a thumbnail for a model but not for a texture', async () => {
+    const texturePath = textureFile('png', OTHER_HASH)
+    const manifest = {
+      ...manifestWith(MODEL),
+      formatVersion: 2,
+      assets: [
+        { contentHash: HASH, name: 'Chair', ...MODEL },
+        { contentHash: OTHER_HASH, ...TEXTURE },
+      ],
+    }
+    const reader = fakeReader({
+      dirs: { assets: [`${HASH}.glb`, `${OTHER_HASH}.png`], thumbnails: [] },
+      files: { [THUMBNAIL_FILE]: false, [texturePath]: true },
+      hashes: { [texturePath]: OTHER_HASH },
+      bytes: { [texturePath]: TEXTURE_BYTES['image/png'] },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
+    const missing = result.errors.filter((m) => m.includes('thumbnail missing'))
+    expect(missing).toHaveLength(1)
+    expect(missing[0]).toContain(HASH)
+    expect(result.errors).toEqual(missing)
+  })
+
+  const NO_THUMBNAIL = { files: { [THUMBNAIL_FILE]: false }, dirs: { thumbnails: [] } }
+
+  it.each(['architectural-element', 'trim-profile'])(
+    'requires a thumbnail for a %s model',
+    async (kind) => {
+      const { manifest, reader } = formatTwoPack({ ...MODEL, kind }, 'glb', NO_THUMBNAIL)
+      const result = await checkPackIntegrity(manifest, reader)
+      expect(result.errors.some((m) => m.includes('thumbnail missing'))).toBe(true)
+    },
+  )
+
+  it('accepts an image/webp texture that has no thumbnail', async () => {
+    const asset = { ...TEXTURE, mediaType: 'image/webp' }
+    const { manifest, reader } = formatTwoPack(asset, 'webp', NO_THUMBNAIL)
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result).toEqual({ errors: [] })
+  })
+
+  it('accepts a texture with a valid WebP thumbnail at the usual path', async () => {
+    const { manifest, reader } = formatTwoPack(TEXTURE, 'png')
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result).toEqual({ errors: [] })
+  })
+
+  it.each([
+    ['image/png', 'png'],
+    ['image/webp', 'webp'],
+  ])('flags an %s texture thumbnail that is not a valid WebP signature', async (mediaType, ext) => {
+    const notWebp = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    const { manifest, reader } = formatTwoPack({ ...TEXTURE, mediaType }, ext, {
+      bytes: { [THUMBNAIL_FILE]: notWebp },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toContain('not valid WebP')
+    expect(result.errors[0]).toContain(HASH)
+  })
+
+  it('does not look for a thumbnail of an asset whose content hash is malformed', async () => {
+    const { manifest, reader } = formatTwoPack(MODEL, 'glb', NO_THUMBNAIL)
+    manifest.assets[0].contentHash = 'not-a-hash'
+    const result = await checkPackIntegrity(manifest, reader)
+    expect(result.errors.filter((m) => m.includes('thumbnail'))).toEqual([])
+  })
+})
+
 describe('isWebp', () => {
   it('accepts a RIFF....WEBP signature of at least 12 bytes', () => {
     expect(isWebp(WEBP_BYTES)).toBe(true)
@@ -134,5 +269,18 @@ describe('isWebp', () => {
 
   it('rejects input shorter than the 12-byte header', () => {
     expect(isWebp(new Uint8Array([0x52, 0x49, 0x46, 0x46]))).toBe(false)
+  })
+})
+
+describe('manifestAssets', () => {
+  it('keeps only the object entries of the assets list', () => {
+    const entry = { contentHash: 'a' }
+
+    expect(manifestAssets({ assets: [null, 'text', 42, entry] })).toEqual([entry])
+  })
+
+  it('returns an empty list when the manifest has no assets array', () => {
+    expect(manifestAssets(null)).toEqual([])
+    expect(manifestAssets({ assets: 'x' })).toEqual([])
   })
 })

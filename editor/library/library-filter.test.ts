@@ -12,11 +12,15 @@ import {
 const FOOTPRINT = { width: 600, depth: 600 }
 const HEIGHT_MM = 750
 
-function libraryItem(name: string, styles: string[]): LibraryItem {
+function libraryItem(
+  name: string,
+  styles: string[],
+  kind: LibraryItem['kind'] = 'furniture',
+): LibraryItem {
   return {
     reference: { scope: 'user', contentHash: name },
     name,
-    kind: 'furniture',
+    kind,
     categories: [],
     eras: [],
     styles,
@@ -67,6 +71,15 @@ describe('visibleLibraryItems style filtering', () => {
   it('keeps only items declaring the selected style', () => {
     const filters: LibraryFilters = { ...DEFAULT_FILTERS, style: 'queen-anne' }
     expect(visibleLibraryItems(items, filters)).toEqual([QUEEN_ANNE_CHAIR])
+  })
+})
+
+describe('visibleLibraryItems kind rule', () => {
+  it('the furniture library shows only items of kind furniture', () => {
+    const chair = libraryItem('Queen Anne chair', [])
+    const woodGrain = libraryItem('Oak grain', [], 'material')
+
+    expect(visibleLibraryItems([chair, woodGrain], DEFAULT_FILTERS)).toEqual([chair])
   })
 })
 

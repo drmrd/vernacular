@@ -12,13 +12,17 @@ export const MAX_LENGTH_MM = 100_000
 
 /** A dimension fell outside the accepted length range. */
 export class InvalidLengthError extends Error {
-  constructor(
-    public readonly label: string,
-    public readonly valueMm: number,
-    message?: string,
-  ) {
+  // Fields are declared, not constructor parameter properties: the pack command
+  // line tool loads this file under plain node, which accepts only erasable
+  // TypeScript syntax (scripts/pack/plain-node-load.test.mjs guards it).
+  readonly label: string
+  readonly valueMm: number
+
+  constructor(label: string, valueMm: number, message?: string) {
     super(message ?? `${label} must be a positive length up to 100 m`)
     this.name = 'InvalidLengthError'
+    this.label = label
+    this.valueMm = valueMm
   }
 }
 

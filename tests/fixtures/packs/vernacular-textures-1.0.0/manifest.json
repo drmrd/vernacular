@@ -1,0 +1,58 @@
+{
+  "packId": "vernacular-textures",
+  "version": "1.0.0",
+  "formatVersion": 2,
+  "license": "CC0-1.0",
+  "attribution": "Vernacular project",
+  "eras": [
+    "edwardian"
+  ],
+  "categories": [
+    "seating",
+    "flooring"
+  ],
+  "assets": [
+    {
+      "contentHash": "4af51edf85b8b3c613da07c92aa891579fa73ce16f315b5933172d855ba0f586",
+      "name": "Example stool",
+      "kind": "furniture",
+      "mediaType": "model/gltf-binary",
+      "license": "CC0-1.0",
+      "attribution": "Vernacular project",
+      "eras": [
+        "edwardian"
+      ],
+      "categories": [
+        "seating"
+      ],
+      "dimensions": {
+        "width": 350,
+        "depth": 350,
+        "height": 450
+      }
+    },
+    {
+      "contentHash": "e3df42313b00ecea90837a7e23fa1a6b820aa0905a3b49d89335399c8d6b18ac",
+      "name": "Example floorboards",
+      "kind": "texture",
+      "mediaType": "image/png",
+      "license": "CC0-1.0",
+      "attribution": "Vernacular project",
+      "eras": [
+        "edwardian"
+      ],
+      "categories": [
+        "flooring"
+      ],
+      "image": {
+        "width": 64,
+        "height": 64
+      },
+      "tileSize": {
+        "width": 600,
+        "height": 600
+      },
+      "colorSpace": "srgb"
+    }
+  ]
+}
