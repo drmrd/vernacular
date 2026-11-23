@@ -73,7 +73,7 @@ type ChoiceContext = Pick<
 type ChoiceRun = (offer: RepairOffer) => Promise<void>
 
 /** The sentence for a repaired copy that lacks some of the assets its project uses. */
-function repairedCopyMissingAssetsText(count: number): string {
+export function repairedCopyMissingAssetsText(count: number): string {
   const lacked = `Vernacular could not find ${groupedNumber(count)} of the assets this project uses.`
   return count === 1 ? `${lacked} It shows as missing.` : `${lacked} They show as missing.`
 }

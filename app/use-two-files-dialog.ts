@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useNotifications, type NotificationApi } from '../editor/design-system'
 import type { TwoFilesDialogProps } from '../editor/projects'
 import {
   openSecondFileAsNew,
@@ -15,6 +16,7 @@ import {
 } from '../session'
 import type { TwoDocumentFiles } from '../storage'
 import { openFailureReason } from './open-failure-text'
+import { repairedCopyMissingAssetsText } from './use-failed-open-dialog'
 import type { HistoryNavigation } from './use-history-navigation'
 
 /** What the dialog of the two plan files runs on. */
@@ -57,29 +59,46 @@ const NOTHING_CHANGED: Answer = { ok: false, failure: { kind: 'files-changed' } 
 const SECOND_FILE_UNREADABLE = 'The second plan file could not be read.'
 
 /**
- * The sentence of a failure. The switch names every kind of refusal of the second file and sends
- * the kinds of a failed switch to their own sentences, so a new refusal is a type error here.
+ * The reason of a failure. The switch names every kind of refusal of the second file and sends
+ * the kinds of a failed switch to their own reasons, so a new refusal is a type error here.
  */
-function failureSentence(failure: SwitchFailure | KeptFileRefusal): string {
+function failureReason(failure: SwitchFailure | KeptFileRefusal): string {
   switch (failure.kind) {
     case 'files-changed':
     case 'no-second-file':
     case 'second-file-unreadable':
       return SECOND_FILE_UNREADABLE
     default:
-      return `Could not change the plan files: ${openFailureReason(failure)}`
+      return openFailureReason(failure)
   }
+}
+
+function failureSentence(failure: SwitchFailure | KeptFileRefusal): string {
+  return `Could not change the plan files: ${failureReason(failure)}`
 }
 
 function readFacts(ports: SessionPorts | null, id: string): Promise<TwoFilesRead> {
   return ports === null ? Promise.resolve(NO_SECOND_FILE) : readTwoFiles(ports, id)
 }
 
-/** The new project is the one that shows, so the choice runs as a flow of the page. */
-async function openAsNew(navigation: PageRunners, choice: KeptFileChoice): Promise<Answer> {
-  const result = await navigation.runPageFlow<KeptFileRefusal>((ports, current) =>
-    openSecondFileAsNew(ports, current, choice),
-  )
+/**
+ * The new project is the one that shows, so the choice runs as a flow of the page. A new project
+ * that lacks assets shows a warning.
+ */
+async function openAsNew(
+  navigation: PageRunners,
+  notifications: NotificationApi,
+  choice: KeptFileChoice,
+): Promise<Answer> {
+  let missingAssets: readonly string[] = []
+  const result = await navigation.runPageFlow<KeptFileRefusal>(async (ports, current) => {
+    const opened = await openSecondFileAsNew(ports, current, choice)
+    missingAssets = opened.ok ? opened.missingAssets : []
+    return opened
+  })
+  if (result?.ok === true && missingAssets.length > 0) {
+    notifications.warning(repairedCopyMissingAssetsText(missingAssets.length))
+  }
   return result ?? NOTHING_CHANGED
 }
 
@@ -92,7 +111,7 @@ type StoredFilesChange = (
 
 /**
  * A choice that changes the stored files and opens no other project. When this tab held the
- * project, the flow opened it again. The page shows no editor then, so that handle closes at once.
+ * project, the flow opened it again, and the owner takes that handle in place of the one it ended.
  */
 async function changeStoredFiles(
   navigation: PageRunners,
@@ -101,10 +120,7 @@ async function changeStoredFiles(
 ): Promise<Answer> {
   const outcome = await navigation.runPageAction(async (ports, current) => {
     const result = await change(ports, current, choice)
-    const currentClosed = result.handle !== current
-    const reopened = currentClosed ? result.handle : undefined
-    await reopened?.close()
-    return { result, currentClosed }
+    return { result, currentClosed: result.handle !== current, reopened: result.handle }
   })
   return outcome?.result ?? NOTHING_CHANGED
 }
@@ -116,9 +132,9 @@ interface Choices {
   readonly remove: ChoiceRun
 }
 
-function choicesOn(navigation: PageRunners): Choices {
+function choicesOn(navigation: PageRunners, notifications: NotificationApi): Choices {
   return {
-    openAsNew: (choice) => openAsNew(navigation, choice),
+    openAsNew: (choice) => openAsNew(navigation, notifications, choice),
     replace: (choice) => changeStoredFiles(navigation, replaceWithSecondFile, choice),
     remove: (choice) => changeStoredFiles(navigation, removeSecondFile, choice),
   }
@@ -130,6 +146,7 @@ function useChoose(
   show: (id: string, read: TwoFilesRead) => void,
   close: () => void,
 ) {
+  const notifications = useNotifications()
   const [busy, setBusy] = useState(false)
   const choose = async ({ id, files }: Shown, run: ChoiceRun) => {
     onActionStart()
@@ -142,7 +159,7 @@ function useChoose(
     close()
     onActionEnd(answer.ok ? null : failureSentence(answer.failure))
   }
-  return { busy, choose, choices: choicesOn(navigation) }
+  return { busy, choose, choices: choicesOn(navigation, notifications) }
 }
 
 /** The props of the dialog for the files that it shows. Remove exists only with both readable. */

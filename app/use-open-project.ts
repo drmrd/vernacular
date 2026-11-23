@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { storageUnavailableOf, type OpenFailureCause } from './open-failure-text'
-import type {
-  DocumentHandle,
-  FlowResult,
-  OpenRequest,
-  SessionPorts,
-  SwitchFailure,
-} from '../session'
+import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '../session'
 import {
   deferClose,
   dropHandle,
@@ -18,21 +12,34 @@ import {
   show,
 } from './owner-memory'
 import type { OwnerMemory, OwnerView } from './owner-memory'
-import { runOneAction } from './owner-actions'
+import { installReopened, runOneAction } from './owner-actions'
 import type { RunAction } from './owner-actions'
 
 export type { ActionOutcome, OwnerAction, RunAction } from './owner-actions'
+
+/**
+ * What a flow gives: the handle now open, or why the current project stays open. A failed result
+ * that carries `handle` says that the flow ended the project it was given: the handle is the one
+ * it opened again, or undefined when it opened none.
+ */
+export type FlowOutcome<Refusal = never> =
+  | { readonly ok: true; readonly handle: DocumentHandle }
+  | {
+      readonly ok: false
+      readonly failure: SwitchFailure | Refusal
+      readonly handle?: DocumentHandle | undefined
+    }
 
 /** A step that may replace the open project: it gets the ports and the project open now. */
 export type Flow<Refusal = never> = (
   ports: SessionPorts,
   current: DocumentHandle | undefined,
-) => Promise<FlowResult<Refusal>>
+) => Promise<FlowOutcome<Refusal>>
 
 /** Runs a flow. Resolves `undefined` when another flow or the start runs. */
 export type RunFlow = <Refusal = never>(
   flow: Flow<Refusal>,
-) => Promise<FlowResult<Refusal> | undefined>
+) => Promise<FlowOutcome<Refusal> | undefined>
 
 /** The open project of the application, and the one way to replace it. */
 export interface OpenProject {
@@ -41,7 +48,7 @@ export interface OpenProject {
   /** Why no project is open. Null while the start runs and while a project is open. */
   readonly failure: SwitchFailure | null
   readonly runFlow: RunFlow
-  /** Runs a card action. It installs no handle, and forgets the open one if the action ended it. */
+  /** Runs a card action. It installs the handle that the action reopened when it ended the open one. */
   readonly runAction: RunAction
   /** Runs the start again after it failed. */
   readonly retry: () => void
@@ -106,9 +113,18 @@ export function isSwitchFailure(failure: unknown): failure is SwitchFailure {
  * Installs what a flow gave, or closes its handle when the owner's effects are cleaned up. A
  * project that the flow opened replaces the one that the owner closed meanwhile. When the effects
  * are cleaned up, the owner's own handle is no longer its handle: the flow closed it, and the
- * project that the flow opened is the one that the owner records as closed.
+ * project that the flow opened is the one that the owner records as closed. A refusal that ended
+ * the given handle gives the handle that it opened again, which the owner takes in the same way.
  */
-function settleFlow<Refusal>(memory: OwnerMemory, result: FlowResult<Refusal>): void {
+function settleFlow<Refusal>(
+  memory: OwnerMemory,
+  result: FlowOutcome<Refusal>,
+  given: DocumentHandle | undefined,
+): void {
+  if (!result.ok && 'handle' in result && result.handle !== given) {
+    installReopened(memory, given, result.handle)
+    return
+  }
   if (!memory.live) {
     if (result.ok && result.handle !== memory.handle) {
       memory.handle = null
@@ -129,7 +145,7 @@ async function callFlow<Refusal>(
   flow: Flow<Refusal>,
   ports: SessionPorts,
   current: DocumentHandle | undefined,
-): Promise<FlowResult<Refusal>> {
+): Promise<FlowOutcome<Refusal>> {
   try {
     return await flow(ports, current)
   } catch (error) {
@@ -141,15 +157,16 @@ async function callFlow<Refusal>(
 async function runOneFlow<Refusal>(
   memory: OwnerMemory,
   flow: Flow<Refusal>,
-): Promise<FlowResult<Refusal> | undefined> {
+): Promise<FlowOutcome<Refusal> | undefined> {
   const ports = memory.ports
   if (ports === null || isBusy(memory)) {
     return undefined
   }
   memory.flowRunning = true
-  const result = await callFlow(flow, ports, memory.handle ?? undefined)
+  const given = memory.handle ?? undefined
+  const result = await callFlow(flow, ports, given)
   memory.flowRunning = false
-  settleFlow(memory, result)
+  settleFlow(memory, result, given)
   resume(memory)
   launchDueStart(memory)
   return result
