@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assetFileName, isModelAsset, validatePackManifest } from './pack-manifest'
+import { assetFileName, isModelAsset, isTextureAsset, validatePackManifest } from './pack-manifest'
 
 function validManifest(): Record<string, unknown> {
   return {
@@ -205,6 +205,52 @@ describe('isModelAsset', () => {
   ])('$label', ({ formatVersion, mediaType, expected }) => {
     const asset = mediaType === undefined ? {} : { mediaType }
     expect(isModelAsset(asset, formatVersion)).toBe(expected)
+  })
+})
+
+describe('isTextureAsset', () => {
+  it.each([
+    { label: 'format 2, png media type', formatVersion: 2, mediaType: 'image/png', expected: true },
+    {
+      label: 'format 2, webp media type',
+      formatVersion: 2,
+      mediaType: 'image/webp',
+      expected: true,
+    },
+    {
+      label: 'format 1, png media type',
+      formatVersion: 1,
+      mediaType: 'image/png',
+      expected: false,
+    },
+    {
+      label: 'format 1, webp media type',
+      formatVersion: 1,
+      mediaType: 'image/webp',
+      expected: false,
+    },
+    {
+      label: 'format 1, no media type',
+      formatVersion: 1,
+      mediaType: undefined,
+      expected: false,
+    },
+    {
+      label: 'format 2, model media type',
+      formatVersion: 2,
+      mediaType: 'model/gltf-binary',
+      expected: false,
+    },
+    {
+      label: 'format 2, unknown media type',
+      formatVersion: 2,
+      mediaType: 'model/obj',
+      expected: false,
+    },
+    { label: 'format 2, no media type', formatVersion: 2, mediaType: undefined, expected: false },
+  ])('$label', ({ formatVersion, mediaType, expected }) => {
+    const asset = mediaType === undefined ? {} : { mediaType }
+    expect(isTextureAsset(asset, formatVersion)).toBe(expected)
   })
 })
 

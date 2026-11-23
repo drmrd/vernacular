@@ -168,7 +168,9 @@ describe('textureFileProblems for an entry without a media type', () => {
   it('reports bytes that are not an image instead of throwing', () => {
     const asset = { mediaType: undefined, image: { width: SIDE, height: SIDE } }
     const notAnImage = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    expect(textureFileProblems(asset as never, notAnImage)).not.toEqual([])
+    expect(textureFileProblems(asset as never, notAnImage)).toEqual([
+      'file bytes do not match the declared media type undefined',
+    ])
   })
 })
 

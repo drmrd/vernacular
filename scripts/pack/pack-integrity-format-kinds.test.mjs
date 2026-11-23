@@ -49,10 +49,19 @@ describe('checkPackIntegrity for a texture kind in a format 1 pack', () => {
 })
 
 describe('checkPackIntegrity for a texture kind without a media type in a format 2 pack', () => {
-  it('resolves and reports an error for the asset instead of throwing', async () => {
+  it('adds no texture file error and leaves the media type to the manifest validator', async () => {
     const manifest = manifestOf(2, textureKindWithoutMediaType)
     const result = await checkPackIntegrity(manifest, readerWithModelFile())
-    expect(result.errors.length).toBeGreaterThanOrEqual(1)
+    expect(result.errors).toEqual([])
+  })
+})
+
+describe('checkPackIntegrity for a model with an unknown media type in a format 2 pack', () => {
+  it('requires the thumbnail and adds no texture file error', async () => {
+    const asset = { contentHash: HASH, kind: 'model', name: 'Chair', mediaType: 'model/obj' }
+    const reader = readerWithModelFile({ withThumbnail: false })
+    const result = await checkPackIntegrity(manifestOf(2, asset), reader)
+    expect(result.errors).toEqual([`asset ${HASH}: thumbnail missing`])
   })
 })
 
