@@ -4,14 +4,17 @@ import type { AssetSource, LibraryItem } from './asset-source'
 
 export interface PackReader {
   manifest(): Promise<unknown>
-  readAsset(contentHash: string): Promise<Uint8Array | undefined>
+  readAsset(contentHash: string, mediaType: PackMediaType): Promise<Uint8Array | undefined>
   readThumbnail(contentHash: string): Promise<Uint8Array | undefined>
 }
 
+export type PackMediaType = 'model/gltf-binary' | 'image/png' | 'image/webp'
+
+const FORMAT_ONE_MEDIA_TYPE: PackMediaType = 'model/gltf-binary'
 const UNKNOWN_PACK_SCOPE = 'pack:unknown@0.0.0'
 
 interface PackAssetShape {
-  mediaType?: string
+  mediaType?: PackMediaType
   contentHash: string
   name: string
   kind: AssetKind
@@ -33,6 +36,8 @@ interface TypedManifest {
 export class PackSource implements AssetSource {
   private scope: AssetReference['scope'] = UNKNOWN_PACK_SCOPE
 
+  private loadedManifest: Promise<TypedManifest | undefined> | undefined
+
   constructor(private readonly reader: PackReader) {}
 
   get id(): string {
@@ -40,7 +45,12 @@ export class PackSource implements AssetSource {
   }
 
   async read(contentHash: string): Promise<Uint8Array | undefined> {
-    return this.reader.readAsset(contentHash)
+    const manifest = await this.loadManifest()
+    const asset = manifest?.assets.find((candidate) => candidate.contentHash === contentHash)
+    if (asset === undefined) {
+      return undefined
+    }
+    return this.reader.readAsset(contentHash, asset.mediaType ?? FORMAT_ONE_MEDIA_TYPE)
   }
 
   async readThumbnail(contentHash: string): Promise<Uint8Array | undefined> {
@@ -48,17 +58,33 @@ export class PackSource implements AssetSource {
   }
 
   async list(): Promise<LibraryItem[]> {
-    const manifest = await this.reader.manifest()
-    if (!validatePackManifest(manifest).valid) {
+    const typed = await this.loadManifest()
+    if (typed === undefined) {
       return []
     }
-    const typed = manifest as TypedManifest
     this.scope = `pack:${typed.packId}@${typed.version}`
     // Narrowing holds because only manifests that passed validatePackManifest
     // reach this point, and it requires dimensions on every model asset.
     return typed.assets
       .filter((asset): asset is PackModelShape => isModelAsset(asset, typed.formatVersion))
       .map((asset) => this.toLibraryItem(asset))
+  }
+
+  private loadManifest(): Promise<TypedManifest | undefined> {
+    if (this.loadedManifest === undefined) {
+      const attempt = this.fetchValidManifest()
+      this.loadedManifest = attempt
+      const forget = (): void => {
+        this.loadedManifest = undefined
+      }
+      attempt.then((manifest) => (manifest === undefined ? forget() : undefined), forget)
+    }
+    return this.loadedManifest
+  }
+
+  private async fetchValidManifest(): Promise<TypedManifest | undefined> {
+    const manifest = await this.reader.manifest()
+    return validatePackManifest(manifest).valid ? (manifest as TypedManifest) : undefined
   }
 
   private toLibraryItem(asset: PackModelShape): LibraryItem {
