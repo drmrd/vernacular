@@ -79,6 +79,11 @@ interface CacheEntry {
 export const LOADING: TextureState = { status: 'loading' }
 const FAILED: TextureState = { status: 'failed' }
 
+function failWithReason(contentHash: string, reason: string): TextureState {
+  console.warn(`Failed to load texture ${contentHash}: ${reason}`)
+  return FAILED
+}
+
 async function loadTexture(
   source: TextureSource,
   decodeOnce: DecodeOnce,
@@ -89,7 +94,16 @@ async function loadTexture(
       source.describe(reference),
       source.resolve(reference),
     ])
-    if (description?.kind !== 'texture' || resolution.outcome !== 'resolved') return FAILED
+    if (!description) return failWithReason(reference.contentHash, 'no description for the asset')
+    if (description.kind !== 'texture') {
+      return failWithReason(
+        reference.contentHash,
+        `description kind is ${description.kind}, not texture`,
+      )
+    }
+    if (resolution.outcome !== 'resolved') {
+      return failWithReason(reference.contentHash, 'image is missing: the asset did not resolve')
+    }
     const { mediaType, colorSpace, tileSize } = description
     const texture = await decodeOnce(
       decodeKey(reference.contentHash, colorSpace),
