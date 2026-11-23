@@ -1,20 +1,18 @@
 import { isModelAsset, validatePackManifest } from '../../core'
-import type { AssetKind, AssetReference } from '../../core'
+import type { AssetKind, AssetReference, MediaType } from '../../core'
 import type { AssetSource, LibraryItem } from './asset-source'
 
 export interface PackReader {
   manifest(): Promise<unknown>
-  readAsset(contentHash: string, mediaType: PackMediaType): Promise<Uint8Array | undefined>
+  readAsset(contentHash: string, mediaType: MediaType): Promise<Uint8Array | undefined>
   readThumbnail(contentHash: string): Promise<Uint8Array | undefined>
 }
 
-export type PackMediaType = 'model/gltf-binary' | 'image/png' | 'image/webp'
-
-const FORMAT_ONE_MEDIA_TYPE: PackMediaType = 'model/gltf-binary'
+const FORMAT_ONE_MEDIA_TYPE: MediaType = 'model/gltf-binary'
 const UNKNOWN_PACK_SCOPE = 'pack:unknown@0.0.0'
 
 interface PackAssetShape {
-  mediaType?: PackMediaType
+  mediaType?: MediaType
   contentHash: string
   name: string
   kind: AssetKind
@@ -74,12 +72,22 @@ export class PackSource implements AssetSource {
     if (this.loadedManifest === undefined) {
       const attempt = this.fetchValidManifest()
       this.loadedManifest = attempt
-      const forget = (): void => {
-        this.loadedManifest = undefined
-      }
-      attempt.then((manifest) => (manifest === undefined ? forget() : undefined), forget)
+      // Registered before any caller awaits, so a failed caller that retries already finds
+      // the memo cleared; the rejection handler also keeps `attempt` from going unhandled.
+      void attempt.then(
+        (manifest) => {
+          if (manifest === undefined) this.forgetManifest(attempt)
+        },
+        () => this.forgetManifest(attempt),
+      )
     }
     return this.loadedManifest
+  }
+
+  private forgetManifest(attempt: Promise<TypedManifest | undefined>): void {
+    if (this.loadedManifest === attempt) {
+      this.loadedManifest = undefined
+    }
   }
 
   private async fetchValidManifest(): Promise<TypedManifest | undefined> {

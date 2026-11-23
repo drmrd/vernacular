@@ -5,6 +5,7 @@
 // manifest object and returns a result. Shared by the in-app pack loader and
 // the pack CLI so both gates run on one definition.
 
+import type { MediaType } from './asset-description.ts'
 import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
@@ -37,7 +38,7 @@ export const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
 
 const MEDIA_TYPE_FORMAT_VERSION = 2
 /* eslint-disable @typescript-eslint/naming-convention -- media types are the wire keys */
-export const MEDIA_TYPE_EXTENSIONS: Readonly<Record<string, string>> = Object.freeze({
+export const MEDIA_TYPE_EXTENSIONS: Readonly<Record<MediaType, string>> = Object.freeze({
   'model/gltf-binary': '.glb',
   'image/png': '.png',
   'image/webp': '.webp',

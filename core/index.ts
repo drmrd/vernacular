@@ -91,6 +91,7 @@ export {
   orderScopesByPrecedence,
   resolvedAsset,
 } from './assets/asset-resolution'
+export type { MediaType } from './assets/asset-description'
 export type { AssetKind, PackValidationResult } from './assets/pack-manifest'
 export { ASSET_KINDS, isModelAsset, validatePackManifest } from './assets/pack-manifest'
 export type { Registry, RegistryEntry } from './registries/registry'
