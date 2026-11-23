@@ -121,6 +121,7 @@ export interface StoredTwoFiles {
 
 function buildVersionOf(result: DecodeResult): number | undefined {
   if (result.ok) {
+    // A decoded document carries the build's version after migration.
     return result.value.project.meta.schemaVersion
   }
   return result.failure.kind === 'newer-version' ? result.failure.buildVersion : undefined
@@ -186,7 +187,10 @@ async function checkedTwoFiles(
   return sameFiles(stored.files, expected) ? stored : { kind: 'files-changed' }
 }
 
-/** Moves each second file at or below the build's version to the backups: copy first, then remove. */
+/**
+ * Moves each second file at or below the build's version to the backups: copy first, then
+ * remove.
+ */
 async function setAsideEachSecondFile(
   directory: DirectoryPort,
   stored: StoredTwoFiles,
@@ -200,8 +204,10 @@ async function setAsideEachSecondFile(
   }
 }
 
-/** Sets every second file at or below the build's version aside, when the files are as expected. */
-export async function setAsideSecondFiles(
+/**
+ * Sets every second file at or below the build's version aside, when the files are as expected.
+ */
+export async function setAsideSecondFilesIn(
   directory: DirectoryPort,
   expected: TwoDocumentFiles,
   options?: CodecOptions,
@@ -218,7 +224,7 @@ export async function setAsideSecondFiles(
  * Makes the main file hold the second file's bytes, when the files are as expected and the second
  * file decodes. The main file's bytes reach the backups first, and the second files go last.
  */
-export async function promoteSecondFile(
+export async function promoteSecondFileIn(
   directory: DirectoryPort,
   expected: TwoDocumentFiles,
   options?: CodecOptions,

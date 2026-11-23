@@ -23,13 +23,14 @@ import type { SecondFileWritten } from './save-target'
 import {
   latestChangeOf,
   listSecondFiles,
-  promoteSecondFile,
+  promoteSecondFileIn,
   readNewestSecondFile,
   readStoredTwoFiles,
   secondFileBesideMain,
-  setAsideSecondFiles,
+  setAsideSecondFilesIn,
 } from './second-file'
 import type {
+  SecondFileBytes,
   SecondFileChange,
   SecondFileEntry,
   SecondFileState,
@@ -159,26 +160,17 @@ export class DocumentStore {
     if (stored === undefined) {
       return toStoreRead(undefined)
     }
-    const { bytes } = stored.second
-    return toStoreRead(
-      await this.finishRead(id, {
-        directory: this.files.projectDirectory(id),
-        bytes,
-        result: decodeDocument(bytes, this.options),
-        secondFile: { name: stored.second.name, read: 'second' },
-        listed: stored.listed,
-      }),
-    )
+    return toStoreRead(await this.finishSecondRead(id, stored.second, stored.listed))
   }
 
-  /** Moves every second file at or below the build's version to the backups, if `expected` still holds. */
+  /** Moves every second file at or below the build's version to the backups if `expected` holds. */
   async setAsideSecondFile(id: string, expected: TwoDocumentFiles): Promise<SecondFileChange> {
-    return setAsideSecondFiles(this.files.projectDirectory(id), expected, this.options)
+    return setAsideSecondFilesIn(this.files.projectDirectory(id), expected, this.options)
   }
 
   /** Makes the main file hold the second file's bytes, if `expected` still holds and it decodes. */
   async promoteSecondFile(id: string, expected: TwoDocumentFiles): Promise<SecondFileChange> {
-    return promoteSecondFile(this.files.projectDirectory(id), expected, this.options)
+    return promoteSecondFileIn(this.files.projectDirectory(id), expected, this.options)
   }
 
   private async storedTwoFiles(id: string): Promise<StoredTwoFiles | undefined> {
@@ -219,9 +211,22 @@ export class DocumentStore {
     if (second === undefined) {
       return { failure: newerFailure }
     }
-    const result = decodeDocument(second.bytes, this.options)
-    const secondFile = { name: second.name, read: 'second' as const }
-    return this.finishRead(id, { directory, bytes: second.bytes, result, secondFile, listed })
+    return this.finishSecondRead(id, second, listed)
+  }
+
+  /** Decodes a second file's bytes and builds the read that names it as the file read. */
+  private async finishSecondRead(
+    id: string,
+    second: SecondFileBytes,
+    listed: SecondFileEntry[],
+  ): Promise<StoredRead> {
+    return this.finishRead(id, {
+      directory: this.files.projectDirectory(id),
+      bytes: second.bytes,
+      result: decodeDocument(second.bytes, this.options),
+      secondFile: { name: second.name, read: 'second' },
+      listed,
+    })
   }
 
   /** Keeps the migration backup of a migrated file and builds the read from its decode. */
