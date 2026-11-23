@@ -12,6 +12,7 @@ import {
   choiceOf,
   failRecordWriteWithoutSecondFile,
   keptHandleOf,
+  recordedSecondFile,
   secondBytes,
   storeProject,
 } from './choose-kept-file-test-kit'
@@ -40,6 +41,7 @@ describe('a choice whose record write fails after the files were changed', () =>
     expect(handleOf(result).id).not.toBe(PROJECT_ID)
     expect(await ports.root.readFile(SECOND_PATH)).toBeUndefined()
     expect(bytesOfCopies(await workspaceBackups(ports), SET_ASIDE_PREFIX)).toEqual([secondBytes()])
+    expect(await recordedSecondFile(ports)).toBeDefined()
     expect(vi.mocked(console.warn)).toHaveBeenCalledOnce()
     expect(vi.mocked(console.error)).not.toHaveBeenCalled()
   })
@@ -56,6 +58,7 @@ describe('a choice whose record write fails after the files were changed', () =>
     expect(handle.id).toBe(PROJECT_ID)
     expect(handle.session.getProject().meta.name).toBe(SECOND_NAME)
     expect(vi.mocked(console.warn)).toHaveBeenCalledOnce()
+    expect(vi.mocked(console.error)).not.toHaveBeenCalled()
   })
 
   it('still opens the project again when removing the second file of a project that this tab holds', async () => {
@@ -76,5 +79,6 @@ describe('a choice whose record write fails after the files were changed', () =>
     expect(reopened.session.getProject().meta.name).toBe(MAIN_NAME)
     expect(await ports.root.readFile(SECOND_PATH)).toBeUndefined()
     expect(vi.mocked(console.warn)).toHaveBeenCalledOnce()
+    expect(vi.mocked(console.error)).not.toHaveBeenCalled()
   })
 })

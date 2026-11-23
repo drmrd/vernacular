@@ -69,14 +69,14 @@ export async function storeFolderProject(
   return folder
 }
 
-/** What the record of the project `a` says about its second file; undefined when it says nothing. */
+/** What the record of the kit's project says about its second file; undefined when it says nothing. */
 export async function recordedSecondFile(
   ports: TestPorts,
 ): Promise<ProjectRecord['secondFile'] | undefined> {
   return (await recordOf(ports, PROJECT_ID))?.secondFile
 }
 
-/** The two files of the project `a` as `readTwoFiles` gives them. Throws when it gives none. */
+/** The two files of the kit's project as `readTwoFiles` gives them. Throws when it gives none. */
 export async function choiceOf(ports: SessionPorts, open?: boolean): Promise<KeptFileChoice> {
   const read = await readTwoFiles(ports, PROJECT_ID)
   if (!read.ok || read.files === undefined) {
@@ -123,7 +123,7 @@ export const FLOWS = [
 }[]
 
 /**
- * Makes the first record write of the project `a` that leaves out the second file fail, the write
+ * Makes the first record write of the kit's project that leaves out the second file fail, the write
  * that a choice makes once the files are settled. Every other record write goes through.
  */
 export function failRecordWriteWithoutSecondFile(ports: TestPorts): void {
