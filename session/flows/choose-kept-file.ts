@@ -1,5 +1,4 @@
 import type {
-  DocumentFileFacts,
   DocumentStore,
   ProjectLockHold,
   ProjectRecord,
@@ -7,8 +6,9 @@ import type {
   SecondFileRefusal,
   TwoDocumentFiles,
 } from '../../storage'
+import { sameTwoFiles } from '../../storage'
 import { findDocumentStore } from '../handle/find-document-store'
-import type { DocumentHandle, OpenFailed, OpenRequest } from '../handle/handle-types'
+import type { DocumentHandle, OpenRequest, ReadFailed } from '../handle/handle-types'
 import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import type { FlowResult, SwitchFailure } from './flow-result'
@@ -40,8 +40,8 @@ export type KeptFileResult =
       readonly ok: false
       readonly failure: SwitchFailure | KeptFileRefusal
       readonly handle: DocumentHandle | undefined
-      /** True when the stored files were changed and only the open after the change failed. */
-      readonly done?: true
+      /** True when the stored files changed and only the open that followed the change failed. */
+      readonly afterChange?: true
     }
 
 export type SecondFileAsNewResult =
@@ -62,7 +62,7 @@ type Outcome = { readonly ok: true } | Failed
 
 const CHOSEN: Outcome = { ok: true }
 
-const FILES_CHANGED: Failed = { ok: false, failure: { kind: 'files-changed' } }
+const FILES_CHANGED = { ok: false, failure: { kind: 'files-changed' } } as const satisfies Failed
 
 const SECOND_FILE_COPY_SUFFIX = ' (second plan file)'
 
@@ -78,18 +78,18 @@ interface Located {
   readonly request: OpenRequest
 }
 
-async function storeAt(ports: SessionPorts, request: OpenRequest): Promise<Located | OpenFailed> {
+async function storeAt(ports: SessionPorts, request: OpenRequest): Promise<Located | ReadFailed> {
   const found = await findDocumentStore(ports, request)
   return found.ok ? { ok: true, store: found.store, request } : found
 }
 
-async function locateOrReject(ports: SessionPorts, id: string): Promise<Located | OpenFailed> {
+async function locateOrReject(ports: SessionPorts, id: string): Promise<Located | ReadFailed> {
   const target = await recentTarget(ports, id)
   return target.ok ? storeAt(ports, target.request) : target
 }
 
 /** The project's store and request, found as the recent list finds them. Never rejects. */
-function locate(ports: SessionPorts, id: string): Promise<Located | OpenFailed> {
+function locate(ports: SessionPorts, id: string): Promise<Located | ReadFailed> {
   return locateOrReject(ports, id).catch(storageUnavailable)
 }
 
@@ -183,20 +183,7 @@ async function finish(ports: SessionPorts, held: Held, outcome: Outcome): Promis
   const opened = await switchProject(ports, held.other, held.request)
   return opened.ok
     ? { ok: true, handle: opened.handle }
-    : { ...opened, handle: held.other, done: true }
-}
-
-function sameFile(left: DocumentFileFacts, right: DocumentFileFacts): boolean {
-  return left.name === right.name && left.digest === right.digest
-}
-
-function sameFiles(now: TwoDocumentFiles | undefined, shown: TwoDocumentFiles): boolean {
-  return (
-    now !== undefined &&
-    now.state === shown.state &&
-    sameFile(now.main, shown.main) &&
-    sameFile(now.second, shown.second)
-  )
+    : { ...opened, handle: held.other, afterChange: true }
 }
 
 function refusalOf(refusal: SecondFileRefusal): Failed {
@@ -224,7 +211,8 @@ async function clearSecondFileOfRecordBestEffort(ports: SessionPorts, id: string
 }
 
 async function unchanged(store: DocumentStore, choice: KeptFileChoice): Promise<boolean> {
-  return sameFiles(await store.twoFiles(choice.id), choice.files)
+  const now = await store.twoFiles(choice.id)
+  return now !== undefined && sameTwoFiles(now, choice.files)
 }
 
 /** A choice and the change of the stored files that answers it. */
@@ -287,7 +275,7 @@ export function removeSecondFile(
     change: async (store) =>
       choice.files.state === 'both-readable'
         ? store.setAsideSecondFile(choice.id, choice.files)
-        : { ok: false, refusal: { kind: 'files-changed' } },
+        : { ok: false, refusal: FILES_CHANGED.failure },
   })
 }
 

@@ -102,7 +102,7 @@ function useChoose(
     if (answer.ok) {
       onActionEnd(null)
     } else {
-      const end = answer.done === true ? endAsOpen : endFailure
+      const end = answer.afterChange === true ? endAsOpen : endFailure
       end(id, answer.failure)
     }
   }
@@ -134,7 +134,7 @@ function dialogPropsOf(
 }
 
 /** The failure of two plan files that a notice carries, with the files as the dialog shows them. */
-function twoFilesOf(
+function twoFilesNoticeOf(
   notice: PageNotice | undefined,
 ): { readonly failure: SwitchFailure; readonly shown: Shown } | undefined {
   const failure = notice?.failure
@@ -153,7 +153,7 @@ function useShownFiles(
 ) {
   const [held, setHeld] = useState<Shown | undefined>(undefined)
   const [takenFailure, setTakenFailure] = useState<SwitchFailure | null>(null)
-  const fromNotice = twoFilesOf(notice)
+  const fromNotice = twoFilesNoticeOf(notice)
   const noticeFailure = fromNotice?.failure
   const hold = useCallback(
     (next: Shown | undefined) => {
@@ -219,5 +219,5 @@ export function useTwoFilesDialog(parts: TwoFilesDialogParts): TwoFilesDialogSta
       },
       busy,
     )
-  return { dialog, onChooseFile, takesNotice: twoFilesOf(notice) !== undefined }
+  return { dialog, onChooseFile, takesNotice: twoFilesNoticeOf(notice) !== undefined }
 }

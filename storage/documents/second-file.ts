@@ -166,7 +166,8 @@ export async function readStoredTwoFiles(
   return { files, mainBytes, mainDecode, second, listed, buildVersion }
 }
 
-function sameFiles(now: TwoDocumentFiles, expected: TwoDocumentFiles): boolean {
+/** True when both pairs hold the same state and the same name and digest for each file. */
+export function sameTwoFiles(now: TwoDocumentFiles, expected: TwoDocumentFiles): boolean {
   return (
     now.state === expected.state &&
     now.main.name === expected.main.name &&
@@ -185,7 +186,7 @@ async function checkedTwoFiles(
   if (stored === undefined) {
     return { kind: 'no-second-file' }
   }
-  return sameFiles(stored.files, expected) ? stored : { kind: 'files-changed' }
+  return sameTwoFiles(stored.files, expected) ? stored : { kind: 'files-changed' }
 }
 
 /**

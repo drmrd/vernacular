@@ -59,6 +59,7 @@ export type {
   StoreRead,
   StoreReadFailure,
 } from './documents/document-store'
+export { sameTwoFiles } from './documents/second-file'
 export type {
   DocumentFileFacts,
   SecondFileChange,
