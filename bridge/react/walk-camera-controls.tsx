@@ -12,6 +12,7 @@ import type { SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { tickOpeningMotion, useOpeningMotion, type OpeningMotionRefs } from './use-opening-motion'
 import { useSceneGraph } from './use-scene-graph'
+import { stepWalkAimOutline, useWalkAimOutlineGroup } from './use-walk-aim-outline'
 import {
   emptyWalkInput,
   initialWalkState,
@@ -103,6 +104,8 @@ interface WalkCameraControlsProps {
   storedOpenDoorIds: OpenParts
   /** Reports which doors stand open after each E or R press. */
   onOpenDoors: (openParts: OpenParts) => void
+  /** Whether the outline of the opening in reach shows while walking. */
+  aimGuide: boolean
 }
 
 // The pose handoff, held in refs refreshed on every render so that neither the saved pose
@@ -125,7 +128,7 @@ function useWalkPoseHandoff(
 // The props a walk session reads: everything the component takes except the scene root,
 // which only the opening motion hook and the frame callback use, and the stored open parts,
 // which the opening motion hook follows.
-type WalkSessionProps = Omit<WalkCameraControlsProps, 'root' | 'storedOpenDoorIds'>
+type WalkSessionProps = Omit<WalkCameraControlsProps, 'root' | 'storedOpenDoorIds' | 'aimGuide'>
 
 // Runs a walk session for as long as walk mode is on: it holds the walker's pose and held
 // input, starts the session (with the opening refs the opening motion hook owns) when the
@@ -198,7 +201,7 @@ function useWalkSession(
 export function WalkCameraControls(props: WalkCameraControlsProps) {
   // Kept as one props object because the session hook reads the same shape minus the root
   // and the stored open parts.
-  const { enabled, root, storedOpenDoorIds } = props
+  const { enabled, root, storedOpenDoorIds, aimGuide } = props
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
   const collisionInputs = useWalkCollisionInputs()
@@ -208,11 +211,19 @@ export function WalkCameraControls(props: WalkCameraControlsProps) {
     { camera, domElement, floorElevationMm: collisionInputs.floorElevationMm },
     openingRefs,
   )
+  const aimOutlineGroup = useWalkAimOutlineGroup()
 
   useFrame((_state, delta) => {
     // The walk step, gated by walk mode, runs before the opening tick, which runs in both modes.
     if (enabled) stepWalkFrame({ camera, collisionInputs, ...walkRefs }, delta)
     tickOpeningMotion(root, openingRefs, delta)
+    const aimInputs = {
+      walk: walkRefs.state,
+      openings: openingRefs.openings,
+      openness: openingRefs.openness,
+      floorElevationMm: collisionInputs.floorElevationMm,
+    }
+    stepWalkAimOutline(aimOutlineGroup, aimInputs, enabled && aimGuide)
   })
 
   return null
