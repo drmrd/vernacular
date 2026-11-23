@@ -162,7 +162,7 @@ export function ScenePane(): ReactElement {
       <Suspense fallback={<LoadingState message="Preparing 3D view..." />}>
         <SceneCanvasWithPaneFailureView />
       </Suspense>
-      {backend === 'webgl2' ? <BackendNotice /> : null}
+      {backend === 'webgl2' && failureKind === null ? <BackendNotice /> : null}
       {sceneState === 'building' ? (
         <div className="scene-pane__overlay">
           <LoadingState message="Building the scene..." />
