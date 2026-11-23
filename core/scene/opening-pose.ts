@@ -23,7 +23,9 @@ export function openingTargetPose(
   type: string,
   open: ReadonlySet<OpeningPartId> | undefined,
 ): OpeningPose {
-  return Object.fromEntries(openingParts(type).map((part) => [part, openingPartTarget(open, part)]))
+  const parts = openingParts(type)
+  const openOfType = new Set(parts.filter((part) => open?.has(part)))
+  return Object.fromEntries(parts.map((part) => [part, openingPartTarget(openOfType, part)]))
 }
 
 /**
