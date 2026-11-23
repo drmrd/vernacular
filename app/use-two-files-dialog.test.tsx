@@ -220,3 +220,19 @@ describe('A card whose project has no second plan file left', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
+
+describe('A card whose two plan files cannot be read', () => {
+  it('shows no dialog and a notice that gives only the reason, since no change was tried', async () => {
+    const { ports } = await portsWithTwoFiles('both-readable')
+    await showThePageOf(ports)
+    const failure = new Error('The disk did not answer')
+    vi.spyOn(ports.workspace, 'twoFiles').mockRejectedValueOnce(failure)
+
+    await chooseAPlanFileOnTheCard(ports)
+
+    const notice = (await findThePageAlert()).textContent
+    expect(notice).toBe(failure.message)
+    expect(notice).not.toMatch(/^Could not change the plan files/)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+})
