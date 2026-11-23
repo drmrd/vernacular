@@ -129,6 +129,15 @@ export function formatRetryAnnotations(passes) {
   })
 }
 
+function describeCaught(error) {
+  const [firstLine] = String(error?.message).split(/\r?\n|\r/)
+  return ` (${firstLine.slice(0, FIRST_ERROR_MAX_LENGTH)})`
+}
+
+function warnCaught(log, problem, error) {
+  log(`::warning title=Retry check::${escapeAnnotationMessage(problem + describeCaught(error))}`)
+}
+
 function isPlaywrightReport(value) {
   return Array.isArray(value?.suites) && typeof value.config?.rootDir === 'string'
 }
@@ -157,24 +166,23 @@ function readReport(reportPath, deps) {
   } catch {
     return skip(`The Playwright JSON report at ${reportPath} is not valid JSON`)
   }
-  const skipNotAReport = () => skip(`The file at ${reportPath} is not a Playwright JSON report`)
   if (!isPlaywrightReport(report)) {
-    return skipNotAReport()
+    return skip(`The file at ${reportPath} is not a Playwright JSON report`)
   }
   try {
     return analyzeReport(report, deps.cwd)
-  } catch {
-    return skipNotAReport()
+  } catch (error) {
+    return skip(
+      `The Playwright JSON report at ${reportPath} could not be read${describeCaught(error)}`,
+    )
   }
 }
 
 function formatSummaryOrWarn(passes, counts, log) {
   try {
     return formatRetrySummary(passes, counts)
-  } catch {
-    log(
-      '::warning title=Retry check::Could not format the retry check result, so it is missing from the job summary.',
-    )
+  } catch (error) {
+    warnCaught(log, 'Could not format the retry check result', error)
     return undefined
   }
 }
@@ -182,10 +190,16 @@ function formatSummaryOrWarn(passes, counts, log) {
 function writeSummaryOrWarn(summary, deps, log) {
   try {
     deps.appendSummary(summary)
-  } catch {
-    log(
-      '::warning title=Retry check::Could not write the job summary, so the retry check result is missing from it.',
-    )
+  } catch (error) {
+    warnCaught(log, 'Could not write the job summary', error)
+  }
+}
+
+function logAnnotation(pass, log) {
+  try {
+    log(formatRetryAnnotations([pass])[0])
+  } catch (error) {
+    warnCaught(log, 'Could not format a retry annotation', error)
   }
 }
 
@@ -213,7 +227,7 @@ export async function runRetryWarning(argv, deps) {
   if (summary !== undefined) {
     writeSummaryOrWarn(summary, deps, log)
   }
-  formatRetryAnnotations(passes).forEach(log)
+  passes.forEach((pass) => logAnnotation(pass, log))
   return 0
 }
 
