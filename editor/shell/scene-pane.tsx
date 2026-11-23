@@ -64,7 +64,8 @@ function readFailureKind(paneNode: HTMLElement): SceneRendererFailureKind | null
 // Watches the pane's own wrapper for the live canvas flipping its data-harness-ready
 // attribute, or for the canvas node itself being inserted (the Suspense-resolve path),
 // so the loading placeholder clears the moment the canvas reports its first frame
-// without requiring a React re-render from the bridge layer to drive it.
+// without requiring a React re-render from the bridge layer to drive it. It also reports
+// the failure view's kind, which the pane's announcer turns into text.
 //
 // Reads with a layout effect, not a plain effect, so the corrected readiness is in
 // place before the browser paints; a plain effect runs after paint and would flash
@@ -85,8 +86,7 @@ function useSceneState(paneRef: RefObject<HTMLDivElement | null>): {
     readPane()
     // Observing subtree childList also catches this pane's own overlay divs being
     // inserted or removed, which retriggers the callback below. That is harmless:
-    // readSceneState is idempotent, so the extra firings just recompute the same
-    // answer.
+    // readPane is idempotent, so the extra firings just recompute the same answer.
     const observer = new MutationObserver(readPane)
     observer.observe(paneNode, {
       attributes: true,
