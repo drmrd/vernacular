@@ -15,6 +15,7 @@ import {
   workspaceRequest,
 } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
+import { storeTwoReadableFiles } from '../handle/second-file-test-kit'
 import { switchProject } from './switch-project'
 import type { SwitchResult } from './switch-project'
 
@@ -129,6 +130,21 @@ describe('a switch that does not happen', () => {
     expect(current.session.undo()).toBe(true)
     await vi.advanceTimersByTimeAsync(DEFAULT_AUTOSAVE_DELAY_MS)
     expect(await storedName(ports, CURRENT_ID)).toBe(originalName)
+  })
+
+  it('returns the two files of a target that has two readable plan files and keeps the current handle open', async () => {
+    const ports = createTestPorts()
+    await placeProjects(ports, CURRENT_ID)
+    await storeTwoReadableFiles(ports, TARGET_ID, { main: 'Main file', second: 'Second file' })
+    const current = await openCurrent(ports)
+    const originalName = current.session.getProject().meta.name
+    const files = await ports.workspace.twoFiles(TARGET_ID)
+
+    const result = await switchProject(ports, current, workspaceRequest(TARGET_ID))
+
+    expect(result).toEqual({ ok: false, failure: { kind: 'two-files', files } })
+    expect(await ports.locks.heldIds()).toEqual(new Set([CURRENT_ID]))
+    expect(current.session.getProject().meta.name).toBe(originalName)
   })
 
   it('returns the current handle and writes nothing when the target is the current project', async () => {

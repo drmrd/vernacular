@@ -53,7 +53,10 @@ describe('a choice for the project that this tab has open', () => {
   it('stores its pending changes first, so that the files differ from the choice, and opens the project again', async () => {
     const ports = createTestPorts()
     await storeProject(ports, 'both-readable')
-    const current = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+    const current = await openOrThrow(ports, {
+      ...workspaceRequest(PROJECT_ID),
+      keepBothFiles: true,
+    })
     rename(current, EDITED_NAME)
     const choice = await choiceOf(ports)
 
@@ -74,7 +77,10 @@ describe('a choice for the project that this tab has open', () => {
   it('opens the project again, with the main file as it was, after a choice that had no pending changes to store', async () => {
     const ports = createTestPorts()
     await storeProject(ports, 'both-readable')
-    const current = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+    const current = await openOrThrow(ports, {
+      ...workspaceRequest(PROJECT_ID),
+      keepBothFiles: true,
+    })
 
     const result = await removeSecondFile(ports, current, await choiceOf(ports))
 

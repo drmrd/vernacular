@@ -68,7 +68,10 @@ async function storeNewerMainUsing(ports: TestPorts, inMain: string): Promise<vo
 
 /** Opens the project with two files, then closes it, so that its record says what the open read. */
 async function openAndClose(ports: TestPorts): Promise<void> {
-  const handle = await openOrThrow(ports, workspaceRequest(TWO_FILES_ID))
+  const handle = await openOrThrow(ports, {
+    ...workspaceRequest(TWO_FILES_ID),
+    keepBothFiles: true,
+  })
   await handle.close()
   await settle()
 }
@@ -113,7 +116,10 @@ describe('a delete while a project of the workspace has a second document file',
   it('keeps an asset that only the second file uses, while the project is open from its main file', async () => {
     const { ports, asset } = await workspaceWhereOnlyTheDeletedProjectUsesAnAsset()
     await storeTwoFilesUsing(ports, { inMain: [], inSecond: [asset] })
-    const handle = await openOrThrow(ports, workspaceRequest(TWO_FILES_ID))
+    const handle = await openOrThrow(ports, {
+      ...workspaceRequest(TWO_FILES_ID),
+      keepBothFiles: true,
+    })
 
     await expectAssetStays(ports, asset, handle)
     await handle.close()
@@ -181,7 +187,11 @@ describe('a delete when no project of the workspace has a second document file a
     const { ports, asset } = await workspaceWhereOnlyTheDeletedProjectUsesAnAsset()
     const folder = await storeFolderProject(ports)
     await folder.writeFile(SECOND_FILE_NAME, documentNamed('A second file in the folder'))
-    const handle = await openOrThrow(ports, { id: FOLDER_ID, location: IN_FOLDER })
+    const handle = await openOrThrow(ports, {
+      id: FOLDER_ID,
+      location: IN_FOLDER,
+      keepBothFiles: true,
+    })
     expect((await recordOf(ports, FOLDER_ID))?.secondFile).toEqual({
       name: SECOND_FILE_NAME,
       read: 'main',

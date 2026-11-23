@@ -12,13 +12,20 @@ import {
   failSaves,
   handleOf,
   recordingPorts,
+  rename,
   storedName,
 } from '../handle/handle-test-kit'
 import { SECOND_FILE_NAME, documentReferring } from '../handle/second-file-test-kit'
-import { openSecondFileAsNew, readTwoFiles } from './choose-kept-file'
+import {
+  openKeepingBothFiles,
+  openSecondFileAsNew,
+  readTwoFiles,
+  removeSecondFile,
+} from './choose-kept-file'
 import { IMAGE } from './import-file-test-kit'
 import {
   COPY_NAME,
+  MAIN_NAME,
   SECOND_PATH,
   SET_ASIDE_PREFIX,
   bytesOfCopies,
@@ -207,5 +214,36 @@ describe('opening the second file as a new project', () => {
       handle: undefined,
     })
     expect(await treeOf(ports.root)).toEqual(before)
+  })
+})
+
+describe('opening the main file of a project with two readable files', () => {
+  it('opens the main file and leaves both files where they are', async () => {
+    const ports = createTestPorts()
+    await storeProject(ports, 'both-readable')
+
+    const result = await openKeepingBothFiles(ports, undefined, PROJECT_ID)
+
+    const handle = handleOf(result)
+    expect(handle.id).toBe(PROJECT_ID)
+    expect(handle.session.getProject().meta.name).toBe(MAIN_NAME)
+    expect(await storedBytes(ports)).toEqual(mainBytesOf('both-readable'))
+    expect(await ports.root.readFile(SECOND_PATH)).toEqual(secondBytes())
+  })
+
+  it('opens the project again without asking after a refusal, in the tab that held it', async () => {
+    const ports = createTestPorts()
+    await storeProject(ports, 'both-readable')
+    const current = handleOf(await openKeepingBothFiles(ports, undefined, PROJECT_ID))
+    rename(current, 'Edited, not yet stored')
+    const choice = await choiceOf(ports)
+
+    const result = await removeSecondFile(ports, current, choice)
+
+    expect(result).toMatchObject({ ok: false, failure: { kind: 'files-changed' } })
+    expect(result.handle).toBeDefined()
+    expect(result.handle).not.toBe(current)
+    expect(result.handle?.session.getProject().meta.name).toBe('Edited, not yet stored')
+    expect(await ports.locks.heldIds()).toEqual(new Set([PROJECT_ID]))
   })
 })

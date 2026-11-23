@@ -61,7 +61,10 @@ describe('a choice whose record write fails after the files were changed', () =>
   it('still opens the project again when removing the second file of a project that this tab holds', async () => {
     const ports = createTestPorts()
     await storeProject(ports, 'both-readable')
-    const current = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+    const current = await openOrThrow(ports, {
+      ...workspaceRequest(PROJECT_ID),
+      keepBothFiles: true,
+    })
     const choice = await choiceOf(ports)
     failRecordWriteWithoutSecondFile(ports)
 

@@ -53,7 +53,10 @@ describe('the files that opening and saving a project remove', () => {
       await store(ports)
       const removals = vi.spyOn(ports.root, 'removeFile')
 
-      const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+      const handle = await openOrThrow(ports, {
+        ...workspaceRequest(PROJECT_ID),
+        keepBothFiles: true,
+      })
       rename(handle, EDITED_NAME)
       await handle.save()
       await handle.close()

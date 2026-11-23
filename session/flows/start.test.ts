@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { isValidProjectId } from '../../storage'
 import { soundProject } from '../../tests/storage/conformance/conformance-documents'
-import { IN_FOLDER, IN_WORKSPACE } from '../handle/handle-test-kit'
+import { IN_FOLDER, IN_WORKSPACE, failureOf } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
+import { storeTwoReadableFiles } from '../handle/second-file-test-kit'
 import {
   NEW_PROJECT_ID_PATTERN,
   folderRecord,
@@ -51,6 +52,21 @@ describe('the request that the bare address opens', () => {
     const request = await startProject(ports, create)
 
     expect(request).toEqual({ id: 'newer', location: IN_WORKSPACE, create })
+  })
+
+  it('gives a project with two readable plan files, which does not open until the user chooses', async () => {
+    const ports = rebuildPorts()
+    await storeTwoReadableFiles(ports, 'both', { main: 'Main file', second: 'Second file' })
+    await ports.index.put(soundRecordOf('both', { lastUsedAt: LATEST_USE }))
+
+    const request = await startProject(ports, create)
+
+    expect(request).toEqual({ id: 'both', location: IN_WORKSPACE, create })
+    expect(await failureOf(ports, request)).toMatchObject({
+      kind: 'two-files',
+      files: { state: 'both-readable' },
+    })
+    expect(await ports.locks.heldIds()).toEqual(new Set())
   })
 
   it('gives a new project under a new id when the index holds no record', async () => {

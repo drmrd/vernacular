@@ -21,7 +21,7 @@ import {
   InMemoryProjectLockPort,
   InMemoryProjectStore,
 } from '../storage'
-import type { ArchiveLimitName } from '../storage'
+import type { ArchiveLimitName, TwoDocumentFiles } from '../storage'
 import { createInitialProject } from './create-initial-project'
 import { useSwitchNotices } from './use-switch-notices'
 import type { FlowNoticeOptions } from './use-switch-notices'
@@ -32,6 +32,13 @@ const NOT_STORED_SENTENCE = 'This project is not stored in this browser.'
 const FOLDER_EMPTY_SENTENCE = 'This folder holds no Vernacular project.'
 const FOLDER_PERMISSION_SENTENCE = 'Vernacular has no permission to use this folder.'
 const FOLDER_UNAVAILABLE_SENTENCE = 'The folder of this project cannot be reached.'
+const TWO_FILES_SENTENCE =
+  'This project has two plan files. Open it from the Projects page to choose one.'
+const TWO_FILES: TwoDocumentFiles = {
+  state: 'both-readable',
+  main: { name: 'vernacular.json', changedAt: undefined, digest: 'abc' },
+  second: { name: 'vernacular.format-1.json', changedAt: undefined, digest: 'def' },
+}
 const RECOVERY_COPY_UNREADABLE_SENTENCE =
   "A recovery copy could not be read. It is kept with the project's backups."
 const STORAGE_MESSAGE = 'The storage of this browser is full.'
@@ -147,6 +154,12 @@ describe('useSwitchNotices for a project that cannot be reached', () => {
     await showResult(failed({ kind: 'not-found' }))
 
     expectOneError(NOT_STORED_SENTENCE)
+  })
+
+  it('two-files shows that the project has two plan files and where to choose one', async () => {
+    await showResult(failed({ kind: 'two-files', files: TWO_FILES }))
+
+    expectOneError(TWO_FILES_SENTENCE)
   })
 
   it('folder-empty shows "This folder holds no Vernacular project."', async () => {

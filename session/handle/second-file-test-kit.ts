@@ -59,9 +59,9 @@ export async function storeTwoReadableFiles(
   await placeSecondFile(ports, id, documentNamed(names.second))
 }
 
-/** Opens a project whose main file this build reads, beside a second document file. */
+/** Opens, keeping both files, a project whose main file this build reads, beside a second document file. */
 export async function openBesideSecondFile(ports: TestPorts): Promise<DocumentHandle> {
   const id = 'beside-a-second-file'
   await storeTwoReadableFiles(ports, id, { main: 'Main file', second: 'Second file' })
-  return openOrThrow(ports, workspaceRequest(id))
+  return openOrThrow(ports, { ...workspaceRequest(id), keepBothFiles: true })
 }
