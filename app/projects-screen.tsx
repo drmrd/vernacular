@@ -187,7 +187,7 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
   const { onTryStart, runActionFlow, onOpen, onTryFailed } = tries
   const dialogNotice = tries.notice?.id === UNDER_NO_CARD ? undefined : tries.notice
   const twoFiles = useTwoFilesDialog({
-    ...{ ports, navigation, onActionEnd },
+    ...{ ports, navigation, onActionEnd, onTryFailed },
     onActionStart: onTryStart,
     notice: dialogNotice,
   })

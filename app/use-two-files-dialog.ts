@@ -11,6 +11,7 @@ import {
 import type { TwoDocumentFiles } from '../storage'
 import { openFailureReason } from './open-failure-text'
 import type { PageNotice } from './resolve-place'
+import { isSwitchFailure } from './use-open-project'
 import { choicesOn, type ChoiceRun, type PageRunners } from './two-files-dialog-choices'
 
 /** What the dialog of the two plan files runs on. */
@@ -21,6 +22,8 @@ export interface TwoFilesDialogParts {
   readonly onActionStart: () => void
   /** The end of a choice: the sentence to show, or null. The page reads the cards again. */
   readonly onActionEnd: (notice: string | null) => void
+  /** Shows a failure of an open that keeps both files as the failure of a try of the card. */
+  readonly onTryFailed: (id: string, failure: SwitchFailure) => void
   /** The notice of a card, the start, or an address. A failure of two plan files shows the dialog. */
   readonly notice: PageNotice | undefined
 }
@@ -70,12 +73,12 @@ function readFacts(ports: SessionPorts | null, id: string): Promise<TwoFilesRead
 
 /** The state of a running choice, and the run of a choice with the page around it. */
 function useChoose(
-  { ports, navigation, onActionStart, onActionEnd }: TwoFilesDialogParts,
+  { ports, navigation, onActionStart, onActionEnd, onTryFailed }: TwoFilesDialogParts,
   { hold, show, close }: Pick<ShownFiles, 'hold' | 'show' | 'close'>,
 ) {
   const notifications = useNotifications()
   const [busy, setBusy] = useState(false)
-  const choose = async (shown: Shown, run: ChoiceRun) => {
+  const choose = async (shown: Shown, run: ChoiceRun, failsAsOpen = false) => {
     const { id, files, open } = shown
     hold(shown)
     onActionStart()
@@ -86,6 +89,10 @@ function useChoose(
       return
     }
     close()
+    if (!answer.ok && failsAsOpen && isSwitchFailure(answer.failure)) {
+      onTryFailed(id, answer.failure)
+      return
+    }
     onActionEnd(answer.ok ? null : failureSentence(answer.failure))
   }
   return { busy, choose, choices: choicesOn(navigation, notifications) }
@@ -187,7 +194,7 @@ export function useTwoFilesDialog(parts: TwoFilesDialogParts): TwoFilesDialogSta
     dialogPropsOf(
       shown,
       {
-        onKeepBoth: shown.open ? () => void choose(shown, choices.openKeepingBoth) : close,
+        onKeepBoth: shown.open ? () => void choose(shown, choices.openKeepingBoth, true) : close,
         onOpenAsNew: () => void choose(shown, choices.openAsNew),
         onReplace: () => void choose(shown, choices.replace),
         onRemove: () => void choose(shown, choices.remove),
