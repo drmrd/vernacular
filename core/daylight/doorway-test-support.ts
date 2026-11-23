@@ -14,6 +14,7 @@ const WINDOW_START = 1000
 const WINDOW_END = 2000
 const DOORWAY_START = 1000
 const DOORWAY_END = 2000
+const FAR_HALL_OUTER_X = 4000
 const SOURCE_HALL_WIDTH = 3000
 const EXTREME_WIDTH = 100
 const EXTREME_DEPTH = 40000
@@ -70,6 +71,69 @@ export const hall: DaylightRoom = {
     },
   ],
 }
+
+/** The test room with its one window on the north wall (y = 3000) from x 1000 to 2000 instead. */
+export const northWindowRoom: DaylightRoom = {
+  ...testRoom,
+  apertures: [
+    {
+      span: [
+        { x: WINDOW_START, y: TEST_ROOM_DEPTH },
+        { x: WINDOW_END, y: TEST_ROOM_DEPTH },
+      ],
+      sill: WINDOW_SILL,
+      head: WINDOW_HEAD,
+      revealDepth: 0,
+      opensTo: 'sky',
+    },
+  ],
+}
+
+/** A hall west of `hall`, 2000 mm wide, joined by a doorway on x = -2000 that opens to room 1. */
+export const farHall: DaylightRoom = {
+  outline: rectangleOutline(-FAR_HALL_OUTER_X, -TEST_HALL_WIDTH, TEST_ROOM_DEPTH),
+  ceilingHeight: TEST_CEILING_HEIGHT,
+  floorColor: GRAY,
+  apertures: [
+    {
+      span: verticalSpan(-TEST_HALL_WIDTH, DOORWAY_START, DOORWAY_END),
+      sill: 0,
+      head: DOORWAY_HEAD,
+      revealDepth: 0,
+      opensTo: { room: 1 },
+    },
+  ],
+}
+
+/** The net transmittance of the test windows (plain glazing under the uniform sky). */
+export const WINDOW_TRANSMITTANCE = 0.8
+
+/** The flux of the one window of either source room: 0.5 * 0.8 * 1000 * 1200 mm squared. */
+export const WINDOW_FLUX = 480000
+
+/** The area of the doorway of `hall`: 1000 mm wide, 2100 mm high. */
+export const DOORWAY_AREA = (DOORWAY_END - DOORWAY_START) * DOORWAY_HEAD
+
+/** S' (1 - rho') of a source room that the doorway of `hall` opens into: 24556000 mm squared. */
+export const SOURCE_BALANCE_AREA = 24556000
+
+/**
+ * The exchange area, in square millimetres, from the doorway of `hall` (x = 0, y 1000 to 2000,
+ * heights 0 to 2100) to the window of `testRoom` that faces it straight on (x = 4000).
+ */
+export const STRAIGHT_ON_EXCHANGE_AREA = 31845.5905621
+
+/**
+ * The exchange area from the second doorway of a hall (x = 0, y 2200 to 2800, heights 0 to 2100)
+ * to the window of `testRoom` (x = 4000, y 1000 to 2000).
+ */
+export const SECOND_DOORWAY_EXCHANGE_AREA = 17202.3333205
+
+/**
+ * The exchange area from the doorway of `hall` (x = 0, y 1000 to 2000) to the window of
+ * `northWindowRoom` (y = 3000, x 1000 to 2000), which stands on the adjoining wall.
+ */
+export const ADJOINING_WALL_EXCHANGE_AREA = 47111.2799778
 
 export interface SourceAndHallsOptions {
   width: number
