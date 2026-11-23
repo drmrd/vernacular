@@ -197,6 +197,42 @@ describe('PackSource reading an asset from the file of its media type', () => {
   })
 })
 
+describe('PackSource describing an asset', () => {
+  it('describes a texture asset with its image, tile size, and color space', async () => {
+    const source = new PackSource(fakeReader([FORMAT_2_MANIFEST]))
+    expect(await source.describe(TEXTURE_HASH)).toEqual({
+      kind: 'texture',
+      mediaType: 'image/png',
+      image: { width: 256, height: 256 },
+      tileSize: { width: 1000, height: 1000 },
+      colorSpace: 'srgb',
+    })
+  })
+
+  it('describes a model asset with its dimensions', async () => {
+    const source = new PackSource(fakeReader([FORMAT_2_MANIFEST]))
+    expect(await source.describe(MODEL_HASH)).toEqual({
+      kind: 'model',
+      mediaType: 'model/gltf-binary',
+      dimensions: { width: 500, depth: 520, height: 800 },
+    })
+  })
+
+  it('describes a format 1 asset as a model', async () => {
+    const source = new PackSource(fakeReader([VALID_MANIFEST]))
+    expect(await source.describe(MODEL_HASH)).toEqual({
+      kind: 'model',
+      mediaType: 'model/gltf-binary',
+      dimensions: { width: 500, depth: 520, height: 800 },
+    })
+  })
+
+  it('describes an unknown hash as undefined', async () => {
+    const source = new PackSource(fakeReader([FORMAT_2_MANIFEST]))
+    expect(await source.describe('nope')).toBeUndefined()
+  })
+})
+
 describe('PackSource loading its manifest', () => {
   it('loads the manifest once for reads made before the first list', async () => {
     const reader = fakeReader([VALID_MANIFEST], { asset: ASSET_BYTES })
