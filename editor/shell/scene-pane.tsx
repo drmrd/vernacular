@@ -14,7 +14,9 @@ import {
   SCENE_READY_ATTRIBUTE,
   SCENE_RENDERER_FAILED_ATTRIBUTE,
 } from '../../bridge/react/scene-readiness'
+import { SceneFailureViewContext } from '../../bridge/react/scene-failure-view-context'
 import { Banner, EmptyState, LoadingState, type Notification } from '../design-system'
+import { ScenePaneFailureView } from './scene-pane-failure-view'
 import './scene-pane.css'
 
 const LIVE_SCENE_CANVAS_SELECTOR = `[data-testid="${LIVE_SCENE_CANVAS_TEST_ID}"]`
@@ -93,6 +95,14 @@ function BackendNotice(): ReactElement | null {
   )
 }
 
+function StyledSceneCanvas(): ReactElement {
+  return (
+    <SceneFailureViewContext.Provider value={ScenePaneFailureView}>
+      <SceneCanvas />
+    </SceneFailureViewContext.Provider>
+  )
+}
+
 // The pane lives in the editor layer so the styled fallback can use the design
 // system, which the bridge layer cannot import.
 export function ScenePane(): ReactElement {
@@ -115,7 +125,7 @@ export function ScenePane(): ReactElement {
   return (
     <div className="scene-pane" ref={paneRef}>
       <Suspense fallback={<LoadingState message="Preparing 3D view..." />}>
-        <SceneCanvas />
+        <StyledSceneCanvas />
       </Suspense>
       {backend === 'webgl2' ? <BackendNotice /> : null}
       {sceneState === 'building' ? (
