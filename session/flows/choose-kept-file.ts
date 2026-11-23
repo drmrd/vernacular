@@ -40,6 +40,8 @@ export type KeptFileResult =
       readonly ok: false
       readonly failure: SwitchFailure | KeptFileRefusal
       readonly handle: DocumentHandle | undefined
+      /** True when the stored files were changed and only the open after the change failed. */
+      readonly done?: true
     }
 
 export type SecondFileAsNewResult =
@@ -179,7 +181,9 @@ async function finish(ports: SessionPorts, held: Held, outcome: Outcome): Promis
     return { ok: true, handle: held.other }
   }
   const opened = await switchProject(ports, held.other, held.request)
-  return opened.ok ? { ok: true, handle: opened.handle } : { ...opened, handle: held.other }
+  return opened.ok
+    ? { ok: true, handle: opened.handle }
+    : { ...opened, handle: held.other, done: true }
 }
 
 function sameFile(left: DocumentFileFacts, right: DocumentFileFacts): boolean {

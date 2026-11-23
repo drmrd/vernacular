@@ -18,7 +18,12 @@ import type { FlowOutcome } from './use-open-project'
 /** What a choice gave: it went through, or why the stored files stay as they are. */
 export type Answer =
   | { readonly ok: true }
-  | { readonly ok: false; readonly failure: SwitchFailure | KeptFileRefusal }
+  | {
+      readonly ok: false
+      readonly failure: SwitchFailure | KeptFileRefusal
+      /** True when the stored files were changed and only the open after the change failed. */
+      readonly done?: true
+    }
 
 /** One choice of the dialog, run on the files as the dialog showed them. */
 export type ChoiceRun = (choice: KeptFileChoice) => Promise<Answer>

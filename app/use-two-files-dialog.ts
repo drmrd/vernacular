@@ -102,7 +102,8 @@ function useChoose(
     if (answer.ok) {
       onActionEnd(null)
     } else {
-      endFailure(id, answer.failure)
+      const end = answer.done === true ? endAsOpen : endFailure
+      end(id, answer.failure)
     }
   }
   return { busy, choose, endAsOpen, choices: choicesOn(navigation, notifications) }
