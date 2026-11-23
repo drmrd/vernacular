@@ -247,7 +247,9 @@ describe('walk interaction on a hung window with a sash already open', () => {
     expect(openness.get(node.id)).toEqual({ lower: 0.5, upper: 0.5 })
     expectSashShifts(root, node, { lower: HALF_RISE, upper: -HALF_RISE })
   })
+})
 
+describe('walk interaction on an opening with an open part its type lacks', () => {
   it('raises the lower sash of a single-hung window the full rise when its open set also holds a stale upper part', () => {
     const node = hungWindowNode('single-hung-window')
     const root = sceneWithOpening(node)
