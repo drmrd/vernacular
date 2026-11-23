@@ -31,6 +31,10 @@ interface TypedManifest {
   assets: PackAssetShape[]
 }
 
+function packScopeOf(manifest: TypedManifest): AssetReference['scope'] {
+  return `pack:${manifest.packId}@${manifest.version}`
+}
+
 export class PackSource implements AssetSource {
   private scope: AssetReference['scope'] = UNKNOWN_PACK_SCOPE
 
@@ -69,7 +73,7 @@ export class PackSource implements AssetSource {
 
   private loadManifest(): Promise<TypedManifest | undefined> {
     if (this.loadedManifest === undefined) {
-      const attempt = this.fetchValidManifest()
+      const attempt = this.adoptValidManifest()
       this.loadedManifest = attempt
       // Registered before any caller awaits, so a failed caller that retries already finds
       // the memo cleared; the rejection handler also keeps `attempt` from going unhandled.
@@ -89,14 +93,15 @@ export class PackSource implements AssetSource {
     }
   }
 
+  private async adoptValidManifest(): Promise<TypedManifest | undefined> {
+    const manifest = await this.fetchValidManifest()
+    if (manifest !== undefined) this.scope = packScopeOf(manifest)
+    return manifest
+  }
+
   private async fetchValidManifest(): Promise<TypedManifest | undefined> {
     const manifest = await this.reader.manifest()
-    if (!validatePackManifest(manifest).valid) {
-      return undefined
-    }
-    const typed = manifest as TypedManifest
-    this.scope = `pack:${typed.packId}@${typed.version}`
-    return typed
+    return validatePackManifest(manifest).valid ? (manifest as TypedManifest) : undefined
   }
 
   private toLibraryItem(asset: PackModelShape): LibraryItem {
