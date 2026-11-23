@@ -327,14 +327,18 @@ textures in a cache that outlives every scene rebuild and survives StrictMode.
   `engine/loaders/image-texture-loader.browser.test.ts` (new).
 - `engine/scene/furniture-model.ts`, `engine/scene/furniture-model.test.ts`.
 - `engine/index.ts` (exports only).
-- `engine/testing/index.ts` (test support: one re-export, `Texture` from `three`, for the bridge
-  tests).
+- `engine/testing/index.ts` (test support: two re-exports for the bridge tests, `Texture` from
+  `three` and `isCacheHeld` from `engine/scene/dispose-object.ts`).
+- `core/assets/asset-description.ts` (the description types and `TextureMediaType`),
+  `core/assets/texture-asset-rules.ts` (the `ColorSpaceName` guard), `core/index.ts` (type exports
+  only).
 - `storage/assets/asset-source.ts`, `storage/assets/pack-source.ts`,
   `storage/assets/pack-source.test.ts`, `storage/assets/asset-registry.ts`,
-  `storage/assets/asset-registry.test.ts`.
+  `storage/assets/asset-registry.test.ts`, `storage/assets/texture-pack-test-support.ts` (new).
 - `bridge/react/texture-cache.ts`, `bridge/react/texture-cache.test.ts`,
-  `bridge/react/use-ground-texture.ts`, `bridge/react/use-ground-texture.test.tsx` (new). These
-  import `core` and `engine` only.
+  `bridge/react/use-ground-texture.ts`, `bridge/react/use-ground-texture.test.tsx`,
+  `bridge/react/use-ground-texture-activity.test.tsx`,
+  `bridge/react/use-ground-texture-test-support.ts` (new). These import `core` and `engine` only.
 
 **Public names.** `decodeImageTexture(bytes, { mediaType, colorSpace }, decode?)` and
 `ImageTextureDecodeError` (`engine/loaders/image-texture-loader.ts`); `markCacheHeld(texture)`
@@ -931,8 +935,9 @@ catalog read that includes textures, for the check of missing assets on import.
 ## Order and parallel work
 
 1. Pull request 1. The record, the specification change, and this plan are on `main` before it.
-2. Pull requests 2 and 3, side by side. Both need only pull request 1, and their fences do not
-   meet. Only pull request 3 changes `core/index.ts`.
+2. Pull requests 2 and 3, side by side. Both need only pull request 1. Their fences meet only in
+   `core/index.ts`: pull request 2 adds the asset description type exports and pull request 3 the
+   `GROUND_GRASS_REFERENCE` export. The second to land rebases onto the first.
 3. Pull request 4, after both.
 
 ## Files shared with other efforts
@@ -948,10 +953,10 @@ catalog read that includes textures, for the check of missing assets on import.
   `storage/`, so it adds nothing for #717 to move.
 - The plan for the geometric kernel and the first arc wall
   (`docs/plans/2026-11-19-geometric-kernel-and-first-arc-wall.md`) changes `core/topology` and
-  `core/index.ts` in most of its pull requests. This plan adds three exports to `core/index.ts`.
-  The kernel plan names `engine/scene/build-scene.ts` as a consumer of derived geometry; this plan
-  changes only its ground call. The kernel plan refreshes every scene baseline in two of its pull
-  requests. Whichever of the two efforts lands second rebases onto the other's baselines.
+  `core/index.ts` in most of its pull requests. This plan adds exports to `core/index.ts` in pull
+  requests 1, 2, and 3. The kernel plan names `engine/scene/build-scene.ts` as a consumer of
+  derived geometry; this plan changes only its ground call. The kernel plan refreshes every scene
+  baseline in two of its pull requests. Whichever of the two efforts lands second rebases onto the other's baselines.
 - The specification of the first view of a project
   (`docs/specs/2026-11-19-first-view-of-a-project.md`) adds a live-view baseline from the front,
   which shows the lawn. If it lands after pull request 4, it is captured with the grass. If
@@ -965,10 +970,10 @@ catalog read that includes textures, for the check of missing assets on import.
 | Pull request                | Cycles                                                                                                                                                    |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1, the format               | 18                                                                                                                                                        |
-| 2, the loader and the cache | 12                                                                                                                                                        |
+| 2, the loader and the cache | 18                                                                                                                                                        |
 | 3, starter pack 1.1.0       | 7                                                                                                                                                         |
 | 4, the ground               | 9, after one `test(e2e)` commit (the capture wait) and before the scene work (the grass spec, the gate readings, the live spec limits, and the baselines) |
-| Total                       | 46                                                                                                                                                        |
+| Total                       | 52                                                                                                                                                        |
 
 ## Risks
 

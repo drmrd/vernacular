@@ -12,6 +12,7 @@ related:
     decisions/ADR-0132-surface-edge-overlay-opt-in-view-toggle,
     decisions/ADR-0170-scene-session-state-in-a-bridge-provider,
     decisions/ADR-0197-scene-renderer-lifecycle,
+    decisions/ADR-0238-a-texture-cache-lives-for-one-effect-run-of-one-view,
   ]
 sourceFiles:
   [
@@ -21,6 +22,9 @@ sourceFiles:
     engine/materials/neutral-material-provider.ts,
     engine/scene/furniture-model.ts,
     bridge/react/use-furniture-model-cache.ts,
+    bridge/react/texture-cache.ts,
+    bridge/react/use-ground-texture.ts,
+    engine/loaders/image-texture-loader.ts,
     bridge/react/floor-build.ts,
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/use-framed-scene.ts,
@@ -33,7 +37,7 @@ sourceFiles:
     e2e/tests/live-webgpu.ts,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-23
 ---
 
 # ADR-0226: A replaced scene build frees what it owns once it is no longer drawn
@@ -86,7 +90,7 @@ Two functions walk a tree. `disposeObject` frees each geometry, material, and ma
 the tree once per call, however many objects share it, and skips held ones. `releaseCachedObject`
 frees all of them, held ones included. Only the owner of the held resources calls it.
 
-There are two owners today:
+There are three owners today:
 
 - The material providers. `SurfaceMaterialProvider` and `NeutralMaterialProvider` keep their
   materials in a `HeldMaterialCache`, which marks each material held when it is created. Their
@@ -94,6 +98,10 @@ There are two owners today:
   nothing. `dispose()` is on the concrete classes, not on the `MaterialProvider` interface.
 - The furniture model cache. `parseFurnitureModel` marks every resource of a parsed template held
   (`markObjectHeld`). The cache frees a template with `releaseCachedObject`.
+- The texture cache (`bridge/react/texture-cache.ts`). It marks each texture it decodes held and
+  frees each one once when it is disposed, with `disposeImageTexture`, which also closes the
+  bitmap. The ground texture hook builds one cache per effect run and disposes it in the effect's
+  cleanup, which is not the release point below. ADR-0238 gives the reasons and the limit.
 
 ### One provider per floor build lineage
 
