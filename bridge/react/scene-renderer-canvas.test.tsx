@@ -3,7 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import type { CanvasProps, GLProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { FailureProbe, PLAIN_CANNOT_RENDER } from './scene-failure-probe-test-support'
+import {
+  FailureProbe,
+  PLAIN_CANNOT_RENDER,
+  PLAIN_COULD_NOT_LOAD,
+} from './scene-failure-probe-test-support'
 import { SceneFailureViewContext, type SceneFailureView } from './scene-failure-view-context'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SCENE_RENDERER_FAILED_ATTRIBUTE } from './scene-readiness'
@@ -195,10 +199,6 @@ describe('SceneRendererCanvas', () => {
   })
 })
 
-// The wording and role that SceneCanvas already uses when the browser has no 3D backend at all.
-const COULD_NOT_LOAD_MESSAGE =
-  'Could not load the 3D view. Check your network connection, then reload the page.'
-
 describe('SceneRendererCanvas when the renderer cannot start', () => {
   let start: Harness
   let rejections: ReturnType<typeof recordUnhandledRejections>
@@ -230,10 +230,8 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     await settle(() => start.loaded.resolve(start.factory))
     await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
 
-    expect(screen.getByRole('button', { name: 'filled view' })).toHaveAttribute(
-      'data-kind',
-      'start',
-    )
+    const filled = screen.getByRole('button', { name: 'filled view' })
+    expect(filled).toHaveAttribute('data-kind', 'start')
     expect(screen.queryByRole('status')).toBeNull()
     expect(failureKindIn(container)).toBe('start')
   })
@@ -304,7 +302,7 @@ describe('SceneRendererCanvas when the renderer module does not load', () => {
     const { container } = renderWrapper()
     await settle(() => start.loaded.reject(LOAD_FAILURE))
 
-    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(screen.getByRole('alert')).toHaveTextContent(PLAIN_COULD_NOT_LOAD)
     expect(failureKindIn(container)).toBe('load')
     expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
     expect(screen.queryByRole('status')).toBeNull()
@@ -372,7 +370,7 @@ describe('SceneRendererCanvas when the renderer module does not load', () => {
     await settle(() => {})
 
     expect(loadFactory).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(screen.getByRole('alert')).toHaveTextContent(PLAIN_COULD_NOT_LOAD)
     expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
     expect(screen.queryByTestId('canvas')).toBeNull()
     expect(await rejections.read()).toEqual([])

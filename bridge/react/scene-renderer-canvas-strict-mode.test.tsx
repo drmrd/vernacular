@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import type { CanvasProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PLAIN_CANNOT_RENDER } from './scene-failure-probe-test-support'
+import { PLAIN_CANNOT_RENDER, PLAIN_COULD_NOT_LOAD } from './scene-failure-probe-test-support'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import {
   buildFakeRenderer,
@@ -46,8 +46,6 @@ vi.mock('@react-three/fiber', () => ({
   },
 }))
 
-const COULD_NOT_LOAD_MESSAGE =
-  'Could not load the 3D view. Check your network connection, then reload the page.'
 const CHILD = <div data-testid="child" />
 
 interface Session {
@@ -183,7 +181,7 @@ describe('SceneRendererCanvas under StrictMode with the other outcomes', () => {
 
     await settle(() => session.loaded.reject(new Error('the renderer chunk failed to load')))
 
-    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(screen.getByRole('alert')).toHaveTextContent(PLAIN_COULD_NOT_LOAD)
     expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
   })
 

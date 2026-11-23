@@ -7,6 +7,12 @@ import { CAMERA_PANE_MIN_HEIGHT_SHARE, ScenePaneShell } from './scene-pane-shell
 
 afterEach(cleanup)
 
+function cameraPaneIn(container: HTMLElement): HTMLElement {
+  const pane = container.querySelector<HTMLElement>('.scene-camera-pane')
+  if (pane === null) throw new Error('the camera pane is not rendered')
+  return pane
+}
+
 describe('ScenePaneShell', () => {
   it('reserves the camera pane min-height share so the toolbar above it scrolls instead of collapsing the canvas', () => {
     const { container } = render(
@@ -15,10 +21,9 @@ describe('ScenePaneShell', () => {
       </ScenePaneShell>,
     )
 
-    const pane = container.querySelector('.scene-camera-pane')
-    expect(pane).not.toBeNull()
-    expect((pane as HTMLElement).style.minHeight).toBe(CAMERA_PANE_MIN_HEIGHT_SHARE)
-    expect((pane as HTMLElement).style.flexGrow).toBe('1')
+    const pane = cameraPaneIn(container)
+    expect(pane.style.minHeight).toBe(CAMERA_PANE_MIN_HEIGHT_SHARE)
+    expect(pane.style.flexGrow).toBe('1')
   })
 
   it('shows the camera controls hint and the grab cursor over a working renderer', () => {
@@ -29,7 +34,7 @@ describe('ScenePaneShell', () => {
     )
 
     expect(screen.getByRole('group', { name: 'Camera controls' })).toBeInTheDocument()
-    expect((container.querySelector('.scene-camera-pane') as HTMLElement).style.cursor).toBe('grab')
+    expect(cameraPaneIn(container).style.cursor).toBe('grab')
   })
 
   it('removes the camera controls hint and the grab cursor while a failure view is mounted in it', () => {
@@ -41,7 +46,7 @@ describe('ScenePaneShell', () => {
       </SceneChromeProvider>,
     )
 
-    const pane = container.querySelector('.scene-camera-pane') as HTMLElement
+    const pane = cameraPaneIn(container)
     expect(screen.queryByRole('group', { name: 'Camera controls' })).toBeNull()
     expect(pane.style.cursor).toBe('')
     expect(pane.style.minHeight).toBe(CAMERA_PANE_MIN_HEIGHT_SHARE)

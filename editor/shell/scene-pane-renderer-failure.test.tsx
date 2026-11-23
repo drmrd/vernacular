@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import type { SceneGraph } from '../../core'
-import { SCENE_RENDERER_FAILED_ATTRIBUTE } from '../../bridge/react/scene-readiness'
+import { SceneFailureHost } from '../../bridge/react/scene-failure-host'
 import { ScenePane } from './scene-pane'
 
 const emptyGraph: SceneGraph = {
@@ -34,17 +34,15 @@ let mockSceneGraph: SceneGraph = graphWithGeometry
 let mockFailureKind: 'load' | 'start' | null = null
 
 // The stand-in canvas never reports a first frame (data-harness-ready stays "false"), as a
-// canvas whose renderer failed never does. When a failure kind is set, it holds the marked
-// element that the real wrapper renders in place of the 3D view, with its own visible text.
+// canvas whose renderer failed never does. When a failure kind is set, it renders the real
+// failure host, as the real wrapper does in place of the 3D view.
 vi.mock('../../bridge', () => ({
   // A component export legitimately keeps its PascalCase name in the mock.
   // eslint-disable-next-line @typescript-eslint/naming-convention
   SceneCanvas: () => (
     <div data-testid="live-scene-canvas" data-harness-ready="false">
       {mockFailureKind === null ? null : (
-        <p {...{ [SCENE_RENDERER_FAILED_ATTRIBUTE]: mockFailureKind }}>
-          The 3D view could not start.
-        </p>
+        <SceneFailureHost kind={mockFailureKind} onReload={vi.fn()} />
       )}
     </div>
   ),
@@ -57,6 +55,9 @@ afterEach(() => {
   mockSceneGraph = graphWithGeometry
   mockFailureKind = null
 })
+
+const LOAD_TITLE = 'Could not load the 3D view'
+const START_TITLE = 'This browser cannot render the 3D view'
 
 describe.each(['load', 'start'] as const)('ScenePane over a renderer that failed to %s', (kind) => {
   it('drops the loading overlay while the failure view is in the pane', async () => {
@@ -79,7 +80,22 @@ describe.each(['load', 'start'] as const)('ScenePane over a renderer that failed
       expect(screen.queryByText('Building the scene...')).toBeNull()
     })
     expect(screen.queryByText('Nothing to show in 3D yet')).toBeNull()
-    expect(screen.getByText('The 3D view could not start.')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: kind === 'load' ? LOAD_TITLE : START_TITLE }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the styled view in the slot, not the plain one', async () => {
+    mockFailureKind = kind
+
+    render(<ScenePane />)
+
+    expect(
+      await screen.findByRole('heading', { name: kind === 'load' ? LOAD_TITLE : START_TITLE }),
+    ).toBeInTheDocument()
+    if (kind === 'load') {
+      expect(screen.getByRole('button', { name: 'Reload page' })).toHaveClass('ds-button')
+    }
   })
 })
 
