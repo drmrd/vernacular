@@ -6,7 +6,7 @@ import type { OpeningAimOutline } from '../../core'
 export const AIM_OUTLINE_COLOR = 0xffcc66
 
 const AIM_OUTLINE_RENDER_ORDER = 2
-const POINT_COUNT = 5
+const CLOSED_PATH_POINT_COUNT = 5
 const COMPONENTS_PER_POINT = 3
 
 /** The group that holds the aim outline, added once to the persistent scene. */
@@ -16,8 +16,7 @@ export function createAimOutlineGroup(): THREE.Group {
   return group
 }
 
-/** Shows one closed line through the four corners, or nothing for `null`. The line is
- *  five points, not a line loop, because the WebGPU renderer need not close a loop. */
+/** Shows one closed line through the four corners, or nothing for `null`. */
 export function reconcileAimOutline(group: THREE.Group, outline: OpeningAimOutline | null): void {
   if (outline === null) {
     clearAimOutline(group)
@@ -25,7 +24,7 @@ export function reconcileAimOutline(group: THREE.Group, outline: OpeningAimOutli
   }
   const existing = group.children[0]
   if (existing instanceof THREE.Line) {
-    writePositions(existing.geometry, outline)
+    writePositions(existing.geometry.getAttribute('position') as THREE.BufferAttribute, outline)
     return
   }
   group.add(createAimLine(outline))
@@ -34,25 +33,33 @@ export function reconcileAimOutline(group: THREE.Group, outline: OpeningAimOutli
 function clearAimOutline(group: THREE.Group): void {
   for (const child of group.children) {
     if (child instanceof THREE.Line) {
+      const material = child.material as THREE.Material
       child.geometry.dispose()
-      ;(child.material as THREE.Material).dispose()
+      material.dispose()
     }
   }
   group.clear()
 }
 
-function writePositions(geometry: THREE.BufferGeometry, outline: OpeningAimOutline): void {
-  const positions = new Float32Array(POINT_COUNT * COMPONENTS_PER_POINT)
+function createPositions(outline: OpeningAimOutline): THREE.BufferAttribute {
+  const attribute = new THREE.BufferAttribute(
+    new Float32Array(CLOSED_PATH_POINT_COUNT * COMPONENTS_PER_POINT),
+    COMPONENTS_PER_POINT,
+  )
+  writePositions(attribute, outline)
+  return attribute
+}
+
+/** Five points, not a line loop, because the WebGPU renderer need not close a loop. */
+function writePositions(attribute: THREE.BufferAttribute, outline: OpeningAimOutline): void {
   const closedPath = [...outline, outline[0]]
-  closedPath.forEach((corner, index) => {
-    positions.set([corner.x, corner.y, corner.z], index * COMPONENTS_PER_POINT)
-  })
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, COMPONENTS_PER_POINT))
+  closedPath.forEach((corner, index) => attribute.setXYZ(index, corner.x, corner.y, corner.z))
+  attribute.needsUpdate = true
 }
 
 function createAimLine(outline: OpeningAimOutline): THREE.Line {
   const geometry = new THREE.BufferGeometry()
-  writePositions(geometry, outline)
+  geometry.setAttribute('position', createPositions(outline))
   const material = new THREE.LineBasicMaterial({ color: AIM_OUTLINE_COLOR, depthTest: false })
   const line = new THREE.Line(geometry, material)
   line.renderOrder = AIM_OUTLINE_RENDER_ORDER
