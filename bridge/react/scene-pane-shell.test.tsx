@@ -76,6 +76,19 @@ describe('ScenePaneShell', () => {
     expect(container.querySelector('.aim-reticle')).toBeNull()
   })
 
+  it('shows no aim dot while a failure view stands in for the scene', () => {
+    const { container } = render(
+      <SceneChromeProvider>
+        <ScenePaneShell mode="walk" aimGuide>
+          <SceneFailureHost kind="load" onReload={vi.fn()} />
+        </ScenePaneShell>
+      </SceneChromeProvider>,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(PLAIN_COULD_NOT_LOAD)
+    expect(container.querySelector('.aim-reticle')).toBeNull()
+  })
+
   it('shows no aim dot in orbit mode', () => {
     const { container } = render(
       <ScenePaneShell mode="orbit" aimGuide>
