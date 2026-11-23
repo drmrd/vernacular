@@ -9,12 +9,12 @@ import {
 
 import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
 import { SceneCanvas, detectRenderBackend, useActiveFloorId, useSceneGraph } from '../../bridge'
+import { SceneFailureViewContext } from '../../bridge/react/scene-failure-view-context'
 import {
   LIVE_SCENE_CANVAS_TEST_ID,
   SCENE_READY_ATTRIBUTE,
   SCENE_RENDERER_FAILED_ATTRIBUTE,
 } from '../../bridge/react/scene-readiness'
-import { SceneFailureViewContext } from '../../bridge/react/scene-failure-view-context'
 import { Banner, EmptyState, LoadingState, type Notification } from '../design-system'
 import { ScenePaneFailureView } from './scene-pane-failure-view'
 import './scene-pane.css'
@@ -95,7 +95,7 @@ function BackendNotice(): ReactElement | null {
   )
 }
 
-function StyledSceneCanvas(): ReactElement {
+function SceneCanvasWithPaneFailureView(): ReactElement {
   return (
     <SceneFailureViewContext.Provider value={ScenePaneFailureView}>
       <SceneCanvas />
@@ -125,7 +125,7 @@ export function ScenePane(): ReactElement {
   return (
     <div className="scene-pane" ref={paneRef}>
       <Suspense fallback={<LoadingState message="Preparing 3D view..." />}>
-        <StyledSceneCanvas />
+        <SceneCanvasWithPaneFailureView />
       </Suspense>
       {backend === 'webgl2' ? <BackendNotice /> : null}
       {sceneState === 'building' ? (
