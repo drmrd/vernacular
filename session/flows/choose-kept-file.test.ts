@@ -191,6 +191,7 @@ describe('opening the second file as a new project', () => {
     expect(await storedName(ports.workspace, handleOf(result).id)).toBe(COPY_NAME)
     expect(await ports.root.readFile(SECOND_PATH)).toEqual(secondBytes())
     expect(await recordedSecondFile(ports)).toBeDefined()
+    expect(vi.mocked(console.error)).toHaveBeenCalledOnce()
   })
 
   it('refuses a second file that does not decode, and makes no new project', async () => {

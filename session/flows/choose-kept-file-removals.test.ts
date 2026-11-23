@@ -15,8 +15,8 @@ import {
   storeNewerMainBesideSecondFile,
   storeTwoReadableFiles,
 } from '../handle/second-file-test-kit'
+import { PROJECT_ID } from './open-failed-test-kit'
 
-const PROJECT_ID = 'a'
 const EDITED_NAME = 'Edited before the save'
 
 beforeEach(() => {

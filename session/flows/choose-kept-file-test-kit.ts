@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import type { DirectoryPort, DocumentStore, ProjectRecord } from '../../storage'
 import { documentOfNewerVersion } from '../../tests/storage/conformance/conformance-documents'
 import { DOCUMENT_FILE, placeDocument, recordOf } from '../handle/handle-test-kit'
@@ -120,3 +121,19 @@ export const FLOWS = [
   readonly run: unknown
   readonly storeMethod: keyof DocumentStore
 }[]
+
+/**
+ * Makes the first record write of the project `a` that leaves out the second file fail, the write
+ * that a choice makes once the files are settled. Every other record write goes through.
+ */
+export function failRecordWriteWithoutSecondFile(ports: TestPorts): void {
+  const put = ports.index.put.bind(ports.index)
+  let failed = false
+  vi.spyOn(ports.index, 'put').mockImplementation(async (record) => {
+    if (!failed && record.id === PROJECT_ID && record.secondFile === undefined) {
+      failed = true
+      throw new Error('The index is gone')
+    }
+    await put(record)
+  })
+}
