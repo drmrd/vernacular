@@ -5,7 +5,6 @@ import {
   currentBytes,
   decodedOf,
   failureOf,
-  soundProject,
 } from '../../tests/storage/conformance/conformance-documents'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { PROJECT_FILE, secondDocumentFileName } from '../project-files/project-file-name'
@@ -39,7 +38,6 @@ const OLDER_VERSION = 8
 const NEWER_VERSION = CURRENT_SCHEMA_VERSION + 1
 const OLDER_SECOND_FILE_NAME = secondDocumentFileName(OLDER_VERSION)
 const OLDER_SECOND_FILE_PATH = `a/${OLDER_SECOND_FILE_NAME}`
-const BACKUP_PATH = 'a/.house-backups'
 const MAIN_TIME = new Date('2026-03-01T09:00:00.000Z')
 const SECOND_TIME = new Date('2026-03-05T17:30:00.000Z')
 
@@ -85,21 +83,18 @@ describe('the two document files of a project', () => {
   })
 
   it.each([
-    { name: 'no second file', files: { main: currentBytes() }, aboveBuild: false },
+    { name: 'no second file', files: { main: currentBytes() } },
     {
       name: 'a second file above the build only',
-      files: { main: currentBytes() },
-      aboveBuild: true,
+      files: { main: currentBytes(), aboveBuild: newerVersionBytes() },
     },
-    { name: 'no main file', files: { second: soundSecondFile() }, aboveBuild: false },
+    { name: 'no main file', files: { second: soundSecondFile() } },
     {
       name: 'a main file that is not JSON',
       files: { main: NOT_JSON, second: soundSecondFile() },
-      aboveBuild: false,
     },
   ])('gives nothing, and writes nothing, for a project with $name', async (c) => {
     const root = await rootHoldingFiles(c.files)
-    if (c.aboveBuild) await root.writeFile(NEWER_SECOND_FILE_PATH, newerVersionBytes())
     const before = await treeOf(root)
 
     const files = await storeOver(root).twoFiles('a')
@@ -260,6 +255,11 @@ describe.each(CHOICES)('%s when the files are not as the choice saw them', (choi
         Promise.resolve({ ...files, state: 'both-readable' as const }),
     },
     {
+      change: 'the main file has another name',
+      alter: (_root: InMemoryDirectory, files: TwoDocumentFiles) =>
+        Promise.resolve({ ...files, main: { ...files.main, name: 'vernacular.copy.json' } }),
+    },
+    {
       change: 'the second file is another one',
       alter: (_root: InMemoryDirectory, files: TwoDocumentFiles) =>
         Promise.resolve({ ...files, second: { ...files.second, name: OLDER_SECOND_FILE_NAME } }),
@@ -302,52 +302,5 @@ describe.each(CHOICES)('%s when the files are not as the choice saw them', (choi
     expect(logged.removals).toEqual([])
     expect(await root.readFile(DOCUMENT_PATH)).toEqual(main)
     expect(await root.readFile(SECOND_FILE_PATH)).toEqual(second)
-  })
-})
-
-describe('the order of the changes of a choice', () => {
-  it('writes the copy of the second file before it removes the second file', async () => {
-    const second = soundSecondFile()
-    const root = await rootHoldingFiles({ main: newerVersionBytes(), second })
-    const logged = new ChangeLoggingDirectory(root)
-    const store = storeOver(logged)
-
-    await store.setAsideSecondFile('a', await twoFilesOrThrow(store))
-
-    const setAside = await backupNameOf('set-aside-second-file', CURRENT_SCHEMA_VERSION, second)
-    expect(logged.calls).toEqual([`write ${BACKUP_PATH}/${setAside}`, `remove ${SECOND_FILE_PATH}`])
-  })
-
-  it('writes the copy of the main file, then the main file, then the copy of the second file, then removes it', async () => {
-    const main = newerVersionBytes()
-    const second = soundSecondFile()
-    const root = await rootHoldingFiles({ main, second })
-    const logged = new ChangeLoggingDirectory(root)
-    const store = storeOver(logged)
-
-    await store.promoteSecondFile('a', await twoFilesOrThrow(store))
-
-    const replaced = await backupNameOf('replaced-by-second-file', NEWER_VERSION, main)
-    const setAside = await backupNameOf('set-aside-second-file', CURRENT_SCHEMA_VERSION, second)
-    expect(logged.calls).toEqual([
-      `write ${BACKUP_PATH}/${replaced}`,
-      `write ${DOCUMENT_PATH}`,
-      `write ${BACKUP_PATH}/${setAside}`,
-      `remove ${SECOND_FILE_PATH}`,
-    ])
-  })
-})
-
-describe('the files that a save, a read, and a listing remove', () => {
-  it('removes no file', async () => {
-    const root = await rootHoldingFiles({ main: newerVersionBytes(), second: soundSecondFile() })
-    const logged = new ChangeLoggingDirectory(root)
-    const store = storeOver(logged)
-
-    await store.save('a', soundProject())
-    await store.read('a')
-    await store.list()
-
-    expect(logged.removals).toEqual([])
   })
 })

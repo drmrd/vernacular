@@ -7,8 +7,8 @@ import {
   setProjectStyle,
 } from '../../../core'
 import type { DecodedDocument, Project } from '../../../core'
-import type { SecondFileState } from '../../../storage'
-import type { StoreRead } from '../../../storage/documents/document-store'
+import type { SecondFileState, TwoDocumentFiles } from '../../../storage'
+import type { DocumentStore, StoreRead } from '../../../storage/documents/document-store'
 import { versionFixtureBytes } from '../../fixtures/projects/versions'
 import {
   atHigherRevision,
@@ -20,6 +20,7 @@ import {
   withUnknownWallField,
 } from '../../fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
+import { PROJECT_ID } from './conformance-run'
 
 /** The document of the current schema version, as the application writes it. */
 export function currentBytes(): Uint8Array {
@@ -107,4 +108,25 @@ export function secondFileOf(read: StoreRead): SecondFileState | undefined {
 export function failureOf(read: StoreRead): Exclude<StoreRead, { ok: true }>['failure'] {
   if (read.ok) throw new Error('Expected the read to fail')
   return read.failure
+}
+
+/** Bytes that are not JSON, so that no decode of them succeeds. */
+export const NOT_JSON = new TextEncoder().encode('{ not json')
+
+/** The name of the project in the document that `soundSecondFile` gives by default. */
+export const SECOND_FILE_PROJECT_NAME = 'Saved beside the newer file'
+
+/** A sound document of the current version that is told apart from the fixture by its name. */
+export function soundSecondFile(name = SECOND_FILE_PROJECT_NAME): Uint8Array {
+  return encodeDocument(renamed(soundProject(), name), undefined).bytes
+}
+
+/** The two document files of the project `id`; throws when it does not have two. */
+export async function twoFilesOrThrow(
+  store: DocumentStore,
+  id: string = PROJECT_ID,
+): Promise<TwoDocumentFiles> {
+  const files = await store.twoFiles(id)
+  if (files === undefined) throw new Error('Expected the project to have two document files')
+  return files
 }

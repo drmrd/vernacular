@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../../core'
-import { NOT_JSON } from '../../../storage/documents/document-store-test-kit'
 import { fixtureDocument } from '../../fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
 import { PROJECT_ID, SECOND_FILE_NAME } from './conformance-run'
-import type { BeginRun, ConformanceRun, NamedBytes } from './conformance-run'
+import type { BeginRun, NamedBytes } from './conformance-run'
 import {
   EXTENSIONS_PAYLOAD,
+  NOT_JSON,
   currentBytes,
   decodedOf,
   documentOfNewerVersion,
@@ -14,6 +14,8 @@ import {
   renamed,
   secondFileOf,
   soundProject,
+  soundSecondFile,
+  twoFilesOrThrow,
 } from './conformance-documents'
 
 const SAVED_NAME = 'Saved beside'
@@ -152,16 +154,6 @@ export function describeUnreadablePreviousFile(begin: BeginRun): void {
 const SET_ASIDE_PREFIX = 'set-aside-second-file-'
 const REPLACED_PREFIX = 'replaced-by-second-file-'
 
-function secondFileDocument(): Uint8Array {
-  return encodeDocument(renamed(soundProject(), SAVED_NAME), undefined).bytes
-}
-
-async function twoFilesOf(run: ConformanceRun) {
-  const files = await run.open().twoFiles(PROJECT_ID)
-  if (files === undefined) throw new Error('Expected the project to have two document files')
-  return files
-}
-
 function copiesNamedFrom(copies: readonly NamedBytes[], prefix: string): readonly NamedBytes[] {
   return copies.filter(({ name }) => name.startsWith(prefix))
 }
@@ -172,10 +164,10 @@ export function describeSecondFileChoice(begin: BeginRun): void {
     it('keeps the main file, keeps a copy of the second file, and leaves no second file when the second file is set aside', async () => {
       const run = await begin()
       const newer = documentOfNewerVersion()
-      const second = secondFileDocument()
+      const second = soundSecondFile(SAVED_NAME)
       await run.place(newer)
       await run.placeSecondFile(second)
-      const files = await twoFilesOf(run)
+      const files = await twoFilesOrThrow(run.open())
 
       const change = await run.open().setAsideSecondFile(PROJECT_ID, files)
 
@@ -189,10 +181,10 @@ export function describeSecondFileChoice(begin: BeginRun): void {
     it('keeps a copy of the main file, holds the second file document in the main file, and leaves no second file when the second file is promoted', async () => {
       const run = await begin()
       const newer = documentOfNewerVersion()
-      const second = secondFileDocument()
+      const second = soundSecondFile(SAVED_NAME)
       await run.place(newer)
       await run.placeSecondFile(second)
-      const files = await twoFilesOf(run)
+      const files = await twoFilesOrThrow(run.open())
 
       const change = await run.open().promoteSecondFile(PROJECT_ID, files)
 

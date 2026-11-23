@@ -1,11 +1,16 @@
-import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../core'
+import { CURRENT_SCHEMA_VERSION } from '../../core'
 import type { CodecOptions, Project } from '../../core'
 import {
   bytesOf,
   fixtureDocument,
   metaOf,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
-import { renamed, soundProject } from '../../tests/storage/conformance/conformance-documents'
+import {
+  NOT_JSON,
+  SECOND_FILE_PROJECT_NAME,
+  soundSecondFile,
+  twoFilesOrThrow,
+} from '../../tests/storage/conformance/conformance-documents'
 import { SECOND_FILE_NAME, filesUnder } from '../../tests/storage/conformance/conformance-run'
 import type { NamedBytes } from '../../tests/storage/conformance/conformance-run'
 import type { DirectoryPort } from '../fs/directory-port'
@@ -22,7 +27,7 @@ import type { TwoDocumentFiles } from './second-file'
 /** The document of the project `a`. */
 export const DOCUMENT_PATH = 'a/vernacular.json'
 
-export { SECOND_FILE_NAME }
+export { NOT_JSON, SECOND_FILE_NAME, SECOND_FILE_PROJECT_NAME, soundSecondFile, twoFilesOrThrow }
 
 /** The second document file of the project `a`. */
 export const SECOND_FILE_PATH = `a/${SECOND_FILE_NAME}`
@@ -36,9 +41,6 @@ export const BACKUP_DIRECTORY = 'a/.house-backups'
 const HEX_RADIX = 16
 const HEX_BYTE_WIDTH = 2
 const DIGEST_PATTERN = '[0-9a-f]{64}'
-
-/** Bytes that are not JSON, so that no decode of them succeeds. */
-export const NOT_JSON = new TextEncoder().encode('{ not json')
 
 /** The start of the name of the copy that a save keeps of a stored file that it cannot read. */
 export const UNREADABLE_PREFIX = 'unreadable-previous-'
@@ -111,6 +113,16 @@ export class BackupRefusingDirectory extends PassThroughDirectory {
   }
 }
 
+/** Test support: rejects each write of a copy of a set-aside second file and passes everything else through. */
+export class SetAsideRefusingDirectory extends PassThroughDirectory {
+  override writeFile(path: string, bytes: Uint8Array): Promise<void> {
+    if (path.includes('.house-backups/set-aside-second-file-')) {
+      return Promise.reject(new Error(DISK_FULL_MESSAGE))
+    }
+    return super.writeFile(path, bytes)
+  }
+}
+
 /**
  * Test support: passes every call through and lists each write and each removal, in the order
  * that they happened, as `write <path>` and `remove <path>`.
@@ -164,13 +176,18 @@ export async function rootHolding(
   return root
 }
 
-/** A root that holds the document files of the project `a` for which there are bytes. */
+/**
+ * A root that holds the document files of the project `a` for which there are bytes. `aboveBuild`
+ * is the second document file of a build with the next schema version.
+ */
 export async function rootHoldingFiles(files: {
   main?: Uint8Array
   second?: Uint8Array
+  aboveBuild?: Uint8Array
 }): Promise<InMemoryDirectory> {
   const root = await rootHolding(files.main)
   if (files.second !== undefined) await root.writeFile(SECOND_FILE_PATH, files.second)
+  if (files.aboveBuild !== undefined) await root.writeFile(NEWER_SECOND_FILE_PATH, files.aboveBuild)
   return root
 }
 
@@ -215,27 +232,12 @@ export async function backupNameOf(
   return `${kind}-v${version}-${await digestOf(bytes)}.json`
 }
 
-/** The name of the project in the document that `soundSecondFile` gives. */
-export const SECOND_FILE_PROJECT_NAME = 'Saved beside the newer file'
-
-/** A sound document of the current version that is told apart from the fixture by its name. */
-export function soundSecondFile(name = SECOND_FILE_PROJECT_NAME): Uint8Array {
-  return encodeDocument(renamed(soundProject(), name), undefined).bytes
-}
-
 /** A main file of a newer build that differs in its bytes from `newerVersionBytes()`. */
 export function anotherNewerMainFile(): Uint8Array {
   const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
   metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
   metaOf(document).name = 'Another project of a newer build'
   return bytesOf(document)
-}
-
-/** The two document files of the project `a`; throws when it does not have two. */
-export async function twoFilesOrThrow(store: DocumentStore): Promise<TwoDocumentFiles> {
-  const files = await store.twoFiles('a')
-  if (files === undefined) throw new Error('Expected the project to have two document files')
-  return files
 }
 
 /** What a call rejects with; undefined when the call resolves. */
