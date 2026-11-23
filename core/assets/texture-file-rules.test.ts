@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { textureFileProblems, textureFileSizeProblem } from './texture-file-rules.ts'
+import { textureFileProblems, textureFileSizeProblems } from './texture-file-rules.ts'
 import { TEXTURE_LIMITS } from './texture-asset-rules.ts'
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
@@ -164,6 +164,14 @@ describe('textureFileProblems for bytes that are not the declared image', () => 
   })
 })
 
+describe('textureFileProblems for an entry without a media type', () => {
+  it('reports bytes that are not an image instead of throwing', () => {
+    const asset = { mediaType: undefined, image: { width: SIDE, height: SIDE } }
+    const notAnImage = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    expect(textureFileProblems(asset as never, notAnImage)).not.toEqual([])
+  })
+})
+
 describe('the texture file size limit', () => {
   const EIGHT_MIB = 8_388_608
 
@@ -172,12 +180,12 @@ describe('the texture file size limit', () => {
   })
 
   it.each([0, 1234, EIGHT_MIB - 1, EIGHT_MIB])('accepts a file of %i bytes', (fileSize) => {
-    expect(textureFileSizeProblem(fileSize)).toBeNull()
+    expect(textureFileSizeProblems(fileSize)).toEqual([])
   })
 
   it('reports a file one byte above the limit, naming its size and the limit', () => {
-    expect(textureFileSizeProblem(EIGHT_MIB + 1)).toEqual(
+    expect(textureFileSizeProblems(EIGHT_MIB + 1)).toEqual([
       'file is 8388609 bytes, above the 8 MiB (8388608 byte) limit for a texture',
-    )
+    ])
   })
 })
