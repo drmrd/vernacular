@@ -1,4 +1,4 @@
-import type { AssetKind } from '../../core/assets/pack-manifest'
+import type { AssetKind } from '../../core'
 import type { AssetReference } from '../../core'
 import type { FurnitureFootprint } from '../../core'
 

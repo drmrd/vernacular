@@ -44,6 +44,11 @@ export const MEDIA_TYPE_EXTENSIONS: Readonly<Record<MediaType, string>> = Object
   'image/webp': '.webp',
 })
 /* eslint-enable @typescript-eslint/naming-convention */
+
+/** The file name of a pack asset in assets/: its content hash and its media type's extension. */
+export function assetFileName(contentHash: string, mediaType: MediaType): string {
+  return `${contentHash}${MEDIA_TYPE_EXTENSIONS[mediaType]}`
+}
 const MODEL_MEDIA_TYPES: readonly string[] = Object.freeze(
   Object.keys(MEDIA_TYPE_EXTENSIONS).filter((type) => type.startsWith('model/')),
 )

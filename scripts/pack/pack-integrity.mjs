@@ -5,7 +5,7 @@
 // injected PackReader, and returns the accumulated errors. When the in-app pack
 // loader lands (phase 3) these checks graduate to core/ as shared TypeScript.
 
-import { MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
+import { assetFileName, MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
 import { isRecord } from '../../core/assets/is-record.ts'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
 import {
@@ -25,7 +25,7 @@ import {
 
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
-const MODEL_EXTENSION = '.glb'
+const FORMAT_ONE_MEDIA_TYPE = 'model/gltf-binary'
 const TEXTURE_KIND = 'texture'
 const THUMBNAIL_EXTENSION = '.webp'
 const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
@@ -74,9 +74,9 @@ export function manifestAssets(manifest) {
  * @param {{ contentHash: string, mediaType?: string }} asset
  * @returns {string}
  */
-function assetFileName(asset) {
+function packAssetFileName(asset) {
   const known = Object.hasOwn(MEDIA_TYPE_EXTENSIONS, asset.mediaType)
-  return `${asset.contentHash}${known ? MEDIA_TYPE_EXTENSIONS[asset.mediaType] : MODEL_EXTENSION}`
+  return assetFileName(asset.contentHash, known ? asset.mediaType : FORMAT_ONE_MEDIA_TYPE)
 }
 
 /**
@@ -85,7 +85,7 @@ function assetFileName(asset) {
  * @returns {string}
  */
 function assetPath(asset) {
-  return `${ASSET_DIR}/${assetFileName(asset)}`
+  return `${ASSET_DIR}/${packAssetFileName(asset)}`
 }
 
 /**
@@ -167,7 +167,7 @@ async function checkThumbnails(assets, reader, errors) {
  * @returns {Promise<void>}
  */
 async function checkOrphans(assets, reader, errors) {
-  const referencedAssets = new Set(assets.map(assetFileName))
+  const referencedAssets = new Set(assets.map(packAssetFileName))
   const referencedThumbnails = new Set(assets.map((a) => `${a.contentHash}${THUMBNAIL_EXTENSION}`))
   for (const name of await reader.listDir(ASSET_DIR)) {
     if (!referencedAssets.has(name)) {

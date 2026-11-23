@@ -5,7 +5,7 @@
 
 import { http, HttpResponse } from 'msw'
 import type { RequestHandler } from 'msw'
-import type { AssetKind } from '../../core/assets/pack-manifest'
+import type { AssetKind } from '../../core'
 
 const PACK_ID = 'vernacular-starter'
 const PACK_VERSION = '1.0.0'

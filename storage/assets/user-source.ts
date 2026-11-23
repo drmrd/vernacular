@@ -1,5 +1,5 @@
 import { DEFAULT_FURNITURE_HEIGHT_MM } from '../../core'
-import type { AssetKind } from '../../core/assets/pack-manifest'
+import type { AssetKind } from '../../core'
 import type { AssetCache } from '../asset-cache'
 import type { AssetSource, LibraryItem } from './asset-source'
 
