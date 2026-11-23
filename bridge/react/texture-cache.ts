@@ -29,16 +29,23 @@ export interface TextureCacheOptions {
 export interface TextureCache {
   request(reference: AssetReference): Promise<void>
   get(reference: AssetReference): TextureState
+  /** Frees every texture the cache handed out; this is the only place the cache frees one. */
+  dispose(): void
 }
 
 function decodeKey(contentHash: string, colorSpace: ImageTextureOptions['colorSpace']): string {
   return JSON.stringify([contentHash, colorSpace])
 }
 
-function createSharedDecoder(decode: TextureCacheOptions['decode']) {
+function createSharedDecoder(
+  decode: TextureCacheOptions['decode'],
+  disposeTexture: TextureCacheOptions['dispose'],
+) {
   const decodes = new Map<string, Promise<Texture>>()
+  const textures = new Set<Texture>()
+  let disposed = false
 
-  return function decodeOnce(
+  function decodeOnce(
     key: string,
     bytes: Uint8Array,
     options: ImageTextureOptions,
@@ -47,11 +54,20 @@ function createSharedDecoder(decode: TextureCacheOptions['decode']) {
     if (existing) return existing
     const started = decode(bytes, options).then((texture) => {
       markCacheHeld(texture)
+      if (disposed) disposeTexture(texture)
+      else textures.add(texture)
       return texture
     })
     decodes.set(key, started)
     return started
   }
+
+  function dispose(): void {
+    disposed = true
+    for (const texture of textures) disposeTexture(texture)
+  }
+
+  return { decodeOnce, dispose }
 }
 
 interface CacheEntry {
@@ -64,7 +80,7 @@ const FAILED: TextureState = { status: 'failed' }
 
 async function loadTexture(
   source: TextureSource,
-  decodeOnce: ReturnType<typeof createSharedDecoder>,
+  decodeOnce: ReturnType<typeof createSharedDecoder>['decodeOnce'],
   reference: AssetReference,
 ): Promise<TextureState> {
   try {
@@ -86,8 +102,8 @@ async function loadTexture(
   }
 }
 
-export function createTextureCache({ source, decode }: TextureCacheOptions): TextureCache {
-  const decodeOnce = createSharedDecoder(decode)
+export function createTextureCache({ source, decode, dispose }: TextureCacheOptions): TextureCache {
+  const { decodeOnce, dispose: disposeTextures } = createSharedDecoder(decode, dispose)
   const entries = new Map<string, CacheEntry>()
 
   return {
@@ -107,5 +123,6 @@ export function createTextureCache({ source, decode }: TextureCacheOptions): Tex
     get(reference) {
       return entries.get(formatAssetReference(reference))?.state ?? LOADING
     },
+    dispose: disposeTextures,
   }
 }
