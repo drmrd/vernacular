@@ -40,7 +40,7 @@ const MOVEMENT_KEYS = new Map<string, 'forward' | 'back' | 'left' | 'right'>([
 const INTERACT_KEY = 'KeyE'
 
 // A floor's own frame measures height from its datum, which is 0 there.
-const FLOOR_DATUM_MM = 0
+export const FLOOR_DATUM_MM = 0
 
 // The reset key: clears every opened opening so they animate shut.
 const RESET_KEY = 'KeyR'

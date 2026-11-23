@@ -4,13 +4,12 @@ import {
   type OpeningPose,
   type OpeningReachHit,
   type OpeningSceneNode,
+  type Vector3,
   type WalkState,
 } from '../../core'
 
 import { reachFromWalk } from './walk-interaction'
-import { walkStateOnFloor } from './walk-session'
-
-const FLOOR_DATUM_MM = 0
+import { FLOOR_DATUM_MM, walkStateOnFloor } from './walk-session'
 
 export interface WalkAimInputs {
   walk: WalkState
@@ -33,12 +32,14 @@ export function aimFromWalk(inputs: WalkAimInputs): WalkAim | null {
     inputs.openings,
     inputs.openness,
   )
-  const node = inputs.openings.find((opening) => opening.id === hit?.openingId)
-  if (hit === null || node === undefined) return null
-  const [a, b, c, d] = openingAimOutline(node, hit.band)
-  const lift = (corner: typeof a): typeof a => ({
-    ...corner,
-    y: corner.y + inputs.floorElevationMm,
-  })
-  return { hit, outline: [lift(a), lift(b), lift(c), lift(d)] }
+  if (hit === null) return null
+  const node = inputs.openings.find((opening) => opening.id === hit.openingId)
+  if (node === undefined) return null
+  const [bottomStart, bottomEnd, topEnd, topStart] = openingAimOutline(node, hit.band)
+  const lift = (corner: Vector3): Vector3 => raisedBy(corner, inputs.floorElevationMm)
+  return { hit, outline: [lift(bottomStart), lift(bottomEnd), lift(topEnd), lift(topStart)] }
+}
+
+function raisedBy(corner: Vector3, mm: number): Vector3 {
+  return { ...corner, y: corner.y + mm }
 }
