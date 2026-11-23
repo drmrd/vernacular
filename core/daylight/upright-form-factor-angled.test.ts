@@ -1,24 +1,29 @@
 // core/daylight/upright-form-factor-angled.test.ts
 import { describe, expect, it } from 'vitest'
-import type { Point } from '../model/types'
 import { doorwayToGlazingFormFactor } from './upright-form-factor'
 import type { UprightRectangle } from './upright-form-factor'
-import { directSum, relativeError } from './upright-form-factor-test-support'
+import {
+  DOORWAY_HEAD,
+  RIGHT_ANGLE_FACTOR,
+  SUM_TOLERANCE,
+  TOWARD_ROOM_FROM_GLAZING,
+  WINDOW_HEAD,
+  WINDOW_SILL,
+  directSum,
+  relativeError,
+} from './upright-form-factor-test-support'
 
-const SUM_TOLERANCE = 1e-3
-const DOORWAY_HEAD = 2100
-const WINDOW_SILL = 900
-const WINDOW_HEAD = 2100
-const TOWARD_ROOM_FROM_GLAZING: Point = { x: 0, y: 1 }
 const DEGREES_PER_HALF_TURN = 180
 const NEAR_RIGHT_ANGLE_OFFSET = 0.001
-const RIGHT_ANGLE_FACTOR = 0.022433942847
 const RIGHT_ANGLE_LOOSE_TOLERANCE = 1e-4
 const RIGHT_ANGLE_MEAN_TOLERANCE = 1e-8
 const ANGLED_TOLERANCE = 1e-8
 const ANGLED_WALL_NEAR = 1000
 const ANGLED_WALL_FAR = 2000
 const FORTY_FIVE_DEGREES = 45
+const SIXTY_DEGREES = 60
+const ONE_TWENTY_DEGREES = 120
+const ONE_THIRTY_FIVE_DEGREES = 135
 const RIGHT_ANGLE_DEGREES = 90
 
 describe('the form factor from a doorway to glazing on a wall at another angle', () => {
@@ -48,9 +53,9 @@ describe('the form factor from a doorway to glazing on a wall at another angle',
 
   it.each([
     { angle: FORTY_FIVE_DEGREES, expected: 0.0808202834453 },
-    { angle: 60, expected: 0.053022464552 },
-    { angle: 120, expected: 0.00828487110367 },
-    { angle: 135, expected: 0.00438336190336 },
+    { angle: SIXTY_DEGREES, expected: 0.053022464552 },
+    { angle: ONE_TWENTY_DEGREES, expected: 0.00828487110367 },
+    { angle: ONE_THIRTY_FIVE_DEGREES, expected: 0.00438336190336 },
   ])('gives $expected at $angle degrees', ({ angle, expected }) => {
     const doorway = doorwayAt(angle)
     const factor = doorwayToGlazingFormFactor(doorway, angledGlazing)

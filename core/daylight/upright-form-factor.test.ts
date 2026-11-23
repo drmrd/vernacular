@@ -4,6 +4,12 @@ import type { Point } from '../model/types'
 import { doorwayToGlazingFormFactor } from './upright-form-factor'
 import type { UprightRectangle } from './upright-form-factor'
 import {
+  DOORWAY_HEAD,
+  RIGHT_ANGLE_FACTOR,
+  SUM_TOLERANCE,
+  TOWARD_ROOM_FROM_GLAZING,
+  WINDOW_HEAD,
+  WINDOW_SILL,
   commonEdgeFormFactor,
   directSum,
   opposedRectanglesFormFactor,
@@ -13,17 +19,12 @@ import {
 
 const RELATIVE_TOLERANCE = 1e-9
 const REORDER_TOLERANCE = 1e-12
-const SUM_TOLERANCE = 1e-3
 const SQUARE = 1000
 const TWO_SQUARES = 2000
 const TOWARD_WINDOW: Point = { x: 1, y: 0 }
 const TOWARD_DOORWAY: Point = { x: -1, y: 0 }
-const DOORWAY_HEAD = 2100
-const WINDOW_SILL = 900
-const WINDOW_HEAD = 2100
 const WINDOW_DISTANCE = 4000
 const SIDE_DOORWAY_WIDTH = 600
-const TOWARD_ROOM_FROM_GLAZING: Point = { x: 0, y: 1 }
 const TURN_ABOUT: Point = { x: 3000.7, y: 1000.3 }
 const NEAR_FACING_MARGIN = 1.1e-9
 const THIRTY_DEGREES = 30
@@ -31,7 +32,6 @@ const TEN_DEGREES = 10
 const DEGENERATE_SPAN_TOLERANCE = 1e-12
 const NARROW_WINDOW_WHOLE_WALLS = { width: 500, depth: 6000, height: 2600, share: 0.40075578118 }
 const RIGHT_ANGLE_TOLERANCE = 1e-9
-const RIGHT_ANGLE_FACTOR = 0.022433942847
 
 interface Extent {
   /** Start and end along the wall, in plan millimetres. */
@@ -252,7 +252,7 @@ describe('the form factor from a doorway to glazing on an adjoining wall at a ri
   it('gives 0.0224339428 for a doorway and a window that stand 1000 mm from the corner', () => {
     const { doorway, glazing } = sidePair([1000, 2000])
     const factor = doorwayToGlazingFormFactor(doorway, glazing)
-    expect(relativeError(factor, 0.022433942847)).toBeLessThan(RELATIVE_TOLERANCE)
+    expect(relativeError(factor, RIGHT_ANGLE_FACTOR)).toBeLessThan(RELATIVE_TOLERANCE)
     expect(relativeError(factor * SQUARE * DOORWAY_HEAD, 47111.2799778)).toBeLessThan(
       RELATIVE_TOLERANCE,
     )
@@ -291,7 +291,7 @@ describe('the form factor from a doorway to glazing on an adjoining wall at a ri
       turned(doorway, THIRTY_DEGREES, TURN_ABOUT),
       turned(glazing, THIRTY_DEGREES, TURN_ABOUT),
     )
-    expect(relativeError(turnedFactor, 0.022433942847)).toBeLessThan(RELATIVE_TOLERANCE)
+    expect(relativeError(turnedFactor, RIGHT_ANGLE_FACTOR)).toBeLessThan(RELATIVE_TOLERANCE)
     const { width, depth, height, share } = NARROW_WINDOW_WHOLE_WALLS
     const wholeWallDoorway = doorwayOn({ along: [0, depth], sill: 0, head: height })
     const wholeWallGlazing = adjoiningGlazing([0, width], [0, height])
@@ -313,7 +313,8 @@ describe('the form factor from a doorway to glazing on an adjoining wall at a ri
 
   it('counts walls as at a right angle when their normals have a dot product of exactly the tolerance', () => {
     const { doorway, glazing } = sidePair([1000, 2000])
-    const edgeOfRightAngle = { ...glazing, facing: { x: RIGHT_ANGLE_TOLERANCE, y: 1 } }
+    const x = RIGHT_ANGLE_TOLERANCE
+    const edgeOfRightAngle = { ...glazing, facing: { x, y: Math.sqrt(1 - x * x) } }
     const factor = doorwayToGlazingFormFactor(doorway, edgeOfRightAngle)
     expect(relativeError(factor, RIGHT_ANGLE_FACTOR)).toBeLessThan(RELATIVE_TOLERANCE)
   })

@@ -8,6 +8,16 @@ const MIDPOINT = 0.5
 const DEGREES_PER_HALF_TURN = 180
 const QUARTER = 0.25
 
+/** How closely a closed form must agree with `directSum`. */
+export const SUM_TOLERANCE = 1e-3
+export const DOORWAY_HEAD = 2100
+export const WINDOW_SILL = 900
+export const WINDOW_HEAD = 2100
+/** The facing of glazing that stands on y = 0 in a room north of it. */
+export const TOWARD_ROOM_FROM_GLAZING: Point = { x: 0, y: 1 }
+/** The factor from a doorway on x = 0 (1000 to 2000) to glazing on y = 0 (1000 to 2000). */
+export const RIGHT_ANGLE_FACTOR = 0.022433942847
+
 export function relativeError(actual: number, expected: number): number {
   return Math.abs(actual - expected) / Math.abs(expected)
 }
