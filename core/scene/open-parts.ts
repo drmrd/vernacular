@@ -19,6 +19,14 @@ export function toggleOpenPart(parts: OpenParts, ref: OpeningPartRef): OpenParts
   return next
 }
 
+function partsTheTypeHas(
+  partsHere: ReadonlySet<OpeningPartId>,
+  type: string,
+): ReadonlySet<OpeningPartId> {
+  const allowed = openingParts(type)
+  return new Set([...partsHere].filter((part) => allowed.includes(part)))
+}
+
 /**
  * The map without the open parts an opening's current type lacks, such as the upper sash left
  * behind when a double-hung window becomes single-hung. An opening left with no part is dropped.
@@ -35,10 +43,7 @@ export function keepOpenPartsOfTypes(
   const next = new Map<string, ReadonlySet<OpeningPartId>>()
   for (const [openingId, partsHere] of parts) {
     const type = typeById.get(openingId)
-    const kept =
-      type === undefined
-        ? partsHere
-        : new Set([...partsHere].filter((part) => openingParts(type).includes(part)))
+    const kept = type === undefined ? partsHere : partsTheTypeHas(partsHere, type)
     if (kept.size !== partsHere.size) changed = true
     if (kept.size > 0) next.set(openingId, kept)
   }

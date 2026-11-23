@@ -52,8 +52,8 @@ export function advanceOpeningPose(
 
 /**
  * Jumps every part named in the pose or in the open set straight to its target openness.
- * An unshown opening has no type here, so a stale part in the open set can reach this pose;
- * the next tick that shows the opening eases it to the pose filtered by its type.
+ * This takes no type, so it relies on the follow in useOpeningMotionRefs having dropped the
+ * parts an opening's type lacks before any settle.
  */
 export function settledPose(
   pose: OpeningPose,

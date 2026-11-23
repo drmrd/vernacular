@@ -61,11 +61,13 @@ function useShownOpenings(): OpeningSceneNode[] {
 }
 
 // Owns the opening refs and returns them. The open/closed state follows the doors the session
-// store holds open, copied so the walk keys never reach back into the store's map (ADR-0170). It takes
-// the store's map whenever that map changes, so a reset made in orbit mode reaches the live
-// scene. The walk keys report their own changes to the store, and following a map with the
-// same doors keeps the same state, so that echo changes nothing. Each change of the map also
-// seats the openings the view does not show at their new target, because no tick reaches them:
+// store holds open, copied so the walk keys never reach back into the store's map (ADR-0170). It follows
+// the store's map with the parts each opening's current type lacks dropped (checked against every
+// floor's openings, since an unshown opening is not in the shown list), so a reset made in orbit
+// mode reaches the live scene. The walk keys report their own changes to the store, and following a map with the
+// same doors keeps the same state, so that echo changes nothing. The follow and the settle re-run
+// when the map or the graph's openings change, so a retype reaches the state and seats the openings
+// the view does not show at their new target without a key press, because no tick reaches them:
 // the R key in a walk resets the state before the store echoes it, so the settle must not wait
 // for the state to differ.
 function useOpeningMotionRefs(

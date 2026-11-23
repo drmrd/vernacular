@@ -172,6 +172,8 @@ export function walkKeyHandlers(session: WalkSession): {
         interaction.current,
         openness.current,
       )
+      // A defense: the follow in useOpeningMotionRefs already drops parts the type lacks;
+      // this covers a state that has not passed through it yet.
       interaction.current = {
         openParts: keepOpenPartsOfTypes(toggled.openParts, openings.current),
       }
@@ -218,12 +220,13 @@ export interface WalkFrameContext extends WalkRefs {
   collisionInputs: WalkCollisionInputs
 }
 
-// Builds this frame's collision world from the static inputs and the live open-door
-// set: passable openings cut gaps in their host walls and furniture footprints always
+// Builds this frame's collision world from the static inputs and the open doors, pruned
+// again here as a defense (the follow in useOpeningMotionRefs is the source): passable openings cut gaps in their host walls and furniture footprints always
 // block. passableDoorIds decides what counts as passable, which is open doors plus
 // leafless doorways that have nothing to open; shut doors and windows stay solid.
 function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
   const { walls, openings, furnitureSegments, radius } = ctx.collisionInputs
+  // A defense: covers a state the follow has not yet reached after a retype.
   const openParts = keepOpenPartsOfTypes(ctx.interaction.current.openParts, openings)
   const passable = passableDoorIds(openings, openOpeningIds(openParts))
   return {
