@@ -9,10 +9,11 @@ related:
     decisions/ADR-0076-three-dimensional-floor-slab-under-walls,
     decisions/ADR-0026-room-derivation-planar-face-enumeration,
     decisions/ADR-0062-three-dimensional-floor-slabs-and-ceilings,
+    decisions/ADR-0199-derived-tolerances-exact-junctions-and-lengths-that-read-back,
   ]
-sourceFiles: [core/geometry/polygon.ts, core/topology/rooms.ts]
+sourceFiles: [core/geometry/polygon.ts, core/topology/rooms.ts, core/geometry/tolerance.ts]
 status: current
-updated: 2026-06-29
+updated: 2026-11-23
 ---
 
 # ADR-0134: Geometry primitive snaps polygon-offset corners to a sub-micrometer grid
@@ -122,3 +123,13 @@ and no schema bump; the snap is a numerical-hygiene step on a derived value.
   the offset polygons.
 - Issue #400: the request to move the outer-boundary snap into the geometry
   primitive, which this record resolves.
+
+## Update (2026-11-23): the grid constant lives in the tolerance module
+
+`SNAP_UNITS_PER_MM` moved to `core/geometry/tolerance.ts`, the module that
+[[ADR-0199-derived-tolerances-exact-junctions-and-lengths-that-read-back]] gives
+every geometric tolerance. Its value is still 1e6 units per millimeter. The module
+now defines it as one over `DERIVED_COORDINATE_GRID_MM`, the 1e-6 mm grid, which is
+a thousandth of the 0.001 mm length tolerance (`LENGTH_TOLERANCE_MM`). `polygon.ts`
+imports the constant, and `snapCoordinate` and `snapPolygon` stay there. The snap
+itself is unchanged.

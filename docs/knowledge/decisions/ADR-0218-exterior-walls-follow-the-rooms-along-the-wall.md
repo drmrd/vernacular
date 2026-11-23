@@ -25,6 +25,7 @@ related:
     decisions/ADR-0145-furniture-fades-with-attached-exterior-wall,
     decisions/ADR-0193-sample-daylight-for-a-project-with-no-site-location,
     decisions/ADR-0216-hung-window-sashes-stay-in-their-frame,
+    decisions/ADR-0199-derived-tolerances-exact-junctions-and-lengths-that-read-back,
   ]
 sourceFiles:
   [
@@ -53,9 +54,10 @@ sourceFiles:
     engine/scene/near-wall-transparency-runs.test.ts,
     engine/scene/near-wall-transparency-run-owner.test.ts,
     engine/scene/near-wall-transparency-test-support.ts,
+    core/geometry/tolerance.ts,
   ]
 status: current
-updated: 2026-11-20
+updated: 2026-11-23
 ---
 
 # ADR-0218: Exterior walls follow the rooms along the wall, one run at a time
@@ -469,3 +471,15 @@ do not change (read). The captures were not run for this work.
 - [[ADR-0193-sample-daylight-for-a-project-with-no-site-location]]: the front direction.
 - [[ADR-0216-hung-window-sashes-stay-in-their-frame]]: the room side that the hung-window fill
   reads.
+
+## Update (2026-11-23): the room ring lives in the tolerance module
+
+`ROOM_RING_TOLERANCE_MM` and the wall graph's merge distance, `DEFAULT_JUNCTION_TOLERANCE_MM`,
+moved to `core/geometry/tolerance.ts`, the module that
+[[ADR-0199-derived-tolerances-exact-junctions-and-lengths-that-read-back]] gives every geometric
+tolerance. The ring is still 1 mm and still equals the merge distance. Only the file that the
+Decision names is out of date: both constants are defined in the module now, not in
+`core/topology/wall-graph.ts`. `core/scene/wall-room-sides.ts` imports the ring from the module,
+`core/topology/wall-graph.ts` imports the merge distance, and `core/index.ts` still exports both. Under ADR-0199, the ring
+changes to the 0.001 mm length tolerance in the later step that switches the derivation. After that
+step, `ownedMeshesByRunIndex` widens each run by 0.001 mm at each end instead of 1 mm.
