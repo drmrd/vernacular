@@ -7,10 +7,11 @@ related:
   [
     decisions/ADR-0034-future-direction-extensibility-seams,
     decisions/ADR-0178-schema-version-and-revision,
+    decisions/ADR-0199-derived-tolerances-exact-junctions-and-lengths-that-read-back,
   ]
 sourceFiles: [core/geometry/segment.ts, core/topology/rooms.ts, core/topology/wall-graph.ts]
 status: current
-updated: 2026-11-14
+updated: 2026-11-23
 ---
 
 # ADR-0181: Lengths are millimetre numbers under one tolerance model
@@ -20,6 +21,12 @@ updated: 2026-11-14
 Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
 specification the same day. It answers #496. The tolerance module and the formatter changes arrive
 with the kernel stage of that round.
+
+> Amended by [[ADR-0199-derived-tolerances-exact-junctions-and-lengths-that-read-back]] on
+> 2026-11-23. ADR-0199 gives and derives the values this record left to the kernel specification:
+> the length tolerance is 0.001 mm, the angle tolerance is 1e-8 radians, derived coordinates are
+> rounded to a grid of 1e-6 mm, and the margins hold within 1 km of the plan origin. The 1 mm join
+> moves from the derivation to pointer input, and a typed value is never moved.
 
 ## Context
 
