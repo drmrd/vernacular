@@ -6,6 +6,15 @@ export interface ImageTextureOptions {
   colorSpace: ColorSpaceName
 }
 
+/**
+ * A decoded texture with the real-world size of one repeat, in millimeters. The width runs
+ * along the surface's first axis, which on the ground is world x.
+ */
+export interface TextureAppearance {
+  texture: THREE.Texture
+  tileSize: { width: number; height: number }
+}
+
 export type ImageBitmapDecoder = (
   blob: Blob,
   options: ImageBitmapOptions,
