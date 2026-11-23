@@ -171,7 +171,7 @@ function useShownFiles(
         hold({ id, files: read.files, open })
       } else {
         close()
-        onActionEnd(read.ok ? null : failureSentence(read.failure))
+        onActionEnd(read.ok ? null : failureReason(read.failure))
       }
     },
     [hold, close, onActionEnd],
