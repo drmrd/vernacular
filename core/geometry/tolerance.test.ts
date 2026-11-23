@@ -41,7 +41,7 @@ describe('the derived tolerance values', () => {
     expect(Math.abs(DERIVED_COORDINATE_GRID_MM - 1e-6)).toBeLessThan(1e-18)
   })
 
-  it('snaps offset corners to a million units per millimetre', () => {
+  it('snaps offset corners to a million units per millimeter', () => {
     expect(SNAP_UNITS_PER_MM).toBe(1e6)
     expect(SNAP_UNITS_PER_MM).toBe(1 / DERIVED_COORDINATE_GRID_MM)
   })
@@ -126,6 +126,9 @@ describe("today's geometric constants in the tolerance module", () => {
     const namedEntries = [
       { name: 'JOIN_DISTANCE_MM', actual: JOIN_DISTANCE_MM },
       { name: 'DERIVATION_LENGTH_TOLERANCE_MM', actual: DERIVATION_LENGTH_TOLERANCE_MM },
+      { name: 'DEFAULT_JUNCTION_TOLERANCE_MM', actual: DEFAULT_JUNCTION_TOLERANCE_MM },
+      { name: 'ROOM_RING_TOLERANCE_MM', actual: ROOM_RING_TOLERANCE_MM },
+      { name: 'OUTLINE_TOLERANCE_MM', actual: OUTLINE_TOLERANCE_MM },
       ...todaysEntries,
     ]
     const exports: Record<string, unknown> = core
