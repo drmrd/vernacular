@@ -2,6 +2,7 @@ import type {
   DocumentFileFacts,
   DocumentStore,
   ProjectLockHold,
+  ProjectRecord,
   SecondFileChange,
   SecondFileRefusal,
   TwoDocumentFiles,
@@ -11,8 +12,7 @@ import type { DocumentHandle, OpenFailed, OpenRequest } from '../handle/handle-t
 import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import type { SwitchFailure } from './flow-result'
-import { openAsNewProject } from './new-project-copy'
-import { assetsOfFolder } from './open-failed'
+import { assetsOfFolder, openAsNewProject } from './new-project-copy'
 import { recentTarget, recordOf } from './open-recent'
 import { freeLock, lockFor } from './project-lock-for'
 import { switchProject } from './switch-project'
@@ -196,13 +196,19 @@ function refusalOf(refusal: SecondFileRefusal): Failed {
   return refusal.kind === 'no-second-file' ? FILES_CHANGED : { ok: false, failure: refusal }
 }
 
+function withoutSecondFile(record: ProjectRecord): ProjectRecord {
+  const withoutIt: { -readonly [Field in keyof ProjectRecord]: ProjectRecord[Field] } = {
+    ...record,
+  }
+  delete withoutIt.secondFile
+  return withoutIt
+}
+
 /** Removes the second file from the record of the project, as the index keeps it. */
 async function clearSecondFileOfRecord(ports: SessionPorts, id: string): Promise<void> {
   const record = await recordOf(ports, id)
   if (record?.secondFile !== undefined) {
-    const { secondFile, ...rest } = record
-    void secondFile
-    await ports.index.put(rest)
+    await ports.index.put(withoutSecondFile(record))
   }
 }
 

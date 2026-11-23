@@ -1,9 +1,11 @@
 import type { Project } from '../../core'
 import { copyImportedAssets, neededAssetHashes, newProjectId } from '../../storage'
 import type { AssetCache, PackSupplies } from '../../storage'
+import { findDocumentStore } from '../handle/find-document-store'
 import type { DocumentHandle } from '../handle/handle-types'
 import type { SessionPorts } from '../ports'
 import type { SwitchFailure } from './flow-result'
+import { requestFor } from './open-recent'
 import { switchProject } from './switch-project'
 
 /** A project to open as a new workspace project, with where the assets that it needs come from. */
@@ -37,6 +39,37 @@ function poolOf(ports: SessionPorts, id: string): AssetCache | undefined {
     console.error('The asset pool of the new project cannot be reached; no asset is copied.', error)
     return undefined
   }
+}
+
+/**
+ * The needed assets that the pool of a stored project holds, for a copy to take along. A workspace
+ * project shares the workspace pool, so it supplies none. An asset that cannot be read is left out.
+ */
+export async function assetsOfFolder(
+  ports: SessionPorts,
+  id: string,
+  needed: readonly string[],
+): Promise<ReadonlyMap<string, Uint8Array>> {
+  const supplied = new Map<string, Uint8Array>()
+  const request = await requestFor(ports, id)
+  if (request.location.kind === 'workspace') {
+    return supplied
+  }
+  const found = await findDocumentStore(ports, request)
+  if (!found.ok) {
+    return supplied
+  }
+  for (const hash of needed) {
+    try {
+      const bytes = await found.store.assets(id).get(hash)
+      if (bytes !== undefined) {
+        supplied.set(hash, bytes)
+      }
+    } catch (error) {
+      console.warn('An asset of the folder project could not be read.', hash, error)
+    }
+  }
+  return supplied
 }
 
 /**

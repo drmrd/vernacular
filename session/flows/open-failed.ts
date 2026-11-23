@@ -5,8 +5,8 @@ import type { DocumentHandle } from '../handle/handle-types'
 import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import type { FlowResult, SwitchFailure } from './flow-result'
-import { openAsNewProject, type NewProjectResult } from './new-project-copy'
-import { recentTarget, requestFor } from './open-recent'
+import { assetsOfFolder, openAsNewProject, type NewProjectResult } from './new-project-copy'
+import { recentTarget } from './open-recent'
 import { freeLock, lockFor } from './project-lock-for'
 import { repairedCopyOf } from './repaired-copy'
 import { switchProject } from './switch-project'
@@ -44,37 +44,6 @@ type ReplaceOutcome =
 const MAY_OPEN: ReplaceOutcome = { ok: true }
 
 const REPAIR_CHANGED: ReplaceOutcome = { ok: false, failure: { kind: 'repair-changed' } }
-
-/**
- * The needed assets that the pool of the project that did not open holds. A workspace project
- * shares the workspace pool, so it supplies none. An asset that cannot be read is left out.
- */
-export async function assetsOfFolder(
-  ports: SessionPorts,
-  id: string,
-  needed: readonly string[],
-): Promise<ReadonlyMap<string, Uint8Array>> {
-  const supplied = new Map<string, Uint8Array>()
-  const request = await requestFor(ports, id)
-  if (request.location.kind === 'workspace') {
-    return supplied
-  }
-  const found = await findDocumentStore(ports, request)
-  if (!found.ok) {
-    return supplied
-  }
-  for (const hash of needed) {
-    try {
-      const bytes = await found.store.assets(id).get(hash)
-      if (bytes !== undefined) {
-        supplied.set(hash, bytes)
-      }
-    } catch (error) {
-      console.warn('An asset of the folder project could not be read.', hash, error)
-    }
-  }
-  return supplied
-}
 
 /**
  * Opens the document of the offer as a new workspace project, named as a repaired copy. The switch
