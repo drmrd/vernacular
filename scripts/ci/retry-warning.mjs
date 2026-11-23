@@ -73,7 +73,7 @@ export function countTests(report) {
 }
 
 function escapeTableCell(text) {
-  return text.replaceAll('|', '\\|')
+  return text.replaceAll('\n', ' ').replaceAll('|', '\\|')
 }
 
 function escapeAnnotationMessage(text) {
@@ -85,9 +85,10 @@ function escapeAnnotationProperty(text) {
 }
 
 function summaryTableRow(pass) {
-  const test = `\`${pass.file}:${pass.line}\` ${escapeTableCell(pass.title)}`
+  const location = escapeTableCell(`${pass.file}:${pass.line}`)
+  const test = `\`${location}\` ${escapeTableCell(pass.title)}`
   const failed = `${pass.failedAttempts} of ${pass.attempts}`
-  return `| ${test} | ${pass.project} | ${failed} | ${escapeTableCell(pass.firstError)} |`
+  return `| ${test} | ${escapeTableCell(pass.project)} | ${failed} | ${escapeTableCell(pass.firstError)} |`
 }
 
 /**
@@ -125,15 +126,30 @@ export function formatRetryAnnotations(passes) {
   })
 }
 
+function isPlaywrightReport(value) {
+  return Array.isArray(value?.suites) && typeof value.config?.rootDir === 'string'
+}
+
 function readReport(reportPath, deps) {
-  try {
-    return JSON.parse(deps.readFile(reportPath))
-  } catch {
-    deps.log(
-      `::warning title=Retry check::No Playwright JSON report at ${reportPath}, so its tests were not checked for retries.`,
-    )
+  const skip = (problem) => {
+    deps.log(`::warning title=Retry check::${problem}, so its tests were not checked for retries.`)
     return undefined
   }
+  let text
+  try {
+    text = deps.readFile(reportPath)
+  } catch {
+    return skip(`No Playwright JSON report at ${reportPath}`)
+  }
+  let report
+  try {
+    report = JSON.parse(text)
+  } catch {
+    return skip(`The Playwright JSON report at ${reportPath} is not valid JSON`)
+  }
+  return isPlaywrightReport(report)
+    ? report
+    : skip(`The file at ${reportPath} is not a Playwright JSON report`)
 }
 
 /**
@@ -147,7 +163,13 @@ export async function runRetryWarning(argv, deps) {
   const reports = argv.map((reportPath) => readReport(reportPath, deps)).filter(Boolean)
   const passes = reports.flatMap((report) => findRetriedPasses(report, deps.cwd))
   const tests = reports.reduce((total, report) => total + countTests(report), 0)
-  deps.appendSummary(formatRetrySummary(passes, { tests, reports: reports.length }))
+  try {
+    deps.appendSummary(formatRetrySummary(passes, { tests, reports: reports.length }))
+  } catch {
+    deps.log(
+      '::warning title=Retry check::Could not write the job summary, so the retry check result is missing from it.',
+    )
+  }
   formatRetryAnnotations(passes).forEach((line) => deps.log(line))
   return 0
 }
