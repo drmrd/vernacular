@@ -251,9 +251,10 @@ jobs:
       # visual change. Regenerate them with that workflow when the change is
       # intentional.
       - name: Visual-regression diff of Storybook stories
+        id: story-visual-tests
         run: pnpm stories:test
       - name: Warn about tests that passed only on a retry
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.story-visual-tests.conclusion != 'skipped' }}
         run: node scripts/ci/retry-warning.mjs reports/playwright/story-results.json
       - name: Upload static Storybook
         uses: actions/upload-artifact@v4
@@ -262,10 +263,10 @@ jobs:
           path: storybook-static
           retention-days: 7
       # The report is kept for every run, green ones too, so that a failed first attempt in a
-      # green run can be read later. The name carries the run attempt because an artifact name
-      # can be used only once in a workflow run, and a re-run would otherwise fail here.
+      # green run can be read later. The name carries the run attempt: a re-run that reuses a
+      # fixed name may be refused (a name conflict), so each attempt keeps its own artifact name.
       - name: Upload story visual report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.story-visual-tests.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: storybook-visual-report-attempt-${{ github.run_attempt }}
@@ -303,15 +304,16 @@ jobs:
       - name: Build production bundle
         run: pnpm build
       - name: Run Playwright (chromium)
+        id: e2e-tests
         run: pnpm exec playwright test --project=chromium
       - name: Warn about tests that passed only on a retry
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.e2e-tests.conclusion != 'skipped' }}
         run: node scripts/ci/retry-warning.mjs reports/playwright/results.json
       # The report is kept for every run, green ones too, so that a failed first attempt in a
-      # green run can be read later. The name carries the run attempt because an artifact name
-      # can be used only once in a workflow run, and a re-run would otherwise fail here.
+      # green run can be read later. The name carries the run attempt: a re-run that reuses a
+      # fixed name may be refused (a name conflict), so each attempt keeps its own artifact name.
       - name: Upload Playwright report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.e2e-tests.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-attempt-${{ github.run_attempt }}
@@ -355,15 +357,16 @@ jobs:
       # scene-webgl project falls back to SwiftShader (no GPU on the runner); regenerate the
       # baselines with that workflow when the change is intentional.
       - name: Scene visual-regression diff (scene-webgl project)
+        id: scene-visual-tests
         run: pnpm exec playwright test --project=scene-webgl
       - name: Warn about tests that passed only on a retry
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.scene-visual-tests.conclusion != 'skipped' }}
         run: node scripts/ci/retry-warning.mjs reports/playwright/results.json
       # The report is kept for every run, green ones too, so that a failed first attempt in a
-      # green run can be read later. The name carries the run attempt because an artifact name
-      # can be used only once in a workflow run, and a re-run would otherwise fail here.
+      # green run can be read later. The name carries the run attempt: a re-run that reuses a
+      # fixed name may be refused (a name conflict), so each attempt keeps its own artifact name.
       - name: Upload scene visual report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.scene-visual-tests.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: scene-visual-report-attempt-${{ github.run_attempt }}
@@ -437,6 +440,7 @@ jobs:
       - name: Build production bundle
         run: pnpm build
       - name: Live-view visual-regression diff (scene-webgl project)
+        id: live-view-first-test
         env:
           PLAYWRIGHT_JSON_OUTPUT_FILE: reports/playwright/live-view-visual-regression.json
         run: pnpm exec playwright test --project=scene-webgl e2e/tests/scene-live-view-visual-regression.spec.ts --reporter=list,json --output=test-results/visual-regression
@@ -490,14 +494,18 @@ jobs:
           E2E_REQUIRE_WEBGPU: '1'
           PLAYWRIGHT_JSON_OUTPUT_FILE: reports/playwright/live-view-edge-overlay.json
         run: pnpm exec playwright test --project=scene-webgl e2e/tests/scene-edge-overlay-resources.spec.ts --reporter=list,json --output=test-results/edge-overlay
+      # The summary of this step must say `Reports read: 7`, one report for each test step above.
+      # A smaller number means a step wrote no JSON report.
+      # The condition names the first test step only. If it was skipped, no test step ran
+      # (an install or build step failed before them), so there is nothing to check or upload.
       - name: Warn about tests that passed only on a retry
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.live-view-first-test.conclusion != 'skipped' }}
         run: node scripts/ci/retry-warning.mjs reports/playwright/live-view-*.json
       # The report is kept for every run, green ones too, so that a failed first attempt in a
-      # green run can be read later. The name carries the run attempt because an artifact name
-      # can be used only once in a workflow run, and a re-run would otherwise fail here.
+      # green run can be read later. The name carries the run attempt: a re-run that reuses a
+      # fixed name may be refused (a name conflict), so each attempt keeps its own artifact name.
       - name: Upload live-view report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.live-view-first-test.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: live-view-visual-report-attempt-${{ github.run_attempt }}
