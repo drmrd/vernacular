@@ -29,7 +29,10 @@ export interface TextureCacheOptions {
 export interface TextureCache {
   request(reference: AssetReference): Promise<void>
   get(reference: AssetReference): TextureState
-  /** Frees every texture the cache handed out; this is the only place the cache frees one. */
+  /**
+   * Frees every texture the cache holds, one time each. A decode that settles after
+   * `dispose()` is freed when it settles.
+   */
   dispose(): void
 }
 
@@ -37,7 +40,9 @@ function decodeKey(contentHash: string, colorSpace: ImageTextureOptions['colorSp
   return JSON.stringify([contentHash, colorSpace])
 }
 
-function createSharedDecoder(
+type DecodeOnce = (key: string, bytes: Uint8Array, options: ImageTextureOptions) => Promise<Texture>
+
+function createTextureStore(
   decode: TextureCacheOptions['decode'],
   disposeTexture: TextureCacheOptions['dispose'],
 ) {
@@ -45,11 +50,7 @@ function createSharedDecoder(
   const textures = new Set<Texture>()
   let disposed = false
 
-  function decodeOnce(
-    key: string,
-    bytes: Uint8Array,
-    options: ImageTextureOptions,
-  ): Promise<Texture> {
+  const decodeOnce: DecodeOnce = (key, bytes, options) => {
     const existing = decodes.get(key)
     if (existing) return existing
     const started = decode(bytes, options).then((texture) => {
@@ -80,7 +81,7 @@ const FAILED: TextureState = { status: 'failed' }
 
 async function loadTexture(
   source: TextureSource,
-  decodeOnce: ReturnType<typeof createSharedDecoder>['decodeOnce'],
+  decodeOnce: DecodeOnce,
   reference: AssetReference,
 ): Promise<TextureState> {
   try {
@@ -103,7 +104,7 @@ async function loadTexture(
 }
 
 export function createTextureCache({ source, decode, dispose }: TextureCacheOptions): TextureCache {
-  const { decodeOnce, dispose: disposeTextures } = createSharedDecoder(decode, dispose)
+  const { decodeOnce, dispose: disposeTextures } = createTextureStore(decode, dispose)
   const entries = new Map<string, CacheEntry>()
 
   return {
