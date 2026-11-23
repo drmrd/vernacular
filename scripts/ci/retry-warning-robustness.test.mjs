@@ -265,10 +265,13 @@ describe('running the script file directly', () => {
   const scratch = mkdtempSync(join(tmpdir(), 'retry-warning-'))
   afterAll(() => rmSync(scratch, { recursive: true, force: true }))
 
-  function exitStatusFor(argument) {
+  function exitStatusFor(argument, extraEnv = {}) {
     const env = { ...process.env }
     delete env.GITHUB_STEP_SUMMARY
-    return spawnSync(process.execPath, [scriptPath, argument], { env, encoding: 'utf8' }).status
+    return spawnSync(process.execPath, [scriptPath, argument], {
+      env: { ...env, ...extraEnv },
+      encoding: 'utf8',
+    }).status
   }
 
   it('exits 0 when the report holds a shape the walk cannot read', () => {
@@ -284,12 +287,8 @@ describe('running the script file directly', () => {
 
   it('writes the not-done note to the job summary when the report path does not exist', () => {
     const summaryPath = join(scratch, 'summary.md')
-    const env = { ...process.env, GITHUB_STEP_SUMMARY: summaryPath }
-    const run = spawnSync(process.execPath, [scriptPath, join(scratch, 'absent.json')], {
-      env,
-      encoding: 'utf8',
-    })
-    expect(run.status).toBe(0)
+    const status = exitStatusFor(join(scratch, 'absent.json'), { GITHUB_STEP_SUMMARY: summaryPath })
+    expect(status).toBe(0)
     expect(readFileSync(summaryPath, 'utf8')).toBe(
       'Retry check: not done. No Playwright JSON report could be read.\n',
     )

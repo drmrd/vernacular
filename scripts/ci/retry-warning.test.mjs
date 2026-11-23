@@ -35,6 +35,15 @@ describe('findRetriedPasses', () => {
     ])
   })
 
+  it('counts every failed attempt of a test that failed twice and passed on the third attempt', () => {
+    const report = structuredClone(retried)
+    const flakyTest = report.suites[0].suites[0].specs[0].tests[0]
+    flakyTest.results.splice(1, 0, { ...flakyTest.results[0], retry: 1 })
+    expect(flakyTest.results.map((result) => result.status)).toEqual(['failed', 'failed', 'passed'])
+    const [pass] = findRetriedPasses(report, '/work')
+    expect(formatRetryAnnotations([pass])[0]).toContain('failed 2 of 3 attempts')
+  })
+
   it('cuts a long first error to 200 characters', () => {
     const longError = structuredClone(retried)
     const flakyTest = longError.suites[0].suites[0].specs[0].tests[0]
