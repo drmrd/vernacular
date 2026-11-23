@@ -14,6 +14,7 @@ import {
 } from './app-test-support'
 import { setUpProjectsScreenTests } from './projects-screen-test-support'
 import {
+  KEEP_BOTH_CONTROL,
   OPEN_AS_NEW,
   REMOVE_CONTROL,
   REPLACE_CONTROL,
@@ -29,7 +30,6 @@ import type { ChoiceMethod } from './two-files-dialog-test-support'
 
 setUpProjectsScreenTests()
 
-const OPEN_AND_KEEP_BOTH = 'Open and keep both plan files'
 const CHANGE_FAILED = 'Could not change the plan files'
 const DISK_GONE = 'The disk did not answer'
 
@@ -111,7 +111,7 @@ describe('A choice before a project with two readable plan files opens, when it 
       const { ports, dialog } = await askedBeforeTheOpen()
       await failure.happens(ports)
 
-      await chooseInTheDialog(dialog, OPEN_AND_KEEP_BOTH)
+      await chooseInTheDialog(dialog, KEEP_BOTH_CONTROL)
 
       await waitFor(() =>
         expect(screen.queryByRole('alertdialog', { name: TWO_FILES_TITLE })).toBeNull(),

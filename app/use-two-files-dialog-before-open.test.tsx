@@ -34,6 +34,7 @@ import {
 } from './history-navigation-test-support'
 import { clickPageAction, setUpProjectsScreenTests } from './projects-screen-test-support'
 import {
+  KEEP_BOTH_CONTROL,
   OPEN_AS_NEW,
   REMOVE_CONTROL,
   REPLACE_CONTROL,
@@ -49,7 +50,6 @@ import {
 
 setUpProjectsScreenTests()
 
-const OPEN_AND_KEEP_BOTH = 'Open and keep both plan files'
 const CANCEL = 'Cancel'
 const TWO_FILES_SENTENCE =
   'This project has two plan files. Open it from the Projects page to choose one.'
@@ -96,7 +96,7 @@ describe('The choice before a project with two readable plan files opens', () =>
       await go(ports)
 
       const dialog = await findTheTwoFilesDialog()
-      expect(within(dialog).getByRole('button', { name: OPEN_AND_KEEP_BOTH })).toBeEnabled()
+      expect(within(dialog).getByRole('button', { name: KEEP_BOTH_CONTROL })).toBeEnabled()
       expect(within(dialog).getByRole('button', { name: CANCEL })).toBeEnabled()
       expect(within(dialog).queryByRole('button', { name: 'Keep both plan files' })).toBeNull()
       expect(lockedIds(ports)).toEqual([])
@@ -107,7 +107,7 @@ describe('The choice before a project with two readable plan files opens', () =>
   it('"Open and keep both plan files" opens the editor on the main file and leaves both files', async () => {
     const { ports, dialog } = await askedBeforeTheOpen()
 
-    await chooseInTheDialog(dialog, OPEN_AND_KEEP_BOTH)
+    await chooseInTheDialog(dialog, KEEP_BOTH_CONTROL)
 
     await expectOpenProject(MAIN_NAME)
     expect(await storedFiles(ports)).toEqual({

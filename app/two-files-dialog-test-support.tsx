@@ -59,6 +59,7 @@ export const CHOOSE_A_PLAN_FILE = 'Choose a plan file'
 export const SECOND_FILE_LINE = 'This project has a second plan file.'
 
 export const KEEP_BOTH = 'Keep both plan files'
+export const KEEP_BOTH_CONTROL = 'Open and keep both plan files'
 export const OPEN_AS_NEW = 'Open the second plan file as a new project'
 export const REPLACE_CONTROL = 'Replace vernacular.json with the second plan file'
 export const REMOVE_CONTROL = 'Remove the second plan file'
