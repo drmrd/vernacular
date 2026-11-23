@@ -35,9 +35,9 @@ const noRetryNote = 'Retry check: no test passed only on a retry. Tests read: 1.
 const notAReportWarning =
   '::warning title=Retry check::The file at odd.json is not a Playwright JSON report, so its tests were not checked for retries.'
 
-function unreadableWarning(message) {
-  return `::warning title=Retry check::The Playwright JSON report at odd.json could not be read (${message}), so its tests were not checked for retries.`
-}
+const unreadableWarning = expect.stringMatching(
+  /^::warning title=Retry check::The Playwright JSON report at odd\.json could not be read \(.+\), so its tests were not checked for retries\.$/,
+)
 
 describe('runRetryWarning on a report that is malformed below the top level', () => {
   it.each([
@@ -46,42 +46,37 @@ describe('runRetryWarning on a report that is malformed below the top level', ()
       mutatedReport((report) => {
         report.suites = [null]
       }),
-      unreadableWarning("Cannot read properties of null (reading 'suites')"),
     ],
     [
       'a spec whose tests are null',
       mutatedReport((_report, spec) => {
         spec.tests = null
       }),
-      unreadableWarning("Cannot read properties of null (reading 'filter')"),
     ],
     [
       'a spec without a file',
       mutatedReport((_report, spec) => {
         delete spec.file
       }),
-      unreadableWarning('The "path" argument must be of type string. Received undefined'),
     ],
     [
       'a flaky test whose results all passed',
       mutatedReport((_report, _spec, test) => {
         test.results = test.results.filter((result) => result.status === 'passed')
       }),
-      unreadableWarning("Cannot read properties of undefined (reading 'error')"),
     ],
     [
       'a failed result whose error message is a number',
       mutatedReport((_report, _spec, test) => {
         test.results[0].error.message = 42
       }),
-      unreadableWarning('text.replace is not a function'),
     ],
   ])(
     'warns, exits 0, and still counts a good report when a report file holds %s',
-    async (_label, content, warning) => {
+    async (_label, content) => {
       const deps = fakeDeps({ 'odd.json': content, 'b.json': JSON.stringify(clean) })
       expect(await runRetryWarning(['odd.json', 'b.json'], deps)).toBe(0)
-      expect(deps.log).toHaveBeenCalledWith(warning)
+      expect(deps.log).toHaveBeenCalledWith(unreadableWarning)
       expect(deps.appendSummary).toHaveBeenCalledWith(noRetryNote)
     },
   )
@@ -124,7 +119,9 @@ describe('runRetryWarning when the summary cannot be formatted', () => {
     const deps = fakeDeps({ 'a.json': JSON.stringify(withoutProject) })
     expect(await runRetryWarning(['a.json'], deps)).toBe(0)
     expect(deps.log).toHaveBeenCalledWith(
-      "::warning title=Retry check::Could not format the retry check result (Cannot read properties of undefined (reading 'replaceAll'))",
+      expect.stringMatching(
+        /^::warning title=Retry check::Could not format the retry check result \(.+\), so it is missing from the job summary\.$/,
+      ),
     )
     expect(deps.log).not.toHaveBeenCalledWith(expect.stringContaining('Could not write'))
     expect(deps.appendSummary).not.toHaveBeenCalled()
@@ -140,6 +137,21 @@ describe('runRetryWarning when the job summary cannot be written', () => {
     expect(await runRetryWarning(['a.json'], deps)).toBe(0)
     expect(deps.log).toHaveBeenCalledWith(
       expect.stringContaining('Could not write the job summary'),
+    )
+  })
+})
+
+describe('runRetryWarning when the summary write throws a value without a printable message', () => {
+  it('exits 0 and still warns that the summary was not written', async () => {
+    const deps = fakeDeps({ 'a.json': JSON.stringify(clean) })
+    deps.appendSummary.mockImplementation(() => {
+      throw { message: { toString: 1 } }
+    })
+    expect(await runRetryWarning(['a.json'], deps)).toBe(0)
+    expect(deps.log).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^::warning title=Retry check::Could not write the job summary \(.+\), so the retry check result is missing from it\.$/,
+      ),
     )
   })
 })
@@ -170,7 +182,11 @@ describe('runRetryWarning when one report field is not text or a number', () => 
       expect(await runRetryWarning(['bad.json', 'good.json'], deps)).toBe(0)
       const logged = deps.log.mock.calls.map(([line]) => line)
       expect(logged).toContainEqual(expect.stringMatching(annotationPattern))
-      expect(logged).toContainEqual(expect.stringMatching(/^::warning title=Retry check::/))
+      expect(logged).toContainEqual(
+        expect.stringMatching(
+          /^::warning title=Retry check::Could not format the annotation of a test in e2e\/tests\/journeys\/snap-along-wall\.spec\.ts that passed only on a retry \(.+\), so that test has no annotation\.$/,
+        ),
+      )
     },
   )
 })
@@ -199,7 +215,9 @@ describe('runRetryWarning warnings that follow a caught error', () => {
     })
     await runRetryWarning(['a.json'], deps)
     expect(deps.log).toHaveBeenCalledWith(
-      expect.stringMatching(/Could not format the retry check result.*\(.+\)/),
+      expect.stringMatching(
+        /Could not format the retry check result \(.+\), so it is missing from the job summary\./,
+      ),
     )
   })
 
@@ -210,7 +228,9 @@ describe('runRetryWarning warnings that follow a caught error', () => {
     })
     await runRetryWarning(['a.json'], deps)
     expect(deps.log).toHaveBeenCalledWith(
-      expect.stringMatching(/Could not write the job summary.*\(EACCES: permission denied\)/),
+      expect.stringMatching(
+        /Could not write the job summary \(EACCES: permission denied\), so the retry check result is missing from it\./,
+      ),
     )
     expect(deps.log).not.toHaveBeenCalledWith(expect.stringContaining('second line'))
   })

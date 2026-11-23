@@ -237,7 +237,7 @@ describe('runRetryWarning', () => {
     })
     expect(await runRetryWarning(['b.json'], deps)).toBe(0)
     expect(deps.log).toHaveBeenCalledWith(
-      '::warning title=Retry check::Could not write the job summary (EACCES: permission denied)',
+      '::warning title=Retry check::Could not write the job summary (EACCES: permission denied), so the retry check result is missing from it.',
     )
   })
 })
