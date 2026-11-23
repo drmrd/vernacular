@@ -1,5 +1,10 @@
 import { act } from '@testing-library/react'
+import { vi } from 'vitest'
+import type { MockInstance } from 'vitest'
+import type { DocumentHandle, SessionPorts } from '../session'
+import { openOrThrow } from '../session/handle/handle-test-kit'
 import type { ActionOutcome, OwnerAction } from './use-open-project'
+import { startRequest } from './use-open-project-test-support'
 import type { OwnerResult, Settled } from './use-open-project-test-support'
 
 /** Test support: actions of a card that run through the owner of the open project. */
@@ -64,4 +69,39 @@ export function gatedAction<Result>(then: OwnerAction<Result>): GatedAction<Resu
     return then(ports, current)
   }
   return { action, letEnd: () => letEnd() }
+}
+
+/** The `close` of each handle that a step opened again, as spies that call through. */
+export type ReopenedCloses = Array<MockInstance<DocumentHandle['close']>>
+
+/**
+ * Closes `current`, as a choice between two plan files does, and opens the same project again. A
+ * project that nothing stored yet is made new again.
+ */
+async function reopenAfterClosing(
+  ports: SessionPorts,
+  current: DocumentHandle | undefined,
+  closes: ReopenedCloses,
+): Promise<DocumentHandle> {
+  if (current === undefined) throw new Error('No project is open to reopen')
+  await current.close()
+  const reopened = await openOrThrow(ports, startRequest(current.id))
+  closes.push(vi.spyOn(reopened, 'close'))
+  return reopened
+}
+
+/** An action that ends the project it is given, opens it again, and reports the new handle. */
+export function reopensTheProject(closes: ReopenedCloses): OwnerAction<string> {
+  return async (ports, current) => {
+    const reopened = await reopenAfterClosing(ports, current, closes)
+    return { result: ACTION_RESULT, currentClosed: true, reopened }
+  }
+}
+
+/** A flow that ends the project it is given, opens it again, and refuses with the new handle. */
+export function refusesAfterReopeningTheProject(closes: ReopenedCloses) {
+  return async (ports: SessionPorts, current: DocumentHandle | undefined) => {
+    const handle = await reopenAfterClosing(ports, current, closes)
+    return { ok: false, failure: { kind: 'cancelled' }, handle } as const
+  }
 }

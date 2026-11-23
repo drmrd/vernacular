@@ -199,7 +199,9 @@ describe('A choice that fails', () => {
     await chooseInTheDialog(dialog, REMOVE_CONTROL)
 
     await expectNoDialog()
-    expect(await findThePageAlert()).toHaveTextContent(failure.message)
+    expect(await findThePageAlert()).toHaveTextContent(
+      `Could not change the plan files: ${failure.message}`,
+    )
     expect(await filesOfTheProject(ports)).toEqual(filesBefore)
   })
 })

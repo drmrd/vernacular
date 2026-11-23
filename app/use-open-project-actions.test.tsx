@@ -13,9 +13,12 @@ import {
   closesTheProject,
   gatedAction,
   keepsTheProject,
+  refusesAfterReopeningTheProject,
+  reopensTheProject,
   settleRunAction,
   startAction,
 } from './owner-action-test-support'
+import type { ReopenedCloses } from './owner-action-test-support'
 import type { Flow, OwnerAction } from './use-open-project'
 import {
   gatedFlow,
@@ -203,5 +206,44 @@ describe('the open project after an action of a card', () => {
     expect(outcome).toEqual({ result: ACTION_RESULT, currentClosed: true })
     expect(console.error).not.toHaveBeenCalled()
     expect(await ports.locks.heldIds()).toEqual(new Set())
+  })
+
+  it('closes the project that an action opened again, once, when the owner unmounted while the action ran', async () => {
+    const ports = createTestPorts()
+    const { result, unmount } = renderOwner(ports, startRequest())
+    await waitForHandle(result)
+    const closes: ReopenedCloses = []
+    const running = gatedAction(reopensTheProject(closes))
+    const actionEnd = startAction(result, running.action)
+    await unmountAndSettle(unmount)
+
+    running.letEnd()
+    await act(() => actionEnd)
+
+    expect(closes).toHaveLength(1)
+    expect(closes[0]).toHaveBeenCalledOnce()
+    expect(await ports.locks.heldIds()).toEqual(new Set())
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it('closes the project that a flow opened again after it refused, once, when the owner unmounted while the flow ran', async () => {
+    const ports = createTestPorts()
+    const { result, unmount } = renderOwner(ports, startRequest())
+    await waitForHandle(result)
+    const closes: ReopenedCloses = []
+    const running = gatedFlow(refusesAfterReopeningTheProject(closes))
+    let flowEnd!: Promise<unknown>
+    act(() => {
+      flowEnd = result.current.runFlow(running.flow)
+    })
+    await unmountAndSettle(unmount)
+
+    running.letEnd()
+    await act(() => flowEnd)
+
+    expect(closes).toHaveLength(1)
+    expect(closes[0]).toHaveBeenCalledOnce()
+    expect(await ports.locks.heldIds()).toEqual(new Set())
+    expect(console.error).not.toHaveBeenCalled()
   })
 })

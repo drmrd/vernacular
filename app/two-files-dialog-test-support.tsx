@@ -3,22 +3,49 @@ import userEvent from '@testing-library/user-event'
 import { expect, vi } from 'vitest'
 import { reconcileIndex } from '../session'
 import {
+  MAIN_NAME,
   MAIN_PATH,
+  SECOND_NAME,
   SECOND_PATH,
   mainBytesOf,
   secondBytes,
+  storeFolderProject,
 } from '../session/flows/choose-kept-file-test-kit'
 import type { ProjectState } from '../session/flows/choose-kept-file-test-kit'
 import { PROJECT_ID } from '../session/flows/open-failed-test-kit'
-import { createTestPorts, movableClock, placeDocument } from '../session/handle/handle-test-kit'
-import type { TestPorts } from '../session/handle/handle-test-kit'
-import { SECOND_FILE_NAME, placeSecondFile } from '../session/handle/second-file-test-kit'
-import { InMemoryDirectory } from '../storage'
+import {
+  createTestPorts,
+  movableClock,
+  placeDocument,
+  storedProject,
+} from '../session/handle/handle-test-kit'
+import type { MovableClock, TestPorts } from '../session/handle/handle-test-kit'
+import { IMAGE } from '../session/flows/import-file-test-kit'
+import {
+  SECOND_FILE_NAME,
+  documentReferring,
+  placeSecondFile,
+} from '../session/handle/second-file-test-kit'
+import { folderRecord } from '../session/projects/rebuild-test-kit'
+import { DirectoryAssetCache, InMemoryDirectory } from '../storage'
 import type { ProjectRecord } from '../storage'
-import { filesUnder, findTheProjectsPage, renderAppAt } from './app-test-support'
+import { contentHashOf } from '../storage/zip/zip-test-kit'
+import type { MemoryAddressBar } from './address-bar'
+import {
+  AUTOSAVE_TIMEOUT_MS,
+  backToTheProject,
+  editTheProject,
+  expectOpenProject,
+  filesUnder,
+  findTheProjectsPage,
+  lockedIds,
+  plantProject,
+  renderAppAt,
+  secondTab,
+} from './app-test-support'
 import type { RenderedApp } from './app-test-support'
-import { PROJECTS_ADDRESS } from './history-navigation-test-support'
-import { openTheMenuOf } from './projects-screen-test-support'
+import { PROJECTS_ADDRESS, addressOf } from './history-navigation-test-support'
+import { openTheMenuOf, showThePageOn } from './projects-screen-test-support'
 
 /** Test support: the Projects page over projects with two plan files, and the steps of the choice between them. */
 
@@ -69,26 +96,38 @@ export interface PortsWithTwoFiles {
   rewriteTheSecondFile(bytes: Uint8Array, time: string): Promise<void>
 }
 
+/** Durable ports over files that carry the times of the clock, and the clock. */
+function durablePortsOnAClock(): { readonly ports: TestPorts; readonly clock: MovableClock } {
+  const clock = movableClock(new Date(MAIN_STORED_AT))
+  const root = new InMemoryDirectory({ now: clock.now })
+  return { ports: createTestPorts({ root, durable: true }), clock }
+}
+
+function rewriterOn(
+  ports: TestPorts,
+  clock: MovableClock,
+): PortsWithTwoFiles['rewriteTheSecondFile'] {
+  return async (bytes, time) => {
+    clock.moveTo(new Date(time))
+    await placeSecondFile(ports, PROJECT_ID, bytes)
+  }
+}
+
 /**
  * Durable ports that hold the project `a` with two plan files in `state`: the main file stored
  * at `MAIN_STORED_AT`, the second file at `SECOND_STORED_AT`. The index holds the record, which
  * says that the project has a second plan file.
  */
-export async function portsWithTwoFiles(state: ProjectState): Promise<PortsWithTwoFiles> {
-  const clock = movableClock(new Date(MAIN_STORED_AT))
-  const root = new InMemoryDirectory({ now: clock.now })
-  const ports = createTestPorts({ root, durable: true })
+export async function portsWithTwoFiles(
+  state: ProjectState,
+  second: Uint8Array = secondBytes(),
+): Promise<PortsWithTwoFiles> {
+  const { ports, clock } = durablePortsOnAClock()
   await placeDocument(ports, PROJECT_ID, mainBytesOf(state))
   clock.moveTo(new Date(SECOND_STORED_AT))
-  await placeSecondFile(ports, PROJECT_ID, secondBytes())
+  await placeSecondFile(ports, PROJECT_ID, second)
   await reconcileIndex(ports)
-  return {
-    ports,
-    async rewriteTheSecondFile(bytes, time) {
-      clock.moveTo(new Date(time))
-      await placeSecondFile(ports, PROJECT_ID, bytes)
-    },
-  }
+  return { ports, rewriteTheSecondFile: rewriterOn(ports, clock) }
 }
 
 /** The files below the directory of the project `a`, to compare before and after. */
@@ -196,4 +235,121 @@ export function holdTheChoice(ports: TestPorts, method: ChoiceMethod): HeldChoic
     return real(...args)
   })
   return { calls, release: () => release() }
+}
+
+/** The name that a second plan file holds after another program rewrote it. */
+export const REWRITTEN_NAME = 'Rewritten while the dialog showed'
+
+/** A project of this tab that has no second plan file, and its name. */
+export const QUIET_ID = 'quiet'
+export const QUIET_NAME = 'Quiet house'
+
+/** Ports and the page of a tab that holds a project, with the Projects page over it. */
+export interface HeldProject extends PortsWithTwoFiles {
+  readonly bar: MemoryAddressBar
+  /** The id and the name of the project that this tab holds. */
+  readonly id: string
+  readonly name: string
+}
+
+/**
+ * The page of a tab that holds the project `a`, which has two plan files in `state`, with the
+ * Projects page over it. A newer main file leaves only the second file to open from. Where the main
+ * file is readable, the second file is stored after the open, as a program in another tab would.
+ */
+export async function holdTheProject(
+  state: ProjectState,
+  second: Uint8Array = secondBytes(),
+): Promise<HeldProject> {
+  const { ports, clock } = durablePortsOnAClock()
+  const opensFromTheSecondFile = state === 'newer-main'
+  await placeDocument(ports, PROJECT_ID, mainBytesOf(state))
+  clock.moveTo(new Date(SECOND_STORED_AT))
+  if (opensFromTheSecondFile) await placeSecondFile(ports, PROJECT_ID, second)
+  await reconcileIndex(ports)
+  const { bar } = renderAppAt(ports, addressOf(PROJECT_ID))
+  const name = opensFromTheSecondFile ? SECOND_NAME : MAIN_NAME
+  await expectOpenProject(name)
+  if (!opensFromTheSecondFile) {
+    await placeSecondFile(ports, PROJECT_ID, second)
+    await reconcileIndex(ports)
+  }
+  await showThePageOn(bar)
+  await findTheLineOfTheSecondFile()
+  return { ports, bar, id: PROJECT_ID, name, rewriteTheSecondFile: rewriterOn(ports, clock) }
+}
+
+/** The page of a tab that holds the project `quiet`, over the project `a` that has two plan files. */
+export async function holdAnotherProject(): Promise<HeldProject> {
+  const { ports, rewriteTheSecondFile } = await portsWithTwoFiles('both-readable')
+  await plantProject(ports, QUIET_ID, QUIET_NAME)
+  await reconcileIndex(ports)
+  const { bar } = renderAppAt(ports, addressOf(QUIET_ID))
+  await expectOpenProject(QUIET_NAME)
+  await showThePageOn(bar)
+  await findTheLineOfTheSecondFile()
+  return { ports, bar, id: QUIET_ID, name: QUIET_NAME, rewriteTheSecondFile }
+}
+
+/** Opens the dialog from the card of the project `a`, over the page that shows already. */
+export async function openTheDialogOverTheProject(held: HeldProject): Promise<HTMLElement> {
+  await chooseAPlanFileOnTheCard(held.ports)
+  return findTheTwoFilesDialog()
+}
+
+/**
+ * Leaves the Projects page, as a user does, and expects what a tab that holds the project shows:
+ * the editor on the project `name`, its lock held by this tab alone, and an edit that is stored.
+ */
+export async function expectTheTabToHoldTheProject(
+  held: HeldProject,
+  name = held.name,
+): Promise<void> {
+  await backToTheProject(name)
+  await expectOpenProject(name)
+  expect(lockedIds(held.ports)).toEqual([held.id])
+  expect(await secondTab(held.ports).locks.tryAcquire(held.id)).toBeUndefined()
+  const floorsBefore = (await storedProject(held.ports.workspace, held.id)).floors.length
+  await editTheProject()
+  await waitFor(
+    async () =>
+      expect((await storedProject(held.ports.workspace, held.id)).floors).toHaveLength(
+        floorsBefore + 1,
+      ),
+    { timeout: AUTOSAVE_TIMEOUT_MS },
+  )
+}
+
+/** Expects the Projects page to stay at its address, with no entry added to the history. */
+export function expectThePageToStay(held: HeldProject, entriesBefore: readonly string[]): void {
+  expect(held.bar.hash()).toBe(PROJECTS_ADDRESS)
+  expect(held.bar.entries()).toEqual(entriesBefore)
+}
+
+/**
+ * From now on, a request for the lock of the project `a` finds another tab holding it, unless this
+ * tab holds it: the lock that a choice frees cannot be taken again.
+ */
+export function letAnotherTabTakeTheLockWhenItIsFreed(ports: TestPorts): void {
+  const tryAcquire = ports.locks.tryAcquire.bind(ports.locks)
+  vi.spyOn(ports.locks, 'tryAcquire').mockImplementation((id) =>
+    lockedIds(ports).includes(id) ? tryAcquire(id) : Promise.resolve(undefined),
+  )
+}
+
+/**
+ * Durable ports whose project `a` is kept in a folder, with a main file that a newer build wrote
+ * and a second file that uses one image. The folder holds the image when `folderHoldsTheImage`.
+ */
+export async function portsWithAFolderProjectInTwoFiles(
+  folderHoldsTheImage: boolean,
+): Promise<TestPorts> {
+  const ports = createTestPorts({ durable: true })
+  const folder = await storeFolderProject(ports, 'newer-main')
+  const imageHash = await contentHashOf(IMAGE)
+  if (folderHoldsTheImage) await new DirectoryAssetCache(folder).put(imageHash, IMAGE)
+  await folder.writeFile(SECOND_FILE_NAME, documentReferring([imageHash]))
+  const secondFile = { name: SECOND_FILE_NAME, read: 'second' } as const
+  await ports.index.put(folderRecord(PROJECT_ID, { secondFile }))
+  return ports
 }
