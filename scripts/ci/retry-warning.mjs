@@ -26,10 +26,8 @@ function collectAllSpecEntries(report) {
 }
 
 function firstErrorLine(failedResult) {
-  return failedResult.error.message
-    .replace(ANSI_COLOR_CODES, '')
-    .split('\n')[0]
-    .slice(0, FIRST_ERROR_MAX_LENGTH)
+  const text = failedResult.error?.message ?? failedResult.error?.value ?? ''
+  return text.replace(ANSI_COLOR_CODES, '').split('\n')[0].slice(0, FIRST_ERROR_MAX_LENGTH)
 }
 
 function repositoryPath(report, cwd, specFile) {
