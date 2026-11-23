@@ -1,5 +1,5 @@
 import { distance } from '../geometry/point'
-import { dot, leftPerp, shift, subtract } from '../geometry/vector'
+import { dot, leftPerp, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 
 /** A rectangle that stands on a wall. */
@@ -20,8 +20,8 @@ const LOG_TERM_WEIGHT = 0.25
 
 const QUADRATURE_POINT_COUNT = 16
 const NEWTON_STEP_COUNT = 8
-const FIRST_GUESS_OFFSET = 0.75
-const GUESS_SPREAD = 0.5
+const ROOT_ESTIMATE_INDEX_SHIFT = 0.75
+const ROOT_ESTIMATE_DEGREE_SHIFT = 0.5
 
 interface QuadraturePoint {
   position: number
@@ -38,14 +38,21 @@ function legendreWithDerivative(degree: number, x: number): { value: number; der
   return { value, derivative: (degree * (x * value - previous)) / (x * x - 1) }
 }
 
-/** The Gauss-Legendre nodes and weights on the interval from 0 to 1, found by Newton's iteration. */
+/**
+ * The Gauss-Legendre nodes and weights on the interval from 0 to 1. Each node starts from the standard
+ * asymptotic estimate of a Legendre root, cos(pi (i + 3/4) / (n + 1/2)); Newton's iteration converges
+ * quadratically, so 8 steps from it reach double precision.
+ */
 function gaussLegendreOnUnitInterval(pointCount: number): QuadraturePoint[] {
+  const newtonStep = (x: number): number => {
+    const { value, derivative } = legendreWithDerivative(pointCount, x)
+    return x - value / derivative
+  }
   return Array.from({ length: pointCount }, (_, index) => {
-    let x = Math.cos((Math.PI * (index + FIRST_GUESS_OFFSET)) / (pointCount + GUESS_SPREAD))
-    for (let step = 0; step < NEWTON_STEP_COUNT; step++) {
-      const { value, derivative } = legendreWithDerivative(pointCount, x)
-      x -= value / derivative
-    }
+    const estimate = Math.cos(
+      (Math.PI * (index + ROOT_ESTIMATE_INDEX_SHIFT)) / (pointCount + ROOT_ESTIMATE_DEGREE_SHIFT),
+    )
+    const x = Array.from({ length: NEWTON_STEP_COUNT }).reduce<number>(newtonStep, estimate)
     const { derivative } = legendreWithDerivative(pointCount, x)
     return { position: (x + 1) / 2, weight: 1 / ((1 - x * x) * derivative * derivative) }
   })
@@ -164,6 +171,10 @@ function facingWallsExchangeArea(doorway: UprightRectangle, glazing: UprightRect
   )
 }
 
+function parallelToEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
+  return Math.abs(dot(doorway.facing, glazing.facing)) >= 1 - ORIENTATION_TOLERANCE
+}
+
 function squareToEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
   return Math.abs(dot(doorway.facing, glazing.facing)) <= ORIENTATION_TOLERANCE
 }
@@ -206,14 +217,16 @@ function heightKernel(terms: readonly HeightTerm[], planDistance: number): numbe
 /** The exchange area, in square millimetres, between two walls at any other angle, by quadrature. */
 function angledExchangeArea(doorway: UprightRectangle, glazing: UprightRectangle): number {
   const terms = heightTerms(doorway, glazing)
-  const glazingVector = subtract(glazing.span[1], glazing.span[0])
-  const doorwayVector = subtract(doorway.span[1], doorway.span[0])
+  const glazingLength = distance(glazing.span[0], glazing.span[1])
+  const doorwayLength = distance(doorway.span[0], doorway.span[1])
+  const glazingDirection = unit(subtract(glazing.span[1], glazing.span[0]))
+  const doorwayDirection = unit(subtract(doorway.span[1], doorway.span[0]))
   let total = 0
   for (const glazingPoint of QUADRATURE_POINTS) {
     for (const doorwayPoint of QUADRATURE_POINTS) {
       const offset = subtract(
-        shift(doorway.span[0], doorwayVector, doorwayPoint.position),
-        shift(glazing.span[0], glazingVector, glazingPoint.position),
+        shift(doorway.span[0], doorwayDirection, doorwayPoint.position * doorwayLength),
+        shift(glazing.span[0], glazingDirection, glazingPoint.position * glazingLength),
       )
       total +=
         glazingPoint.weight *
@@ -223,17 +236,13 @@ function angledExchangeArea(doorway: UprightRectangle, glazing: UprightRectangle
         heightKernel(terms, Math.hypot(offset.x, offset.y))
     }
   }
-  return (
-    (Math.hypot(glazingVector.x, glazingVector.y) *
-      Math.hypot(doorwayVector.x, doorwayVector.y) *
-      total) /
-    Math.PI
-  )
+  return (glazingLength * doorwayLength * total) / Math.PI
 }
 
+/** Pairs where either rectangle faces away from the other, or that face the same way, give 0. */
 function exchangeArea(doorway: UprightRectangle, glazing: UprightRectangle): number {
   if (squareToEachOther(doorway, glazing)) return rightAngleExchangeArea(doorway, glazing)
-  if (faceEachOther(doorway, glazing)) return facingWallsExchangeArea(doorway, glazing)
+  if (parallelToEachOther(doorway, glazing)) return facingWallsExchangeArea(doorway, glazing)
   return angledExchangeArea(doorway, glazing)
 }
 
