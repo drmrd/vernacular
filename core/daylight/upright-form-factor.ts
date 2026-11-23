@@ -16,7 +16,7 @@ export interface UprightRectangle {
 /** How far a dot product of unit normals may sit from -1 or 0 and still count as facing or square. */
 const ORIENTATION_TOLERANCE = 1e-9
 
-const LOGARITHM_DIVISOR = 4
+const LOG_TERM_WEIGHT = 0.25
 
 interface SignedPosition {
   position: number
@@ -73,18 +73,33 @@ function facingAntiderivative(offset: number, height: number, gap: number): numb
  * the sum of the squared distances of a glazing end and a doorway end from the other's plane.
  */
 function rightAngleAntiderivative(squaredReach: number, height: number): number {
-  const squaredSum = squaredReach + height * height
-  if (squaredSum === 0) return 0
+  const squaredReachAndHeight = squaredReach + height * height
+  if (squaredReachAndHeight === 0) return 0
   const reach = Math.sqrt(squaredReach)
   return (
     (-height * reach * Math.atan2(height, reach) +
-      ((squaredReach - height * height) * Math.log(squaredSum)) / LOGARITHM_DIVISOR) /
+      (squaredReach - height * height) * Math.log(squaredReachAndHeight) * LOG_TERM_WEIGHT) /
     (2 * Math.PI)
   )
 }
 
 function signedHeightSum(terms: readonly HeightTerm[], kernel: (height: number) => number): number {
   return terms.reduce((sum, term) => sum + term.sign * kernel(term.height), 0)
+}
+
+/** Sums a value over every glazing end and doorway end pair, each weighted by the product of their signs. */
+function sumOverEndPairs(
+  glazingEnds: readonly SignedPosition[],
+  doorwayEnds: readonly SignedPosition[],
+  pairValue: (glazingEnd: SignedPosition, doorwayEnd: SignedPosition) => number,
+): number {
+  let total = 0
+  for (const glazingEnd of glazingEnds) {
+    for (const doorwayEnd of doorwayEnds) {
+      total += glazingEnd.sign * (doorwayEnd.sign * pairValue(glazingEnd, doorwayEnd))
+    }
+  }
+  return total
 }
 
 function faceEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
@@ -101,17 +116,17 @@ function facingWallsExchangeArea(doorway: UprightRectangle, glazing: UprightRect
   if (!faceEachOther(doorway, glazing) || gap <= 0) return 0
   const wallDirection = leftPerp(glazing.facing)
   const terms = heightTerms(doorway, glazing)
-  let exchangeArea = 0
-  for (const glazingEnd of signedEnds(glazing.span, wallDirection)) {
-    for (const doorwayEnd of signedEnds(doorway.span, wallDirection)) {
-      const offset = glazingEnd.position - doorwayEnd.position
-      const signedSum = signedHeightSum(terms, (height) =>
-        facingAntiderivative(offset, height, gap),
-      )
-      exchangeArea -= glazingEnd.sign * doorwayEnd.sign * signedSum
-    }
-  }
-  return exchangeArea
+  return (
+    0 -
+    sumOverEndPairs(
+      signedEnds(glazing.span, wallDirection),
+      signedEnds(doorway.span, wallDirection),
+      (glazingEnd, doorwayEnd) =>
+        signedHeightSum(terms, (height) =>
+          facingAntiderivative(glazingEnd.position - doorwayEnd.position, height, gap),
+        ),
+    )
+  )
 }
 
 function squareToEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
@@ -133,17 +148,14 @@ function distancesInFront(
 /** The exchange area, in square millimetres, between two walls at a right angle. */
 function rightAngleExchangeArea(doorway: UprightRectangle, glazing: UprightRectangle): number {
   const terms = heightTerms(doorway, glazing)
-  let exchangeArea = 0
-  for (const glazingEnd of distancesInFront(glazing.span, doorway)) {
-    for (const doorwayEnd of distancesInFront(doorway.span, glazing)) {
-      const squaredReach = glazingEnd.position ** 2 + doorwayEnd.position ** 2
-      const signedSum = signedHeightSum(terms, (height) =>
-        rightAngleAntiderivative(squaredReach, height),
-      )
-      exchangeArea += glazingEnd.sign * doorwayEnd.sign * signedSum
-    }
-  }
-  return exchangeArea
+  return sumOverEndPairs(
+    distancesInFront(glazing.span, doorway),
+    distancesInFront(doorway.span, glazing),
+    (glazingEnd, doorwayEnd) =>
+      signedHeightSum(terms, (height) =>
+        rightAngleAntiderivative(glazingEnd.position ** 2 + doorwayEnd.position ** 2, height),
+      ),
+  )
 }
 
 /**
