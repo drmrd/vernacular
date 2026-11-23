@@ -29,7 +29,10 @@ function collectAllSpecEntries(report) {
 
 function firstErrorLine(failedResult) {
   const text = failedResult.error?.message ?? failedResult.error?.value ?? ''
-  return text.replace(ANSI_COLOR_CODES, '').split('\n')[0].slice(0, FIRST_ERROR_MAX_LENGTH)
+  return text
+    .replace(ANSI_COLOR_CODES, '')
+    .split(/\r?\n|\r/)[0]
+    .slice(0, FIRST_ERROR_MAX_LENGTH)
 }
 
 function repositoryPath(report, cwd, specFile) {
@@ -73,7 +76,7 @@ export function countTests(report) {
 }
 
 function escapeTableCell(text) {
-  return text.replaceAll('\n', ' ').replaceAll('|', '\\|')
+  return text.replaceAll(/\r\n|\r|\n/g, ' ').replaceAll('|', '\\|')
 }
 
 function escapeAnnotationMessage(text) {
@@ -130,9 +133,16 @@ function isPlaywrightReport(value) {
   return Array.isArray(value?.suites) && typeof value.config?.rootDir === 'string'
 }
 
+function analyzeReport(report, cwd) {
+  return { passes: findRetriedPasses(report, cwd), tests: countTests(report) }
+}
+
 function readReport(reportPath, deps) {
   const skip = (problem) => {
-    deps.log(`::warning title=Retry check::${problem}, so its tests were not checked for retries.`)
+    const message = escapeAnnotationMessage(
+      `${problem}, so its tests were not checked for retries.`,
+    )
+    deps.log(`::warning title=Retry check::${message}`)
     return undefined
   }
   let text
@@ -147,9 +157,36 @@ function readReport(reportPath, deps) {
   } catch {
     return skip(`The Playwright JSON report at ${reportPath} is not valid JSON`)
   }
-  return isPlaywrightReport(report)
-    ? report
-    : skip(`The file at ${reportPath} is not a Playwright JSON report`)
+  const skipNotAReport = () => skip(`The file at ${reportPath} is not a Playwright JSON report`)
+  if (!isPlaywrightReport(report)) {
+    return skipNotAReport()
+  }
+  try {
+    return analyzeReport(report, deps.cwd)
+  } catch {
+    return skipNotAReport()
+  }
+}
+
+function formatSummaryOrWarn(passes, counts, log) {
+  try {
+    return formatRetrySummary(passes, counts)
+  } catch {
+    log(
+      '::warning title=Retry check::Could not format the retry check result, so it is missing from the job summary.',
+    )
+    return undefined
+  }
+}
+
+function writeSummaryOrWarn(summary, deps, log) {
+  try {
+    deps.appendSummary(summary)
+  } catch {
+    log(
+      '::warning title=Retry check::Could not write the job summary, so the retry check result is missing from it.',
+    )
+  }
 }
 
 /**
@@ -160,17 +197,23 @@ function readReport(reportPath, deps) {
  * @returns {Promise<number>}
  */
 export async function runRetryWarning(argv, deps) {
-  const reports = argv.map((reportPath) => readReport(reportPath, deps)).filter(Boolean)
-  const passes = reports.flatMap((report) => findRetriedPasses(report, deps.cwd))
-  const tests = reports.reduce((total, report) => total + countTests(report), 0)
-  try {
-    deps.appendSummary(formatRetrySummary(passes, { tests, reports: reports.length }))
-  } catch {
-    deps.log(
-      '::warning title=Retry check::Could not write the job summary, so the retry check result is missing from it.',
-    )
+  const log = (line) => {
+    try {
+      deps.log(line)
+    } catch {
+      // A broken log stream must not fail the job.
+    }
   }
-  formatRetryAnnotations(passes).forEach((line) => deps.log(line))
+  const analyses = argv
+    .map((reportPath) => readReport(reportPath, { ...deps, log }))
+    .filter(Boolean)
+  const passes = analyses.flatMap((analysis) => analysis.passes)
+  const tests = analyses.reduce((total, analysis) => total + analysis.tests, 0)
+  const summary = formatSummaryOrWarn(passes, { tests, reports: analyses.length }, log)
+  if (summary !== undefined) {
+    writeSummaryOrWarn(summary, deps, log)
+  }
+  formatRetryAnnotations(passes).forEach(log)
   return 0
 }
 
@@ -192,6 +235,6 @@ if (isDirectInvocation) {
     })
     .catch((error) => {
       console.error(error)
-      process.exit(2)
+      process.exitCode = 0
     })
 }
