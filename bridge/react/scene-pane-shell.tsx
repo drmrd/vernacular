@@ -36,8 +36,8 @@ function AimReticle() {
 
 // The interactive preview pane: it wraps the canvas and overlay (passed as children), shows
 // the grab/grabbing cursor that signals the canvas is draggable, and overlays the per-mode
-// controls hint and, in walk mode with the aim guide on, the aim dot.
-// Both are inert to pointer events, so they never block a drag.
+// controls hint and, in walk mode with the aim guide on, the aim dot. Both are scene chrome,
+// so a mounted failure view hides them, and both are inert to pointer events, so they never block a drag.
 export function ScenePaneShell({
   mode,
   aimGuide,
@@ -61,8 +61,8 @@ export function ScenePaneShell({
       {...paneHandlers}
     >
       {children}
-      {mode === 'walk' && aimGuide ? <AimReticle /> : null}
       <SceneChrome>
+        {mode === 'walk' && aimGuide ? <AimReticle /> : null}
         <CameraControlsHint mode={mode} />
       </SceneChrome>
     </div>
