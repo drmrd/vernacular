@@ -33,6 +33,7 @@ export interface SceneSessionState {
   scope: 'floor' | 'building'
   showUnderground: boolean
   edgeOverlay: boolean
+  aimGuide: boolean
   /** Replace this map (and never mutate an inner part set) on every change; mutating either in place will not notify subscribers. */
   openDoorIds: OpenParts
   savedCamera: SavedCamera | null
@@ -59,6 +60,7 @@ export const DEFAULT_SCENE_SESSION_STATE: SceneSessionState = Object.freeze({
   scope: 'floor',
   showUnderground: true,
   edgeOverlay: false,
+  aimGuide: true,
   openDoorIds: NO_OPEN_DOORS,
   savedCamera: null,
   walkPose: null,

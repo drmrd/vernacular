@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
-import type { SavedCamera, SceneSessionStore } from '../scene-session/scene-session-store'
+import type {
+  SavedCamera,
+  SceneSessionState,
+  SceneSessionStore,
+} from '../scene-session/scene-session-store'
 
 import type { PresetRequest } from './scene-camera-effects'
 import type { PresetChoice } from './scene-nav-toolbar'
@@ -49,10 +53,7 @@ export function useSceneNavigation() {
   return {
     mode: session.cameraMode,
     setMode: writers.setMode,
-    selectionEnabled: session.selectionEnabled,
-    toggleSelection: writers.toggleSelection,
-    revealInterior: session.revealInterior,
-    toggleRevealInterior: writers.toggleRevealInterior,
+    ...displayOptions(session, writers),
     userControlled,
     markUserControlled,
     resetView,
@@ -80,6 +81,20 @@ export function useSceneNavigation() {
   }
 }
 
+type SceneSessionWriters = ReturnType<typeof useSceneSessionWriters>
+
+/** The display options the session holds, each paired with the writer that flips it. */
+function displayOptions(session: SceneSessionState, writers: SceneSessionWriters) {
+  return {
+    selectionEnabled: session.selectionEnabled,
+    toggleSelection: writers.toggleSelection,
+    revealInterior: session.revealInterior,
+    toggleRevealInterior: writers.toggleRevealInterior,
+    aimGuide: session.aimGuide,
+    toggleAimGuide: writers.toggleAimGuide,
+  }
+}
+
 /**
  * The writes navigation makes to the session store, bundled so the hook that returns them
  * reads as one list of names.
@@ -93,6 +108,7 @@ function useSceneSessionWriters(store: SceneSessionStore) {
       notePresetApplied: sceneSessionSetter(store, 'presetPose'),
       noteWalkPose: sceneSessionSetter(store, 'walkPose'),
       noteOpenDoors: sceneSessionSetter(store, 'openDoorIds'),
+      toggleAimGuide: sceneSessionToggle(store, 'aimGuide'),
       clearPresetPose: () => store.updateSceneSession({ presetPose: null }),
     }),
     [store],
