@@ -1,7 +1,11 @@
 // @vitest-environment node
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
-import { decodeImageTexture, type ImageBitmapDecoder } from './image-texture-loader'
+import {
+  decodeImageTexture,
+  ImageTextureDecodeError,
+  type ImageBitmapDecoder,
+} from './image-texture-loader'
 
 const IMAGE_SIDE = 64
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47]
@@ -47,5 +51,22 @@ describe('decodeImageTexture', () => {
     expect(linear.colorSpace).toBe(THREE.NoColorSpace)
     expectRepeatingMipmappedTexture(srgb)
     expectRepeatingMipmappedTexture(linear)
+  })
+
+  it('rejects with an ImageTextureDecodeError that keeps the decoder failure as its cause', async () => {
+    const failure = new Error('corrupt image data')
+    const decode = vi.fn<ImageBitmapDecoder>(async () => {
+      throw failure
+    })
+
+    const rejection = await decodeImageTexture(
+      new Uint8Array(PNG_SIGNATURE),
+      { mediaType: 'image/png', colorSpace: 'srgb' },
+      decode,
+    ).catch((error: unknown) => error)
+
+    expect(rejection).toBeInstanceOf(ImageTextureDecodeError)
+    expect((rejection as ImageTextureDecodeError).name).toBe('ImageTextureDecodeError')
+    expect((rejection as ImageTextureDecodeError).cause).toBe(failure)
   })
 })
