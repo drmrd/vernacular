@@ -106,6 +106,25 @@ describe('formatRetrySummary', () => {
     expect(text).toContain('a \\| b')
     expect(text).toContain('c \\| d')
   })
+
+  it('keeps a title that holds a newline on one table row', () => {
+    const text = formatRetrySummary([{ ...retryPass, title: 'first line\nsecond line' }], {
+      tests: 412,
+      reports: 1,
+    })
+    const rows = text.split('\n').filter((line) => line.startsWith('| `'))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toContain('first line second line')
+  })
+
+  it('escapes a pipe in the file and in the project so the table keeps its columns', () => {
+    const text = formatRetrySummary(
+      [{ ...retryPass, file: 'e2e/tests/a|b.spec.ts', project: 'x|y' }],
+      { tests: 412, reports: 1 },
+    )
+    expect(text).toContain('e2e/tests/a\\|b.spec.ts:4')
+    expect(text).toContain('| x\\|y |')
+  })
 })
 
 describe('formatRetryAnnotations', () => {
@@ -122,9 +141,19 @@ describe('formatRetryAnnotations', () => {
     expect(line).toContain('file=e2e/tests/a%2Cb%3Ac.spec.ts,')
     expect(line).toContain('::50%25 done%0Anext (')
   })
+
+  it('encodes a carriage return in the message', () => {
+    const [line] = formatRetryAnnotations([{ ...retryPass, title: 'first\rsecond' }])
+    expect(line).toContain('::first%0Dsecond (')
+  })
+
+  it('encodes a percent sign, a carriage return, and a newline in a property value', () => {
+    const [line] = formatRetryAnnotations([{ ...retryPass, file: 'e2e/tests/100%\r\n.spec.ts' }])
+    expect(line).toContain('file=e2e/tests/100%25%0D%0A.spec.ts,')
+  })
 })
 
-function deps(files) {
+function fakeDeps(files) {
   return {
     readFile: (path) => {
       if (!(path in files)) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
@@ -140,36 +169,75 @@ const noRetryNote = 'Retry check: no test passed only on a retry. Tests read: 1.
 
 describe('runRetryWarning', () => {
   it('appends the warning to the job summary and exits 0 when a test passed only on a retry', async () => {
-    const d = deps({ 'a.json': JSON.stringify(retried) })
-    expect(await runRetryWarning(['a.json'], d)).toBe(0)
-    expect(d.appendSummary).toHaveBeenCalledOnce()
-    expect(d.appendSummary.mock.calls[0][0]).toContain('### Warning: tests passed only on a retry')
-    expect(d.log).toHaveBeenCalledWith(
+    const deps = fakeDeps({ 'a.json': JSON.stringify(retried) })
+    expect(await runRetryWarning(['a.json'], deps)).toBe(0)
+    expect(deps.appendSummary).toHaveBeenCalledOnce()
+    expect(deps.appendSummary.mock.calls[0][0]).toContain(
+      '### Warning: tests passed only on a retry',
+    )
+    expect(deps.log).toHaveBeenCalledWith(
       expect.stringMatching(/^::warning file=e2e\/tests\/journeys\/snap-along-wall\.spec\.ts,/),
     )
   })
 
   it('adds up the tests and the retry passes of several reports', async () => {
-    const d = deps({ 'a.json': JSON.stringify(retried), 'b.json': JSON.stringify(clean) })
-    await runRetryWarning(['a.json', 'b.json'], d)
-    expect(d.appendSummary.mock.calls[0][0]).toContain(
+    const deps = fakeDeps({ 'a.json': JSON.stringify(retried), 'b.json': JSON.stringify(clean) })
+    await runRetryWarning(['a.json', 'b.json'], deps)
+    expect(deps.appendSummary.mock.calls[0][0]).toContain(
       'Tests read: 5. Reports read: 2. Passed only on a retry: 1.',
     )
   })
 
   it('writes the one-line note and exits 0 when no test passed only on a retry', async () => {
-    const d = deps({ 'b.json': JSON.stringify(clean) })
-    expect(await runRetryWarning(['b.json'], d)).toBe(0)
-    expect(d.appendSummary).toHaveBeenCalledWith(noRetryNote)
-    expect(d.log).not.toHaveBeenCalled()
+    const deps = fakeDeps({ 'b.json': JSON.stringify(clean) })
+    expect(await runRetryWarning(['b.json'], deps)).toBe(0)
+    expect(deps.appendSummary).toHaveBeenCalledWith(noRetryNote)
+    expect(deps.log).not.toHaveBeenCalled()
   })
 
   it('warns and exits 0 when a report file is missing', async () => {
-    const d = deps({ 'b.json': JSON.stringify(clean) })
-    expect(await runRetryWarning(['missing.json', 'b.json'], d)).toBe(0)
-    expect(d.log).toHaveBeenCalledWith(
+    const deps = fakeDeps({ 'b.json': JSON.stringify(clean) })
+    expect(await runRetryWarning(['missing.json', 'b.json'], deps)).toBe(0)
+    expect(deps.log).toHaveBeenCalledWith(
       '::warning title=Retry check::No Playwright JSON report at missing.json, so its tests were not checked for retries.',
     )
-    expect(d.appendSummary).toHaveBeenCalledWith(noRetryNote)
+    expect(deps.appendSummary).toHaveBeenCalledWith(noRetryNote)
+  })
+
+  it('names the parse failure when a report file exists but is not valid JSON', async () => {
+    const deps = fakeDeps({ 'broken.json': '{"suites": [', 'b.json': JSON.stringify(clean) })
+    expect(await runRetryWarning(['broken.json', 'b.json'], deps)).toBe(0)
+    expect(deps.log).toHaveBeenCalledWith(
+      '::warning title=Retry check::The Playwright JSON report at broken.json is not valid JSON, so its tests were not checked for retries.',
+    )
+    expect(deps.log).not.toHaveBeenCalledWith(expect.stringContaining('No Playwright JSON report'))
+    expect(deps.appendSummary).toHaveBeenCalledWith(noRetryNote)
+  })
+
+  const notAReportWarning =
+    '::warning title=Retry check::The file at odd.json is not a Playwright JSON report, so its tests were not checked for retries.'
+  const withoutRootDir = { ...structuredClone(retried), config: {} }
+
+  it.each([
+    ['an empty object', '{}'],
+    ['a bare string', '"x"'],
+    ['a null value', 'null'],
+    ['a report without config.rootDir', JSON.stringify(withoutRootDir)],
+  ])('warns and exits 0 when a report file holds %s', async (_label, content) => {
+    const deps = fakeDeps({ 'odd.json': content, 'b.json': JSON.stringify(clean) })
+    expect(await runRetryWarning(['odd.json', 'b.json'], deps)).toBe(0)
+    expect(deps.log).toHaveBeenCalledWith(notAReportWarning)
+    expect(deps.appendSummary).toHaveBeenCalledWith(noRetryNote)
+  })
+
+  it('warns and exits 0 when the job summary cannot be written', async () => {
+    const deps = fakeDeps({ 'b.json': JSON.stringify(clean) })
+    deps.appendSummary.mockImplementation(() => {
+      throw new Error('EACCES: permission denied')
+    })
+    expect(await runRetryWarning(['b.json'], deps)).toBe(0)
+    expect(deps.log).toHaveBeenCalledWith(
+      '::warning title=Retry check::Could not write the job summary, so the retry check result is missing from it.',
+    )
   })
 })
