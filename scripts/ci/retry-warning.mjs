@@ -100,6 +100,9 @@ function summaryTableRow(pass) {
  * @returns {string} Markdown for the job summary
  */
 export function formatRetrySummary(passes, counts) {
+  if (counts.reports === 0) {
+    return 'Retry check: not done. No Playwright JSON report could be read.\n'
+  }
   if (passes.length === 0) {
     return `Retry check: no test passed only on a retry. Tests read: ${counts.tests}. Reports read: ${counts.reports}.\n`
   }
