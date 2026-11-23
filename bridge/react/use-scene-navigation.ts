@@ -53,7 +53,7 @@ export function useSceneNavigation() {
   return {
     mode: session.cameraMode,
     setMode: writers.setMode,
-    ...displayOptions(session, writers),
+    ...sessionToggles(session, writers),
     userControlled,
     markUserControlled,
     resetView,
@@ -84,7 +84,7 @@ export function useSceneNavigation() {
 type SceneSessionWriters = ReturnType<typeof useSceneSessionWriters>
 
 /** The display options the session holds, each paired with the writer that flips it. */
-function displayOptions(session: SceneSessionState, writers: SceneSessionWriters) {
+function sessionToggles(session: SceneSessionState, writers: SceneSessionWriters) {
   return {
     selectionEnabled: session.selectionEnabled,
     toggleSelection: writers.toggleSelection,
