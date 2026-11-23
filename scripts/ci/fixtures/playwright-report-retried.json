@@ -53,8 +53,8 @@
   },
   "suites": [
     {
-      "title": "journeys/open-plan.spec.ts",
-      "file": "journeys/open-plan.spec.ts",
+      "title": "journeys/snap-along-wall.spec.ts",
+      "file": "journeys/snap-along-wall.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [
@@ -87,7 +87,7 @@
             }
           ],
           "id": "36c93ce00c650f2e6fd8-b02f7cf78225ff05af42",
-          "file": "journeys/open-plan.spec.ts",
+          "file": "journeys/snap-along-wall.spec.ts",
           "line": 3,
           "column": 1
         },
@@ -216,7 +216,7 @@
             }
           ],
           "id": "36c93ce00c650f2e6fd8-d927bf0e29401c539c63",
-          "file": "journeys/always-fails.spec.ts",
+          "file": "journeys/snap-along-wall.spec.ts",
           "line": 13,
           "column": 1
         },
@@ -267,7 +267,7 @@
             }
           ],
           "id": "36c93ce00c650f2e6fd8-faac7b51e056c9a5595c",
-          "file": "journeys/skipped.spec.ts",
+          "file": "journeys/snap-along-wall.spec.ts",
           "line": 17,
           "column": 6
         }

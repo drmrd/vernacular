@@ -36,6 +36,18 @@ describe('findRetriedPasses', () => {
     const passes = findRetriedPasses(longError, '/work')
     expect(passes[0].firstError).toHaveLength(200)
   })
+
+  it('reads the first error of a failed attempt that threw a value that is not an Error', () => {
+    const report = structuredClone(retried)
+    report.suites[0].suites[0].specs[0].tests[0].results[0].error = { value: "'boom'" }
+    expect(findRetriedPasses(report, '/work')[0].firstError).toBe("'boom'")
+  })
+
+  it('gives an empty first error when the failed attempt has no error', () => {
+    const report = structuredClone(retried)
+    delete report.suites[0].suites[0].specs[0].tests[0].results[0].error
+    expect(findRetriedPasses(report, '/work')[0].firstError).toBe('')
+  })
 })
 
 describe('countTests', () => {
