@@ -5,12 +5,16 @@
 // injected PackReader, and returns the accumulated errors. When the in-app pack
 // loader lands (phase 3) these checks graduate to core/ as shared TypeScript.
 
-import { assetFileName, MEDIA_TYPE_EXTENSIONS } from '../../core/assets/pack-manifest.ts'
+import {
+  assetFileName,
+  isModelAsset,
+  MEDIA_TYPE_EXTENSIONS,
+} from '../../core/assets/pack-manifest.ts'
 import { isRecord } from '../../core/assets/is-record.ts'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
 import {
   textureFileProblems,
-  textureFileSizeProblem,
+  textureFileSizeProblems,
 } from '../../core/assets/texture-file-rules.ts'
 
 /**
@@ -26,7 +30,6 @@ import {
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
 const FORMAT_ONE_MEDIA_TYPE = 'model/gltf-binary'
-const TEXTURE_KIND = 'texture'
 const THUMBNAIL_EXTENSION = '.webp'
 const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
@@ -120,15 +123,17 @@ async function checkAssetHashes(assets, reader, errors) {
  * Confirm each texture file's header agrees with its manifest entry.
  * @param {object[]} assets   assets whose files are present and hash correctly
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {Promise<void>}
  */
-async function checkTextureFiles(assets, reader, errors) {
-  for (const asset of assets.filter((a) => a.kind === TEXTURE_KIND)) {
+async function checkTextureFiles(assets, reader, context) {
+  const { errors, formatVersion } = context
+  for (const asset of assets.filter((a) => !isModelAsset(a, formatVersion))) {
     const file = assetPath(asset)
     const fileSize = await reader.size(file)
-    const sizeProblem = textureFileSizeProblem(fileSize)
-    if (sizeProblem !== null) errors.push(`asset ${asset.contentHash}: ${sizeProblem}`)
+    for (const problem of textureFileSizeProblems(fileSize)) {
+      errors.push(`asset ${asset.contentHash}: ${problem}`)
+    }
     const bytes = await reader.readBytes(file, TEXTURE_LIMITS.maxFileBytes)
     for (const problem of textureFileProblems(asset, bytes)) {
       errors.push(`asset ${asset.contentHash}: ${problem}`)
@@ -141,15 +146,17 @@ async function checkTextureFiles(assets, reader, errors) {
  * but must be WebP when present.
  * @param {object[]} assets
  * @param {PackReader} reader
- * @param {string[]} errors
+ * @param {{ errors: string[], formatVersion: unknown }} context
  * @returns {Promise<void>}
  */
-async function checkThumbnails(assets, reader, errors) {
+async function checkThumbnails(assets, reader, context) {
+  const { errors, formatVersion } = context
   for (const asset of assets) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
     const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
     if (!(await reader.exists(file))) {
-      if (asset.kind !== TEXTURE_KIND) errors.push(`asset ${asset.contentHash}: thumbnail missing`)
+      if (isModelAsset(asset, formatVersion))
+        errors.push(`asset ${asset.contentHash}: thumbnail missing`)
       continue
     }
     const bytes = await reader.readBytes(file, WEBP_HEADER_LENGTH)
@@ -217,9 +224,10 @@ function checkDirName(manifest, reader, errors) {
  */
 export async function checkPackIntegrity(manifest, reader) {
   const errors = []
+  const context = { errors, formatVersion: manifest?.formatVersion }
   const verifiedAssets = await checkAssetHashes(manifestAssets(manifest), reader, errors)
-  await checkTextureFiles(verifiedAssets, reader, errors)
-  await checkThumbnails(manifestAssets(manifest), reader, errors)
+  await checkTextureFiles(verifiedAssets, reader, context)
+  await checkThumbnails(manifestAssets(manifest), reader, context)
   await checkOrphans(manifestAssets(manifest), reader, errors)
   await checkRequiredFiles(reader, errors)
   checkDirName(manifest, reader, errors)

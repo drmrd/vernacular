@@ -75,13 +75,15 @@ function sizeProblems(header: ImageHeader, declared: DeclaredSize | null): strin
 
 export function textureFileProblems(asset: TextureFileExpectation, bytes: Uint8Array): string[] {
   const header = readImageHeader(bytes)
-  if (header?.mediaType !== asset.mediaType) {
+  if (header === undefined || header.mediaType !== asset.mediaType) {
     return [`file bytes do not match the declared media type ${asset.mediaType}`]
   }
   return [...sizeProblems(header, declaredSize(asset.image)), ...formatProblems(header, bytes)]
 }
 
-export function textureFileSizeProblem(fileSize: number): string | null {
-  if (fileSize <= TEXTURE_LIMITS.maxFileBytes) return null
-  return `file is ${fileSize} bytes, above the 8 MiB (${TEXTURE_LIMITS.maxFileBytes} byte) limit for a texture`
+export function textureFileSizeProblems(fileSize: number): string[] {
+  if (fileSize <= TEXTURE_LIMITS.maxFileBytes) return []
+  return [
+    `file is ${fileSize} bytes, above the 8 MiB (${TEXTURE_LIMITS.maxFileBytes} byte) limit for a texture`,
+  ]
 }
