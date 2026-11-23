@@ -54,12 +54,12 @@ repeats them, and `wall.curve` is a reserved name. One point is open; see "Open 
 ## Context
 
 A wall is two end points (`core/model/types.ts`), and a wall scene node repeats them
-(`core/scene/scene-graph.ts`). ADR-0034 asked for a centerline accessor in June, and none exists. A
-search by name finds 129 reads of a wall's `start` or `end` in 25 production files, 23 of them
-outside the kernel, and reads under other names add at least three more files, so at least 26 files
-outside the kernel read wall end points.
-The full number was not measured. The same projection of a point onto a segment is written several
-times.
+(`core/scene/scene-graph.ts`). ADR-0034 asked for a centerline accessor in June, and none exists. When
+the specification was written, a search by name found 129 reads of a wall's `start` or `end` in 25
+production files, 23 of them outside the kernel, and reads under other names add at least three more
+files, so at least 26 files outside the kernel read wall end points. The full number was not
+measured. The architecture review found the same projection of a point onto a segment written seven
+times; that was not checked again.
 
 An arc is the smallest change that forces every one of those readers through one accessor, which is
 why the architecture refactor round pairs the kernel with the first slice of #80. The format
@@ -115,7 +115,7 @@ straight distance between the wall's ends. The plan fixes the shape as
 
 - A positive bulge curves to the left when looking from the wall's start to its end, the side the
   opening orientation already calls positive.
-- A bulge of at most 1 in size is a half circle. A round room is two arc walls, and a tower that
+- The bulge is at most 1 in size, and a bulge of 1 is a half circle. A round room is two arc walls, and a tower that
   turns three quarters of a circle is two arc walls. Larger arcs are a later, additive change.
 - The field has a `kind`, so later curve forms can sit beside the arc.
 
@@ -216,8 +216,8 @@ the same three inputs as a three-point tool: two ends and a point on the curve.
 
 The rest of #80 gets the design round the owner has already scheduled, and #80 keeps its
 `public-beta` milestone. That round covers openings in an arc wall (the shape of the void and the
-leaf in 3D), arcs of more than a half circle, other curve kinds, walls made of several curves,
-dimensions on an arc, and a snap to an arc's center. None of them needs a change to what this stage
+leaf in 3D), arcs of more than a half circle, other curve kinds, walls made of several curves, and
+dimensions on an arc. A snap to an arc's center is later work as well. None of them needs a change to what this stage
 builds: the accessor already gives a position along an arc, the stored field has a `kind`, the limit
 on the bulge is one check, and the center is a kernel function.
 

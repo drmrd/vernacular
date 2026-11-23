@@ -69,9 +69,10 @@ differently.
    (`LENGTH_TOLERANCE_MM = 0.001`, `ANGLE_TOLERANCE_RAD = 1e-8`,
    `DERIVED_COORDINATE_GRID_MM = LENGTH_TOLERANCE_MM / 1000`, `SUPPORTED_EXTENT_MM = 1_000_000`,
    `SMALLEST_IMPERIAL_DISPLAY_STEP_MM = 25.4 / 256`, `SMALLEST_METRIC_DISPLAY_STEP_MM = 0.1`), the
-   input rule `JOIN_DISTANCE_MM = 1`, and today's constants under named entries. Three exported names
-   keep their names so that no importer of `core/index.ts` changes: `DEFAULT_JUNCTION_TOLERANCE_MM`,
-   `ROOM_RING_TOLERANCE_MM`, `OUTLINE_TOLERANCE_MM`. One constant, `DERIVATION_LENGTH_TOLERANCE_MM`,
+   input rule `JOIN_DISTANCE_MM = 1`, and today's constants under named entries. Two names that
+   `core/index.ts` exports keep their names so that no importer of `core/index.ts` changes:
+   `DEFAULT_JUNCTION_TOLERANCE_MM` and `ROOM_RING_TOLERANCE_MM`. `OUTLINE_TOLERANCE_MM`, now exported
+   from `core/daylight/room-validation.ts`, is imported from the module by the two daylight files. One constant, `DERIVATION_LENGTH_TOLERANCE_MM`,
    is the length the derivation compares with: `DEFAULT_JUNCTION_TOLERANCE_MM` (1) until pull
    request 13, `LENGTH_TOLERANCE_MM` after. Every predicate added before 13 uses it, so 13 has one
    switch. Pull request 13 also adds two frozen entries for the migration's copy of the old graph,

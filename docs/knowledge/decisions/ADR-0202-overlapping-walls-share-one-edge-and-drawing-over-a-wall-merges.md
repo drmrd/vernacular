@@ -31,7 +31,7 @@ updated: 2026-11-23
 
 Current. The owner approved the kernel specification
 (`docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`) on 2026-11-18, including its
-decision 3, taken on 2026-11-17: a wall drawn over part of another wall merges with it. This record
+decision 3, taken on 2026-11-17: a wall drawn over part of another wall merges with it. Its code
 settles #681. It takes overlap into the scope of room derivation, which ADR-0026 listed as out of
 scope; the note in ADR-0026 lands with the pull request that makes overlapping walls keep their
 rooms.

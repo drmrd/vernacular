@@ -52,12 +52,13 @@ after a commit.
 
 This record gives [[ADR-0181-millimetre-numbers-and-one-tolerance-model]] the tolerance values that
 it left to the kernel specification, and ADR-0181 carries a note that points here. The other notes
-this record calls for (ADR-0026 on the merge, ADR-0134 on the grid, ADR-0218 on the room ring, and
-ADR-0181's consequence on the Length field) land with the kernel pull requests that make them true.
+this record calls for (ADR-0026 on the merge, ADR-0134 on the grid, and ADR-0218 on the room ring) land with
+the kernel pull requests that make them true. ADR-0181's consequence changes to the Length field only
+if the owner accepts the wording in "Open points".
 
 The code arrives in the kernel stage of the architecture refactor round (#687). Until then the wall
 graph merges ends within 1 mm, each module keeps its own epsilon, and the formatter rounds at the
-user's precision. One point is open; see "Open points".
+user's precision. Two points are open; see "Open points".
 
 ## Context
 
@@ -126,13 +127,15 @@ same point, zero length, point on a path, parallel, same line or same circle, an
 other file compares computed geometry with a number of its own. The implementation plan fixes the
 names of the derived values (`LENGTH_TOLERANCE_MM`, `ANGLE_TOLERANCE_RAD`,
 `DERIVED_COORDINATE_GRID_MM`, `SUPPORTED_EXTENT_MM`, and the two smallest display steps) and keeps
-the exported names `DEFAULT_JUNCTION_TOLERANCE_MM`, `ROOM_RING_TOLERANCE_MM`, and
-`OUTLINE_TOLERANCE_MM`, so that no importer of `core/index.ts` changes.
+the names `DEFAULT_JUNCTION_TOLERANCE_MM` and `ROOM_RING_TOLERANCE_MM`, which `core/index.ts`
+exports, so that no importer of `core/index.ts` changes, and `OUTLINE_TOLERANCE_MM`, which the two
+daylight files then import from the module.
 
 The module lands in two steps. First every geometric constant moves into it with its current value,
-and behavior does not change. Then the step with the migration below switches the derivation to the
-length tolerance. Constants owned by other work keep their values as named entries, each with its
-reason, until the work that owns them changes them.
+and behavior does not change. Then the step with the migration below switches the constants of the derivation (segments,
+polygons, the wall graph, the fills, the rooms, and the room ring) to the length and angle
+tolerances. The other constants keep their values as named entries, each with its reason, until
+the work that owns them changes them.
 
 Two distances are rules and live in the module as named entries of their own:
 
@@ -202,7 +205,7 @@ tolerance. It starts at the user's precision and goes down to 1/256 inch or 0.1 
 it shows that value in full. If not, it rounds at the user's precision and marks the result as
 approximate. The precision setting is the coarsest step shown, no longer a cap. A thickness typed
 as 4 9/16 inches reads 4 9/16 inches at a precision of 1/8 inch, and a metric wall of 3000.4 mm
-reads 3.0004 m where it read 3.00 m. A diagonal wall, a wall that ends on another wall's middle, and
+reads 3.0004 m where it reads 3.00 m today. A diagonal wall, a wall that ends on another wall's middle, and
 the coordinates of a free cursor carry the mark.
 
 `LengthField` itself moves to this formatter, for every field built from it. After a commit a
@@ -229,7 +232,7 @@ along the arc and takes no input in this stage.
 In an imperial project the snap grid, the keyboard candidate step, and the selection nudge are 4
 inches (101.6 mm), and the larger nudge is 3 feet (914.4 mm). A metric project keeps 100 mm and
 1000 mm. While grid snapping is on, the angle snap rounds the length along its ray to the grid step
-from the run's last point. With Alt held the angle snap is off, as today. The visible grid of an
+from the run's last point. With Alt held the angle snap is off, as today, and the end snaps to a grid point instead. The visible grid of an
 imperial project steps in inches and feet, so snapped points lie on its lines. These steps land with
 the formatter, so the labels and baselines move once.
 

@@ -190,16 +190,16 @@ two halves of a divided round room apart.
 - A room keeps its name, purpose, period, style, ceiling height, and custom outline through stubs,
   splits, drags, and redrawn walls. Each row of the table above is a test.
 - A document at version 17 with room overrides has the same data on every room after the migration
-  and one edit, also when that first edit deletes and redraws every wall of a room or deletes its
-  outside wall.
+  and one edit. When that first edit deletes and redraws every wall of a room, or deletes its
+  outside wall, the result is the one in the matching row of the table above.
 - The binding rule has cases no table can list. A wrong binding puts a name on the wrong room, which a
   user sees at once and cannot explain. Property tests and the rule's fixed order guard it, and since
   an unbound record is never deleted, a wrong binding loses nothing.
 - During an end drag the step derives the changed floor's rooms once per pointer move, and the scene
   graph can derive the rooms part a second time after the step rewrote the records. Both run on the
   network the memo already holds. No time was measured.
-- The command layer, the room commands, the inspector, and the architecture-era lookups move from the
-  wall key to the record id.
+- The room commands, the inspector, and the lookups in `core/architecture-era/` move from the wall
+  key to the record id.
 
 ## Open points
 
