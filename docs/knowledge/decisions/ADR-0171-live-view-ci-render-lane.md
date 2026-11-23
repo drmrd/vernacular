@@ -21,7 +21,7 @@ sourceFiles:
     scripts/ci/decide.mjs,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-23
 ---
 
 # ADR-0171: Live-view WebGPU visual regression runs on a macOS CI lane
