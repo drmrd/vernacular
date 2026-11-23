@@ -73,11 +73,17 @@ const retryPass = {
   firstError: 'expected "Snapped to edge"',
 }
 
+const noReportNote = 'Retry check: not done. No Playwright JSON report could be read.\n'
+
 describe('formatRetrySummary', () => {
   it('writes one line when no test passed only on a retry', () => {
     expect(formatRetrySummary([], { tests: 412, reports: 1 })).toBe(
       'Retry check: no test passed only on a retry. Tests read: 412. Reports read: 1.\n',
     )
+  })
+
+  it('says no report could be read instead of claiming a clean run when no report was read', () => {
+    expect(formatRetrySummary([], { tests: 0, reports: 0 })).toBe(noReportNote)
   })
 
   it('writes a warning heading and one table row for each retry pass', () => {
@@ -193,6 +199,17 @@ describe('runRetryWarning', () => {
     expect(await runRetryWarning(['b.json'], deps)).toBe(0)
     expect(deps.appendSummary).toHaveBeenCalledWith(noRetryNote)
     expect(deps.log).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['no argument', []],
+    ['a missing file', ['missing.json']],
+    ['an empty file', ['empty.json']],
+    ['a file that is not valid JSON', ['broken.json']],
+  ])('writes the not-done note and exits 0 when the only input is %s', async (_label, argv) => {
+    const deps = fakeDeps({ 'empty.json': '', 'broken.json': '{"suites": [' })
+    expect(await runRetryWarning(argv, deps)).toBe(0)
+    expect(deps.appendSummary).toHaveBeenCalledWith(noReportNote)
   })
 
   it('warns and exits 0 when a report file is missing', async () => {

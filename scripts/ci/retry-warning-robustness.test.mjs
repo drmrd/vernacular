@@ -282,6 +282,19 @@ describe('running the script file directly', () => {
     expect(exitStatusFor(reportPath)).toBe(0)
   })
 
+  it('writes the not-done note to the job summary when the report path does not exist', () => {
+    const summaryPath = join(scratch, 'summary.md')
+    const env = { ...process.env, GITHUB_STEP_SUMMARY: summaryPath }
+    const run = spawnSync(process.execPath, [scriptPath, join(scratch, 'absent.json')], {
+      env,
+      encoding: 'utf8',
+    })
+    expect(run.status).toBe(0)
+    expect(readFileSync(summaryPath, 'utf8')).toBe(
+      'Retry check: not done. No Playwright JSON report could be read.\n',
+    )
+  })
+
   it('exits 0 when the report path does not exist', () => {
     expect(exitStatusFor(join(scratch, 'missing.json'))).toBe(0)
   })
