@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isModelAsset, validatePackManifest } from './pack-manifest'
+import { assetFileName, isModelAsset, validatePackManifest } from './pack-manifest'
 
 function validManifest(): Record<string, unknown> {
   return {
@@ -205,5 +205,17 @@ describe('isModelAsset', () => {
   ])('$label', ({ formatVersion, mediaType, expected }) => {
     const asset = mediaType === undefined ? {} : { mediaType }
     expect(isModelAsset(asset, formatVersion)).toBe(expected)
+  })
+})
+
+describe('assetFileName', () => {
+  const HASH = 'b'.repeat(64)
+
+  it.each([
+    { mediaType: 'model/gltf-binary' as const, expected: `${HASH}.glb` },
+    { mediaType: 'image/png' as const, expected: `${HASH}.png` },
+    { mediaType: 'image/webp' as const, expected: `${HASH}.webp` },
+  ])('names a $mediaType asset $expected', ({ mediaType, expected }) => {
+    expect(assetFileName(HASH, mediaType)).toBe(expected)
   })
 })
