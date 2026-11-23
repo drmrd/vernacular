@@ -128,31 +128,27 @@ describe('runRetryWarning when the summary cannot be formatted', () => {
   })
 })
 
-describe('runRetryWarning when the job summary cannot be written', () => {
-  it('exits 0 and warns that the summary was not written', async () => {
-    const deps = fakeDeps({ 'a.json': JSON.stringify(clean) })
-    deps.appendSummary.mockImplementation(() => {
-      throw new Error('EACCES: permission denied')
-    })
-    expect(await runRetryWarning(['a.json'], deps)).toBe(0)
-    expect(deps.log).toHaveBeenCalledWith(
-      expect.stringContaining('Could not write the job summary'),
-    )
-  })
-})
+describe('runRetryWarning when the summary write throws a value that is not an Error', () => {
+  function summaryWarning(cause) {
+    return `::warning title=Retry check::Could not write the job summary (${cause}), so the retry check result is missing from it.`
+  }
 
-describe('runRetryWarning when the summary write throws a value without a printable message', () => {
-  it('exits 0 and still warns that the summary was not written', async () => {
+  it('exits 0 and still warns that the summary was not written when the value cannot be printed', async () => {
     const deps = fakeDeps({ 'a.json': JSON.stringify(clean) })
     deps.appendSummary.mockImplementation(() => {
       throw { message: { toString: 1 } }
     })
     expect(await runRetryWarning(['a.json'], deps)).toBe(0)
-    expect(deps.log).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /^::warning title=Retry check::Could not write the job summary \(.+\), so the retry check result is missing from it\.$/,
-      ),
-    )
+    expect(deps.log).toHaveBeenCalledWith(summaryWarning('an error that cannot be printed'))
+  })
+
+  it('names a thrown plain string in the warning about the summary write', async () => {
+    const deps = fakeDeps({ 'a.json': JSON.stringify(clean) })
+    deps.appendSummary.mockImplementation(() => {
+      throw 'disk full'
+    })
+    expect(await runRetryWarning(['a.json'], deps)).toBe(0)
+    expect(deps.log).toHaveBeenCalledWith(summaryWarning('disk full'))
   })
 })
 
@@ -205,20 +201,6 @@ describe('runRetryWarning warnings that follow a caught error', () => {
       ),
     )
     expect(deps.log).not.toHaveBeenCalledWith(expect.stringContaining('is not a Playwright JSON'))
-  })
-
-  it('adds the error message to the warning about a formatting failure', async () => {
-    const deps = fakeDeps({
-      'a.json': mutatedReport((_report, _spec, test) => {
-        delete test.projectName
-      }),
-    })
-    await runRetryWarning(['a.json'], deps)
-    expect(deps.log).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /Could not format the retry check result \(.+\), so it is missing from the job summary\./,
-      ),
-    )
   })
 
   it('adds only the first line of the error message to the warning about a write failure', async () => {
