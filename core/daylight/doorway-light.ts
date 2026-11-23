@@ -6,7 +6,7 @@ type DoorwayGeometry = Extract<ApertureGeometry, { kind: 'doorway' }>
 
 /** What a room's doorways read from the rooms they open to. */
 export interface NeighborLight {
-  /** For each room, the weight of each of its apertures by the sky alone, as `skyWeights` below. */
+  /** For each room, the weight of each of its apertures by the sky alone, the sky's relative radiance toward each sky aperture times its net transmittance, and 0 for a doorway. */
   skyWeights: readonly (readonly number[])[]
   /** For each room, what `doorwayLuminance` gives. */
   luminances: readonly number[]
@@ -47,8 +47,8 @@ export function routedOutFluxes(
 /**
  * Luminance that a doorway into this room shows to its neighbor, relative to the open sky: a room
  * open to the sky passes 1 because its doorway shows the sky itself. Any other room passes its
- * room-average term, lit by its sky apertures alone less the window light that its doorways route
- * out (`routedOut`), which is the mean exitance of its surfaces.
+ * room-average term, lit by its sky apertures alone less the window light that the doorways other
+ * rooms list into it carry away (`routedOut`), which is the mean exitance of its surfaces.
  * Its own doorways count for nothing, so light crosses one doorway and no more, and rooms that
  * open only to each other stay dark. `skyWeights` holds, for each aperture of the room, the sky's
  * relative radiance toward a sky aperture times its net transmittance, and 0 for a doorway.

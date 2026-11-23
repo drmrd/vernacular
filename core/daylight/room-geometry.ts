@@ -169,17 +169,16 @@ function apertureGeometry(
     }
   }
   const neighbor = aperture.opensTo.room
+  const neighborOpenToSky = rooms[neighbor]?.openToSky === true
   return {
     kind: 'doorway',
     neighbor,
     openingArea,
     netTransmittance: aperture.netTransmittance ?? OPEN_DOORWAY_NET_TRANSMITTANCE,
-    fluxShare:
-      rooms[neighbor]?.openToSky === true ? VERTICAL_OPENING_SKY_SHARE : DOORWAY_HEMISPHERE_SHARE,
-    skyFactors:
-      rooms[neighbor]?.openToSky === true
-        ? []
-        : (openings[neighbor] ?? []).map((glazing) => skyFactor(opening, glazing)),
+    fluxShare: neighborOpenToSky ? VERTICAL_OPENING_SKY_SHARE : DOORWAY_HEMISPHERE_SHARE,
+    skyFactors: neighborOpenToSky
+      ? []
+      : (openings[neighbor] ?? []).map((glazing) => skyFactor(opening, glazing)),
   }
 }
 

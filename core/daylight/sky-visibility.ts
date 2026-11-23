@@ -118,7 +118,8 @@ function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): Dayli
  * radiance toward its facing times its net transmittance; a doorway weighs the luminance of the
  * room it opens to, plus the window light of that room that lands on the doorway, times its net
  * transmittance (that luminance is the room-average term of that room, lit by its sky apertures
- * alone less the window light its doorways carry away; 1 for a room open to the sky). A cell whose center lies in
+ * alone less the window light that the doorways other rooms list into it carry away; 1 for a room
+ * open to the sky). A cell whose center lies in
  * no room, with a cell of a room (a room open to the sky counts) among its eight neighbors, holds
  * the sky visibility of one such neighbor; only cells whose center lies in a room are sources. The
  * room is the one whose outline lies nearest the cell's center, and on an equal distance the first
