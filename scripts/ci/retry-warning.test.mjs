@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   countTests,
   findRetriedPasses,
   formatRetryAnnotations,
   formatRetrySummary,
+  runRetryWarning,
 } from './retry-warning.mjs'
 
 function readFixture(name) {
@@ -120,5 +121,55 @@ describe('formatRetryAnnotations', () => {
     ])
     expect(line).toContain('file=e2e/tests/a%2Cb%3Ac.spec.ts,')
     expect(line).toContain('::50%25 done%0Anext (')
+  })
+})
+
+function deps(files) {
+  return {
+    readFile: (path) => {
+      if (!(path in files)) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+      return files[path]
+    },
+    appendSummary: vi.fn(),
+    log: vi.fn(),
+    cwd: '/work',
+  }
+}
+
+const noRetryNote = 'Retry check: no test passed only on a retry. Tests read: 1. Reports read: 1.\n'
+
+describe('runRetryWarning', () => {
+  it('appends the warning to the job summary and exits 0 when a test passed only on a retry', async () => {
+    const d = deps({ 'a.json': JSON.stringify(retried) })
+    expect(await runRetryWarning(['a.json'], d)).toBe(0)
+    expect(d.appendSummary).toHaveBeenCalledOnce()
+    expect(d.appendSummary.mock.calls[0][0]).toContain('### Warning: tests passed only on a retry')
+    expect(d.log).toHaveBeenCalledWith(
+      expect.stringMatching(/^::warning file=e2e\/tests\/journeys\/snap-along-wall\.spec\.ts,/),
+    )
+  })
+
+  it('adds up the tests and the retry passes of several reports', async () => {
+    const d = deps({ 'a.json': JSON.stringify(retried), 'b.json': JSON.stringify(clean) })
+    await runRetryWarning(['a.json', 'b.json'], d)
+    expect(d.appendSummary.mock.calls[0][0]).toContain(
+      'Tests read: 5. Reports read: 2. Passed only on a retry: 1.',
+    )
+  })
+
+  it('writes the one-line note and exits 0 when no test passed only on a retry', async () => {
+    const d = deps({ 'b.json': JSON.stringify(clean) })
+    expect(await runRetryWarning(['b.json'], d)).toBe(0)
+    expect(d.appendSummary).toHaveBeenCalledWith(noRetryNote)
+    expect(d.log).not.toHaveBeenCalled()
+  })
+
+  it('warns and exits 0 when a report file is missing', async () => {
+    const d = deps({ 'b.json': JSON.stringify(clean) })
+    expect(await runRetryWarning(['missing.json', 'b.json'], d)).toBe(0)
+    expect(d.log).toHaveBeenCalledWith(
+      '::warning title=Retry check::No Playwright JSON report at missing.json, so its tests were not checked for retries.',
+    )
+    expect(d.appendSummary).toHaveBeenCalledWith(noRetryNote)
   })
 })
