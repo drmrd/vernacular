@@ -1,5 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { Mock } from 'vitest'
+import { startTransition, useLayoutEffect } from 'react'
+import { createRoot } from 'react-dom/client'
 import { render, waitFor } from '@testing-library/react'
 import { resolvedAsset } from '../../core'
 import type { AssetReference, ResolvedAsset, TextureDescription } from '../../core'
@@ -63,12 +65,12 @@ type Deferred = ReturnType<typeof deferredAsset>
 /** A source that answers each held asset with a deferred, and every other asset at once. */
 function holdableSource() {
   const holds = new Map<string, Deferred>()
-  const held: TextureSource = {
+  const holding: TextureSource = {
     ...source,
     resolve: (asset) => holds.get(asset.contentHash)?.promise ?? source.resolve(asset),
   }
   return {
-    source: held,
+    source: holding,
     hold: (asset: AssetReference) => {
       const deferred = deferredAsset()
       holds.set(asset.contentHash, deferred)
@@ -81,34 +83,34 @@ type Journey = {
   first: ProbeProps
   change: ProbeProps
   back: ProbeProps
-  holdChange: () => void
+  holdChangeForever: () => void
   holdReturn: () => Deferred
 }
 
 function referenceJourney(): Journey {
-  const held = holdableSource()
-  const view = (asset: AssetReference) => ({ asset, textureSource: held.source })
+  const holdable = holdableSource()
+  const propsFor = (asset: AssetReference) => ({ asset, textureSource: holdable.source })
   return {
-    first: view(reference),
-    change: view(otherReference),
-    back: view(reference),
-    holdChange: () => held.hold(otherReference),
-    holdReturn: () => held.hold(reference),
+    first: propsFor(reference),
+    change: propsFor(otherReference),
+    back: propsFor(reference),
+    holdChangeForever: () => holdable.hold(otherReference),
+    holdReturn: () => holdable.hold(reference),
   }
 }
 
 function sourceJourney(): Journey {
   const original = holdableSource()
   const replacement = holdableSource()
-  const view = (held: ReturnType<typeof holdableSource>) => ({
+  const propsFor = (holdable: ReturnType<typeof holdableSource>) => ({
     asset: reference,
-    textureSource: held.source,
+    textureSource: holdable.source,
   })
   return {
-    first: view(original),
-    change: view(replacement),
-    back: view(original),
-    holdChange: () => replacement.hold(reference),
+    first: propsFor(original),
+    change: propsFor(replacement),
+    back: propsFor(original),
+    holdChangeForever: () => replacement.hold(reference),
     holdReturn: () => original.hold(reference),
   }
 }
@@ -162,12 +164,9 @@ describe('useGroundTexture under StrictMode', () => {
   })
 
   it('when the reference changes, the view shows loading and never the freed texture of the old reference', async () => {
-    const pending = deferredAsset()
-    const changingSource: TextureSource = {
-      ...source,
-      resolve: (asset) =>
-        asset.contentHash === otherReference.contentHash ? pending.promise : source.resolve(asset),
-    }
+    const holdable = holdableSource()
+    const pending = holdable.hold(otherReference)
+    const changingSource = holdable.source
     const received: TextureState[] = []
     const Probe = recordingProbe(received)
     const view = render(<Probe textureSource={changingSource} />, { reactStrictMode: true })
@@ -195,8 +194,8 @@ describe('useGroundTexture under StrictMode', () => {
     'returning to an earlier %s shows loading, never the texture its first load freed',
     async (_changed, journey) => {
       const disposeTexture = vi.spyOn(Texture.prototype, 'dispose')
-      const { first, change, back, holdChange, holdReturn } = journey()
-      holdChange()
+      const { first, change, back, holdChangeForever, holdReturn } = journey()
+      holdChangeForever()
       const received: TextureState[] = []
       const Probe = recordingProbe(received)
       const view = render(<Probe {...first} />, { reactStrictMode: true })
@@ -206,7 +205,6 @@ describe('useGroundTexture under StrictMode', () => {
 
       const renderedBeforeChange = received.length
       view.rerender(<Probe {...change} />)
-      expect(handedOutTextures(received.slice(renderedBeforeChange))).not.toContain(firstTexture)
 
       const settleReturn = holdReturn()
       const renderedBeforeReturn = received.length
@@ -217,9 +215,79 @@ describe('useGroundTexture under StrictMode', () => {
 
       settleReturn.settle(resolvedAsset(new Uint8Array([7, 8, 9]), reference.scope))
       await waitFor(() => expect(received.at(-1)?.status).toBe('ready'))
-      const returnTexture = received.at(-1)?.appearance?.texture
-      expect(returnTexture).toBeInstanceOf(Texture)
-      expect(disposeTexture.mock.contexts).not.toContain(returnTexture)
+      expect(received.at(-1)?.appearance?.texture).toBeInstanceOf(Texture)
+      const freed = disposeTexture.mock.contexts
+      const handedOut = handedOutTextures(received.slice(renderedBeforeChange))
+      expect(handedOut.filter((texture) => freed.includes(texture))).toEqual([])
     },
   )
+})
+
+type RecordedState = { asset: AssetReference; state: TextureState }
+
+/** Records each state with the reference it was rendered for, and reports each commit. */
+function committingProbe(recorded: RecordedState[], onCommit: (asset: AssetReference) => void) {
+  return function Probe({ asset, textureSource }: Required<ProbeProps>) {
+    const state = useGroundTexture(asset, textureSource)
+    recorded.push({ asset, state })
+    useLayoutEffect(() => onCommit(asset), [asset])
+    return null
+  }
+}
+
+/** Lets the scheduler run its queued tasks, passive effects among them, without `act`. */
+async function drainTasks(): Promise<void> {
+  for (let task = 0; task < 10; task += 1) await new Promise((done) => setTimeout(done, 0))
+}
+
+describe('useGroundTexture in a concurrent root without act', () => {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  const actEnvironment = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean | undefined }
+  let wasActEnvironment: boolean | undefined
+
+  beforeEach(() => {
+    stubImageDecoding()
+    wasActEnvironment = actEnvironment.IS_REACT_ACT_ENVIRONMENT
+    actEnvironment.IS_REACT_ACT_ENVIRONMENT = false
+  })
+
+  afterEach(() => {
+    actEnvironment.IS_REACT_ACT_ENVIRONMENT = wasActEnvironment
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  // A non-urgent commit runs the old effect's cleanup in a later task, so the old load can settle
+  // in between, while that effect run still counts as current.
+  it('an old load that settles after a non-urgent commit of the new reference is never shown', async () => {
+    const disposeTexture = vi.spyOn(Texture.prototype, 'dispose')
+    const holdable = holdableSource()
+    const oldLoad = holdable.hold(reference)
+    const newLoad = holdable.hold(otherReference)
+    const settleOldOnNewCommit = (asset: AssetReference) => {
+      if (asset === otherReference) oldLoad.settle(resolvedAsset(new Uint8Array([1]), asset.scope))
+    }
+    const recorded: RecordedState[] = []
+    const Probe = committingProbe(recorded, settleOldOnNewCommit)
+    const root = createRoot(document.createElement('div'))
+    onTestFinished(() => root.unmount())
+    root.render(<Probe asset={reference} textureSource={holdable.source} />)
+    await drainTasks()
+
+    startTransition(() =>
+      root.render(<Probe asset={otherReference} textureSource={holdable.source} />),
+    )
+    await drainTasks()
+    const forNewReference = () => recorded.filter((entry) => entry.asset === otherReference)
+    const beforeNewLoad = forNewReference().map((entry) => entry.state)
+    expect(beforeNewLoad.length).toBeGreaterThan(0)
+    expect(beforeNewLoad.map((state) => state.status)).toEqual(beforeNewLoad.map(() => 'loading'))
+    expect(beforeNewLoad).toEqual(beforeNewLoad.map(() => LOADING))
+
+    newLoad.settle(resolvedAsset(new Uint8Array([4, 5, 6]), otherReference.scope))
+    await vi.waitFor(() => expect(recorded.at(-1)?.state.status).toBe('ready'))
+    const freed = disposeTexture.mock.contexts
+    const handedOut = handedOutTextures(forNewReference().map((entry) => entry.state))
+    expect(handedOut.filter((texture) => freed.includes(texture))).toEqual([])
+  })
 })
