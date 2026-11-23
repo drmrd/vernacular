@@ -8,6 +8,10 @@ const MIDPOINT = 0.5
 const DEGREES_PER_HALF_TURN = 180
 const QUARTER = 0.25
 
+export function relativeError(actual: number, expected: number): number {
+  return Math.abs(actual - expected) / Math.abs(expected)
+}
+
 /**
  * The textbook configuration factor between two identical rectangles `a` by `b` that face each
  * other directly, `c` apart (the standard catalog of radiation configuration factors).

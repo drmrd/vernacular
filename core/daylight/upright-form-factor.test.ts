@@ -7,6 +7,7 @@ import {
   commonEdgeFormFactor,
   directSum,
   opposedRectanglesFormFactor,
+  relativeError,
   turned,
 } from './upright-form-factor-test-support'
 
@@ -25,13 +26,12 @@ const SIDE_DOORWAY_WIDTH = 600
 const TOWARD_ROOM_FROM_GLAZING: Point = { x: 0, y: 1 }
 const TURN_ABOUT: Point = { x: 3000.7, y: 1000.3 }
 const NEAR_FACING_MARGIN = 1.1e-9
-const SIXTH_OF_A_TURN = 30
-const ROUNDING_TURN = 10
+const THIRTY_DEGREES = 30
+const TEN_DEGREES = 10
 const DEGENERATE_SPAN_TOLERANCE = 1e-12
-
-function relativeError(actual: number, expected: number): number {
-  return Math.abs(actual - expected) / Math.abs(expected)
-}
+const NARROW_WINDOW_WHOLE_WALLS = { width: 500, depth: 6000, height: 2600, share: 0.40075578118 }
+const RIGHT_ANGLE_TOLERANCE = 1e-9
+const RIGHT_ANGLE_FACTOR = 0.022433942847
 
 interface Extent {
   /** Start and end along the wall, in plan millimetres. */
@@ -187,8 +187,8 @@ describe('the form factor from a doorway to glazing on the facing wall counts on
   })
 
   it('still counts walls as facing when turning leaves their normals a rounding error from opposite', () => {
-    const doorway = turned(TEST_DOORWAY, ROUNDING_TURN, TURN_ABOUT)
-    const glazing = turned(TEST_WINDOW, ROUNDING_TURN, TURN_ABOUT)
+    const doorway = turned(TEST_DOORWAY, TEN_DEGREES, TURN_ABOUT)
+    const glazing = turned(TEST_WINDOW, TEN_DEGREES, TURN_ABOUT)
     expect(
       relativeError(doorwayToGlazingFormFactor(doorway, glazing), 0.015164566934),
     ).toBeLessThan(RELATIVE_TOLERANCE)
@@ -260,7 +260,7 @@ describe('the form factor from a doorway to glazing on an adjoining wall at a ri
   })
 
   it.each([
-    { width: 500, depth: 6000, height: 2600, share: 0.40075578118 },
+    NARROW_WINDOW_WHOLE_WALLS,
     { width: 100, depth: 40000, height: 6000, share: 0.48513074821 },
     { width: 4000, depth: 40000, height: 6000, share: 0.29301394035 },
   ])(
@@ -288,17 +288,33 @@ describe('the form factor from a doorway to glazing on an adjoining wall at a ri
   it('gives the same factor for a pair turned by 30 degrees', () => {
     const { doorway, glazing } = sidePair([1000, 2000])
     const turnedFactor = doorwayToGlazingFormFactor(
-      turned(doorway, SIXTH_OF_A_TURN, TURN_ABOUT),
-      turned(glazing, SIXTH_OF_A_TURN, TURN_ABOUT),
+      turned(doorway, THIRTY_DEGREES, TURN_ABOUT),
+      turned(glazing, THIRTY_DEGREES, TURN_ABOUT),
     )
     expect(relativeError(turnedFactor, 0.022433942847)).toBeLessThan(RELATIVE_TOLERANCE)
-    const wholeWallDoorway = doorwayOn({ along: [0, 6000], sill: 0, head: 2600 })
-    const wholeWallGlazing = adjoiningGlazing([0, 500], [0, 2600])
+    const { width, depth, height, share } = NARROW_WINDOW_WHOLE_WALLS
+    const wholeWallDoorway = doorwayOn({ along: [0, depth], sill: 0, head: height })
+    const wholeWallGlazing = adjoiningGlazing([0, width], [0, height])
     const wholeWalls = doorwayToGlazingFormFactor(
-      turned(wholeWallDoorway, SIXTH_OF_A_TURN, TURN_ABOUT),
-      turned(wholeWallGlazing, SIXTH_OF_A_TURN, TURN_ABOUT),
+      turned(wholeWallDoorway, THIRTY_DEGREES, TURN_ABOUT),
+      turned(wholeWallGlazing, THIRTY_DEGREES, TURN_ABOUT),
     )
-    const share = (wholeWalls * 6000) / (0.5 * 500)
-    expect(relativeError(share, 0.40075578118)).toBeLessThan(RELATIVE_TOLERANCE)
+    const measured = (wholeWalls * depth) / (0.5 * width)
+    expect(relativeError(measured, share)).toBeLessThan(RELATIVE_TOLERANCE)
+  })
+
+  it('gives 0 when the two do not face each other', () => {
+    const { doorway, glazing } = sidePair([1000, 2000])
+    const reversedGlazing = { ...glazing, facing: { x: 0, y: -1 } }
+    const reversedDoorway = { ...doorway, facing: TOWARD_DOORWAY }
+    expect(doorwayToGlazingFormFactor(doorway, reversedGlazing)).toBe(0)
+    expect(doorwayToGlazingFormFactor(reversedDoorway, glazing)).toBe(0)
+  })
+
+  it('counts walls as at a right angle when their normals have a dot product of exactly the tolerance', () => {
+    const { doorway, glazing } = sidePair([1000, 2000])
+    const edgeOfRightAngle = { ...glazing, facing: { x: RIGHT_ANGLE_TOLERANCE, y: 1 } }
+    const factor = doorwayToGlazingFormFactor(doorway, edgeOfRightAngle)
+    expect(relativeError(factor, RIGHT_ANGLE_FACTOR)).toBeLessThan(RELATIVE_TOLERANCE)
   })
 })
