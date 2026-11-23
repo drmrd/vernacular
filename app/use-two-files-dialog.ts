@@ -1,30 +1,22 @@
 import { useCallback, useState } from 'react'
-import { useNotifications, type NotificationApi } from '../editor/design-system'
+import { useNotifications } from '../editor/design-system'
 import type { TwoFilesDialogProps } from '../editor/projects'
 import {
-  openKeepingBothFiles,
-  openSecondFileAsNew,
   readTwoFiles,
-  removeSecondFile,
-  replaceWithSecondFile,
-  type DocumentHandle,
-  type KeptFileChoice,
   type KeptFileRefusal,
-  type KeptFileResult,
   type SessionPorts,
   type SwitchFailure,
   type TwoFilesRead,
 } from '../session'
 import type { TwoDocumentFiles } from '../storage'
-import { missingAssetsText, openFailureReason } from './open-failure-text'
+import { openFailureReason } from './open-failure-text'
 import type { PageNotice } from './resolve-place'
-import type { HistoryNavigation } from './use-history-navigation'
-import type { FlowOutcome } from './use-open-project'
+import { choicesOn, type ChoiceRun, type PageRunners } from './two-files-dialog-choices'
 
 /** What the dialog of the two plan files runs on. */
 export interface TwoFilesDialogParts {
   readonly ports: SessionPorts | null
-  readonly navigation: Pick<HistoryNavigation, 'runPageAction' | 'runPageFlow'>
+  readonly navigation: PageRunners
   /** The start of a choice clears the page's sentence. */
   readonly onActionStart: () => void
   /** The end of a choice: the sentence to show, or null. The page reads the cards again. */
@@ -49,20 +41,7 @@ interface Shown {
   readonly open: boolean
 }
 
-/** What a choice gave: it went through, or why the stored files stay as they are. */
-type Answer =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly failure: SwitchFailure | KeptFileRefusal }
-
-/** One choice of the dialog, run on the files as the dialog showed them. */
-type ChoiceRun = (choice: KeptFileChoice) => Promise<Answer>
-
-type PageRunners = TwoFilesDialogParts['navigation']
-
 const NO_SECOND_FILE: TwoFilesRead = { ok: true, files: undefined }
-
-/** Another step of the page runs, so nothing was changed: the dialog reads the files again. */
-const NOTHING_CHANGED = { ok: false, failure: { kind: 'files-changed' } } as const
 
 const SECOND_FILE_UNREADABLE = 'The second plan file could not be read.'
 
@@ -89,108 +68,16 @@ function readFacts(ports: SessionPorts | null, id: string): Promise<TwoFilesRead
   return ports === null ? Promise.resolve(NO_SECOND_FILE) : readTwoFiles(ports, id)
 }
 
-/** Opens the main file and leaves both files, as a flow of the page. */
-async function openMainFile(navigation: PageRunners, choice: KeptFileChoice): Promise<Answer> {
-  const result = await navigation.runPageFlow((ports, current) =>
-    openKeepingBothFiles(ports, current, choice.id),
-  )
-  return result ?? NOTHING_CHANGED
-}
-
-/**
- * The new project is the one that shows, so the choice runs as a flow of the page. A new project
- * that lacks assets shows a warning.
- */
-async function openAsNew(
-  navigation: PageRunners,
-  notifications: NotificationApi,
-  choice: KeptFileChoice,
-): Promise<Answer> {
-  let missingAssets: readonly string[] = []
-  const result = await navigation.runPageFlow<KeptFileRefusal>(async (ports, current) => {
-    const opened = await openSecondFileAsNew(ports, current, choice)
-    missingAssets = opened.ok ? opened.missingAssets : []
-    return opened
-  })
-  if (result?.ok === true && missingAssets.length > 0) {
-    notifications.warning(missingAssetsText(missingAssets.length))
-  }
-  return result ?? NOTHING_CHANGED
-}
-
-/** A flow of the session that changes the stored files and may open the project again. */
-type StoredFilesChange = (
-  ports: SessionPorts,
-  current: DocumentHandle | undefined,
-  choice: KeptFileChoice,
-) => Promise<KeptFileResult>
-
-/** The flow result of a choice made before an open, which holds the project that it opened. */
-function openedOutcome(result: KeptFileResult): FlowOutcome<KeptFileRefusal> {
-  return result.ok ? openedWith(result.handle) : result
-}
-
-function openedWith(handle: DocumentHandle | undefined): FlowOutcome<KeptFileRefusal> {
-  return handle === undefined ? NOTHING_CHANGED : { ok: true, handle }
-}
-
-/** A choice made before an open opens the project, so the page leaves when it goes through. */
-async function changeAndOpen(
-  navigation: PageRunners,
-  change: StoredFilesChange,
-  choice: KeptFileChoice,
-): Promise<Answer> {
-  const result = await navigation.runPageFlow<KeptFileRefusal>(async (ports, current) =>
-    openedOutcome(await change(ports, current, choice)),
-  )
-  return result ?? NOTHING_CHANGED
-}
-
-/**
- * A choice that changes the stored files and opens no other project. When this tab held the
- * project, the flow opened it again, and the owner takes that handle in place of the one it ended.
- */
-async function changeStoredFiles(
-  navigation: PageRunners,
-  change: StoredFilesChange,
-  choice: KeptFileChoice,
-): Promise<Answer> {
-  if (choice.open === true) {
-    return changeAndOpen(navigation, change, choice)
-  }
-  const outcome = await navigation.runPageAction(async (ports, current) => {
-    const result = await change(ports, current, choice)
-    return { result, currentClosed: result.handle !== current, reopened: result.handle }
-  })
-  return outcome?.result ?? NOTHING_CHANGED
-}
-
-/** The three choices of the dialog, each run on the files as the dialog showed them. */
-interface Choices {
-  readonly keepBoth: ChoiceRun
-  readonly openAsNew: ChoiceRun
-  readonly replace: ChoiceRun
-  readonly remove: ChoiceRun
-}
-
-function choicesOn(navigation: PageRunners, notifications: NotificationApi): Choices {
-  return {
-    keepBoth: (choice) => openMainFile(navigation, choice),
-    openAsNew: (choice) => openAsNew(navigation, notifications, choice),
-    replace: (choice) => changeStoredFiles(navigation, replaceWithSecondFile, choice),
-    remove: (choice) => changeStoredFiles(navigation, removeSecondFile, choice),
-  }
-}
-
 /** The state of a running choice, and the run of a choice with the page around it. */
 function useChoose(
   { ports, navigation, onActionStart, onActionEnd }: TwoFilesDialogParts,
-  show: (shown: Pick<Shown, 'id' | 'open'>, read: TwoFilesRead) => void,
-  close: () => void,
+  { hold, show, close }: Pick<ShownFiles, 'hold' | 'show' | 'close'>,
 ) {
   const notifications = useNotifications()
   const [busy, setBusy] = useState(false)
-  const choose = async ({ id, files, open }: Shown, run: ChoiceRun) => {
+  const choose = async (shown: Shown, run: ChoiceRun) => {
+    const { id, files, open } = shown
+    hold(shown)
     onActionStart()
     setBusy(true)
     const answer = await run({ id, files, open }).finally(() => setBusy(false))
@@ -228,32 +115,54 @@ function dialogPropsOf(
   }
 }
 
-/** The dialog's files, shown from a card action or adopted from a failure of two plan files. */
+/** The failure of two plan files that a notice carries, with the files as the dialog shows them. */
+function twoFilesOf(
+  notice: PageNotice | undefined,
+): { readonly failure: SwitchFailure; readonly shown: Shown } | undefined {
+  const failure = notice?.failure
+  return notice !== undefined && failure?.kind === 'two-files'
+    ? { failure, shown: { id: notice.id, files: failure.files, open: true } }
+    : undefined
+}
+
+/**
+ * The dialog's files: those of a failure of two plan files in the notice until the dialog holds
+ * them or closes. A choice clears the notice while it runs, so it holds the files it runs on.
+ */
 function useShownFiles(
   notice: PageNotice | undefined,
   onActionEnd: TwoFilesDialogParts['onActionEnd'],
 ) {
-  const [shown, setShown] = useState<Shown | undefined>(undefined)
-  const [adopted, setAdopted] = useState<SwitchFailure | null>(null)
-  const failure = notice?.failure
-  if (notice !== undefined && failure?.kind === 'two-files' && failure !== adopted) {
-    setAdopted(failure)
-    setShown({ id: notice.id, files: failure.files, open: true })
-  }
-  const close = useCallback(() => setShown(undefined), [])
+  const [held, setHeld] = useState<Shown | undefined>(undefined)
+  const [takenFailure, setTakenFailure] = useState<SwitchFailure | null>(null)
+  const fromNotice = twoFilesOf(notice)
+  const noticeFailure = fromNotice?.failure
+  const hold = useCallback(
+    (next: Shown | undefined) => {
+      setHeld(next)
+      if (noticeFailure !== undefined) {
+        setTakenFailure(noticeFailure)
+      }
+    },
+    [noticeFailure],
+  )
+  const close = useCallback(() => hold(undefined), [hold])
   const show = useCallback(
     ({ id, open }: Pick<Shown, 'id' | 'open'>, read: TwoFilesRead) => {
       if (read.ok && read.files !== undefined) {
-        setShown({ id, files: read.files, open })
+        hold({ id, files: read.files, open })
       } else {
         close()
         onActionEnd(read.ok ? null : failureSentence(read.failure))
       }
     },
-    [close, onActionEnd],
+    [hold, close, onActionEnd],
   )
-  return { shown, show, close }
+  const untaken = fromNotice !== undefined && fromNotice.failure !== takenFailure
+  return { shown: untaken ? fromNotice.shown : held, hold, show, close }
 }
+
+type ShownFiles = ReturnType<typeof useShownFiles>
 
 /**
  * The dialog that offers the choice between the two plan files of a project, and the card action
@@ -263,7 +172,8 @@ function useShownFiles(
  */
 export function useTwoFilesDialog(parts: TwoFilesDialogParts): TwoFilesDialogState {
   const { ports, notice, onActionStart, onActionEnd } = parts
-  const { shown, show, close } = useShownFiles(notice, onActionEnd)
+  const shownFiles = useShownFiles(notice, onActionEnd)
+  const { shown, show, close } = shownFiles
   const onChooseFile = useCallback(
     (id: string) => {
       onActionStart()
@@ -271,13 +181,13 @@ export function useTwoFilesDialog(parts: TwoFilesDialogParts): TwoFilesDialogSta
     },
     [ports, onActionStart, show],
   )
-  const { busy, choose, choices } = useChoose(parts, show, close)
+  const { busy, choose, choices } = useChoose(parts, shownFiles)
   const dialog =
     shown &&
     dialogPropsOf(
       shown,
       {
-        onKeepBoth: shown.open ? () => void choose(shown, choices.keepBoth) : close,
+        onKeepBoth: shown.open ? () => void choose(shown, choices.openKeepingBoth) : close,
         onOpenAsNew: () => void choose(shown, choices.openAsNew),
         onReplace: () => void choose(shown, choices.replace),
         onRemove: () => void choose(shown, choices.remove),
@@ -285,5 +195,5 @@ export function useTwoFilesDialog(parts: TwoFilesDialogParts): TwoFilesDialogSta
       },
       busy,
     )
-  return { dialog, onChooseFile, takesNotice: notice?.failure.kind === 'two-files' }
+  return { dialog, onChooseFile, takesNotice: twoFilesOf(notice) !== undefined }
 }
