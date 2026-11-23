@@ -41,7 +41,7 @@ export const SMALLEST_IMPERIAL_DISPLAY_STEP_MM = MM_PER_INCH / FINEST_INCH_DENOM
 export const SMALLEST_METRIC_DISPLAY_STEP_MM = 0.1
 
 /**
- * Two plan points closer than this are joined: the merge distance of the wall graph and the
+ * Two plan points no farther apart than this are joined: the merge distance of the wall graph and the
  * derivation.
  */
 export const JOIN_DISTANCE_MM = 1
@@ -66,7 +66,7 @@ export const ROOM_RING_TOLERANCE_MM = DEFAULT_JUNCTION_TOLERANCE_MM
  * daylight work (core/daylight/room-validation.ts). It exists for the floating-point error of plan
  * coordinates: a point interpolated along a wall that is not parallel to an axis is off the exact
  * line by rounding error. The value is far below any real dimension, so it still refuses an end
- * point that is a few millimetres off the wall. The side test in room-geometry.ts probes twice
+ * point that is a few millimeters off the wall. The side test in room-geometry.ts probes twice
  * this distance from a span, so a span that the check accepts keeps both of its probes off the
  * outline.
  */
@@ -107,7 +107,7 @@ export const FILL_CORNER_MATCH_MM = 1e-6
 export const VOID_SAME_POINT_MM = 1e-9
 
 /**
- * Below this distance from a wall, the walker is pushed out along the wall's normal
+ * At or below this distance from a wall, the walker is pushed out along the wall's normal
  * (core/scene/walk-collision.ts).
  */
 export const WALK_CONTACT_MM = 1e-6
