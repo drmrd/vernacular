@@ -184,8 +184,9 @@ function useWalkSession(
  * that opens or closes the opening the walker faces within reach. It reads the
  * pure walk and interaction math from core and applies the result to the live
  * camera and the scene each frame; the only Three.js touches are handing the scene
- * root to the engine swing helper and mounting the engine's aim outline group on the scene. Entering walk mode resumes the pose the last
- * walk left behind (or seeds the camera at eye height on the first walk) and takes
+ * root to the engine swing helper and mounting the engine's aim outline group on the
+ * scene. Entering walk mode resumes the pose the last walk left behind (or seeds the
+ * camera at eye height on the first walk) and takes
  * control of the camera; each E or R press reports which doors stand open, and leaving
  * reports the pose back, so the walk survives a view switch and a detour through orbit
  * (ADR-0170). The openings stay live in orbit mode too: useOpeningMotion has them follow

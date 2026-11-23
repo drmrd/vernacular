@@ -94,8 +94,8 @@ root, which a reconcile rebuilds. It holds one line of five points, the first co
 end, rather than a line loop, because the WebGPU renderer of the live view is not sure to close a
 loop. A new pose writes into the same position buffer, so no geometry is built each frame. The line
 is warm amber (`0xffcc66`), set apart from the white selection outline, and one pixel wide. It is
-drawn after the scene with the depth test off, so it also shows through a leaf that stands open in
-front of the frame. When nothing is in reach the line is removed and its geometry and material are
+drawn after the opaque scene with the depth test off, so it also shows through a leaf that stands
+open in front of the frame. Glass draws after the line, so a pane in front of the frame tints it. When nothing is in reach the line is removed and its geometry and material are
 freed.
 
 The walk controls run the outline step each frame after the walk step and the opening tick

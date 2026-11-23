@@ -36,8 +36,8 @@ export function interactFromWalk(
 
 /**
  * The opening part the walker's eye reaches, or null: the one test both the interact key and the
- * aim guide use, so the outline always marks what the key acts on. The walk pose is seated on its
- * floor's datum, as the interact key seats it.
+ * aim guide use, so the outline always marks what the key acts on. Callers pass the pose seated on
+ * its floor's datum, as the interact key does.
  */
 export function reachFromWalk(
   walk: WalkState,
