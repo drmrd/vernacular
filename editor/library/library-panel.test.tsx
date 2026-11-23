@@ -358,3 +358,32 @@ describe('LibraryPanel design-system surfaces', () => {
     expect(carriesFieldControlTreatment(search)).toBe(true)
   })
 })
+
+function plaster(overrides: Partial<LibraryItem> = {}): LibraryItem {
+  return libraryItem({
+    name: 'Painted plaster',
+    kind: 'material',
+    reference: { scope: PACK_SCOPE, contentHash: 'm1' },
+    ...overrides,
+  })
+}
+
+describe('LibraryPanel holding items that are not furniture', () => {
+  it('shows the empty library message when the library holds no furniture', async () => {
+    renderPanel(registryOf([plaster()], []))
+
+    expect(await screen.findByRole('heading', { name: EMPTY_STATE })).toBeInTheDocument()
+    expect(screen.queryByText('No matches')).toBeNull()
+    expect(screen.queryByRole('button', { name: /clear filters/i })).toBeNull()
+  })
+
+  it('offers no era chip for an era only a non-furniture item carries', async () => {
+    renderPanel(
+      registryOf([libraryItem({ name: EAMES_NAME }), plaster({ eras: ['victorian'] })], []),
+    )
+    await screen.findByRole('button', { name: EAMES_NAME })
+
+    expect(screen.getByRole('button', { name: 'mid-century' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'victorian' })).toBeNull()
+  })
+})
