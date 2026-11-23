@@ -4,6 +4,7 @@ import { render, waitFor } from '@testing-library/react'
 import { resolvedAsset } from '../../core'
 import type { AssetReference, ResolvedAsset, TextureDescription } from '../../core'
 import { Texture } from '../../engine/testing'
+import { LOADING } from './texture-cache'
 import type { TextureSource, TextureState } from './texture-cache'
 import { useGroundTexture } from './use-ground-texture'
 
@@ -23,9 +24,11 @@ const source: TextureSource = {
   describe: async () => description,
 }
 
+type ProbeProps = { asset?: AssetReference; textureSource?: TextureSource }
+
 function recordingProbe(received: TextureState[]) {
-  return function Probe({ asset = reference }: { asset?: AssetReference }) {
-    received.push(useGroundTexture(asset, source))
+  return function Probe({ asset = reference, textureSource = source }: ProbeProps) {
+    received.push(useGroundTexture(asset, textureSource))
     return null
   }
 }
@@ -55,6 +58,61 @@ function deferredAsset() {
   return { promise, settle }
 }
 
+type Deferred = ReturnType<typeof deferredAsset>
+
+/** A source that answers each held asset with a deferred, and every other asset at once. */
+function holdableSource() {
+  const holds = new Map<string, Deferred>()
+  const held: TextureSource = {
+    ...source,
+    resolve: (asset) => holds.get(asset.contentHash)?.promise ?? source.resolve(asset),
+  }
+  return {
+    source: held,
+    hold: (asset: AssetReference) => {
+      const deferred = deferredAsset()
+      holds.set(asset.contentHash, deferred)
+      return deferred
+    },
+  }
+}
+
+type Journey = {
+  first: ProbeProps
+  change: ProbeProps
+  back: ProbeProps
+  holdChange: () => void
+  holdReturn: () => Deferred
+}
+
+function referenceJourney(): Journey {
+  const held = holdableSource()
+  const view = (asset: AssetReference) => ({ asset, textureSource: held.source })
+  return {
+    first: view(reference),
+    change: view(otherReference),
+    back: view(reference),
+    holdChange: () => held.hold(otherReference),
+    holdReturn: () => held.hold(reference),
+  }
+}
+
+function sourceJourney(): Journey {
+  const original = holdableSource()
+  const replacement = holdableSource()
+  const view = (held: ReturnType<typeof holdableSource>) => ({
+    asset: reference,
+    textureSource: held.source,
+  })
+  return {
+    first: view(original),
+    change: view(replacement),
+    back: view(original),
+    holdChange: () => replacement.hold(reference),
+    holdReturn: () => original.hold(reference),
+  }
+}
+
 describe('useGroundTexture under StrictMode', () => {
   let decoded: FakeBitmap[]
 
@@ -72,7 +130,7 @@ describe('useGroundTexture under StrictMode', () => {
     const received: TextureState[] = []
     const Probe = recordingProbe(received)
 
-    const view = render(<Probe />, { reactStrictMode: true })
+    render(<Probe />, { reactStrictMode: true })
 
     await waitFor(() => expect(received.at(-1)?.status).toBe('ready'))
     const handedOut = handedOutTextures(received)
@@ -80,8 +138,6 @@ describe('useGroundTexture under StrictMode', () => {
     expect(received[0]?.status).toBe('loading')
     expect(handedOut.length).toBeGreaterThan(0)
     expect(handedOut.filter((texture) => freed.includes(texture))).toEqual([])
-
-    view.unmount()
   })
 
   it('the ground texture is freed when the view unmounts', async () => {
@@ -90,17 +146,19 @@ describe('useGroundTexture under StrictMode', () => {
     const Probe = recordingProbe(received)
     const view = render(<Probe />, { reactStrictMode: true })
     await waitFor(() => expect(received.at(-1)?.status).toBe('ready'))
-    const texture = received.at(-1)?.appearance?.texture as Texture
-    const bitmap = decoded.find((candidate) => candidate === texture.image) as FakeBitmap
+    const texture = received.at(-1)?.appearance?.texture
+    expect(texture).toBeInstanceOf(Texture)
+    const bitmap = decoded.find((candidate) => candidate === texture?.image)
+    expect(bitmap).toBeDefined()
     const disposeCalls = () => disposeTexture.mock.contexts.filter((held) => held === texture)
 
     expect(disposeCalls()).toHaveLength(0)
-    expect(bitmap.close).not.toHaveBeenCalled()
+    expect(bitmap?.close).not.toHaveBeenCalled()
 
     view.unmount()
 
     expect(disposeCalls()).toHaveLength(1)
-    expect(bitmap.close).toHaveBeenCalledTimes(1)
+    expect(bitmap?.close).toHaveBeenCalledTimes(1)
   })
 
   it('when the reference changes, the view shows loading and never the freed texture of the old reference', async () => {
@@ -111,28 +169,57 @@ describe('useGroundTexture under StrictMode', () => {
         asset.contentHash === otherReference.contentHash ? pending.promise : source.resolve(asset),
     }
     const received: TextureState[] = []
-    const Probe = ({ asset }: { asset: AssetReference }) => {
-      received.push(useGroundTexture(asset, changingSource))
-      return null
-    }
-    const view = render(<Probe asset={reference} />, { reactStrictMode: true })
+    const Probe = recordingProbe(received)
+    const view = render(<Probe textureSource={changingSource} />, { reactStrictMode: true })
     await waitFor(() => expect(received.at(-1)?.status).toBe('ready'))
     const oldTexture = received.at(-1)?.appearance?.texture
 
     const renderedBefore = received.length
-    view.rerender(<Probe asset={otherReference} />)
+    view.rerender(<Probe asset={otherReference} textureSource={changingSource} />)
 
     const afterChange = received.slice(renderedBefore)
     expect(afterChange.length).toBeGreaterThan(0)
-    expect(afterChange.map((state) => state.status)).toEqual(afterChange.map(() => 'loading'))
-    expect(afterChange.map((state) => state.appearance)).toEqual(afterChange.map(() => undefined))
+    expect(afterChange).toEqual(afterChange.map(() => LOADING))
 
     pending.settle(resolvedAsset(new Uint8Array([4, 5, 6]), otherReference.scope))
     await waitFor(() => expect(received.at(-1)?.status).toBe('ready'))
     const newTexture = received.at(-1)?.appearance?.texture
     expect(newTexture).toBeInstanceOf(Texture)
     expect(newTexture).not.toBe(oldTexture)
-
-    view.unmount()
   })
+
+  it.each([
+    ['reference', referenceJourney],
+    ['source', sourceJourney],
+  ])(
+    'returning to an earlier %s shows loading, never the texture its first load freed',
+    async (_changed, journey) => {
+      const disposeTexture = vi.spyOn(Texture.prototype, 'dispose')
+      const { first, change, back, holdChange, holdReturn } = journey()
+      holdChange()
+      const received: TextureState[] = []
+      const Probe = recordingProbe(received)
+      const view = render(<Probe {...first} />, { reactStrictMode: true })
+      await waitFor(() => expect(received.at(-1)?.status).toBe('ready'))
+      const firstTexture = received.at(-1)?.appearance?.texture
+      expect(firstTexture).toBeInstanceOf(Texture)
+
+      const renderedBeforeChange = received.length
+      view.rerender(<Probe {...change} />)
+      expect(handedOutTextures(received.slice(renderedBeforeChange))).not.toContain(firstTexture)
+
+      const settleReturn = holdReturn()
+      const renderedBeforeReturn = received.length
+      view.rerender(<Probe {...back} />)
+      const afterReturn = received.slice(renderedBeforeReturn)
+      expect(afterReturn.length).toBeGreaterThan(0)
+      expect(afterReturn).toEqual(afterReturn.map(() => LOADING))
+
+      settleReturn.settle(resolvedAsset(new Uint8Array([7, 8, 9]), reference.scope))
+      await waitFor(() => expect(received.at(-1)?.status).toBe('ready'))
+      const returnTexture = received.at(-1)?.appearance?.texture
+      expect(returnTexture).toBeInstanceOf(Texture)
+      expect(disposeTexture.mock.contexts).not.toContain(returnTexture)
+    },
+  )
 })
