@@ -8,6 +8,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const FIRST_ERROR_MAX_LENGTH = 200
+const NO_REPORT_NOTE = 'Retry check: not done. No Playwright JSON report could be read.\n'
 const ANSI_COLOR_CODES = /\u001b\[[0-9;]*m/g
 const TITLE_SEPARATOR = ' > '
 
@@ -95,13 +96,14 @@ function summaryTableRow(pass) {
 }
 
 /**
+ * Returns a not-done note when `counts.reports` is 0, so an unreadable report is not reported as a clean run.
  * @param {RetriedPass[]} passes
  * @param {{ tests: number, reports: number }} counts
  * @returns {string} Markdown for the job summary
  */
 export function formatRetrySummary(passes, counts) {
   if (counts.reports === 0) {
-    return 'Retry check: not done. No Playwright JSON report could be read.\n'
+    return NO_REPORT_NOTE
   }
   if (passes.length === 0) {
     return `Retry check: no test passed only on a retry. Tests read: ${counts.tests}. Reports read: ${counts.reports}.\n`
