@@ -1,8 +1,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import type { SceneGraph } from '../../core'
 import { SceneFailureHost } from '../../bridge/react/scene-failure-host'
 import { ScenePane } from './scene-pane'
+import {
+  LOAD_ANNOUNCEMENT,
+  START_ANNOUNCEMENT,
+  TITLE_FOR_KIND,
+} from './scene-failure-text-test-support'
 
 const emptyGraph: SceneGraph = {
   nodes: [],
@@ -56,9 +61,6 @@ afterEach(() => {
   mockFailureKind = null
 })
 
-const LOAD_TITLE = 'Could not load the 3D view'
-const START_TITLE = 'This browser cannot render the 3D view'
-
 describe.each(['load', 'start'] as const)('ScenePane over a renderer that failed to %s', (kind) => {
   it('drops the loading overlay while the failure view is in the pane', async () => {
     mockFailureKind = kind
@@ -80,9 +82,7 @@ describe.each(['load', 'start'] as const)('ScenePane over a renderer that failed
       expect(screen.queryByText('Building the scene...')).toBeNull()
     })
     expect(screen.queryByText('Nothing to show in 3D yet')).toBeNull()
-    expect(
-      screen.getByRole('heading', { name: kind === 'load' ? LOAD_TITLE : START_TITLE }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: TITLE_FOR_KIND[kind] })).toBeInTheDocument()
   })
 
   it('shows the styled view in the slot, not the plain one', async () => {
@@ -90,12 +90,17 @@ describe.each(['load', 'start'] as const)('ScenePane over a renderer that failed
 
     render(<ScenePane />)
 
-    expect(
-      await screen.findByRole('heading', { name: kind === 'load' ? LOAD_TITLE : START_TITLE }),
-    ).toBeInTheDocument()
-    if (kind === 'load') {
-      expect(screen.getByRole('button', { name: 'Reload page' })).toHaveClass('ds-button')
-    }
+    expect(await screen.findByRole('heading', { name: TITLE_FOR_KIND[kind] })).toBeInTheDocument()
+  })
+})
+
+describe('ScenePane over a renderer that failed to load', () => {
+  it('shows the Reload page button of the design system', async () => {
+    mockFailureKind = 'load'
+
+    render(<ScenePane />)
+
+    expect(await screen.findByRole('button', { name: 'Reload page' })).toHaveClass('ds-button')
   })
 })
 
@@ -104,5 +109,91 @@ describe('ScenePane over a renderer that has not failed', () => {
     render(<ScenePane />)
 
     expect(screen.getByText('Building the scene...')).toBeInTheDocument()
+  })
+})
+
+function announcerRegions(container: HTMLElement) {
+  const announcer = container.querySelector<HTMLElement>('.scene-pane__announcer')
+  if (announcer === null) throw new Error('the pane has no announcer')
+  return {
+    alert: within(announcer).getByRole('alert'),
+    status: within(announcer).getByRole('status'),
+  }
+}
+
+describe('ScenePane failure announcement', () => {
+  it('mounts an empty polite region and an empty assertive region before any failure', () => {
+    const { container } = render(<ScenePane />)
+
+    const { alert, status } = announcerRegions(container)
+
+    expect(alert).toBeEmptyDOMElement()
+    expect(status).toBeEmptyDOMElement()
+  })
+
+  it('writes the could-not-load text into the assertive region that was there before the failure', async () => {
+    const { container, rerender } = render(<ScenePane />)
+    const { alert } = announcerRegions(container)
+
+    mockFailureKind = 'load'
+    rerender(<ScenePane />)
+
+    await waitFor(() => {
+      expect(alert).toHaveTextContent(LOAD_ANNOUNCEMENT)
+    })
+    const after = announcerRegions(container)
+    expect(after.alert).toBe(alert)
+    expect(after.status).toBeEmptyDOMElement()
+  })
+
+  it('writes the cannot-render text into the polite region that was there before the failure', async () => {
+    const { container, rerender } = render(<ScenePane />)
+    const { status } = announcerRegions(container)
+
+    mockFailureKind = 'start'
+    rerender(<ScenePane />)
+
+    await waitFor(() => {
+      expect(status).toHaveTextContent(START_ANNOUNCEMENT)
+    })
+    const after = announcerRegions(container)
+    expect(after.status).toBe(status)
+    expect(after.alert).toBeEmptyDOMElement()
+  })
+
+  it('leaves focus where it was when the failure is announced', async () => {
+    const tree = () => (
+      <>
+        <button type="button">outside</button>
+        <ScenePane />
+      </>
+    )
+    const { rerender } = render(tree())
+    const outside = screen.getByRole('button', { name: 'outside' })
+    outside.focus()
+
+    mockFailureKind = 'load'
+    rerender(tree())
+
+    await screen.findByRole('heading', { name: TITLE_FOR_KIND.load })
+    await act(async () => {})
+    expect(document.activeElement).toBe(outside)
+  })
+
+  it('empties both regions when the failure view goes away', async () => {
+    const { container, rerender } = render(<ScenePane />)
+    mockFailureKind = 'load'
+    rerender(<ScenePane />)
+    await waitFor(() => {
+      expect(announcerRegions(container).alert).toHaveTextContent(LOAD_ANNOUNCEMENT)
+    })
+
+    mockFailureKind = null
+    rerender(<ScenePane />)
+
+    await waitFor(() => {
+      expect(announcerRegions(container).alert).toBeEmptyDOMElement()
+    })
+    expect(announcerRegions(container).status).toBeEmptyDOMElement()
   })
 })

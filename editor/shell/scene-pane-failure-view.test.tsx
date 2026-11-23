@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ScenePaneFailureView } from './scene-pane-failure-view'
-
-const LOAD_TITLE = 'Could not load the 3D view'
-const LOAD_DESCRIPTION =
-  'Check your network connection, then reload the page. After the reload, open the 3D view again.'
-const START_TITLE = 'This browser cannot render the 3D view'
-const START_DESCRIPTION = 'Your plan and the 2D editor are unaffected.'
+import {
+  LOAD_DESCRIPTION,
+  LOAD_TITLE,
+  START_DESCRIPTION,
+  START_TITLE,
+} from './scene-failure-text-test-support'
 
 describe('ScenePaneFailureView', () => {
   it('shows the could-not-load title, what to do, and a Reload page button of the design system', () => {
@@ -33,7 +33,7 @@ describe('ScenePaneFailureView', () => {
   })
 
   it.each([{ kind: 'load' as const, onReload: vi.fn() }, { kind: 'start' as const }])(
-    'carries no live role and no region landmark of its own',
+    'carries no live role and no region landmark of its own ($kind)',
     (props) => {
       render(<ScenePaneFailureView {...props} />)
 
