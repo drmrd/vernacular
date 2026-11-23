@@ -111,11 +111,14 @@ function matchesStyle(item: LibraryItem, style: string | null): boolean {
   return (item.styles ?? []).includes(style)
 }
 
-// Keep only the items satisfying every active filter (search AND source AND era
-// AND style).
+const FURNITURE_KIND: LibraryItem['kind'] = 'furniture'
+
+// Keep only furniture satisfying every active filter (search AND source AND era
+// AND style). The furniture-only rule is fixed, not a user filter.
 export function visibleLibraryItems(items: LibraryItem[], filters: LibraryFilters): LibraryItem[] {
   return items.filter(
     (item) =>
+      item.kind === FURNITURE_KIND &&
       matchesQuery(item, filters.query) &&
       matchesSource(item, filters.source) &&
       matchesEra(item, filters.era) &&
