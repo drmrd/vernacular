@@ -64,12 +64,17 @@ interface ApertureOpening extends OpeningArea {
  * the room it opens to. A doorway's `skyFactors` hold, for each aperture of that room in order, the
  * form factor from the doorway to the glazing when the aperture opens to the sky, and 0 otherwise.
  * They are empty when the room is open to the sky, because its doorway already shows the sky.
+ * When the doorways into a room would together take more than a glazing's flux share of its area,
+ * every doorway's factor to that glazing is scaled down by the same ratio, so that they take
+ * exactly that share.
  */
 export type ApertureGeometry = ApertureOpening &
   (
     | { kind: 'sky'; direction: Vector3 }
     | { kind: 'doorway'; neighbor: number; skyFactors: readonly number[] }
   )
+
+export type DoorwayGeometry = Extract<ApertureGeometry, { kind: 'doorway' }>
 
 /** What a room keeps between calls: its apertures, its cells, and its surfaces. */
 export interface RoomGeometry {
@@ -239,20 +244,21 @@ function assignCells(
   return { cellsByRoom, roomOfCell }
 }
 
-/** The opening area of every doorway that another room lists into each room, by room index. */
-function doorwayAreasInto(
+/** Sums `valueOf` over every doorway that any room lists, into the room it opens to, by room index. */
+export function sumOverDoorwaysInto(
   apertures: readonly (readonly ApertureGeometry[])[],
   roomCount: number,
+  valueOf: (doorway: DoorwayGeometry) => number,
 ): number[] {
-  const areas = new Array<number>(roomCount).fill(0)
+  const sums = new Array<number>(roomCount).fill(0)
   for (const roomApertures of apertures) {
     for (const aperture of roomApertures) {
       if (aperture.kind === 'doorway') {
-        areas[aperture.neighbor] = (areas[aperture.neighbor] ?? 0) + aperture.openingArea
+        sums[aperture.neighbor] = (sums[aperture.neighbor] ?? 0) + valueOf(aperture)
       }
     }
   }
-  return areas
+  return sums
 }
 
 /** The flux that the doorways into `neighbor` take from its aperture `index`, per unit of sky light. */
@@ -287,6 +293,7 @@ function skyFactorScale(
   return total > limit ? limit / total : 1
 }
 
+/** Scales each doorway's sky factors so that no glazing loses more flux than it receives. */
 function withBoundedSkyFactors(
   apertures: readonly (readonly ApertureGeometry[])[],
 ): ApertureGeometry[][] {
@@ -318,7 +325,11 @@ export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry 
   const apertures = withBoundedSkyFactors(
     openings.map((ofRoom) => ofRoom.map((opening) => apertureGeometry(opening, rooms, openings))),
   )
-  const doorwayAreas = doorwayAreasInto(apertures, rooms.length)
+  const doorwayAreas = sumOverDoorwaysInto(
+    apertures,
+    rooms.length,
+    (doorway) => doorway.openingArea,
+  )
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
     openToSky: room.openToSky === true,
     apertures: apertures[index] ?? [],

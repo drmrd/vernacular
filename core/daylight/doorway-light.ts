@@ -1,12 +1,14 @@
 import { OPEN_SKY_VISIBILITY } from './daylight-field'
 import { enteringFlux, roomAverageTerm } from './room-average'
-import type { ApertureGeometry, RoomGeometry } from './room-geometry'
-
-type DoorwayGeometry = Extract<ApertureGeometry, { kind: 'doorway' }>
+import { sumOverDoorwaysInto } from './room-geometry'
+import type { DoorwayGeometry, RoomGeometry } from './room-geometry'
 
 /** What a room's doorways read from the rooms they open to. */
 export interface NeighborLight {
-  /** For each room, the weight of each of its apertures by the sky alone, the sky's relative radiance toward each sky aperture times its net transmittance, and 0 for a doorway. */
+  /**
+   * For each room, the weight of each of its apertures by the sky alone, the sky's relative
+   * radiance toward each sky aperture times its net transmittance, and 0 for a doorway.
+   */
   skyWeights: readonly (readonly number[])[]
   /** For each room, what `doorwayLuminance` gives. */
   luminances: readonly number[]
@@ -31,17 +33,11 @@ export function routedOutFluxes(
   rooms: readonly RoomGeometry[],
   skyWeights: readonly (readonly number[])[],
 ): number[] {
-  const routed = new Array<number>(rooms.length).fill(0)
-  for (const room of rooms) {
-    for (const aperture of room.apertures) {
-      if (aperture.kind === 'doorway') {
-        routed[aperture.neighbor] =
-          (routed[aperture.neighbor] ?? 0) +
-          aperture.openingArea * windowLight(aperture, skyWeights[aperture.neighbor] ?? [])
-      }
-    }
-  }
-  return routed
+  return sumOverDoorwaysInto(
+    rooms.map((room) => room.apertures),
+    rooms.length,
+    (doorway) => doorway.openingArea * windowLight(doorway, skyWeights[doorway.neighbor] ?? []),
+  )
 }
 
 /**
