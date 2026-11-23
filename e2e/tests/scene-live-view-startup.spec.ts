@@ -1,6 +1,8 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
 import { guardLiveSceneSupport } from './live-webgpu'
+import { selectionStatusOf } from './live-pane'
+import { SCENE_FAILURE_COPY, sceneFailureAnnouncement } from '../../editor/shell/scene-failure-copy'
 
 // Issue #733: the live three-dimensional pane shows a drawn wall, also when the scene view
 // renders again while the renderer chunk loads and while the renderer initializes. The two
@@ -37,6 +39,9 @@ import { guardLiveSceneSupport } from './live-webgpu'
 // adapter and a WebGL 2 context and fails without them, so a macOS runner image that loses its
 // adapter fails the job instead of passing it on the fallback. Without the variable a test skips
 // only in a browser with no navigator.gpu at all, because the adapter hold needs it.
+
+const LOAD_TITLE = SCENE_FAILURE_COPY.load.title
+const LOAD_ANNOUNCEMENT = sceneFailureAnnouncement('load')
 
 const RENDERER_CHUNK = /\/assets\/three\.webgpu-[^/]+\.js$/
 
@@ -267,7 +272,31 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
   })
 })
 
+// Makes the renderer chunk unfetchable, loads the app, opens the split view, and returns the 3D
+// pane, which then shows its failure view.
+async function openPaneWithUnfetchableRenderer(page: Page): Promise<Locator> {
+  await page.route(RENDERER_CHUNK, (route) => route.abort('failed'))
+  await page.goto('/')
+  await skipWithoutNavigatorGpu(page)
+  await page.getByRole('button', { name: 'Split view' }).click()
+  return page.getByRole('region', { name: /3d preview/i })
+}
+
 test.describe('Live three-dimensional pane after a failed renderer load', () => {
+  test('shows only the announced failure view when the renderer chunk cannot be fetched', async ({
+    page,
+  }) => {
+    const pane = await openPaneWithUnfetchableRenderer(page)
+
+    await expect(pane.getByRole('alert')).toHaveText(LOAD_ANNOUNCEMENT)
+    await expect(pane.getByRole('heading', { name: LOAD_TITLE })).toBeVisible()
+    await expect(pane.getByRole('button', { name: 'Reload page' })).toBeVisible()
+    await expect(pane.getByRole('toolbar', { name: '3D navigation' })).toHaveCount(0)
+    await expect(pane.getByRole('group', { name: 'Camera controls' })).toHaveCount(0)
+    await expect(selectionStatusOf(page)).toHaveCount(0)
+    await expect(page.getByRole('group', { name: 'View mode' })).toBeVisible()
+  })
+
   // Chromium 148 kept the failure of a dynamic import for the life of the page: an in-place retry
   // of the same module never reached the network. A reloaded page asks for the chunk again, which
   // the wrapper's unit tests cannot show because they replace the loader.
@@ -278,15 +307,8 @@ test.describe('Live three-dimensional pane after a failed renderer load', () => 
     page.on('request', (request) => {
       if (RENDERER_CHUNK.test(request.url())) chunkRequests.push(request.url())
     })
-    await page.route(RENDERER_CHUNK, (route) => route.abort('failed'))
-    await page.goto('/')
-    await skipWithoutNavigatorGpu(page)
-
-    await page.getByRole('button', { name: 'Split view' }).click()
-    const pane = page.getByRole('region', { name: /3d preview/i })
-    await expect(pane.getByRole('alert')).toHaveText(
-      'Could not load the 3D view. Check your network connection, then reload the page.',
-    )
+    const pane = await openPaneWithUnfetchableRenderer(page)
+    await expect(pane.getByRole('alert')).toHaveText(LOAD_ANNOUNCEMENT)
     await expect(pane.locator('canvas')).toHaveCount(0)
     const requestsBeforeReload = chunkRequests.length
     expect(requestsBeforeReload).toBeGreaterThan(0)
@@ -299,7 +321,8 @@ test.describe('Live three-dimensional pane after a failed renderer load', () => 
 
     await page.getByRole('button', { name: 'Split view' }).click()
     await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
-    await expect(pane.getByRole('alert')).toHaveCount(0)
+    await expect(pane.getByRole('alert')).toBeEmpty()
+    await expect(pane.getByRole('toolbar', { name: '3D navigation' })).toBeVisible()
     const canvas = pane.locator('canvas')
     await expect(canvas).toHaveCount(1)
     await expect
