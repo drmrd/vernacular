@@ -25,6 +25,8 @@ function sameInputs(a: TextureInputs, b: TextureInputs): boolean {
  * to an earlier value never shows a texture the cache already freed. The settled state also
  * carries the inputs of its effect run and shows only while they match, because a non-urgent
  * commit runs the old cleanup after the new inputs commit and the old load can settle in between.
+ * The cleanup also drops the settled state, so a view that <Activity> hides and shows again
+ * loads a fresh texture instead of returning the one freed at hide.
  */
 export function useGroundTexture(reference: AssetReference, source: TextureSource): TextureState {
   const referenceKey = formatAssetReference(reference)
@@ -55,6 +57,7 @@ export function useGroundTexture(reference: AssetReference, source: TextureSourc
     return () => {
       cancelled = true
       cache.dispose()
+      setSettled(undefined)
     }
   }, [referenceKey, source])
 
