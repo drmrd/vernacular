@@ -1,3 +1,7 @@
+// core/assets/image-header.ts
+//
+// Reads PNG and WebP headers for the texture rules; never decodes pixels.
+
 export interface PngImageHeader {
   readonly mediaType: 'image/png'
   readonly width: number

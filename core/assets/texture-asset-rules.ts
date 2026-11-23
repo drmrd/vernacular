@@ -5,12 +5,6 @@
 import { isRecord } from './is-record.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
 
-type TextureFieldValidator = (
-  asset: Record<string, unknown>,
-  label: string,
-  errors: string[],
-) => void
-
 export const TEXTURE_LIMITS = Object.freeze({
   minSidePixels: 64,
   maxSidePixels: 2048,
@@ -57,7 +51,11 @@ function validateTileSize(tileSize: unknown, label: string, errors: string[]): v
   }
 }
 
-export const validateTextureFields: TextureFieldValidator = (asset, label, errors) => {
+export function validateTextureFields(
+  asset: Record<string, unknown>,
+  label: string,
+  errors: string[],
+): void {
   validateImage(asset['image'], label, errors)
   validateTileSize(asset['tileSize'], label, errors)
   if (!COLOR_SPACES.includes(asset['colorSpace'] as string)) {

@@ -235,9 +235,9 @@ interface LibraryBodyProps extends LibraryFilterState {
 }
 
 // Pick the body to render: a loading state while listing, the empty message when
-// there are no items, otherwise the filter controls above the matching grid, with
-// a persistently mounted status region that only speaks up when the filters keep
-// everything out.
+// there are no furniture items, otherwise the filter controls above the matching
+// grid, with a persistently mounted status region that only speaks up when the
+// filters keep everything out.
 function LibraryBody(props: LibraryBodyProps): ReactElement | null {
   const { items, onPick, armed, filters, setFilters } = props
   if (items === null) {
