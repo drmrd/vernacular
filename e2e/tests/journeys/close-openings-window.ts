@@ -192,9 +192,9 @@ export async function checkHungWindowSashes(page: Page, canvas: Locator): Promis
   // The selection outline of the shut window is the box of its frame.
   const outline = await outlineOfShutWindow(page, canvas, await orbitSouthFrame(page, canvas))
 
-  // Opened, nothing of the window appears outside that box. This does not show that only the
-  // lower sash moves: the wall hides the parts above the head, so the check also passes when the
-  // whole window rises. The unit tests in engine/scene/opening-motion.test.ts guard that.
+  // Opened, nothing of the window appears outside that box. The straight-ahead press lowers the
+  // upper sash, but this journey does not tell the sashes apart. The unit tests in
+  // core/scene/opening-reach-sash.test.ts and engine/scene/opening-motion-sashes.test.ts do.
   const { never, open } = await openWindowSeenFromOrbit(page, canvas)
   expectInside(await views.changedBox(never, open), outline, {
     margin: OPENING_REGION_MARGIN,

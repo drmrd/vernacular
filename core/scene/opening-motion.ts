@@ -38,8 +38,8 @@ export interface HingeMotion {
 export type SlideAxis = 'along-wall' | 'vertical'
 
 /**
- * Translation of a leaf or sash along an axis. A hung window moves its lower sash only, by
- * the height of that sash.
+ * Translation of a leaf or sash along an axis. A hung window's lower sash rises and its upper
+ * sash lowers, each by the rise of the lower sash.
  */
 export interface SlideMotion {
   kind: 'slide'
@@ -71,12 +71,41 @@ const SINGLE_PART = 1
 const PAIRED_PARTS = 2
 
 const NO_MOTION: NoMotion = { kind: 'none' }
+const HUNG_SASHES: readonly HungSash[] = ['lower', 'upper']
+const PRIMARY_ONLY: readonly OpeningPartId[] = ['primary']
+
+/**
+ * The moving parts of an opening type. A hung window has a lower and an upper sash, less the
+ * one its type fixes shut; every other type moves its one primary part.
+ */
+export function openingParts(type: string): readonly OpeningPartId[] {
+  const params = getEntry(builtinElementTypes, type)?.opening
+  if (params?.family !== 'window-hung') {
+    return PRIMARY_ONLY
+  }
+  return HUNG_SASHES.filter((sash) => sash !== params.fixedSash)
+}
+
+/**
+ * The motion of one part of an opening. The upper sash of a hung window lowers by the rise of
+ * the lower sash; a part the type lacks does not move.
+ */
+export function openingPartMotion(
+  type: string,
+  opening: OpeningSceneNode,
+  part: OpeningPartId,
+): OpeningMotion {
+  if (!openingParts(type).includes(part)) {
+    return NO_MOTION
+  }
+  return part === 'upper' ? upperSashLowering(opening) : openingMotion(type, opening)
+}
 
 /**
  * Resolves how an opening moves from its element type, reading the type's
  * operation family from the registry. A swing door hinges on a jamb; a fixed
  * window or a cased opening has no moving part. A hung window raises its lower
- * sash only.
+ * sash only; openingPartMotion gives the motion of each sash.
  */
 export function openingMotion(type: string, opening: OpeningSceneNode): OpeningMotion {
   const params = getEntry(builtinElementTypes, type)?.opening
@@ -199,8 +228,19 @@ function lowerSashRise(opening: OpeningSceneNode): SlideMotion {
   return {
     kind: 'slide',
     axis: 'vertical',
-    travel: { x: 0, y: Math.max(0, opening.height / 2 - SASH_FRAME_WIDTH_MM / 2), z: 0 },
+    travel: { x: 0, y: opening.height - meetingRailTopMm(opening.height), z: 0 },
     partId: 'lower',
     partCount: SINGLE_PART,
   }
+}
+
+/** Millimeters up from a hung window's bottom to the top of its meeting rail, capped at the head. */
+export function meetingRailTopMm(heightMm: number): number {
+  return Math.min(heightMm, heightMm / 2 + SASH_FRAME_WIDTH_MM / 2)
+}
+
+/** The upper sash slides down by the same rise the lower sash slides up. */
+function upperSashLowering(opening: OpeningSceneNode): SlideMotion {
+  const rise = lowerSashRise(opening)
+  return { ...rise, travel: { x: 0, y: 0 - rise.travel.y, z: 0 }, partId: 'upper' }
 }

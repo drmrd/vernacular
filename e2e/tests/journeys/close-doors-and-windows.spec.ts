@@ -60,8 +60,9 @@ import {
 // nothing of the open window appears outside that outline, that the open window does not flicker,
 // and that a second press of the open key from the pose that opened it shuts the window again.
 // The door scenario checks the same second press (issue #817).
-// The outline check does not show that only the lower sash rises, because the wall hides the
-// parts above the head. The unit tests in engine/scene/opening-motion.test.ts guard that.
+// A straight look from the eye height of 1700 hits above the rail top, so the press lowers the
+// upper sash. The journey does not tell the sashes apart; the unit tests in
+// core/scene/opening-reach-sash.test.ts and engine/scene/opening-motion-sashes.test.ts do.
 //
 // One thing is not asserted. On a fresh page the walker starts at a pose where the door is out
 // of sight, so the walker's first frames cannot show its leaf, and that case reads the control
@@ -335,7 +336,7 @@ test('closes a window like a door, and a door and a window together on one press
   await openWithKey(page, canvas, atShutWindow)
 })
 
-test('keeps the sashes of an open hung window inside its frame, and reaches it again with the open key', async ({
+test('lowers the upper sash of a hung window inside its frame, and shuts it again with the open key', async ({
   page,
 }) => {
   const { canvas } = await startOnLiveRoom(page, SUBJECT)

@@ -1,11 +1,18 @@
 /**
- * The motion of the 3D view's doors and windows: the open set they follow, the pose they take
+ * The motion of the 3D view's doors and windows: the open parts they follow, the pose they take
  * on each newly built scene root or newly shown list, and the per-frame tick that swings them
- * toward that set. It runs in both camera modes, so a change made outside a walk still reaches
+ * toward those parts. It runs in both camera modes, so a change made outside a walk still reaches
  * the live scene.
  */
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
-import { sceneGraphForFloor, type OpeningInteractionState, type OpeningSceneNode } from '../../core'
+import {
+  keepOpenPartsOfTypes,
+  sceneGraphForFloor,
+  type OpenParts,
+  type OpeningPose,
+  type OpeningInteractionState,
+  type OpeningSceneNode,
+} from '../../core'
 import type { SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { useSceneGraph } from './use-scene-graph'
@@ -32,7 +39,7 @@ export interface OpeningMotionRefs {
    */
   shownOpenings: RefObject<OpeningSceneNode[]>
   interaction: RefObject<OpeningInteractionState>
-  openness: RefObject<Map<string, number>>
+  openness: RefObject<Map<string, OpeningPose>>
 }
 
 // The openings on the active floor, the candidates an interact ray can land on.
@@ -54,32 +61,36 @@ function useShownOpenings(): OpeningSceneNode[] {
 }
 
 // Owns the opening refs and returns them. The open/closed state follows the doors the session
-// store holds open, copied so the walk keys never reach back into the store's set (ADR-0170). It takes
-// the store's set whenever that set changes, so a reset made in orbit mode reaches the live
-// scene. The walk keys report their own changes to the store, and following a set with the
-// same doors keeps the same state, so that echo changes nothing. Each change of the set also
-// seats the openings the view does not show at their new target, because no tick reaches them:
+// store holds open, copied so the walk keys never reach back into the store's map (ADR-0170). It follows
+// the store's map with the parts each opening's current type lacks dropped (checked against every
+// floor's openings, since an unshown opening is not in the shown list), so a reset made in orbit
+// mode reaches the live scene. The walk keys report their own changes to the store, and following a map with the
+// same doors keeps the same state, so that echo changes nothing. The follow and the settle re-run
+// when the map or the graph's openings change, so a retype reaches the state and seats the openings
+// the view does not show at their new target without a key press, because no tick reaches them:
 // the R key in a walk resets the state before the store echoes it, so the settle must not wait
 // for the state to differ.
 function useOpeningMotionRefs(
-  storedOpenDoorIds: ReadonlySet<string>,
+  storedOpenDoorIds: OpenParts,
   shownOpenings: OpeningSceneNode[],
 ): OpeningMotionRefs {
   const openings = useActiveFloorOpenings()
+  const graphOpenings = useSceneGraph().openings
   const openingsRef = useRef<OpeningSceneNode[]>(openings)
   openingsRef.current = openings
   const shownOpeningsRef = useRef<OpeningSceneNode[]>(shownOpenings)
   shownOpeningsRef.current = shownOpenings
-  const interactionRef = useRef<OpeningInteractionState>({ openIds: new Set(storedOpenDoorIds) })
-  const opennessRef = useRef<Map<string, number>>(new Map())
+  const interactionRef = useRef<OpeningInteractionState>({ openParts: new Map(storedOpenDoorIds) })
+  const opennessRef = useRef<Map<string, OpeningPose>>(new Map())
   useEffect(() => {
-    interactionRef.current = followStoredOpenings(interactionRef.current, storedOpenDoorIds)
+    const typedOpenDoorIds = keepOpenPartsOfTypes(storedOpenDoorIds, graphOpenings)
+    interactionRef.current = followStoredOpenings(interactionRef.current, typedOpenDoorIds)
     settleUnshownOpenings({
       openings: shownOpeningsRef.current,
       interaction: interactionRef.current,
       openness: opennessRef.current,
     })
-  }, [storedOpenDoorIds])
+  }, [storedOpenDoorIds, graphOpenings])
   return {
     openings: openingsRef,
     shownOpenings: shownOpeningsRef,
@@ -122,13 +133,10 @@ function useRestoreOpenings(
  * Owns the motion of the 3D view's doors and windows: they follow the doors the session store
  * holds open, and each newly built scene root or newly shown list is posed where the session left
  * them. The follow effect is declared before the pose effect, so a root that arrives in the same
- * render as a new open set reads that set, and a return to a floor reads the settled openness.
+ * render as a new open-parts map reads that map, and a return to a floor reads the settled openness.
  * The caller swings the openings each frame with tickOpeningMotion.
  */
-export function useOpeningMotion(
-  root: SceneRoot,
-  storedOpenDoorIds: ReadonlySet<string>,
-): OpeningMotionRefs {
+export function useOpeningMotion(root: SceneRoot, storedOpenDoorIds: OpenParts): OpeningMotionRefs {
   const shownOpenings = useShownOpenings()
   const refs = useOpeningMotionRefs(storedOpenDoorIds, shownOpenings)
   useRestoreOpenings(root, shownOpenings, refs)
@@ -136,8 +144,8 @@ export function useOpeningMotion(
 }
 
 /**
- * Swings every opening one frame toward the open set, in either camera mode. An opening at
- * rest on its target costs two lookups (its open state and its openness).
+ * Swings every opening one frame toward the open parts, in either camera mode. An opening at
+ * rest on its target is skipped after its target pose is built.
  */
 export function tickOpeningMotion(root: SceneRoot, refs: OpeningMotionRefs, delta: number): void {
   tickOpenings(

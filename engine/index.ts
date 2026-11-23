@@ -17,7 +17,7 @@ export {
   isGroundPlane,
   GRADE_ELEVATION_MM,
 } from './scene/ground-plane'
-export { applyOpeningMotion, applyOpeningMotionForNode } from './scene/opening-motion'
+export { applyOpeningMotion, applyOpeningPose } from './scene/opening-motion'
 export { sceneBounds } from './scene/scene-bounds'
 export { isGlassPane, markShadowCasters } from './scene/shadow-casters'
 export type { OrbitController } from './scene/orbit-controls'

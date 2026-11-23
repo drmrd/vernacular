@@ -2,12 +2,19 @@ import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, renderHook } from '@testing-library/react'
 
-import { createEmptyProject, createFloor, createOpening, createWall } from '../../core'
+import {
+  createEmptyProject,
+  createFloor,
+  createOpening,
+  createWall,
+  type OpenParts,
+} from '../../core'
 import { buildScene, NeutralMaterialProvider, type SceneRoot } from '../../engine'
 import { createActiveFloorStore } from '../active-floor/active-floor-store'
 import { createEditorSession } from '../../session/testing'
 import { ActiveFloorProvider } from './active-floor-provider'
 import { EditorSessionProvider } from './editor-session-provider'
+import { openPartsWith } from '../open-parts-test-support'
 import { tickOpeningMotion, useOpeningMotion } from './use-opening-motion'
 
 afterEach(cleanup)
@@ -71,7 +78,7 @@ function fillGroupPose(root: SceneRoot, openingId: string) {
 
 interface HookProps {
   root: SceneRoot
-  stored: ReadonlySet<string>
+  stored: OpenParts
 }
 
 function renderMotion(env: ReturnType<typeof hookEnvironment>, initial: HookProps) {
@@ -86,7 +93,10 @@ function renderMotion(env: ReturnType<typeof hookEnvironment>, initial: HookProp
 function builtAndOpenPoses(env: ReturnType<typeof hookEnvironment>) {
   const shut = env.buildRoot()
   const open = env.buildRoot()
-  const probe = renderMotion(env, { root: open, stored: new Set([env.doorId]) })
+  const probe = renderMotion(env, {
+    root: open,
+    stored: openPartsWith({ [env.doorId]: ['primary'] }),
+  })
   tickOpeningMotion(open, probe.result.current, FULL_STEP)
   probe.unmount()
   const shutPose = fillGroupPose(shut, env.doorId)
@@ -100,7 +110,7 @@ describe('useOpeningMotion', () => {
     const env = hookEnvironment()
     const { openPose } = builtAndOpenPoses(env)
     const rootA = env.buildRoot()
-    const stored = new Set([env.doorId])
+    const stored = openPartsWith({ [env.doorId]: ['primary'] })
     const { result, rerender } = renderMotion(env, { root: rootA, stored })
     tickOpeningMotion(rootA, result.current, FULL_STEP)
     expect(fillGroupPose(rootA, env.doorId)).toEqual(openPose)
@@ -115,11 +125,14 @@ describe('useOpeningMotion', () => {
     const env = hookEnvironment()
     const { shutPose, openPose } = builtAndOpenPoses(env)
     const root = env.buildRoot()
-    const { result, rerender } = renderMotion(env, { root, stored: new Set([env.doorId]) })
+    const { result, rerender } = renderMotion(env, {
+      root,
+      stored: openPartsWith({ [env.doorId]: ['primary'] }),
+    })
     tickOpeningMotion(root, result.current, FULL_STEP)
     expect(fillGroupPose(root, env.doorId)).toEqual(openPose)
 
-    rerender({ root, stored: new Set() })
+    rerender({ root, stored: new Map() })
     tickOpeningMotion(root, result.current, FULL_STEP)
 
     expect(fillGroupPose(root, env.doorId)).toEqual(shutPose)
@@ -129,12 +142,15 @@ describe('useOpeningMotion', () => {
     const env = hookEnvironment()
     const { shutPose, openPose } = builtAndOpenPoses(env)
     const rootA = env.buildRoot()
-    const { result, rerender } = renderMotion(env, { root: rootA, stored: new Set([env.doorId]) })
+    const { result, rerender } = renderMotion(env, {
+      root: rootA,
+      stored: openPartsWith({ [env.doorId]: ['primary'] }),
+    })
     tickOpeningMotion(rootA, result.current, FULL_STEP)
     expect(fillGroupPose(rootA, env.doorId)).toEqual(openPose)
 
     const rootB = env.buildRoot()
-    rerender({ root: rootB, stored: new Set() })
+    rerender({ root: rootB, stored: new Map() })
     // The door has not swung yet, so its carried openness still reads as open and the new
     // root is posed open. Only the tick that follows swings it shut.
     expect(fillGroupPose(rootB, env.doorId)).toEqual(openPose)
@@ -147,12 +163,12 @@ describe('useOpeningMotion', () => {
     const env = hookEnvironment()
     const { shutPose, openPose } = builtAndOpenPoses(env)
     const rootA = env.buildRoot()
-    const { result, rerender } = renderMotion(env, { root: rootA, stored: new Set() })
+    const { result, rerender } = renderMotion(env, { root: rootA, stored: new Map() })
     tickOpeningMotion(rootA, result.current, FULL_STEP)
     expect(fillGroupPose(rootA, env.doorId)).toEqual(shutPose)
 
     const rootB = env.buildRoot()
-    rerender({ root: rootB, stored: new Set([env.doorId]) })
+    rerender({ root: rootB, stored: openPartsWith({ [env.doorId]: ['primary'] }) })
     // The door carries no openness yet, but the session holds it open, so the new root seats
     // it fully open at once, before any tick.
     expect(fillGroupPose(rootB, env.doorId)).toEqual(openPose)

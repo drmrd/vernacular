@@ -31,7 +31,7 @@ sourceFiles:
     engine/scene/opening-motion.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-22
 ---
 
 # ADR-0128: Opening animation motion model
@@ -109,7 +109,9 @@ the start, so a later pass can add the fold and pivot motions and multi-part mot
 both sashes, every bifold panel) without reshaping the resolver or the applier. That follow-up is
 tracked outside this record. (Updated 2026-11-17: a hung window now uses this seam. Its motion names
 the lower sash, the engine moves only the meshes of that sash, and the reach test keeps the shut
-rectangle of a part that slides inside its frame. See ADR-0216.)
+rectangle of a part that slides inside its frame. See ADR-0216.) (Updated 2026-11-22: each sash of a
+hung window now has its own openness, and the upper sash of a double-hung window lowers. See the
+amendment of 2026-11-22 in ADR-0216.)
 
 ## Consequences
 

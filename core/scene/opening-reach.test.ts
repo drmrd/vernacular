@@ -20,7 +20,16 @@ describe('openingUnderReach', () => {
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], { reachMm: REACH_MM })
 
-    expect(hit).toBe('opening:front-door')
+    expect(hit?.openingId).toBe('opening:front-door')
+  })
+
+  it('reports the primary part of a door it reaches', () => {
+    const door = doorAtZ2000('opening:front-door')
+
+    const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], { reachMm: REACH_MM })
+
+    expect(hit?.openingId).toBe('opening:front-door')
+    expect(hit?.part).toBe('primary')
   })
 
   it('excludes a cased opening even when it sits in reach directly ahead', () => {
@@ -47,7 +56,7 @@ describe('openingUnderReach', () => {
 
     const hit = openingUnderReach(eye, towardLeaf, [opening], { reachMm: REACH_MM })
 
-    expect(hit).toBe('opening:bay-window')
+    expect(hit?.openingId).toBe('opening:bay-window')
   })
 
   it('returns null when the walker looks away from the opening', () => {
@@ -89,7 +98,7 @@ describe('openingUnderReach', () => {
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [far, near], { reachMm: REACH_MM })
 
-    expect(hit).toBe('opening:near-door')
+    expect(hit?.openingId).toBe('opening:near-door')
   })
 
   it('tests a hinge door at its swung-open position when openness is set', () => {
@@ -111,9 +120,9 @@ describe('openingUnderReach', () => {
 
     expect(
       openingUnderReach(eye, dir, [door], {
-        openness: new Map([['opening:front-door', 1]]),
+        openness: new Map([['opening:front-door', { primary: 1 }]]),
         reachMm: REACH_MM,
-      }),
+      })?.openingId,
     ).toBe('opening:front-door')
   })
 
@@ -135,14 +144,14 @@ describe('openingUnderReach', () => {
 
     expect(
       openingUnderReach(eye, dir, [door], {
-        openness: new Map([['opening:pocket-door', 1]]),
+        openness: new Map([['opening:pocket-door', { primary: 1 }]]),
         reachMm: REACH_MM,
-      }),
+      })?.openingId,
     ).toBe('opening:pocket-door')
   })
 
   describe('a double-hung window', () => {
-    const fullyOpen = new Map([['opening:hung-window', 1]])
+    const fullyOpen = new Map([['opening:hung-window', { lower: 1 }]])
 
     it('is reached through the open lower part of its frame', () => {
       const window = hungWindowAtZ2000('opening:hung-window')
@@ -153,7 +162,17 @@ describe('openingUnderReach', () => {
         reachMm: REACH_MM,
       })
 
-      expect(hit).toBe('opening:hung-window')
+      expect(hit?.openingId).toBe('opening:hung-window')
+    })
+
+    it('reports the lower sash of a hung window it reaches low', () => {
+      const window = hungWindowAtZ2000('opening:hung-window')
+      const eye: Vector3 = { x: 1000, y: 1100, z: -1000 }
+
+      const hit = openingUnderReach(eye, towardDoor, [window], { reachMm: REACH_MM })
+
+      expect(hit?.openingId).toBe('opening:hung-window')
+      expect(hit?.part).toBe('lower')
     })
 
     it('is not reached by looking at the wall above its head when it is open', () => {
@@ -174,7 +193,43 @@ describe('openingUnderReach', () => {
 
       const hit = openingUnderReach(eye, towardDoor, [window], { reachMm: REACH_MM })
 
-      expect(hit).toBe('opening:hung-window')
+      expect(hit?.openingId).toBe('opening:hung-window')
     })
+  })
+})
+
+describe('openingUnderReach with several openings on the ray', () => {
+  it('picks the nearer opening when two line up along the ray, listed nearest first', () => {
+    const near = doorAtZ2000('opening:near-door')
+    const far: OpeningSceneNode = {
+      ...doorAtZ2000('opening:far-door'),
+      center: { x: 1000, y: 2400 },
+    }
+
+    const hit = openingUnderReach(eyeFacingDoor, towardDoor, [near, far], { reachMm: REACH_MM })
+
+    expect(hit?.openingId).toBe('opening:near-door')
+  })
+
+  it('picks a swung door leaf over a shut opening farther along the same ray', () => {
+    const swung = doorAtZ2000('opening:swung-door')
+    // A shut door on a wall that runs along world Z at x = 1000, across the same ray.
+    const shutBeyond: OpeningSceneNode = {
+      ...doorAtZ2000('opening:shut-door'),
+      center: { x: 1000, y: 1550 },
+      along: { x: 0, y: 1 },
+      normal: { x: 1, y: 0 },
+    }
+    // The swung leaf stands in the plane x = 550 (see the swung-open case below), 750mm
+    // ahead of this eye; the shut leaf lies in the plane x = 1000, 1200mm ahead.
+    const eye: Vector3 = { x: -200, y: 1700, z: -1550 }
+    const dir: Vector3 = { x: 1, y: 0, z: 0 }
+
+    const hit = openingUnderReach(eye, dir, [shutBeyond, swung], {
+      openness: new Map([['opening:swung-door', { primary: 1 }]]),
+      reachMm: REACH_MM,
+    })
+
+    expect(hit?.openingId).toBe('opening:swung-door')
   })
 })

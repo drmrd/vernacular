@@ -7,11 +7,14 @@
 import type { RefObject } from 'react'
 import {
   emptyOpeningInteraction,
+  keepOpenPartsOfTypes,
   WALK_EYE_HEIGHT_MM,
   advanceWalk,
+  openOpeningIds,
   passableDoorIds,
   walkLookTarget,
   wallSegmentsForWalk,
+  type OpenParts,
   type OpeningSceneNode,
   type SceneGraph,
   type WallSceneNode,
@@ -143,14 +146,14 @@ export interface WalkSession extends WalkRefs, WalkSessionHost {
   /** Reports the pose the walker ended on, so the next session can resume it. */
   onWalkPose: (pose: WalkState) => void
   /** Reports which doors stand open, so the store and the other view follow the walker at once. */
-  onOpenDoors: (openIds: ReadonlySet<string>) => void
+  onOpenDoors: (openParts: OpenParts) => void
 }
 
 // Builds the keydown and keyup handlers. Keydown routes the interact key to the
 // opening under the walker's gaze and every other code to its movement flag;
 // keyup clears the movement flag. The interact key takes no movement flag, so it
 // never leaves a key stuck down. Both keys that change what stands open report the
-// resulting door set, so a session that ends after them can be resumed.
+// resulting open parts, so a session that ends after them can be resumed.
 export function walkKeyHandlers(session: WalkSession): {
   onKeyDown: (event: KeyboardEvent) => void
   onKeyUp: (event: KeyboardEvent) => void
@@ -163,20 +166,25 @@ export function walkKeyHandlers(session: WalkSession): {
       // position, letting the walker close a door that is already open. The openings
       // are the active floor's and sit in that floor's own frame, so the eye goes in at
       // eye height above its floor, where the walker always stands.
-      interaction.current = interactFromWalk(
+      const toggled = interactFromWalk(
         walkStateOnFloor(state.current, FLOOR_DATUM_MM),
         openings.current,
         interaction.current,
         openness.current,
       )
-      onOpenDoors(interaction.current.openIds)
+      // A defense: the follow in useOpeningMotionRefs already drops parts the type lacks;
+      // this covers a state that has not passed through it yet.
+      interaction.current = {
+        openParts: keepOpenPartsOfTypes(toggled.openParts, openings.current),
+      }
+      onOpenDoors(interaction.current.openParts)
       onUserControl()
       return
     }
     if (event.code === RESET_KEY) {
       // The per-frame tick animates each opening shut from its current openness.
       interaction.current = emptyOpeningInteraction()
-      onOpenDoors(interaction.current.openIds)
+      onOpenDoors(interaction.current.openParts)
       onUserControl()
       return
     }
@@ -206,19 +214,21 @@ export interface WalkCollisionInputs {
 }
 
 // The live inputs the per-frame walk step reads: the camera it drives, the collision
-// inputs, the walk refs it advances, and the open set collision reads.
+// inputs, the walk refs it advances, and the openings with any part open that collision reads.
 export interface WalkFrameContext extends WalkRefs {
   camera: WalkCamera
   collisionInputs: WalkCollisionInputs
 }
 
-// Builds this frame's collision world from the static inputs and the live open-door
-// set: passable openings cut gaps in their host walls and furniture footprints always
+// Builds this frame's collision world from the static inputs and the open doors, pruned
+// again here as a defense (the follow in useOpeningMotionRefs is the source): passable openings cut gaps in their host walls and furniture footprints always
 // block. passableDoorIds decides what counts as passable, which is open doors plus
 // leafless doorways that have nothing to open; shut doors and windows stay solid.
 function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
   const { walls, openings, furnitureSegments, radius } = ctx.collisionInputs
-  const passable = passableDoorIds(openings, ctx.interaction.current.openIds)
+  // A defense: covers a state the follow has not yet reached after a retype.
+  const openParts = keepOpenPartsOfTypes(ctx.interaction.current.openParts, openings)
+  const passable = passableDoorIds(openings, openOpeningIds(openParts))
   return {
     segments: [...wallSegmentsForWalk(walls, openings, passable), ...furnitureSegments],
     radius,

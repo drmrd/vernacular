@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import type { CameraPose, WalkState } from '../../core'
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
+import { openPartsWith } from '../open-parts-test-support'
 import { useSceneNavigation } from './use-scene-navigation'
 
 const SOME_POSE: CameraPose = {
@@ -18,7 +19,8 @@ const SAMPLE_WALK_POSE: WalkState = {
   pitch: -0.4,
 }
 
-const SAMPLE_OPEN_DOORS: ReadonlySet<string> = new Set(['opening:front-door'])
+const FRONT_DOOR_ID = 'opening:front-door'
+const SAMPLE_OPEN_DOORS = openPartsWith({ [FRONT_DOOR_ID]: ['primary'] })
 
 function providerAround(store: SceneSessionStore) {
   return function SceneSessionWrapper({ children }: { children: ReactNode }) {

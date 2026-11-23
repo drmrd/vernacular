@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import {
   emptyOpeningInteraction,
+  toggleOpening,
+  WALL_NODE_PREFIX,
   WALK_EYE_HEIGHT_MM,
+  type OpeningInteractionState,
+  type OpeningPose,
+  type OpeningSceneNode,
   type SceneGraph,
+  type WallSceneNode,
   type WalkState,
 } from '../../core'
 
@@ -135,7 +141,7 @@ function stepContextOnFloor(pose: WalkState, floorElevationMm: number) {
     input: { current: emptyWalkInput() },
     openings: { current: [] },
     interaction: { current: emptyOpeningInteraction() },
-    openness: { current: new Map<string, number>() },
+    openness: { current: new Map<string, OpeningPose>() },
     collisionInputs: {
       walls: [],
       openings: [],
@@ -172,5 +178,78 @@ describe('walk session: the walker follows the active floor', () => {
 
     expect(state.current.position.y).toBe(WALK_EYE_HEIGHT_MM)
     expect(cameraPosition.y).toBe(WALK_EYE_HEIGHT_MM)
+  })
+})
+
+const DOOR_ID = 'opening:front-door'
+const WALL_PLAN_Y_MM = 2000
+const WALL_THICKNESS_MM = 100
+const ONE_SECOND = 1
+
+// A wall along world X at world Z = -2000 (plan y maps to world -z) with a door in its middle.
+const wallWithDoor: { wall: WallSceneNode; door: OpeningSceneNode } = {
+  wall: {
+    id: `${WALL_NODE_PREFIX}south`,
+    kind: 'wall',
+    floorId: 'g',
+    start: { x: 0, y: WALL_PLAN_Y_MM },
+    end: { x: 3000, y: WALL_PLAN_Y_MM },
+    thickness: WALL_THICKNESS_MM,
+  },
+  door: {
+    id: DOOR_ID,
+    kind: 'opening',
+    floorId: 'g',
+    type: 'single-swing-door',
+    center: { x: 1000, y: WALL_PLAN_Y_MM },
+    along: { x: 1, y: 0 },
+    normal: { x: 0, y: 1 },
+    width: 900,
+    height: 2032,
+    sillHeight: 0,
+    hostThickness: WALL_THICKNESS_MM,
+    orientation: { hinge: 'start', facing: 'positive' },
+    hostWallId: 'south',
+  },
+}
+
+// Walks one second straight ahead, from in front of the door toward it, and returns the
+// world Z the walker ends on.
+function zAfterWalkingAtDoor(interaction: OpeningInteractionState): number {
+  const { context, state } = stepContextOnFloor(
+    { position: { x: 1000, y: WALK_EYE_HEIGHT_MM, z: -1500 }, yaw: 0, pitch: 0 },
+    0,
+  )
+  context.interaction.current = interaction
+  context.input.current.forward = true
+  context.collisionInputs.walls = [wallWithDoor.wall]
+  context.collisionInputs.openings = [wallWithDoor.door]
+
+  stepWalkFrame(context, ONE_SECOND)
+
+  return state.current.position.z
+}
+
+describe('walk session: doors in the way', () => {
+  it('stops the walker at a shut door', () => {
+    const z = zAfterWalkingAtDoor(emptyOpeningInteraction())
+
+    expect(z).toBeGreaterThan(-WALL_PLAN_Y_MM)
+  })
+
+  it('lets the walker pass a door held open at its primary part', () => {
+    const open = toggleOpening(emptyOpeningInteraction(), { openingId: DOOR_ID, part: 'primary' })
+
+    const z = zAfterWalkingAtDoor(open)
+
+    expect(z).toBeLessThan(-WALL_PLAN_Y_MM)
+  })
+
+  it('a swing door holding only a stale sash part stays solid to the walker', () => {
+    const stale = toggleOpening(emptyOpeningInteraction(), { openingId: DOOR_ID, part: 'upper' })
+
+    const z = zAfterWalkingAtDoor(stale)
+
+    expect(z).toBeGreaterThan(-WALL_PLAN_Y_MM)
   })
 })

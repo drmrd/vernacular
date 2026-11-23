@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { DEFAULT_COLOR_TEMPERATURE_K, type CameraPose, type WalkState } from '../../core'
+import { openPartsWith } from '../open-parts-test-support'
 import { createSceneSessionStore, type SceneSessionState } from './scene-session-store'
 
 const samplePosition = { x: 240, y: 90, z: -160 }
@@ -22,7 +23,7 @@ const defaultSceneSession: SceneSessionState = {
   scope: 'floor',
   showUnderground: true,
   edgeOverlay: false,
-  openDoorIds: new Set<string>(),
+  openDoorIds: new Map(),
   savedCamera: null,
   walkPose: null,
   sessionRestored: false,
@@ -35,6 +36,20 @@ describe('createSceneSessionStore', () => {
 
     expect(session).toEqual(defaultSceneSession)
     expect(session.openDoorIds.size).toBe(0)
+  })
+
+  it('starts with no open parts, held as a map', () => {
+    expect(createSceneSessionStore().getSceneSession().openDoorIds).toBeInstanceOf(Map)
+  })
+
+  it("holds a copy of a seeded open-parts map, not the caller's own map", () => {
+    const frontDoorId = 'opening:front-door'
+    const seed = openPartsWith({ [frontDoorId]: ['primary'] })
+
+    const held = createSceneSessionStore({ openDoorIds: seed }).getSceneSession().openDoorIds
+
+    expect(held).toEqual(seed)
+    expect(held).not.toBe(seed)
   })
 
   it('starts a fresh session with no saved camera', () => {

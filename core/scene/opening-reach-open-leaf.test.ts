@@ -17,22 +17,22 @@ describe('openingUnderReach for a fully open opening', () => {
     const door = doorAtZ2000('opening:front-door')
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], {
-      openness: new Map([['opening:front-door', 1]]),
+      openness: new Map([['opening:front-door', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 
-    expect(hit).toBe('opening:front-door')
+    expect(hit?.openingId).toBe('opening:front-door')
   })
 
   it('reaches a fully open pocket door head-on through its frame', () => {
     const door = pocketDoorAtZ2000('opening:pocket-door')
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], {
-      openness: new Map([['opening:pocket-door', 1]]),
+      openness: new Map([['opening:pocket-door', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 
-    expect(hit).toBe('opening:pocket-door')
+    expect(hit?.openingId).toBe('opening:pocket-door')
   })
 
   it('reaches a fully open casement window head-on through its frame', () => {
@@ -40,11 +40,11 @@ describe('openingUnderReach for a fully open opening', () => {
     const eye: Vector3 = { x: 1000, y: 1700, z: -1000 }
 
     const hit = openingUnderReach(eye, towardDoor, [window], {
-      openness: new Map([['opening:casement', 1]]),
+      openness: new Map([['opening:casement', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 
-    expect(hit).toBe('opening:casement')
+    expect(hit?.openingId).toBe('opening:casement')
   })
 
   it('prefers an open door in reach over a shut door behind it on the same ray', () => {
@@ -52,11 +52,11 @@ describe('openingUnderReach for a fully open opening', () => {
     const far = doorAtZ2400('opening:far-door')
 
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [far, near], {
-      openness: new Map([['opening:near-door', 1]]),
+      openness: new Map([['opening:near-door', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 
-    expect(hit).toBe('opening:near-door')
+    expect(hit?.openingId).toBe('opening:near-door')
   })
 
   it('still misses an open door when the ray runs wide of its frame and its leaf', () => {
@@ -64,7 +64,7 @@ describe('openingUnderReach for a fully open opening', () => {
     const alongTheWall: Vector3 = { x: 2000, y: 1700, z: -1000 }
 
     const hit = openingUnderReach(alongTheWall, towardDoor, [door], {
-      openness: new Map([['opening:front-door', 1]]),
+      openness: new Map([['opening:front-door', { primary: 1 }]]),
       reachMm: REACH_MM,
     })
 

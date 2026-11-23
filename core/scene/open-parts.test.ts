@@ -1,0 +1,173 @@
+import { describe, expect, it } from 'vitest'
+
+import {
+  openOpeningIds,
+  sameOpenParts,
+  toggleOpenPart,
+  type OpenParts,
+  type OpeningPartId,
+} from '../index'
+import { keepOpenPartsOfTypes } from './open-parts'
+
+const WINDOW_ID = 'w'
+const DOOR_ID = 'd'
+
+function partsOf(...ids: OpeningPartId[]): ReadonlySet<OpeningPartId> {
+  return new Set(ids)
+}
+
+describe('toggleOpenPart', () => {
+  it('opens one part of an opening', () => {
+    const opened = toggleOpenPart(new Map(), { openingId: WINDOW_ID, part: 'upper' })
+
+    expect(opened.get(WINDOW_ID)).toEqual(partsOf('upper'))
+  })
+
+  it('opens the second sash beside the first', () => {
+    const first = toggleOpenPart(new Map(), { openingId: WINDOW_ID, part: 'upper' })
+
+    const both = toggleOpenPart(first, { openingId: WINDOW_ID, part: 'lower' })
+
+    expect(both.get(WINDOW_ID)).toEqual(partsOf('upper', 'lower'))
+    expect(both.get(WINDOW_ID)?.size).toBe(2)
+  })
+
+  it('removes the opening when its last open part shuts', () => {
+    const ref = { openingId: WINDOW_ID, part: 'upper' } as const
+    const opened = toggleOpenPart(new Map(), ref)
+
+    const shut = toggleOpenPart(opened, ref)
+
+    expect(shut.has(WINDOW_ID)).toBe(false)
+    expect(shut.size).toBe(0)
+  })
+
+  it('never changes the map or the set it was given', () => {
+    const empty: OpenParts = new Map()
+    const upperOnly = partsOf('upper')
+    const one: OpenParts = new Map([[WINDOW_ID, upperOnly]])
+
+    toggleOpenPart(empty, { openingId: WINDOW_ID, part: 'upper' })
+    toggleOpenPart(one, { openingId: WINDOW_ID, part: 'lower' })
+
+    expect(empty.size).toBe(0)
+    expect(upperOnly.size).toBe(1)
+    expect(one.get(WINDOW_ID)).toBe(upperOnly)
+  })
+})
+
+describe('openOpeningIds', () => {
+  it('lists the ids of the openings with any part open', () => {
+    const parts: OpenParts = new Map([
+      [WINDOW_ID, partsOf('upper')],
+      [DOOR_ID, partsOf('primary')],
+    ])
+
+    expect(openOpeningIds(parts)).toEqual(new Set([WINDOW_ID, DOOR_ID]))
+  })
+})
+
+describe('sameOpenParts', () => {
+  it('compares two maps by their opening ids and parts, not by instance', () => {
+    const windowUpper: OpenParts = new Map([[WINDOW_ID, partsOf('upper')]])
+    const windowUpperAgain: OpenParts = new Map([[WINDOW_ID, partsOf('upper')]])
+    const windowLower: OpenParts = new Map([[WINDOW_ID, partsOf('lower')]])
+    const windowAndDoor: OpenParts = new Map([
+      [WINDOW_ID, partsOf('upper')],
+      [DOOR_ID, partsOf('primary')],
+    ])
+
+    expect(sameOpenParts(windowUpper, windowUpperAgain)).toBe(true)
+    expect(sameOpenParts(windowUpper, windowLower)).toBe(false)
+    expect(sameOpenParts(windowUpper, windowAndDoor)).toBe(false)
+    expect(sameOpenParts(new Map(), new Map())).toBe(true)
+  })
+
+  it('treats two maps with the same number of openings but different opening ids as different', () => {
+    const windowUpper: OpenParts = new Map([[WINDOW_ID, partsOf('upper')]])
+    const doorUpper: OpenParts = new Map([[DOOR_ID, partsOf('upper')]])
+
+    expect(sameOpenParts(windowUpper, doorUpper)).toBe(false)
+  })
+
+  it('treats part sets of the same size that share only some parts as different', () => {
+    const upperAndLower: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'lower')]])
+    const upperAndPrimary: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'primary')]])
+
+    expect(sameOpenParts(upperAndLower, upperAndPrimary)).toBe(false)
+  })
+})
+
+describe('keepOpenPartsOfTypes', () => {
+  it('drops the open sash a single-hung window lacks and keeps the one it has', () => {
+    const parts: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'lower')]])
+
+    const kept = keepOpenPartsOfTypes(parts, [{ id: WINDOW_ID, type: 'single-hung-window' }])
+
+    expect(kept.get(WINDOW_ID)).toEqual(partsOf('lower'))
+  })
+
+  it('keeps both sashes of a double-hung window', () => {
+    const parts: OpenParts = new Map([[WINDOW_ID, partsOf('upper', 'lower')]])
+
+    const kept = keepOpenPartsOfTypes(parts, [{ id: WINDOW_ID, type: 'double-hung-window' }])
+
+    expect(kept.get(WINDOW_ID)).toEqual(partsOf('upper', 'lower'))
+  })
+
+  it('drops the opening when no part its type has is left open', () => {
+    const parts: OpenParts = new Map([[DOOR_ID, partsOf('upper')]])
+
+    const kept = keepOpenPartsOfTypes(parts, [{ id: DOOR_ID, type: 'single-swing-door' }])
+
+    expect(kept.has(DOOR_ID)).toBe(false)
+    expect(kept.size).toBe(0)
+  })
+
+  it('drops the primary part of a hung window and keeps the primary part of a door', () => {
+    const parts: OpenParts = new Map([
+      [WINDOW_ID, partsOf('primary')],
+      [DOOR_ID, partsOf('primary', 'lower')],
+    ])
+
+    const kept = keepOpenPartsOfTypes(parts, [
+      { id: WINDOW_ID, type: 'double-hung-window' },
+      { id: DOOR_ID, type: 'single-swing-door' },
+    ])
+
+    expect(kept.has(WINDOW_ID)).toBe(false)
+    expect(kept.get(DOOR_ID)).toEqual(partsOf('primary'))
+  })
+
+  it('returns the very map it was given when every open part belongs to its opening type', () => {
+    const parts: OpenParts = new Map([
+      [WINDOW_ID, partsOf('upper', 'lower')],
+      [DOOR_ID, partsOf('primary')],
+    ])
+
+    const kept = keepOpenPartsOfTypes(parts, [
+      { id: WINDOW_ID, type: 'double-hung-window' },
+      { id: DOOR_ID, type: 'single-swing-door' },
+    ])
+
+    expect(kept).toBe(parts)
+  })
+
+  it('keeps the open parts of an opening the list does not name, such as one on another floor', () => {
+    const parts: OpenParts = new Map([[DOOR_ID, partsOf('upper')]])
+
+    const kept = keepOpenPartsOfTypes(parts, [{ id: WINDOW_ID, type: 'double-hung-window' }])
+
+    expect(kept).toBe(parts)
+  })
+
+  it('never changes the map or the set it was given', () => {
+    const upperAndLower = partsOf('upper', 'lower')
+    const parts: OpenParts = new Map([[WINDOW_ID, upperAndLower]])
+
+    keepOpenPartsOfTypes(parts, [{ id: WINDOW_ID, type: 'single-hung-window' }])
+
+    expect(parts.get(WINDOW_ID)).toBe(upperAndLower)
+    expect(upperAndLower.size).toBe(2)
+  })
+})

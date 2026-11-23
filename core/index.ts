@@ -439,7 +439,14 @@ export type {
   SlideAxis,
   SlideMotion,
 } from './scene/opening-motion'
-export { openingMotion } from './scene/opening-motion'
+export { openingMotion, openingPartMotion, openingParts } from './scene/opening-motion'
+export type { OpeningPose } from './scene/opening-pose'
+export {
+  advanceOpeningPose,
+  openingPartTarget,
+  openingTargetPose,
+  settledPose,
+} from './scene/opening-pose'
 export { openingHeadArcs } from './scene/opening-head'
 export type { OpeningHeadArc } from './scene/opening-head'
 export { resolveTrimProfileSection, trimProfileSection } from './scene/trim-profile'
@@ -483,8 +490,16 @@ export {
   resolveWalkCollision,
   wallSegmentsForWalk,
 } from './scene/walk-collision'
+export type { OpenParts, OpeningPartRef } from './scene/open-parts'
+export {
+  keepOpenPartsOfTypes,
+  openOpeningIds,
+  sameOpenParts,
+  toggleOpenPart,
+} from './scene/open-parts'
 export type { OpeningInteractionState } from './scene/opening-interaction'
 export { emptyOpeningInteraction, isOpeningOpen, toggleOpening } from './scene/opening-interaction'
+export type { OpeningReachHit } from './scene/opening-reach'
 export { DEFAULT_INTERACT_REACH_MM, openingUnderReach } from './scene/opening-reach'
 export { OPENNESS_RATE_PER_S, advanceOpenness } from './scene/opening-openness'
 export type {

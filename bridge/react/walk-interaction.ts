@@ -1,18 +1,22 @@
 import {
-  advanceOpenness,
-  isOpeningOpen,
+  advanceOpeningPose,
+  openingTargetPose,
   openingUnderReach,
+  sameOpenParts,
+  settledPose,
   toggleOpening,
   walkLookDirection,
   type OpeningInteractionState,
+  type OpenParts,
+  type OpeningPose,
   type OpeningSceneNode,
   type WalkState,
 } from '../../core'
-import { applyOpeningMotionForNode, type SceneRoot } from '../../engine'
+import { applyOpeningPose, type SceneRoot } from '../../engine'
 
 /**
  * The "use" action: casts a short ray from the walker's eye and toggles the
- * opening it lands on within reach, returning the updated interaction state. With
+ * part of the opening it lands on within reach (the sash under the aim for a hung window), returning the updated interaction state. With
  * nothing in reach the state is returned unchanged, so pressing the interact key
  * in open space is a no-op. The per-opening `openness` lets the ray test each leaf
  * at its open position, so looking at an opened door or a slid-back pocket door
@@ -23,14 +27,14 @@ export function interactFromWalk(
   walk: WalkState,
   openings: readonly OpeningSceneNode[],
   interaction: OpeningInteractionState,
-  openness?: ReadonlyMap<string, number>,
+  openness?: ReadonlyMap<string, OpeningPose>,
 ): OpeningInteractionState {
   // exactOptionalPropertyTypes rejects `{ openness: undefined }` for openingUnderReach's
   // `openness?` field, so build options only when a map is present (a Map is always
   // truthy); omitting it leaves the field genuinely absent.
   const options = openness ? { openness } : undefined
-  const targetId = openingUnderReach(walk.position, walkLookDirection(walk), openings, options)
-  return targetId === null ? interaction : toggleOpening(interaction, targetId)
+  const hit = openingUnderReach(walk.position, walkLookDirection(walk), openings, options)
+  return hit === null ? interaction : toggleOpening(interaction, hit)
 }
 
 /** The per-frame inputs that drive the opening motion animation. */
@@ -38,28 +42,24 @@ export interface OpeningTick {
   root: SceneRoot
   openings: readonly OpeningSceneNode[]
   interaction: OpeningInteractionState
-  /** Each opening's live openness (0 shut, 1 open), advanced in place each frame. */
-  openness: Map<string, number>
+  /** Each opening's live pose (each part 0 shut, 1 open), advanced in place each frame. */
+  openness: Map<string, OpeningPose>
 }
 
-// Openness targets, from the interaction state: 1 when the opening is held open.
-const OPEN = 1
-const SHUT = 0
-
 /**
- * Advances every opening one timestep toward its open or closed target and moves
- * its fill group to match, playing the motion its type resolves to. An opening
+ * Advances every opening one timestep: eases each part toward its target openness
+ * and moves that part's meshes to match. An opening
  * already at rest on its target is skipped, so the motion runs only while a door
  * or window is in motion.
  */
 export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
   for (const node of tick.openings) {
-    const target = isOpeningOpen(tick.interaction, node.id) ? OPEN : SHUT
-    const current = tick.openness.get(node.id) ?? SHUT
-    if (current === target) continue
-    const next = advanceOpenness(current, target, dtSeconds)
+    const target = openingTargetPose(node.type, tick.interaction.openParts.get(node.id))
+    const current = tick.openness.get(node.id) ?? openingTargetPose(node.type, undefined)
+    const next = advanceOpeningPose(current, target, dtSeconds)
+    if (next === current) continue
     tick.openness.set(node.id, next)
-    applyOpeningMotionForNode(tick.root, node, next)
+    applyOpeningPose(tick.root, node, next)
   }
 }
 
@@ -70,12 +70,9 @@ export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
  */
 export function followStoredOpenings(
   interaction: OpeningInteractionState,
-  storedOpenIds: ReadonlySet<string>,
+  stored: OpenParts,
 ): OpeningInteractionState {
-  const { openIds } = interaction
-  const sameDoors =
-    openIds.size === storedOpenIds.size && [...storedOpenIds].every((id) => openIds.has(id))
-  return sameDoors ? interaction : { openIds: new Set(storedOpenIds) }
+  return sameOpenParts(interaction.openParts, stored) ? interaction : { openParts: new Map(stored) }
 }
 
 /**
@@ -85,26 +82,28 @@ export function followStoredOpenings(
  */
 export function settleUnshownOpenings(settle: Omit<OpeningTick, 'root'>): void {
   const shownIds = new Set(settle.openings.map((node) => node.id))
-  for (const id of settle.openness.keys()) {
+  for (const [id, pose] of settle.openness) {
     if (shownIds.has(id)) continue
-    settle.openness.set(id, isOpeningOpen(settle.interaction, id) ? OPEN : SHUT)
+    settle.openness.set(id, settledPose(pose, settle.interaction.openParts.get(id)))
   }
 }
 
 /**
  * Poses every opening on the given root where the session left it, so a newly built or rebuilt
  * root never shows a door out of place: an opening that carries an openness is posed at that
- * openness, an opening held open with none is seated fully open and recorded so, and every other
+ * openness, an opening held open with none is seated at its target pose and recorded so, and every other
  * opening keeps its built pose.
  */
 export function restoreOpenings(tick: OpeningTick): void {
   for (const node of tick.openings) {
     const carried = tick.openness.get(node.id)
+    const open = tick.interaction.openParts.get(node.id)
     if (carried !== undefined) {
-      applyOpeningMotionForNode(tick.root, node, carried)
-    } else if (isOpeningOpen(tick.interaction, node.id)) {
-      tick.openness.set(node.id, OPEN)
-      applyOpeningMotionForNode(tick.root, node, OPEN)
+      applyOpeningPose(tick.root, node, carried)
+    } else if (open !== undefined) {
+      const pose = openingTargetPose(node.type, open)
+      tick.openness.set(node.id, pose)
+      applyOpeningPose(tick.root, node, pose)
     }
   }
 }
