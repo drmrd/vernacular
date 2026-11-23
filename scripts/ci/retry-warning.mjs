@@ -3,7 +3,9 @@
 // Reads Playwright JSON reports and finds the tests that failed an attempt and
 // then passed on a retry, so a green job can still say that it held a flake.
 
+import { appendFileSync, readFileSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const FIRST_ERROR_MAX_LENGTH = 200
 const ANSI_COLOR_CODES = /\u001b\[[0-9;]*m/g
@@ -121,4 +123,53 @@ export function formatRetryAnnotations(passes) {
     const message = `${pass.title} (${pass.project}) failed ${pass.failedAttempts} of ${pass.attempts} attempts: ${pass.firstError}`
     return `::warning ${properties}::${escapeAnnotationMessage(message)}`
   })
+}
+
+function readReport(reportPath, deps) {
+  try {
+    return JSON.parse(deps.readFile(reportPath))
+  } catch {
+    deps.log(
+      `::warning title=Retry check::No Playwright JSON report at ${reportPath}, so its tests were not checked for retries.`,
+    )
+    return undefined
+  }
+}
+
+/**
+ * Reads each report named in argv, writes the summary, and prints one annotation for each retry pass.
+ * It always returns 0 so a retry pass leaves the job green.
+ * @param {readonly string[]} argv paths of Playwright JSON reports
+ * @param {{ readFile: (path: string) => string, appendSummary: (text: string) => void, log: (line: string) => void, cwd: string }} deps
+ * @returns {Promise<number>}
+ */
+export async function runRetryWarning(argv, deps) {
+  const reports = argv.map((reportPath) => readReport(reportPath, deps)).filter(Boolean)
+  const passes = reports.flatMap((report) => findRetriedPasses(report, deps.cwd))
+  const tests = reports.reduce((total, report) => total + countTests(report), 0)
+  deps.appendSummary(formatRetrySummary(passes, { tests, reports: reports.length }))
+  formatRetryAnnotations(passes).forEach((line) => deps.log(line))
+  return 0
+}
+
+const invokedPath = process.argv[1]
+const isDirectInvocation =
+  invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath
+
+if (isDirectInvocation) {
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY
+  runRetryWarning(process.argv.slice(2), {
+    readFile: (reportPath) => readFileSync(reportPath, 'utf8'),
+    appendSummary: (text) =>
+      summaryPath === undefined ? process.stdout.write(text) : appendFileSync(summaryPath, text),
+    log: (line) => console.log(line),
+    cwd: process.cwd(),
+  })
+    .then((code) => {
+      process.exitCode = code
+    })
+    .catch((error) => {
+      console.error(error)
+      process.exit(2)
+    })
 }
