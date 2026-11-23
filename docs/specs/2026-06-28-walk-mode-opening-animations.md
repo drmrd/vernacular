@@ -34,7 +34,8 @@ signed open angle; a slide names its travel vector. The resolver bakes that geom
 opening's plan position and orientation, in core, using core's own `Vector3` interface so Three.js
 never crosses the boundary. The engine plays the resolved motion through `applyOpeningMotion(group,
 motion, openness)`, transforming the opening fill group with openness 0 shut and 1 open, the same
-scalar the E-key interaction already drives. At openness 0 every motion is the identity, so a shut
+scalar the E-key interaction already drives, held once for each part (each sash of a hung window,
+the leaf of a door; ADR-0216, amendment of 2026-11-22). At openness 0 every motion is the identity, so a shut
 opening renders exactly as it was built.
 
 ### Family refinement

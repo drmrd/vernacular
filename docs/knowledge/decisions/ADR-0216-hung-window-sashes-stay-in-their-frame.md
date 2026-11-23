@@ -471,8 +471,8 @@ The rise is `height - meetingRailTopMm(height)` (line 231). `meetingRailTopMm` (
 The pose of an opening is now an `OpeningPose` (`core/scene/opening-pose.ts:5`) with one openness
 for each part, 0 shut and 1 at the full travel. `openingPartTarget` (line 11) gives the target of
 one part. A shut part aims for 0. A sash that is open alone aims for 1, the full rise. When both
-sashes are open, each aims for 0.5 (`SHARED_SASH_TRAVEL`, line 8). `advanceOpeningPose` (line 33)
-eases each part toward its own target at the existing rate. `settledPose` (line 51) seats each
+sashes are open, each aims for 0.5 (`SHARED_SASH_TRAVEL`, line 8). `advanceOpeningPose` (line 36)
+eases each part toward its own target at the existing rate. `settledPose` (line 58) seats each
 part at its target, for an opening that the view does not show.
 
 ### Aim picks the sash, and the bands belong to the shut frame
@@ -536,6 +536,16 @@ apart. The unit tests above do.
   look at the default window lowers the upper sash.
 - A state that holds both sashes of a single-hung window open cannot come from aim. If one arose,
   `settledPose` would give its lower sash half travel.
+- A retype in the inspector can leave an open part that the new type lacks, such as `'upper'` on a
+  window changed from double-hung to single-hung. `openingTargetPose`
+  (`core/scene/opening-pose.ts:22`) keeps only the open parts that `openingParts(type)` lists, so
+  the tick and the restore of a shown opening ignore such a part. `settledPose` (line 58) takes no
+  type, so the settle of an unshown opening is unchanged and still reads the stale part. A window
+  retyped while both its sashes stood open settles with its lower sash at half travel. The comment on
+  `settledPose` says that the next tick that shows the opening eases it to the pose filtered by its
+  type. The code agrees. The tick aims each part at `openingTargetPose`, so the lower sash eases to
+  its full rise, and `applyOpeningPose` moves only the parts of the type, so the stale part never
+  moves a mesh.
 - The bridge names `openDoorIds`, `noteOpenDoors`, `storedOpenDoorIds`, and `onOpenDoors` now carry
   open parts and not only doors. They keep their names for now; issue #1099 tracks the rename.
 
