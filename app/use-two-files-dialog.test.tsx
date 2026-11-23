@@ -186,6 +186,24 @@ describe('A choice that finds that the files changed', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(await filesOfTheProject(ports)).toEqual(filesBefore)
   })
+
+  it('says that the change failed when the files cannot be read again, and closes the dialog', async () => {
+    const { ports, rewriteTheSecondFile } = await portsWithTwoFiles('both-readable')
+    const dialog = await openTheTwoFilesDialog(ports)
+    await rewriteTheSecondFile(documentNamed('Rewritten while the dialog showed'), REWRITTEN_AT)
+    const failure = new Error('The disk did not answer')
+    const readFiles = ports.workspace.twoFiles.bind(ports.workspace)
+    vi.spyOn(ports.workspace, 'twoFiles')
+      .mockImplementationOnce(readFiles)
+      .mockRejectedValueOnce(failure)
+
+    await chooseInTheDialog(dialog, REPLACE_CONTROL)
+
+    await expectNoDialog()
+    expect((await findThePageAlert()).textContent).toBe(
+      `Could not change the plan files: ${failure.message}`,
+    )
+  })
 })
 
 describe('A choice that fails', () => {
