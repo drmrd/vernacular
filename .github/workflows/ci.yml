@@ -494,8 +494,9 @@ jobs:
           E2E_REQUIRE_WEBGPU: '1'
           PLAYWRIGHT_JSON_OUTPUT_FILE: reports/playwright/live-view-edge-overlay.json
         run: pnpm exec playwright test --project=scene-webgl e2e/tests/scene-edge-overlay-resources.spec.ts --reporter=list,json --output=test-results/edge-overlay
-      # The summary of this step must say `Reports read: 7`, one report for each test step above.
-      # A smaller number means a step wrote no JSON report.
+      # In a green run with no retry pass, the summary of this step must say `Reports read: 7`, one
+      # report for each test step above. A smaller number there means a step wrote no JSON report.
+      # In a red run, the steps after the failed one are skipped, so the count is lower.
       # The condition names the first test step only. If it was skipped, no test step ran
       # (an install or build step failed before them), so there is nothing to check or upload.
       - name: Warn about tests that passed only on a retry
