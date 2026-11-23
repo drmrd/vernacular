@@ -3,6 +3,7 @@ import type { AssetReference, TextureDescription } from '../../core'
 import { missingAsset } from '../../core'
 import { AssetRegistry } from './asset-registry'
 import { InMemoryAssetSource } from './in-memory-asset-source'
+import { GRASS_HASH, texturePackWithTileSize } from './texture-pack-test-support'
 import type { AssetSource, LibraryItem } from './asset-source'
 
 const HASH = 'abc123'
@@ -267,5 +268,20 @@ describe('AssetRegistry describe', () => {
     const description = await registryWithTwoPacks().describe(reference)
 
     expect(description).toBeUndefined()
+  })
+})
+
+describe('AssetRegistry describe on pack sources that have not loaded', () => {
+  it('finds the exact scope on a source whose id is known only after its first call', async () => {
+    const registry = new AssetRegistry([
+      { kind: 'pack', source: texturePackWithTileSize('a', 1000) },
+      { kind: 'pack', source: texturePackWithTileSize('b', 2000) },
+    ])
+    const reference: AssetReference = { scope: 'pack:b@1.0.0', contentHash: GRASS_HASH }
+
+    const cold = await registry.describe(reference)
+    const warm = await registry.describe(reference)
+
+    expect([cold, warm].map((d) => d?.kind === 'texture' && d.tileSize.width)).toEqual([2000, 2000])
   })
 })
