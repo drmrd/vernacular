@@ -252,7 +252,7 @@ describe('The application over ports that keep nothing after the tab closes: the
     renderWithNoStorageAt()
     await findTheShell()
 
-    expect(leaveIsPrevented()).toBe(true)
+    await waitFor(() => expect(leaveIsPrevented()).toBe(true))
   })
 
   it('asks before the tab closes on the Projects page over the open project', async () => {
@@ -261,7 +261,7 @@ describe('The application over ports that keep nothing after the tab closes: the
     await visit(bar, PROJECTS_ADDRESS)
     await findTheProjectsPage()
 
-    expect(leaveIsPrevented()).toBe(true)
+    await waitFor(() => expect(leaveIsPrevented()).toBe(true))
   })
 
   it('lets the tab close on the empty Projects page, where no project can be lost', async () => {
