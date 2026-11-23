@@ -52,11 +52,18 @@ function createSharedDecoder(decode: TextureCacheOptions['decode']) {
   }
 }
 
+interface CacheEntry {
+  state: TextureState
+  settled: Promise<void>
+}
+
+const LOADING: TextureState = { status: 'loading' }
+
 export function createTextureCache({ source, decode }: TextureCacheOptions): TextureCache {
   const decodeOnce = createSharedDecoder(decode)
-  const loads = new Map<string, Promise<void>>()
-  const settled = new Map<string, TextureState>()
-  async function load(reference: AssetReference, key: string): Promise<void> {
+  const entries = new Map<string, CacheEntry>()
+
+  async function load(reference: AssetReference): Promise<TextureState> {
     const [description, resolution] = await Promise.all([
       source.describe(reference),
       source.resolve(reference),
@@ -66,23 +73,25 @@ export function createTextureCache({ source, decode }: TextureCacheOptions): Tex
       mediaType,
       colorSpace,
     })
-    settled.set(key, {
-      status: 'ready',
-      appearance: { texture, tileSize },
-    })
+    return { status: 'ready', appearance: { texture, tileSize } }
   }
 
   return {
     request(reference) {
       const key = formatAssetReference(reference)
-      const existing = loads.get(key)
-      if (existing) return existing
-      const started = load(reference, key)
-      loads.set(key, started)
-      return started
+      const existing = entries.get(key)
+      if (existing) return existing.settled
+      const entry: CacheEntry = {
+        state: LOADING,
+        settled: load(reference).then((state) => {
+          entry.state = state
+        }),
+      }
+      entries.set(key, entry)
+      return entry.settled
     },
     get(reference) {
-      return settled.get(formatAssetReference(reference)) ?? { status: 'loading' }
+      return entries.get(formatAssetReference(reference))?.state ?? LOADING
     },
   }
 }
