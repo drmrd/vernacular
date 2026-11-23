@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AssetReference } from '../../core'
+import type { AssetReference, TextureDescription } from '../../core'
 import { missingAsset } from '../../core'
 import { AssetRegistry } from './asset-registry'
 import { InMemoryAssetSource } from './in-memory-asset-source'
@@ -195,5 +195,77 @@ describe('AssetRegistry listing', () => {
 
     expect(items).toHaveLength(2)
     expect(items).toEqual([userItem, packItem])
+  })
+})
+
+describe('AssetRegistry describe', () => {
+  const TEXTURE_HASH = 'grass01'
+
+  const textureWithTileSize = (tileSize: number): TextureDescription => ({
+    kind: 'texture',
+    mediaType: 'image/png',
+    image: { width: 512, height: 512 },
+    tileSize: { width: tileSize, height: tileSize },
+    colorSpace: 'srgb',
+  })
+
+  const describingSource = (id: string, tileSize: number): AssetSource => ({
+    id,
+    read: async () => undefined,
+    describe: async (contentHash) =>
+      contentHash === TEXTURE_HASH ? textureWithTileSize(tileSize) : undefined,
+  })
+
+  const silentUserSource: AssetSource = { id: 'user', read: async () => undefined }
+
+  const registryWithTwoPacks = () =>
+    new AssetRegistry([
+      { kind: 'user', source: silentUserSource },
+      { kind: 'pack', source: describingSource('pack:a@1.0.0', 1000) },
+      { kind: 'pack', source: describingSource('pack:b@1.0.0', 2000) },
+    ])
+
+  it('describes a reference from the source whose id equals its scope, ahead of earlier sources', async () => {
+    const reference: AssetReference = { scope: 'pack:b@1.0.0', contentHash: TEXTURE_HASH }
+
+    const description = await registryWithTwoPacks().describe(reference)
+
+    expect(description).toEqual(textureWithTileSize(2000))
+  })
+
+  it('describes a reference with no matching source from the first source in precedence order', async () => {
+    const reference: AssetReference = { scope: 'pack:c@1.0.0', contentHash: TEXTURE_HASH }
+
+    const description = await registryWithTwoPacks().describe(reference)
+
+    expect(description).toEqual(textureWithTileSize(1000))
+  })
+
+  it('skips a source that has no describe method when asked for its own scope', async () => {
+    const reference: AssetReference = { scope: 'user', contentHash: TEXTURE_HASH }
+
+    const description = await registryWithTwoPacks().describe(reference)
+
+    expect(description).toEqual(textureWithTileSize(1000))
+  })
+
+  it('describes from the higher-precedence kind even when it was registered after a lower one', async () => {
+    const registry = new AssetRegistry([
+      { kind: 'pack', source: describingSource('pack:a@1.0.0', 1000) },
+      { kind: 'user', source: describingSource('user', 3000) },
+    ])
+    const reference: AssetReference = { scope: 'project', contentHash: TEXTURE_HASH }
+
+    const description = await registry.describe(reference)
+
+    expect(description).toEqual(textureWithTileSize(3000))
+  })
+
+  it('describes a hash no source knows as undefined', async () => {
+    const reference: AssetReference = { scope: 'pack:a@1.0.0', contentHash: 'unknown' }
+
+    const description = await registryWithTwoPacks().describe(reference)
+
+    expect(description).toBeUndefined()
   })
 })
