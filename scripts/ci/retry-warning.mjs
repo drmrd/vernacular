@@ -13,16 +13,16 @@ const TITLE_SEPARATOR = ' > '
  * @typedef {{ file: string, line: number, title: string, project: string, attempts: number, failedAttempts: number, firstError: string }} RetriedPass
  */
 
-function collectSpecs(suite, describeTitles) {
+function collectSpecEntries(suite, describeTitles) {
   const nested = suite.suites ?? []
   return [
     ...(suite.specs ?? []).map((spec) => ({ spec, describeTitles })),
-    ...nested.flatMap((child) => collectSpecs(child, [...describeTitles, child.title])),
+    ...nested.flatMap((child) => collectSpecEntries(child, [...describeTitles, child.title])),
   ]
 }
 
-function collectAllSpecs(report) {
-  return report.suites.flatMap((fileSuite) => collectSpecs(fileSuite, []))
+function collectAllSpecEntries(report) {
+  return report.suites.flatMap((fileSuite) => collectSpecEntries(fileSuite, []))
 }
 
 function firstErrorLine(failedResult) {
@@ -32,11 +32,15 @@ function firstErrorLine(failedResult) {
     .slice(0, FIRST_ERROR_MAX_LENGTH)
 }
 
-function toRetriedPass(report, cwd, { spec, describeTitles }, test) {
+function repositoryPath(report, cwd, specFile) {
+  const absoluteFile = path.join(report.config.rootDir, specFile)
+  return path.relative(cwd, absoluteFile).split(path.sep).join('/')
+}
+
+function toRetriedPass({ spec, describeTitles }, test, file) {
   const failedResults = test.results.filter((result) => result.status !== 'passed')
-  const absoluteFile = path.join(report.config.rootDir, spec.file)
   return {
-    file: path.relative(cwd, absoluteFile).split(path.sep).join('/'),
+    file,
     line: spec.line,
     title: [...describeTitles, spec.title].join(TITLE_SEPARATOR),
     project: test.projectName,
@@ -52,11 +56,12 @@ function toRetriedPass(report, cwd, { spec, describeTitles }, test) {
  * @returns {RetriedPass[]}
  */
 export function findRetriedPasses(report, cwd) {
-  return collectAllSpecs(report).flatMap((entry) =>
-    entry.spec.tests
+  return collectAllSpecEntries(report).flatMap((entry) => {
+    const file = repositoryPath(report, cwd, entry.spec.file)
+    return entry.spec.tests
       .filter((test) => test.status === 'flaky')
-      .map((test) => toRetriedPass(report, cwd, entry, test)),
-  )
+      .map((test) => toRetriedPass(entry, test, file))
+  })
 }
 
 /**
@@ -64,5 +69,5 @@ export function findRetriedPasses(report, cwd) {
  * @returns {number}
  */
 export function countTests(report) {
-  return collectAllSpecs(report).reduce((total, { spec }) => total + spec.tests.length, 0)
+  return collectAllSpecEntries(report).reduce((total, { spec }) => total + spec.tests.length, 0)
 }
