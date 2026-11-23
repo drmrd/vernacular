@@ -1,5 +1,5 @@
 import { distance } from '../geometry/point'
-import { dot, leftPerp, subtract } from '../geometry/vector'
+import { dot, leftPerp, shift, subtract } from '../geometry/vector'
 import type { Point } from '../model/types'
 
 /** A rectangle that stands on a wall. */
@@ -17,6 +17,41 @@ export interface UprightRectangle {
 const ORIENTATION_TOLERANCE = 1e-9
 
 const LOG_TERM_WEIGHT = 0.25
+
+const QUADRATURE_POINT_COUNT = 16
+const NEWTON_STEP_COUNT = 8
+const FIRST_GUESS_OFFSET = 0.75
+const GUESS_SPREAD = 0.5
+
+interface QuadraturePoint {
+  position: number
+  weight: number
+}
+
+/** The Legendre polynomial of the given degree and its derivative at x, by the three-term recurrence. */
+function legendreWithDerivative(degree: number, x: number): { value: number; derivative: number } {
+  let previous = 1
+  let value = x
+  for (let order = 2; order <= degree; order++) {
+    ;[previous, value] = [value, ((2 * order - 1) * x * value - (order - 1) * previous) / order]
+  }
+  return { value, derivative: (degree * (x * value - previous)) / (x * x - 1) }
+}
+
+/** The Gauss-Legendre nodes and weights on the interval from 0 to 1, found by Newton's iteration. */
+function gaussLegendreOnUnitInterval(pointCount: number): QuadraturePoint[] {
+  return Array.from({ length: pointCount }, (_, index) => {
+    let x = Math.cos((Math.PI * (index + FIRST_GUESS_OFFSET)) / (pointCount + GUESS_SPREAD))
+    for (let step = 0; step < NEWTON_STEP_COUNT; step++) {
+      const { value, derivative } = legendreWithDerivative(pointCount, x)
+      x -= value / derivative
+    }
+    const { derivative } = legendreWithDerivative(pointCount, x)
+    return { position: (x + 1) / 2, weight: 1 / ((1 - x * x) * derivative * derivative) }
+  })
+}
+
+const QUADRATURE_POINTS = gaussLegendreOnUnitInterval(QUADRATURE_POINT_COUNT)
 
 interface SignedPosition {
   position: number
@@ -158,18 +193,58 @@ function rightAngleExchangeArea(doorway: UprightRectangle, glazing: UprightRecta
   )
 }
 
+/** The height integral of the exchange kernel at a plan distance r, in millimetres to the power -2. */
+function heightKernel(terms: readonly HeightTerm[], planDistance: number): number {
+  return signedHeightSum(
+    terms,
+    (height) =>
+      (height * Math.atan(height / planDistance)) /
+      (2 * planDistance * planDistance * planDistance),
+  )
+}
+
+/** The exchange area, in square millimetres, between two walls at any other angle, by quadrature. */
+function angledExchangeArea(doorway: UprightRectangle, glazing: UprightRectangle): number {
+  const terms = heightTerms(doorway, glazing)
+  const glazingVector = subtract(glazing.span[1], glazing.span[0])
+  const doorwayVector = subtract(doorway.span[1], doorway.span[0])
+  let total = 0
+  for (const glazingPoint of QUADRATURE_POINTS) {
+    for (const doorwayPoint of QUADRATURE_POINTS) {
+      const offset = subtract(
+        shift(doorway.span[0], doorwayVector, doorwayPoint.position),
+        shift(glazing.span[0], glazingVector, glazingPoint.position),
+      )
+      total +=
+        glazingPoint.weight *
+        doorwayPoint.weight *
+        Math.max(0, dot(glazing.facing, offset)) *
+        Math.max(0, -dot(doorway.facing, offset)) *
+        heightKernel(terms, Math.hypot(offset.x, offset.y))
+    }
+  }
+  return (
+    (Math.hypot(glazingVector.x, glazingVector.y) *
+      Math.hypot(doorwayVector.x, doorwayVector.y) *
+      total) /
+    Math.PI
+  )
+}
+
+function exchangeArea(doorway: UprightRectangle, glazing: UprightRectangle): number {
+  if (squareToEachOther(doorway, glazing)) return rightAngleExchangeArea(doorway, glazing)
+  if (faceEachOther(doorway, glazing)) return facingWallsExchangeArea(doorway, glazing)
+  return angledExchangeArea(doorway, glazing)
+}
+
 /**
  * The form factor from the doorway to the glazing, over only the point pairs where the glazing point
  * is higher than the doorway point; the doorway's area times it is the exchange area that carries
- * window light downward onto the doorway. Walls that neither face each other nor meet at a right
- * angle give 0.
+ * window light downward onto the doorway.
  */
 export function doorwayToGlazingFormFactor(
   doorway: UprightRectangle,
   glazing: UprightRectangle,
 ): number {
-  const exchangeArea = squareToEachOther(doorway, glazing)
-    ? rightAngleExchangeArea(doorway, glazing)
-    : facingWallsExchangeArea(doorway, glazing)
-  return exchangeArea / rectangleArea(doorway)
+  return exchangeArea(doorway, glazing) / rectangleArea(doorway)
 }
