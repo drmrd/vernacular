@@ -555,7 +555,9 @@ apart. The unit tests above do.
 - The scene session store is not pruned. When the stored map holds only a stale part, Shut all (the
   "Close doors and windows" control) stays enabled, because `interactiveObjectsAtDefault`
   (`bridge/scene-session/interactive-objects.ts:7`) reads the size of the stored map. Nothing shows
-  open, and pressing the control empties the map. Issue #1101 tracks it.
+  open, and pressing the control empties the map. Because the store keeps the part, a retype back to
+  a type that has it opens that part again, unless a key press has written the pruned map to the
+  store first. Issue #1101 tracks both.
 - The bridge names `openDoorIds`, `noteOpenDoors`, `storedOpenDoorIds`, and `onOpenDoors` now carry
   open parts and not only doors. They keep their names for now; issue #1099 tracks the rename.
 
