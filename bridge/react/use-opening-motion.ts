@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import {
+  keepOpenPartsOfTypes,
   sceneGraphForFloor,
   type OpenParts,
   type OpeningPose,
@@ -72,6 +73,7 @@ function useOpeningMotionRefs(
   shownOpenings: OpeningSceneNode[],
 ): OpeningMotionRefs {
   const openings = useActiveFloorOpenings()
+  const graphOpenings = useSceneGraph().openings
   const openingsRef = useRef<OpeningSceneNode[]>(openings)
   openingsRef.current = openings
   const shownOpeningsRef = useRef<OpeningSceneNode[]>(shownOpenings)
@@ -79,13 +81,14 @@ function useOpeningMotionRefs(
   const interactionRef = useRef<OpeningInteractionState>({ openParts: new Map(storedOpenDoorIds) })
   const opennessRef = useRef<Map<string, OpeningPose>>(new Map())
   useEffect(() => {
-    interactionRef.current = followStoredOpenings(interactionRef.current, storedOpenDoorIds)
+    const typedOpenDoorIds = keepOpenPartsOfTypes(storedOpenDoorIds, graphOpenings)
+    interactionRef.current = followStoredOpenings(interactionRef.current, typedOpenDoorIds)
     settleUnshownOpenings({
       openings: shownOpeningsRef.current,
       interaction: interactionRef.current,
       openness: opennessRef.current,
     })
-  }, [storedOpenDoorIds])
+  }, [storedOpenDoorIds, graphOpenings])
   return {
     openings: openingsRef,
     shownOpenings: shownOpeningsRef,

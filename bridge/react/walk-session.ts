@@ -7,6 +7,7 @@
 import type { RefObject } from 'react'
 import {
   emptyOpeningInteraction,
+  keepOpenPartsOfTypes,
   WALK_EYE_HEIGHT_MM,
   advanceWalk,
   openOpeningIds,
@@ -165,12 +166,15 @@ export function walkKeyHandlers(session: WalkSession): {
       // position, letting the walker close a door that is already open. The openings
       // are the active floor's and sit in that floor's own frame, so the eye goes in at
       // eye height above its floor, where the walker always stands.
-      interaction.current = interactFromWalk(
+      const toggled = interactFromWalk(
         walkStateOnFloor(state.current, FLOOR_DATUM_MM),
         openings.current,
         interaction.current,
         openness.current,
       )
+      interaction.current = {
+        openParts: keepOpenPartsOfTypes(toggled.openParts, openings.current),
+      }
       onOpenDoors(interaction.current.openParts)
       onUserControl()
       return
@@ -220,7 +224,8 @@ export interface WalkFrameContext extends WalkRefs {
 // leafless doorways that have nothing to open; shut doors and windows stay solid.
 function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
   const { walls, openings, furnitureSegments, radius } = ctx.collisionInputs
-  const passable = passableDoorIds(openings, openOpeningIds(ctx.interaction.current.openParts))
+  const openParts = keepOpenPartsOfTypes(ctx.interaction.current.openParts, openings)
+  const passable = passableDoorIds(openings, openOpeningIds(openParts))
   return {
     segments: [...wallSegmentsForWalk(walls, openings, passable), ...furnitureSegments],
     radius,

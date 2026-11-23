@@ -483,7 +483,12 @@ export {
   wallSegmentsForWalk,
 } from './scene/walk-collision'
 export type { OpenParts, OpeningPartRef } from './scene/open-parts'
-export { openOpeningIds, sameOpenParts, toggleOpenPart } from './scene/open-parts'
+export {
+  keepOpenPartsOfTypes,
+  openOpeningIds,
+  sameOpenParts,
+  toggleOpenPart,
+} from './scene/open-parts'
 export type { OpeningInteractionState } from './scene/opening-interaction'
 export { emptyOpeningInteraction, isOpeningOpen, toggleOpening } from './scene/opening-interaction'
 export type { OpeningReachHit } from './scene/opening-reach'

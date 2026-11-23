@@ -1,4 +1,4 @@
-import type { OpeningPartId } from './opening-motion'
+import { openingParts, type OpeningPartId } from './opening-motion'
 
 /** The open parts of every opening, keyed by opening id; a closed opening has no entry. */
 export type OpenParts = ReadonlyMap<string, ReadonlySet<OpeningPartId>>
@@ -17,6 +17,32 @@ export function toggleOpenPart(parts: OpenParts, ref: OpeningPartRef): OpenParts
   if (partsOfOpening.size === 0) next.delete(ref.openingId)
   else next.set(ref.openingId, partsOfOpening)
   return next
+}
+
+/**
+ * The map without the open parts an opening's current type lacks, such as the upper sash left
+ * behind when a double-hung window becomes single-hung. An opening left with no part is dropped.
+ * An entry that names no opening of the list is kept, since the list may cover one floor only.
+ * The input itself is returned when nothing changes.
+ */
+export function keepOpenPartsOfTypes(
+  parts: OpenParts,
+  openings: Iterable<{ readonly id: string; readonly type: string }>,
+): OpenParts {
+  const typeById = new Map<string, string>()
+  for (const opening of openings) typeById.set(opening.id, opening.type)
+  let changed = false
+  const next = new Map<string, ReadonlySet<OpeningPartId>>()
+  for (const [openingId, partsHere] of parts) {
+    const type = typeById.get(openingId)
+    const kept =
+      type === undefined
+        ? partsHere
+        : new Set([...partsHere].filter((part) => openingParts(type).includes(part)))
+    if (kept.size !== partsHere.size) changed = true
+    if (kept.size > 0) next.set(openingId, kept)
+  }
+  return changed ? next : parts
 }
 
 /** The ids of the openings that have any part open. */
