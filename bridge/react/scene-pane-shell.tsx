@@ -1,4 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react'
+import { aimReticleStyle } from './aim-reticle-style'
 import { CameraControlsHint } from './camera-controls-hint'
 import { SceneChrome } from './scene-chrome'
 import { useSceneChromeHidden } from './scene-chrome-context'
@@ -29,10 +30,24 @@ function paneCursor(chromeHidden: boolean, dragging: boolean): string | undefine
   return dragging ? 'grabbing' : 'grab'
 }
 
+function AimReticle() {
+  return <div className="aim-reticle" aria-hidden="true" style={aimReticleStyle()} />
+}
+
 // The interactive preview pane: it wraps the canvas and overlay (passed as children), shows
 // the grab/grabbing cursor that signals the canvas is draggable, and overlays the per-mode
-// controls hint. The hint is inert to pointer events, so it never blocks a drag.
-export function ScenePaneShell({ mode, children }: { mode: NavMode; children: ReactNode }) {
+// controls hint and, in walk mode with the aim guide on, the aim dot. Both are scene chrome,
+// so a mounted failure view hides them, and both are inert to pointer events, so they never
+// block a drag.
+export function ScenePaneShell({
+  mode,
+  aimGuide,
+  children,
+}: {
+  mode: NavMode
+  aimGuide: boolean
+  children: ReactNode
+}) {
   const { dragging, paneHandlers } = useDragging()
   const chromeHidden = useSceneChromeHidden()
   return (
@@ -48,6 +63,7 @@ export function ScenePaneShell({ mode, children }: { mode: NavMode; children: Re
     >
       {children}
       <SceneChrome>
+        {mode === 'walk' && aimGuide ? <AimReticle /> : null}
         <CameraControlsHint mode={mode} />
       </SceneChrome>
     </div>

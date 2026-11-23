@@ -445,11 +445,11 @@ describe('SceneNavToolbar surface-edges toggle', () => {
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('holds only the surface-edges toggle now that realistic lighting lives in the environment panel', () => {
+  it('holds only the surface-edges and aim-guide toggles now that realistic lighting lives in the environment panel', () => {
     render(<SceneNavToolbar {...baseProps} />)
 
     const group = screen.getByRole('group', { name: /display options/i })
-    expect(within(group).getAllByRole('button')).toHaveLength(1)
+    expect(within(group).getAllByRole('button')).toHaveLength(2)
   })
 })
 

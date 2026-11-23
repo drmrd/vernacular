@@ -6,6 +6,7 @@ import {
 import { getEntry } from '../registries/registry'
 
 import { type HungSash, SASH_FRAME_WIDTH_MM } from './opening-fill'
+import { openingPlanEnds } from './opening-span-ends'
 import { planToWorld } from './plan-to-world'
 import type { OpeningSceneNode } from './scene-graph'
 import type { Vector3 } from './vector3'
@@ -139,15 +140,8 @@ function partCountOf(params: OpeningTypeParameters): number {
  * opening's orientation and the swing direction signed by its facing.
  */
 function jambHinge(opening: OpeningSceneNode, partCount: number): HingeMotion {
-  const half = opening.width / 2
-  const hingeSign = opening.orientation.hinge === 'end' ? 1 : -1
-  const pivot = planToWorld(
-    {
-      x: opening.center.x + hingeSign * opening.along.x * half,
-      y: opening.center.y + hingeSign * opening.along.y * half,
-    },
-    0,
-  )
+  const ends = openingPlanEnds(opening)
+  const pivot = planToWorld(opening.orientation.hinge === 'end' ? ends.end : ends.start, 0)
   const facingSign = opening.orientation.facing === 'negative' ? -1 : 1
   return {
     kind: 'hinge',

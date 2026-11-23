@@ -499,7 +499,9 @@ export {
 } from './scene/open-parts'
 export type { OpeningInteractionState } from './scene/opening-interaction'
 export { emptyOpeningInteraction, isOpeningOpen, toggleOpening } from './scene/opening-interaction'
-export type { OpeningReachHit } from './scene/opening-reach'
+export type { OpeningAimOutline } from './scene/opening-aim-outline'
+export { openingAimOutline } from './scene/opening-aim-outline'
+export type { OpeningBand, OpeningReachHit } from './scene/opening-reach'
 export { DEFAULT_INTERACT_REACH_MM, openingUnderReach } from './scene/opening-reach'
 export { OPENNESS_RATE_PER_S, advanceOpenness } from './scene/opening-openness'
 export type {

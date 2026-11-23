@@ -7,6 +7,7 @@ import {
   toggleOpening,
   walkLookDirection,
   type OpeningInteractionState,
+  type OpeningReachHit,
   type OpenParts,
   type OpeningPose,
   type OpeningSceneNode,
@@ -29,12 +30,25 @@ export function interactFromWalk(
   interaction: OpeningInteractionState,
   openness?: ReadonlyMap<string, OpeningPose>,
 ): OpeningInteractionState {
+  const hit = reachFromWalk(walk, openings, openness)
+  return hit === null ? interaction : toggleOpening(interaction, hit)
+}
+
+/**
+ * The opening part the walker's eye reaches, or null: the one test both the interact key and the
+ * aim guide use, so the outline always marks what the key acts on. Callers pass the pose seated on
+ * its floor's datum, as the interact key does.
+ */
+export function reachFromWalk(
+  walk: WalkState,
+  openings: readonly OpeningSceneNode[],
+  openness?: ReadonlyMap<string, OpeningPose>,
+): OpeningReachHit | null {
   // exactOptionalPropertyTypes rejects `{ openness: undefined }` for openingUnderReach's
   // `openness?` field, so build options only when a map is present (a Map is always
   // truthy); omitting it leaves the field genuinely absent.
   const options = openness ? { openness } : undefined
-  const hit = openingUnderReach(walk.position, walkLookDirection(walk), openings, options)
-  return hit === null ? interaction : toggleOpening(interaction, hit)
+  return openingUnderReach(walk.position, walkLookDirection(walk), openings, options)
 }
 
 /** The per-frame inputs that drive the opening motion animation. */

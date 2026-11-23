@@ -81,6 +81,12 @@ resolver. To test whether the user is looking at an open leaf, it asks the motio
 sits at the current openness, rather than testing only the shut aperture plane. One resolver feeds
 both the animation and the reach test, so they cannot disagree about where an open leaf is.
 
+Walk mode shows an aim dot at the middle of the pane and an outline on the opening in reach. The
+outline comes from the same reach call as the E key, so it marks what E acts on: the band of the
+shut frame, which for a double-hung window is one sash. One "Aim guide" toggle in the Display
+options group, on by default, turns both off. The flag is view state in the scene session and is
+never stored in the project. See ADR-0233.
+
 ## Scope
 
 In scope for the first implementation:

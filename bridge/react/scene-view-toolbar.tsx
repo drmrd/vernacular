@@ -55,6 +55,8 @@ export function SceneViewToolbar({
       onToggleUnderground={buildingView.toggleUnderground}
       edgeOverlay={edgeOverlay}
       onToggleEdgeOverlay={onToggleEdgeOverlay}
+      aimGuide={nav.aimGuide}
+      onToggleAimGuide={nav.toggleAimGuide}
       interactiveObjectsAtDefault={interactiveObjects.atDefault}
       onResetInteractiveObjects={interactiveObjects.reset}
     />

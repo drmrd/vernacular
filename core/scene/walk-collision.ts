@@ -1,6 +1,7 @@
 import type { Point } from '../model/types'
 import { openingKindOfType, openingTypeHasFill } from '../registries/opening-kind'
 import { effectiveWallThickness } from './construction-profile'
+import { openingPlanEnds } from './opening-span-ends'
 import { planToWorld } from './plan-to-world'
 import {
   WALL_NODE_PREFIX,
@@ -203,17 +204,9 @@ function pointAtParam(segment: WallSegment, t: number): PlanarPoint {
 
 /** The span an opening covers on its host wall, as a t interval along the wall. */
 function openingSpan(segment: WallSegment, opening: OpeningSceneNode): SpanInterval {
-  const half = opening.width / 2
-  const spanStart = planPointToPlanar({
-    x: opening.center.x - opening.along.x * half,
-    y: opening.center.y - opening.along.y * half,
-  })
-  const spanEnd = planPointToPlanar({
-    x: opening.center.x + opening.along.x * half,
-    y: opening.center.y + opening.along.y * half,
-  })
-  const startParam = wallParam(segment, spanStart)
-  const endParam = wallParam(segment, spanEnd)
+  const ends = openingPlanEnds(opening)
+  const startParam = wallParam(segment, planPointToPlanar(ends.start))
+  const endParam = wallParam(segment, planPointToPlanar(ends.end))
   return { start: Math.min(startParam, endParam), end: Math.max(startParam, endParam) }
 }
 

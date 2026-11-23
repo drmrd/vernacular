@@ -94,9 +94,64 @@ describe('useSceneNavigation', () => {
 
     expect(result.current.selectionEnabled).toBe(true)
   })
+
+  it('starts with the aim guide on', () => {
+    const { result } = renderHook(() => useSceneNavigation())
+
+    expect(result.current.aimGuide).toBe(true)
+  })
 })
 
 describe('useSceneNavigation inside a scene session provider', () => {
+  it('starts with the aim guide on when a session provider holds the default', () => {
+    const { result } = renderNavigationOn(createSceneSessionStore())
+
+    expect(result.current.aimGuide).toBe(true)
+  })
+
+  it('records an aim guide toggle in the session', () => {
+    const store = createSceneSessionStore()
+    const { result } = renderNavigationOn(store)
+
+    act(() => {
+      result.current.toggleAimGuide()
+    })
+    expect(result.current.aimGuide).toBe(false)
+    expect(store.getSceneSession().aimGuide).toBe(false)
+
+    act(() => {
+      result.current.toggleAimGuide()
+    })
+    expect(result.current.aimGuide).toBe(true)
+    expect(store.getSceneSession().aimGuide).toBe(true)
+  })
+
+  it('hands a remounted navigation the aim guide the earlier mount turned off', () => {
+    const store = createSceneSessionStore()
+    const firstMount = renderNavigationOn(store)
+
+    act(() => {
+      firstMount.result.current.toggleAimGuide()
+    })
+    firstMount.unmount()
+
+    const secondMount = renderNavigationOn(store)
+
+    expect(secondMount.result.current.aimGuide).toBe(false)
+  })
+
+  it('keeps the aim guide off through a view reset', () => {
+    const store = createSceneSessionStore({ aimGuide: false })
+    const { result } = renderNavigationOn(store)
+
+    act(() => {
+      result.current.resetView()
+    })
+
+    expect(result.current.aimGuide).toBe(false)
+    expect(store.getSceneSession().aimGuide).toBe(false)
+  })
+
   it('starts from the camera mode, the toggles, and the preset pose the session already holds', () => {
     const store = createSceneSessionStore({
       cameraMode: 'walk',
