@@ -11,6 +11,7 @@ import {
   activeFiltersDescription,
   distinctEras,
   distinctStyles,
+  furnitureItems,
   visibleLibraryItems,
   type LibraryFilters,
   type SourceFilter,
@@ -242,7 +243,8 @@ function LibraryBody(props: LibraryBodyProps): ReactElement | null {
   if (items === null) {
     return <LoadingState message={LOADING_MESSAGE} />
   }
-  if (items.length === 0) {
+  const furniture = furnitureItems(items)
+  if (furniture.length === 0) {
     return <EmptyState title={EMPTY_MESSAGE} asRegion={false} />
   }
   const visible = visibleLibraryItems(items, filters)
@@ -251,8 +253,8 @@ function LibraryBody(props: LibraryBodyProps): ReactElement | null {
     <>
       <LibraryControls
         filters={filters}
-        eras={distinctEras(items)}
-        styles={distinctStyles(items)}
+        eras={distinctEras(furniture)}
+        styles={distinctStyles(furniture)}
         setFilters={setFilters}
       />
       {armed ? (
