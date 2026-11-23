@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { missingAsset, resolvedAsset } from '../../core'
 import type {
   AssetDescription,
@@ -26,19 +26,25 @@ const modelDescription: ModelDescription = {
   dimensions: { width: 1000, depth: 500, height: 800 },
 }
 
-function cacheDescribing(
+function cacheFor(
   describeFor: (asset: AssetReference) => TextureDescription,
   decode: () => Promise<Texture>,
 ) {
-  return createTextureCache({
+  const dispose = vi.fn<(texture: Texture) => void>()
+  const cache = createTextureCache({
     source: {
       resolve: async (asset) => resolvedAsset(bytes, asset.scope),
       describe: async (asset) => describeFor(asset),
     },
     decode,
-    dispose: () => {},
+    dispose,
   })
+  return { cache, dispose }
 }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('createTextureCache', () => {
   it('a requested texture loads once and settles ready with the tile size of its own reference', async () => {
@@ -69,7 +75,7 @@ describe('createTextureCache', () => {
     const small: AssetReference = { scope: 'pack:lawn@1.0.0', contentHash: 'sha256-grass' }
     const large: AssetReference = { scope: 'pack:meadow@1.0.0', contentHash: 'sha256-grass' }
     const decode = vi.fn(async () => new Texture())
-    const cache = cacheDescribing(
+    const { cache } = cacheFor(
       (asset) => ({
         ...description,
         tileSize:
@@ -95,7 +101,7 @@ describe('createTextureCache', () => {
     const color: AssetReference = { scope: 'pack:lawn@1.0.0', contentHash: 'sha256-grass' }
     const data: AssetReference = { scope: 'pack:lawn-data@1.0.0', contentHash: 'sha256-grass' }
     const decode = vi.fn(async () => new Texture())
-    const cache = cacheDescribing(
+    const { cache } = cacheFor(
       (asset) => ({ ...description, colorSpace: asset.scope === color.scope ? 'srgb' : 'linear' }),
       decode,
     )
@@ -113,33 +119,38 @@ describe('createTextureCache', () => {
   })
 })
 
+interface FailureScenario {
+  name: string
+  resolveAsset: () => Promise<AssetResolution>
+  describeAsset: () => Promise<AssetDescription | undefined>
+  decodeAsset: () => Promise<Texture>
+  reachesDecode: boolean
+}
+
+async function requestFailure(scenario: FailureScenario) {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const decode = vi.fn(scenario.decodeAsset)
+  const dispose = vi.fn()
+  const cache = createTextureCache({
+    source: { resolve: scenario.resolveAsset, describe: scenario.describeAsset },
+    decode,
+    dispose,
+  })
+
+  await expect(cache.request(reference)).resolves.toBeUndefined()
+
+  expect(cache.get(reference)).toEqual({ status: 'failed' })
+  expect(dispose).not.toHaveBeenCalled()
+  expect(decode.mock.calls.length > 0).toBe(scenario.reachesDecode)
+  return warn
+}
+
 describe('createTextureCache failure handling', () => {
   const corruptImage = new Error('corrupt image')
   const describeFailure = new Error('description store unavailable')
   const resolveFailure = new Error('pack store unavailable')
 
-  it.each<{
-    name: string
-    resolveAsset: () => Promise<AssetResolution>
-    describeAsset: () => Promise<AssetDescription | undefined>
-    decodeAsset: () => Promise<Texture>
-    reachesDecode: boolean
-    rejection?: Error
-  }>([
-    {
-      name: 'with no description',
-      resolveAsset: async () => resolvedAsset(bytes, reference.scope),
-      describeAsset: async () => undefined,
-      decodeAsset: async () => new Texture(),
-      reachesDecode: false,
-    },
-    {
-      name: 'of another kind',
-      resolveAsset: async () => resolvedAsset(bytes, reference.scope),
-      describeAsset: async () => modelDescription,
-      decodeAsset: async () => new Texture(),
-      reachesDecode: false,
-    },
+  it.each<FailureScenario & { rejection: Error }>([
     {
       name: 'that does not decode',
       resolveAsset: async () => resolvedAsset(bytes, reference.scope),
@@ -149,13 +160,6 @@ describe('createTextureCache failure handling', () => {
       },
       reachesDecode: true,
       rejection: corruptImage,
-    },
-    {
-      name: 'whose image is missing',
-      resolveAsset: async () => missingAsset(reference),
-      describeAsset: async () => description,
-      decodeAsset: async () => new Texture(),
-      reachesDecode: false,
     },
     {
       name: 'whose description lookup rejects',
@@ -178,29 +182,50 @@ describe('createTextureCache failure handling', () => {
       rejection: resolveFailure,
     },
   ])('a texture $name settles as failed and disposes nothing', async (scenario) => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const decode = vi.fn(scenario.decodeAsset)
-    const dispose = vi.fn()
-    const cache = createTextureCache({
-      source: { resolve: scenario.resolveAsset, describe: scenario.describeAsset },
-      decode,
-      dispose,
-    })
+    const warn = await requestFailure(scenario)
 
-    try {
-      await expect(cache.request(reference)).resolves.toBeUndefined()
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(reference.contentHash),
+      scenario.rejection,
+    )
+  })
 
-      expect(cache.get(reference)).toEqual({ status: 'failed' })
-      expect(dispose).not.toHaveBeenCalled()
-      expect(decode.mock.calls.length > 0).toBe(scenario.reachesDecode)
-      if (scenario.rejection) {
-        expect(warn).toHaveBeenCalledTimes(1)
-        expect(warn).toHaveBeenCalledWith(
-          expect.stringContaining(reference.contentHash),
-          scenario.rejection,
-        )
-      }
-    } finally {
+  it('a texture that fails without an error still warns once with its content hash and the reason', async () => {
+    const scenarios: Array<FailureScenario & { reason: RegExp }> = [
+      {
+        name: 'with no description',
+        resolveAsset: async () => resolvedAsset(bytes, reference.scope),
+        describeAsset: async () => undefined,
+        decodeAsset: async () => new Texture(),
+        reachesDecode: false,
+        reason: /description/i,
+      },
+      {
+        name: 'of another kind',
+        resolveAsset: async () => resolvedAsset(bytes, reference.scope),
+        describeAsset: async () => modelDescription,
+        decodeAsset: async () => new Texture(),
+        reachesDecode: false,
+        reason: /kind|model/i,
+      },
+      {
+        name: 'whose image is missing',
+        resolveAsset: async () => missingAsset(reference),
+        describeAsset: async () => description,
+        decodeAsset: async () => new Texture(),
+        reachesDecode: false,
+        reason: /missing|not found|resolve/i,
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      const warn = await requestFailure(scenario)
+
+      expect(warn, scenario.name).toHaveBeenCalledTimes(1)
+      const logged = warn.mock.calls[0]?.map(String).join(' ')
+      expect(logged, scenario.name).toContain(reference.contentHash)
+      expect(logged, scenario.name).toMatch(scenario.reason)
       warn.mockRestore()
     }
   })
@@ -211,21 +236,14 @@ describe('createTextureCache disposal', () => {
   const meadow: AssetReference = { scope: 'pack:meadow@1.0.0', contentHash: 'sha256-grass' }
   const lawnData: AssetReference = { scope: 'pack:lawn-data@1.0.0', contentHash: 'sha256-grass' }
 
-  function cacheWithDisposer(decode: () => Promise<Texture>) {
-    const dispose = vi.fn<(texture: Texture) => void>()
-    const cache = createTextureCache({
-      source: {
-        resolve: async (asset) => resolvedAsset(bytes, asset.scope),
-        describe: async (asset) => ({
-          ...description,
-          colorSpace: asset.scope === lawnData.scope ? 'linear' : 'srgb',
-        }),
-      },
+  const cacheWithDisposer = (decode: () => Promise<Texture>) =>
+    cacheFor(
+      (asset) => ({
+        ...description,
+        colorSpace: asset.scope === lawnData.scope ? 'linear' : 'srgb',
+      }),
       decode,
-      dispose,
-    })
-    return { cache, dispose }
-  }
+    )
 
   it('the cache frees each texture once, when the cache is disposed, and never before', async () => {
     const { cache, dispose } = cacheWithDisposer(async () => new Texture())
