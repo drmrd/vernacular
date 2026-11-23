@@ -24,19 +24,11 @@ export async function portsWithTheProjectInASecondFile(): Promise<TestPorts> {
 }
 
 /** The text of each live region of the open editor, in the order of the page. */
-export function statusReadouts(): string[] {
+function statusReadouts(): string[] {
   return screen.queryAllByRole('status').map((region) => region.textContent ?? '')
 }
 
 /** Waits until a live region of the editor reads exactly `text`. */
 export function waitForTheStatus(text: string): Promise<void> {
   return waitFor(() => expect(statusReadouts()).toContain(text), { timeout: AUTOSAVE_TIMEOUT_MS })
-}
-
-/** Waits until a live region of the editor reads that a save landed, in whichever words. */
-export function waitForAnyStoredStatus(): Promise<void> {
-  const stored = /^(All changes saved|Saved in a second plan file)$/
-  return waitFor(() => expect(statusReadouts().some((text) => stored.test(text))).toBe(true), {
-    timeout: AUTOSAVE_TIMEOUT_MS,
-  })
 }

@@ -19,6 +19,7 @@ import {
   settleForAWhile,
   stubCapableStorage,
 } from './app-test-support'
+import { leaveIsPrevented } from './leave-test-support'
 
 const handles: DocumentHandle[] = []
 
@@ -39,13 +40,6 @@ async function openDrafthouse(ports: TestPorts): Promise<DocumentHandle> {
   return handle
 }
 
-/** Whether a new cancelable `beforeunload` event is vetoed, the sign of the browser's warning. */
-function unloadIsVetoed(): boolean {
-  const event = new Event('beforeunload', { cancelable: true })
-  window.dispatchEvent(event)
-  return event.defaultPrevented
-}
-
 /** One edit through the dispatch boundary, the only way to change the project. */
 async function addASecondFloor(handle: DocumentHandle): Promise<void> {
   await act(async () => {
@@ -62,12 +56,12 @@ describe('The unsaved-changes guard of the workspace', () => {
 
     await addASecondFloor(handle)
     await act(async () => {
-      expect(unloadIsVetoed()).toBe(true)
+      expect(leaveIsPrevented()).toBe(true)
     })
 
     await chooseFromTheProjectMenu(/save/i)
 
-    await waitFor(() => expect(unloadIsVetoed()).toBe(false))
+    await waitFor(() => expect(leaveIsPrevented()).toBe(false))
   })
 
   it('disarms the beforeunload guard after autosave persists the change', async () => {
@@ -81,11 +75,11 @@ describe('The unsaved-changes guard of the workspace', () => {
 
     await addASecondFloor(handle)
     await act(async () => {
-      expect(unloadIsVetoed()).toBe(true)
+      expect(leaveIsPrevented()).toBe(true)
     })
 
     // With no save of its own, the handle's autosave stores the change after its delay.
-    await waitFor(() => expect(unloadIsVetoed()).toBe(false), { timeout: AUTOSAVE_TIMEOUT_MS })
+    await waitFor(() => expect(leaveIsPrevented()).toBe(false), { timeout: AUTOSAVE_TIMEOUT_MS })
     expect((await storedProject(ports.workspace, PROJECT_ID)).floors).toHaveLength(2)
     // One autosave writes the project: the workspace mounts none of its own.
     await settleForAWhile()

@@ -141,6 +141,9 @@ describe('A choice between the two plan files, over the project that this tab ho
       expectThePageToStay(held, entries)
       expect(screen.queryByRole('button', { name: /^Back to / })).not.toBeInTheDocument()
       expect(screen.queryByRole('navigation', { name: /breadcrumb/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { level: 1, name: /vernacular/i }),
+      ).not.toBeInTheDocument()
       expect(lockedIds(held.ports)).toEqual([])
       expect(await recordIds(held.ports)).toEqual(recordsBefore)
     },
