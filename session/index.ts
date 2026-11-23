@@ -37,6 +37,20 @@ export type { ExportFailure, ExportProjectResult, ExportRequest } from './flows/
 export { exportProject } from './flows/export-project'
 export { restoreSnapshot } from './flows/restore-snapshot'
 export type {
+  KeptFileChoice,
+  KeptFileRefusal,
+  KeptFileResult,
+  SecondFileAsNewResult,
+  TwoFilesRead,
+} from './flows/choose-kept-file'
+export {
+  openSecondFileAsNew,
+  readTwoFiles,
+  removeSecondFile,
+  replaceWithSecondFile,
+  secondFileCopyName,
+} from './flows/choose-kept-file'
+export type {
   RepairedCopyRequest,
   RepairedCopyResult,
   ReplaceRefusal,

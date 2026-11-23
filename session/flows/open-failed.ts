@@ -49,7 +49,7 @@ const REPAIR_CHANGED: ReplaceOutcome = { ok: false, failure: { kind: 'repair-cha
  * The needed assets that the pool of the project that did not open holds. A workspace project
  * shares the workspace pool, so it supplies none. An asset that cannot be read is left out.
  */
-async function assetsOfFolder(
+export async function assetsOfFolder(
   ports: SessionPorts,
   id: string,
   needed: readonly string[],

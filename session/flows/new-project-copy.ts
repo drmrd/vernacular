@@ -21,6 +21,8 @@ export type NewProjectResult =
       readonly ok: true
       readonly handle: DocumentHandle
       readonly missingAssets: readonly string[]
+      /** True when the first save of the new project was stored. */
+      readonly stored: boolean
     }
   | { readonly ok: false; readonly failure: SwitchFailure }
 
@@ -63,6 +65,6 @@ export async function openAsNewProject(
   const assets = await copy.supplied(needed)
   const pool = poolOf(ports, id)
   const missingAssets = pool === undefined ? needed : await copyImportedAssets(pool, assets, needed)
-  await switched.handle.save()
-  return { ok: true, handle: switched.handle, missingAssets }
+  const saved = await switched.handle.save()
+  return { ok: true, handle: switched.handle, missingAssets, stored: saved.ok }
 }
