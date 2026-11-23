@@ -9,6 +9,7 @@ related:
     decisions/ADR-0151-ambient-occlusion-render-pipeline,
     decisions/ADR-0152-linux-scene-baseline-lane,
     decisions/ADR-0170-scene-session-state-in-a-bridge-provider,
+    decisions/ADR-0239-end-to-end-reports-are-kept-and-retry-passes-warn,
   ]
 sourceFiles:
   [
@@ -114,7 +115,7 @@ for this gate must move the rendered scene, not the opening vantage.
   change refreshes the baseline deliberately, on the development Mac, in the pull request that
   makes the change.
 - The spec still self-skips where no adapter exists, so a future runner-image change that
-  removes the adapter would surface as a silent skip, not a failure. The job's `--reporter=list`
+  removes the adapter would surface as a silent skip, not a failure. The job's `list` reporter
   output names the skip when it happens; a skip on a pull request that should exercise the
   live view is a signal to investigate the runner image, and a follow-up gate that fails on
   an unexpected skip is open as a hardening option. The two journeys already have that gate:

@@ -201,9 +201,9 @@ Review the regenerated PNG before committing.
 
 ### In CI
 
-CI runs each Playwright test up to three times (`retries: 2`) and uses one worker. Every end-to-end job (`e2e`, `scene-visual`, `storybook-build`, and `live-view-visual`) uploads its report as an artifact for 7 days, whether the job passed or failed. The artifact name ends in `-attempt-<n>`, the run attempt, so a re-run keeps the report of the earlier attempt.
+CI runs each Playwright test up to three times (`retries: 2`) and uses one worker. Every end-to-end job (`e2e`, `scene-visual`, `storybook-build`, and `live-view-visual`) uploads its report as an artifact for 7 days, whether the job passed or failed. The artifact name ends in `-attempt-<n>`, the run attempt: a re-run that reuses a fixed name may be refused, so each attempt keeps its own artifact name.
 
-A test that fails and then passes on a retry leaves the job green. The job writes a warning to its job summary and an annotation on the test file, so the retry is easy to find. Open the report artifact to see the screenshot and the error of the failed attempt. The report has no trace of that first attempt, because a trace is recorded only for the retry. If your change touches the plan canvas or the journeys, read the retry-check line in the job summary before you merge. [ADR-0234](docs/knowledge/decisions/ADR-0234-end-to-end-reports-are-kept-and-retry-passes-warn.md) gives the reasons, and a follow-up issue tracks the switch to failing the job on a retry pass.
+A test that fails and then passes on a retry leaves the job green. The job writes a warning to its job summary and an annotation on the test file, so the retry is easy to find. Open the report artifact to see the screenshot and the error of the failed attempt. The report has no trace of that first attempt, because a trace is recorded only for the retry. If your change touches the plan canvas or the journeys, read the retry-check line in the job summary before you merge. [ADR-0239](docs/knowledge/decisions/ADR-0239-end-to-end-reports-are-kept-and-retry-passes-warn.md) gives the reasons, and a follow-up issue tracks the switch to failing the job on a retry pass.
 
 ## Performance budgets
 

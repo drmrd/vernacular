@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0234-end-to-end-reports-are-kept-and-retry-passes-warn
-title: 'ADR-0234: Every end-to-end report is kept, and a retry pass only warns'
+slug: decisions/ADR-0239-end-to-end-reports-are-kept-and-retry-passes-warn
+title: 'ADR-0239: Every end-to-end report is kept, and a retry pass only warns'
 type: decision
 tags: [tooling, ci, playwright, github-actions, e2e]
 related:
@@ -19,7 +19,7 @@ status: current
 updated: 2026-11-23
 ---
 
-# ADR-0234: Every end-to-end report is kept, and a retry pass only warns
+# ADR-0239: Every end-to-end report is kept, and a retry pass only warns
 
 ## Status
 
@@ -30,9 +30,11 @@ Current. Decided by the owner on 20 November 2026 as two rules, and landed with 
 ## Context
 
 CI runs each Playwright test up to three times, so a test that fails once and passes on a retry
-leaves the job green. The only sign was a line "1 flaky" in the job log. The job uploaded its
-report only when the job failed, so the screenshot and the error of a first attempt that a retry
-covered were thrown away with the runner.
+leaves the job green. The signs were a "1 flaky" line in the job log and the error annotation of
+the `github` reporter. Neither says that the test passed on a retry, the job summary said nothing,
+and `live-view-visual` had only the log line. The job uploaded its report only when the job
+failed, so the screenshot and the error of a first attempt that a retry covered were thrown away
+with the runner.
 
 Issue #881 collected five such cases among 72 green runs of the end-to-end job from 16 to 18
 November 2026. Each was a journey that clicks or drags on the plan canvas, and in each the first
@@ -47,7 +49,7 @@ of the issue: how CI should treat a retry pass, and how to keep the evidence of 
 Two rules, and a few details that follow from them.
 
 **Every end-to-end job keeps its report.** `e2e`, `scene-visual`, `storybook-build`, and
-`live-view-visual` upload their report on every run that is not cancelled, green runs too. The
+`live-view-visual` upload their report on every run that is not canceled, green runs too. The
 artifact is kept for 7 days. It holds the screenshot and the error of each failed attempt, also for
 a test that passed on its retry. The report has no trace of the first attempt.
 
@@ -56,10 +58,15 @@ a test that passed on its retry. The report has no trace of the first attempt.
 report is `flaky` (failed, then passed on a retry) is listed in the job summary under "Warning:
 tests passed only on a retry", with its file, line, project, failed attempts, and first error. The
 script also prints a `::warning` annotation for each one, so the test file shows the warning. The
-script always exits 0. When no test passed only on a retry, it writes one line saying so, with the
-number of tests and reports it read. That line shows that the step ran on a real report: a job
-summary without it points to a fault in the wiring, and a count above zero shows the report was
-not empty.
+script exits 0 in every case a runner step can reach. One edge exits 1: a working directory that
+no longer exists. A runner step cannot hit it, and the follow-up issue covers it. When no test
+passed only on a retry, it writes one line saying so, with the number of tests and reports it
+read. That line with a test count above zero shows that the step ran on a real report: a job
+summary without it points to a fault in the wiring. When no report could be read, the script
+writes `Retry check: not done. No Playwright JSON report could be read.` instead.
+
+The report and retry-check steps are skipped when the job's test step never ran, so an install or
+build failure adds no noise (the conditions use `steps.<id>.conclusion != 'skipped'`).
 
 The details:
 
@@ -72,19 +79,20 @@ The details:
   run, so without separate folders a green run would delete the evidence of every step but the
   last. That job has no HTML report. `test-results/` and the JSON files hold the screenshot and the
   error.
-- The artifact name ends in `-attempt-<run attempt>`. `actions/upload-artifact@v4` refuses a second
-  artifact with the same name in one workflow run. Once the upload runs on every run, a re-run of a
-  green job would fail at the upload step and turn the job red. The suffix avoids that and keeps
-  the report of the earlier attempt.
+- The artifact name ends in `-attempt-<run attempt>`. A re-run that reuses a fixed name may be
+  refused as a name conflict, so each attempt keeps its own artifact name, and the report of the
+  earlier attempt stays.
 - `storage-browser` and the `pnpm storybook:test` step run Vitest in browser mode and have no
   retries. The two manual baseline-refresh workflows already upload on `always()`. None of them
   changed.
 
 ### The trace setting
 
-`trace: 'on-first-retry'` stays. The owner's first rule keeps the screenshot and the error but not a trace, and he read that as "no trace of the first attempt, and no new trace setting". A run with no retry
-holds no trace at all. When a retry does happen, the report holds a trace of the second attempt,
-which is the best evidence there is for a hard failure. The owner confirmed this on 23 November 2026.
+`trace: 'on-first-retry'` stays. The owner's first rule keeps the screenshot and the error but not
+a trace. It is read as "no trace of the first attempt, and no new trace setting", and the owner
+confirmed that reading on 23 November 2026. A run with no retry holds no trace at all. When a
+retry does happen, the report holds a trace of the second attempt, which is the best evidence
+there is for a hard failure.
 
 ## Alternatives considered
 
@@ -114,6 +122,6 @@ configs (Playwright 1.60 supports it), keeps `retries: 2`, and keeps the warning
 job still says why. When it lands, this record gets a superseding note and `CONTRIBUTING.md` is
 updated.
 
-The green-run proof of ADR-0225 applies to the script. It exempts the direct-invocation block at
+The GREEN proof of ADR-0225 applies to the script. It exempts the direct-invocation block at
 the bottom of `scripts/ci/retry-warning.mjs` and requires the tests to reach every other added
 line.
