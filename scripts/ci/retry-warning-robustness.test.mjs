@@ -142,13 +142,16 @@ describe('runRetryWarning when the summary write throws a value that is not an E
     expect(deps.log).toHaveBeenCalledWith(summaryWarning('an error that cannot be printed'))
   })
 
-  it('names a thrown plain string in the warning about the summary write', async () => {
+  it.each([
+    ['plain string', 'disk full'],
+    ['null', null],
+  ])('names a thrown %s in the warning about the summary write', async (_kind, thrown) => {
     const deps = fakeDeps({ 'a.json': JSON.stringify(clean) })
     deps.appendSummary.mockImplementation(() => {
-      throw 'disk full'
+      throw thrown
     })
     expect(await runRetryWarning(['a.json'], deps)).toBe(0)
-    expect(deps.log).toHaveBeenCalledWith(summaryWarning('disk full'))
+    expect(deps.log).toHaveBeenCalledWith(summaryWarning(String(thrown)))
   })
 })
 
