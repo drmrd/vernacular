@@ -70,11 +70,11 @@ export class PackSource implements AssetSource {
   }
 
   async read(contentHash: string): Promise<Uint8Array | undefined> {
-    const asset = await this.findAsset(contentHash)
-    if (asset === undefined) {
+    const found = await this.findAsset(contentHash)
+    if (found === undefined) {
       return undefined
     }
-    return this.reader.readAsset(contentHash, packAssetMediaType(asset.shape))
+    return this.reader.readAsset(contentHash, packAssetMediaType(found.shape))
   }
 
   async readThumbnail(contentHash: string): Promise<Uint8Array | undefined> {

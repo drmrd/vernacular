@@ -35,9 +35,9 @@ const decodeWithCreateImageBitmap: ImageBitmapDecoder = (blob, options) =>
  * color conversion or alpha premultiplication so the declared color space is the only
  * interpretation applied.
  *
- * The decode options carry these choices, and `flipY` stays false, because three ignores its
- * own flip, premultiply, and color-conversion upload flags for an ImageBitmap. Setting
- * `flipY = true` here would not change orientation.
+ * The decode options carry these choices. For an ImageBitmap, WebGL ignores three's flip,
+ * premultiply, and color-conversion upload flags and WebGPU honors them. They stay false so
+ * both backends agree.
  */
 export async function decodeImageTexture(
   bytes: Uint8Array,

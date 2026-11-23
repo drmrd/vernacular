@@ -40,6 +40,10 @@ function validateImage(image: unknown, label: string, errors: string[]): void {
   }
 }
 
+function isColorSpaceName(value: unknown): value is ColorSpaceName {
+  return (COLOR_SPACES as readonly unknown[]).includes(value)
+}
+
 function validateTileSize(tileSize: unknown, label: string, errors: string[]): void {
   if (!isRecord(tileSize)) {
     errors.push(`${label}.tileSize is required`)
@@ -59,7 +63,7 @@ export function validateTextureFields(
 ): void {
   validateImage(asset['image'], label, errors)
   validateTileSize(asset['tileSize'], label, errors)
-  if (!COLOR_SPACES.includes(asset['colorSpace'] as ColorSpaceName)) {
+  if (!isColorSpaceName(asset['colorSpace'])) {
     errors.push(`${label}.colorSpace must be one of: ${COLOR_SPACES.join(', ')}`)
   }
   if (asset['dimensions'] !== undefined) {

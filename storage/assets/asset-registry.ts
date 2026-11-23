@@ -56,19 +56,8 @@ export class AssetRegistry {
     return items
   }
 
-  /**
-   * Describes a reference from the source named by its scope first, then from
-   * the first source in precedence order whose `describe` knows the hash.
-   */
   async describe(reference: AssetReference): Promise<AssetDescription | undefined> {
-    const exact = this.sources.find((scoped) => scoped.source.id === reference.scope)
-    const exactDescription = await exact?.source.describe?.(reference.contentHash)
-    if (exactDescription !== undefined) {
-      return exactDescription
-    }
-    const kinds = orderScopesByPrecedence(reference, this.availableKinds())
-    for (const scoped of this.sourcesInOrder(kinds)) {
-      if (scoped === exact) continue
+    for (const scoped of this.describeCandidates(reference)) {
       const description = await scoped.source.describe?.(reference.contentHash)
       if (description !== undefined) {
         return description
@@ -79,6 +68,15 @@ export class AssetRegistry {
 
   private availableKinds(): ScopeKind[] {
     return this.sources.map((scoped) => scoped.kind)
+  }
+
+  private *describeCandidates(reference: AssetReference): Generator<ScopedAssetSource> {
+    const exact = this.sources.find((scoped) => scoped.source.id === reference.scope)
+    if (exact) yield exact
+    const kinds = orderScopesByPrecedence(reference, this.availableKinds())
+    for (const scoped of this.sourcesInOrder(kinds)) {
+      if (scoped !== exact) yield scoped
+    }
   }
 
   private *sourcesInOrder(kinds: Iterable<ScopeKind>): Generator<ScopedAssetSource> {
