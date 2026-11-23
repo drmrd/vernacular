@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { PackSource } from './pack-source'
 import type { MediaType } from '../../core'
 import type { LibraryItem } from './asset-source'
+import { GRASS_HASH, grassTextureAsset } from './texture-pack-test-support'
 
 const MODEL_HASH = '0'.repeat(64)
-const TEXTURE_HASH = '1'.repeat(64)
+const TEXTURE_HASH = GRASS_HASH
 
 const VALID_MANIFEST = {
   packId: 'vernacular-starter',
@@ -81,19 +82,7 @@ const FORMAT_2_MANIFEST = {
   ...VALID_MANIFEST,
   formatVersion: 2,
   assets: [
-    {
-      contentHash: TEXTURE_HASH,
-      name: 'Mown grass',
-      kind: 'texture',
-      mediaType: 'image/png',
-      image: { width: 256, height: 256 },
-      tileSize: { width: 1000, height: 1000 },
-      colorSpace: 'srgb',
-      license: 'CC0-1.0',
-      attribution: 'Vernacular project',
-      eras: ['mid-century'],
-      categories: ['ground'],
-    },
+    grassTextureAsset(1000),
     { ...VALID_MANIFEST.assets[0], mediaType: 'model/gltf-binary' },
   ],
 }
