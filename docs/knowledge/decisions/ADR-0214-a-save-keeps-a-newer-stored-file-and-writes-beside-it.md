@@ -115,9 +115,19 @@ both documents, and they hold different work that Vernacular cannot merge.
 - The record write at the end of a choice is best effort. When it fails after the files changed,
   the choice still counts as done and a console warning says so. The card keeps its second-file
   line until the next open or index rebuild writes the record.
-- A failed choice reads "Could not change the plan files:" and the reason. "Open and keep both
-  plan files" before an open changes no file, so its failure shows what a click on the project's
-  card shows for the same failure, without that prefix.
+- A failed choice reads "Could not change the plan files:" and the reason. That holds when a
+  choice found a file changed and the read of both files after it fails, since a change was
+  tried. "Open and keep both plan files" before an open changes no file, so its failure shows what
+  a click on the project's card shows for the same failure, without that prefix.
+- When the card action "Choose a plan file" cannot read the two plan files, the dialog does not
+  show and the notice gives only the reason. No change was tried, so the prefix would be wrong
+  (owner, 2026-11-23).
+- A replace or a remove can change the stored files and then fail to open the project, for
+  example when another tab takes the lock first. The change is done, so this is not a failed
+  change. It shows as a failed open of the project, with the reason of the open, the way a failed
+  try of a card shows, and the page reads the cards again. It needs no new text (owner,
+  2026-11-23). The failed result of the flow carries `afterChange: true`, which tells the page
+  which of the two it is.
 
 ## Consequences
 

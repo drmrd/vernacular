@@ -2080,6 +2080,36 @@ of a folder project.
 - [ ] Commits: `test: expect a failed open that keeps both files to read as a failed open`,
       `fix: show a failed open that keeps both files as a failed open`.
 
+### Cycle 14.16: a failed read of the two plan files
+
+- [ ] RED in `app/use-two-files-dialog.test.tsx`: when "Choose a plan file" cannot read the two
+      plan files, no dialog shows and the notice gives only the reason, with no "Could not change
+      the plan files:" prefix, since no change was tried (owner, 2026-11-23).
+- [ ] GREEN: `app/use-two-files-dialog.ts`.
+- [ ] Commits: `test: expect a failed read of the two plan files to show only its reason`,
+      `fix: show only the reason when the two plan files cannot be read`.
+
+### Cycle 14.17: a failed read after a changed file
+
+- [ ] RED in `app/use-two-files-dialog.test.tsx`: when a choice comes back with `files-changed`
+      and the read of both files after it fails, the dialog closes and the notice reads "Could not
+      change the plan files: &lt;reason&gt;", since a change was tried.
+- [ ] GREEN: `app/use-two-files-dialog.ts`.
+- [ ] Commits: `test: expect a failed read after a changed file to say the change failed`,
+      `fix: keep the change failure text when the read after a changed file fails`.
+
+### Cycle 14.18: a done choice whose open fails
+
+- [ ] RED in `app/use-two-files-dialog-failed-open.test.tsx`: a replace or a remove that changed
+      the stored files, before an open or over the project that this tab holds, and whose open
+      then fails shows as a failed open of the project with the reason of the open, the way a
+      failed try of a card shows; the cards are read again, and no text says that the change
+      failed (owner, 2026-11-23).
+- [ ] GREEN: `session/flows/choose-kept-file.ts` (the failed result carries `afterChange: true`),
+      `app/two-files-dialog-choices.ts`, and `app/use-two-files-dialog.ts`.
+- [ ] Commits: `test: expect a done choice whose open fails to show as a failed open`,
+      `fix: show a done choice whose open fails as a failed open`.
+
 ### Texts
 
 - [ ] The amendment, ADR-0214, and the ADR-0184 text landed in their own documents change before
@@ -2088,6 +2118,8 @@ of a folder project.
       `docs: call the project document a plan file in the texts for a newer stored file`.
 - [ ] ADR-0214, the spec, and `app/README.md` record what landed. Commit:
       `docs: record how a project with two document files is handled`.
+- [ ] ADR-0214, the spec, and `app/README.md` record how a failed read and a failed open after a
+      choice show. Commit: `docs: record how a failed read and a failed open after a choice show`.
 
 The description says "Closes #741" and "Closes #842".
 

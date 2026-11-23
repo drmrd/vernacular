@@ -44,9 +44,13 @@ Where things happen:
   then reads "Open and keep both plan files", and Cancel returns to the page. Anywhere else, such an
   open fails with the sentence "This project has two plan files. Open it from the Projects page to
   choose one." A choice that finds a file changed since the dialog showed reads both files again
-  and shows the dialog with them. A failed choice reads "Could not change the plan files:" and the
-  reason. A failed "Open and keep both plan files" changes no file, so it shows what a click on the
-  card shows for the same failure. A choice made while this tab holds the project leaves the tab
+  and shows the dialog with them. If that read fails, the notice reads "Could not change the plan
+  files:" and the reason, because a change was tried. Any other failed choice reads the same way.
+  When the card action cannot read the two plan files, no change was tried, so the notice gives
+  only the reason. A failed "Open and keep both plan files" changes no file, so it shows what a
+  click on the card shows for the same failure. A replace or a remove that changed the stored files
+  but whose open then failed shows the same way, with the reason of the open, and the page reads
+  the cards again. A choice made while this tab holds the project leaves the tab
   holding it, opened again from the file that the choice kept.
 - `projects-screen.tsx` puts the Projects page of `editor/projects/` into the application.
   `use-project-cards.ts` reads its cards with `listProjectCards` of `session/` when the page mounts,
