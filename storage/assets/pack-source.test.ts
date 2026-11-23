@@ -213,6 +213,12 @@ describe('PackSource loading its manifest', () => {
     expect(reader.calls.manifest).toBe(1)
   })
 
+  it('names the pack after a read that comes before any list', async () => {
+    const source = new PackSource(fakeReader([VALID_MANIFEST], { asset: ASSET_BYTES }))
+    await source.read(MODEL_HASH)
+    expect(source.id).toBe(PACK_ID)
+  })
+
   it('rejects a read when the manifest fails to load', async () => {
     const reader = fakeReader([new Error('offline')], { asset: ASSET_BYTES })
     await expect(new PackSource(reader).read(MODEL_HASH)).rejects.toThrow('offline')
