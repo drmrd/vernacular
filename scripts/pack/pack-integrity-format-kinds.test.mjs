@@ -54,6 +54,16 @@ describe('checkPackIntegrity for a texture kind without a media type in a format
     const result = await checkPackIntegrity(manifest, readerWithModelFile())
     expect(result.errors).toEqual([])
   })
+
+  it.each([{ mediaType: undefined }, { mediaType: 'model/obj' }])(
+    'adds no texture file error and requires the thumbnail when the media type is $mediaType',
+    async ({ mediaType }) => {
+      const asset = { ...textureKindWithoutMediaType, mediaType }
+      const reader = readerWithModelFile({ withThumbnail: false })
+      const result = await checkPackIntegrity(manifestOf(2, asset), reader)
+      expect(result.errors).toEqual([`asset ${HASH}: thumbnail missing`])
+    },
+  )
 })
 
 describe('checkPackIntegrity for a model with an unknown media type in a format 2 pack', () => {

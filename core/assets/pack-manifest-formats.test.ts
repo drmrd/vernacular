@@ -201,6 +201,18 @@ describe('isModelAsset', () => {
       mediaType: 'image/webp',
       expected: false,
     },
+    {
+      label: 'format string "2", png media type',
+      formatVersion: '2',
+      mediaType: 'image/png',
+      expected: true,
+    },
+    {
+      label: 'format 3, png media type',
+      formatVersion: 3,
+      mediaType: 'image/png',
+      expected: true,
+    },
     { label: 'format 2, no media type', formatVersion: 2, mediaType: undefined, expected: false },
   ])('$label', ({ formatVersion, mediaType, expected }) => {
     const asset = mediaType === undefined ? {} : { mediaType }
@@ -245,6 +257,18 @@ describe('isTextureAsset', () => {
       label: 'format 2, unknown media type',
       formatVersion: 2,
       mediaType: 'model/obj',
+      expected: false,
+    },
+    {
+      label: 'format string "2", png media type',
+      formatVersion: '2',
+      mediaType: 'image/png',
+      expected: false,
+    },
+    {
+      label: 'format 3, png media type',
+      formatVersion: 3,
+      mediaType: 'image/png',
       expected: false,
     },
     { label: 'format 2, no media type', formatVersion: 2, mediaType: undefined, expected: false },
