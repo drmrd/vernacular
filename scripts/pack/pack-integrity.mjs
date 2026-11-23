@@ -8,7 +8,7 @@
 import {
   assetFileName,
   isTextureAsset,
-  MEDIA_TYPE_EXTENSIONS,
+  packAssetMediaType,
 } from '../../core/assets/asset-description.ts'
 import { isRecord } from '../../core/assets/is-record.ts'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
@@ -29,7 +29,6 @@ import {
 
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
-const FORMAT_ONE_MEDIA_TYPE = 'model/gltf-binary'
 const THUMBNAIL_EXTENSION = '.webp'
 const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
@@ -73,13 +72,12 @@ export function manifestAssets(manifest) {
 }
 
 /**
- * The file name of an asset in assets/; an absent media type is a format 1 model.
+ * The file name of an asset in assets/; an absent or unknown media type is the format 1 model.
  * @param {{ contentHash: string, mediaType?: string }} asset
  * @returns {string}
  */
 function packAssetFileName(asset) {
-  const known = Object.hasOwn(MEDIA_TYPE_EXTENSIONS, asset.mediaType)
-  return assetFileName(asset.contentHash, known ? asset.mediaType : FORMAT_ONE_MEDIA_TYPE)
+  return assetFileName(asset.contentHash, packAssetMediaType(asset))
 }
 
 /**

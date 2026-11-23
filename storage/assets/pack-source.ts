@@ -1,4 +1,4 @@
-import { isModelAsset, validatePackManifest } from '../../core'
+import { isModelAsset, packAssetMediaType, validatePackManifest } from '../../core'
 import type { AssetKind, AssetReference, MediaType } from '../../core'
 import type { AssetSource, LibraryItem } from './asset-source'
 
@@ -8,7 +8,6 @@ export interface PackReader {
   readThumbnail(contentHash: string): Promise<Uint8Array | undefined>
 }
 
-const FORMAT_ONE_MEDIA_TYPE: MediaType = 'model/gltf-binary'
 const UNKNOWN_PACK_SCOPE = 'pack:unknown@0.0.0'
 
 interface PackAssetShape {
@@ -52,7 +51,7 @@ export class PackSource implements AssetSource {
     if (asset === undefined) {
       return undefined
     }
-    return this.reader.readAsset(contentHash, asset.mediaType ?? FORMAT_ONE_MEDIA_TYPE)
+    return this.reader.readAsset(contentHash, packAssetMediaType(asset))
   }
 
   async readThumbnail(contentHash: string): Promise<Uint8Array | undefined> {

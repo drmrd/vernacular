@@ -8,9 +8,10 @@
 export type MediaType = 'model/gltf-binary' | 'image/png' | 'image/webp'
 
 const MEDIA_TYPE_FORMAT_VERSION = 2
+const FORMAT_ONE_MEDIA_TYPE: MediaType = 'model/gltf-binary'
 
 /* eslint-disable @typescript-eslint/naming-convention -- media types are the wire keys */
-export const MEDIA_TYPE_EXTENSIONS: Readonly<Record<MediaType, string>> = Object.freeze({
+const MEDIA_TYPE_EXTENSIONS: Readonly<Record<MediaType, string>> = Object.freeze({
   'model/gltf-binary': '.glb',
   'image/png': '.png',
   'image/webp': '.webp',
@@ -23,6 +24,15 @@ export const MODEL_MEDIA_TYPES: readonly string[] = Object.freeze(
 export const TEXTURE_MEDIA_TYPES: readonly string[] = Object.freeze(
   Object.keys(MEDIA_TYPE_EXTENSIONS).filter((type) => type.startsWith('image/')),
 )
+
+function isMediaType(value: unknown): value is MediaType {
+  return typeof value === 'string' && Object.hasOwn(MEDIA_TYPE_EXTENSIONS, value)
+}
+
+/** The media type of a pack asset; an absent or unknown one is the format 1 default, a model. */
+export function packAssetMediaType(asset: { mediaType?: string }): MediaType {
+  return isMediaType(asset.mediaType) ? asset.mediaType : FORMAT_ONE_MEDIA_TYPE
+}
 
 /** The file name of a pack asset in assets/: its content hash and its media type's extension. */
 export function assetFileName(contentHash: string, mediaType: MediaType): string {
