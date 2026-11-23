@@ -54,6 +54,8 @@ interface SceneNavToolbarProps {
   onToggleUnderground?: () => void
   edgeOverlay?: boolean
   onToggleEdgeOverlay?: () => void
+  aimGuide?: boolean
+  onToggleAimGuide?: () => void
   /**
    * True when no interactive object (no door or window) is out of its default state; the
    * close control is disabled then. Omitted means true.
@@ -301,6 +303,8 @@ function ToolbarClusters(props: ResolvedToolbarProps) {
       <SceneDisplayOptions
         edgeOverlay={props.edgeOverlay}
         onToggleEdgeOverlay={props.onToggleEdgeOverlay}
+        aimGuide={props.aimGuide}
+        onToggleAimGuide={props.onToggleAimGuide}
       />
       <EnvironmentControls
         colorTemperatureK={props.colorTemperatureK}
