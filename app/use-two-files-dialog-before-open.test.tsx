@@ -4,10 +4,12 @@ import {
   COPY_NAME,
   MAIN_NAME,
   SECOND_NAME,
+  SET_ASIDE_PREFIX,
+  bytesOfCopies,
   mainBytesOf,
   secondBytes,
 } from '../session/flows/choose-kept-file-test-kit'
-import { PROJECT_ID } from '../session/flows/open-failed-test-kit'
+import { PROJECT_ID, workspaceBackups } from '../session/flows/open-failed-test-kit'
 import { DOCUMENT_FILE, pickFolder } from '../session/handle/handle-test-kit'
 import type { TestPorts } from '../session/handle/handle-test-kit'
 import { SECOND_FILE_NAME, documentNamed } from '../session/handle/second-file-test-kit'
@@ -141,6 +143,7 @@ describe('A choice that resolves the two plan files before the project opens', (
       main: mainBytesOf('both-readable'),
       second: undefined,
     })
+    expect(bytesOfCopies(await workspaceBackups(ports), SET_ASIDE_PREFIX)).toEqual([secondBytes()])
   })
 
   it('Replace the main file with the second plan file opens the project from it', async () => {
