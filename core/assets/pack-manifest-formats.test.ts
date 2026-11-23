@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { assetFileName, isModelAsset, isTextureAsset, validatePackManifest } from './pack-manifest'
+import { assetFileName, isModelAsset, isTextureAsset } from './asset-description'
+import { validatePackManifest } from './pack-manifest'
 
 function validManifest(): Record<string, unknown> {
   return {

@@ -9,7 +9,7 @@ import {
   assetFileName,
   isTextureAsset,
   MEDIA_TYPE_EXTENSIONS,
-} from '../../core/assets/pack-manifest.ts'
+} from '../../core/assets/asset-description.ts'
 import { isRecord } from '../../core/assets/is-record.ts'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
 import {

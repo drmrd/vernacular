@@ -3,9 +3,10 @@
 // Pure validation for the vernacular-pack manifest format (design specification
 // sections 4.3 and 4.5). No filesystem or process access: it takes a parsed
 // manifest object and returns a result. Shared by the in-app pack loader and
-// the pack CLI so both gates run on one definition.
+// the pack CLI so both gates run on one definition. The media type knowledge
+// it relies on lives in asset-description.ts.
 
-import type { MediaType } from './asset-description.ts'
+import { declaresMediaTypes, MODEL_MEDIA_TYPES, TEXTURE_MEDIA_TYPES } from './asset-description.ts'
 import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
@@ -34,27 +35,7 @@ export const ASSET_KINDS: readonly AssetKind[] = Object.freeze([
   'preview-only',
 ])
 
-export const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
-
-const MEDIA_TYPE_FORMAT_VERSION = 2
-/* eslint-disable @typescript-eslint/naming-convention -- media types are the wire keys */
-export const MEDIA_TYPE_EXTENSIONS: Readonly<Record<MediaType, string>> = Object.freeze({
-  'model/gltf-binary': '.glb',
-  'image/png': '.png',
-  'image/webp': '.webp',
-})
-/* eslint-enable @typescript-eslint/naming-convention */
-
-/** The file name of a pack asset in assets/: its content hash and its media type's extension. */
-export function assetFileName(contentHash: string, mediaType: MediaType): string {
-  return `${contentHash}${MEDIA_TYPE_EXTENSIONS[mediaType]}`
-}
-const MODEL_MEDIA_TYPES: readonly string[] = Object.freeze(
-  Object.keys(MEDIA_TYPE_EXTENSIONS).filter((type) => type.startsWith('model/')),
-)
-const TEXTURE_MEDIA_TYPES: readonly string[] = Object.freeze(
-  Object.keys(MEDIA_TYPE_EXTENSIONS).filter((type) => type.startsWith('image/')),
-)
+const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
 
 export interface PackValidationResult {
   valid: boolean
@@ -149,32 +130,6 @@ function validateDimensions(dimensions: unknown, label: string, errors: string[]
 interface AssetContext {
   label: string
   formatVersion: unknown
-}
-
-function declaresMediaTypes(formatVersion: unknown): boolean {
-  return formatVersion === MEDIA_TYPE_FORMAT_VERSION
-}
-
-function declaresMediaTypeIn(
-  asset: { mediaType?: string },
-  formatVersion: unknown,
-  types: readonly string[],
-): boolean {
-  if (!declaresMediaTypes(formatVersion)) return false
-  return asset.mediaType !== undefined && types.includes(asset.mediaType)
-}
-
-/** True for every format 1 asset and, in format 2, only for a model media type; not the complement of isTextureAsset. */
-export function isModelAsset(asset: { mediaType?: string }, formatVersion: unknown): boolean {
-  return (
-    !declaresMediaTypes(formatVersion) ||
-    declaresMediaTypeIn(asset, formatVersion, MODEL_MEDIA_TYPES)
-  )
-}
-
-/** True only for a format-2 asset whose declared media type is a texture type. */
-export function isTextureAsset(asset: { mediaType?: string }, formatVersion: unknown): boolean {
-  return declaresMediaTypeIn(asset, formatVersion, TEXTURE_MEDIA_TYPES)
 }
 
 function allowedMediaTypes(kind: unknown): readonly string[] {

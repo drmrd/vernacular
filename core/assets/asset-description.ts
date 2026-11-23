@@ -1,2 +1,57 @@
+// core/assets/asset-description.ts
+//
+// What a pack asset is, by media type: the media types a pack can carry, the
+// file extension of each, which are models and which are textures, and how a
+// pack format version decides between them. Pure: no filesystem access.
+
 // The media types a pack asset can carry.
 export type MediaType = 'model/gltf-binary' | 'image/png' | 'image/webp'
+
+const MEDIA_TYPE_FORMAT_VERSION = 2
+
+/* eslint-disable @typescript-eslint/naming-convention -- media types are the wire keys */
+export const MEDIA_TYPE_EXTENSIONS: Readonly<Record<MediaType, string>> = Object.freeze({
+  'model/gltf-binary': '.glb',
+  'image/png': '.png',
+  'image/webp': '.webp',
+})
+/* eslint-enable @typescript-eslint/naming-convention */
+
+export const MODEL_MEDIA_TYPES: readonly string[] = Object.freeze(
+  Object.keys(MEDIA_TYPE_EXTENSIONS).filter((type) => type.startsWith('model/')),
+)
+export const TEXTURE_MEDIA_TYPES: readonly string[] = Object.freeze(
+  Object.keys(MEDIA_TYPE_EXTENSIONS).filter((type) => type.startsWith('image/')),
+)
+
+/** The file name of a pack asset in assets/: its content hash and its media type's extension. */
+export function assetFileName(contentHash: string, mediaType: MediaType): string {
+  return `${contentHash}${MEDIA_TYPE_EXTENSIONS[mediaType]}`
+}
+
+/** Only format 2 packs name a media type per asset; format 1 assets are all models. */
+export function declaresMediaTypes(formatVersion: unknown): boolean {
+  return formatVersion === MEDIA_TYPE_FORMAT_VERSION
+}
+
+function declaresMediaTypeIn(
+  asset: { mediaType?: string },
+  formatVersion: unknown,
+  types: readonly string[],
+): boolean {
+  if (!declaresMediaTypes(formatVersion)) return false
+  return asset.mediaType !== undefined && types.includes(asset.mediaType)
+}
+
+/** True for every format 1 asset and, in format 2, only for a model media type; not the complement of isTextureAsset. */
+export function isModelAsset(asset: { mediaType?: string }, formatVersion: unknown): boolean {
+  return (
+    !declaresMediaTypes(formatVersion) ||
+    declaresMediaTypeIn(asset, formatVersion, MODEL_MEDIA_TYPES)
+  )
+}
+
+/** True only for a format-2 asset whose declared media type is a texture type. */
+export function isTextureAsset(asset: { mediaType?: string }, formatVersion: unknown): boolean {
+  return declaresMediaTypeIn(asset, formatVersion, TEXTURE_MEDIA_TYPES)
+}
