@@ -7,6 +7,10 @@ const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${previewPort}`
 
 const SCREENSHOT_DIFF_TOLERANCE = 0.02
 
+// The JSON report lives outside playwright-report/ because the HTML reporter empties its own
+// folder. CI reads it to warn about tests that passed only on a retry (scripts/ci/retry-warning.mjs).
+const JSON_REPORT_FILE = 'reports/playwright/results.json'
+
 // Launch flags for the scene-webgl project. On the development Mac the project selects the
 // Apple Metal ANGLE backend so WebGL 2 renders on the real GPU, which is what the committed
 // -darwin baselines are rendered under. Linux CI runners have no GPU and no Metal backend;
@@ -33,7 +37,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   ...(process.env.CI ? { workers: 1 } : {}),
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never' }], ['json', { outputFile: JSON_REPORT_FILE }]]
+    : 'list',
   use: {
     baseURL,
     trace: 'on-first-retry',

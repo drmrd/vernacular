@@ -23,13 +23,19 @@ const WEB_SERVER_TIMEOUT_MS = 60_000
 // flaky.
 const STORY_DIFF_TOLERANCE = 0.01
 
+// The JSON report lives outside playwright-report/ because the HTML reporter empties its own
+// folder. CI reads it to warn about tests that passed only on a retry (scripts/ci/retry-warning.mjs).
+const JSON_REPORT_FILE = 'reports/playwright/story-results.json'
+
 export default defineConfig({
   testDir: './e2e/stories',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   ...(process.env.CI ? { workers: 1 } : {}),
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never' }], ['json', { outputFile: JSON_REPORT_FILE }]]
+    : 'list',
   // Every committed baseline is generated in linux docker, so pin the snapshot
   // suffix to `linux` regardless of the host that runs the diff.
   snapshotPathTemplate: 'e2e/stories/__screenshots__/{arg}-linux{ext}',
