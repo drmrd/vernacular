@@ -33,6 +33,8 @@ sourceFiles:
     editor/plan/snap.ts,
     editor/plan/wall-tool.ts,
     docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md,
+    core/geometry/tolerance.ts,
+    tests/architecture/other-distances.ts,
   ]
 status: current
 updated: 2026-11-23
@@ -294,3 +296,13 @@ of 1/256 inch.
 - `docs/plans/2026-11-19-geometric-kernel-and-first-arc-wall.md`, "Decisions this plan makes".
 - `docs/specs/2026-11-14-architecture-refactor-round.md`, sections 5.4 and 7.
 - Issue #687.
+
+## Update (2026-11-23): the list of other distances gains the canvas aspect check
+
+The list of other distances that the Decision gives has a twelfth entry: `ASPECT_TOLERANCE`, 1e-6,
+in `bridge/react/drawn-frame-size.ts`. It compares the camera's aspect with the canvas's aspect to
+tell whether a finished frame was drawn at the canvas size. That is a ratio of canvas sizes, not
+plan geometry, so the constant stays in its file and goes on the list with that reason. The
+tolerance module, `core/geometry/tolerance.ts`, does not own it. The list in
+`tests/architecture/other-distances.ts` now has 12 names, and the table of the specification
+(section 5.1, point 8) has the same row.

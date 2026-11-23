@@ -480,6 +480,7 @@ moved to `core/geometry/tolerance.ts`, the module that
 tolerance. The ring is still 1 mm and still equals the merge distance. Only the file that the
 Decision names is out of date: both constants are defined in the module now, not in
 `core/topology/wall-graph.ts`. `core/scene/wall-room-sides.ts` imports the ring from the module,
-`core/topology/wall-graph.ts` imports the merge distance, and `core/index.ts` still exports both. Under ADR-0199, the ring
-changes to the 0.001 mm length tolerance in the later step that switches the derivation. After that
-step, `ownedMeshesByRunIndex` widens each run by 0.001 mm at each end instead of 1 mm.
+`core/topology/wall-graph.ts` imports the merge distance, and `core/index.ts` still exports both.
+Under ADR-0199, the ring changes to the 0.001 mm length tolerance in the later step that switches
+the derivation. After that step, `ownedMeshesByRunIndex` widens each run by 0.001 mm at each end
+instead of 1 mm.

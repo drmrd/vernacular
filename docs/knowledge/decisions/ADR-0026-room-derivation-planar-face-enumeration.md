@@ -23,9 +23,10 @@ sourceFiles:
     core/scene/scene-graph.ts,
     core/scene/scene-graph-deriver.ts,
     editor/plan/draw-plan.ts,
+    core/geometry/tolerance.ts,
   ]
 status: current
-updated: 2026-06-04
+updated: 2026-11-23
 ---
 
 # ADR-0026: Room derivation via planar-face enumeration over wall topology
@@ -118,6 +119,7 @@ spatial index is the deferred optimization behind the same signature.
   faces whose signed area exceeds `MIN_ROOM_AREA`. This single positive-area filter
   is what excludes the unbounded outer face (which traces with negative area) with
   no special-casing.
+  Note (2026-11-23): `MIN_ROOM_AREA` is now `MIN_FACE_AREA_MM2` in `core/geometry/tolerance.ts`.
 - Remove dangling-stub spikes: a `v -> s -> v` back-and-forth excursion (a wall stub
   the walk enters and immediately exits) is collapsed so stub endpoints never appear
   as room corners.
