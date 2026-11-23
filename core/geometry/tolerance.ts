@@ -3,7 +3,10 @@ import { MM_PER_INCH } from '../units/length-units'
 /** Two lengths closer than this are the same length. */
 export const LENGTH_TOLERANCE_MM = 0.001
 
-/** Two directions closer than this are the same direction; over 100 m it equals one length tolerance. */
+/**
+ * Two directions closer than this are the same direction; over 100 m it equals one length
+ * tolerance.
+ */
 export const ANGLE_TOLERANCE_RAD = 1e-8
 
 const GRID_STEPS_PER_LENGTH_TOLERANCE = 1000
@@ -37,7 +40,10 @@ export const SMALLEST_IMPERIAL_DISPLAY_STEP_MM = MM_PER_INCH / FINEST_INCH_DENOM
 /** Smallest step a metric length display shows. */
 export const SMALLEST_METRIC_DISPLAY_STEP_MM = 0.1
 
-/** Two plan points closer than this are joined: the merge distance of the wall graph and the derivation. */
+/**
+ * Two plan points closer than this are joined: the merge distance of the wall graph and the
+ * derivation.
+ */
 export const JOIN_DISTANCE_MM = 1
 
 /** The distance the wall graph merges nearby endpoints at (core/topology/wall-graph.ts). */
@@ -49,47 +55,83 @@ export const DEFAULT_JUNCTION_TOLERANCE_MM = JOIN_DISTANCE_MM
  */
 export const DERIVATION_LENGTH_TOLERANCE_MM = DEFAULT_JUNCTION_TOLERANCE_MM
 
-/** How closely a room ring follows its walls (core/scene/wall-room-sides.ts); equals the graph merge distance. */
+/**
+ * How closely a room ring follows its walls (core/scene/wall-room-sides.ts); equals the graph
+ * merge distance.
+ */
 export const ROOM_RING_TOLERANCE_MM = DEFAULT_JUNCTION_TOLERANCE_MM
 
-/** Distance a daylight room outline may stray and still close; owned by the daylight work (core/daylight/room-validation.ts). */
+/**
+ * How far a point may lie from a daylight room outline and still count as on it; owned by the
+ * daylight work (core/daylight/room-validation.ts).
+ */
 export const OUTLINE_TOLERANCE_MM = 1
 
-/** A cross product below this means two plan segments are parallel (core/geometry/segment.ts, polygon.ts). */
+/**
+ * A cross product below this means two plan segments are parallel (core/geometry/segment.ts,
+ * polygon.ts).
+ */
 export const CROSS_PRODUCT_PARALLEL_LIMIT = 1e-9
 
-/** A ray direction dotted with a plane normal below this means the ray runs along the plane (core/scene/opening-reach.ts). */
+/**
+ * A ray direction dotted with a plane normal below this means the ray runs along the plane
+ * (core/scene/opening-reach.ts).
+ */
 export const REACH_RAY_PARALLEL_LIMIT = 1e-9
 
-/** A squared length below this is a degenerate segment or edge (core/geometry/segment.ts, polygon.ts). */
+/**
+ * A squared length below this is a degenerate segment or edge (core/geometry/segment.ts,
+ * polygon.ts).
+ */
 export const DEGENERATE_SQUARED_LENGTH_MM2 = 1e-9
 
-/** A face smaller than this area is not a face (core/topology/junction-fill.ts, rooms.ts). */
+/**
+ * A junction core or room face with an area at or below this is dropped
+ * (core/topology/junction-fill.ts, rooms.ts).
+ */
 export const MIN_FACE_AREA_MM2 = 1
 
-/** Two junction fill corners closer than this are the same corner (core/topology/junction-fill.ts). */
+/**
+ * Two junction fill corners closer than this are the same corner
+ * (core/topology/junction-fill.ts).
+ */
 export const FILL_CORNER_MATCH_MM = 1e-6
 
 /** Two opening void points closer than this are the same point (core/scene/opening-void.ts). */
 export const VOID_SAME_POINT_MM = 1e-9
 
-/** A walk step that ends this close to a wall counts as touching it (core/scene/walk-collision.ts). */
+/**
+ * Below this distance from a wall, the walker is pushed out along the wall's normal
+ * (core/scene/walk-collision.ts).
+ */
 export const WALK_CONTACT_MM = 1e-6
 
-/** Two front-direction scores closer than this tie; owned by the view-from-the-front work (core/scene/front-direction.ts). */
+/**
+ * Two front-direction scores, or an outwardness and zero, within this of each other tie; owned
+ * by the view-from-the-front work (core/scene/front-direction.ts).
+ */
 export const FRONT_DIRECTION_TIE = 1e-9
 
-/** Two wall boundary points closer than this match (engine/scene/wall-builder.ts). */
+/**
+ * A void edge whose (u, v) ends both lie within this of an outline boundary snaps onto it
+ * (engine/scene/wall-builder.ts).
+ */
 export const WALL_BOUNDARY_MATCH_MM = 1e-6
 
 /** A wall cap smaller than this area is dropped (engine/scene/wall-prism.ts). */
 export const CAP_AREA_LIMIT_MM2 = 1e-6
 
-/** A wall face shorter than this is degenerate (core/geometry/wall-face.ts). */
+/** A wall face length at or below this is degenerate (core/geometry/wall-face.ts). */
 export const WALL_FACE_DEGENERATE_LENGTH_MM = 1e-9
 
-/** A dot product of unit normals within this of -1 or 0 counts as exact; owned by the daylight work (core/daylight/upright-form-factor.ts). */
+/**
+ * A dot product of unit normals within this of -1, 0, or 1 counts as exact; owned by the
+ * daylight work (core/daylight/upright-form-factor.ts).
+ */
 export const UNIT_NORMAL_DOT_LIMIT = 1e-9
 
-/** A ray hit this close behind the ground still loses to the ground; owned by the picking work (engine/scene/pick-scene.ts). */
+/**
+ * A ray hit at most this far behind the ground still beats it, so a floor slab coplanar with
+ * the lawn wins; owned by the picking work (engine/scene/pick-scene.ts).
+ */
 export const GROUND_PICK_TIE_MM = 1
