@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 
 import {
-  WALL_BOUNDARY_MATCH_MM as BOUNDARY_EPSILON,
+  WALL_BOUNDARY_MATCH_MM,
   WALL_NODE_PREFIX,
   distance,
   dot,
@@ -310,9 +310,9 @@ function outerCapPositions(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vect
   ])
 }
 
-/** Whether both `(u, v)` values sit within `BOUNDARY_EPSILON` of `target`. */
+/** Whether both `(u, v)` values sit within `WALL_BOUNDARY_MATCH_MM` of `target`. */
 function bothNear(first: number, second: number, target: number): boolean {
-  return Math.abs(first - target) < BOUNDARY_EPSILON && Math.abs(second - target) < BOUNDARY_EPSILON
+  return [first, second].every((value) => Math.abs(value - target) < WALL_BOUNDARY_MATCH_MM)
 }
 
 /**

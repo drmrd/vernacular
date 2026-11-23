@@ -1,5 +1,5 @@
 import { distance } from '../geometry/point'
-import { UNIT_NORMAL_DOT_LIMIT as ORIENTATION_TOLERANCE } from '../geometry/tolerance'
+import { UNIT_NORMAL_DOT_LIMIT } from '../geometry/tolerance'
 import { dot, leftPerp, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 
@@ -143,7 +143,7 @@ function sumOverEndPairs(
 }
 
 function faceEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
-  return dot(doorway.facing, glazing.facing) <= ORIENTATION_TOLERANCE - 1
+  return dot(doorway.facing, glazing.facing) <= UNIT_NORMAL_DOT_LIMIT - 1
 }
 
 function rectangleArea(rectangle: UprightRectangle): number {
@@ -170,11 +170,11 @@ function facingWallsExchangeArea(doorway: UprightRectangle, glazing: UprightRect
 }
 
 function parallelToEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
-  return Math.abs(dot(doorway.facing, glazing.facing)) >= 1 - ORIENTATION_TOLERANCE
+  return Math.abs(dot(doorway.facing, glazing.facing)) >= 1 - UNIT_NORMAL_DOT_LIMIT
 }
 
 function squareToEachOther(doorway: UprightRectangle, glazing: UprightRectangle): boolean {
-  return Math.abs(dot(doorway.facing, glazing.facing)) <= ORIENTATION_TOLERANCE
+  return Math.abs(dot(doorway.facing, glazing.facing)) <= UNIT_NORMAL_DOT_LIMIT
 }
 
 /** The ends of a span, each at its distance in front of the plane of a rectangle, cut off at 0. */

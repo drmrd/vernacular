@@ -1,7 +1,7 @@
 import type { Point } from '../model/types'
 
 import { lineIntersection } from './segment'
-import { WALL_FACE_DEGENERATE_LENGTH_MM as DEGENERATE_LENGTH_MM } from './tolerance'
+import { WALL_FACE_DEGENERATE_LENGTH_MM } from './tolerance'
 import { dot, leftPerp, shift, subtract, unit } from './vector'
 
 /**
@@ -108,7 +108,7 @@ interface RunFaces {
 export function wallFaceGeometry(run: WallFaceRun): WallFaceStretch[] {
   const axis = subtract(run.end, run.start)
   const runLength = Math.hypot(axis.x, axis.y)
-  if (runLength <= DEGENERATE_LENGTH_MM) return []
+  if (runLength <= WALL_FACE_DEGENERATE_LENGTH_MM) return []
 
   const frame: CenterlineFrame = { origin: run.start, along: unit(axis), length: runLength }
   const faces: RunFaces = {
@@ -142,8 +142,8 @@ function distanceAlongAxis(frame: CenterlineFrame, point: Point): number {
  */
 function hasTwoStandingFaces(stretch: WallFaceStretch): boolean {
   return (
-    faceLength(stretch.plusFace) > DEGENERATE_LENGTH_MM &&
-    faceLength(stretch.minusFace) > DEGENERATE_LENGTH_MM
+    faceLength(stretch.plusFace) > WALL_FACE_DEGENERATE_LENGTH_MM &&
+    faceLength(stretch.minusFace) > WALL_FACE_DEGENERATE_LENGTH_MM
   )
 }
 
@@ -219,7 +219,7 @@ function solidSpans(runLength: number, gaps: readonly WallFaceGap[]): SolidSpan[
 
 /** Keeps `span` unless it is degenerate, as a gap meeting an end or a neighbor is. */
 function recordSpan(spans: SolidSpan[], span: SolidSpan): void {
-  if (span.to - span.from > DEGENERATE_LENGTH_MM) spans.push(span)
+  if (span.to - span.from > WALL_FACE_DEGENERATE_LENGTH_MM) spans.push(span)
 }
 
 /**

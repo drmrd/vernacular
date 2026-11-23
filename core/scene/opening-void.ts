@@ -1,4 +1,4 @@
-import { VOID_SAME_POINT_MM as SAME_POINT_EPSILON } from '../geometry/tolerance'
+import { VOID_SAME_POINT_MM } from '../geometry/tolerance'
 import type { Point } from '../model/types'
 import {
   builtinElementTypes,
@@ -41,9 +41,9 @@ function liftToVoid(point: Point, springY: number): Point {
   return { x: point.x, y: point.y + springY }
 }
 
-/** Whether two points coincide within {@link SAME_POINT_EPSILON}. */
+/** Whether two points coincide within {@link VOID_SAME_POINT_MM}. */
 function samePoint(a: Point, b: Point): boolean {
-  return Math.abs(a.x - b.x) < SAME_POINT_EPSILON && Math.abs(a.y - b.y) < SAME_POINT_EPSILON
+  return Math.abs(a.x - b.x) < VOID_SAME_POINT_MM && Math.abs(a.y - b.y) < VOID_SAME_POINT_MM
 }
 
 /** A curved head shape: every {@link VoidContourKind} except the flat-headed rectangle, which has no head arcs. */

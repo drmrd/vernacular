@@ -57,7 +57,7 @@ export const DERIVATION_LENGTH_TOLERANCE_MM = DEFAULT_JUNCTION_TOLERANCE_MM
 
 /**
  * How closely a room ring follows its walls (core/scene/wall-room-sides.ts); equals the graph
- * merge distance.
+ * merge distance, so every corner of a derived room counts as on the walls it was traced from.
  */
 export const ROOM_RING_TOLERANCE_MM = DEFAULT_JUNCTION_TOLERANCE_MM
 
@@ -91,8 +91,9 @@ export const REACH_RAY_PARALLEL_LIMIT = 1e-9
 export const DEGENERATE_SQUARED_LENGTH_MM2 = 1e-9
 
 /**
- * A junction core or room face with an area at or below this is dropped
- * (core/topology/junction-fill.ts, rooms.ts).
+ * A face with an area at or below this is dropped: a junction core this small has collapsed to a
+ * line (core/topology/junction-fill.ts), and the test also drops the negative-area outer
+ * (unbounded) face of the half-edge walk (core/topology/rooms.ts).
  */
 export const MIN_FACE_AREA_MM2 = 1
 
@@ -120,8 +121,8 @@ export const WALK_CONTACT_MM = 1e-6
 export const FRONT_DIRECTION_TIE = 1e-9
 
 /**
- * A void edge whose (u, v) ends both lie within this of an outline boundary snaps onto it
- * (engine/scene/wall-builder.ts).
+ * A void edge whose two ends both lie within this of the wall outline's base, top, or an end
+ * counts as on that outline and gets no reveal face (engine/scene/wall-builder.ts).
  */
 export const WALL_BOUNDARY_MATCH_MM = 1e-6
 
@@ -133,7 +134,11 @@ export const WALL_BOUNDARY_MATCH_MM = 1e-6
  */
 export const CAP_AREA_LIMIT_MM2 = 1e-6
 
-/** A wall face length at or below this is degenerate (core/geometry/wall-face.ts). */
+/**
+ * A wall face length at or below this is degenerate (core/geometry/wall-face.ts). A run this
+ * short has no usable direction, and a stretch this short is a sliver left behind by a gap that
+ * lands on an end or on its neighbor rather than a piece of standing wall.
+ */
 export const WALL_FACE_DEGENERATE_LENGTH_MM = 1e-9
 
 /**

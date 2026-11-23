@@ -1,9 +1,6 @@
 import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
-import {
-  FILL_CORNER_MATCH_MM as CORNER_EPSILON,
-  MIN_FACE_AREA_MM2 as AREA_EPSILON,
-} from '../geometry/tolerance'
+import { FILL_CORNER_MATCH_MM, MIN_FACE_AREA_MM2 } from '../geometry/tolerance'
 import {
   directionAngle,
   dot,
@@ -68,7 +65,7 @@ export function junctionFills(graph: PlanarGraph, thicknessByEdge: number[]): Ju
   for (const [vertexIndex, edgeIndexes] of vertexIncidence(graph)) {
     if (edgeIndexes.length < MIN_FILL_INCIDENCE) continue
     const polygon = corePolygon(context, vertexIndex, edgeIndexes)
-    if (Math.abs(signedArea(polygon)) > AREA_EPSILON) fills.push({ polygon, edgeIndexes })
+    if (Math.abs(signedArea(polygon)) > MIN_FACE_AREA_MM2) fills.push({ polygon, edgeIndexes })
   }
   return fills
 }
@@ -188,5 +185,5 @@ function dedupeAdjacent(points: Point[]): Point[] {
 
 /** Whether two points are the same footprint corner, within epsilon. */
 function samePoint(a: Point, b: Point): boolean {
-  return Math.abs(a.x - b.x) < CORNER_EPSILON && Math.abs(a.y - b.y) < CORNER_EPSILON
+  return Math.abs(a.x - b.x) < FILL_CORNER_MATCH_MM && Math.abs(a.y - b.y) < FILL_CORNER_MATCH_MM
 }

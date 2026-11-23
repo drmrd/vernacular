@@ -1,4 +1,4 @@
-import { WALK_CONTACT_MM as CONTACT_EPSILON_MM } from '../geometry/tolerance'
+import { WALK_CONTACT_MM } from '../geometry/tolerance'
 import type { Point } from '../model/types'
 import { openingKindOfType, openingTypeHasFill } from '../registries/opening-kind'
 import { effectiveWallThickness } from './construction-profile'
@@ -87,9 +87,7 @@ function pushOutOfSegment(point: PlanarPoint, segment: WallSegment, radius: numb
     return point
   }
   const direction =
-    distance > CONTACT_EPSILON_MM
-      ? { x: outX / distance, z: outZ / distance }
-      : segmentNormal(segment)
+    distance > WALK_CONTACT_MM ? { x: outX / distance, z: outZ / distance } : segmentNormal(segment)
   return { x: closest.x + direction.x * clearance, z: closest.z + direction.z * clearance }
 }
 

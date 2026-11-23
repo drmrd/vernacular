@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 
 import {
-  CAP_AREA_LIMIT_MM2 as CAP_AREA_EPSILON,
+  CAP_AREA_LIMIT_MM2,
   WALL_NODE_PREFIX,
   leftNormal,
   planToWorld,
@@ -106,7 +106,7 @@ function capSections(footprint: WallFootprint, height: number): WallSection[] {
   const { aPlus, aMinus, bPlus, bMinus } = footprint
   const perimeter: CapCorners = [aPlus, bPlus, bMinus, aMinus]
   const area = signedArea(perimeter)
-  if (Math.abs(area) < CAP_AREA_EPSILON) {
+  if (Math.abs(area) < CAP_AREA_LIMIT_MM2) {
     return []
   }
   const topCorners = area < 0 ? reverseCorners(perimeter) : perimeter

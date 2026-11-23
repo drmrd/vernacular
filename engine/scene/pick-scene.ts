@@ -1,10 +1,6 @@
 import * as THREE from 'three'
 
-import {
-  FLOOR_NODE_PREFIX,
-  GROUND_PICK_TIE_MM as GROUND_TIE_TOLERANCE_MM,
-  type SurfaceRef,
-} from '../../core'
+import { FLOOR_NODE_PREFIX, GROUND_PICK_TIE_MM, type SurfaceRef } from '../../core'
 
 import { entityIdOf } from './entity-id'
 import { isFadedForPicking } from './faded-for-picking'
@@ -29,7 +25,7 @@ const NOTHING_PICKED: ScenePick = { entityId: null, surface: null }
 
 /**
  * The hit that decides the pick among the hits that are not faded, nearest first. The
- * ground decides unless the next hit lies within GROUND_TIE_TOLERANCE_MM behind it, so a
+ * ground decides unless the next hit lies within GROUND_PICK_TIE_MM behind it, so a
  * floor slab coplanar with the lawn wins.
  */
 function decidingHit(hits: THREE.Intersection[]): THREE.Intersection | undefined {
@@ -38,7 +34,7 @@ function decidingHit(hits: THREE.Intersection[]): THREE.Intersection | undefined
     nearest !== undefined &&
     isGroundPlane(nearest.object) &&
     next !== undefined &&
-    next.distance - nearest.distance <= GROUND_TIE_TOLERANCE_MM
+    next.distance - nearest.distance <= GROUND_PICK_TIE_MM
   return groundTies ? next : nearest
 }
 

@@ -1,7 +1,7 @@
 import type { Point } from '../model/types'
 import {
-  CROSS_PRODUCT_PARALLEL_LIMIT as PARALLEL_EPSILON,
-  DEGENERATE_SQUARED_LENGTH_MM2 as DEGENERATE_EDGE_EPSILON,
+  CROSS_PRODUCT_PARALLEL_LIMIT,
+  DEGENERATE_SQUARED_LENGTH_MM2,
   SNAP_UNITS_PER_MM,
 } from './tolerance'
 
@@ -86,7 +86,7 @@ export function pointInPolygon(point: Point, polygon: readonly Point[]): boolean
  */
 function intersectLines(lineA: Line, lineB: Line): Point | null {
   const denominator = lineA.dir.x * lineB.dir.y - lineA.dir.y * lineB.dir.x
-  if (Math.abs(denominator) < PARALLEL_EPSILON) return null
+  if (Math.abs(denominator) < CROSS_PRODUCT_PARALLEL_LIMIT) return null
 
   const offsetX = lineB.point.x - lineA.point.x
   const offsetY = lineB.point.y - lineA.point.y
@@ -115,7 +115,7 @@ function shiftedEdgeLine(
   const end = polygon[(index + 1) % count] ?? start
   let dx = end.x - start.x
   let dy = end.y - start.y
-  if (dx * dx + dy * dy < DEGENERATE_EDGE_EPSILON) {
+  if (dx * dx + dy * dy < DEGENERATE_SQUARED_LENGTH_MM2) {
     const previous = polygon[(index + count - 1) % count] ?? start
     dx = start.x - previous.x
     dy = start.y - previous.y

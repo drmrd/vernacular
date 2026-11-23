@@ -1,4 +1,4 @@
-import { REACH_RAY_PARALLEL_LIMIT as PARALLEL_EPSILON } from '../geometry/tolerance'
+import { REACH_RAY_PARALLEL_LIMIT } from '../geometry/tolerance'
 import { openingTypeHasFill } from '../registries/opening-kind'
 import {
   meetingRailTopMm,
@@ -147,7 +147,7 @@ interface FrameHit {
  */
 function hitOnFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent): FrameHit | null {
   const denom = dot(ray.direction, frame.normal)
-  if (Math.abs(denom) < PARALLEL_EPSILON) return null
+  if (Math.abs(denom) < REACH_RAY_PARALLEL_LIMIT) return null
   const t = dot(subtract(frame.center, ray.origin), frame.normal) / denom
   if (t <= 0 || t > extent.reachMm) return null
   const hit = add(ray.origin, scale(ray.direction, t))
