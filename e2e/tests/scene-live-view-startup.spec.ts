@@ -28,6 +28,7 @@ import { SCENE_FAILURE_COPY, sceneFailureAnnouncement } from '../../editor/shell
 // The first two tests hold the chunk window: the scene view renders against a placeholder
 // there, and the drawn wall must still appear once the chunk loads. The third test holds the
 // initialization window, where the canvas has mounted and the renderer's own init() is pending.
+// The failure-path test below covers issue #822: an unfetchable renderer chunk gives the failure view.
 // It slows init() by holding navigator.gpu.requestAdapter, which both the WebGPU backend and
 // three's WebGL 2 fallback path call first, until the test lets it through.
 //
@@ -283,6 +284,8 @@ async function openPaneWithUnfetchableRenderer(page: Page): Promise<Locator> {
 }
 
 test.describe('Live three-dimensional pane after a failed renderer load', () => {
+  // Issue #822: the failure view shows its title and message, hides the scene chrome, and the hidden
+  // alert region announces it.
   test('shows only the announced failure view when the renderer chunk cannot be fetched', async ({
     page,
   }) => {
