@@ -59,14 +59,16 @@ report is `flaky` (failed, then passed on a retry) is listed in the job summary 
 tests passed only on a retry", with its file, line, project, failed attempts, and first error. The
 script also prints a `::warning` annotation for each one, so the test file shows the warning. The
 script exits 0 in every case a runner step can reach. One edge exits 1: a working directory that
-no longer exists. A runner step cannot hit it, and the follow-up issue covers it. When no test
-passed only on a retry, it writes one line saying so, with the number of tests and reports it
-read. That line with a test count above zero shows that the step ran on a real report: a job
-summary that has neither this line nor the retry warning points to a fault in the wiring. When no report could be read, the script
-writes `Retry check: not done. No Playwright JSON report could be read.` instead.
+no longer exists. A runner step cannot hit it, and issue #1116 covers it. When no test passed
+only on a retry, it writes one line saying so, with the number of tests and reports it read. That
+line with a test count above zero shows that the step ran on a real report: a green job summary
+that has neither this line nor the retry warning points to a fault in the wiring. When no report
+could be read, the script writes `Retry check: not done. No Playwright JSON report could be read.`
+instead.
 
-The report and retry-check steps are skipped when the job's test step (the first of the seven in `live-view-visual`) never ran, so an install or
-build failure adds no noise (the conditions use `steps.<id>.conclusion != 'skipped'`).
+The report and retry-check steps are skipped when the job's test step (the first of the seven in
+`live-view-visual`) never ran, so an install or build failure adds no noise (the conditions use
+`steps.<id>.conclusion != 'skipped'`).
 
 The details:
 
@@ -115,7 +117,7 @@ Every end-to-end run adds one artifact, and the macOS job adds the JSON files of
 person reading a green job can see a retry pass in its summary and open the report to read the
 failed attempt. The cost is storage for 7 days.
 
-The decision is meant to be temporary on the second rule. A follow-up issue tracks the switch to
+The decision is meant to be temporary on the second rule. Issue #1116 tracks the switch to
 failing the job on a retry pass. It waits for 100 runs in a row of the four jobs, on `main` and in
 the merge queue, with no retry pass. The switch sets `failOnFlakyTests` under `CI` in both
 configs (Playwright 1.60 supports it), keeps `retries: 2`, and keeps the warning step so that a red
