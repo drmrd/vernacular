@@ -41,13 +41,14 @@ function createSharedDecoder(decode: TextureCacheOptions['decode']) {
     bytes: Uint8Array,
     options: ImageTextureOptions,
   ): Promise<Texture> {
-    const existing = decodes.get(contentHash)
+    const key = `${contentHash}\n${options.colorSpace}`
+    const existing = decodes.get(key)
     if (existing) return existing
     const started = decode(bytes, options).then((texture) => {
       markCacheHeld(texture)
       return texture
     })
-    decodes.set(contentHash, started)
+    decodes.set(key, started)
     return started
   }
 }
