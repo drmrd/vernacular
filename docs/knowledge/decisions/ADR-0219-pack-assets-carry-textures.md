@@ -20,7 +20,9 @@ sourceFiles:
     docs/plans/2026-11-19-texture-assets-in-packs.md,
     core/assets/pack-manifest.ts,
     core/assets/texture-asset-rules.ts,
+    core/assets/texture-file-rules.ts,
     core/assets/image-header.ts,
+    core/assets/asset-description.ts,
     scripts/pack/pack-integrity.mjs,
     scripts/pack/vernacular-pack.mjs,
     scripts/pack/generate-fixtures.mjs,
@@ -33,15 +35,15 @@ sourceFiles:
     bridge/react/texture-cache.ts,
     core/environment/ground-surface.ts,
   ]
-status: proposed
-updated: 2026-11-20
+status: current
+updated: 2026-11-22
 ---
 
 # ADR-0219: Each pack asset declares a media type, and texture assets carry tiled images
 
 ## Status
 
-Proposed, 2026-11-20. On 2026-11-18 the owner chose to widen the pack format so that packs can
+Current, 2026-11-22, and proposed on 2026-11-20. On 2026-11-18 the owner chose to widen the pack format so that packs can
 carry texture assets, with this record and an amendment of section 4.3 of the design
 specification. He also chose that the grass of the ground (#409) ships in starter pack 1.1.0.
 
@@ -53,9 +55,12 @@ On 2026-11-19 he confirmed five defaults of this record:
 - A texture is PNG or WebP, each side a power of two from 64 to 2048 pixels, at most 8 MiB, with no animation and no embedded color profile.
 - The CC0-1.0 license of the generated grass is a rule for the starter pack only.
 
-The other rules below are this record's design. The record stays proposed until the format is
-built. The last commit of the first code pull request of
-`docs/plans/2026-11-19-texture-assets-in-packs.md` sets the status to current.
+The other rules below are this record's design. The first code pull request of
+`docs/plans/2026-11-19-texture-assets-in-packs.md` built the format on 2026-11-22. It covers the
+manifest rules, the checks of the pack command line tool, the pack source, and the library's filter
+by kind. The asset registry's description of an asset, the image loader, and the grass come in
+later pull requests of the same plan. The Context section describes the code as it was before the
+first pull request.
 
 ## Context
 
@@ -156,8 +161,9 @@ These do not change:
   surface shows the mean color in linear light. A data image, such as a roughness map, is
   `linear`. The manifest is the authority. The loader decodes the file with no color conversion.
 - A PNG file has a bit depth of 8, holds RGB or RGBA texels, and is not interlaced. It carries no
-  color chunk (`gAMA`, `cHRM`, `sRGB`, `iCCP`, or `cICP`). Whether a browser's decode ignores such
-  a chunk when asked for no conversion is not yet proved, so the format keeps them out.
+  color chunk (`gAMA`, `cHRM`, `sRGB`, `iCCP`, or `cICP`). Nobody has yet proved that a browser
+  ignores a color chunk when asked to decode with no conversion, so the format keeps them out. A
+  PNG also carries no animation chunk (`acTL`), because a texture has no animation.
 - A WebP file can be lossy, lossless, or extended. Its size comes from its header. An extended WebP
   with an animation or a color profile is refused.
 - The file is at most 8 MiB. A photographic image of 2048 pixels fits in that size as WebP.
@@ -193,7 +199,7 @@ These do not change:
   - Its sha256 equals `contentHash`.
   - Its signature matches its media type.
   - Its header size equals `image`.
-  - A PNG has the allowed bit depth and texel layout, no interlace, and no color chunk.
+  - A PNG has the allowed bit depth and texel layout, no interlace, no color chunk, and no animation.
   - A WebP has no animation and no color profile.
   - The file is within the size bound.
 - The orphan check counts files of every extension.
@@ -280,7 +286,7 @@ inherit it.
 - `tiled-image` finishes (#378, #379) can reference texture assets when they are built. This
   record does not build them.
 - The pack validator role in `.claude/agents/pack-validator.md` describes the format 1 checks
-  only. It must be updated to the rules above by the time the first code pull request lands.
+  only. Agents cannot write that file, so the owner updates it to the rules above (#1104).
 
 ## What stays open
 
