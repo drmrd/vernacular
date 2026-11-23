@@ -5,15 +5,21 @@ export const DID_NOT_OPEN = 'This project did not open.'
 
 const CHANGED_FORMAT: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
 
+/** A time in the card's format, or undefined when it is absent or cannot be read. */
+export function timeText(isoTime: string | undefined): string | undefined {
+  if (isoTime === undefined) {
+    return undefined
+  }
+  const time = new Date(isoTime)
+  if (Number.isNaN(time.getTime())) {
+    return undefined
+  }
+  return new Intl.DateTimeFormat(undefined, CHANGED_FORMAT).format(time)
+}
+
 export function changedText(lastChangedAt: string | undefined): string | undefined {
-  if (lastChangedAt === undefined) {
-    return undefined
-  }
-  const changedAt = new Date(lastChangedAt)
-  if (Number.isNaN(changedAt.getTime())) {
-    return undefined
-  }
-  return `Changed ${new Intl.DateTimeFormat(undefined, CHANGED_FORMAT).format(changedAt)}`
+  const time = timeText(lastChangedAt)
+  return time === undefined ? undefined : `Changed ${time}`
 }
 
 export function floorsText(floorCount: number | undefined): string | undefined {

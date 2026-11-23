@@ -21,6 +21,7 @@ import { useLibraryPacks, usePageActions } from './use-page-actions'
 import { requestedDesignLanguage } from './url-seams'
 import { useFailedOpenDialog } from './use-failed-open-dialog'
 import { useProjectCards } from './use-project-cards'
+import { useTwoFilesDialog } from './use-two-files-dialog'
 
 export interface ProjectsScreenProps {
   readonly navigation: HistoryNavigation
@@ -184,8 +185,10 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
   const { actionNotice, clearActionNotice, onActionEnd } = useActionNotice(refresh)
   const tries = usePageTries({ navigation, screen, refresh, clearActionNotice })
   const { onTryStart, runActionFlow, onOpen, onTryFailed } = tries
+  const twoFiles = useTwoFilesDialog({ ports, navigation, onActionStart: onTryStart, onActionEnd })
   const cardActions = useCardActions({
     ...{ navigation, ports, cards, libraryAssets, onActionEnd },
+    onChooseFile: twoFiles.onChooseFile,
     onActionStart: onTryStart,
   })
   const packs = useLibraryPacks(libraryAssets)
@@ -202,7 +205,7 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
   })
   const pageNotice = failedOpen.takesNotice ? undefined : tries.notice
   const notice = actionNotice ?? pageNoticeText(pageNotice, cards)
-  return { cards, tries, cardActions, actions, failedOpen, notice }
+  return { cards, tries, cardActions, actions, failedOpen, twoFiles, notice }
 }
 
 /**
@@ -210,7 +213,7 @@ function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsSc
  * actions that start, import, or open a project.
  */
 export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
-  const { cards, tries, cardActions, actions, failedOpen, notice } = useScreenParts(props)
+  const { cards, tries, cardActions, actions, failedOpen, twoFiles, notice } = useScreenParts(props)
   const openProject = openProjectLink(props.navigation)
   return (
     <ThemeProvider designLanguage={requestedDesignLanguage()}>
@@ -225,7 +228,12 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
         {...(openProject === undefined ? {} : { openProject })}
         {...(notice === undefined ? {} : { notice })}
       />
-      <PageDialog failedOpen={failedOpen} onOpen={tries.onOpen} onExport={cardActions.onExport} />
+      <PageDialog
+        failedOpen={failedOpen}
+        twoFiles={twoFiles.dialog}
+        onOpen={tries.onOpen}
+        onExport={cardActions.onExport}
+      />
       <ToastRegion />
     </ThemeProvider>
   )
