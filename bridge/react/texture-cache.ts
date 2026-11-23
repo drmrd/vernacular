@@ -3,8 +3,6 @@ import {
   type AssetDescription,
   type AssetReference,
   type AssetResolution,
-  type ResolvedAsset,
-  type TextureDescription,
 } from '../../core'
 import { markCacheHeld, type ImageTextureOptions, type TextureAppearance } from '../../engine'
 
@@ -62,24 +60,35 @@ interface CacheEntry {
 }
 
 const LOADING: TextureState = { status: 'loading' }
+const FAILED: TextureState = { status: 'failed' }
 
-export function createTextureCache({ source, decode }: TextureCacheOptions): TextureCache {
-  const decodeOnce = createSharedDecoder(decode)
-  const entries = new Map<string, CacheEntry>()
-
-  async function load(reference: AssetReference): Promise<TextureState> {
+async function loadTexture(
+  source: TextureSource,
+  decodeOnce: ReturnType<typeof createSharedDecoder>,
+  reference: AssetReference,
+): Promise<TextureState> {
+  try {
     const [description, resolution] = await Promise.all([
       source.describe(reference),
       source.resolve(reference),
     ])
-    const { mediaType, colorSpace, tileSize } = description as TextureDescription
+    if (description?.kind !== 'texture' || resolution.outcome !== 'resolved') return FAILED
+    const { mediaType, colorSpace, tileSize } = description
     const texture = await decodeOnce(
       decodeKey(reference.contentHash, colorSpace),
-      (resolution as ResolvedAsset).bytes,
+      resolution.bytes,
       { mediaType, colorSpace },
     )
     return { status: 'ready', appearance: { texture, tileSize } }
+  } catch (reason) {
+    console.warn(`Failed to load texture ${reference.contentHash}`, reason)
+    return FAILED
   }
+}
+
+export function createTextureCache({ source, decode }: TextureCacheOptions): TextureCache {
+  const decodeOnce = createSharedDecoder(decode)
+  const entries = new Map<string, CacheEntry>()
 
   return {
     request(reference) {
@@ -88,7 +97,7 @@ export function createTextureCache({ source, decode }: TextureCacheOptions): Tex
       if (existing) return existing.settled
       const entry: CacheEntry = {
         state: LOADING,
-        settled: load(reference).then((state) => {
+        settled: loadTexture(source, decodeOnce, reference).then((state) => {
           entry.state = state
         }),
       }
