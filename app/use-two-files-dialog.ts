@@ -58,7 +58,6 @@ const SECOND_FILE_UNREADABLE = 'The second plan file could not be read.'
 function failureReason(failure: SwitchFailure | KeptFileRefusal): string {
   switch (failure.kind) {
     case 'files-changed':
-    case 'no-second-file':
     case 'second-file-unreadable':
       return SECOND_FILE_UNREADABLE
     default:

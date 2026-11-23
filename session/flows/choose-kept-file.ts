@@ -30,6 +30,7 @@ export interface KeptFileChoice {
   readonly open?: boolean
 }
 
+/** A refusal that reaches the dialog: a store that finds no second file reads as changed files. */
 export type KeptFileRefusal = Exclude<SecondFileRefusal, { readonly kind: 'no-second-file' }>
 
 /** `handle` is the handle that this tab has open after the flow; undefined when it has none. */
@@ -206,20 +207,15 @@ function withoutSecondFile(record: ProjectRecord): ProjectRecord {
   return withoutIt
 }
 
-/** Removes the second file from the record of the project, as the index keeps it. */
-async function clearSecondFileOfRecord(ports: SessionPorts, id: string): Promise<void> {
-  const record = await recordOf(ports, id)
-  if (record?.secondFile !== undefined) {
-    await ports.index.put(withoutSecondFile(record))
-  }
-}
-
 /** The change of the stored files stands when the record cannot follow it, so this never rejects. */
 async function clearSecondFileOfRecordBestEffort(ports: SessionPorts, id: string): Promise<void> {
   try {
-    await clearSecondFileOfRecord(ports, id)
+    const record = await recordOf(ports, id)
+    if (record?.secondFile !== undefined) {
+      await ports.index.put(withoutSecondFile(record))
+    }
   } catch (error) {
-    console.warn('The record of the project could not drop its second file.', error)
+    console.warn(`The record of the project ${id} could not drop its second file.`, error)
   }
 }
 

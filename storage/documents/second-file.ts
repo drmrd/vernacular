@@ -101,7 +101,8 @@ export interface TwoDocumentFiles {
 
 /** Why a choice between the two files changed nothing. */
 export type SecondFileRefusal =
-  | { readonly kind: 'files-changed' | 'no-second-file' }
+  | { readonly kind: 'files-changed' }
+  | { readonly kind: 'no-second-file' }
   | { readonly kind: 'second-file-unreadable'; readonly decode: DecodeFailure }
 
 /** The outcome of setting aside or promoting the second file. */
