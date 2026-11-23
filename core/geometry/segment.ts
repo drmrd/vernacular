@@ -1,10 +1,8 @@
 import type { Point } from '../model/types'
-
-/** Denominator magnitudes below this are treated as parallel or collinear. */
-const PARALLEL_EPSILON = 1e-9
-
-/** Squared lengths below this mark an effectively zero-length (degenerate) segment. */
-const DEGENERATE_SEGMENT_EPSILON = 1e-9
+import {
+  CROSS_PRODUCT_PARALLEL_LIMIT as PARALLEL_EPSILON,
+  DEGENERATE_SQUARED_LENGTH_MM2 as DEGENERATE_SEGMENT_EPSILON,
+} from './tolerance'
 
 /**
  * Intersection point of the two closed segments [a1, a2] and [b1, b2], or null

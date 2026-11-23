@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import {
+  CAP_AREA_LIMIT_MM2 as CAP_AREA_EPSILON,
   WALL_NODE_PREFIX,
   leftNormal,
   planToWorld,
@@ -67,14 +68,6 @@ function squareFootprint(node: WallSceneNode): WallFootprint {
     bMinus: shift(node.end, normal, -half),
   }
 }
-
-/**
- * mm^2 below which a footprint is degenerate. A real wall footprint spans many
- * orders of magnitude more area, so this only catches a footprint collapsed to a
- * point or self-intersecting with zero net area, where a cap would draw backward
- * or as a zero-area triangle. Such a footprint contributes no top or base cap.
- */
-const CAP_AREA_EPSILON = 1e-6
 
 /**
  * The wall-prism sections in the box's group order: the two end caps, then the top

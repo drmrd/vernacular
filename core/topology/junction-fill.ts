@@ -1,6 +1,10 @@
 import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
 import {
+  FILL_CORNER_MATCH_MM as CORNER_EPSILON,
+  MIN_FACE_AREA_MM2 as AREA_EPSILON,
+} from '../geometry/tolerance'
+import {
   directionAngle,
   dot,
   leftNormal,
@@ -42,12 +46,6 @@ interface Spoke {
 
 /** A junction gets a fill only where this many or more walls meet. */
 const MIN_FILL_INCIDENCE = 3
-
-/** Square millimeters below which a junction's core has collapsed to a line and gets no fill. */
-const AREA_EPSILON = 1
-
-/** Two points this close together count as the same footprint corner. */
-const CORNER_EPSILON = 1e-6
 
 /**
  * How many bounding-corner spans a cap crossing may stray from its midpoint fallback

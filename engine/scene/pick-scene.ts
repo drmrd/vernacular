@@ -1,6 +1,10 @@
 import * as THREE from 'three'
 
-import { FLOOR_NODE_PREFIX, type SurfaceRef } from '../../core'
+import {
+  FLOOR_NODE_PREFIX,
+  GROUND_PICK_TIE_MM as GROUND_TIE_TOLERANCE_MM,
+  type SurfaceRef,
+} from '../../core'
 
 import { entityIdOf } from './entity-id'
 import { isFadedForPicking } from './faded-for-picking'
@@ -22,10 +26,6 @@ export interface ScenePickAt {
 }
 
 const NOTHING_PICKED: ScenePick = { entityId: null, surface: null }
-
-// How far behind the ground a hit may lie and still beat it, in millimeters. A ground-floor
-// slab top is coplanar with the lawn, but the lawn's rotation puts its hit a hair nearer.
-const GROUND_TIE_TOLERANCE_MM = 1
 
 /**
  * The hit that decides the pick among the hits that are not faded, nearest first. The

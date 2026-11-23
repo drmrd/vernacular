@@ -63,7 +63,12 @@ export const ROOM_RING_TOLERANCE_MM = DEFAULT_JUNCTION_TOLERANCE_MM
 
 /**
  * How far a point may lie from a daylight room outline and still count as on it; owned by the
- * daylight work (core/daylight/room-validation.ts).
+ * daylight work (core/daylight/room-validation.ts). It exists for the floating-point error of plan
+ * coordinates: a point interpolated along a wall that is not parallel to an axis is off the exact
+ * line by rounding error. The value is far below any real dimension, so it still refuses an end
+ * point that is a few millimetres off the wall. The side test in room-geometry.ts probes twice
+ * this distance from a span, so a span that the check accepts keeps both of its probes off the
+ * outline.
  */
 export const OUTLINE_TOLERANCE_MM = 1
 
@@ -108,7 +113,9 @@ export const WALK_CONTACT_MM = 1e-6
 
 /**
  * Two front-direction scores, or an outwardness and zero, within this of each other tie; owned
- * by the view-from-the-front work (core/scene/front-direction.ts).
+ * by the view-from-the-front work (core/scene/front-direction.ts). Outward normals are computed
+ * from wall endpoints, so mirror-image walls can differ in the last bits; this is far below any
+ * difference a drawn plan can mean.
  */
 export const FRONT_DIRECTION_TIE = 1e-9
 
@@ -118,7 +125,12 @@ export const FRONT_DIRECTION_TIE = 1e-9
  */
 export const WALL_BOUNDARY_MATCH_MM = 1e-6
 
-/** A wall cap smaller than this area is dropped (engine/scene/wall-prism.ts). */
+/**
+ * A wall cap smaller than this area is dropped (engine/scene/wall-prism.ts). A real wall footprint
+ * spans many orders of magnitude more area, so this only catches a footprint collapsed to a point
+ * or self-intersecting with zero net area, where a cap would draw backward or as a zero-area
+ * triangle.
+ */
 export const CAP_AREA_LIMIT_MM2 = 1e-6
 
 /** A wall face length at or below this is degenerate (core/geometry/wall-face.ts). */

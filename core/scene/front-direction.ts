@@ -1,5 +1,6 @@
 import { DEFAULT_GRADE_ELEVATION_MM } from '../model/site'
 import { doorFamilyOfType, isMarkedDoor, openingKindOfType } from '../registries/opening-kind'
+import { FRONT_DIRECTION_TIE as DIRECTION_TIE_TOLERANCE } from '../geometry/tolerance'
 import { dot, negate, subtract } from '../geometry/vector'
 import { exteriorWalls } from './exterior-walls'
 import { FLOOR_NODE_PREFIX, type OpeningSceneNode, type SceneGraph } from './scene-graph'
@@ -23,14 +24,6 @@ interface FrontCandidate {
 function dotWithPlanDown(direction: PlanDirection): number {
   return direction.x * PLAN_DOWN.x + direction.y * PLAN_DOWN.y
 }
-
-/**
- * Two fronts whose dot products with plan-down differ by no more than this are
- * equally near. Outward normals are computed from wall endpoints, so
- * mirror-image walls can differ in the last bits; this is far below any
- * difference a drawn plan can mean.
- */
-const DIRECTION_TIE_TOLERANCE = 1e-9
 
 function hasHingedLeaf(candidate: FrontCandidate): boolean {
   const family = doorFamilyOfType(candidate.opening.type)

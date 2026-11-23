@@ -1,9 +1,9 @@
 import { distance } from '../geometry/point'
 import { pointOnSegment } from '../geometry/segment'
+import { ROOM_RING_TOLERANCE_MM } from '../geometry/tolerance'
 import { polygonArea } from '../geometry/polygon'
 import { dot, leftNormal, leftPerp, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
-import { DEFAULT_JUNCTION_TOLERANCE_MM } from '../topology/wall-graph'
 import type { RoomSceneNode, WallSceneNode } from './scene-graph'
 
 /**
@@ -15,14 +15,6 @@ import type { RoomSceneNode, WallSceneNode } from './scene-graph'
  * there (a free wall, a dangling stub, or the stretch of a long wall past the end of its room).
  */
 export type WallRoomSides = 'positive' | 'negative' | 'both' | 'neither'
-
-/**
- * How far, in mm, a room corner may lie from a wall centerline and still count as on it. It equals
- * DEFAULT_JUNCTION_TOLERANCE_MM in core/topology/wall-graph.ts, the distance within which the wall
- * graph merges wall ends, so every corner of a derived room counts as on the walls it was traced
- * from.
- */
-export const ROOM_RING_TOLERANCE_MM = DEFAULT_JUNCTION_TOLERANCE_MM
 
 /** One place on a wall centerline. */
 export interface WallPlace {

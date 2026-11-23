@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import {
+  WALL_BOUNDARY_MATCH_MM as BOUNDARY_EPSILON,
   WALL_NODE_PREFIX,
   distance,
   dot,
@@ -308,9 +309,6 @@ function outerCapPositions(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vect
     edgeLocalToWorld(frame, from, SIDE_EXTERIOR),
   ])
 }
-
-/** Tolerance for snapping a void edge onto the wall's outer outline boundary. */
-const BOUNDARY_EPSILON = 1e-6
 
 /** Whether both `(u, v)` values sit within `BOUNDARY_EPSILON` of `target`. */
 function bothNear(first: number, second: number, target: number): boolean {

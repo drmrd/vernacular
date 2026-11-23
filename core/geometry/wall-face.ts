@@ -1,14 +1,8 @@
 import type { Point } from '../model/types'
 
 import { lineIntersection } from './segment'
+import { WALL_FACE_DEGENERATE_LENGTH_MM as DEGENERATE_LENGTH_MM } from './tolerance'
 import { dot, leftPerp, shift, subtract, unit } from './vector'
-
-/**
- * Lengths at or below this many millimeters count as zero. A run this short has no
- * usable direction, and a stretch this short is a sliver left behind by a gap that
- * lands on an end or on its neighbor rather than a piece of standing wall.
- */
-const DEGENERATE_LENGTH_MM = 1e-9
 
 /**
  * The four already-mitred plan corners of one wall run, two at each end. `aPlus`

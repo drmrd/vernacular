@@ -1,11 +1,9 @@
 import type { Point } from '../model/types'
-import { SNAP_UNITS_PER_MM } from './tolerance'
-
-/** Cross products below this magnitude treat two edge directions as parallel. */
-const PARALLEL_EPSILON = 1e-9
-
-/** Squared edge lengths below this mark an effectively zero-length edge. */
-const DEGENERATE_EDGE_EPSILON = 1e-9
+import {
+  CROSS_PRODUCT_PARALLEL_LIMIT as PARALLEL_EPSILON,
+  DEGENERATE_SQUARED_LENGTH_MM2 as DEGENERATE_EDGE_EPSILON,
+  SNAP_UNITS_PER_MM,
+} from './tolerance'
 
 /** Fewer vertices than this cannot bound an area, so they pass through unchanged. */
 const MINIMUM_POLYGON_VERTICES = 3

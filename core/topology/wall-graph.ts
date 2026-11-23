@@ -1,5 +1,6 @@
 import { distance } from '../geometry/point'
 import { pointOnSegment, segmentIntersection } from '../geometry/segment'
+import { DEFAULT_JUNCTION_TOLERANCE_MM } from '../geometry/tolerance'
 import type { Point, Wall } from '../model/types'
 
 /** An edge connecting two vertices of the planar graph, carrying its source wall's id. */
@@ -17,13 +18,6 @@ export interface PlanarGraph {
   vertices: Point[]
   edges: GraphEdge[]
 }
-
-/**
- * Endpoints within this many millimeters of an already-seen vertex are merged
- * into a single junction. See the design specification, section 3.2 ("Rooms are
- * derived, not authored"), which computes room geometry from wall topology.
- */
-export const DEFAULT_JUNCTION_TOLERANCE_MM = 1
 
 /**
  * Build a planar graph from a set of walls. Endpoints within tolerance of an

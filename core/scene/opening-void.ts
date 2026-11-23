@@ -1,3 +1,4 @@
+import { VOID_SAME_POINT_MM as SAME_POINT_EPSILON } from '../geometry/tolerance'
 import type { Point } from '../model/types'
 import {
   builtinElementTypes,
@@ -34,9 +35,6 @@ export function rectangularVoidContour(node: OpeningSceneNode): Contour {
 
 /** Full turn in radians; an arc's sweep direction is read by folding angles into one turn around its center. */
 const FULL_TURN = Math.PI * 2
-
-/** Two head points coincide within this tolerance when they share a jamb spring or the apex. */
-const SAME_POINT_EPSILON = 1e-9
 
 /** Lifts a head point from the springline-origin head frame into the void frame, where the springline sits at `springY`. */
 function liftToVoid(point: Point, springY: number): Point {

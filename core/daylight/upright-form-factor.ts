@@ -1,4 +1,5 @@
 import { distance } from '../geometry/point'
+import { UNIT_NORMAL_DOT_LIMIT as ORIENTATION_TOLERANCE } from '../geometry/tolerance'
 import { dot, leftPerp, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 
@@ -12,9 +13,6 @@ export interface UprightRectangle {
   /** Unit plan vector, square to the span, that points into the room both rectangles bound. */
   facing: Point
 }
-
-/** How far a dot product of unit normals may sit from -1 or 0 and still count as facing or square. */
-const ORIENTATION_TOLERANCE = 1e-9
 
 const LOG_TERM_WEIGHT = 0.25
 

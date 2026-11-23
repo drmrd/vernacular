@@ -1,3 +1,4 @@
+import { WALK_CONTACT_MM as CONTACT_EPSILON_MM } from '../geometry/tolerance'
 import type { Point } from '../model/types'
 import { openingKindOfType, openingTypeHasFill } from '../registries/opening-kind'
 import { effectiveWallThickness } from './construction-profile'
@@ -41,10 +42,6 @@ export interface WalkCollisionWorld {
   segments: readonly WallSegment[]
   radius: number
 }
-
-// Below this separation the push-out direction is taken from the wall's own
-// normal rather than the (degenerate) vector from the wall to the walker.
-const CONTACT_EPSILON_MM = 1e-6
 
 /** The point on a finite segment nearest the given point, clamped to its ends. */
 function closestPointOnSegment(point: PlanarPoint, segment: WallSegment): PlanarPoint {
