@@ -155,15 +155,26 @@ function declaresMediaTypes(formatVersion: unknown): boolean {
   return formatVersion === MEDIA_TYPE_FORMAT_VERSION
 }
 
+function declaresMediaTypeIn(
+  asset: { mediaType?: string },
+  formatVersion: unknown,
+  types: readonly string[],
+): boolean {
+  if (!declaresMediaTypes(formatVersion)) return false
+  return asset.mediaType !== undefined && types.includes(asset.mediaType)
+}
+
+/** True for every format 1 asset and, in format 2, only for a model media type; not the complement of isTextureAsset. */
 export function isModelAsset(asset: { mediaType?: string }, formatVersion: unknown): boolean {
-  if (!declaresMediaTypes(formatVersion)) return true
-  return asset.mediaType !== undefined && MODEL_MEDIA_TYPES.includes(asset.mediaType)
+  return (
+    !declaresMediaTypes(formatVersion) ||
+    declaresMediaTypeIn(asset, formatVersion, MODEL_MEDIA_TYPES)
+  )
 }
 
 /** True only for a format-2 asset whose declared media type is a texture type. */
 export function isTextureAsset(asset: { mediaType?: string }, formatVersion: unknown): boolean {
-  if (!declaresMediaTypes(formatVersion)) return false
-  return asset.mediaType !== undefined && TEXTURE_MEDIA_TYPES.includes(asset.mediaType)
+  return declaresMediaTypeIn(asset, formatVersion, TEXTURE_MEDIA_TYPES)
 }
 
 function allowedMediaTypes(kind: unknown): readonly string[] {
