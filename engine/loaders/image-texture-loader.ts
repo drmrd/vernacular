@@ -61,3 +61,14 @@ export async function decodeImageTexture(
   texture.needsUpdate = true
   return texture
 }
+
+function isClosable(image: unknown): image is { close(): void } {
+  return typeof (image as { close?: unknown } | null | undefined)?.close === 'function'
+}
+
+/** Frees the GPU texture, then closes the decoded bitmap that backs it. */
+export function disposeImageTexture(texture: THREE.Texture): void {
+  texture.dispose()
+  const image: unknown = texture.image
+  if (isClosable(image)) image.close()
+}

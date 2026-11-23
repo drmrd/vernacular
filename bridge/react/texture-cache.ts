@@ -76,7 +76,7 @@ interface CacheEntry {
   settled: Promise<void>
 }
 
-const LOADING: TextureState = { status: 'loading' }
+export const LOADING: TextureState = { status: 'loading' }
 const FAILED: TextureState = { status: 'failed' }
 
 async function loadTexture(

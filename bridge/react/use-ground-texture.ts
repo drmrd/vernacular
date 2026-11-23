@@ -1,21 +1,12 @@
 import { useEffect, useState } from 'react'
-import { formatAssetReference, type AssetReference } from '../../core'
-import { decodeImageTexture, type TextureAppearance } from '../../engine'
-import { createTextureCache, type TextureSource, type TextureState } from './texture-cache'
-
-const LOADING: TextureState = { status: 'loading' }
-
-function disposeTexture(texture: TextureAppearance['texture']): void {
-  texture.dispose()
-  const image: unknown = texture.image
-  if (image && typeof (image as { close?: unknown }).close === 'function') {
-    ;(image as { close(): void }).close()
-  }
-}
+import { formatAssetReference, parseAssetReference, type AssetReference } from '../../core'
+import { decodeImageTexture, disposeImageTexture } from '../../engine'
+import { createTextureCache, LOADING, type TextureSource, type TextureState } from './texture-cache'
 
 /**
  * The cache lives inside one effect so that StrictMode's re-run builds a fresh cache, and a
- * load that settles after cleanup is ignored.
+ * load that settles after cleanup is ignored. `source` must keep the same identity across
+ * renders, or the hook reloads the texture on each render.
  */
 export function useGroundTexture(reference: AssetReference, source: TextureSource): TextureState {
   const [state, setState] = useState<TextureState>(LOADING)
@@ -25,17 +16,17 @@ export function useGroundTexture(reference: AssetReference, source: TextureSourc
     let cancelled = false
     const cache = createTextureCache({
       source,
-      decode: (bytes, options) => decodeImageTexture(bytes, options),
-      dispose: disposeTexture,
+      decode: decodeImageTexture,
+      dispose: disposeImageTexture,
     })
-    void cache.request(reference).then(() => {
-      if (!cancelled) setState(cache.get(reference))
+    const textureReference = parseAssetReference(referenceKey)
+    void cache.request(textureReference).then(() => {
+      if (!cancelled) setState(cache.get(textureReference))
     })
     return () => {
       cancelled = true
       cache.dispose()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the reference's string form
   }, [referenceKey, source])
 
   return state

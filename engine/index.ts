@@ -79,4 +79,8 @@ export type {
   ImageTextureOptions,
   TextureAppearance,
 } from './loaders/image-texture-loader'
-export { decodeImageTexture, ImageTextureDecodeError } from './loaders/image-texture-loader'
+export {
+  decodeImageTexture,
+  disposeImageTexture,
+  ImageTextureDecodeError,
+} from './loaders/image-texture-loader'
