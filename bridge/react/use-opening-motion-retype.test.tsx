@@ -88,7 +88,7 @@ function environment() {
     )
   const retype = (floorId: string, type: string): void => {
     act(() => {
-      session.dispatch(setOpeningType(floorId, windowOn(floorId), type))
+      session.dispatch(setOpeningType(floorId, windowOn(floorId).replace('opening:', ''), type))
     })
   }
   return { windowOn, wrapper, buildRoot, retype, activeFloor }
