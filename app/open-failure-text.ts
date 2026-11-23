@@ -162,3 +162,9 @@ export function fixedFailureReason(failure: OpenFailureCause): string | undefine
 export function openFailureReason(failure: OpenFailureCause): string {
   return isDetailed(failure) ? detailedReason(failure) : fixedReason(failure.kind)
 }
+
+/** The sentence for a copy opened as a new project that lacks some of the assets its project uses. */
+export function missingAssetsText(count: number): string {
+  const lacked = `Vernacular could not find ${groupedNumber(count)} of the assets this project uses.`
+  return count === 1 ? `${lacked} It shows as missing.` : `${lacked} They show as missing.`
+}

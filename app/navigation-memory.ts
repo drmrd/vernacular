@@ -3,6 +3,7 @@ import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '.
 import { addressFor, parseAddress, START_ADDRESS, type Place } from './address'
 import type { AddressBar } from './address-bar'
 import type { PageNotice } from './resolve-place'
+import { reopenedBy } from './use-open-project'
 import type { Flow, FlowOutcome, RunAction, RunFlow } from './use-open-project'
 
 /** The page shown by the navigation, with the notice of a switch that failed or none. */
@@ -217,12 +218,12 @@ export function takeReopenedProject(
 function takeFlowProject<Refusal>(
   memory: NavigationMemory,
   result: FlowOutcome<Refusal> | undefined,
-  given: DocumentHandle | undefined,
+  current: DocumentHandle | undefined,
 ): void {
   if (result?.ok) {
     memory.handle = result.handle
     memory.triedId = result.handle.id
-  } else if (result !== undefined && 'handle' in result && result.handle !== given) {
+  } else if (result !== undefined && reopenedBy(result, current)) {
     takeReopenedProject(memory, result.handle)
   }
 }
@@ -237,13 +238,13 @@ export async function runOwnerFlow<Refusal>(
   flow: Flow<Refusal>,
 ): Promise<FlowOutcome<Refusal> | undefined> {
   memory.busy.flowsRunning += 1
-  let given: DocumentHandle | undefined
+  let handed: DocumentHandle | undefined
   try {
     const result = await memory.owner.runFlow((ports, current) => {
-      given = current
+      handed = current
       return flow(ports, current)
     })
-    takeFlowProject(memory, result, given)
+    takeFlowProject(memory, result, handed)
     return result
   } finally {
     memory.busy.flowsRunning -= 1

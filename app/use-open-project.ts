@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { storageUnavailableOf, type OpenFailureCause } from './open-failure-text'
-import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '../session'
+import type {
+  DocumentHandle,
+  FlowResult,
+  OpenRequest,
+  SessionPorts,
+  SwitchFailure,
+} from '../session'
 import {
   deferClose,
   dropHandle,
@@ -17,18 +23,26 @@ import type { RunAction } from './owner-actions'
 
 export type { ActionOutcome, OwnerAction, RunAction } from './owner-actions'
 
+/** A failed result that names the handle its flow left open, or undefined when it left none. */
+type FailureWithHandle<Refusal> = Extract<FlowResult<Refusal>, { readonly ok: false }> & {
+  readonly handle: DocumentHandle | undefined
+}
+
 /**
  * What a flow gives: the handle now open, or why the current project stays open. A failed result
- * that carries `handle` says that the flow ended the project it was given: the handle is the one
- * it opened again, or undefined when it opened none.
+ * may carry a handle, and most that do carry the one they were given. Only a handle that differs
+ * from the one handed to the flow means that the flow ended that project and opened this one, or
+ * none when the handle is undefined.
  */
-export type FlowOutcome<Refusal = never> =
-  | { readonly ok: true; readonly handle: DocumentHandle }
-  | {
-      readonly ok: false
-      readonly failure: SwitchFailure | Refusal
-      readonly handle?: DocumentHandle | undefined
-    }
+export type FlowOutcome<Refusal = never> = FlowResult<Refusal> | FailureWithHandle<Refusal>
+
+/** True when the flow ended the project it was given and reports the handle it opened again. */
+export function reopenedBy<Refusal>(
+  result: FlowOutcome<Refusal>,
+  given: DocumentHandle | undefined,
+): result is FailureWithHandle<Refusal> {
+  return !result.ok && 'handle' in result && result.handle !== given
+}
 
 /** A step that may replace the open project: it gets the ports and the project open now. */
 export type Flow<Refusal = never> = (
@@ -121,7 +135,7 @@ function settleFlow<Refusal>(
   result: FlowOutcome<Refusal>,
   given: DocumentHandle | undefined,
 ): void {
-  if (!result.ok && 'handle' in result && result.handle !== given) {
+  if (reopenedBy(result, given)) {
     installReopened(memory, given, result.handle)
     return
   }

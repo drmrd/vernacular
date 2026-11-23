@@ -15,8 +15,7 @@ import {
   type TwoFilesRead,
 } from '../session'
 import type { TwoDocumentFiles } from '../storage'
-import { openFailureReason } from './open-failure-text'
-import { repairedCopyMissingAssetsText } from './use-failed-open-dialog'
+import { missingAssetsText, openFailureReason } from './open-failure-text'
 import type { HistoryNavigation } from './use-history-navigation'
 
 /** What the dialog of the two plan files runs on. */
@@ -97,7 +96,7 @@ async function openAsNew(
     return opened
   })
   if (result?.ok === true && missingAssets.length > 0) {
-    notifications.warning(repairedCopyMissingAssetsText(missingAssets.length))
+    notifications.warning(missingAssetsText(missingAssets.length))
   }
   return result ?? NOTHING_CHANGED
 }
