@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { countTests, findRetriedPasses } from './retry-warning.mjs'
+import {
+  countTests,
+  findRetriedPasses,
+  formatRetryAnnotations,
+  formatRetrySummary,
+} from './retry-warning.mjs'
 
 function readFixture(name) {
   return JSON.parse(readFileSync(join(import.meta.dirname, 'fixtures', name), 'utf8'))
@@ -54,5 +59,66 @@ describe('countTests', () => {
   it('counts every test of every spec in nested suites', () => {
     expect(countTests(retried)).toBe(4)
     expect(countTests(clean)).toBe(1)
+  })
+})
+
+const retryPass = {
+  file: 'e2e/tests/journeys/snap-along-wall.spec.ts',
+  line: 4,
+  title: 'snaps along a wall',
+  project: 'chromium',
+  attempts: 2,
+  failedAttempts: 1,
+  firstError: 'expected "Snapped to edge"',
+}
+
+describe('formatRetrySummary', () => {
+  it('writes one line when no test passed only on a retry', () => {
+    expect(formatRetrySummary([], { tests: 412, reports: 1 })).toBe(
+      'Retry check: no test passed only on a retry. Tests read: 412. Reports read: 1.\n',
+    )
+  })
+
+  it('writes a warning heading and one table row for each retry pass', () => {
+    const text = formatRetrySummary([retryPass], { tests: 412, reports: 1 })
+    expect(text).toBe(
+      [
+        '### Warning: tests passed only on a retry',
+        '',
+        'Tests read: 412. Reports read: 1. Passed only on a retry: 1.',
+        '',
+        'Each of these tests failed and then passed on a retry, so the job stayed green. The report artifact of this job keeps the screenshot and the error of each failed attempt.',
+        '',
+        '| Test | Project | Failed attempts | First error |',
+        '| --- | --- | --- | --- |',
+        '| `e2e/tests/journeys/snap-along-wall.spec.ts:4` snaps along a wall | chromium | 1 of 2 | expected "Snapped to edge" |',
+        '',
+      ].join('\n'),
+    )
+  })
+
+  it('escapes a pipe in a title or an error so the table keeps its columns', () => {
+    const text = formatRetrySummary([{ ...retryPass, title: 'a | b', firstError: 'c | d' }], {
+      tests: 412,
+      reports: 1,
+    })
+    expect(text).toContain('a \\| b')
+    expect(text).toContain('c \\| d')
+  })
+})
+
+describe('formatRetryAnnotations', () => {
+  it('writes one warning annotation for each retry pass', () => {
+    expect(formatRetryAnnotations([retryPass])).toEqual([
+      '::warning file=e2e/tests/journeys/snap-along-wall.spec.ts,line=4,title=Passed only on a retry::snaps along a wall (chromium) failed 1 of 2 attempts: expected "Snapped to edge"',
+    ])
+  })
+
+  it('encodes the characters that a workflow command reserves', () => {
+    const [line] = formatRetryAnnotations([
+      { ...retryPass, title: '50% done\nnext', file: 'e2e/tests/a,b:c.spec.ts' },
+    ])
+    expect(line).toContain('file=e2e/tests/a%2Cb%3Ac.spec.ts,')
+    expect(line).toContain('::50%25 done%0Anext (')
   })
 })
