@@ -263,7 +263,11 @@ two means of the pair were read with a throwaway probe and are reported, not ass
   high when both rectangles touch a corner that is not a right angle: 1.9 percent at 45 degrees and
   0.3 percent at 135 degrees. The right-angle closed form applies only where the dot product of the
   two facings lies within 1e-9 of 0, so rectangles that touch a corner just off square take the
-  quadrature and its corner error, and the factor steps a little at that tolerance. Walls at a right
+  quadrature and its corner error, and the factor steps a little at that tolerance (0.5 percent: 0.080158
+  at 90 degrees, 0.080574 at 90.000001). The rule also reads high for walls that nearly face each
+  other across a gap that is small against their spans: about 0.3 percent for a gap of one tenth of
+  the span and about 12 percent at one thirtieth. The normalisation keeps the bound, so this costs
+  accuracy only. Walls at a right
   angle and walls that face each other use closed forms and are exact everywhere. The closed forms
   subtract large terms, about 1e9 for a 40 m wall, and their measured relative error stays below
   1e-12.
@@ -494,7 +498,7 @@ The factor of 1 follows from the room-average model, in which the interreflected
 is the same on every surface of the source room:
 
 - The balance of the source is `E * S'(1 - rho') = F * rhoFloor`, where `F` is the flux from its
-  sky apertures, and `S'` and `rho'` count each doorway out of the room as area of reflectance 0.
+  sky apertures, and `S'` and `rho'` count each doorway out of the room as area of reflectance 0 (the second amendment subtracts the routed window light from `F`).
 - The mean exitance of the source's surfaces is `M = (rhoFloor * F + rho' * S' * E) / S'`.
   Putting `E * S'(1 - rho')` in place of `F * rhoFloor` gives `M = E`.
 - A doorway faces a whole hemisphere of the source room, so its form factors to the source's
@@ -537,7 +541,8 @@ The record rejects two other choices:
 
 The window light that lands on the doorway plane before any reflection is the subject of the second
 amendment below, "Amendment, 2026-11-22: window light through a doorway". The figures that this
-amendment changes are in "What the numbers look like" and "Known limits and approximations" above.
+amendment changed have since been updated by the second amendment, "Amendment, 2026-11-22: window
+light through a doorway", below.
 The tests are `core/daylight/doorway-balance.test.ts`, `core/daylight/doorway-luminance.test.ts`,
 and `core/daylight/doorway-flux-bound.test.ts`.
 
@@ -656,7 +661,8 @@ twice but not the L-shaped room, and it would add geometry to the validation.
 
 Skylights and other sloped glazing wait for roofs (#1034 and #86). The light code reads only
 `skyFactors`, the opening area, the flux share, and the weights. A later glazing kind supplies its
-own factor where `skyFactors` is measured, and nothing else changes.
+own factor where `skyFactors` is measured, and nothing else changes. Issue #1105 tracks the doorway
+factor for skylights (skylight light through an interior doorway).
 
 The tests are `core/daylight/upright-form-factor.test.ts`,
 `core/daylight/upright-form-factor-angled.test.ts`, and
