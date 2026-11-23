@@ -2,10 +2,11 @@
 //
 // Generator for the pack fixtures under tests/fixtures/packs/. It writes pack
 // trees with real bytes whose hashes the integrity check can verify: a
-// well-formed pack that passes, and a deliberately broken pack that exercises
-// every failure path. Run with `node scripts/pack/generate-fixtures.mjs`; the
-// output is committed, so re-run it only when a fixture changes. Importing this
-// module has no side effects: only running it as the entry point writes to disk.
+// well-formed model pack and a well-formed texture pack that pass, plus a
+// deliberately broken pack for each that exercises its failure paths. Run with
+// `node scripts/pack/generate-fixtures.mjs`; the output is committed, so re-run
+// it only when a fixture changes. Importing this module has no side effects:
+// only running it as the entry point writes to disk.
 
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
@@ -34,10 +35,11 @@ async function writePack(sink, { directory, manifest, files }) {
   await sink.writeFile(`${directory}/manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`)
 }
 
+export const CHANGELOG = '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n'
 const WELL_FORMED_PACK_DIRECTORY = 'vernacular-starter-1.0.0'
 const BROKEN_PACK_DIRECTORY = 'broken-pack-wrong'
 
-export async function writeWellFormedPack(sink) {
+async function writeWellFormedPack(sink) {
   const glb = Buffer.from('vernacular starter chair glb placeholder\n')
   const hash = sha256(glb)
   await writePack(sink, {
@@ -69,12 +71,12 @@ export async function writeWellFormedPack(sink) {
       [`thumbnails/${hash}.webp`]: webp,
       LICENSE: 'CC0-1.0\n',
       NOTICE: 'Vernacular project\n',
-      'CHANGELOG.md': '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n',
+      'CHANGELOG.md': CHANGELOG,
     },
   })
 }
 
-export async function writeBrokenPack(sink) {
+async function writeBrokenPack(sink) {
   // The asset file's real bytes hash to something other than the declared hash, so
   // the integrity check reports a mismatch. The directory name, license, thumbnail,
   // orphan file, and missing NOTICE each trip a distinct failure path.
@@ -105,7 +107,7 @@ export async function writeBrokenPack(sink) {
       [`assets/${declaredHash}.glb`]: Buffer.from('these are not the declared bytes\n'),
       'assets/orphan.glb': Buffer.from('an orphan asset no manifest entry references\n'),
       LICENSE: 'CC-BY-NC-4.0\n',
-      'CHANGELOG.md': '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n',
+      'CHANGELOG.md': CHANGELOG,
     },
   })
 }
@@ -121,7 +123,6 @@ const WELL_FORMED_TEXTURE_TINT = 0x40
 const WRONG_SIZE_TINT = 0x10
 const WRONG_MEDIA_TYPE_TINT = 0x20
 const WRONG_FIELDS_TINT = 0x30
-export const CHANGELOG = '# Changelog\n\n## 1.0.0\n\n- Initial pack.\n'
 
 /**
  * A square RGB PNG whose pixels differ by `tint`, so each tint hashes differently.
@@ -155,7 +156,7 @@ export function textureEntry(name, hash, overrides = {}) {
   }
 }
 
-export async function writeTexturePack(sink) {
+async function writeTexturePack(sink) {
   const glb = Buffer.from('vernacular textures stool glb placeholder\n')
   const stoolHash = sha256(glb)
   const png = tintedPng(TEXTURE_SIDE, WELL_FORMED_TEXTURE_TINT)
@@ -196,7 +197,7 @@ export async function writeTexturePack(sink) {
   })
 }
 
-export async function writeBrokenTexturePack(sink) {
+async function writeBrokenTexturePack(sink) {
   // Three small textures with matching hashes. The first declares 128 by 128 over a 64 by 64
   // file. The second declares WebP over PNG bytes. The third declares a side that is not a
   // power of two and an unknown color space.
