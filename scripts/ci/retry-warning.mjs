@@ -69,3 +69,56 @@ export function findRetriedPasses(report, cwd) {
 export function countTests(report) {
   return collectAllSpecEntries(report).reduce((total, { spec }) => total + spec.tests.length, 0)
 }
+
+function escapeTableCell(text) {
+  return text.replaceAll('|', '\\|')
+}
+
+function escapeAnnotationMessage(text) {
+  return text.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')
+}
+
+function escapeAnnotationProperty(text) {
+  return escapeAnnotationMessage(text).replaceAll(':', '%3A').replaceAll(',', '%2C')
+}
+
+function summaryTableRow(pass) {
+  const test = `\`${pass.file}:${pass.line}\` ${escapeTableCell(pass.title)}`
+  const failed = `${pass.failedAttempts} of ${pass.attempts}`
+  return `| ${test} | ${pass.project} | ${failed} | ${escapeTableCell(pass.firstError)} |`
+}
+
+/**
+ * @param {RetriedPass[]} passes
+ * @param {{ tests: number, reports: number }} counts
+ * @returns {string} Markdown for the job summary
+ */
+export function formatRetrySummary(passes, counts) {
+  if (passes.length === 0) {
+    return `Retry check: no test passed only on a retry. Tests read: ${counts.tests}. Reports read: ${counts.reports}.\n`
+  }
+  return [
+    '### Warning: tests passed only on a retry',
+    '',
+    `Tests read: ${counts.tests}. Reports read: ${counts.reports}. Passed only on a retry: ${passes.length}.`,
+    '',
+    'Each of these tests failed and then passed on a retry, so the job stayed green. The report artifact of this job keeps the screenshot and the error of each failed attempt.',
+    '',
+    '| Test | Project | Failed attempts | First error |',
+    '| --- | --- | --- | --- |',
+    ...passes.map(summaryTableRow),
+    '',
+  ].join('\n')
+}
+
+/**
+ * @param {RetriedPass[]} passes
+ * @returns {string[]} workflow commands, one warning annotation for each pass
+ */
+export function formatRetryAnnotations(passes) {
+  return passes.map((pass) => {
+    const properties = `file=${escapeAnnotationProperty(pass.file)},line=${pass.line},title=Passed only on a retry`
+    const message = `${pass.title} (${pass.project}) failed ${pass.failedAttempts} of ${pass.attempts} attempts: ${pass.firstError}`
+    return `::warning ${properties}::${escapeAnnotationMessage(message)}`
+  })
+}
