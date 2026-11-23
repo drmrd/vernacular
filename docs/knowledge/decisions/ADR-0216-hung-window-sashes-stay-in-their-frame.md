@@ -26,6 +26,9 @@ sourceFiles:
     engine/scene/opening-fill-builder.ts,
     engine/scene/opening-motion.ts,
     bridge/react/walk-interaction.ts,
+    core/scene/open-parts.ts,
+    bridge/react/use-opening-motion.ts,
+    bridge/react/walk-session.ts,
     editor/plan/opening-controls.tsx,
     editor/plan/opening-inspector-context.ts,
   ]
@@ -534,18 +537,25 @@ apart. The unit tests above do.
 
 - No end-to-end check raises the lower sash. The journeys never tilt the view down, and a straight
   look at the default window lowers the upper sash.
-- A state that holds both sashes of a single-hung window open cannot come from aim. If one arose,
-  `settledPose` would give its lower sash half travel.
-- A retype in the inspector can leave an open part that the new type lacks, such as `'upper'` on a
-  window changed from double-hung to single-hung. `openingTargetPose`
-  (`core/scene/opening-pose.ts:22`) keeps only the open parts that `openingParts(type)` lists, so
-  the tick and the restore of a shown opening ignore such a part. `settledPose` (line 58) takes no
-  type, so the settle of an unshown opening is unchanged and still reads the stale part. A window
-  retyped while both its sashes stood open settles with its lower sash at half travel. The comment on
-  `settledPose` says that the next tick that shows the opening eases it to the pose filtered by its
-  type. The code agrees. The tick aims each part at `openingTargetPose`, so the lower sash eases to
-  its full rise, and `applyOpeningPose` moves only the parts of the type, so the stale part never
-  moves a mesh.
+- Aim alone cannot hold open a part that an opening's type lacks, but a retype in the inspector can
+  leave one behind: `'upper'` on a window changed from double-hung to single-hung, or on a window
+  changed to a single-swing door. `keepOpenPartsOfTypes` (`core/scene/open-parts.ts:36`) drops the
+  parts that `openingParts(type)` does not list, and drops an opening left with no part. It keeps an
+  entry whose id is missing from the openings it gets, because that list may cover one floor only.
+  The follow in `useOpeningMotionRefs` (`bridge/react/use-opening-motion.ts:73`) applies it to the
+  stored open parts against every floor's openings and runs again when the graph's openings change,
+  so a retype reaches the walk state with no key press. Collision, the pose, and the settle then
+  read the same parts. A retyped door that looks shut is solid to the walker. A double-hung window
+  retyped to single-hung with both sashes open settles, while unshown, with its lower sash at the
+  full rise, so it shows there with no swing. The walk session applies the helper again to the state
+  an E press leaves and to the open parts that collision reads (`bridge/react/walk-session.ts:178`
+  and line 230), in case a state has not passed through the follow yet. `openingTargetPose`
+  (`core/scene/opening-pose.ts:22`) still keeps only the parts of the type, so the pose ignores such
+  a part as well.
+- The scene session store is not pruned. When the stored map holds only a stale part, Shut all (the
+  "Close doors and windows" control) stays enabled, because `interactiveObjectsAtDefault`
+  (`bridge/scene-session/interactive-objects.ts:7`) reads the size of the stored map. Nothing shows
+  open, and pressing the control empties the map. Issue #1101 tracks it.
 - The bridge names `openDoorIds`, `noteOpenDoors`, `storedOpenDoorIds`, and `onOpenDoors` now carry
   open parts and not only doors. They keep their names for now; issue #1099 tracks the rename.
 
