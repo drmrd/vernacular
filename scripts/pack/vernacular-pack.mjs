@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // scripts/pack/vernacular-pack.mjs
 //
-// vernacular-pack CLI scaffold (design specification section 4.3; phase 0 deliverable).
-// Subcommands: `validate <packDir>` and `build <packDir>`. For this scaffold, `build`
-// performs the same validation and reports a summary; content-hash verification,
-// thumbnail baking, and publishing are deferred to phase 3.
+// vernacular-pack CLI (design specification section 4.3). Subcommands:
+// `validate <packDir>` and `build <packDir>`. Both validate the manifest and
+// check the pack's files on disk (content hashes, texture headers, thumbnails).
+// `build` also writes a build report beside the pack; thumbnail baking and
+// publishing are not done here.
 
 import { access, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
@@ -75,6 +76,7 @@ async function reviewPack(manifest, reader) {
 /**
  * The report entry for one manifest asset; `mediaType` appears only when the manifest declares it.
  * @param {{ name: string, kind: string, contentHash: string, mediaType?: string }} asset
+ * @returns {{ name: string, kind: string, contentHash: string, mediaType?: string }}
  */
 function reportAsset(asset) {
   const entry = { name: asset.name, kind: asset.kind, contentHash: asset.contentHash }

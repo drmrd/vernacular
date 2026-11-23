@@ -2,8 +2,9 @@
 //
 // Pure on-disk integrity checks for a vernacular-pack (design specification
 // section 4.6). No direct filesystem access: it takes a parsed manifest and an
-// injected PackReader, and returns the accumulated errors. When the in-app pack
-// loader lands (phase 3) these checks graduate to core/ as shared TypeScript.
+// injected PackReader, and returns the accumulated errors. The byte rules for
+// texture files live in core/assets; this module reads the files and applies
+// them.
 
 import {
   assetFileName,
@@ -228,10 +229,11 @@ function checkDirName(manifest, reader, context) {
 export async function checkPackIntegrity(manifest, reader) {
   const errors = []
   const context = { errors, formatVersion: manifest?.formatVersion }
-  const verifiedAssets = await checkAssetHashes(manifestAssets(manifest), reader, context)
+  const assets = manifestAssets(manifest)
+  const verifiedAssets = await checkAssetHashes(assets, reader, context)
   await checkTextureFiles(verifiedAssets, reader, context)
-  await checkThumbnails(manifestAssets(manifest), reader, context)
-  await checkOrphans(manifestAssets(manifest), reader, context)
+  await checkThumbnails(assets, reader, context)
+  await checkOrphans(assets, reader, context)
   await checkRequiredFiles(reader, context)
   checkDirName(manifest, reader, context)
   return { errors }
