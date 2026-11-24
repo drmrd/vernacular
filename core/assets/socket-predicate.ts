@@ -1,9 +1,13 @@
 import { isAssetDomainCode, type AssetDomainCode } from '../registries/asset-domains.ts'
 import {
+  DOMAIN_PROBLEM,
+  DOMAIN_SEPARATOR,
   SLUG_PATTERN,
   SLUG_PROBLEM,
+  SLUG_SEPARATOR,
   SUBCATEGORY_PATTERN,
   SUBCATEGORY_PROBLEM,
+  missingPartProblem,
   type CatalogId,
 } from './catalog-id.ts'
 
@@ -18,9 +22,6 @@ export type SocketPredicateParse =
   | { ok: false; problem: string }
 
 const WILDCARD = '*'
-const DOMAIN_SEPARATOR = '.'
-const SLUG_SEPARATOR = '/'
-const DOMAIN_PROBLEM = 'domain must be a known asset domain code'
 
 function refuse(problem: string): SocketPredicateParse {
   return { ok: false, problem }
@@ -29,7 +30,7 @@ function refuse(problem: string): SocketPredicateParse {
 function parseCategoryPart(domain: AssetDomainCode, categoryText: string): SocketPredicateParse {
   const separatorIndex = categoryText.indexOf(SLUG_SEPARATOR)
   if (separatorIndex === -1) {
-    return refuse(`slug is missing: expected "${SLUG_SEPARATOR}" after the subcategory`)
+    return refuse(missingPartProblem('slug', SLUG_SEPARATOR, 'subcategory'))
   }
   const subcategory = categoryText.slice(0, separatorIndex)
   const slug = categoryText.slice(separatorIndex + 1)
@@ -44,7 +45,7 @@ export function parseSocketPredicate(text: string): SocketPredicateParse {
   const domain = separatorIndex === -1 ? text : text.slice(0, separatorIndex)
   if (!isAssetDomainCode(domain)) return refuse(DOMAIN_PROBLEM)
   if (separatorIndex === -1) {
-    return refuse(`subcategory is missing: expected "${DOMAIN_SEPARATOR}" after the domain`)
+    return refuse(missingPartProblem('subcategory', DOMAIN_SEPARATOR, 'domain'))
   }
   const rest = text.slice(separatorIndex + 1)
   if (rest === WILDCARD) return { ok: true, predicate: { domain } }

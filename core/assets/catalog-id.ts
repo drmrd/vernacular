@@ -40,7 +40,7 @@ const VERSION_PATTERN = new RegExp(
 )
 
 const NAMESPACE_PROBLEM = `namespace must be core, or org_, usr_, or pkg_ followed by ${NAMESPACE_TAIL_MIN_LENGTH} to ${NAMESPACE_TAIL_MAX_LENGTH} lowercase letters, digits, or hyphens, starting with a letter or digit`
-const DOMAIN_PROBLEM = 'domain must be a known asset domain code'
+export const DOMAIN_PROBLEM = 'domain must be a known asset domain code'
 export const SUBCATEGORY_PROBLEM = `subcategory must be ${SUBCATEGORY_MIN_LENGTH} to ${SUBCATEGORY_MAX_LENGTH} lowercase letters, digits, or underscores, starting with a letter`
 export const SLUG_PROBLEM = `slug must be ${SLUG_MIN_LENGTH} to ${SLUG_MAX_LENGTH} lowercase letters, digits, or underscores, starting with a letter`
 const VERSION_PROBLEM =
@@ -48,7 +48,11 @@ const VERSION_PROBLEM =
 
 const PART_NAMES = ['namespace', 'domain', 'subcategory', 'slug', 'version'] as const
 const PART_SEPARATORS = [':', '.', '/', '@'] as const
-const [, CATEGORY_SEPARATOR] = PART_SEPARATORS
+export const [, DOMAIN_SEPARATOR, SLUG_SEPARATOR] = PART_SEPARATORS
+
+export function missingPartProblem(missing: string, separator: string, previous: string): string {
+  return `${missing} is missing: expected "${separator}" after the ${previous}`
+}
 
 interface RawCatalogParts {
   namespace: string
@@ -66,12 +70,9 @@ function splitCatalogId(text: string): SplitResult {
   for (const [index, separator] of PART_SEPARATORS.entries()) {
     const separatorIndex = rest.indexOf(separator)
     if (separatorIndex === -1) {
-      const missingPart = PART_NAMES[index + 1]
-      const previousPart = PART_NAMES[index]
-      return {
-        ok: false,
-        problem: `${missingPart} is missing: expected "${separator}" after the ${previousPart}`,
-      }
+      const missingPart = PART_NAMES[index + 1] ?? ''
+      const previousPart = PART_NAMES[index] ?? ''
+      return { ok: false, problem: missingPartProblem(missingPart, separator, previousPart) }
     }
     pieces.push(rest.slice(0, separatorIndex))
     rest = rest.slice(separatorIndex + 1)
@@ -105,5 +106,5 @@ export function formatCatalogId(id: CatalogId): string {
 }
 
 export function categoryOf(id: CatalogId): string {
-  return `${id.domain}${CATEGORY_SEPARATOR}${id.subcategory}`
+  return `${id.domain}${DOMAIN_SEPARATOR}${id.subcategory}`
 }
