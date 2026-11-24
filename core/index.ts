@@ -151,6 +151,21 @@ export {
   openingTypeHasHingeSide,
 } from './registries/opening-kind'
 export { humanizeElementTypeId } from './registries/element-type-label'
+export type { AssetDomain, AssetDomainCode, AssetTier } from './registries/asset-domains'
+export {
+  ASSET_DOMAIN_CODES,
+  ASSET_DOMAIN_REGISTRY_VERSION,
+  builtinAssetDomains,
+  isAssetDomainCode,
+  domainRank,
+} from './registries/asset-domains'
+export type { AssetCategory } from './registries/asset-categories'
+export {
+  ASSET_CATEGORY_REGISTRY_VERSION,
+  builtinAssetCategories,
+  categoriesOfDomain,
+  defaultCategoryName,
+} from './registries/asset-categories'
 export type { Command, CommandHandler } from './commands/command'
 export { CommandRegistry } from './commands/command-registry'
 export type { DispatcherOptions } from './commands/dispatcher'
