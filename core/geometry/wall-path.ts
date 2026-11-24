@@ -56,7 +56,8 @@ export interface PathProjection {
 
 export function projectOntoPath(path: WallPath, point: Point): PathProjection {
   const fromStart = subtract(point, path.start)
-  const along = dot(fromStart, tangentAlong(path, 0))
-  const offset = dot(fromStart, normalAlong(path, along))
+  const unclampedAlong = dot(fromStart, tangentAlong(path, 0))
+  const offset = dot(fromStart, normalAlong(path, unclampedAlong))
+  const along = Math.max(0, Math.min(unclampedAlong, pathLength(path)))
   return { point: pointAlong(path, along), along, offset }
 }
