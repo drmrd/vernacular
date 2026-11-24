@@ -63,9 +63,11 @@ function splitCatalogId(text: string): SplitResult {
   for (const [index, separator] of PART_SEPARATORS.entries()) {
     const separatorIndex = rest.indexOf(separator)
     if (separatorIndex === -1) {
+      const missingPart = PART_NAMES[index + 1]
+      const previousPart = PART_NAMES[index]
       return {
         ok: false,
-        problem: `${PART_NAMES[index + 1]} is missing: expected "${separator}" after the ${PART_NAMES[index]}`,
+        problem: `${missingPart} is missing: expected "${separator}" after the ${previousPart}`,
       }
     }
     pieces.push(rest.slice(0, separatorIndex))
