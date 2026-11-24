@@ -10,6 +10,7 @@ import { declaresMediaTypes, MODEL_MEDIA_TYPES, TEXTURE_MEDIA_TYPES } from './as
 import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
+import { isSemanticVersion } from './semantic-version.ts'
 import { isSha256Hex } from './sha256-hex.ts'
 import { validateTextureFields } from './texture-asset-rules.ts'
 
@@ -43,7 +44,6 @@ export interface PackValidationResult {
   errors: string[]
 }
 
-const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 const URL_PREFIX_PATTERN = /^https?:\/\/\S+$/
 
 const DIMENSION_AXES = ['width', 'depth', 'height'] as const
@@ -230,7 +230,7 @@ function validatePackFields(source: Record<string, unknown>, errors: string[]): 
   validateRequiredString(source, { key: 'attribution' }, errors)
   if (
     validateRequiredString(source, { key: 'version' }, errors) &&
-    !SEMVER_PATTERN.test(String(source['version']))
+    !isSemanticVersion(source['version'])
   ) {
     errors.push('version must be valid SemVer (for example 1.0.0)')
   }

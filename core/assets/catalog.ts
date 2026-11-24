@@ -5,6 +5,7 @@
 // path it names. A reader ignores fields it does not know.
 
 import { isRecord } from './is-record.ts'
+import { isSemanticVersion } from './semantic-version.ts'
 import { isSha256Hex } from './sha256-hex.ts'
 
 export const CATALOG_VERSION = 1
@@ -51,29 +52,40 @@ function failedMessages(checks: Check[]): string[] {
   return checks.filter(([, holds]) => !holds).map(([message]) => message)
 }
 
-function entryProblems(entry: unknown, path: string): string[] {
-  const source = isRecord(entry) ? entry : {}
-  const manifest = isRecord(source['manifest']) ? source['manifest'] : {}
-  const sha256 = manifest['sha256']
+function manifestProblems(manifest: unknown, path: string): string[] {
+  if (!isRecord(manifest)) return [`${path} must be an object`]
   return failedMessages([
-    [`${path} must be an object`, isRecord(entry)],
-    [`${path}.packId must be a non-empty string`, isNonEmptyString(source['packId'])],
-    [`${path}.version must be a non-empty string`, isNonEmptyString(source['version'])],
-    [
-      `${path}.formatVersion must be a positive integer`,
-      isPositiveInteger(source['formatVersion']),
-    ],
-    [`${path}.manifest.sha256 must be 64 lower-case hex characters`, isSha256Hex(sha256)],
-    [
-      `${path}.manifest.byteLength must be a non-negative integer`,
-      isNonNegativeInteger(manifest['byteLength']),
-    ],
-    [
-      `${path}.byteLength must be a non-negative integer`,
-      isNonNegativeInteger(source['byteLength']),
-    ],
-    [`${path}.itemCount must be a non-negative integer`, isNonNegativeInteger(source['itemCount'])],
+    [`${path}.sha256 must be 64 lower-case hex characters`, isSha256Hex(manifest['sha256'])],
+    [`${path}.byteLength must be a positive integer`, isPositiveInteger(manifest['byteLength'])],
   ])
+}
+
+function entryProblems(entry: unknown, path: string): string[] {
+  if (!isRecord(entry)) return [`${path} must be an object`]
+  return [
+    ...failedMessages([
+      [`${path}.packId must be a non-empty string`, isNonEmptyString(entry['packId'])],
+      [
+        `${path}.version must be a Semantic Version (for example 1.0.0)`,
+        isSemanticVersion(entry['version']),
+      ],
+      [
+        `${path}.formatVersion must be a positive integer`,
+        isPositiveInteger(entry['formatVersion']),
+      ],
+    ]),
+    ...manifestProblems(entry['manifest'], `${path}.manifest`),
+    ...failedMessages([
+      [
+        `${path}.byteLength must be a non-negative integer`,
+        isNonNegativeInteger(entry['byteLength']),
+      ],
+      [
+        `${path}.itemCount must be a non-negative integer`,
+        isNonNegativeInteger(entry['itemCount']),
+      ],
+    ]),
+  ]
 }
 
 export function validateCatalog(value: unknown): CatalogValidation {
