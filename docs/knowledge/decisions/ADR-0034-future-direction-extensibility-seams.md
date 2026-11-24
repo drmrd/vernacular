@@ -28,10 +28,11 @@ related:
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0021-2d-plan-rendering-interaction,
     decisions/ADR-0032-broad-then-narrow-hit-test-and-multi-select,
+    decisions/ADR-0201-wall-path-accessor-and-the-arc-wall-made-by-bending,
   ]
-sourceFiles: [docs/specs/2026-06-01-vernacular-design.md]
+sourceFiles: [docs/specs/2026-06-01-vernacular-design.md, core/geometry/wall-path.ts]
 status: current
-updated: 2026-06-09
+updated: 2026-11-23
 ---
 
 # ADR-0034: Future-direction extensibility seams (historic forms and building systems)
@@ -156,3 +157,48 @@ retrofit risk, until a detailed section or renovation view needs them.
 - Revisit at each owning milestone: openings (slice 7), 3D preview, the
   old-house architectural vocabulary milestone, and any future building-systems
   or structural phase.
+
+## Note 2026-11-23: seam 2 exists
+
+A wall's centerline now has a path value, `WallPath`, in
+`core/geometry/wall-path.ts`. It has one kind today, a straight line
+(`LinePath`), and `wallPath(wall)` builds one from a wall's two ends. The path
+and copies of its two ends are frozen, so a later edit of the wall does not move
+a path built before it. The module's functions give a path's ends, length, and
+bounds, the point, tangent, and normal at a distance along it, the projection of
+a point onto it, a sub-path, an offset to one side, a moved, turned, or reversed
+copy, and a list of points that follows it. On a path of zero length, the
+functions that need a direction (`pointAlong`, `tangentAlong`, `normalAlong`,
+`projectOntoPath`, `subPath`, and `offsetPath`) give `NaN`. Nothing calls them
+yet, and the first pull request with a caller adds the guard.
+
+An architecture test, `tests/architecture/wall-ends-through-the-path.test.ts`,
+keeps the rest of the code on that route. It reads the TypeScript program and
+goes by type, not by name: a production file is flagged when it reads `start` or
+`end` on a `Wall` or a `WallSceneNode`, by property access or by destructuring,
+or when it passes a wall, or a list of walls, to a parameter whose type has its
+own `start` or `end`. The test decides by where the property is declared, so a
+read through a `Pick`, `Omit`, or `Partial` of a wall type, an interface that
+extends one, or a type parameter bounded by one counts as well. The three kernel
+folders (`core/geometry/`, `core/topology/`, and `core/migrations/`) are exempt,
+and so is a call into them. A parameter typed as a wall does not count at the
+call, because the read is flagged where it happens. Tests, stories, fixtures,
+and generated code are not scanned.
+
+The test does not see every way to reach an end. A wall copied with an object
+spread, an end written through a computed key (as in
+`core/commands/handlers/wall-commands.ts`), a wall assigned to a variable of a
+structural type, a destructuring assignment, and an interface that extends a
+wall type and declares `start` or `end` again all pass it. Those places need a
+search by hand before the exception list counts as empty.
+
+The files that still read wall ends are listed in
+`tests/architecture/wall-end-read-exceptions.ts`. The list held 31 files when
+the path landed. The test fails on a read in a file that is not listed, and also
+on a listed file that has stopped reading wall ends, so the list matches the
+code and shrinks as files move to the path. The first reader is
+`buildFloorWallGraph` in `engine/scene/wall-scene-helpers.ts`, which builds a
+floor's wall graph from `pathStart` and `pathEnd`. The list must be empty before
+an arc wall reaches a user.
+[[ADR-0201-wall-path-accessor-and-the-arc-wall-made-by-bending]] records the
+decision to read walls through a path and the arc wall that follows from it.
