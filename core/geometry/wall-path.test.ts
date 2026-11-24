@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  flattenPath,
   linePath,
   normalAlong,
   offsetPath,
@@ -172,5 +173,14 @@ describe('reversePath', () => {
 
     expectPointNear(pathStart(reversed), { x: 1000, y: 0 })
     expectPointNear(pathEnd(reversed), { x: 0, y: 0 })
+  })
+})
+
+describe('flattenPath', () => {
+  it('flattens a line to its two ends', () => {
+    expect(flattenPath(HORIZONTAL, 1)).toEqual([
+      { x: 0, y: 0 },
+      { x: 1000, y: 0 },
+    ])
   })
 })
