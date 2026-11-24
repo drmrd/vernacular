@@ -1,6 +1,5 @@
 import { useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
-import { drawOnNextRendererFrame } from '../../engine'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   frontDirection,
@@ -19,6 +18,7 @@ import { buildFramedScene } from './framed-scene'
 import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
 import { useHarnessGround } from './harness-ground'
 import {
+  drawHarnessFrame,
   harnessReadyProps,
   type HarnessReadyFrame,
   type HarnessRenderer,
@@ -88,22 +88,22 @@ function StaticFrame({
   // pass renders exactly as before. handleAmbientOcclusionSettled bubbles the
   // build's settlement up so the wrapper's ready gate waits for the installed pipeline.
   const renderFrame = useAmbientOcclusion(ambientOcclusionActive, handleAmbientOcclusionSettled)
-  // The camera is placed in this layout effect. The draw runs once, in the renderer's next
+  // The camera is placed in this layout effect. The draw runs in the renderer's next
   // animation-loop callback, because the renderer resets its counts and does its
-  // once-in-a-frame work only there; the cleanup cancels a pending draw. A frame requested
-  // with harnessReady true reports itself as the ready frame.
+  // once-in-a-frame work only there; the cleanup cancels a pending draw. With harnessReady true
+  // a settle frame is drawn first, so one-time GPU work lands there, and the frame after it
+  // reports itself as the ready frame.
   useLayoutEffect(() => {
     if (cameraOverride === undefined) fitCameraToBounds(camera, bounds, { width, height })
     else applyCameraPose(camera, cameraOverride)
     // gl is typed as the scene library's own renderer, which does not declare the
     // animation-loop accessors the WebGPU renderer has, hence the double cast.
     const renderer = gl as unknown as HarnessRenderer
-    return drawOnNextRendererFrame(renderer, () => {
-      renderFrame(gl, scene, camera)
-      // The renderer reset both counts at the start of this callback, so they are this frame's.
-      const { frameCalls, drawCalls } = renderer.info.render
-      if (harnessReady) handleReadyFrameDrawn({ renderCalls: frameCalls, drawCalls })
-    })
+    return drawHarnessFrame(
+      renderer,
+      () => renderFrame(gl, scene, camera),
+      harnessReady ? handleReadyFrameDrawn : undefined,
+    )
   }, [
     renderFrame,
     gl,
