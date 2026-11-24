@@ -35,10 +35,10 @@ export interface AssetLibrary {
  * Assembles the in-app asset library at boot: a user source backed by the project
  * content cache and an IndexedDB metadata index, plus the bundled starter packs read
  * over fetch. The library lists only the newest starter pack version; the older version
- * stays in the catalog, unlisted, so references that name it still resolve. The user source takes
- * precedence over the packs, so a user's own import of an asset shadows a pack asset
- * with the same hash. The user source is returned alongside the registry so the import
- * action can store new GLBs into it.
+ * stays in the catalog, unlisted, so references that name it still resolve. The user
+ * source takes precedence over the packs, so a user's own import of an asset shadows a
+ * pack asset with the same hash. The user source is returned alongside the registry so
+ * the import action can store new GLBs into it.
  * Boot wiring over IndexedDB and fetch; exercised end-to-end, not in unit tests.
  */
 export function createAssetLibrary(assets: AssetCache): AssetLibrary {
