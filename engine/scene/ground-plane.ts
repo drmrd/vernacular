@@ -53,12 +53,21 @@ export function groundPlaneDrawsWith(
 ): boolean {
   if (!isGroundPlane(plane)) return false
   const drawn = plane.userData.appearance as TextureAppearance | undefined
-  if (drawn === undefined || appearance === undefined) return drawn === appearance
-  return (
-    drawn.texture === appearance.texture &&
-    drawn.tileSize.width === appearance.tileSize.width &&
-    drawn.tileSize.height === appearance.tileSize.height
-  )
+  if (drawn === undefined && appearance === undefined) return true
+  if (drawn === undefined || appearance === undefined) return false
+  return drawn.texture === appearance.texture && sameTileSize(drawn.tileSize, appearance.tileSize)
+}
+
+function sameTileSize(a: TextureAppearance['tileSize'], b: TextureAppearance['tileSize']): boolean {
+  return a.width === b.width && a.height === b.height
+}
+
+function copyOfAppearance(
+  appearance: TextureAppearance | undefined,
+): TextureAppearance | undefined {
+  if (appearance === undefined) return undefined
+  const { width, height } = appearance.tileSize
+  return { texture: appearance.texture, tileSize: { width, height } }
 }
 
 function findGroundPlane(root: THREE.Object3D): THREE.Object3D | null {
@@ -148,7 +157,7 @@ function groundMesh(
   const mesh = new THREE.Mesh(geometry, material)
   mesh.name = GROUND_PLANE_NAME
   mesh.userData.ground = true
-  mesh.userData.appearance = appearance
+  mesh.userData.appearance = copyOfAppearance(appearance)
   // Lay the XY plane flat into the XZ ground plane, normal pointing up.
   mesh.rotation.x = -Math.PI / 2
   mesh.position.set(footprint.centerX, gradeElevation, footprint.centerZ)
