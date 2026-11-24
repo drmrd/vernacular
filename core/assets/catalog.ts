@@ -5,10 +5,9 @@
 // path it names. A reader ignores fields it does not know.
 
 import { isRecord } from './is-record.ts'
+import { isSha256Hex } from './sha256-hex.ts'
 
 export const CATALOG_VERSION = 1
-
-const SHA256_PATTERN = /^[0-9a-f]{64}$/
 
 export interface CatalogPackEntry {
   packId: string
@@ -38,11 +37,11 @@ function isPositiveInteger(value: unknown): value is number {
   return isNonNegativeInteger(value) && value >= 1
 }
 
-function isNonEmptyString(value: unknown): boolean {
+function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value !== ''
 }
 
-function isOptionalString(value: unknown): boolean {
+function isOptionalString(value: unknown): value is string | undefined {
   return value === undefined || typeof value === 'string'
 }
 
@@ -64,10 +63,7 @@ function entryProblems(entry: unknown, path: string): string[] {
       `${path}.formatVersion must be a positive integer`,
       isPositiveInteger(source['formatVersion']),
     ],
-    [
-      `${path}.manifest.sha256 must be 64 lower-case hex characters`,
-      typeof sha256 === 'string' && SHA256_PATTERN.test(sha256),
-    ],
+    [`${path}.manifest.sha256 must be 64 lower-case hex characters`, isSha256Hex(sha256)],
     [
       `${path}.manifest.byteLength must be a non-negative integer`,
       isNonNegativeInteger(manifest['byteLength']),

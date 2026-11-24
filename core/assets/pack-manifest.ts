@@ -10,6 +10,7 @@ import { declaresMediaTypes, MODEL_MEDIA_TYPES, TEXTURE_MEDIA_TYPES } from './as
 import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
+import { isSha256Hex } from './sha256-hex.ts'
 import { validateTextureFields } from './texture-asset-rules.ts'
 
 export type AssetKind =
@@ -43,7 +44,6 @@ export interface PackValidationResult {
 }
 
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
-const SHA256_PATTERN = /^[0-9a-f]{64}$/
 const URL_PREFIX_PATTERN = /^https?:\/\/\S+$/
 
 const DIMENSION_AXES = ['width', 'depth', 'height'] as const
@@ -164,7 +164,7 @@ function validateAssetFields(
   const { label } = context
   if (
     validateRequiredString(source, { key: 'contentHash', label: `${label}.contentHash` }, errors) &&
-    !SHA256_PATTERN.test(String(source['contentHash']))
+    !isSha256Hex(source['contentHash'])
   ) {
     errors.push(`${label}.contentHash must be a sha256 hex digest`)
   }
