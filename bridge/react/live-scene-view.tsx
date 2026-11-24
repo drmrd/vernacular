@@ -25,6 +25,7 @@ import { useSceneRevision } from './scene-revision'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { SceneViewToolbar } from './scene-view-toolbar'
+import type { TextureStatus } from './texture-cache'
 import { useDoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
 import { useLiveViewReadiness, type LiveViewReadinessNotes } from './use-live-view-readiness'
@@ -117,6 +118,7 @@ interface LiveSceneCanvasProps {
   onProxyPositions: (positions: EntityScreenPosition[]) => void
   doorway: DoorwayStand | null
   onSceneAttached: (scene: FramedScene) => () => void
+  groundTexture: TextureStatus
 }
 
 // The scene-graph elements that render inside the Canvas: the scene root, the
@@ -165,7 +167,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const perceivedColor = usePerceivedColorStore()
   const sceneRevision = useSceneRevision(props.framed)
   const { drawnRevision, noteDrawnRevision } = useDrawnRevision()
-  const readiness = useLiveViewReadiness()
+  const readiness = useLiveViewReadiness(props.groundTexture)
   // The stored session reaches the live view as the Canvas below is constructed: initialCamera
   // seeds the camera with the position the departing viewer left behind (ADR-0170), and every
   // other stored field arrives as a prop of this render. The Canvas is built from both once the
@@ -240,6 +242,7 @@ export function LiveSceneView() {
           onProxyPositions={setPositions}
           doorway={doorway}
           onSceneAttached={framedScene.onSceneAttached}
+          groundTexture={framedScene.groundTexture}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
