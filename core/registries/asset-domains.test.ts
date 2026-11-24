@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { ASSET_DOMAIN_REGISTRY_VERSION, builtinAssetDomains } from './asset-domains.ts'
+import {
+  ASSET_DOMAIN_CODES,
+  ASSET_DOMAIN_REGISTRY_VERSION,
+  builtinAssetDomains,
+  domainRank,
+  isAssetDomainCode,
+} from './asset-domains.ts'
 import { getEntry } from './registry.ts'
 
 function placementOf(code: string): { tier: number | undefined; rank: number | undefined } {
@@ -29,5 +35,18 @@ describe('builtin asset domains', () => {
 
     const ranks = new Set(Object.values(builtinAssetDomains.entries).map((domain) => domain.rank))
     expect([...ranks].sort((a, b) => a - b)).toEqual([10, 20, 25, 30, 40, 45, 48])
+  })
+
+  it('tells a domain code from other text and gives its rank', () => {
+    expect(isAssetDomainCode('HDW')).toBe(true)
+    for (const text of ['hdw', 'HD', 'HDWX', '']) {
+      expect(isAssetDomainCode(text)).toBe(false)
+    }
+
+    expect(domainRank('MAT')).toBe(20)
+
+    expect(ASSET_DOMAIN_CODES[0]).toBe('SUB')
+    expect(ASSET_DOMAIN_CODES.at(-1)).toBe('SYS')
+    expect([...ASSET_DOMAIN_CODES]).toEqual(Object.keys(builtinAssetDomains.entries))
   })
 })
