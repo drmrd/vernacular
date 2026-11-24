@@ -263,8 +263,9 @@ jobs:
           path: storybook-static
           retention-days: 7
       # The report is kept for every run, green ones too, so that a failed first attempt in a
-      # green run can be read later. The name carries the run attempt: a re-run that reuses a
-      # fixed name may be refused (a name conflict), so each attempt keeps its own artifact name.
+      # green run can be read later. The name carries the run attempt: the attempt
+      # number tells which attempt a report came from, so the report of a failed first attempt and
+      # the report of a re-run stay apart.
       - name: Upload story visual report
         if: ${{ !cancelled() && steps.story-visual-tests.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4
@@ -310,8 +311,9 @@ jobs:
         if: ${{ !cancelled() && steps.e2e-tests.conclusion != 'skipped' }}
         run: node scripts/ci/retry-warning.mjs reports/playwright/results.json
       # The report is kept for every run, green ones too, so that a failed first attempt in a
-      # green run can be read later. The name carries the run attempt: a re-run that reuses a
-      # fixed name may be refused (a name conflict), so each attempt keeps its own artifact name.
+      # green run can be read later. The name carries the run attempt: the attempt
+      # number tells which attempt a report came from, so the report of a failed first attempt and
+      # the report of a re-run stay apart.
       - name: Upload Playwright report
         if: ${{ !cancelled() && steps.e2e-tests.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4
@@ -363,8 +365,9 @@ jobs:
         if: ${{ !cancelled() && steps.scene-visual-tests.conclusion != 'skipped' }}
         run: node scripts/ci/retry-warning.mjs reports/playwright/results.json
       # The report is kept for every run, green ones too, so that a failed first attempt in a
-      # green run can be read later. The name carries the run attempt: a re-run that reuses a
-      # fixed name may be refused (a name conflict), so each attempt keeps its own artifact name.
+      # green run can be read later. The name carries the run attempt: the attempt
+      # number tells which attempt a report came from, so the report of a failed first attempt and
+      # the report of a re-run stay apart.
       - name: Upload scene visual report
         if: ${{ !cancelled() && steps.scene-visual-tests.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4
@@ -503,8 +506,9 @@ jobs:
         if: ${{ !cancelled() && steps.live-view-first-test.conclusion != 'skipped' }}
         run: node scripts/ci/retry-warning.mjs reports/playwright/live-view-*.json
       # The report is kept for every run, green ones too, so that a failed first attempt in a
-      # green run can be read later. The name carries the run attempt: a re-run that reuses a
-      # fixed name may be refused (a name conflict), so each attempt keeps its own artifact name.
+      # green run can be read later. The name carries the run attempt: the attempt
+      # number tells which attempt a report came from, so the report of a failed first attempt and
+      # the report of a re-run stay apart.
       - name: Upload live-view report
         if: ${{ !cancelled() && steps.live-view-first-test.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4
