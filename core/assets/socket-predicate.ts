@@ -30,7 +30,11 @@ function refuse(problem: string): SocketPredicateParse {
 function parseCategoryPart(domain: AssetDomainCode, categoryText: string): SocketPredicateParse {
   const separatorIndex = categoryText.indexOf(SLUG_SEPARATOR)
   if (separatorIndex === -1) {
-    return refuse(missingPartProblem('slug', SLUG_SEPARATOR, 'subcategory'))
+    return refuse(
+      SUBCATEGORY_PATTERN.test(categoryText)
+        ? missingPartProblem('slug', SLUG_SEPARATOR, 'subcategory')
+        : SUBCATEGORY_PROBLEM,
+    )
   }
   const subcategory = categoryText.slice(0, separatorIndex)
   const slug = categoryText.slice(separatorIndex + 1)
