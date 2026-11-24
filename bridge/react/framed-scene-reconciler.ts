@@ -2,6 +2,7 @@ import { type SceneGraph, type SceneNode, type SurfaceTreatment } from '../../co
 import {
   disposeObject,
   isGroundPlane,
+  type BuildSceneOptions,
   type EdgeOverlayOptions,
   type PhysicalMaterialProvider,
   type SceneRoot,
@@ -61,9 +62,9 @@ export interface FramedSceneReconciler {
    */
   dispose(): void
   /**
-   * Sets the appearance the ground plane of later reconciles of floors draws with, or none for the
-   * flat ground. A cached scene's plane is swapped in place when its appearance changed, and a
-   * rebuilt scene seats a plane with it.
+   * Sets the appearance that later reconciles give the ground plane, or none for the flat ground.
+   * It applies to a graph with floors and to an empty one. A cached scene's plane is swapped in
+   * place when its appearance changed, and a rebuilt scene seats a plane with it.
    */
   setGroundAppearance(appearance: TextureAppearance | undefined): void
 }
@@ -215,12 +216,22 @@ function isSameEmptyGraph(scene: EmptyGraphScene, graph: SceneGraph, paint: Pain
   return scene.graph === graph && scene.paint === paint
 }
 
+/** Returns the cached empty-graph scene with its ground plane seated for the current appearance. */
+function reuseEmptyScene(
+  scene: EmptyGraphScene,
+  appearance: TextureAppearance | undefined,
+): FramedScene {
+  const { gradeElevation } = scene.graph
+  refreshGroundPlane(scene.framed.root, { gradeElevation, appearance })
+  return scene.framed
+}
+
 function buildEmptyGraphScene(
   graph: SceneGraph,
   paint: Paint,
-  view: EdgeOverlayOptions,
+  options: BuildSceneOptions,
 ): EmptyGraphScene {
-  return { framed: buildFramedScene(graph, paint, view), graph, paint }
+  return { framed: buildFramedScene(graph, paint, options), graph, paint }
 }
 
 /** A framed scene together with the floor builds it stacked, so a later reconcile that
@@ -329,13 +340,13 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
 
   function reconcileGraph(graph: ScopedSceneGraph, paint: Paint, models: FurnitureModelLookup) {
     if (emptyScene !== undefined) {
-      if (isSameEmptyGraph(emptyScene, graph, paint)) return emptyScene.framed
+      if (isSameEmptyGraph(emptyScene, graph, paint)) return reuseEmptyScene(emptyScene, appearance)
       retired.objects.add(emptyScene.framed.root)
     }
     emptyScene = undefined
     // No floors: no floor id to key a build by, so the scene is kept by graph and paint alone.
     if (graph.nodes.length === 0) {
-      emptyScene = buildEmptyGraphScene(graph, paint, view)
+      emptyScene = buildEmptyGraphScene(graph, paint, { ...view, groundAppearance: appearance })
       return emptyScene.framed
     }
     const pass = { graph, paint, models, view, cache: buildsByFloorId, retired, appearance }
