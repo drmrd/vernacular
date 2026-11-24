@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { ASSET_CATEGORY_REGISTRY_VERSION, builtinAssetCategories } from './asset-categories.ts'
+import { TIER_1_SUBCATEGORIES } from './asset-categories-tier-1.ts'
+import { TIER_2_SUBCATEGORIES } from './asset-categories-tier-2.ts'
+import { TIER_3_SUBCATEGORIES } from './asset-categories-tier-3.ts'
+import { TIER_4_SUBCATEGORIES } from './asset-categories-tier-4.ts'
+import { ASSET_DOMAIN_CODES, builtinAssetDomains } from './asset-domains.ts'
 import { getEntry } from './registry.ts'
 
 const EXPECTED_COUNTS_BY_DOMAIN = Object.fromEntries([
@@ -52,5 +57,23 @@ describe('builtinAssetCategories', () => {
     const seating = getEntry(builtinAssetCategories, 'FFE.seating')
     expect(seating?.domain).toBe('FFE')
     expect(seating?.subcategory).toBe('seating')
+  })
+})
+
+describe('the tier files', () => {
+  it('keeps each domain in the tier file of its tier', () => {
+    const tierFiles = [
+      TIER_1_SUBCATEGORIES,
+      TIER_2_SUBCATEGORIES,
+      TIER_3_SUBCATEGORIES,
+      TIER_4_SUBCATEGORIES,
+    ]
+
+    tierFiles.forEach((tierFile, index) => {
+      const domainsOfTier = ASSET_DOMAIN_CODES.filter(
+        (code) => getEntry(builtinAssetDomains, code)?.tier === index + 1,
+      )
+      expect(Object.keys(tierFile)).toEqual(domainsOfTier)
+    })
   })
 })
