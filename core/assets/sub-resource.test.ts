@@ -63,6 +63,24 @@ describe('sub-resource text form', () => {
     if (!noColon.ok) expect(noColon.problem).toMatch(/^name/)
   })
 
+  it('names the part of a malformed sub-resource text', () => {
+    const cases: readonly (readonly [string, RegExp])[] = [
+      [`${DOOR_TEXT}~socket:strike~plate`, /^name/],
+      [`${DOOR_TEXT}~~socket:ab`, /^kind/],
+      [`${DOOR_TEXT}~socket:strike_plate~socket:x`, /^name/],
+      [`${DOOR_TEXT}~socket:strike:plate`, /^name/],
+      [`${DOOR_TEXT}~widget`, /^kind/],
+      [`${DOOR_TEXT}~`, /^kind/],
+      [`${DOOR_TEXT}~socket`, /^name/],
+    ]
+
+    for (const [text, expected] of cases) {
+      const parsed = parseSubResourceText(text)
+      expect(parsed.ok, text).toBe(false)
+      if (!parsed.ok) expect(parsed.problem, text).toMatch(expected)
+    }
+  })
+
   it('a sub-resource text is never an asset reference', () => {
     const text = formatSubResource(doorId(), STRIKE_PLATE)
 
