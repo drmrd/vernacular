@@ -37,4 +37,16 @@ describe('selectReadablePacks', () => {
     ])
     expect(skipped).toBe(2)
   })
+
+  it('keeps the newest version when the catalog lists an older version first', () => {
+    const catalog: Catalog = {
+      catalogVersion: 1,
+      packs: [entry('garden', '1.0.0', 1), entry('garden', '1.10.0', 2)],
+    }
+
+    const { packs, skipped } = selectReadablePacks(catalog, [1, 2])
+
+    expect(packs.map((pack) => `${pack.packId}@${pack.version}`)).toEqual(['garden@1.10.0'])
+    expect(skipped).toBe(0)
+  })
 })
