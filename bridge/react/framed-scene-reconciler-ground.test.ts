@@ -52,6 +52,17 @@ function onlyPlane(root: SceneRoot) {
   return plane
 }
 
+const emptyGraph = (): SceneGraph => ({
+  nodes: [],
+  walls: [],
+  rooms: [],
+  underlays: [],
+  openings: [],
+  dimensions: [],
+  stairs: [],
+  furniture: [],
+})
+
 const noPaint = (): Record<string, SurfaceTreatment> => ({})
 
 describe('a ground appearance reaches the ground of a stacked scene', () => {
@@ -117,5 +128,29 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
 
     expect(planeMaterialDispose).toHaveBeenCalled()
     expect(dispose).not.toHaveBeenCalled()
+  })
+
+  it('lets a cached scene of an empty graph take it in place', () => {
+    const reconciler = createFramedSceneReconciler()
+    const graph = emptyGraph()
+    const paint = noPaint()
+    const { appearance } = heldAppearance()
+    const first = reconciler.reconcile(graph, paint)
+
+    reconciler.setGroundAppearance(appearance)
+    const second = reconciler.reconcile(graph, paint)
+
+    expect(second).toBe(first)
+    expect(groundPlaneDrawsWith(onlyPlane(second.root), appearance)).toBe(true)
+  })
+
+  it('seats a new scene of an empty graph on it', () => {
+    const reconciler = createFramedSceneReconciler()
+    const { appearance } = heldAppearance()
+    reconciler.setGroundAppearance(appearance)
+
+    const scene = reconciler.reconcile(emptyGraph(), noPaint())
+
+    expect(groundPlaneDrawsWith(onlyPlane(scene.root), appearance)).toBe(true)
   })
 })
