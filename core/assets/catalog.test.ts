@@ -150,10 +150,52 @@ describe('validateCatalog', () => {
       expect(errors, label).toHaveLength(1)
       expect(errors[0], label).toMatch(path)
     }
-    expect(validateCatalog(withField('version', '1.0.0-alpha.1+build.5')).outcome).toBe('valid')
-    expect(validateCatalog(withField('byteLength', 0)).outcome).toBe('valid')
-    for (const notAnObject of [null, 'text', []]) {
-      expect(errorsOf(notAnObject).length).toBeGreaterThan(0)
-    }
   })
+})
+
+describe('validateCatalog - pack versions and non-object values', () => {
+  it('accepts every strict version form and an empty pack entry length', () => {
+    const versions = ['1.0.0-alpha.1', '10.20.30', '1.0.0-0.3.7', '1.0.0-x-y.z']
+    for (const version of versions) {
+      const catalog = withFirstPack((pack) => (pack.version = version))
+      expect(validateCatalog(catalog).outcome, version).toBe('valid')
+    }
+    expect(validateCatalog(withFirstPack((pack) => (pack.byteLength = 0))).outcome).toBe('valid')
+  })
+
+  it.each([
+    '1.0.0+build.5',
+    '01.0.0',
+    '1.00.0',
+    '1.0.0-01',
+    '1.0.0-a..b',
+    '1.0.0+',
+    '1.0.0x',
+    ' 1.0.0',
+  ])('refuses the pack version %j with one error naming the version', (version) => {
+    const errors = errorsOf(withFirstPack((pack) => (pack.version = version)))
+
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatch(/^packs\[0\]\.version/)
+  })
+
+  it('refuses an array as a pack entry or as a manifest with one error each', () => {
+    const asEntry = errorsOf({ catalogVersion: 1, packs: [[]] })
+    const asManifest = errorsOf(withFirstPack((pack) => (pack.manifest = [])))
+
+    expect(asEntry).toHaveLength(1)
+    expect(asEntry[0]).toMatch(/^packs\[0\]/)
+    expect(asManifest).toHaveLength(1)
+    expect(asManifest[0]).toMatch(/^packs\[0\]\.manifest/)
+  })
+
+  it.each([null, 'text', []])(
+    'refuses the non-object catalog %j with one error naming catalog',
+    (value) => {
+      const errors = errorsOf(value)
+
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toMatch(/^catalog/)
+    },
+  )
 })
