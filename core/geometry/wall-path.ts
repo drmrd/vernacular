@@ -79,6 +79,10 @@ export function rotatePath(path: WallPath, pivot: Point, radians: number): WallP
   return linePath(rotatePoint(path.start, pivot, radians), rotatePoint(path.end, pivot, radians))
 }
 
+export function reversePath(path: WallPath): WallPath {
+  return linePath(path.end, path.start)
+}
+
 export interface PathBounds {
   readonly min: Point
   readonly max: Point
