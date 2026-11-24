@@ -75,6 +75,28 @@ interface RawCatalogParts {
 
 type SplitResult = { ok: true; parts: RawCatalogParts } | { ok: false; problem: string }
 
+function namespaceProblem(namespace: string): string | undefined {
+  const reservedPrefix = RESERVED_NAMESPACE_PREFIXES.find((prefix) => namespace.startsWith(prefix))
+  if (reservedPrefix !== undefined) return `namespace prefix "${reservedPrefix}" is reserved`
+  return NAMESPACE_PATTERN.test(namespace) ? undefined : NAMESPACE_PROBLEM
+}
+
+const PART_CHECKS: readonly ((part: string) => string | undefined)[] = [
+  namespaceProblem,
+  (part) => (isAssetDomainCode(part) ? undefined : DOMAIN_PROBLEM),
+  (part) => (SUBCATEGORY_PATTERN.test(part) ? undefined : SUBCATEGORY_PROBLEM),
+  (part) => (SLUG_PATTERN.test(part) ? undefined : SLUG_PROBLEM),
+  (part) => (VERSION_PATTERN.test(part) ? undefined : VERSION_PROBLEM),
+]
+
+function firstPartProblem(parts: readonly string[]): string | undefined {
+  for (const [index, part] of parts.entries()) {
+    const problem = PART_CHECKS[index]?.(part)
+    if (problem !== undefined) return problem
+  }
+  return undefined
+}
+
 function splitCatalogId(text: string): SplitResult {
   const pieces: string[] = []
   let rest = text
@@ -83,7 +105,10 @@ function splitCatalogId(text: string): SplitResult {
     if (separatorIndex === -1) {
       const missingPart = PART_NAMES[index + 1] ?? ''
       const previousPart = PART_NAMES[index] ?? ''
-      return { ok: false, problem: missingPartProblem(missingPart, separator, previousPart) }
+      const problem =
+        firstPartProblem([...pieces, rest]) ??
+        missingPartProblem(missingPart, separator, previousPart)
+      return { ok: false, problem }
     }
     pieces.push(rest.slice(0, separatorIndex))
     rest = rest.slice(separatorIndex + 1)
@@ -94,15 +119,10 @@ function splitCatalogId(text: string): SplitResult {
 
 function validateCatalogParts(raw: RawCatalogParts): CatalogIdParse {
   const { namespace, domain, subcategory, slug, version } = raw
-  const reservedPrefix = RESERVED_NAMESPACE_PREFIXES.find((prefix) => namespace.startsWith(prefix))
-  if (reservedPrefix !== undefined) {
-    return { ok: false, problem: `namespace prefix "${reservedPrefix}" is reserved` }
+  const problem = firstPartProblem([namespace, domain, subcategory, slug, version])
+  if (problem !== undefined || !isAssetDomainCode(domain)) {
+    return { ok: false, problem: problem ?? DOMAIN_PROBLEM }
   }
-  if (!NAMESPACE_PATTERN.test(namespace)) return { ok: false, problem: NAMESPACE_PROBLEM }
-  if (!isAssetDomainCode(domain)) return { ok: false, problem: DOMAIN_PROBLEM }
-  if (!SUBCATEGORY_PATTERN.test(subcategory)) return { ok: false, problem: SUBCATEGORY_PROBLEM }
-  if (!SLUG_PATTERN.test(slug)) return { ok: false, problem: SLUG_PROBLEM }
-  if (!VERSION_PATTERN.test(version)) return { ok: false, problem: VERSION_PROBLEM }
   return { ok: true, id: { namespace, domain, subcategory, slug, version } }
 }
 
