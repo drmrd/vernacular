@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { linePath, pathEnd, pathLength, pathStart, wallPath } from './wall-path'
+import { linePath, pathEnd, pathLength, pathStart, pointAlong, wallPath } from './wall-path'
+import type { Point } from '../model/types'
+
+const DIAGONAL = wallPath({ start: { x: 0, y: 0 }, end: { x: 3000, y: 4000 } })
+
+function expectPointNear(actual: Point, expected: Point): void {
+  expect(actual.x).toBeCloseTo(expected.x, 9)
+  expect(actual.y).toBeCloseTo(expected.y, 9)
+}
 
 describe('wallPath', () => {
   it("builds a line path from a wall's two ends", () => {
@@ -33,8 +41,13 @@ describe('wallPath', () => {
 
 describe('pathLength', () => {
   it('measures the length of a line path', () => {
-    const diagonal = wallPath({ start: { x: 0, y: 0 }, end: { x: 3000, y: 4000 } })
+    expect(pathLength(DIAGONAL)).toBe(5000)
+  })
+})
 
-    expect(pathLength(diagonal)).toBe(5000)
+describe('pointAlong', () => {
+  it('finds the point at a distance along the path', () => {
+    expectPointNear(pointAlong(DIAGONAL, 2500), { x: 1500, y: 2000 })
+    expectPointNear(pointAlong(DIAGONAL, 0), { x: 0, y: 0 })
   })
 })
