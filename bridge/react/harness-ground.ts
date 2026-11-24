@@ -7,6 +7,8 @@ import type { TextureState, TextureStatus } from './texture-cache'
 interface AppliedGround {
   root: SceneRoot
   status: TextureStatus
+  appearance: TextureState['appearance']
+  gradeElevation: number | undefined
 }
 
 /**
@@ -22,9 +24,13 @@ export function useHarnessGround(
   const { appearance, status } = texture
   useLayoutEffect(() => {
     refreshGroundPlane(root, { gradeElevation, appearance })
-    setApplied({ root, status })
+    setApplied({ root, status, appearance, gradeElevation })
   }, [root, gradeElevation, appearance, status])
-  // The gate compares only the root and the status, so an appearance or grade change on the same
-  // root goes unseen; the harness never makes one, as its grass and fixture grade stay fixed.
-  return applied?.root === root && applied.status === status ? status : 'loading'
+  // The gate compares everything the effect applied.
+  return applied?.root === root &&
+    applied.status === status &&
+    applied.appearance === appearance &&
+    applied.gradeElevation === gradeElevation
+    ? status
+    : 'loading'
 }
