@@ -14,7 +14,8 @@ const NUMERIC_IDENTIFIER = /^[0-9]+$/
 type ParsedVersion = { core: string[]; prerelease: string[] }
 
 function parseVersion(version: string): ParsedVersion {
-  const withoutBuild = version.split(BUILD_METADATA_SEPARATOR, 1)[0] ?? ''
+  const buildStart = version.indexOf(BUILD_METADATA_SEPARATOR)
+  const withoutBuild = buildStart === -1 ? version : version.slice(0, buildStart)
   const prereleaseStart = withoutBuild.indexOf(PRERELEASE_SEPARATOR)
   if (prereleaseStart === -1) {
     return { core: withoutBuild.split(IDENTIFIER_SEPARATOR), prerelease: [] }
@@ -44,16 +45,27 @@ function comparePrereleaseIdentifier(a: string, b: string): number {
   return compareOrdered(a, b)
 }
 
-function comparePrerelease(a: string[], b: string[]): number {
-  if (a.length === 0 || b.length === 0) return compareOrdered(b.length, a.length)
-  const shared = Math.min(a.length, b.length)
-  for (let index = 0; index < shared; index += 1) {
-    const result = comparePrereleaseIdentifier(a[index] ?? '', b[index] ?? '')
+function compareIdentifierLists(
+  a: string[],
+  b: string[],
+  compareIdentifier: (x: string, y: string) => number,
+): number {
+  for (let index = 0; ; index += 1) {
+    const x = a[index]
+    const y = b[index]
+    if (x === undefined || y === undefined) return compareOrdered(a.length, b.length)
+    const result = compareIdentifier(x, y)
     if (result !== EQUAL) return result
   }
-  return compareOrdered(a.length, b.length)
 }
 
+function comparePrerelease(a: string[], b: string[]): number {
+  // Reversed arguments: a release (no prerelease) outranks its prereleases.
+  if (a.length === 0 || b.length === 0) return compareOrdered(b.length, a.length)
+  return compareIdentifierLists(a, b, comparePrereleaseIdentifier)
+}
+
+// Both inputs must pass isSemanticVersion (semantic-version.ts); the core loop relies on it.
 export function comparePackVersions(a: string, b: string): number {
   const left = parseVersion(a)
   const right = parseVersion(b)
