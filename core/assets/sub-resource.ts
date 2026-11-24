@@ -1,5 +1,7 @@
 import {
   formatCatalogId,
+  lowercaseWordPattern,
+  lowercaseWordProblem,
   missingPartProblem,
   parseCatalogId,
   type CatalogId,
@@ -31,15 +33,17 @@ export type SubResourceParse =
   | { ok: true; id: CatalogId; part: SubResource }
   | { ok: false; problem: string }
 
+type SubResourcePartParse = { ok: true; part: SubResource } | { ok: false; problem: string }
+
 export const SUB_RESOURCE_SEPARATOR = '~'
 const KIND_NAME_SEPARATOR = ':'
 const ASSET_REFERENCE_SEPARATOR = '#'
 
 const NAME_MIN_LENGTH = 2
 const NAME_MAX_LENGTH = 48
-const NAME_PATTERN = new RegExp(`^[a-z][a-z0-9_]{${NAME_MIN_LENGTH - 1},${NAME_MAX_LENGTH - 1}}$`)
+const NAME_PATTERN = lowercaseWordPattern(NAME_MIN_LENGTH, NAME_MAX_LENGTH)
 
-const NAME_PROBLEM = `name must be ${NAME_MIN_LENGTH} to ${NAME_MAX_LENGTH} lowercase letters, digits, or underscores, starting with a letter`
+const NAME_PROBLEM = lowercaseWordProblem('name', NAME_MIN_LENGTH, NAME_MAX_LENGTH)
 const KIND_PROBLEM = `kind must be one of ${SUB_RESOURCE_KINDS.join(', ')}`
 const ASSET_REFERENCE_PROBLEM = `a sub-resource text holds no "${ASSET_REFERENCE_SEPARATOR}", so it is never read as an asset reference`
 
@@ -51,13 +55,12 @@ export function isSubResourceName(name: string): boolean {
   return NAME_PATTERN.test(name)
 }
 
+/** Does not validate: trusts the caller to pass a valid id and part, as `formatCatalogId` does. */
 export function formatSubResource(id: CatalogId, part: SubResource): string {
   return `${formatCatalogId(id)}${SUB_RESOURCE_SEPARATOR}${part.kind}${KIND_NAME_SEPARATOR}${part.name}`
 }
 
-function parseSubResourcePart(
-  text: string,
-): { ok: true; part: SubResource } | { ok: false; problem: string } {
+function parseSubResourcePart(text: string): SubResourcePartParse {
   const separatorIndex = text.indexOf(KIND_NAME_SEPARATOR)
   if (separatorIndex === -1) {
     return { ok: false, problem: missingPartProblem('name', KIND_NAME_SEPARATOR, 'kind') }
