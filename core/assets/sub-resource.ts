@@ -62,12 +62,12 @@ export function formatSubResource(id: CatalogId, part: SubResource): string {
 
 function parseSubResourcePart(text: string): SubResourcePartParse {
   const separatorIndex = text.indexOf(KIND_NAME_SEPARATOR)
+  const kind = separatorIndex === -1 ? text : text.slice(0, separatorIndex)
+  if (!isSubResourceKind(kind)) return { ok: false, problem: KIND_PROBLEM }
   if (separatorIndex === -1) {
     return { ok: false, problem: missingPartProblem('name', KIND_NAME_SEPARATOR, 'kind') }
   }
-  const kind = text.slice(0, separatorIndex)
   const name = text.slice(separatorIndex + 1)
-  if (!isSubResourceKind(kind)) return { ok: false, problem: KIND_PROBLEM }
   if (!isSubResourceName(name)) return { ok: false, problem: NAME_PROBLEM }
   return { ok: true, part: { kind, name } }
 }
@@ -76,7 +76,7 @@ export function parseSubResourceText(text: string): SubResourceParse {
   if (text.includes(ASSET_REFERENCE_SEPARATOR)) {
     return { ok: false, problem: ASSET_REFERENCE_PROBLEM }
   }
-  const separatorIndex = text.lastIndexOf(SUB_RESOURCE_SEPARATOR)
+  const separatorIndex = text.indexOf(SUB_RESOURCE_SEPARATOR)
   if (separatorIndex === -1) {
     return {
       ok: false,
