@@ -1,10 +1,14 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { renderHook, act, cleanup } from '@testing-library/react'
 
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
 import { useEdgeOverlay, useFramedScene } from './use-framed-scene'
 import { containsEdgeLines, framedSceneEnvironment } from './use-framed-scene-test-support'
+
+vi.mock('./use-ground-texture', () => ({
+  useGroundTexture: () => ({ status: 'failed' }),
+}))
 
 afterEach(cleanup)
 
