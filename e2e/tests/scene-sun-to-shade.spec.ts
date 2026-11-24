@@ -33,11 +33,13 @@ const SUNLIT_LAWN = squareRegion(236, 109, 24)
  *   before the daylight calibration: 0.1334 / 0.0764 = 1.7455
  *   calibrated daylight (this build): 0.5978 / 0.1008 = 5.9321
  *   Linux, calibrated daylight (this build): 0.5979 / 0.1008 = 5.9329
+ *   grass tile on the lawn, 2026-11-24: 0.5985 / 0.1009 = 5.9325 (Linux pending)
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * minimum is the midpoint of the two ratios, 3.8388, rounded to 3.839, which clears this build
  * by 2.093 and the earlier build by 2.094. Before these three changes this build read 5.9702 and
- * the minimum was 3.858.
+ * the minimum was 3.858. When the ground came to draw the grass tile the darwin ratio moved by
+ * 0.0004, under a tenth of the margin (0.209), so the minimum stays.
  *
  * The gate has no upper bound. Its probe zeroes the sky's ambient light, and the shadowed lawn
  * then renders black (code 0, linear level 0), so the ratio has no finite value and no midpoint
