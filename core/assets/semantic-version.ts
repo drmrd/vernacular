@@ -6,7 +6,7 @@
 const VERSION_NUMBER = String.raw`(?:0|[1-9][0-9]*)`
 const PRERELEASE_PART = String.raw`(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)`
 
-export const SEMANTIC_VERSION_PATTERN = new RegExp(
+const SEMANTIC_VERSION_PATTERN = new RegExp(
   String.raw`^${VERSION_NUMBER}\.${VERSION_NUMBER}\.${VERSION_NUMBER}(?:-${PRERELEASE_PART}(?:\.${PRERELEASE_PART})*)?$`,
 )
 
