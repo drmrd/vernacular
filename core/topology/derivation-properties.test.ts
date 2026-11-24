@@ -82,7 +82,7 @@ describe('the rooms of a closed loop', () => {
       maxLength: MAX_CORNERS,
     })
     fc.assert(
-      fc.property(closedLoopArbitrary(), keys, (plan, keyDraw) => {
+      fc.property(closedLoopArbitrary({ maxCorners: MAX_CORNERS }), keys, (plan, keyDraw) => {
         const reordered = plan.walls
           .map((wall, index) => ({ wall, index, key: keyDraw[index] ?? 0 }))
           .sort((x, y) => x.key - y.key || x.index - y.index)
