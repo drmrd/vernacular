@@ -10,9 +10,11 @@ sourceFiles:
     core/registries/registry.ts,
     core/registries/finishes.ts,
     core/registries/element-types.ts,
+    core/registries/asset-domains.ts,
+    core/registries/asset-categories.ts,
   ]
 status: current
-updated: 2026-06-02
+updated: 2026-11-24
 ---
 
 # ADR-0006: Versioned data-driven registries for typed taxonomy
@@ -96,3 +98,16 @@ they land.
 - Design specification, sections 4.4 and 6.8 (Registries; finishes to material
   parameters).
 - Asset registry resolution (ADR-0007) is the sibling to this pattern.
+
+## Amendment 2026-11-24: the asset taxonomy registries
+
+ADR-0234 adds two registries in this pattern. `core/registries/asset-domains.ts` holds the thirty
+asset domains, each with its code, name, tier, and rank. `core/registries/asset-categories.ts`
+holds the 410 categories, each with its id, domain, subcategory, and display name. The display
+name comes from the id unless the registry writes one, as it does for acronyms. The category
+registry is the `CategoryRegistry` in the list above. Its data sits in four tier files, because
+one file of 410 entries would pass the 300-line limit.
+
+Registry entries are planned to become pack assets (#1127). Before the finish, floor pattern, trim
+profile, and construction profile registries take entries from a pack, their entries get display
+names. This note only points at that work. The decision above does not change.
