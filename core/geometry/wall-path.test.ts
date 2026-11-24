@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { linePath, pathEnd, pathStart, wallPath } from './wall-path'
+import { linePath, pathEnd, pathLength, pathStart, wallPath } from './wall-path'
 
 describe('wallPath', () => {
   it("builds a line path from a wall's two ends", () => {
@@ -28,5 +28,13 @@ describe('wallPath', () => {
     wall.start.x = 9
 
     expect(pathStart(path)).toEqual({ x: 0, y: 0 })
+  })
+})
+
+describe('pathLength', () => {
+  it('measures the length of a line path', () => {
+    const diagonal = wallPath({ start: { x: 0, y: 0 }, end: { x: 3000, y: 4000 } })
+
+    expect(pathLength(diagonal)).toBe(5000)
   })
 })
