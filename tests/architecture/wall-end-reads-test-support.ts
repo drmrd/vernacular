@@ -34,9 +34,6 @@ const WALL_TYPES = [
   { name: 'WallSceneNode', file: 'core/scene/scene-graph.ts' },
 ]
 const END_NAMES = ['start', 'end']
-// A guard against a recursive type; unions and intersections are flat, so real walks stay shallow.
-const MAX_TYPE_DEPTH = 8
-const READONLY_ALIAS = 'Readonly'
 const LINE_NUMBER_OFFSET = 1
 
 interface Scan {
@@ -67,30 +64,26 @@ function isRepositoryFile(path: string): boolean {
   return !path.startsWith('..') && !path.includes('node_modules/')
 }
 
-function isDeclaredAsWall(scan: Scan, type: ts.Type): boolean {
-  const symbol = type.getSymbol()
-  const name = symbol?.getName()
-  return (symbol?.getDeclarations() ?? []).some((declaration) => {
-    const file = repositoryPath(scan, declaration.getSourceFile().fileName)
-    return WALL_TYPES.some((wall) => wall.name === name && wall.file === file)
-  })
+function isWallDeclaration(scan: Scan, node: ts.Node): boolean {
+  if (!ts.isInterfaceDeclaration(node)) return false
+  const file = repositoryPath(scan, node.getSourceFile().fileName)
+  return WALL_TYPES.some((wall) => wall.name === node.name.text && wall.file === file)
 }
 
-function readonlyTarget(type: ts.Type): ts.Type | undefined {
-  return type.aliasSymbol?.getName() === READONLY_ALIAS ? type.aliasTypeArguments?.[0] : undefined
+/** Whether a property is declared on a wall type, also when reached through a pick or a subtype. */
+function isWallEndProperty(scan: Scan, property: ts.Symbol | undefined): boolean {
+  return (property?.getDeclarations() ?? []).some((declaration) =>
+    isWallDeclaration(scan, declaration.parent),
+  )
 }
 
-function isWallMember(scan: Scan, type: ts.Type, depth: number): boolean {
-  if (depth > MAX_TYPE_DEPTH) return false
-  if (type.isUnionOrIntersection()) {
-    return type.types.some((member) => isWallMember(scan, member, depth + 1))
-  }
-  const target = readonlyTarget(type)
-  return target === undefined ? isDeclaredAsWall(scan, type) : isWallMember(scan, target, depth + 1)
+function hasWallEndNamed(scan: Scan, type: ts.Type, names: readonly string[]): boolean {
+  const bare = scan.checker.getNonNullableType(type)
+  return names.some((name) => isWallEndProperty(scan, scan.checker.getPropertyOfType(bare, name)))
 }
 
 function isWallType(scan: Scan, type: ts.Type): boolean {
-  return isWallMember(scan, scan.checker.getNonNullableType(type), 0)
+  return hasWallEndNamed(scan, type, END_NAMES)
 }
 
 function endName(name: ts.Node | undefined): string | undefined {
@@ -103,36 +96,32 @@ function isEndName(name: ts.Node | undefined): boolean {
   return text !== undefined && END_NAMES.includes(text)
 }
 
-/** Whether a key's type is the string `'start'` or `'end'`, or a union that holds one of them. */
-function isEndKeyType(type: ts.Type): boolean {
-  if (type.isStringLiteral()) return END_NAMES.includes(type.value)
-  return type.isUnion() && type.types.some(isEndKeyType)
+/** The names of `start` and `end` that a key's type holds, as a string literal or a union of them. */
+function endKeyNames(type: ts.Type): string[] {
+  if (type.isStringLiteral()) return END_NAMES.filter((name) => name === type.value)
+  return type.isUnion() ? type.types.flatMap(endKeyNames) : []
 }
 
-function accessedExpression(scan: Scan, node: ts.Node): ts.Expression | undefined {
-  if (ts.isPropertyAccessExpression(node) && isEndName(node.name)) return node.expression
-  if (
-    ts.isElementAccessExpression(node) &&
-    isEndKeyType(scan.checker.getTypeAtLocation(node.argumentExpression))
-  ) {
-    return node.expression
+function readsWallEnd(scan: Scan, node: ts.Node): boolean {
+  if (ts.isPropertyAccessExpression(node) && isEndName(node.name)) {
+    return isWallEndProperty(scan, scan.checker.getSymbolAtLocation(node.name))
   }
-  return undefined
+  if (!ts.isElementAccessExpression(node)) return false
+  const names = endKeyNames(scan.checker.getTypeAtLocation(node.argumentExpression))
+  return hasWallEndNamed(scan, scan.checker.getTypeAtLocation(node.expression), names)
 }
 
-function namesAnEnd(pattern: ts.ObjectBindingPattern): boolean {
-  return pattern.elements.some((element) => isEndName(element.propertyName ?? element.name))
+function endNamesOf(pattern: ts.ObjectBindingPattern): string[] {
+  return pattern.elements
+    .map((element) => endName(element.propertyName ?? element.name))
+    .filter((name): name is string => name !== undefined && END_NAMES.includes(name))
 }
 
 function accessOrDestructuringForm(scan: Scan, node: ts.Node): WallEndForm | undefined {
-  const accessed = accessedExpression(scan, node)
-  if (accessed !== undefined && isWallType(scan, scan.checker.getTypeAtLocation(accessed))) {
-    return 'access'
-  }
-  if (ts.isObjectBindingPattern(node) && namesAnEnd(node)) {
-    return isWallType(scan, scan.checker.getTypeAtLocation(node)) ? 'destructuring' : undefined
-  }
-  return undefined
+  if (readsWallEnd(scan, node)) return 'access'
+  if (!ts.isObjectBindingPattern(node)) return undefined
+  const type = scan.checker.getTypeAtLocation(node)
+  return hasWallEndNamed(scan, type, endNamesOf(node)) ? 'destructuring' : undefined
 }
 
 function elementTypeOfList(scan: Scan, type: ts.Type): ts.Type | undefined {

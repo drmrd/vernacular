@@ -2,69 +2,18 @@
 // The detector reads a TypeScript program, which needs Node's fs module, not the project-wide jsdom.
 import { describe, expect, it } from 'vitest'
 import {
-  describeWallEndRead,
-  findWallEndReads,
-  programOfVirtualFiles,
-} from './wall-end-reads-test-support'
-
-const ROOT = '/virtual-repository'
-const SAMPLE_TIMEOUT_MS = 30_000
-
-/** A virtual source file: its repository-relative path and its text. */
-type Source = [path: string, text: string]
-
-/** A sample program and the reads, as `file:line form`, that the detector must report. */
-type Sample = [title: string, sources: Source[], reads: string[]]
-
-const BASE_SOURCES: Source[] = [
-  [
-    'core/model/types.ts',
-    `
-    export interface Point { x: number; y: number }
-    export interface Wall { id: string; start: Point; end: Point; thickness: number }
-  `,
-  ],
-  [
-    'core/scene/scene-graph.ts',
-    `
-    import type { Point } from '../model/types'
-    export interface WallSceneNode { id: string; kind: 'wall'; start: Point; end: Point }
-    export interface DimensionSceneNode { id: string; kind: 'dimension'; start: Point; end: Point }
-  `,
-  ],
-]
-
-const WALL_IMPORT = "import type { Wall } from '../core/model/types'"
-const POINT_IMPORT = "import type { Point } from '../model/types'"
-const SEGMENT = '{ start: Point; end: Point }'
-const CALLER_PARAMETERS = 'wall: Wall, walls: Wall[], maybe: Wall[] | undefined'
-
-function readsIn(sources: readonly Source[]): string[] {
-  const program = programOfVirtualFiles(ROOT, [...BASE_SOURCES, ...sources])
-  return findWallEndReads(program, ROOT).map(describeWallEndRead)
-}
-
-/** A file of `editor/` whose first line imports the wall type, so `body` starts on line 2. */
-function editorFile(body: string, name = 'a'): Source {
-  return [`editor/${name}.ts`, `${WALL_IMPORT}\n${body}`]
-}
-
-/** A callee in `core/scene/b.ts` and a caller in `editor/c.ts` whose call is on line 3. */
-function callerOf(declaration: string, call: string): Source[] {
-  const caller = [
-    WALL_IMPORT,
-    "import * as b from '../core/scene/b'",
-    `export const call = (${CALLER_PARAMETERS}) => ${call}`,
-  ]
-  return [
-    ['core/scene/b.ts', `${POINT_IMPORT}\n${declaration}`],
-    ['editor/c.ts', caller.join('\n')],
-  ]
-}
-
-function useWith(parameter: string): string {
-  return `export function use(_value: ${parameter}): number { return 0 }`
-}
+  callerOf,
+  derivedSample,
+  editorFile,
+  expectEachSample,
+  readsIn,
+  SAMPLE_TIMEOUT_MS,
+  SEGMENT,
+  type Sample,
+  type Source,
+  useWith,
+  WALL_IMPORT,
+} from './wall-end-read-samples-test-support'
 
 describe('findWallEndReads, wall ends that are read', () => {
   const samples: Sample[] = [
@@ -109,13 +58,7 @@ describe('findWallEndReads, wall ends that are read', () => {
     ],
   ]
 
-  it.each(samples)(
-    '%s',
-    (_title, sources, reads) => {
-      expect(readsIn(sources)).toEqual(reads)
-    },
-    SAMPLE_TIMEOUT_MS,
-  )
+  expectEachSample(samples)
 })
 
 describe('findWallEndReads, reads that are left alone', () => {
@@ -297,11 +240,51 @@ describe('findWallEndReads, the other forms of the rule', () => {
     ],
   ]
 
-  it.each(samples)(
-    '%s',
-    (_title, sources, reads) => {
-      expect(readsIn(sources)).toEqual(reads)
-    },
-    SAMPLE_TIMEOUT_MS,
-  )
+  expectEachSample(samples)
+})
+
+describe('findWallEndReads, types derived from a wall type', () => {
+  const samples: Sample[] = [
+    derivedSample(
+      'flags a read on a pick of a wall',
+      "(wall: Pick<Wall, 'start' | 'end'>) => wall.start",
+    ),
+    derivedSample('flags a read on a wall without its id', "(wall: Omit<Wall, 'id'>) => wall.end"),
+    derivedSample('flags a read on a partial wall', '(wall: Partial<Wall>) => wall.start'),
+    derivedSample(
+      'flags a read on a type parameter of the wall type',
+      '<T extends Wall>(w: T) => w.end',
+    ),
+    derivedSample(
+      'flags an element access on a pick of a wall',
+      "(w: Pick<Wall, 'end'>) => w['end']",
+    ),
+    derivedSample(
+      'flags a destructuring of a pick of a wall',
+      "({ start }: Pick<Wall, 'start'>) => start",
+      'destructuring',
+    ),
+    [
+      'flags a read on an interface that extends the wall',
+      [
+        editorFile(
+          'export interface Ext extends Wall { extra: number }\nexport const read = (wall: Ext) => wall.start',
+        ),
+      ],
+      ['editor/a.ts:3 access'],
+    ],
+    [
+      'does not flag a read on a pick of another type with start and end',
+      [
+        [
+          'editor/a.ts',
+          "import type { DimensionSceneNode as D } from '../core/scene/scene-graph'\n" +
+            "export const read = (node: Pick<D, 'start'>) => node.start",
+        ],
+      ],
+      [],
+    ],
+  ]
+
+  expectEachSample(samples)
 })
