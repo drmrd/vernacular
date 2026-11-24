@@ -6,12 +6,14 @@ import {
   pathLength,
   pathStart,
   pointAlong,
+  projectOntoPath,
   tangentAlong,
   wallPath,
 } from './wall-path'
 import type { Point } from '../model/types'
 
 const DIAGONAL = wallPath({ start: { x: 0, y: 0 }, end: { x: 3000, y: 4000 } })
+const HORIZONTAL = linePath({ x: 0, y: 0 }, { x: 1000, y: 0 })
 
 function expectPointNear(actual: Point, expected: Point): void {
   expect(actual.x).toBeCloseTo(expected.x, 9)
@@ -70,5 +72,22 @@ describe('tangentAlong', () => {
 describe('normalAlong', () => {
   it('gives the unit normal to the left of start to end', () => {
     expectPointNear(normalAlong(DIAGONAL, 2500), { x: -0.8, y: 0.6 })
+  })
+})
+
+describe('projectOntoPath', () => {
+  it('projects a point onto the path with its signed offset', () => {
+    const projection = projectOntoPath(HORIZONTAL, { x: 400, y: 250 })
+
+    expectPointNear(projection.point, { x: 400, y: 0 })
+    expect(projection.along).toBe(400)
+    expect(projection.offset).toBe(250)
+  })
+
+  it('gives a negative offset on the right of the path', () => {
+    const projection = projectOntoPath(HORIZONTAL, { x: 400, y: -250 })
+
+    expectPointNear(projection.point, { x: 400, y: 0 })
+    expect(projection.offset).toBe(-250)
   })
 })
