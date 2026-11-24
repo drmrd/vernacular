@@ -10,6 +10,8 @@ export interface CatalogId {
 
 export type CatalogIdParse = { ok: true; id: CatalogId } | { ok: false; problem: string }
 
+export const RESERVED_NAMESPACE_PREFIXES: readonly string[] = Object.freeze(['mfr_'])
+
 const NAMESPACE_TAIL_MIN_LENGTH = 1
 const NAMESPACE_TAIL_MAX_LENGTH = 31
 const SUBCATEGORY_MIN_LENGTH = 3
@@ -79,6 +81,10 @@ function splitCatalogId(text: string): SplitResult {
 
 function validateCatalogParts(raw: RawCatalogParts): CatalogIdParse {
   const { namespace, domain, subcategory, slug, version } = raw
+  const reservedPrefix = RESERVED_NAMESPACE_PREFIXES.find((prefix) => namespace.startsWith(prefix))
+  if (reservedPrefix !== undefined) {
+    return { ok: false, problem: `namespace prefix "${reservedPrefix}" is reserved` }
+  }
   if (!NAMESPACE_PATTERN.test(namespace)) return { ok: false, problem: NAMESPACE_PROBLEM }
   if (!isAssetDomainCode(domain)) return { ok: false, problem: DOMAIN_PROBLEM }
   if (!SUBCATEGORY_PATTERN.test(subcategory)) return { ok: false, problem: SUBCATEGORY_PROBLEM }
