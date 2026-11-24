@@ -90,4 +90,20 @@ describe('projectOntoPath', () => {
     expectPointNear(projection.point, { x: 400, y: 0 })
     expect(projection.offset).toBe(-250)
   })
+
+  it('clamps a point past the end to the end', () => {
+    const projection = projectOntoPath(HORIZONTAL, { x: 1500, y: 300 })
+
+    expect(projection.along).toBe(1000)
+    expectPointNear(projection.point, { x: 1000, y: 0 })
+    expect(projection.offset).toBe(300)
+  })
+
+  it('clamps a point before the start to the start', () => {
+    const projection = projectOntoPath(HORIZONTAL, { x: -200, y: -50 })
+
+    expect(projection.along).toBe(0)
+    expectPointNear(projection.point, { x: 0, y: 0 })
+    expect(projection.offset).toBe(-50)
+  })
 })
