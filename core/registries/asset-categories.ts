@@ -102,3 +102,17 @@ export const builtinAssetCategories: Registry<AssetCategory> = createRegistry(
   ASSET_CATEGORY_REGISTRY_VERSION,
   categories,
 )
+
+const categoriesByDomain: Readonly<Record<AssetDomainCode, readonly AssetCategory[]>> =
+  Object.freeze(
+    Object.fromEntries(
+      ASSET_DOMAIN_CODES.map((domain) => [
+        domain,
+        Object.freeze(categories.filter((category) => category.domain === domain)),
+      ]),
+    ) as Record<AssetDomainCode, readonly AssetCategory[]>,
+  )
+
+export function categoriesOfDomain(code: AssetDomainCode): readonly AssetCategory[] {
+  return categoriesByDomain[code]
+}
