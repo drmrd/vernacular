@@ -1,6 +1,6 @@
 import type { Point, Wall } from '../model/types'
 import { distance } from './point'
-import { leftPerp, shift, subtract, unit } from './vector'
+import { dot, leftPerp, shift, subtract, unit } from './vector'
 
 export interface LinePath {
   readonly kind: 'line'
@@ -46,4 +46,17 @@ export function tangentAlong(path: WallPath, _alongMm: number): Point {
 
 export function normalAlong(path: WallPath, alongMm: number): Point {
   return leftPerp(tangentAlong(path, alongMm))
+}
+
+export interface PathProjection {
+  readonly point: Point
+  readonly along: number
+  readonly offset: number
+}
+
+export function projectOntoPath(path: WallPath, point: Point): PathProjection {
+  const fromStart = subtract(point, path.start)
+  const along = dot(fromStart, tangentAlong(path, 0))
+  const offset = dot(fromStart, normalAlong(path, along))
+  return { point: pointAlong(path, along), along, offset }
 }
