@@ -1,17 +1,20 @@
 import { CURRENT_SCHEMA_VERSION } from '../../core'
 import type { CodecOptions, Project } from '../../core'
-import {
-  bytesOf,
-  fixtureDocument,
-  metaOf,
-} from '../../tests/fixtures/projects/versions/fixture-documents'
+import { bytesOf, metaOf } from '../../tests/fixtures/projects/versions/fixture-documents'
 import {
   NOT_JSON,
   SECOND_FILE_PROJECT_NAME,
+  documentOfNewerVersion,
+  newerVersionDocument,
   soundSecondFile,
   twoFilesOrThrow,
 } from '../../tests/storage/conformance/conformance-documents'
-import { SECOND_FILE_NAME, filesUnder } from '../../tests/storage/conformance/conformance-run'
+import {
+  SECOND_FILE_NAME,
+  SET_ASIDE_PREFIX,
+  UNREADABLE_PREFIX,
+  filesUnder,
+} from '../../tests/storage/conformance/conformance-run'
 import type { NamedBytes } from '../../tests/storage/conformance/conformance-run'
 import type { DirectoryPort } from '../fs/directory-port'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
@@ -28,6 +31,7 @@ import type { TwoDocumentFiles } from './second-file'
 export const DOCUMENT_PATH = 'a/vernacular.json'
 
 export { NOT_JSON, SECOND_FILE_NAME, SECOND_FILE_PROJECT_NAME, soundSecondFile, twoFilesOrThrow }
+export { UNREADABLE_PREFIX }
 
 /** The second document file of the project `a`. */
 export const SECOND_FILE_PATH = `a/${SECOND_FILE_NAME}`
@@ -41,9 +45,6 @@ export const BACKUP_DIRECTORY = 'a/.house-backups'
 const HEX_RADIX = 16
 const HEX_BYTE_WIDTH = 2
 const DIGEST_PATTERN = '[0-9a-f]{64}'
-
-/** The start of the name of the copy that a save keeps of a stored file that it cannot read. */
-export const UNREADABLE_PREFIX = 'unreadable-previous-'
 
 /** What the directory that refuses a backup write rejects with. */
 export const DISK_FULL_MESSAGE = 'the disk is full'
@@ -116,7 +117,7 @@ export class BackupRefusingDirectory extends PassThroughDirectory {
 /** Test support: rejects each write of a copy of a set-aside second file and passes everything else through. */
 export class SetAsideRefusingDirectory extends PassThroughDirectory {
   override writeFile(path: string, bytes: Uint8Array): Promise<void> {
-    if (path.includes('.house-backups/set-aside-second-file-')) {
+    if (path.includes(`.house-backups/${SET_ASIDE_PREFIX}`)) {
       return Promise.reject(new Error(DISK_FULL_MESSAGE))
     }
     return super.writeFile(path, bytes)
@@ -192,11 +193,7 @@ export async function rootHoldingFiles(files: {
 }
 
 /** The document of the current version, stored as a build with the next schema version writes it. */
-export function newerVersionBytes(): Uint8Array {
-  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
-  return bytesOf(document)
-}
+export const newerVersionBytes = documentOfNewerVersion
 
 /** Every file under `prefix`, keyed by its path from the root, with its bytes. */
 export async function treeOf(root: DirectoryPort, prefix = ''): Promise<Record<string, number[]>> {
@@ -234,8 +231,7 @@ export async function backupNameOf(
 
 /** A main file of a newer build that differs in its bytes from `newerVersionBytes()`. */
 export function anotherNewerMainFile(): Uint8Array {
-  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+  const document = newerVersionDocument()
   metaOf(document).name = 'Another project of a newer build'
   return bytesOf(document)
 }

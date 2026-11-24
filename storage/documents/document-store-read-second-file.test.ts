@@ -6,7 +6,6 @@ import {
   decodedOf,
   documentBreakingFormatRules,
   failureOf,
-  renamed,
   secondFileOf,
   soundProject,
 } from '../../tests/storage/conformance/conformance-documents'
@@ -14,12 +13,15 @@ import type { DirectoryPort } from '../fs/directory-port'
 import {
   DOCUMENT_PATH,
   NEWER_SECOND_FILE_PATH,
+  NOT_JSON,
   SECOND_FILE_NAME,
   SECOND_FILE_PATH,
+  SECOND_FILE_PROJECT_NAME,
   backupsOf,
   newerVersionBytes,
   rootHolding,
   rootHoldingFiles,
+  soundSecondFile,
   storeOver,
   treeOf,
 } from './document-store-test-kit'
@@ -27,13 +29,6 @@ import {
 const OLDER_VERSION = 8
 const OLDER_SECOND_FILE_NAME = `vernacular.format-${OLDER_VERSION}.json`
 const OLDER_SECOND_FILE_PATH = `a/${OLDER_SECOND_FILE_NAME}`
-const SECOND_FILE_PROJECT_NAME = 'Saved beside the newer file'
-const NOT_JSON = new TextEncoder().encode('{ not json')
-
-/** A sound document of the current version that is told apart from the fixture by its name. */
-function soundSecondFile(): Uint8Array {
-  return encodeDocument(renamed(soundProject(), SECOND_FILE_PROJECT_NAME), undefined).bytes
-}
 
 async function preRepairBackups(
   root: DirectoryPort,

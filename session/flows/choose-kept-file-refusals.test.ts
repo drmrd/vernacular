@@ -53,6 +53,7 @@ describe.each(FLOWS)('$name', ({ run, storeMethod }) => {
     const result = await run(ports, undefined, choice)
 
     expect(result).toMatchObject({ ok: false, failure: { kind: 'files-changed' } })
+    expect(result).not.toHaveProperty('afterChange')
     expect(await treeOf(ports.root)).toEqual(before)
   })
 

@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 import type { DirectoryPort, DocumentStore, ProjectRecord } from '../../storage'
 import { documentOfNewerVersion } from '../../tests/storage/conformance/conformance-documents'
+import { REPLACED_PREFIX, SET_ASIDE_PREFIX } from '../../tests/storage/conformance/conformance-run'
 import { DOCUMENT_FILE, placeDocument, recordOf } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
 import type { DocumentHandle } from '../handle/handle-types'
@@ -34,9 +35,8 @@ export const COPY_NAME = `${SECOND_NAME} (second plan file)`
 export const MAIN_PATH = `${PROJECT_ID}/${DOCUMENT_FILE}`
 export const SECOND_PATH = `${PROJECT_ID}/${SECOND_FILE_NAME}`
 
-/** The start of the name of the copy of a second file that was set aside, and of a replaced main file. */
-export const SET_ASIDE_PREFIX = 'set-aside-second-file-'
-export const REPLACED_PREFIX = 'replaced-by-second-file-'
+/** The start of the name of a copy of a set-aside second file, and of a replaced main file. */
+export { REPLACED_PREFIX, SET_ASIDE_PREFIX }
 
 /** The bytes of the main file in `state`. */
 export function mainBytesOf(state: ProjectState): Uint8Array {
@@ -101,6 +101,26 @@ export function bytesOfCopies(
   prefix: string,
 ): (Uint8Array | undefined)[] {
   return copies.filter(({ name }) => name.startsWith(prefix)).map(({ bytes }) => bytes)
+}
+
+/**
+ * From now on, the first request for a lock of the kit's ports finds it free, as the choice makes
+ * it, and every request after the choice releases that hold finds another tab holding it, as the
+ * open that follows the choice makes it.
+ */
+export function letAnotherTabTakeTheLockOnceTheChoiceFreesIt(ports: TestPorts): void {
+  const tryAcquire = ports.locks.tryAcquire.bind(ports.locks)
+  let freed = false
+  vi.spyOn(ports.locks, 'tryAcquire').mockImplementation(async (id) => {
+    const hold = freed ? undefined : await tryAcquire(id)
+    if (hold === undefined) return undefined
+    return {
+      release: async () => {
+        freed = true
+        await hold.release()
+      },
+    }
+  })
 }
 
 /** The three flows of a choice, with the store method that each one acts through. */

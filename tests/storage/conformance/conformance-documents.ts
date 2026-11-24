@@ -55,11 +55,16 @@ export function documentOfHigherRevision(): Uint8Array {
   return bytesOf(atHigherRevision(withUnknownWallField(document)))
 }
 
-/** The document of the current version, stored as a build with the next schema version writes it. */
-export function documentOfNewerVersion(): Uint8Array {
+/** The fixture document of the current version, marked as a build with the next schema version writes it. */
+export function newerVersionDocument(): Json {
   const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
   metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
-  return bytesOf(document)
+  return document
+}
+
+/** The document of the current version, stored as a build with the next schema version writes it. */
+export function documentOfNewerVersion(): Uint8Array {
+  return bytesOf(newerVersionDocument())
 }
 
 /** An `extensions` payload that no build knows the meaning of. */

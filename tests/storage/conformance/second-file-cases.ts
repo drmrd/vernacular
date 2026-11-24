@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../../core'
 import { fixtureDocument } from '../../fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
-import { PROJECT_ID, SECOND_FILE_NAME } from './conformance-run'
+import {
+  PROJECT_ID,
+  REPLACED_PREFIX,
+  SECOND_FILE_NAME,
+  SET_ASIDE_PREFIX,
+  UNREADABLE_PREFIX,
+} from './conformance-run'
 import type { BeginRun, NamedBytes } from './conformance-run'
 import {
   EXTENSIONS_PAYLOAD,
@@ -144,15 +150,12 @@ export function describeUnreadablePreviousFile(begin: BeginRun): void {
 
       const copies = await run.backups()
       expect(copies).toHaveLength(1)
-      expect(copies[0]?.name.startsWith('unreadable-previous-')).toBe(true)
+      expect(copies[0]?.name.startsWith(UNREADABLE_PREFIX)).toBe(true)
       expect(copies[0]?.bytes).toEqual(NOT_JSON)
       expect(decodedOf(await run.open().read(PROJECT_ID)).project.meta.name).toBe(SAVED_NAME)
     })
   })
 }
-
-const SET_ASIDE_PREFIX = 'set-aside-second-file-'
-const REPLACED_PREFIX = 'replaced-by-second-file-'
 
 function copiesNamedFrom(copies: readonly NamedBytes[], prefix: string): readonly NamedBytes[] {
   return copies.filter(({ name }) => name.startsWith(prefix))

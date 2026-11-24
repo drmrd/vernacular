@@ -13,6 +13,13 @@ import type { StoreConformanceTarget } from './store-conformance-target'
 /** The name of the second document file that this build writes beside a newer main file. */
 export const SECOND_FILE_NAME = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
 
+/** The start of the name of the copy that a save keeps of a stored file that it cannot read. */
+export const UNREADABLE_PREFIX = 'unreadable-previous-'
+
+/** The start of the name of the copy of a second file that was set aside, and of a replaced main file. */
+export const SET_ASIDE_PREFIX = 'set-aside-second-file-'
+export const REPLACED_PREFIX = 'replaced-by-second-file-'
+
 /** The project that every case works on. A store bound to one project is bound to this id. */
 export const PROJECT_ID = 'a'
 

@@ -12,6 +12,7 @@ import {
   bytesOfCopies,
   choiceOf,
   keptHandleOf,
+  letAnotherTabTakeTheLockOnceTheChoiceFreesIt,
   mainBytesOf,
   recordedSecondFile,
   secondBytes,
@@ -102,4 +103,33 @@ describe('removing the second file', () => {
     expect(result).toEqual({ ok: false, failure: { kind: 'files-changed' }, handle: undefined })
     expect(await treeOf(ports.root)).toEqual(before)
   })
+})
+
+describe('a choice that is done, whose open of the project then fails', () => {
+  it.each([
+    {
+      flow: 'replacing the main file with the second file',
+      run: replaceWithSecondFile,
+      state: 'newer-main',
+    },
+    { flow: 'removing the second file', run: removeSecondFile, state: 'both-readable' },
+  ] as const)(
+    '$flow gives the failure of the open, marks the change as done, and leaves no second file',
+    async ({ run, state }) => {
+      const ports = createTestPorts()
+      await storeProject(ports, state)
+      const choice = await choiceOf(ports, true)
+      letAnotherTabTakeTheLockOnceTheChoiceFreesIt(ports)
+
+      const result = await run(ports, undefined, choice)
+
+      expect(result).toMatchObject({
+        ok: false,
+        failure: { kind: 'open-elsewhere' },
+        handle: undefined,
+        afterChange: true,
+      })
+      expect(await ports.root.readFile(SECOND_PATH)).toBeUndefined()
+    },
+  )
 })

@@ -1,11 +1,10 @@
-import { CURRENT_SCHEMA_VERSION, encodeDocument } from '../../core'
+import { encodeDocument } from '../../core'
 import { projectReferring } from '../../storage/zip/zip-test-kit'
+import { bytesOf } from '../../tests/fixtures/projects/versions/fixture-documents'
 import {
-  bytesOf,
-  fixtureDocument,
-  metaOf,
-} from '../../tests/fixtures/projects/versions/fixture-documents'
-import { documentOfNewerVersion } from '../../tests/storage/conformance/conformance-documents'
+  documentOfNewerVersion,
+  newerVersionDocument,
+} from '../../tests/storage/conformance/conformance-documents'
 import { SECOND_FILE_NAME } from '../../tests/storage/conformance/conformance-run'
 import { documentNamed } from '../projects/rebuild-test-kit'
 import { openOrThrow, placeDocument, workspaceRequest, type TestPorts } from './handle-test-kit'
@@ -28,8 +27,7 @@ export function documentReferring(contentHashes: readonly string[]): Uint8Array 
 
 /** The stored bytes of a document that a newer build wrote, with a piece of furniture that uses `contentHash`. */
 export function documentOfNewerVersionReferring(contentHash: string): Uint8Array {
-  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+  const document = newerVersionDocument()
   const floor = (document.floors as { furniture: unknown[] }[])[0]
   if (floor === undefined) throw new Error('Expected the fixture document to have a floor')
   floor.furniture.push({
