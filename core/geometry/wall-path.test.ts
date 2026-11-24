@@ -8,6 +8,7 @@ import {
   pathStart,
   pointAlong,
   projectOntoPath,
+  subPath,
   tangentAlong,
   wallPath,
 } from './wall-path'
@@ -114,5 +115,15 @@ describe('pathBounds', () => {
     const path = linePath({ x: 300, y: -200 }, { x: -100, y: 500 })
 
     expect(pathBounds(path)).toEqual({ min: { x: -100, y: -200 }, max: { x: 300, y: 500 } })
+  })
+})
+
+describe('subPath', () => {
+  it('cuts the part between two distances', () => {
+    const part = subPath(HORIZONTAL, 200, 700)
+
+    expect(part.kind).toBe('line')
+    expectPointNear(pathStart(part), { x: 200, y: 0 })
+    expectPointNear(pathEnd(part), { x: 700, y: 0 })
   })
 })
