@@ -109,4 +109,51 @@ describe('validateCatalog', () => {
     expect(errors).toHaveLength(1)
     expect(errors[0]).toMatch(path)
   })
+
+  it("refuses a malformed pack entry with one error each and checks every field's type", () => {
+    const HEX_DIGEST = 'a'.repeat(64)
+    const withManifest = (manifest: unknown): Record<string, unknown> =>
+      withFirstPack((pack) => (pack.manifest = manifest))
+    const withField = (field: string, value: unknown): Record<string, unknown> =>
+      withFirstPack((pack) => (pack[field] = value))
+    const cases: [string, RegExp, Record<string, unknown>][] = [
+      ['version 1.1', /^packs\[0\]\.version/, withField('version', '1.1')],
+      ['version v1.0.0', /^packs\[0\]\.version/, withField('version', 'v1.0.0')],
+      ['a numeric version', /^packs\[0\]\.version/, withField('version', 1)],
+      ['an empty packId', /^packs\[0\]\.packId/, withField('packId', '')],
+      ['a numeric packId', /^packs\[0\]\.packId/, withField('packId', 7)],
+      ['a formatVersion of 0', /^packs\[0\]\.formatVersion/, withField('formatVersion', 0)],
+      ['a numeric entry', /^packs\[0\]/, { catalogVersion: 1, packs: [5] }],
+      ['a null entry', /^packs\[0\]/, { catalogVersion: 1, packs: [null] }],
+      ['a string manifest', /^packs\[0\]\.manifest/, withManifest('abc')],
+      [
+        'an empty manifest file',
+        /^packs\[0\]\.manifest\.byteLength/,
+        withManifest({ sha256: HEX_DIGEST, byteLength: 0 }),
+      ],
+      [
+        'a hash with a non-hex prefix',
+        /^packs\[0\]\.manifest\.sha256/,
+        withManifest({ sha256: `x${HEX_DIGEST}`, byteLength: 1836 }),
+      ],
+      [
+        'a hash with a non-hex suffix',
+        /^packs\[0\]\.manifest\.sha256/,
+        withManifest({ sha256: `${HEX_DIGEST}x`, byteLength: 1836 }),
+      ],
+      ['a numeric name', /^name/, { ...specificationCatalog(), name: 3 }],
+      ['a numeric $schema', /^\$schema/, { ...specificationCatalog(), $schema: 3 }],
+    ]
+
+    for (const [label, path, catalog] of cases) {
+      const errors = errorsOf(catalog)
+      expect(errors, label).toHaveLength(1)
+      expect(errors[0], label).toMatch(path)
+    }
+    expect(validateCatalog(withField('version', '1.0.0-alpha.1+build.5')).outcome).toBe('valid')
+    expect(validateCatalog(withField('byteLength', 0)).outcome).toBe('valid')
+    for (const notAnObject of [null, 'text', []]) {
+      expect(errorsOf(notAnObject).length).toBeGreaterThan(0)
+    }
+  })
 })
