@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openHarnessScene } from './scene-helpers'
+import { settledHarnessCanvas } from './scene-helpers'
 
 // The solar cases boot the deterministic render harness via the `?fixture=scene-harness`
 // seam (see app/app.tsx) and select a named canonical environment state with the `scene`
@@ -93,25 +93,12 @@ interface ShellCapture {
 }
 
 async function captureShell(page: Page, capture: ShellCapture): Promise<void> {
-  const canvas = await openHarnessScene(page, capture.query, 'scene harness')
-
-  // The harness renders a single static frame on mount (no animation). Wait for the
-  // canvas backing store to reach its pinned size so the rendered frame is in the
-  // compositor before screenshotting. The frame contents are verified out of band
-  // against the committed baseline; with preserveDrawingBuffer off a 2D-readback of the
-  // canvas reads an already-cleared buffer, so the compositor screenshot is the source
-  // of truth, not an in-page pixel poll.
-  await expect
-    .poll(() => canvas.evaluate((element) => (element as HTMLCanvasElement).width), {
-      message: 'waiting for the harness canvas to size its backing store',
-    })
-    .toBeGreaterThan(0)
-
   // The visible sky arrives through a lazily loaded chunk, so the mount frame renders
   // without it. The harness draws its ready frame in the renderer's own animation loop, on a
   // frame of its own, and data-harness-ready turns true in the commit after that frame was
-  // drawn, so awaiting the attribute guarantees the screenshot captures the sky-lit frame.
-  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
+  // drawn, so the settled canvas is the sky-lit frame. The frame contents are verified
+  // against the committed baseline through the compositor screenshot, not a pixel poll.
+  const canvas = await settledHarnessCanvas(page, capture.query, 'scene harness')
 
   await expect(canvas).toHaveScreenshot(capture.snapshot, {
     threshold: capture.threshold ?? SHELL_THRESHOLD,
