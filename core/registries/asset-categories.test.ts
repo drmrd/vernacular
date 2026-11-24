@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ASSET_CATEGORY_REGISTRY_VERSION,
   builtinAssetCategories,
+  categoriesOfDomain,
   defaultCategoryName,
   WRITTEN_CATEGORY_NAMES,
 } from './asset-categories.ts'
@@ -62,6 +63,17 @@ describe('builtinAssetCategories', () => {
     const seating = getEntry(builtinAssetCategories, 'FFE.seating')
     expect(seating?.domain).toBe('FFE')
     expect(seating?.subcategory).toBe('seating')
+  })
+})
+
+describe('categoriesOfDomain', () => {
+  it('lists the categories of one domain in the order of the specification', () => {
+    const hardware = categoriesOfDomain('HDW')
+
+    expect(hardware).toHaveLength(13)
+    expect(hardware.every((category) => category.domain === 'HDW')).toBe(true)
+    expect(hardware.map((category) => category.subcategory)).toEqual(TIER_3_SUBCATEGORIES.HDW)
+    expect(categoriesOfDomain('LGT')).toHaveLength(8)
   })
 })
 
