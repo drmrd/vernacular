@@ -38,7 +38,9 @@ const PERIOD_IDS = [
   'unknown',
 ]
 
-const CHAIR_BYTES = new TextEncoder().encode('vernacular starter chair 1.1.0 glb placeholder\n')
+const encodeText = (text) => new TextEncoder().encode(text)
+
+const CHAIR_BYTES = encodeText('vernacular starter chair 1.1.0 glb placeholder\n')
 const CHAIR = {
   name: 'Example chair',
   kind: 'furniture',
@@ -55,7 +57,6 @@ const THUMBNAIL_BYTES = new Uint8Array([
   0x52, 0x49, 0x46, 0x46, 0x04, 0, 0, 0, 0x57, 0x45, 0x42, 0x50,
 ])
 
-const GRASS_SIDE_PIXELS = 512
 const GRASS_TILE_MM = 2000
 const GRASS = {
   name: 'Mown grass',
@@ -88,7 +89,6 @@ const NOTICE = [
 ].join('\n')
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
-const encodeText = (text) => new TextEncoder().encode(text)
 
 // Both entry builders rebuild their objects to fix the key order of the written
 // manifest; do not simplify them to an object spread.
@@ -116,9 +116,10 @@ function chairEntry(contentHash) {
 /**
  * The manifest entry of the grass texture.
  * @param {string} contentHash
+ * @param {{ width: number, height: number }} image
  * @returns {object}
  */
-function grassEntry(contentHash) {
+function grassEntry(contentHash, image) {
   const { name, kind, mediaType, eras, categories } = GRASS
   return {
     contentHash,
@@ -129,7 +130,7 @@ function grassEntry(contentHash) {
     attribution: ATTRIBUTION,
     eras,
     categories,
-    image: { width: GRASS_SIDE_PIXELS, height: GRASS_SIDE_PIXELS },
+    image: { width: image.width, height: image.height },
     tileSize: { width: GRASS_TILE_MM, height: GRASS_TILE_MM },
     colorSpace: 'srgb',
   }
@@ -137,10 +138,10 @@ function grassEntry(contentHash) {
 
 /**
  * The pack manifest, with keys in a fixed order.
- * @param {{ chairHash: string, grassHash: string }} hashes
+ * @param {{ chairHash: string, grassHash: string, grassImage: { width: number, height: number } }} hashes
  * @returns {object}
  */
-function manifest({ chairHash, grassHash }) {
+function manifest({ chairHash, grassHash, grassImage }) {
   return {
     packId: PACK_ID,
     version: PACK_VERSION,
@@ -150,7 +151,7 @@ function manifest({ chairHash, grassHash }) {
     eras: [...CHAIR.eras, ...GRASS.eras],
     styles: CHAIR.styles,
     categories: [...CHAIR.categories, ...GRASS.categories],
-    assets: [chairEntry(chairHash), grassEntry(grassHash)],
+    assets: [chairEntry(chairHash), grassEntry(grassHash, grassImage)],
   }
 }
 
@@ -159,10 +160,19 @@ function manifest({ chairHash, grassHash }) {
  * @returns {Promise<Map<string, Uint8Array>>}
  */
 export async function buildStarterPack() {
-  const grassBytes = encodePng(generateGrassTile())
+  const grassTile = generateGrassTile()
+  const grassBytes = encodePng(grassTile)
   const chairHash = sha256(CHAIR_BYTES)
   const grassHash = sha256(grassBytes)
-  const manifestText = `${JSON.stringify(manifest({ chairHash, grassHash }), null, 2)}\n`
+  const manifestText = `${JSON.stringify(
+    manifest({
+      chairHash,
+      grassHash,
+      grassImage: { width: grassTile.width, height: grassTile.height },
+    }),
+    null,
+    2,
+  )}\n`
   return new Map([
     [`assets/${chairHash}.glb`, CHAIR_BYTES],
     [`assets/${grassHash}.png`, grassBytes],

@@ -39,7 +39,7 @@ export default meta
 
 type Story = StoryObj<typeof LibraryPanel>
 
-// The on-disk manifest carries a single asset named 'Example chair', so two
+// The on-disk manifest carries a single model asset named 'Example chair', so two
 // differently named buttons can only come from the mocked response: proof the
 // MSW worker served the manifest with no real network read.
 export const Success: Story = {

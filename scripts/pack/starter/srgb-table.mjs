@@ -7,7 +7,7 @@
  * where srgbToLinear is the function in core/color/oklab.ts.
  *
  * The table literal was generated once from srgbToLinear, and srgb-table.test.mjs
- * checks every entry, so a hand edit fails the test.
+ * checks every entry, so a hand edit larger than one table unit fails the test.
  *
  * TARGET_HEX is a literal here because scripts run by plain node cannot import
  * core/environment/ground-surface.ts (its imports have no file extensions). The
