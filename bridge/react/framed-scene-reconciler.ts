@@ -266,12 +266,12 @@ function reconcileStackedScene(
   const key = `${floorSetKey}${FRAMED_FLOOR_SEPARATOR}${graph.framedFloorId ?? ''}`
   const cached = scenes.get(key)
   if (cached !== undefined && sameRefs(cached.builds, builds)) {
-    refreshGroundPlane(cached.framed.root, graph.gradeElevation)
+    refreshGroundPlane(cached.framed.root, { gradeElevation: graph.gradeElevation })
     return cached.framed
   }
   const framed = frameStackedScene(
     builds.map(floorAssembly),
-    graph.gradeElevation,
+    { gradeElevation: graph.gradeElevation },
     graph.framedFloorId,
   )
   evictScenesSharingBuilds(scenes, { key, builds }, retired)
