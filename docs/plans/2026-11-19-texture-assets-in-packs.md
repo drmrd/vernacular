@@ -3,10 +3,10 @@
 - Decision record: ADR-0219 (`docs/knowledge/decisions/ADR-0219-pack-assets-carry-textures.md`).
 - Specification change: sections 4.3 and 4.5 of `docs/specs/2026-06-01-vernacular-design.md`.
 - Issue: #409 (the grass of the ground, `size:L`, milestone `public-beta`).
-- Base: `origin/main` at `82170819`. The facts and line numbers were first read at `1c02bbc5`, and
-  those of pull request 4 again at `6e200b70`. The paths and most lines were checked again at
-  `82170819`. The harness readiness code changed after `6e200b70` (see "Open before pull
-  request 4" below).
+- Base: `origin/main` at `82170819`. The facts and line numbers were first read at `1c02bbc5`. The
+  paths and most lines were checked again at `82170819`. Pull request 4 was read again in full at
+  `2dfcfbfad`, after pull requests 1 to 3 merged (see "Pull request 4 was read again before its
+  run" below).
 
 ## Goal
 
@@ -42,23 +42,23 @@ draws it in the live view and in the scene harness, and the calibrated daylight 
   New bridge files use core types only.
 - `engine/scene/ground-plane.ts` builds a `MeshStandardMaterial` with `GROUND_SURFACE_HEX` and
   `groundPlaneDepthBiasParameters()` (lines 98 to 105). `PlaneGeometry` gives UVs from 0 to 1.
-- `refreshGroundPlane` (`bridge/react/framed-scene.ts:123-132`) frees an old plane with
+- `refreshGroundPlane` (`bridge/react/framed-scene.ts:140-149`) frees an old plane with
   `disposeObject` (`engine/scene/furniture-model.ts:40-52`), which frees every material texture.
 - The scene harness builds its scene once, in a memo, through `buildFramedScene`, `buildScene`, and
-  `addGroundPlane` (`bridge/react/scene-harness-view.tsx:268-270`, `engine/scene/build-scene.ts:36`; `addGroundPlane` is reached through `bridge/react/framed-scene.ts:131`).
+  `addGroundPlane` (`bridge/react/scene-harness-view.tsx:268-270`, `engine/scene/build-scene.ts:36`; `addGroundPlane` is reached through `bridge/react/framed-scene.ts:148`).
   The reconciler's path for an empty graph calls `buildFramedScene` too
-  (`bridge/react/framed-scene-reconciler.ts:134-136`). `app/app.tsx` renders the harness with no
+  (`bridge/react/framed-scene-reconciler.ts:199-205`). `app/app.tsx` renders the harness with no
   asset registry provider.
 - The live view has two readiness signals. The first-frame flag (`data-harness-ready` on the live
   canvas, `bridge/react/live-scene-frame-signal.tsx`) drives the "Building the scene..." overlay
   (`editor/shell/scene-pane.tsx:128`). The live-view baseline waits on `data-live-view-ready`
-  (`e2e/tests/scene-live-view-visual-regression.spec.ts:32`), which is
+  (`e2e/tests/scene-live-view-visual-regression.spec.ts:33`), which is
   `sessionRestored && frameDrawnSincePipelineSettled` (`bridge/react/scene-session-provider.tsx`),
   written by `useLiveViewReadiness` (`bridge/react/use-live-view-readiness.ts`).
-- What each capture waits on today: `scene-solar.spec.ts` waits for the canvas width and
-  `data-harness-ready`; `scene-visual-regression.spec.ts` waits for the canvas width only; the
-  gates use `settledHarnessCanvas` (`data-harness-ready`); the live-view baseline waits for
-  `data-live-view-ready`.
+- What each harness capture waits on today: every harness spec waits through
+  `settledHarnessCanvas` (`e2e/tests/scene-helpers.ts`), which waits for `data-harness-ready`,
+  except `captureShell` of `scene-solar.spec.ts`, which waits for the canvas width and the same
+  attribute inline. The live-view baseline waits for `data-live-view-ready`.
 - The application renders under `<StrictMode>` (`src/main.tsx:34`). The furniture model cache is
   made in a ref and disposed in an effect cleanup (`bridge/react/use-furniture-model-cache.ts:26-44`),
   and a disposed cache ignores later requests (`bridge/react/furniture-model-cache.ts:150-152`).
@@ -110,8 +110,8 @@ These were the plan's working assumptions. The owner confirmed each one as writt
   visibly at middle distance) and 256 by 256 over 2000 mm (softer up close). Only pull request 3
   depends on this.
 - The ground shows the flat lawn first and the grass when it is ready. The "Building the scene..."
-  overlay does not wait for the grass. Only the capture signals wait (pull request 4, cycles 7
-  and 8).
+  overlay does not wait for the grass. Only the capture signals wait (pull request 4, cycles 9
+  and 10).
 - Starter pack 1.0.0 stays in `public/` when 1.1.0 arrives (pull request 3, cycle 7). Starter pack
   1.1.0 holds a new chair with new bytes and a new hash under CC-BY-4.0 (ADR-0229, owner decision of
   2026-11-22), so the hash of the 1.0.0 chair is not in 1.1.0. A project that names
@@ -121,29 +121,32 @@ These were the plan's working assumptions. The owner confirmed each one as writt
 - The grass lists every period of `core/registries/periods.ts` as its eras, and the category
   `ground-cover`.
 
-## Open before pull request 4
+## Pull request 4 was read again before its run
 
-The harness readiness code on `main` changed after pull request 4 was read at `6e200b70`. Before
-any agent runs pull request 4, its harness rules, the capture wait, and cycles 5 and 6 are read
-again against `main` and rewritten where they no longer hold. Known changes at `82170819`:
+The scene code on `main` changed after pull request 4 was first read at `6e200b70`. Its section
+was read again against `main` at `2dfcfbfad`, after pull requests 1 to 3 merged, and rewritten.
+Nothing is open before it runs. What the read changed:
 
-- `b424248c` draws each harness frame in the renderer's animation loop. `StaticFrame` is at
-  `bridge/react/scene-harness-view.tsx:68`, and `frameloop="never"` at line 302. Harness rule 7
-  cites lines 74 to 78.
-- `701ef194` restarts the harness readiness when the harness state changes: `HarnessStage` is keyed
-  by `harnessStateKey` (`bridge/react/scene-harness-state-key.ts`).
-- `21a9e816` and the ready-frame module (`bridge/react/scene-harness-ready-frame.ts`) set
-  `data-harness-ready` from `harnessReadyProps(readiness.drawnReadyFrame)`. Harness rule 5 names a
-  `harnessReady({ ... })` call with a ground input.
-- `ceb0f519` makes `scene-visual-regression.spec.ts` wait for `data-harness-ready` (line 39), and
-  `settledHarnessCanvas` in `scene-helpers.ts` does the same. "Before the cycles: the harness
-  capture wait" says the baseline spec waits for the canvas width only.
-- `eslint.config.js` moved: the length exceptions and the layer import rules have new line
-  numbers, and `ec2da693` lowered the function length cap of `bridge/react/framed-scene.test.ts`
-  (now 218, line 345). `bridge/react/webgpu-scene-view.tsx` is 372 lines, with its jsdom comment at
-  line 332.
+- The harness has no separate readiness module. The gate in `useHarnessReadiness` takes the
+  applied ground status, and `harnessReadyProps` writes `data-ground-texture` beside
+  `data-harness-ready`. `scene-harness-ready-frame.test.tsx` renders the harness under jsdom, so
+  the harness wiring is a cycle with a unit test.
+- The live view is `bridge/react/live-scene-view.tsx`. `useLiveViewReadiness` takes the ground
+  status as a parameter and keeps a second in-flight ref. There are no ground notes, and the
+  first-frame flag has no ground input to keep out.
+- `refreshGroundPlane` and `frameStackedScene` take one `SceneGround` object, because a function
+  may have three parameters at most. The engine answers whether a plane already draws with an
+  appearance, because the bridge may not import `three`.
+- The reconciler returns the cached scene of an empty graph untouched today. That scene takes the
+  grass in its own cycle.
+- `settledHarnessCanvas` is the one harness wait. Only `captureShell` of `scene-solar.spec.ts`
+  does not use it yet.
+- New tests go into new files, because the existing ones are at their length limits.
+- The lists of the files that wait on `data-live-view-ready` and of the live specs were short.
+  They are complete now, and the waits go through one helper.
 
-The revised pull request 4 has also had no independent read since the fixes of its second read.
+If `main` moves inside the fence of pull request 4 before a cycle runs, the agent that runs the
+cycle checks the lines the cycle cites and reports a difference before it writes code.
 
 ## Rules every pull request keeps
 
@@ -566,6 +569,10 @@ the manifest comes from the bytes the build writes.
 
 Branch `feat/grass-on-the-ground`. After pull requests 2 and 3. It closes #409.
 
+This section was read again against `main` at `2dfcfbfad`, after pull requests 1 to 3 merged, and
+rewritten where the scene code had moved. Every file name, signature, line number, and line count
+in it is from that commit. Line counts are the lint's counts (blank lines and comments left out).
+
 **Goal.** The ground plane in the live view and in the scene harness draws the starter pack
 grass, and every capture waits for it.
 
@@ -576,78 +583,86 @@ stays flat green.
 
 **File fence.**
 
-- `engine/scene/ground-plane.ts`, `engine/scene/ground-plane-appearance.test.ts` (new;
+- The engine: `engine/scene/ground-plane.ts`, `engine/scene/ground-plane-appearance.test.ts` (new;
   `engine/scene/ground-plane.test.ts` is at 298 of the 300 lines the lint allows, so it is not
-  touched), `engine/scene/build-scene.ts`, `engine/scene/build-scene.test.ts`, `engine/index.ts`
-  (exports only).
-- `bridge/react/framed-scene.ts`, `bridge/react/framed-scene.test.ts`,
-  `bridge/react/framed-scene-reconciler.ts`, `bridge/react/framed-scene-reconciler.test.ts`,
-  `bridge/react/use-framed-scene.ts`.
-- `bridge/react/harness-ground.ts`, `bridge/react/harness-ground.test.tsx`,
-  `bridge/react/harness-readiness.ts`, `bridge/react/harness-readiness.test.ts` (new), and
-  `bridge/react/scene-harness-view.tsx` (wiring only). `SceneHarnessView` is at the 40-line limit
-  of a function, so the new calls go into the two hooks it already calls, `useFramedHarnessScene`
-  and `useHarnessReadiness`, and the wrapper spreads one attribute object from
-  `useHarnessReadiness` in place of today's single attribute.
-- `bridge/react/use-live-view-readiness.ts`, `bridge/react/use-live-view-readiness.test.tsx`,
-  `bridge/react/use-ground-readiness-notes.ts`, `bridge/react/use-ground-readiness-notes.test.ts`
-  (new), and `bridge/react/webgpu-scene-view.tsx` (wiring only: one prop and one hook call). The
-  file is at 287 of 300 lines by the lint count, and `WebGPUSceneView` at 35 of its 40. Its
-  destructure of `useFramedScene()` already fills the line width, and one more field would make
-  the formatter put each field on a line of its own, so the view keeps the state as one object
-  (`const scene = useFramedScene()`) and reads its fields from it.
-- `app/app.tsx` (the harness branch only), `app/create-asset-library-registry.ts`,
-  `app/create-asset-library-registry.test.ts`.
+  touched), `engine/scene/build-scene.ts`, `engine/scene/build-scene.test.ts` (246 lines),
+  `engine/index.ts` (exports only).
+- The framed scene: `bridge/react/framed-scene.ts`, `bridge/react/framed-scene-reconciler.ts`,
+  `bridge/react/use-framed-scene.ts`, and three new test files:
+  `bridge/react/framed-scene-ground.test.ts`, `bridge/react/framed-scene-reconciler-ground.test.ts`,
+  and `bridge/react/use-framed-scene-ground.test.tsx`. The existing test files do not grow:
+  `bridge/react/framed-scene.test.ts` is at 274 of 300 lines, and
+  `bridge/react/framed-scene-reconciler.test.ts` runs with the file length rule turned off.
+  `bridge/react/use-framed-scene.test.tsx` and `bridge/react/use-framed-scene-dispose.test.tsx` are
+  in the fence for one module mock each (cycle 7).
+- The harness: `bridge/react/harness-ground.ts`, `bridge/react/harness-ground.test.tsx` (new),
+  `bridge/react/scene-harness-view.tsx`, `bridge/react/scene-harness-ready-frame.ts`, and
+  `bridge/react/scene-harness-ready-frame.test.tsx`. `HarnessStage` in the view is at 39 of the 40
+  lines of a function. Each change to it below edits a line it already has, and adds none.
+- The live view: `bridge/react/use-live-view-readiness.ts`,
+  `bridge/react/use-live-view-readiness.test.tsx`, and `bridge/react/live-scene-view.tsx` (wiring
+  only: one field of `LiveSceneCanvasProps`, one argument, one JSX prop). The file is at 202 of
+  300 lines and `LiveSceneView` at 38 of its 40. The view already keeps the state of
+  `useFramedScene()` as one object (`framedScene`) and reads `framedScene.onSceneAttached` from
+  it, so the new prop reads `framedScene.groundTexture` the same way.
+- The application: `app/app.tsx` (the harness branch only),
+  `app/create-asset-library-registry.ts`, `app/create-asset-library-registry.test.ts`.
 - The harness captures: `e2e/tests/scene-helpers.ts`, `e2e/tests/scene-solar.spec.ts`,
-  `e2e/tests/scene-visual-regression.spec.ts`, `e2e/tests/scene-grass-texture.spec.ts` (new),
-  `e2e/tests/scene-sun-to-shade.spec.ts`, `e2e/tests/scene-shadow-reach.spec.ts`, and the
-  baselines that fail.
-- The live specs, for a named wait and a named time limit only (see "The time the live specs
-  take" below): `e2e/tests/scene-live-view-visual-regression.spec.ts`,
-  `e2e/tests/journeys/close-openings-support.ts`,
-  `e2e/tests/journeys/perceived-color-readout.spec.ts`, and the live specs of the `scene-webgl`
-  project, each `e2e/tests/<name>.spec.ts` for the names `scene-accessibility`,
-  `scene-building-view`, `scene-camera-controls`, `scene-camera-fit`, `scene-camera-presets`,
-  `scene-color-temperature`, `scene-furniture-model-swap`, `scene-live-view`,
-  `scene-live-view-reopen`, `scene-live-view-startup`, `scene-navigation`, and `scene-selection`.
+  `e2e/tests/scene-grass-texture.spec.ts` (new), `e2e/tests/scene-sun-to-shade.spec.ts`,
+  `e2e/tests/scene-shadow-reach.spec.ts`, and the baselines that fail, of these specs and of
+  `e2e/tests/scene-visual-regression.spec.ts`.
+- The live specs: `e2e/tests/live-pane.ts` (the shared wait), `e2e/tests/scene-live-view-grass.spec.ts`
+  (new), and, for the shared wait and a named time limit only (see "The time the live specs take"
+  below), the files that wait on the marker and the live specs of the `scene-webgl` project. Both
+  lists are in that part.
 - Not in the fence: `.github/workflows/ci.yml`. It is shared configuration. If a step of its macOS
   `live-view-visual` job needs a longer limit, stop and ask the owner.
 
 **Public names.**
 
-- From pull request 2: `TextureAppearance`, `TextureStatus`, `TextureState`, `useGroundTexture`,
-  `markCacheHeld`, and `Texture` from `engine/testing` for bridge tests. From pull request 3:
-  `GROUND_GRASS_REFERENCE`.
-- `engine/scene/ground-plane.ts`: `addGroundPlane(root: THREE.Object3D, gradeElevation?: number,
-appearance?: TextureAppearance): void`.
-- `engine/scene/build-scene.ts`: `BuildSceneOptions` (`EdgeOverlayOptions & { ground?:
-TextureAppearance | undefined }`), exported from `engine/index.ts`; `buildScene(graph,
-materials?, options?: BuildSceneOptions)`. The `| undefined` is needed under
+- From pull request 2: `TextureAppearance` (`{ texture, tileSize: { width, height } }`, from
+  `engine/index.ts`), `markCacheHeld` (from `engine/index.ts`), `Texture` and `Mesh` (from
+  `engine/testing`, for bridge tests, which may not import `three`), and
+  `useGroundTexture(reference: AssetReference, source: TextureSource): TextureState`
+  (`bridge/react/use-ground-texture.ts`). `TextureStatus` (`'loading' | 'ready' | 'failed'`) and
+  `TextureState` (`{ status; appearance? }`) are imported from `bridge/react/texture-cache.ts`.
+  `bridge/index.ts` does not export them. From pull request 3: `GROUND_GRASS_REFERENCE`
+  (`core/index.ts`).
+- `engine/scene/ground-plane.ts`:
+  - `addGroundPlane(root: THREE.Object3D, gradeElevation?: number, appearance?: TextureAppearance): void`.
+  - `groundPlaneDrawsWith(plane: THREE.Object3D, appearance: TextureAppearance | undefined): boolean`,
+    exported from `engine/index.ts`. The bridge may not import `three`, so it cannot read a
+    material's map. This function answers for it.
+- `engine/scene/build-scene.ts`: `BuildSceneOptions`, exported from `engine/index.ts`, is
+  `EdgeOverlayOptions & { groundAppearance?: TextureAppearance | undefined }`.
+  `buildScene(graph, materials?, options?: BuildSceneOptions)`. The `| undefined` is needed under
   `exactOptionalPropertyTypes`, because the reconciler passes an appearance that may be absent.
-- `bridge/react/framed-scene.ts`: `refreshGroundPlane(root: SceneRoot, gradeElevation: number |
-undefined, appearance?: TextureAppearance): void`; `frameStackedScene(floors: FloorAssembly[],
-gradeElevation: number | undefined, appearance?: TextureAppearance): FramedScene`;
-  `buildFramedScene(graph, paint?, view?: BuildSceneOptions)`.
+- `bridge/react/framed-scene.ts`:
+  - `SceneGround`: `{ gradeElevation: number | undefined; appearance?: TextureAppearance | undefined }`.
+    One object for the ground of a scene keeps `frameStackedScene` at three parameters, the most
+    the lint allows.
+  - `refreshGroundPlane(root: SceneRoot, ground: SceneGround): void`.
+  - `frameStackedScene(floors: FloorAssembly[], ground: SceneGround, framedFloorId?: string | null): FramedScene`.
+  - `buildFramedScene(graph, paint?, view?: BuildSceneOptions)`.
 - `bridge/react/framed-scene-reconciler.ts`: `FramedSceneReconciler` gains
-  `setGroundAppearance(appearance: TextureAppearance | undefined): void`. `reconcile(graph, paint?,
-models?)` keeps its signature. It already has three parameters, the most the lint allows, so no
-  existing call changes.
-- `bridge/react/harness-ground.ts`: `useHarnessGround(root: SceneRoot, gradeElevation: number |
-undefined, ground: TextureState): TextureStatus`.
-- `bridge/react/harness-readiness.ts`: `HarnessReadinessInputs` (`{ lightingReady: boolean;
-ambientOcclusionActive: boolean; ambientOcclusionSettled: boolean; groundTexture: TextureStatus
-}`) and `harnessReady(inputs: HarnessReadinessInputs): boolean`.
-- `bridge/react/use-live-view-readiness.ts`: `LiveViewReadinessNotes` gains
-  `noteGroundTextureLoading: () => void` and `noteGroundTextureSettled: () => void`.
-- `bridge/react/use-ground-readiness-notes.ts`: `GroundReadinessNotes` (`Pick<LiveViewReadinessNotes,
-'noteGroundTextureLoading' | 'noteGroundTextureSettled'>`) and `useGroundReadinessNotes(status:
-TextureStatus, notes: GroundReadinessNotes): void`.
+  `setGroundAppearance(appearance: TextureAppearance | undefined): void`.
+  `reconcile(graph, paint?, models?)`, `releaseRetired`, `dispose`, and
+  `createFramedSceneReconciler(view?)` keep their signatures, so no existing call changes.
 - `bridge/react/use-framed-scene.ts`: `FramedSceneState` gains `groundTexture: TextureStatus`.
-- `app/create-asset-library-registry.ts`: `createHarnessAssetRegistry(fetch: typeof
-globalThis.fetch): AssetRegistry`.
-- The harness wrapper (`data-testid="scene-harness"`) gains `data-ground-texture`, with the values
-  `loading`, `ready`, and `failed`.
-- `e2e/tests/scene-helpers.ts`: `waitForHarnessCapture(page: Page): Promise<void>`.
+- `bridge/react/harness-ground.ts`:
+  `useHarnessGround(root: SceneRoot, gradeElevation: number | undefined, texture: TextureState): TextureStatus`.
+- `bridge/react/scene-harness-ready-frame.ts`:
+  `harnessReadyProps(frame: HarnessReadyFrame | null, groundTexture: TextureStatus): Record<string, string>`.
+  It returns today's three attributes and a fourth, `data-ground-texture`, with the values
+  `loading`, `ready`, and `failed`. The harness wrapper (`data-testid="scene-harness"`) spreads it.
+- `bridge/react/use-live-view-readiness.ts`:
+  `useLiveViewReadiness(groundTexture: TextureStatus): LiveViewReadinessNotes`. The parameter is
+  required. `LiveViewReadinessNotes` keeps its four notes and gains none.
+- `app/create-asset-library-registry.ts`:
+  `createHarnessAssetRegistry(fetchFn: typeof fetch): AssetRegistry`.
+- `e2e/tests/scene-helpers.ts`: `settledHarnessCanvas(page, query, subject?)` keeps its signature
+  and is the one wait of every harness spec. `e2e/tests/live-pane.ts`:
+  `waitForLiveViewReady(page: Page): Promise<void>`.
 
 **The readiness rules.** Both roles work from these rules. The cycles below name the rules they
 build.
@@ -657,58 +672,86 @@ The harness:
 1. `useGroundTexture` reports `loading` from its first render until its cache settles, then
    `ready` with an appearance or `failed` without one.
 2. `useHarnessGround` returns the status it has applied to the drawn root, not the cache's
-   status. It is `loading` until `refreshGroundPlane` has run on the current root with the current
-   appearance.
-3. It applies the ground in a layout effect. On `ready` it calls `refreshGroundPlane(root,
-gradeElevation, appearance)`. On `failed` it leaves the flat plane. Then it stores the applied
-   status, together with the root it was applied to, in state. So the status can turn `ready` only
-   in a commit after the plane was swapped.
-4. When the root changes (another fixture or other paint builds a new scene), the returned status
-   is `loading` again until the effect has applied the ground to the new root.
-5. `data-harness-ready` is `harnessReady({ lightingReady, ambientOcclusionActive,
-ambientOcclusionSettled, groundTexture })`, with the applied status as `groundTexture`. It is
-   true when the lighting is ready, the ambient occlusion pass has settled if it is active, and the
-   applied status is `ready` or `failed`.
-6. `data-ground-texture` reports the applied status.
-7. The harness draws its frame again when `data-harness-ready` turns true (`StaticFrame`,
-   `scene-harness-view.tsx:74-78`, with `frameloop="never"`). By rule 3 the plane was swapped
-   before that, so the frame it draws holds the grass.
+   status.
+3. It applies the ground in a layout effect: it calls
+   `refreshGroundPlane(root, { gradeElevation, appearance: texture.appearance })`, then stores the
+   root and the texture status in state. With no appearance (`loading` or `failed`) that call keeps
+   the flat plane.
+4. It returns the stored status only when the stored root is the current root and the stored
+   status is the texture's current status. Otherwise it returns `loading`. So the status can turn
+   `ready` only in a commit after the plane was swapped, and a new root reports `loading` until
+   the effect has run on it.
+5. The gate that requests the ready frame (`harnessReady` in `useHarnessReadiness`) is true when
+   the lighting is ready, the ambient occlusion pass has settled if it is active, and the applied
+   status is `ready` or `failed`.
+6. `StaticFrame` (`scene-harness-view.tsx:68-104`, under `frameloop="never"`) asks for a draw in
+   the renderer's next animation-loop callback each time the gate changes. A frame requested with
+   the gate true reports itself as the ready frame. By rules 3 and 4 the plane was swapped in a
+   layout effect before the gate could turn true, so the ready frame holds the grass.
+7. `data-harness-ready` stays what it is today: `true` once the ready frame has been drawn
+   (`drawnReadyFrame`), in the commit after that frame. `data-ground-texture` reports the applied
+   status. Both come from `harnessReadyProps`.
+8. `HarnessStage` is keyed by `harnessStateKey(props)`, so each harness state mounts a new stage
+   and every flag starts again. The texture cache lives in the stage too, so each state loads the
+   grass again.
+9. A texture that fails settles as `failed`: the gate opens over the flat lawn, and
+   `data-ground-texture` reads `failed`. The harness specs wait for `ready`, so they fail with a
+   clear cause and cannot capture a flat lawn.
 
 The live view:
 
 1. The fact `frameDrawnSincePipelineSettled` lives in the scene session, which outlives a mount of
-   the live view, so it can still read true from an earlier open (issue #829,
-   `e2e/tests/live-pane-frames.ts:14-18`). The texture cache lives as long as one view, so each
-   mount loads the grass again.
-2. `useLiveViewReadiness` keeps two in-flight refs: one for a pipeline build, one for the ground
-   texture.
-3. `noteGroundTextureLoading` sets the ground ref and writes the fact false, even when it is
-   already true, as `notePipelineBuildStarted` does.
-4. `noteGroundTextureSettled` clears the ground ref only. It writes nothing; the next frame that
-   counts sets the fact.
-5. `noteFrameDrawn` sets the fact true only when neither ref is set. `notePipelineSettled` clears
+   the live view, so it can still read true from an earlier open (issue #829; see the comment
+   above `LIVE_SCENE_CANVAS_TEST_ID` in `e2e/tests/live-pane-frames.ts`). The texture cache lives
+   as long as one mount of `LiveSceneView`, so each mount loads the grass again.
+2. `useLiveViewReadiness(groundTexture)` keeps two in-flight refs: one for a pipeline build, one
+   for the ground texture.
+3. A layout effect keyed on the status keeps the ground ref. On `loading` it sets the ref and
+   writes the fact false, even when the fact is already true, as `notePipelineBuildStarted` does
+   (`use-live-view-readiness.ts:41-44`). On `ready` or `failed` it clears the ref and writes
+   nothing. The next frame that counts sets the fact.
+4. `noteFrameDrawn` sets the fact true only when neither ref is set. `notePipelineSettled` clears
    the pipeline ref only.
-6. `useGroundReadinessNotes(status, notes)` calls `noteGroundTextureLoading` when the status turns
-   `loading`, and `noteGroundTextureSettled` when it turns `ready` or `failed`: once for each
-   change, in a layout effect keyed on the status.
-7. On a mount the status starts at `loading`, so rule 6 clears a stale fact in the mount's first
-   commit, before the browser paints and before the new canvas draws a frame.
-8. `data-live-view-ready` stays `sessionRestored && frameDrawnSincePipelineSettled`. The
-   first-frame flag (`useFirstFrameReadiness`, the live canvas's `data-harness-ready`) takes no
-   ground input, so the "Building the scene..." overlay does not wait for the grass.
+5. `LiveSceneCanvas` calls the hook, and it mounts in the same commit as `LiveSceneView`, which
+   owns the texture cache through `useFramedScene`. So the first status a mount sees is always
+   `loading`, and rule 3 clears a stale fact in the mount's first commit, before the browser
+   paints and before the new canvas draws a frame.
+6. `useFramedScene` hands the appearance to the reconciler inside its reconcile memo, so the scene
+   of the render in which the status turns `ready` already holds the grass. The layout effect of
+   that commit clears the ground ref. Every frame that counts is therefore drawn after the grass
+   is on the plane.
+7. Every cache hit of the reconciler refreshes the ground in place, for a stacked scene and for
+   the empty-graph scene. The `FramedScene` object stays the same when the grass arrives, so the
+   scene revision does not change, the root is not attached again, and the camera is not framed
+   again.
+8. `data-live-view-ready` stays `sessionRestored && frameDrawnSincePipelineSettled`. The live
+   canvas's own `data-harness-ready` comes from `SceneReadinessBoundary` and
+   `sceneReadinessProps(drawnRevision !== null)`, with the drawn revision from `useDrawnRevision`
+   and `LiveSceneFrameSignal`. None of them takes a ground input, so the "Building the scene..."
+   overlay does not wait for the grass.
 9. A texture that fails settles as `failed`, and the marker rises over the flat lawn.
 
-### Before the cycles: the harness capture wait
+**For both roles.** A bridge test takes `Mesh` and `Texture` from `engine/testing` and
+`isGroundPlane`, `markCacheHeld`, and `groundPlaneDrawsWith` from `engine/index.ts`. It never
+imports `three`, and it never builds an `AssetRegistry`. A test that mocks `./use-ground-texture`
+returns the same state object on every call until the test changes it, because `useHarnessGround`
+and the reconcile memo key on it. Vitest does not type-check, so each cycle below names both the
+failure of the test run and the error of `pnpm typecheck`.
 
-The first commit of the branch is a `test(e2e)` commit, before the RED of cycle 1. It adds
-`waitForHarnessCapture(page)` to `scene-helpers.ts` with the canvas-width wait and the
-`data-harness-ready` wait only. `captureShell` in both baseline specs and `settledHarnessCanvas`
-call it. Today `scene-visual-regression.spec.ts` waits for the canvas width only and captures
-whatever frame is on screen, so the new wait could move a baseline by itself. The commit runs on the
-flat lawn, on the development Mac and in the linux `scene-visual` job of CI. A baseline that moves
-is refreshed in a `test(e2e)` commit of its own before cycle 1, in the way "Baselines" below
-describes. Each later baseline diff then has one cause, the grass. The ground wait comes after
-cycle 9.
+### Before the cycles: one wait for every harness capture
+
+The first commit of the branch is a `test(e2e)` commit, before the RED of cycle 1. Today every
+harness spec waits through `settledHarnessCanvas` (`e2e/tests/scene-helpers.ts`), which waits for
+`data-harness-ready`, except `captureShell` in `e2e/tests/scene-solar.spec.ts` (lines 95 to 120).
+That one calls `openHarnessScene`, polls the canvas width, and waits for the attribute itself. The
+commit makes it call `settledHarnessCanvas(page, capture.query, 'scene harness')` and removes the
+width poll and the inline wait. The attribute turns true only after the ready frame was drawn, so
+the width poll adds nothing.
+
+The commit runs on the flat lawn, on the development Mac and in the linux `scene-visual` job of
+CI. No baseline is expected to move. If one moves, stop and report it before cycle 1. Each later
+baseline diff then has one cause, the grass. The ground wait is added to `settledHarnessCanvas`
+after cycle 11.
 
 ### Cycles
 
@@ -729,119 +772,239 @@ cycle 9.
    carries the map, and each vertex's UV is written from its world position as above. The mesh
    lies with its local y along world −z (`mesh.rotation.x = -Math.PI / 2`, `ground-plane.ts:110`),
    so v is (local y minus the center's world z) over the tile height.
-2. **`engine/scene/build-scene.test.ts`: "buildScene draws the ground with the appearance in its
-   options".** In a new `describe` block, since the file's first block carries a length
-   exception. Setup: a one-floor graph and `buildScene(graph, undefined, { ground: { texture,
-tileSize } })`. Assert the ground plane's `material.map` is the texture. Fails today: the map
-   is `null`, and typecheck reports TS2353 ("Object literal may only specify known properties, and
-   'ground' does not exist in type 'EdgeOverlayOptions'"). Implementation: `build-scene.ts`
-   (`BuildSceneOptions`, and `addGroundPlane(root, graph.gradeElevation, options.ground)`);
-   `engine/index.ts` exports the type.
-3. **`bridge/react/framed-scene.test.ts`: "refreshGroundPlane swaps a flat plane for a textured one,
-   keeps a plane drawn with the same appearance at the same grade, and never frees a held
-   texture".** In a new `describe('refreshGroundPlane')` block. The file's `buildFramedScene`
-   block is at its length exception of 283 lines (`eslint.config.js`), so nothing goes into it.
-   Setup: a root with a flat plane, from `buildFramedScene`; a `Texture` from `engine/testing`,
-   marked with `markCacheHeld`, with a `dispose` spy; a tile size of 2000 by 2000. Assert: after
-   `refreshGroundPlane(root, 0, appearance)` the root has one plane, with the map; a second call
-   with the same appearance keeps the same plane object; a call at a grade of 300 gives a new plane
-   with the map; a call with the same texture and a tile size of 1000 by 1000 gives a new plane;
-   the texture's `dispose` is never called. The same RED commit holds a guard test:
-   `buildFramedScene(graph, paint, { ground: appearance })` gives a ground with the map. At run
-   time it passes since cycle 2, because `buildFramedScene` hands `view` to `buildScene`. Fails
-   today: after the first call the plane has no map, and typecheck reports TS2554 ("Expected 2
-   arguments, but got 3") for `refreshGroundPlane` and TS2353 for the guard's `ground`.
-   Implementation: `framed-scene.ts`: `refreshGroundPlane` takes the appearance and keeps a plane
-   only when its grade, its `map`, and its tile size all match; `buildFramedScene`'s `view` becomes
-   `BuildSceneOptions`. `ground-plane.ts`: `addGroundPlane` records the tile size it drew with on
-   the mesh as `userData.groundTileSize`, so the refresh can compare it.
-4. **`bridge/react/framed-scene-reconciler.test.ts`: "a ground appearance reaches every ground the
-   reconciler seats: an unchanged scene keeps its floor groups, and a rebuilt floor set and an
-   empty graph get the map too".** In a new `describe` block. Setup: reconcile a one-floor graph;
-   call `setGroundAppearance({ texture, tileSize })`; reconcile the same graph; then a graph whose
-   wall moved; then a graph with no floors. Assert the floor group objects are the same across the
-   first two calls, and the ground's `material.map` is the texture after the second, third, and
-   fourth calls. Fails today: `TypeError: reconciler.setGroundAppearance is not a function`, and
+2. **`engine/scene/ground-plane-appearance.test.ts`: "a ground plane tells whether it already draws
+   with an appearance".** Setup: one root with a flat plane (`addGroundPlane(root)`), one with a
+   plane from `addGroundPlane(root, 0, { texture, tileSize })` at a tile size of 2000 by 1000; each
+   plane found with `isGroundPlane`. Assert with `groundPlaneDrawsWith(plane, appearance)`: the flat
+   plane gives true for `undefined` and false for an appearance; the textured plane gives true for
+   the same texture with an equal tile size in a new object (the size is compared by value), false
+   for another texture, false for a tile size of 1000 by 1000, and false for `undefined`; an object
+   that is not a ground plane gives false. Fails today:
+   `TypeError: groundPlaneDrawsWith is not a function`, and typecheck reports TS2305 (no exported
+   member `groundPlaneDrawsWith`). Implementation: `ground-plane.ts`: `addGroundPlane` records the
+   appearance it drew with on the mesh, and the new function compares against the record;
+   `engine/index.ts` exports the function.
+3. **`engine/scene/build-scene.test.ts`: "buildScene draws the ground with the appearance in its
+   options".** In a new `describe` block: the file's first block carries a function length exception
+   (an inline `eslint-disable-next-line`), so nothing goes into it. Setup: a one-floor graph and
+   `buildScene(graph, undefined, { groundAppearance: { texture, tileSize } })`. Assert the ground
+   plane's `material.map` is the texture. Fails today: the map is `null`, and typecheck reports
+   TS2353 ("Object literal may only specify known properties, and 'groundAppearance' does not exist
+   in type 'EdgeOverlayOptions'"). Implementation: `build-scene.ts` (`BuildSceneOptions`, and
+   `addGroundPlane(root, graph.gradeElevation, options.groundAppearance)`); `engine/index.ts`
+   exports the type.
+4. **`bridge/react/framed-scene-ground.test.ts` (new): "refreshGroundPlane swaps a flat plane for a
+   textured one, keeps a plane that already draws with the same ground, and never frees a held
+   texture".** Setup: a root with a flat plane, from `buildFramedScene`; a `Texture` from
+   `engine/testing`, marked with `markCacheHeld`, with a `dispose` spy; a tile size of 2000 by 2000.
+   Each call passes an object literal as the ground. Assert: after
+   `refreshGroundPlane(root, { gradeElevation: 0, appearance })` the root has one plane, and
+   `groundPlaneDrawsWith(plane, appearance)` is true; a second call with the same ground keeps the
+   same plane object; a call at a grade of 300 gives a new plane, seated at 300, that draws with the
+   appearance; a call with the same texture and a tile size of 1000 by 1000 gives a new plane; a
+   call with no appearance gives a flat plane again; the root never holds more than one plane; the
+   texture's `dispose` is never called. The same RED commit holds a guard test:
+   `buildFramedScene(graph, paint, { groundAppearance: appearance })` gives a ground that draws with
+   the appearance. At run time it passes since cycle 3, because `buildFramedScene` hands `view` to
+   `buildScene`. Fails today: after the first call the plane has no map, and typecheck reports
+   TS2345 (the object is not assignable to `number | undefined`) for `refreshGroundPlane` and TS2353
+   for the guard's `groundAppearance`. Implementation, all in `framed-scene.ts`: `SceneGround`;
+   `refreshGroundPlane` takes it and keeps a plane only when there is exactly one, it sits at the
+   grade, and `groundPlaneDrawsWith` is true for the appearance, and otherwise removes and frees
+   every plane as today and adds one with `addGroundPlane(root, grade, ground.appearance)`;
+   `frameStackedScene` takes a `SceneGround` as its second parameter and hands it on;
+   `buildFramedScene`'s `view` becomes `BuildSceneOptions`. For the build only,
+   `framed-scene-reconciler.ts` changes its two call sites (lines 269 and 272 to 276) to pass
+   `{ gradeElevation: graph.gradeElevation }`. Neither `refreshGroundPlane` nor `frameStackedScene`
+   is called from an existing test, so no test is retrofitted.
+5. **`bridge/react/framed-scene-reconciler-ground.test.ts` (new): "a ground appearance reaches the
+   ground of a stacked scene: an unchanged scene takes it in place, a rebuilt floor set is seated on
+   it, and taking it away gives the flat lawn back".** Setup: reconcile a one-floor graph with one
+   paint object; call `setGroundAppearance({ texture, tileSize })`; reconcile the same graph and
+   paint; then a graph whose wall moved; then call `setGroundAppearance(undefined)` and reconcile
+   that graph again; last, call `releaseRetired()`. Assert: the second call returns the same
+   `FramedScene` object as the first, with the same wall sub-group object and exactly one ground
+   plane, which draws with the appearance; the ground after the third call draws with it too; the
+   ground after the last call is flat; the texture (marked held, with a `dispose` spy) is never
+   disposed. Fails today: `TypeError: reconciler.setGroundAppearance is not a function`, and
    typecheck reports TS2339 (no such property on `FramedSceneReconciler`). Implementation:
-   `framed-scene-reconciler.ts` keeps the appearance and passes it to `refreshGroundPlane` (an
-   unchanged floor set), to `frameStackedScene(floors, grade, appearance)` (a rebuilt floor set),
-   and to `buildFramedScene(graph, paint, { ...view, ground: appearance })` (an empty graph).
-   `framed-scene.ts`: `frameStackedScene` takes the appearance as its third parameter and hands it
-   to `refreshGroundPlane`. Wiring, checked end to end by the scene work: `use-framed-scene.ts`
-   calls `useGroundTexture(GROUND_GRASS_REFERENCE, useAssetRegistry())`, then calls
-   `reconciler.setGroundAppearance(ground.appearance)` inside the reconcile memo, with the
-   appearance among the memo's dependencies.
-5. **`bridge/react/harness-ground.test.tsx` (new): "the harness ground reports loading until the
+   `framed-scene-reconciler.ts` keeps the appearance, carries it in `ReconcilePass`, and passes
+   `{ gradeElevation: graph.gradeElevation, appearance }` to `refreshGroundPlane` (a cache hit) and
+   to `frameStackedScene` (a rebuilt floor set). The old plane of a cache hit is freed at once, as
+   the grade swap frees it today; a held texture is never freed. `createFramedSceneReconciler` is at
+   38 of its 40 lines, so the new state and method need an extraction (for example the body of
+   `dispose`).
+6. **`bridge/react/framed-scene-reconciler-ground.test.ts`: "the scene of an empty graph takes the
+   ground appearance too, whether it is cached or new".** The reconciler keeps the scene of a graph
+   with no floors by graph and paint identity alone and returns it untouched
+   (`framed-scene-reconciler.ts:311-313`), and an empty plan still has a ground plane, so the first
+   3D view of a new project is this case. Setup one: reconcile a graph with no floors and one paint
+   object; call `setGroundAppearance(appearance)`; reconcile the same graph and paint. Assert the
+   same `FramedScene` object comes back, with one ground plane that draws with the appearance. Setup
+   two: a new reconciler; `setGroundAppearance(appearance)` first; reconcile the empty graph. Assert
+   the ground draws with the appearance. Fails today (after cycle 5): in both the ground is flat.
+   There is no type error. Implementation: `framed-scene-reconciler.ts`: the empty-graph hit calls
+   `refreshGroundPlane(emptyScene.framed.root, { gradeElevation: graph.gradeElevation, appearance })`,
+   and `buildEmptyGraphScene` builds with `{ ...view, groundAppearance: appearance }` (live rule 7).
+7. **`bridge/react/use-framed-scene-ground.test.tsx` (new): "the framed scene hook loads the ground
+   grass, seats it on the scene it already shows, and reports its status".** Setup:
+   `vi.mock('./use-ground-texture')` with a mock function whose state the test sets;
+   `renderHook(() => useFramedScene(), { wrapper })` with the wrapper of `framedSceneEnvironment()`
+   (`use-framed-scene-test-support.tsx`). With `{ status: 'loading' }` assert
+   `result.current.groundTexture` is `'loading'`, the ground is flat, and the mock was called with
+   `GROUND_GRASS_REFERENCE` as its first argument. Set `{ status: 'ready', appearance }` and render
+   again: `groundTexture` is `'ready'`, `result.current.framed` is the same object as before, and
+   its ground draws with the appearance. Toggle the edge overlay
+   (`result.current.toggleEdgeOverlay()`), which makes a new reconciler: the new scene's ground
+   draws with the appearance. A second test with `{ status: 'failed' }` gives `'failed'` and a flat
+   ground. The same RED commit adds to `use-framed-scene.test.tsx` and
+   `use-framed-scene-dispose.test.tsx` a mock of `./use-ground-texture` that returns one constant
+   `{ status: 'failed' }`. Without it those tests would start a load against the empty fallback
+   registry, which fails later with a `console.warn`. Fails today: `groundTexture` is `undefined`
+   and the ground stays flat, and typecheck reports TS2339 (no `groundTexture` on
+   `FramedSceneState`). Implementation: `use-framed-scene.ts` calls
+   `useGroundTexture(GROUND_GRASS_REFERENCE, useAssetRegistry())`, calls
+   `reconciler.setGroundAppearance(texture.appearance)` inside the reconcile memo before
+   `reconcile`, with the appearance among the memo's dependencies (so the reconciler made by an
+   overlay flip gets it too), and returns `groundTexture: texture.status`.
+8. **`bridge/react/harness-ground.test.tsx` (new): "the harness ground reports loading until the
    grass is on the plane, then ready, and rebuilds no other geometry".** Setup: a framed scene from
-   `buildFramedScene`; `renderHook` over `useHarnessGround(root, 0, ground)`, whose callback
-   records each returned status and, in the same render, whether the root's ground plane has a
-   map. Render with `{ status: 'loading' }`, then rerender with `{ status: 'ready', appearance }`.
-   Assert: the render in which the appearance first arrives returns `loading` while the plane still
-   has no map; the last return is `ready`; the ground's map is then the texture; the wall meshes
-   are the same objects as before. Rerender with the root of a second `buildFramedScene`: the
-   first return is `loading`, the last `ready`, and the new root's ground has the map. A run with
-   `{ status: 'failed' }` returns `failed` and leaves the flat plane. Fails today: the import of
-   `./harness-ground` fails (no module; TS2307). Implementation: `harness-ground.ts` (harness
-   rules 2 to 4). Wiring: `useFramedHarnessScene` in `scene-harness-view.tsx` calls
-   `useGroundTexture(GROUND_GRASS_REFERENCE, useAssetRegistry())` and `useHarnessGround(root,
-fixture.gradeElevation, ground)`, and returns the applied status with the framed scene.
-6. **`bridge/react/harness-readiness.test.ts` (new): "the harness is ready only when the lighting,
-   the ambient occlusion pass if active, and the applied ground have all settled".** A table over
-   `harnessReady(inputs)`: lighting not ready gives false; the pass active and not settled gives
-   false; the pass inactive and not settled gives true; ground `loading` gives false with
-   everything else ready; `ready` and `failed` give true. Fails today: the import of
-   `./harness-readiness` fails (no module; TS2307). Implementation: `harness-readiness.ts`
-   (harness rule 5). In the view, `useHarnessReadiness` takes the applied status as a second
-   argument, computes `harnessReady(...)`, and returns it beside its handlers and one attribute
-   object: `data-harness-ready` from that value and `data-ground-texture` from the applied status
-   (harness rule 6). The wrapper spreads that object in place of today's single attribute, so
-   `SceneHarnessView` stays within its 40 lines. The attribute is wiring, checked by
-   `waitForHarnessCapture` in the scene work.
-7. **`bridge/react/use-live-view-readiness.test.tsx`: "a frame counts only when neither a pipeline
-   build nor the ground texture is in flight, and the ground loading note clears a frame already
-   counted".** Setup: `noteFrameDrawn` (the fact is true); `noteGroundTextureLoading`; assert the
-   fact is false; `noteFrameDrawn`; assert false; `notePipelineBuildStarted`;
-   `noteGroundTextureSettled`; `noteFrameDrawn`; assert false; `notePipelineSettled`;
-   `noteFrameDrawn`; assert true. Fails today: `TypeError: result.current.noteGroundTextureLoading
-is not a function`, and typecheck reports TS2339. Implementation: `use-live-view-readiness.ts`
-   (live rules 2 to 5): a second ref for the ground; `noteGroundTextureLoading` sets it and writes
-   `frameDrawnSincePipelineSettled: false`, as `notePipelineBuildStarted` does
-   (`use-live-view-readiness.ts:41-44`).
-8. **`bridge/react/use-ground-readiness-notes.test.ts` (new): "the ground status reaches the
-   live-view notes, once for each change".** Setup: `renderHook` over `useGroundReadinessNotes`
-   with a fake notes object of two spies; render `'loading'`, then rerender `'loading'` and
-   `'ready'`. Assert one loading call, then one settled call. A second run, `'loading'` then
-   `'failed'`, gives one of each. Fails today: the import of `./use-ground-readiness-notes` fails
-   (no module; TS2307). Implementation: `use-ground-readiness-notes.ts` (live rule 6). Wiring:
-   `use-framed-scene.ts` adds `groundTexture`, the status of `useGroundTexture`, to
-   `FramedSceneState`; `webgpu-scene-view.tsx` passes it to `LiveSceneCanvas` as a prop, and
-   `LiveSceneCanvas` calls `useGroundReadinessNotes(groundTexture, readiness)`. The first-frame
-   flag is untouched. No unit test renders the live view: it runs only with WebGPU and never under
-   jsdom (`webgpu-scene-view.tsx:331-332`). The end-to-end proof is the live-view baseline and the
-   live specs of the scene work.
-9. **`app/create-asset-library-registry.test.ts`: "the scene harness registry resolves and
-   describes the ground grass".** `createHarnessAssetRegistry(fetch)` is a new export. Assert
-   `resolve(GROUND_GRASS_REFERENCE)` fetched `/packs/vernacular-starter-1.1.0/assets/<hash>.png`
-   and `describe` gives the tile size. Fails today: `TypeError: createHarnessAssetRegistry is not a
-function`, and typecheck reports TS2305 (no such exported member). Implementation:
-   `app/create-asset-library-registry.ts` (a registry with the starter pack source alone).
-   `app/app.tsx`: the harness branch renders a small `SceneHarnessApp` component, which makes the
-   registry once with `useMemo` and wraps the harness in an `AssetRegistryProvider` with it. A hook
-   cannot sit in the early-return branch of `App`, and a registry made on each render would start
-   the texture load again. Until this cycle the harness reads the empty fallback registry, so its
-   ground settles as `failed` and stays flat.
+   `buildFramedScene`; `renderHook` over `useHarnessGround(root, 0, texture)`, whose callback
+   records each returned status and, in the same render, whether the root's ground plane draws with
+   the appearance. Render with `{ status: 'loading' }`, then rerender with
+   `{ status: 'ready', appearance }`. Assert: the render in which the appearance first arrives
+   returns `loading` while the plane is still flat; the last return is `ready`; the ground then
+   draws with the appearance; the wall meshes are the same objects as before. Rerender with the root
+   of a second `buildFramedScene`: the first return is `loading`, the last `ready`, and the new
+   root's ground draws with the appearance. A run with `{ status: 'failed' }` returns `loading`
+   first, then `failed`, and leaves the flat plane. Fails today: the import of `./harness-ground`
+   fails (no module; TS2307). Implementation: `harness-ground.ts` (harness rules 2 to 4).
+9. **`bridge/react/scene-harness-ready-frame.test.tsx`: "the harness turns ready only with a
+   frame drawn after the ground has settled, and reports the ground status".** This file renders
+   `SceneHarnessView` under jsdom with a stand-in renderer, so the harness wiring has a unit test.
+   Setup: a mock of `./use-ground-texture` whose state lives on the file's hoisted `harness`
+   object. Its default is one constant `{ status: 'failed' }`, so the eight existing tests keep
+   their flat lawn and their timing. New tests, each starting at `{ status: 'loading' }`:
+   - With the lighting settled and a frame run, `data-harness-ready` is `false` and
+     `data-ground-texture` is `loading`. More frames do not change that.
+   - Then the state is set to `{ status: 'ready', appearance }` (a `Texture` from
+     `engine/testing`) and the view is rendered again: `data-ground-texture` is `ready` and
+     `data-harness-ready` is still `false`. After one more frame it is `true`.
+   - Set to `{ status: 'failed' }` instead: after one more frame `data-harness-ready` is `true`
+     and `data-ground-texture` is `failed`.
+   - The ground settles first and the lighting second: `data-harness-ready` turns `true` only
+     with a frame run after the lighting settled.
+
+   Fails today: `data-harness-ready` is `true` while the ground is loading, and
+   `data-ground-texture` is absent (`null`). The mock is a module mock, so there is no type
+   error. Implementation (harness rules 5 to 9):
+   - `scene-harness-ready-frame.ts`: `harnessReadyProps` takes the status and returns the fourth
+     attribute.
+   - `scene-harness-view.tsx`: `useFramedHarnessScene` keeps its memo, then calls
+     `useGroundTexture(GROUND_GRASS_REFERENCE, useAssetRegistry())` and
+     `useHarnessGround(framed.root, HARNESS_FIXTURES[scene].gradeElevation, texture)`, and
+     returns the applied status with the framed scene as `groundTexture`.
+     `useHarnessReadiness(ambientOcclusionActive: boolean, groundTexture: TextureStatus)` adds
+     `groundTexture !== 'loading'` to its gate. `HarnessStage` reads `groundTexture` in its
+     existing destructure and passes it to `useHarnessReadiness` and to `harnessReadyProps`, each
+     on a line it already has.
+
+10. **`bridge/react/use-live-view-readiness.test.tsx`: "a frame counts only when neither a pipeline
+    build nor the ground texture is in flight, and a ground that starts to load clears a frame
+    already counted".** The hook is rendered as
+    `renderHook(({ status }) => useLiveViewReadiness(status), ...)`. The RED also gives every
+    existing call in the file the argument `'ready'`, which changes nothing in those tests (live
+    rule 3). New tests:
+    - The store holds `frameDrawnSincePipelineSettled: true` from an earlier open. A mount with
+      `'loading'` writes it false.
+    - While the status is `'loading'`, `noteFrameDrawn` leaves the fact false.
+    - A rerender with `'ready'` leaves it false (the settling writes nothing); the next
+      `noteFrameDrawn` sets it true. The same holds with `'failed'`.
+    - With the ground loading, `notePipelineBuildStarted`; rerender with `'ready'`;
+      `noteFrameDrawn` leaves it false; `notePipelineSettled`; `noteFrameDrawn` sets it true.
+    - With the fact true, a rerender with `'loading'` writes it false.
+
+    Fails today: the mount with `'loading'` leaves the fact true and a frame counts while the
+    ground loads, and typecheck reports TS2554 ("Expected 0 arguments, but got 1").
+    Implementation: `use-live-view-readiness.ts` (live rules 2 to 4). Wiring, which no unit test
+    reaches, because `LiveSceneView` runs only with a rendering backend and never under jsdom
+    (`live-scene-view.tsx:203-209`): `LiveSceneCanvasProps` gains `groundTexture: TextureStatus`;
+    `LiveSceneCanvas` calls `useLiveViewReadiness(props.groundTexture)`; `LiveSceneView` passes
+    `groundTexture={framedScene.groundTexture}`. The parameter and the prop are required, so a
+    missing link is a type error (TS2554 or TS2741). A wrong value is caught end to end by
+    `scene-live-view-grass.spec.ts` and the live-view baseline of the scene work.
+
+11. **`app/create-asset-library-registry.test.ts`: "the scene harness registry resolves and
+    describes the ground grass".** `createHarnessAssetRegistry(fetchFn)` is a new export. Assert
+    `resolve(GROUND_GRASS_REFERENCE)` fetched `/packs/vernacular-starter-1.1.0/assets/<hash>.png`
+    and `describe` gives the tile size. Fails today:
+    `TypeError: createHarnessAssetRegistry is not a function`, and typecheck reports TS2305 (no such
+    exported member). Implementation: `app/create-asset-library-registry.ts`:
+    `new AssetRegistry(createStarterPackSources(fetchFn))`, the starter pack sources with no user
+    source. Wiring, which no unit test reaches: in `app/app.tsx` the harness branch (lines 82 to 96)
+    renders a small `SceneHarnessApp` component, which makes the registry once with `useMemo` and
+    wraps `SceneHarnessView` in an `AssetRegistryProvider` with it. A hook cannot sit in the
+    early-return branch of `App`, and a registry made on each render would start the texture load
+    again. Until this cycle the harness reads the empty fallback registry, so its ground settles as
+    `failed` and stays flat. The wiring is proved end to end by every harness spec, which waits for
+    `data-ground-texture="ready"` from the scene work on.
+
+12. **`bridge/react/scene-harness-settle-frame.test.ts` (new): "the harness reports its ready
+    frame only after a settle frame has drawn".** Added on 2026-11-24, after the scene work showed
+    `scene-harness-ready-frame.spec.ts` reading 18 render calls instead of 5 in some runs (see the
+    note on that spec below). The cause: three's PMREM filter of the sky environment map is
+    one-time GPU work that runs in the first draw after the map is written, and it added 13 render
+    calls to the frame it landed in. When that was the ready frame, the reported counts were not
+    those of a steady-state frame. The owner ruled the fix into this pull request. The test calls
+    `drawHarnessFrame(renderer, draw, onReadyFrame?)` with a stand-in renderer whose animation loop
+    the test steps by hand. Assert:
+    - Without `onReadyFrame`, one renderer frame runs `draw` once and nothing is reported.
+    - With it, the first renderer frame runs `draw` and reports nothing (the settle frame).
+    - The second renderer frame runs `draw` again and reports `{ renderCalls, drawCalls }` read
+      from `renderer.info.render` in that frame, not the counts the settle frame left.
+    - A cancel before the first frame draws nothing; a cancel between the frames skips the second
+      draw and the report.
+    - A later request replaces a pending one, because a renderer keeps one loop.
+
+    The same RED commit moves the shared mocks of the harness view tests into
+    `scene-harness-view-test-support.ts`, splits the ground cases of cycle 9 into
+    `scene-harness-ready-frame-ground.test.tsx`, and has every view test run the settle frame
+    before the ready frame (`runSettleAndReadyFrames`). Fails today: `drawHarnessFrame` is not
+    exported (TS2305). Implementation:
+    `scene-harness-ready-frame.ts` gains `drawHarnessFrame`, which nests a second
+    `drawOnNextRendererFrame` inside the first when `onReadyFrame` is given and returns a cancel
+    for whichever request is pending. `StaticFrame` in `scene-harness-view.tsx` calls it in place
+    of its own `drawOnNextRendererFrame`, passing `handleReadyFrameDrawn` only while
+    `harnessReady` is true. BLUE closed with an empty marker. Verified end to end:
+    `scene-harness-ready-frame.spec.ts` passes 40 of 40 runs on darwin (`--repeat-each=20`).
 
 Then the scene work, in `test(e2e)` commits after the last BLUE. What each capture waits on:
 
-| Capture                                         | Waits on today                     | After the first commit             | After the scene work                                                |
-| ----------------------------------------------- | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------- |
-| `scene-solar.spec.ts` (18 baselines)            | canvas width, `data-harness-ready` | the same                           | canvas width, `data-harness-ready`, `data-ground-texture="ready"`   |
-| `scene-visual-regression.spec.ts` (12)          | canvas width                       | canvas width, `data-harness-ready` | the same three                                                      |
-| The harness gates (`settledHarnessCanvas`)      | `data-harness-ready`               | canvas width, `data-harness-ready` | the same three                                                      |
-| `scene-live-view-visual-regression.spec.ts` (1) | `data-live-view-ready`             | the same                           | the same attribute, which now waits for the ground (cycles 7 and 8) |
+| Capture                                                     | Waits on today                              | After the first commit                       | After the scene work                                          |
+| ----------------------------------------------------------- | ------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------- |
+| `scene-solar.spec.ts` (9 states, 18 files)                  | canvas width, `data-harness-ready` (inline) | `settledHarnessCanvas`: `data-harness-ready` | `data-harness-ready` and `data-ground-texture="ready"`        |
+| `scene-visual-regression.spec.ts` (6 captures, 12 files)    | `settledHarnessCanvas`                      | the same                                     | the same two                                                  |
+| The harness gates                                           | `settledHarnessCanvas`                      | the same                                     | the same two                                                  |
+| `scene-live-view-visual-regression.spec.ts` (1 darwin file) | `data-live-view-ready`                      | the same                                     | the same attribute, which now waits for the ground (cycle 10) |
 
-- `waitForHarnessCapture(page)` gains the wait for `data-ground-texture="ready"`. A failed pack
-  fetch then fails every harness spec, and `--update-snapshots` can never write a flat baseline.
+- `settledHarnessCanvas` gains the wait for `data-ground-texture="ready"`, after its wait for
+  `data-harness-ready`. A failed pack fetch then fails every harness spec, and
+  `--update-snapshots` can never write a flat baseline.
+- `e2e/tests/scene-harness-ready-frame.spec.ts` asserts the render calls of the ready frame (5 in
+  the window-light state, 2 in the default shell). The grass adds no render pass. The spec is run
+  and is expected to hold. (Amended 2026-11-24: it did not hold. Some runs read 18 render calls
+  instead of 5, on `main` too, because the PMREM filter of the sky environment map landed in the
+  ready frame. The owner ruled the fix into this pull request as cycle 12, the settle frame. With
+  it the spec passes 40 of 40 runs on darwin with `--repeat-each=20`.)
+- `e2e/tests/scene-live-view-grass.spec.ts` (new) proves the live wiring of cycle 10. It
+  self-skips without a rendering backend, as its neighbors do.
+  - Test one holds the response for the grass image with `page.route`, opens the 3D view, and
+    waits for the live canvas (`waitForLiveCanvasReady`), which shows that the scene is drawn and
+    the overlay did not wait. While the response is held, `data-live-view-ready` is not `true`.
+    After the response is released, the marker turns `true`.
+  - Test two aborts the request. The marker turns `true` over the flat lawn.
+  - Each test first checks that its route saw the request, so a pack served from some cache
+    cannot pass it by accident.
 - `scene-grass-texture.spec.ts` proves the visible change. In the `shadow-on-lawn` state it reads
   the sunlit square of the sun-to-shade gate (`SUNLIT_LAWN`, x 236 to 259, y 109 to 132), lawn in
   the sun clear of the building's shadow.
@@ -865,6 +1028,12 @@ Then the scene work, in `test(e2e)` commits after the last BLUE. What each captu
     percent plus ε and n below, and ε and n above. A tile decoded in the wrong color space, or
     with the wrong mean, moves the level by far more and fails it. The defect probe of test two
     decodes the grass as `linear`, and its reading must fall outside the band.
+  - Amendment, 2026-11-24: the band gains a term r on both sides, L_flat × (1 − ½(1 − γ)σ² − ε −
+    n − r) to L_flat × (1 + ε + n + r). r is the change half a display code on every channel
+    makes to the flat level (1.209 percent on darwin). The flat reading is whole codes, so "only
+    low" holds for the rendered level, not for the reading. The band then reaches about 1.5
+    percent below and 1.2 percent above. If Linux lands outside it, a mip rounding term is
+    derived for it; r is not widened.
   - The comment records both platforms' readings, σ, ε, n, and the probe, as the existing gates
     do.
 - The two lawn gates are read again with the grass. If each reading moves by less than a tenth of
@@ -908,44 +1077,59 @@ test --project=scene-webgl --update-snapshots=all <spec>` (ADR-0149).
   - The live-view baseline exists on darwin only. The macOS runner of the `live-view-visual` job
     checks the same file, so the refreshed darwin file must also pass there.
   - Story and home baselines do not move.
-- **The time the live specs take.** From cycle 7 on, every wait on `data-live-view-ready` also
+- **The time the live specs take.** From cycle 10 on, every wait on `data-live-view-ready` also
   waits for the grass to be fetched, decoded, uploaded with its mipmaps, and drawn. The textured
   lawn also costs more to draw on each frame than a flat color, most of all on the software
   renderer of the linux `scene-visual` job.
-  - The specs that wait on the marker: `e2e/tests/scene-camera-presets.spec.ts` and
-    `e2e/tests/scene-live-view-startup.spec.ts` (the `scene-webgl` project);
-    `e2e/tests/scene-live-view-visual-regression.spec.ts` (`scene-webgl`, and only with a WebGPU
-    adapter); `e2e/tests/journeys/perceived-color-readout.spec.ts`; and, through
-    `settledLiveFrame` and `openRoomIn3d` in `e2e/tests/journeys/close-openings-support.ts`,
-    `e2e/tests/journeys/close-doors-and-windows.spec.ts`,
-    `e2e/tests/journeys/walk-view-after-rebuild.spec.ts`, and
-    `e2e/tests/journeys/walk-follows-the-active-floor.spec.ts`.
-  - The pull request reads the run time of each from the job logs before the grass (on `main`)
-    and after (on the branch), on the linux `scene-visual` job and on the macOS
+  - The files that wait on the marker directly:
+    `e2e/tests/scene-live-view-visual-regression.spec.ts` (only with a WebGPU adapter),
+    `e2e/tests/scene-live-view-webgl-fallback.spec.ts`, and
+    `e2e/tests/scene-live-view-startup.spec.ts`, each with a local `LIVE_VIEW_READY` constant; and
+    `e2e/tests/scene-edge-overlay-resources.spec.ts`, `e2e/tests/scene-camera-presets.spec.ts`,
+    `e2e/tests/journeys/perceived-color-readout.spec.ts`, and
+    `e2e/tests/journeys/close-openings-support.ts`, with the constant that
+    `e2e/tests/live-pane.ts` exports.
+  - The journeys that wait on it through `settledLiveFrame` and `openRoomIn3d` of
+    `close-openings-support.ts`: `e2e/tests/journeys/close-doors-and-windows.spec.ts`,
+    `e2e/tests/journeys/walk-view-after-rebuild.spec.ts`,
+    `e2e/tests/journeys/walk-follows-the-active-floor.spec.ts`, and, through `startOnLiveRoom` of
+    `e2e/tests/journeys/close-openings-flows.ts`,
+    `e2e/tests/journeys/aim-guide-in-walk-mode.spec.ts`.
+  - `e2e/tests/scene-live-view-reopen.spec.ts` does not use the marker, because of issue #829. It
+    waits on the readiness of its own mount, and stays as it is.
+  - Every wait on the marker goes through one helper, `waitForLiveViewReady(page)` in
+    `e2e/tests/live-pane.ts`, which passes a named timeout constant in place of the default expect
+    limit, as `e2e/tests/live-pane-frames.ts` does with `LIVE_CANVAS_READY_TIMEOUT_MS`. The three
+    local constants go away.
+  - The pull request reads the run time of each of these specs from the job logs before the
+    grass (on `main`) and after (on the branch), on the linux `scene-visual` job and on the macOS
     `live-view-visual` job, and lists both in its description.
-  - Each wait on the marker in these files passes a named timeout constant in place of the
-    default expect limit, as `e2e/tests/live-pane-frames.ts` does with
-    `LIVE_CANVAS_READY_TIMEOUT_MS`.
   - Each live test of the `scene-webgl` project that draws more than one room or floor, or takes
     several settled frames, gets an explicit, named, longer time limit with a comment that says
     why. `scene-camera-presets.spec.ts` shows the form: the constant `SLOW_RENDERER_TIMEOUT_MS`
-    and `test.beforeEach(() => test.setTimeout(SLOW_RENDERER_TIMEOUT_MS))`. The spec files this
-    touches are in the fence.
+    and `test.beforeEach(() => test.setTimeout(SLOW_RENDERER_TIMEOUT_MS))`. The live specs of the
+    project are `e2e/tests/journeys/scene-view-switch-keeps-state.spec.ts` and each
+    `e2e/tests/<name>.spec.ts` for the names `scene-accessibility`, `scene-building-view`,
+    `scene-camera-controls`, `scene-camera-fit`, `scene-camera-presets`,
+    `scene-color-temperature`, `scene-edge-overlay-resources`, `scene-furniture-model-swap`,
+    `scene-live-view`, `scene-live-view-reopen`, `scene-live-view-startup`,
+    `scene-live-view-visual-regression`, `scene-live-view-webgl-fallback`, `scene-navigation`,
+    `scene-orbit-pivot-holds`, and `scene-selection`. The files this touches are in the fence.
 
 ### The daylight constraint, as tests
 
-| Check                                                                                 | Where                                      | Pull request |
-| ------------------------------------------------------------------------------------- | ------------------------------------------ | ------------ |
-| The generator's linear table matches the color module, and its target is the lawn hex | `srgb-table.test.mjs`                      | 3            |
-| The tile's linear mean is the lawn color, within 0.002 a channel                      | `grass-tile.test.mjs`                      | 3            |
-| Its luminance is the ground bounce, within 0.0005, and the bounce is 0.21174          | `grass-tile.test.mjs`                      | 3            |
-| The spread is 5 to 20 percent of the mean                                             | `grass-tile.test.mjs`                      | 3            |
-| Every 32 by 32 block is within 1 percent of the mean                                  | `grass-tile.test.mjs`                      | 3            |
-| The tile is sRGB, so the card averages in linear light                                | `image-texture-loader.test.ts`             | 2            |
-| The bounce stays the lawn hex                                                         | `ground-surface.test.ts` (as today)        | none         |
-| Only the texture changes the lawn's material                                          | `ground-plane-appearance.test.ts`, cycle 1 | 4            |
-| The sunlit lawn keeps its mean level, within the band derived from the tile's spread  | `scene-grass-texture.spec.ts`, test two    | 4            |
-| Sun-to-shade ratio and shadow-reach gap still clear their minimums                    | the two gates                              | 4            |
+| Check                                                                                              | Where                                      | Pull request |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------ |
+| The generator's linear table matches the color module, and its target is the lawn hex              | `srgb-table.test.mjs`                      | 3            |
+| The tile's linear mean is the lawn color, within 0.002 a channel                                   | `grass-tile.test.mjs`                      | 3            |
+| Its luminance is the ground bounce, within 0.0005, and the bounce is 0.21174                       | `grass-tile.test.mjs`                      | 3            |
+| The spread is 5 to 20 percent of the mean                                                          | `grass-tile.test.mjs`                      | 3            |
+| Every 32 by 32 block is within 1 percent of the mean                                               | `grass-tile.test.mjs`                      | 3            |
+| The tile is sRGB, so the card averages in linear light                                             | `image-texture-loader.test.ts`             | 2            |
+| The bounce stays the lawn hex                                                                      | `ground-surface.test.ts` (as today)        | none         |
+| Only the texture changes the lawn's material                                                       | `ground-plane-appearance.test.ts`, cycle 1 | 4            |
+| The sunlit lawn keeps its mean level, within the band from the tile's spread and the flat rounding | `scene-grass-texture.spec.ts`, test two    | 4            |
+| Sun-to-shade ratio and shadow-reach gap still clear their minimums                                 | the two gates                              | 4            |
 
 **Why the gates should barely move.** The texture's mean equals the flat color, and the graphics
 card averages in linear light. But a gate first averages display codes, which are a concave
@@ -1014,21 +1198,24 @@ catalog read that includes textures, for the check of missing assets on import.
 
 ## Size
 
-| Pull request                | Cycles                                                                                                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1, the format               | 18                                                                                                                                                        |
-| 2, the loader and the cache | 16                                                                                                                                                        |
-| 3, starter pack 1.1.0       | 7                                                                                                                                                         |
-| 4, the ground               | 9, after one `test(e2e)` commit (the capture wait) and before the scene work (the grass spec, the gate readings, the live spec limits, and the baselines) |
-| Total                       | 50                                                                                                                                                        |
+| Pull request                | Cycles                                                                                                                                                                                                                       |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1, the format               | 18                                                                                                                                                                                                                           |
+| 2, the loader and the cache | 16                                                                                                                                                                                                                           |
+| 3, starter pack 1.1.0       | 7                                                                                                                                                                                                                            |
+| 4, the ground               | 11, after one `test(e2e)` commit (one wait for every harness capture) and before the scene work (the ground wait, the grass spec, the live grass spec, the gate readings, the live spec waits and limits, and the baselines) |
+| Total                       | 52                                                                                                                                                                                                                           |
 
 ## Risks
 
-- **The harness could capture flat grass.** Covered by `waitForHarnessCapture`, which needs
-  `data-ground-texture="ready"`, together with the applied-status rule of cycle 5 (harness rules 2
-  to 4): the attribute reports the status applied to the drawn root, not the cache's status.
-- **The live view could report ready from an earlier open.** The ground loading note clears the
-  stale fact of issue #829 in the first commit of each mount (live rules 3 and 7, cycles 7 and 8).
+- **The harness could capture flat grass.** Covered by `settledHarnessCanvas`, the one wait of
+  every harness spec, which needs `data-ground-texture="ready"`, together with the applied-status
+  rule (harness rules 2 to 4, cycles 8 and 9): the attribute reports the status applied to the
+  drawn root, not the cache's status.
+- **The live view could report ready from an earlier open.** A ground that starts to load clears
+  the stale fact of issue #829 in the first commit of each mount (live rules 3 and 5, cycle 10).
+  The path from the view to the hook has no unit test. Required types hold it together, and
+  `scene-live-view-grass.spec.ts` checks it end to end.
 - **The grass slows each live frame on the software renderer of the linux job.** The live specs
   that wait on `data-live-view-ready` now also wait for the grass. Their run times before and
   after are in the pull request, and the specs get named waits and limits ("The time the live

@@ -41,6 +41,11 @@ import {
 // the bound is generous margin, not a measured wait.
 const FRAME_TIMEOUT_MS = 10_000
 
+// Every case opens the empty floor, draws a room, and then takes settled frames across a view
+// switch. A software renderer draws each frame slowly, and the default time limit is too short
+// there.
+const SLOW_RENDERER_TIMEOUT_MS = 120_000
+
 // A walk key held this long moves the walker a clear distance. The distance depends on the frame
 // rate, which is fine: the cases compare the pose before and after the switch, not a distance. The
 // scene-navigation spec holds the key for the same time and also has no event to wait for.
@@ -121,6 +126,8 @@ async function walkForward(
 }
 
 test.describe('Live three-dimensional pane across a view switch', () => {
+  test.beforeEach(() => test.setTimeout(SLOW_RENDERER_TIMEOUT_MS))
+
   test('keeps a flipped toolbar toggle and a moved orbit camera after the plan view', async ({
     page,
   }) => {
@@ -192,7 +199,6 @@ test.describe('Live three-dimensional pane across a view switch', () => {
   test('keeps a panned orbit camera and turns the first drag around the panned point after the plan view', async ({
     page,
   }) => {
-    test.slow()
     const room = await openDrawnRoom(page)
 
     // Pan the camera. The pan moves the camera and the point it turns around together, so the

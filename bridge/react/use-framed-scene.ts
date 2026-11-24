@@ -7,13 +7,15 @@ import {
   type RefObject,
 } from 'react'
 
-import type { SceneGraph } from '../../core'
+import { type SceneGraph } from '../../core'
 
 import type { FramedScene } from './framed-scene'
 import { createFramedSceneReconciler, type FramedSceneReconciler } from './framed-scene-reconciler'
 import { sceneSessionToggle, useSceneSessionStoreOrLocal } from './scene-session-context'
+import type { TextureStatus } from './texture-cache'
 import type { BuildingViewState } from './use-building-view-state'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
+import { useGroundGrass } from './use-ground-grass'
 import { useProjectPaint } from './use-project-paint'
 import { useShownSceneGraph } from './use-view-scene-graph'
 
@@ -155,6 +157,8 @@ export interface FramedSceneState {
   toggleEdgeOverlay: () => void
   framed: FramedScene
   modelsVersion: number
+  /** Load status of the ground grass texture; the ground draws flat until it is 'ready'. */
+  groundTexture: TextureStatus
   /**
    * Reports that the renderer's React root now draws `scene`; frees what it replaced. The
    * returned function reports that the root no longer draws it and frees nothing.
@@ -180,10 +184,13 @@ export function useFramedScene(): FramedSceneState {
   const lifetime = useFramedSceneReconciler(edgeOverlay)
   const { reconciler } = lifetime
   const models = useFurnitureModelCache(graph)
-  const framed = useMemo(
-    () => reconciler.reconcile(graph, paint, models.lookup),
-    [reconciler, graph, paint, models],
-  )
+  const texture = useGroundGrass()
+  const framed = useMemo(() => {
+    // Set before reconcile so the scene it returns, even from a new reconciler after an
+    // overlay flip, draws with it.
+    reconciler.setGroundAppearance(texture.appearance)
+    return reconciler.reconcile(graph, paint, models.lookup)
+  }, [reconciler, graph, paint, models, texture.appearance])
   const onSceneAttached = useSceneRelease(lifetime, framed)
   return {
     graph,
@@ -192,6 +199,7 @@ export function useFramedScene(): FramedSceneState {
     toggleEdgeOverlay,
     framed,
     modelsVersion: models.version,
+    groundTexture: texture.status,
     onSceneAttached,
   }
 }

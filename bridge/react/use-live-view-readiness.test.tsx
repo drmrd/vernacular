@@ -6,6 +6,7 @@ import {
   type SceneSessionStore,
 } from '../scene-session/scene-session-store'
 import { SceneSessionProvider } from './scene-session-provider'
+import type { TextureStatus } from './texture-cache'
 import { useLiveViewReadiness } from './use-live-view-readiness'
 
 afterEach(cleanup)
@@ -16,14 +17,31 @@ function providerAround(store: SceneSessionStore) {
   }
 }
 
-function renderReadinessOn(store: SceneSessionStore) {
-  return renderHook(() => useLiveViewReadiness(), { wrapper: providerAround(store) })
+function renderReadinessOn(store: SceneSessionStore, groundTexture: TextureStatus) {
+  return renderHook(({ groundTexture }) => useLiveViewReadiness(groundTexture), {
+    initialProps: { groundTexture },
+    wrapper: providerAround(store),
+  })
+}
+
+function frameDrawnFact(store: SceneSessionStore) {
+  return store.getSceneSession().frameDrawnSincePipelineSettled
+}
+
+/** Leaves the fact true in the store, the way a live view opened earlier does. */
+function leaveFrameDrawnFromAnEarlierOpen(store: SceneSessionStore) {
+  const earlier = renderReadinessOn(store, 'ready')
+  act(() => {
+    earlier.result.current.noteFrameDrawn()
+  })
+  earlier.unmount()
+  expect(frameDrawnFact(store)).toBe(true)
 }
 
 describe('useLiveViewReadiness', () => {
   it('re-arms the drawn-frame fact on every pipeline build, so a frame from a pipeline being replaced never counts', () => {
     const store = createSceneSessionStore()
-    const { result } = renderReadinessOn(store)
+    const { result } = renderReadinessOn(store, 'ready')
 
     // A schematic view draws straight through the renderer with no pipeline behind it, so
     // the frame it just drew is final. Drawing a frame says nothing about the stored session.
@@ -81,5 +99,88 @@ describe('useLiveViewReadiness', () => {
       sessionRestored: true,
       frameDrawnSincePipelineSettled: true,
     })
+  })
+
+  it('clears a drawn-frame fact left by an earlier open when a mount starts with the ground loading', () => {
+    const store = createSceneSessionStore()
+    leaveFrameDrawnFromAnEarlierOpen(store)
+
+    renderReadinessOn(store, 'loading')
+
+    expect(frameDrawnFact(store)).toBe(false)
+  })
+
+  it('does not count a frame drawn while the ground texture is loading', () => {
+    const store = createSceneSessionStore()
+    const { result } = renderReadinessOn(store, 'loading')
+
+    act(() => {
+      result.current.noteFrameDrawn()
+    })
+
+    expect(frameDrawnFact(store)).toBe(false)
+  })
+
+  it.each<TextureStatus>(['ready', 'failed'])(
+    'settling the ground as %s writes nothing and the next frame counts',
+    (settled) => {
+      const store = createSceneSessionStore()
+      leaveFrameDrawnFromAnEarlierOpen(store)
+      const { result, rerender } = renderReadinessOn(store, 'loading')
+
+      rerender({ groundTexture: settled })
+      expect(frameDrawnFact(store)).toBe(false)
+
+      act(() => {
+        result.current.noteFrameDrawn()
+      })
+      expect(frameDrawnFact(store)).toBe(true)
+    },
+  )
+
+  it('keeps a frame uncounted until both the pipeline build and the ground texture have settled', () => {
+    const store = createSceneSessionStore()
+    const { result, rerender } = renderReadinessOn(store, 'loading')
+    act(() => {
+      result.current.notePipelineBuildStarted()
+    })
+
+    rerender({ groundTexture: 'ready' })
+    act(() => {
+      result.current.noteFrameDrawn()
+    })
+    expect(frameDrawnFact(store)).toBe(false)
+
+    act(() => {
+      result.current.notePipelineSettled()
+      result.current.noteFrameDrawn()
+    })
+    expect(frameDrawnFact(store)).toBe(true)
+  })
+
+  it('keeps a frame uncounted after the pipeline settles while the ground is still loading', () => {
+    const store = createSceneSessionStore()
+    const { result } = renderReadinessOn(store, 'loading')
+
+    act(() => {
+      result.current.notePipelineBuildStarted()
+      result.current.notePipelineSettled()
+      result.current.noteFrameDrawn()
+    })
+
+    expect(frameDrawnFact(store)).toBe(false)
+  })
+
+  it('clears a counted frame when the ground starts to load again', () => {
+    const store = createSceneSessionStore()
+    const { result, rerender } = renderReadinessOn(store, 'ready')
+    act(() => {
+      result.current.noteFrameDrawn()
+    })
+    expect(frameDrawnFact(store)).toBe(true)
+
+    rerender({ groundTexture: 'loading' })
+
+    expect(frameDrawnFact(store)).toBe(false)
   })
 })

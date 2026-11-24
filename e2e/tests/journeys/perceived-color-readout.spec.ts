@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { gotoEditor } from './support'
 import { waitForDrawnSceneChange } from '../live-pane-frames'
 import { drawnRoomCanvas, stableFrame } from '../scene-helpers'
-import { LIVE_VIEW_READY, inspectorOf, selectionStatusOf } from '../live-pane'
+import { inspectorOf, selectionStatusOf, waitForLiveViewReady } from '../live-pane'
 import { guardLiveSceneSupport, configureGpuChromiumOnMac } from '../live-webgpu'
 
 // The perceived-color readout answers the question a person picking paint actually has: what
@@ -103,7 +103,7 @@ test('shows the perceived color of a painted surface clicked in the live 3D view
   await guardLiveSceneSupport(page, 'the perceived-color readout')
 
   const canvas = await drawnRoomCanvas(page)
-  await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+  await waitForLiveViewReady(page)
   await stableFrame(canvas)
   await expectClickToSelectOnByDefault(page)
   const inspector = inspectorOf(page)

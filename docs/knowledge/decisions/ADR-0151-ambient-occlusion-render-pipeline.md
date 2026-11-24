@@ -25,7 +25,7 @@ sourceFiles:
     e2e/tests/scene-solar.spec.ts,
   ]
 status: current
-updated: 2026-11-16
+updated: 2026-11-24
 ---
 
 # ADR-0151: The ambient-occlusion render pipeline and its frame takeover
@@ -87,6 +87,10 @@ nonzero priority, which disables React Three Fiber's automatic render for that c
 harness's `StaticFrame` calls it for both its mount frame and its ready frame. When the pass is
 inactive the pipeline is null and both canvases fall back to the plain draw, so schematic and the
 no-location realistic fallback render as before.
+
+2026-11-24: the harness now draws a settle frame between the mount frame and the ready frame,
+through the same seam, and reports the counts of the ready frame only. The amendment of
+[[ADR-0149-harness-lighting-readiness]] on that date gives the reason.
 
 Whether the pass is active is keyed on the effective lighting mode, extracted into
 `effective-lighting-mode.ts` and shared with `scene-lighting.tsx`. A realistic request resolves to

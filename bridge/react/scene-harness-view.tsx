@@ -1,6 +1,5 @@
 import { useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
-import { drawOnNextRendererFrame } from '../../engine'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   frontDirection,
@@ -15,7 +14,9 @@ import { ADJACENT_ROOMS_CAMERA_POSE } from './adjacent-rooms-fixture'
 import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
+import { useHarnessGround } from './harness-ground'
 import {
+  drawHarnessFrame,
   harnessReadyProps,
   type HarnessReadyFrame,
   type HarnessRenderer,
@@ -23,7 +24,9 @@ import {
 import { harnessStateKey } from './scene-harness-state-key'
 import { SceneLighting } from './scene-lighting'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
+import type { TextureStatus } from './texture-cache'
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
+import { useGroundGrass } from './use-ground-grass'
 
 // Re-exported so the fixtures' own module owns the geometry while every existing
 // import path (the bridge index, and thus app/) keeps resolving HarnessScene here.
@@ -55,8 +58,9 @@ interface HarnessFraming {
   ambientOcclusionActive: boolean
 }
 
-// harnessReady: the lighting and the ambient occlusion are settled, so the next draw is the
-// ready frame; drawnReadyFrame: that frame was drawn in the renderer's animation loop.
+// harnessReady: the lighting, the ambient occlusion, and the ground (ready with the grass on the
+// plane, or failed) are settled, so the next draw is the ready frame; drawnReadyFrame: that
+// frame was drawn in the renderer's animation loop.
 interface HarnessReadiness {
   harnessReady: boolean
   drawnReadyFrame: HarnessReadyFrame | null
@@ -82,22 +86,22 @@ function StaticFrame({
   // pass renders exactly as before. handleAmbientOcclusionSettled bubbles the
   // build's settlement up so the wrapper's ready gate waits for the installed pipeline.
   const renderFrame = useAmbientOcclusion(ambientOcclusionActive, handleAmbientOcclusionSettled)
-  // The camera is placed in this layout effect. The draw runs once, in the renderer's next
+  // The camera is placed in this layout effect. The draw runs in the renderer's next
   // animation-loop callback, because the renderer resets its counts and does its
-  // once-in-a-frame work only there; the cleanup cancels a pending draw. A frame requested
-  // with harnessReady true reports itself as the ready frame.
+  // once-in-a-frame work only there; the cleanup cancels a pending draw. With harnessReady true
+  // a settle frame is drawn first, so one-time GPU work lands there, and the frame after it
+  // reports itself as the ready frame.
   useLayoutEffect(() => {
     if (cameraOverride === undefined) fitCameraToBounds(camera, bounds, { width, height })
     else applyCameraPose(camera, cameraOverride)
     // gl is typed as the scene library's own renderer, which does not declare the
     // animation-loop accessors the WebGPU renderer has, hence the double cast.
     const renderer = gl as unknown as HarnessRenderer
-    return drawOnNextRendererFrame(renderer, () => {
-      renderFrame(gl, scene, camera)
-      // The renderer reset both counts at the start of this callback, so they are this frame's.
-      const { frameCalls, drawCalls } = renderer.info.render
-      if (harnessReady) handleReadyFrameDrawn({ renderCalls: frameCalls, drawCalls })
-    })
+    return drawHarnessFrame(
+      renderer,
+      () => renderFrame(gl, scene, camera),
+      harnessReady ? handleReadyFrameDrawn : undefined,
+    )
   }, [
     renderFrame,
     gl,
@@ -230,13 +234,17 @@ function useHarnessAmbientOcclusionReadiness() {
   return { ambientOcclusionSettled, handleAmbientOcclusionSettled }
 }
 
-// Combines the two asynchronous readiness signals into the single gate the captured frame and
+// Combines the three asynchronous readiness signals (lighting, ambient occlusion, and the
+// ground texture not loading) into the single gate the captured frame and
 // SCENE_READY_ATTRIBUTE share. When the ambient-occlusion pass is active the frame
 // waits for both the lazy sky and the pipeline build; when it is inactive the gate is lighting
 // readiness alone, so schematic states keep their existing single-signal
 // contract unchanged. The wrapper reads ready only from drawnReadyFrame, which the draw
 // sets from inside the animation loop once a frame requested with that gate open has drawn.
-function useHarnessReadiness(ambientOcclusionActive: boolean): HarnessReadiness {
+function useHarnessReadiness(
+  ambientOcclusionActive: boolean,
+  groundTexture: TextureStatus,
+): HarnessReadiness {
   const { lightingReady, handleLightingReady } = useHarnessLightingReadiness()
   const { ambientOcclusionSettled, handleAmbientOcclusionSettled } =
     useHarnessAmbientOcclusionReadiness()
@@ -245,7 +253,10 @@ function useHarnessReadiness(ambientOcclusionActive: boolean): HarnessReadiness 
     (frame: HarnessReadyFrame) => setDrawnReadyFrame(frame),
     [],
   )
-  const harnessReady = lightingReady && (!ambientOcclusionActive || ambientOcclusionSettled)
+  const harnessReady =
+    groundTexture !== 'loading' &&
+    lightingReady &&
+    (!ambientOcclusionActive || ambientOcclusionSettled)
   return {
     harnessReady,
     drawnReadyFrame,
@@ -262,13 +273,20 @@ function harnessAmbientOcclusionActive(environment: HarnessEnvironment | undefin
 }
 
 // Builds and frames the selected fixture, memoized on the scene key and paint so the static
-// frame reuses one derived scene graph across re-renders. Pulled out of HarnessStage so
-// the component stays within the length limit.
+// frame reuses one derived scene graph across re-renders. It also loads the ground grass and
+// returns the status applied to the drawn root as groundTexture. Pulled out of HarnessStage.
 function useFramedHarnessScene(scene: HarnessScene, paint: Record<string, SurfaceTreatment>) {
-  return useMemo(() => {
+  const framed = useMemo(() => {
     const fixture = HARNESS_FIXTURES[scene]
     return { ...buildFramedScene(fixture, paint), front: frontDirection(fixture) }
   }, [scene, paint])
+  const texture = useGroundGrass()
+  const groundTexture = useHarnessGround(
+    framed.root,
+    HARNESS_FIXTURES[scene].gradeElevation,
+    texture,
+  )
+  return { ...framed, groundTexture }
 }
 
 // The stage owns the readiness flags, so the view gives it a key made from the whole harness
@@ -283,10 +301,10 @@ function HarnessStage({
   scene = 'shell',
   environment,
 }: SceneHarnessViewProps) {
-  const { root, pose, bounds, front } = useFramedHarnessScene(scene, paint)
+  const { root, pose, bounds, front, groundTexture } = useFramedHarnessScene(scene, paint)
   const cameraOverride = resolveHarnessCameraPose(scene, environment)
   const ambientOcclusionActive = harnessAmbientOcclusionActive(environment)
-  const readiness = useHarnessReadiness(ambientOcclusionActive)
+  const readiness = useHarnessReadiness(ambientOcclusionActive, groundTexture)
 
   // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows, so the Canvas
   // `shadows` prop keeps create-renderer's shadowMap setup (and its PCFSoftShadowMap type) alive.
@@ -295,7 +313,7 @@ function HarnessStage({
   return (
     <div
       data-testid="scene-harness"
-      {...harnessReadyProps(readiness.drawnReadyFrame)}
+      {...harnessReadyProps(readiness.drawnReadyFrame, groundTexture)}
       style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}
     >
       <SceneRendererCanvas

@@ -1,6 +1,7 @@
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 
 import { useSceneSessionStoreOrLocal } from './scene-session-context'
+import type { TextureStatus } from './texture-cache'
 
 /**
  * The notes the live view sends as its render pipeline passes each readiness moment. The two
@@ -25,16 +26,23 @@ export interface LiveViewReadinessNotes {
 /**
  * Turns the live view's render-pipeline events into the two session readiness facts.
  *
- * A frame drawn while a build is in flight shows the pipeline being replaced, not the one the
- * viewer is waiting on, so it does not count: the build start clears the drawn-frame fact and
- * only a frame after settlement sets it again. The fact therefore never latches, and a
- * screenshot taken on it is never of a half-swapped pipeline.
+ * A frame drawn while a build or the ground texture is in flight shows the scene being
+ * replaced, not the one the viewer is waiting on, so it does not count: the build start and a
+ * ground texture that starts loading each clear the drawn-frame fact, and only a frame after
+ * both have settled sets it again. The fact therefore never latches, and a screenshot taken on
+ * it is never of a half-swapped pipeline or a ground still waiting for its grass.
  */
-export function useLiveViewReadiness(): LiveViewReadinessNotes {
+export function useLiveViewReadiness(groundTexture: TextureStatus): LiveViewReadinessNotes {
   const store = useSceneSessionStoreOrLocal()
-  // Whether a build is in flight lives in a ref rather than in the session: nothing renders
-  // from it, it only decides whether the next drawn frame counts.
+  // Whether a pipeline build or a ground load is in flight lives in refs rather than in the
+  // session: nothing renders from them, they only decide whether the next drawn frame counts.
   const buildInFlightRef = useRef(false)
+  const groundInFlightRef = useRef(false)
+  useLayoutEffect(() => {
+    groundInFlightRef.current = groundTexture === 'loading'
+    if (groundInFlightRef.current)
+      store.updateSceneSession({ frameDrawnSincePipelineSettled: false })
+  }, [store, groundTexture])
   return useMemo(
     () => ({
       noteSessionApplied: () => store.updateSceneSession({ sessionRestored: true }),
@@ -46,7 +54,7 @@ export function useLiveViewReadiness(): LiveViewReadinessNotes {
         buildInFlightRef.current = false
       },
       noteFrameDrawn: () => {
-        if (buildInFlightRef.current) return
+        if (buildInFlightRef.current || groundInFlightRef.current) return
         store.updateSceneSession({ frameDrawnSincePipelineSettled: true })
       },
     }),

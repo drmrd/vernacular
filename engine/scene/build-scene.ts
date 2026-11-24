@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import { FLOOR_NODE_PREFIX, type SceneGraph, type SceneNode } from '../../core'
+import type { TextureAppearance } from '../loaders/image-texture-loader'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 
@@ -15,11 +16,16 @@ import { buildFloorWallGraph, groupOpeningsByHostWall } from './wall-scene-helpe
 /** Root group that owns one child group per scene-graph node. */
 export type SceneRoot = THREE.Group
 
+/** Edge overlay options plus the optional appearance the ground plane draws with. */
+export type BuildSceneOptions = EdgeOverlayOptions & {
+  groundAppearance?: TextureAppearance | undefined
+}
+
 /** Builds a Three.js group tree from the pure scene graph. */
 export function buildScene(
   graph: SceneGraph,
   materials: MaterialProvider = new NeutralMaterialProvider(),
-  options: EdgeOverlayOptions = {},
+  options: BuildSceneOptions = {},
 ): SceneRoot {
   const root = new THREE.Group()
   for (const node of graph.nodes) {
@@ -29,11 +35,11 @@ export function buildScene(
   // its neighbors, but only when the view turns the overlay on: it is an opt-in view
   // toggle, off by default in Orbit (ADR-0078, amended by ADR-0132).
   applyEdgeOverlay(root, options)
-  // Seat the building on a grass-colored ground plane at grade, so it reads as
+  // Seat the building on a lawn plane at grade (flat green or grass texture), so it reads as
   // sitting on its site and a partly buried basement's foundation rises through
   // the surface (ADR-0131). Added after the edge overlay so the lawn takes no
   // hidden-line outline.
-  addGroundPlane(root, graph.gradeElevation)
+  addGroundPlane(root, graph.gradeElevation, options.groundAppearance)
   return root
 }
 

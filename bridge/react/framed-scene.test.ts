@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { buildFramedScene } from './framed-scene'
+import {
+  ONE_WALL_HEIGHT_MM,
+  ONE_WALL_LENGTH_MM,
+  ONE_WALL_THICKNESS_MM,
+  groundFloorGraph,
+  groundFloorNode,
+  oneWallGraph,
+} from './one-wall-graph-test-support'
 import { findByEntityId } from '../../engine/testing'
 import { updateNearWallTransparency } from '../../engine'
 import {
@@ -43,29 +51,9 @@ function topRoughnessOf(root: unknown): number | undefined {
 }
 
 describe('buildFramedScene', () => {
-  const wallLength = 2000
-  const thickness = 120
-  const height = 2400
-  const graph: SceneGraph = {
-    nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
-    walls: [
-      {
-        id: 'wall:w1',
-        kind: 'wall',
-        floorId: 'g',
-        start: { x: 0, y: 0 },
-        end: { x: wallLength, y: 0 },
-        thickness,
-        height,
-      },
-    ],
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
+  const wallLength = ONE_WALL_LENGTH_MM
+  const height = ONE_WALL_HEIGHT_MM
+  const graph = oneWallGraph(groundFloorNode(), { id: 'wall:w1' })
 
   it('frames the camera on the world bounds of a scene that has walls', () => {
     const { root, pose } = buildFramedScene(graph)
@@ -82,7 +70,7 @@ describe('buildFramedScene', () => {
 
     // The far plane reaches at least the bounding box's diagonal, so the
     // geometry stays inside the frustum; both planes are finite and positive.
-    const diagonal = Math.hypot(wallLength, height, thickness)
+    const diagonal = Math.hypot(wallLength, height, ONE_WALL_THICKNESS_MM)
     expect(pose.far).toBeGreaterThanOrEqual(diagonal)
     expect(Number.isFinite(pose.near)).toBe(true)
     expect(Number.isFinite(pose.far)).toBe(true)
@@ -117,16 +105,7 @@ describe('buildFramedScene', () => {
   })
 
   it('returns a finite default pose for a scene with no renderable geometry', () => {
-    const graph: SceneGraph = {
-      nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
-      walls: [],
-      rooms: [],
-      underlays: [],
-      openings: [],
-      dimensions: [],
-      stairs: [],
-      furniture: [],
-    }
+    const graph = groundFloorGraph()
 
     const { pose } = buildFramedScene(graph)
 

@@ -9,12 +9,11 @@ import {
   srgbToOkLab,
   type Vector3,
 } from '../../core'
+import { CODE_RANGE, sampleCanvasColor } from './canvas-patch'
 import {
-  CODE_RANGE,
   SOUTH_WEST_VIEW_SOUTH_WALL,
   SOUTH_WEST_VIEW_WEST_WALL,
   logReading,
-  sampleCanvasColor,
   settledHarnessCanvas,
 } from './scene-helpers'
 

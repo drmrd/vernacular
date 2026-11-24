@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { frameReader } from '../frame-pixels'
 import { logReading, settledSceneCanvas, stableFrame } from '../scene-helpers'
-import { LIVE_VIEW_READY, inspectorOf, selectionStatusOf } from '../live-pane'
+import { inspectorOf, selectionStatusOf, waitForLiveViewReady } from '../live-pane'
 
 // Steps shared by the close-doors-and-windows journeys: a room with a door and a window, the
 // 3D toolbar, and walking the camera to an opening.
@@ -64,7 +64,7 @@ export async function drawRoomWithOpenings(page: Page): Promise<void> {
 // Waits for the pane to raise its ready marker, then returns the canvas's settled frame. The
 // canvas has already reached its pane size, which settledSceneCanvas waits for.
 export async function settledLiveFrame(page: Page, canvas: Locator): Promise<Buffer> {
-  await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+  await waitForLiveViewReady(page)
   return stableFrame(canvas)
 }
 

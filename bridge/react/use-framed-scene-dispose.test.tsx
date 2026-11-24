@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { renderHook, act, cleanup } from '@testing-library/react'
 
 import { findByEntityId } from '../../engine/testing'
@@ -14,6 +14,10 @@ import {
 import { useFramedScene } from './use-framed-scene'
 import type { FramedSceneState } from './use-framed-scene'
 import { FLOOR_NODE_ID, framedSceneEnvironment } from './use-framed-scene-test-support'
+
+vi.mock('./use-ground-texture', () => ({
+  useGroundTexture: () => ({ status: 'failed' }),
+}))
 
 // The hook owns the reconciler's life: a superseded or unmounted reconciler frees what it holds,
 // and the scene still on screen is never freed. These tests count real 'dispose' events on the

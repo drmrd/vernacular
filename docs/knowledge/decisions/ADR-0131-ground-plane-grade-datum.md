@@ -11,6 +11,8 @@ related:
     decisions/ADR-0078-surface-edge-overlay,
     decisions/ADR-0127-whole-building-3d-view,
     decisions/ADR-0138-explicit-grade-elevation-field,
+    decisions/ADR-0219-pack-assets-carry-textures,
+    decisions/ADR-0238-a-texture-cache-lives-for-one-effect-run-of-one-view,
   ]
 sourceFiles:
   [
@@ -19,9 +21,12 @@ sourceFiles:
     engine/scene/scene-bounds.ts,
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/framed-scene.ts,
+    bridge/react/use-ground-grass.ts,
+    bridge/react/use-ground-texture.ts,
+    core/environment/ground-surface.ts,
   ]
 status: current
-updated: 2026-07-12
+updated: 2026-11-24
 ---
 
 # ADR-0131: Ground plane sits at the zero-elevation grade datum
@@ -30,7 +35,9 @@ updated: 2026-07-12
 
 Accepted, landed. `buildScene` adds a grass-colored ground plane to the built scene at the grade datum.
 The whole-building view (ADR-0127) seats the stacked model on it, and a basement that is not fully buried
-shows the part of its foundation walls that rises above the surface.
+shows the part of its foundation walls that rises above the surface. (Amended 2026-11-24: the plane now
+draws the grass texture of the starter pack, and the flat color only while the texture loads or after its
+load fails. See the amendment below.)
 
 ## Context
 
@@ -62,7 +69,8 @@ a ground surface is always present.
 
 The surface uses a flat grass-green `MeshStandardMaterial`. A real grass texture is deferred: pulling one
 through the content-addressed asset pipeline is out of scope for this change, and a flat color carries the
-ground until then.
+ground until then. (Replaced on 2026-11-24: the grass texture now comes through that pipeline. See the
+amendment below.)
 
 The plane carries no entity id and no surface ref, so entity picking, surface picking, and the selection
 traversal ignore it. It is added after the edge overlay (ADR-0078) so the lawn takes no hidden-line
@@ -109,6 +117,7 @@ expected, and excluding the plane from the camera fit keeps an upper-floor view 
   [[ADR-0138-explicit-grade-elevation-field]] (`Site.gradeElevation`); the per-edge / sloped-site /
   stepped-foundation exposure half remains open.
 - Replace the flat grass color with a grass texture once the content-addressed asset pipeline is in scope.
+  Done on 2026-11-24; see the amendment below.
 
 ## References
 
@@ -118,3 +127,36 @@ expected, and excluding the plane from the camera fit keeps an upper-floor view 
 - ADR-0078 (the surface edge overlay the ground plane is added after).
 - ADR-0127 (the whole-building view the ground plane seats the model on).
 - Issues: #207 (ground plane and exposed foundation); builds on #206.
+
+## Amendment 2026-11-24: the plane draws the starter pack grass
+
+The flat color held the ground until a grass texture could come through the asset pipeline. It now
+does, with the fourth pull request of `docs/plans/2026-11-19-texture-assets-in-packs.md` (issue
+#409). The status, the paragraph on the flat material, and the last follow-up above describe the
+plane as it was before.
+
+`addGroundPlane` and `refreshGroundPlane` take an optional texture appearance: a texture and its
+tile size in millimeters. Given one, the plane draws the texture on a white base color, one copy
+per tile. Its UVs come from world positions, so a texel keeps its place on the ground when the
+plane grows with the building. Without one, the plane keeps the flat `GROUND_SURFACE_HEX`.
+`groundPlaneDrawsWith` tells whether a plane already draws a given appearance, so a refresh keeps a
+plane that matches.
+
+The texture is the grass of starter pack 1.1.0, which `GROUND_GRASS_REFERENCE` in
+`core/environment/ground-surface.ts` names. `useGroundGrass` (`bridge/react/use-ground-grass.ts`)
+loads it through `useGroundTexture` and the view's asset registry, and
+[[ADR-0238-a-texture-cache-lives-for-one-effect-run-of-one-view]] records how that hook's cache
+holds and frees the decoded texture. The live view puts it on the plane through `useFramedScene`
+and the framed-scene reconciler, and the scene harness through `useHarnessGround`. Both views show
+the flat lawn hex only while the texture loads or after its load fails. The mean of the grass in
+linear light is the lawn color ([[ADR-0219-pack-assets-carry-textures]]), so the grey ground bounce
+of the sky dome still matches the lawn's luminance.
+
+Readiness waits for the ground in both views. The harness ready frame waits until the ground is no
+longer loading and reports its status in `data-ground-texture`; the amendment of
+[[ADR-0149-harness-lighting-readiness]] on this date covers it. In the live view,
+`useLiveViewReadiness` counts a drawn frame only when no pipeline build and no ground load is in
+flight, and a ground load that starts clears the drawn-frame fact.
+
+Section 4.5 of the design specification now says in the present tense that the ground uses a
+texture for its grass. This amendment records that change.

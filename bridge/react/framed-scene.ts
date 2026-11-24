@@ -20,15 +20,17 @@ import {
   buildScene,
   disposeObject,
   enrollNearWallTargets,
+  groundPlaneDrawsWith,
   isGroundPlane,
   markShadowCasters,
   GRADE_ELEVATION_MM,
   PhysicalMaterialProvider,
   sceneBounds,
-  type EdgeOverlayOptions,
+  type BuildSceneOptions,
   type NearWallEnrollmentEntities,
   type NearWallTarget,
   type SceneRoot,
+  type TextureAppearance,
 } from '../../engine'
 
 export interface FramedScene {
@@ -79,7 +81,7 @@ export function floorTopWorld(elevation: number, rooms: readonly RoomSceneNode[]
 export function buildFramedScene(
   graph: SceneGraph,
   paint: Record<string, SurfaceTreatment> = {},
-  view: EdgeOverlayOptions = {},
+  view: BuildSceneOptions = {},
 ): FramedScene {
   const materials = new PhysicalMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
@@ -129,23 +131,37 @@ export interface FloorAssembly {
   topWorld: number
 }
 
+/** What the site ground is drawn with: its grade and, when set, the texture it carries. */
+export interface SceneGround {
+  gradeElevation: number | undefined
+  appearance?: TextureAppearance | undefined
+}
+
 /**
  * Seats the assembled root on the site ground plane at grade (issue #477; ADR-0131,
  * ADR-0138). The ground is per-scene, sized to the whole footprint already in `root`, so it
- * runs after the floors are stacked. A plane already seated at the requested grade is kept;
- * otherwise every ground plane on the root is removed and disposed before the fresh one is
- * added, so no stale copy survives a grade edit. Camera framing keeps ignoring it
- * (sceneBounds skips isGroundPlane).
+ * runs after the floors are stacked. A plane is kept only when it is the only one, sits at
+ * the grade, and draws with the same appearance (the same texture and an equal tile size).
+ * Any other case removes and frees every plane (a cache-held texture is never freed) and
+ * adds one, so no stale copy survives a grade edit or an appearance change. Camera framing
+ * keeps ignoring it (sceneBounds skips isGroundPlane).
  */
-export function refreshGroundPlane(root: SceneRoot, gradeElevation: number | undefined): void {
-  const grade = gradeElevation ?? GRADE_ELEVATION_MM
+export function refreshGroundPlane(root: SceneRoot, ground: SceneGround): void {
+  const grade = ground.gradeElevation ?? GRADE_ELEVATION_MM
   const planes = root.children.filter(isGroundPlane)
-  if (planes.length === 1 && planes[0]?.position.y === grade) return
+  const [only] = planes
+  if (
+    planes.length === 1 &&
+    only?.position.y === grade &&
+    groundPlaneDrawsWith(only, ground.appearance)
+  ) {
+    return
+  }
   for (const plane of planes) {
     root.remove(plane)
     disposeObject(plane)
   }
-  addGroundPlane(root, grade)
+  addGroundPlane(root, grade, ground.appearance)
 }
 
 /** The stacked floor groups under one root, with the fade targets every floor enrolled. */
@@ -193,7 +209,7 @@ function stackFloorRoot(floors: FloorAssembly[], framedNodeId?: string): Stacked
  */
 export function frameStackedScene(
   floors: FloorAssembly[],
-  gradeElevation: number | undefined,
+  ground: SceneGround,
   framedFloorId?: string | null,
 ): FramedScene {
   const framedNodeId = framedFloorId == null ? undefined : `${FLOOR_NODE_PREFIX}${framedFloorId}`
@@ -202,7 +218,7 @@ export function frameStackedScene(
   // then seat the shared ground plane sized to the whole footprint already in the root.
   const bounds = sceneBounds(root)
   const framingBounds = framedFloorBounds ?? bounds
-  refreshGroundPlane(root, gradeElevation)
+  refreshGroundPlane(root, ground)
   return {
     root,
     pose: withDepthRangeOf(frameSceneCamera(framingBounds), bounds),

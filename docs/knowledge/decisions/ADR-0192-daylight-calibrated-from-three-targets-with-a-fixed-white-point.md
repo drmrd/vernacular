@@ -53,7 +53,7 @@ sourceFiles:
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
 status: current
-updated: 2026-11-16
+updated: 2026-11-24
 ---
 
 # ADR-0192: Daylight is calibrated from three targets with a fixed white point
@@ -201,7 +201,9 @@ Below the horizon the dome is a neutral grey ground bounce: `GROUND_BOUNCE_COLOR
 `GROUND_SURFACE_COLOR`, times the light a level card receives from the sun and the upper dome. That
 replaces the fixed brown. The engine's ground plane still paints the lawn's hex, `#5f8a4f`, so the
 camera sees a green lawn while the dome's ground keeps only its luminance. The amendment gives the
-reason.
+reason. (Replaced on 2026-11-24: the plane now draws the grass of the starter pack, whose mean in
+linear light is the lawn color, and paints the hex only while the texture loads or after its load
+fails. See the amendment of ADR-0131.)
 
 The dome's functions take a `SkyDomeInput`, `{ sunDirection, cloudCover }`, in place of a sun
 height: `skyDomeRadiance(view, sky)` takes a unit view vector, `skyDomeSampler(sky)` computes the

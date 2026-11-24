@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openHarnessScene } from './scene-helpers'
+import { settledHarnessCanvas } from './scene-helpers'
 
 // The solar cases boot the deterministic render harness via the `?fixture=scene-harness`
 // seam (see app/app.tsx) and select a named canonical environment state with the `scene`
@@ -46,6 +46,14 @@ const SHELL_MAX_DIFF_PIXEL_RATIO = 0.05
 //   full-collapse probe (the semi-gloss entry set to the matte values, the #520 defect
 //   class): 46899 pixels differ at threshold 0 (ratio 0.6107); 46420 at 0.02, 8 at 0.05.
 //
+// Probed again on 2026-11-24 on the same Mac, after the ground came to draw the grass
+// tile. The lawn shows through the doorway at the bottom of the frame (23 pixels move
+// against the flat lawn), so the pair was derived again against the grass frame. Five
+// captures of each build were byte-identical. The roughness-only probe moved 46797 pixels
+// at threshold 0 (ratio 0.6093), 49 at 0.02, and 3 at 0.05; the full-collapse probe moved
+// 46899 at threshold 0, 46420 at 0.02, and 8 at 0.05. The counts are those of the earlier
+// derivation, so the pair stays.
+//
 // So the per-pixel threshold is 0 (any deviation counts; the capture is deterministic)
 // and the ratio gate goes at the midpoint between the zero noise band and the weaker
 // probe signal: 0.6093 / 2 rounded down to 0.304. An environmental drift that moves
@@ -80,6 +88,16 @@ const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.304
 // 0.0080). The ratio gate goes at the midpoint between the zero noise band and that signal,
 // rounded down so it stays at most half the signal: 0.047 (2.0x margin). Before these three
 // changes probe B moved 6699 pixels at threshold 0 and the ratio was 0.043.
+//
+// Derived again on 2026-11-24 on the same Mac, after the ground came to draw the grass tile;
+// the state frames the furniture scene from outside, so the lawn fills the lower part of the
+// frame. Five captures of each build were byte-identical. Pixels differing at threshold
+// 0.35 / 0.2 / 0.1 / 0.05 / 0.02 / 0, new beside the counts above:
+//   probe A: 0 / 0 / 7 / 51 / 2018 / 29437 (was 31683 at threshold 0).
+//   probe B: 0 / 0 / 3 / 118 / 613 / 7243 (was 616 at 0.02 and 7273 at 0).
+//   Linux: not yet recorded for this derivation.
+// Probe B is still the weaker at threshold 0, ratio 0.0943, half of it is 0.0472, and the
+// ratio stays 0.047.
 const AMBIENT_OCCLUSION_THRESHOLD = 0
 const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.047
 
@@ -93,25 +111,12 @@ interface ShellCapture {
 }
 
 async function captureShell(page: Page, capture: ShellCapture): Promise<void> {
-  const canvas = await openHarnessScene(page, capture.query, 'scene harness')
-
-  // The harness renders a single static frame on mount (no animation). Wait for the
-  // canvas backing store to reach its pinned size so the rendered frame is in the
-  // compositor before screenshotting. The frame contents are verified out of band
-  // against the committed baseline; with preserveDrawingBuffer off a 2D-readback of the
-  // canvas reads an already-cleared buffer, so the compositor screenshot is the source
-  // of truth, not an in-page pixel poll.
-  await expect
-    .poll(() => canvas.evaluate((element) => (element as HTMLCanvasElement).width), {
-      message: 'waiting for the harness canvas to size its backing store',
-    })
-    .toBeGreaterThan(0)
-
   // The visible sky arrives through a lazily loaded chunk, so the mount frame renders
   // without it. The harness draws its ready frame in the renderer's own animation loop, on a
   // frame of its own, and data-harness-ready turns true in the commit after that frame was
-  // drawn, so awaiting the attribute guarantees the screenshot captures the sky-lit frame.
-  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
+  // drawn, so the settled canvas is the sky-lit frame. The frame contents are verified
+  // against the committed baseline through the compositor screenshot, not a pixel poll.
+  const canvas = await settledHarnessCanvas(page, capture.query, 'scene harness')
 
   await expect(canvas).toHaveScreenshot(capture.snapshot, {
     threshold: capture.threshold ?? SHELL_THRESHOLD,

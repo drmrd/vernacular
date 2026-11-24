@@ -12,7 +12,8 @@ import {
   srgbToOkLab,
   perceptualDistance,
 } from '../../core'
-import { settledHarnessCanvas, logReading, sampleCanvasColor } from './scene-helpers'
+import { sampleCanvasColor } from './canvas-patch'
+import { settledHarnessCanvas, logReading } from './scene-helpers'
 
 // The color-accuracy gate, the headline acceptance of the realistic-environmental-lighting
 // epic. It renders each known swatch on the shell floor under the color-check reference

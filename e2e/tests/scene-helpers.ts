@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { linearLuminance, linearToSrgb, srgbToLinear, type Srgb } from '../../core'
+import type { SamplePatch } from './canvas-patch'
 import { waitForDrawnSceneRevision, waitForLiveCanvasReady } from './live-pane-frames'
 
 // Shared helpers for the live three-dimensional pane specs (navigation, color
@@ -102,11 +102,7 @@ export async function drawnRoomWithDoorCanvas(page: Page): Promise<Locator> {
 // SwiftShader lane and self-skips only where no WebGL 2 context can be created; the subject
 // names the spec in the skip message. A caller that needs a step before the readiness wait uses
 // this and waits for the frame itself.
-export async function openHarnessScene(
-  page: Page,
-  query: string,
-  subject: string,
-): Promise<Locator> {
+async function openHarnessScene(page: Page, query: string, subject: string): Promise<Locator> {
   await page.goto(`/?fixture=scene-harness${query}`)
   const canvas = page.getByTestId('scene-harness').locator('canvas')
   await expect(canvas).toBeVisible()
@@ -122,14 +118,28 @@ export async function openHarnessScene(
 // the sky-lit frame. The harness draws its ready frame in the renderer's own animation loop, on
 // a frame of its own, and data-harness-ready turns true in the commit after that frame was
 // drawn, so a capture taken once the attribute is true holds the ready frame. The subject
-// defaults to the text the specs without a subject of their own have always got.
+// defaults to the text the specs without a subject of their own have always got. It then waits
+// for the ground grass (data-ground-texture="ready"), so a capture never holds a flat lawn that
+// is about to be textured, and a failed pack fetch fails the spec instead of writing a flat
+// baseline.
+// The harness turns ready only after the sky, the pipeline, and the grass have settled. Under
+// several local workers on one GPU that takes longer than the default 5 s expect limit, so both
+// waits get the limit the live view readiness wait uses.
+const HARNESS_READY_TIMEOUT_MS = 20_000
+
 export async function settledHarnessCanvas(
   page: Page,
   query: string,
   subject = 'the harness gate',
 ): Promise<Locator> {
   const canvas = await openHarnessScene(page, query, subject)
-  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
+  const harness = page.getByTestId('scene-harness')
+  await expect(harness).toHaveAttribute('data-harness-ready', 'true', {
+    timeout: HARNESS_READY_TIMEOUT_MS,
+  })
+  await expect(harness).toHaveAttribute('data-ground-texture', 'ready', {
+    timeout: HARNESS_READY_TIMEOUT_MS,
+  })
   return canvas
 }
 
@@ -139,19 +149,6 @@ export function logReading(label: string, value: string): void {
   // The list reporter relays the test process's stdout; this is the one place a gate prints.
   // eslint-disable-next-line no-console
   console.log(`[reading] ${label}: ${value}`)
-}
-
-// The default side of the square sample patch, in screenshot pixels. Averaging a patch
-// rather than reading one pixel damps per-pixel WebGL nondeterminism.
-const SAMPLE_PATCH_PX = 24
-
-// Where a sample patch sits: its center as fractions (0..1) of the frame width and height,
-// and optionally its side in screenshot pixels when the sampled surface is narrower than the
-// default patch.
-export interface SamplePatch {
-  readonly x: number
-  readonly y: number
-  readonly sizePx?: number
 }
 
 // The harness canvas is 320 x 240 CSS pixels at device scale 1, the frame the committed
@@ -209,84 +206,10 @@ export const SOUTH_WEST_VIEW_WEST_WALL = squareRegion(121, 107, 24)
 // eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
 export const SOUTH_WEST_VIEW_SOUTH_WALL = squareRegion(157, 143, 6)
 
-/** The 8-bit code range a display shows: a channel's 0..1 fraction times this is its code. */
-export const CODE_RANGE = 255
-
-// The display code of a sampled color's luminance: decode the channels, weigh them, encode.
-export function luminanceCode(color: Srgb): number {
-  const linear = { r: srgbToLinear(color.r), g: srgbToLinear(color.g), b: srgbToLinear(color.b) }
-  return linearToSrgb(linearLuminance(linear)) * CODE_RANGE
-}
-
-// The RGBA stride of an ImageData buffer.
-const RGBA_STRIDE = 4
-
-// Runs in the browser (page context): decode a PNG data URL, draw it to a 2D canvas, and
-// average a square patch to one gamma-encoded sRGB triple in 0..1. Kept as a self-contained
-// top-level function (no closure over module scope) so Playwright can serialize it into the
-// page, and so sampleCanvasColor stays at one level of abstraction. The patch is centered on
-// the given (cx, cy) fractions of the image; stride is the RGBA byte stride and max the 8-bit
-// channel maximum.
-async function averageImagePatch({
-  url,
-  patch,
-  stride,
-  max,
-  cx,
-  cy,
-}: {
-  url: string
-  patch: number
-  stride: number
-  max: number
-  cx: number
-  cy: number
-}): Promise<Srgb> {
-  const image = new Image()
-  image.src = url
-  await image.decode()
-  const surface = document.createElement('canvas')
-  surface.width = image.width
-  surface.height = image.height
-  const context = surface.getContext('2d')
-  if (context === null) throw new Error('no 2d context for the sample surface')
-  context.drawImage(image, 0, 0)
-  const originX = Math.round(image.width * cx - patch / 2)
-  const originY = Math.round(image.height * cy - patch / 2)
-  const { data } = context.getImageData(originX, originY, patch, patch)
-  let red = 0
-  let green = 0
-  let blue = 0
-  for (let index = 0; index < data.length; index += stride) {
-    red += data[index] ?? 0
-    green += data[index + 1] ?? 0
-    blue += data[index + 2] ?? 0
-  }
-  const pixels = data.length / stride
-  return { r: red / pixels / max, g: green / pixels / max, b: blue / pixels / max }
-}
-
-// Averages a square patch, centered on the canvas by default, of the settled harness canvas
-// to one gamma-encoded sRGB triple in 0..1 (ready for srgbToOkLab). The harness renderer does
-// not preserve its drawing buffer, so an in-page getImageData on the live canvas reads an
-// already-cleared buffer (see scene-solar.spec.ts); the compositor screenshot is the source
-// of truth. We screenshot the canvas, hand the PNG back to the page as a data URL, and read
-// pixels from the browser's native decode, so no image-decoding dependency is needed. The
-// optional patch placement (center fractions of width and height, and a side in pixels)
-// places the patch when the sampled surface is not at frame center.
-export async function sampleCanvasColor(
-  page: Page,
-  canvas: Locator,
-  center: SamplePatch = { x: 0.5, y: 0.5 },
-): Promise<Srgb> {
-  const png = await canvas.screenshot()
-  const dataUrl = `data:image/png;base64,${png.toString('base64')}`
-  return page.evaluate(averageImagePatch, {
-    url: dataUrl,
-    patch: center.sizePx ?? SAMPLE_PATCH_PX,
-    stride: RGBA_STRIDE,
-    max: CODE_RANGE,
-    cx: center.x,
-    cy: center.y,
-  })
-}
+/**
+ * The lawn in the sun east of the building's shadow in the `shadow-on-lawn` frame, at the same
+ * depth in the view as the shadowed lawn: x 236..259, y 109..132. No edge of the shadow or the
+ * lawn comes within 13 px of it. The sun-to-shade gate and the grass texture gate both read it.
+ */
+// eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
+export const SUN_TO_SHADE_SUNLIT_LAWN = squareRegion(236, 109, 24)

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
+import { sampleCanvasColor } from './canvas-patch'
+import { logReading, settledHarnessCanvas, squareRegion } from './scene-helpers'
 
 // The shadow-reach gate. The solar shadow camera used to fit only the building, the casters,
 // so a shadow that ran off the building was cut off a few metres from it and the lawn past
@@ -44,14 +45,17 @@ const SUNLIT_LAWN = squareRegion(28, 140, 24)
  *   shadowed 0.3287, gap 0.0471
  *   Linux, shadow fitted to the casters and their shadow on the ground (this build): sunlit
  *   0.3761, shadowed 0.3291, gap 0.0470 (the probe was not taken)
+ *   grass tile on the lawn, 2026-11-24: sunlit 0.3760, shadowed 0.3287, gap 0.0474; Linux
+ *   sunlit 0.3769, shadowed 0.3292, gap 0.0477
  *
  * Five captures of each build came back identical to four decimals, so the noise band is under
  * 0.0001 on both. The threshold is the midpoint of the two gaps, (0.0471 + 0.0063) / 2 = 0.0267,
  * rounded to 0.027. The margins are 0.0201 below the shipped reading and 0.0207 above the defect
- * reading. The sun 5 degrees up is weak, so the sunlit lawn reads close to the shade. Under the
- * earlier fade, exp(-0.21 * (1 / sin h - 1)), the sun was weaker still: the two gaps were 0.0388
- * and 0.0055 and the threshold was 0.022. Before that fade they were 0.1174 and 0.0127 and the
- * threshold was 0.065.
+ * reading. When the ground came to draw the grass tile the darwin gap moved by 0.0003, under a
+ * tenth of the margin (0.0020), so the threshold stays. The sun 5 degrees up is weak, so the sunlit
+ * lawn reads close to the shade. Under the earlier fade, exp(-0.21 * (1 / sin h - 1)), the sun was
+ * weaker still: the two gaps were 0.0388 and 0.0055 and the threshold was 0.022. Before that fade
+ * they were 0.1174 and 0.0127 and the threshold was 0.065.
  */
 const SHADOW_REACH_MIN_GAP = 0.027
 

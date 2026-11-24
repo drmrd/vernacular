@@ -28,7 +28,7 @@ export const GROUND_BOUNCE_COLOR: LinearRgb = {
   b: groundBounceLuminance,
 }
 
-/** The generated mown-grass tile of starter pack 1.1.0, which the ground does not draw yet. */
+/** The generated mown-grass tile of starter pack 1.1.0, which the ground draws on the lawn. */
 export const GROUND_GRASS_REFERENCE: AssetReference = {
   scope: 'pack:vernacular-starter@1.1.0',
   contentHash: '6124c956bf1980cfb3da2322f5fc2a55fa4d8e44912faba58618270ced1b8f76',

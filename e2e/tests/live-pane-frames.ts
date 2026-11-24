@@ -14,8 +14,9 @@ import { errors, expect, type Locator, type Page } from '@playwright/test'
 // Its attribute data-harness-ready turns "true" once the renderer of this mount has drawn its
 // first counted frame (useDrawnRevision, bridge/react/live-scene-frame-signal.tsx), which is after
 // the stand-in canvas was replaced. The wrapper belongs to one mount of the pane and starts at
-// "false" with each mount, unlike data-live-view-ready, which can still read true from an earlier
-// open (issue #829).
+// "false" with each mount. data-live-view-ready is cleared at mount only when the mount starts
+// with the ground texture loading or a pipeline build (bridge/react/use-live-view-readiness.ts);
+// otherwise it can still read true from an earlier open (issue #829).
 const LIVE_SCENE_CANVAS_TEST_ID = 'live-scene-canvas'
 
 // The two revisions the wrapper publishes (bridge/react/scene-readiness.ts): the scene revision

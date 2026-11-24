@@ -46,7 +46,7 @@ sourceFiles:
     e2e/tests/live-pane-camera-drags.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-24
 ---
 
 # ADR-0170: Scene session state moves into a bridge-owned provider
@@ -306,7 +306,13 @@ Two limits found on the way are older than this change. Both are left for #829:
 
 - Nothing resets `sessionRestored` or `frameDrawnSincePipelineSettled` when the 3D view unmounts,
   and the store lives above the view. So after a remount in schematic lighting the attribute can
-  read `"true"` before the new canvas draws. This was read from the code, not run.
+  read `"true"` before the new canvas draws. This was read from the code, not run. (Partly
+  addressed on 2026-11-24, and #829 stays open. `useLiveViewReadiness` now clears
+  `frameDrawnSincePipelineSettled` at mount when the mount starts with the ground texture loading,
+  and whenever a pipeline build starts. Nothing clears `sessionRestored`. The ground hook of the
+  view starts at loading on its own mount, so a fresh open of the pane clears the fact. A
+  mount that starts with the ground already settled and no build, as in schematic lighting, still
+  carries a stale `"true"` from an earlier open. This too was read from the code.)
 - When lighting turns off after a build has settled, the drawn-frame fact stays true through the
   toggle. A frame drawn before the effects of the change run still goes through the old pipeline,
   so the attribute can read `"true"` over a frame of the old lighting. The visual-regression gate

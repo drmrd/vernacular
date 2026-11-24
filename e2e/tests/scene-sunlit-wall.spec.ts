@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
+import { sampleCanvasColor } from './canvas-patch'
 import {
   DEFAULT_VIEW_EAST_WALL,
   DEFAULT_VIEW_SOUTH_WALL,
   logReading,
-  sampleCanvasColor,
   settledHarnessCanvas,
 } from './scene-helpers'
 

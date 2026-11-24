@@ -60,7 +60,7 @@ interface ProbeProps {
 }
 
 function Probe({ realistic, settleVersion }: ProbeProps) {
-  notes = useLiveViewReadiness()
+  notes = useLiveViewReadiness('ready')
   const versionedSettle = useMemo(
     () => Object.assign(() => settleSpy(), { version: settleVersion }),
     [settleVersion],
