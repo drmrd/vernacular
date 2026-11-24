@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { GROUND_GRASS_REFERENCE } from '../core'
 import type { AssetRegistry } from '../storage'
 import { App } from './app'
+import { servePublicFiles } from './serve-public-files-test-support'
 
-const seenRegistries = vi.hoisted((): unknown[] => [])
+const seenRegistries = vi.hoisted((): AssetRegistry[] => [])
 
 vi.mock('../bridge', async (importOriginal) => {
   const original = await importOriginal<typeof import('../bridge')>()
@@ -18,25 +17,14 @@ vi.mock('../bridge', async (importOriginal) => {
   return { ...original, SceneHarnessView: RegistryProbe }
 })
 
-const PUBLIC_DIRECTORY = join(import.meta.dirname, '..', 'public')
-const HTTP_OK = 200
-const HTTP_NOT_FOUND = 404
 const HARNESS_SEARCH = '?fixture=scene-harness'
 const GRASS_TILE_SIZE_MM = 2000
 const GRASS_PNG_URL = `/packs/vernacular-starter-1.1.0/assets/${GROUND_GRASS_REFERENCE.contentHash}.png`
 
-function servePublicFiles() {
-  return vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
-    try {
-      return new Response(readFileSync(join(PUBLIC_DIRECTORY, String(input))), { status: HTTP_OK })
-    } catch {
-      return new Response(null, { status: HTTP_NOT_FOUND })
-    }
-  })
-}
-
 function lastSeenRegistry(): AssetRegistry {
-  return seenRegistries[seenRegistries.length - 1] as AssetRegistry
+  const registry = seenRegistries.at(-1)
+  if (!registry) throw new Error('the harness has not asked for a registry yet')
+  return registry
 }
 
 describe('the scene harness in the application', () => {

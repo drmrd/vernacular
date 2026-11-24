@@ -1,17 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { GROUND_GRASS_REFERENCE, type AssetReference } from '../core'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { AssetRegistry } from '../storage'
 import {
   createHarnessAssetRegistry,
   createStarterPackSources,
 } from './create-asset-library-registry'
 import { loadPackSupplies } from './pack-supplies'
+import { PUBLIC_DIRECTORY, servePublicFiles } from './serve-public-files-test-support'
 
-const PUBLIC_DIRECTORY = join(import.meta.dirname, '..', 'public')
-const HTTP_OK = 200
-const HTTP_NOT_FOUND = 404
 const CURRENT_PACK_URL = '/packs/vernacular-starter-1.1.0'
 const CURRENT_PACK_SCOPE = 'pack:vernacular-starter@1.1.0'
 const GRASS_TILE_SIZE_MM = 2000
@@ -26,17 +24,6 @@ const PREVIOUS_CHAIR_REFERENCE: AssetReference = {
 interface ManifestAsset {
   contentHash: string
   kind: string
-}
-
-function servePublicFiles() {
-  return vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
-    try {
-      const body = readFileSync(join(PUBLIC_DIRECTORY, String(input)))
-      return new Response(body, { status: HTTP_OK })
-    } catch {
-      return new Response(null, { status: HTTP_NOT_FOUND })
-    }
-  })
 }
 
 function currentModelHashes(): string[] {
@@ -109,7 +96,7 @@ describe('the application starter pack sources', () => {
 })
 
 describe('the scene harness registry', () => {
-  it('the scene harness registry resolves and describes the ground grass', async () => {
+  it('resolves and describes the ground grass', async () => {
     const fetchSpy = servePublicFiles()
     const registry = createHarnessAssetRegistry(fetchSpy)
 
