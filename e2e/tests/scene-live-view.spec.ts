@@ -27,6 +27,10 @@ import { settledLiveFrame, waitForDrawnSceneChange } from './live-pane-frames'
 
 type Point = { x: number; y: number }
 
+// The test draws two walls and takes a settled frame after each. A software renderer draws each
+// frame slowly, and the default time limit is too short there.
+const SLOW_RENDERER_TIMEOUT_MS = 120_000
+
 // Commits one wall run in the plan pane: arm the Wall tool, click the two endpoints, then
 // press Enter so the buffered run commits.
 async function drawWall(
@@ -41,6 +45,8 @@ async function drawWall(
 }
 
 test.describe('Live three-dimensional preview pane', () => {
+  test.beforeEach(() => test.setTimeout(SLOW_RENDERER_TIMEOUT_MS))
+
   test('reflects a drawn wall in the split-view 3D pane', async ({ page }) => {
     await page.goto('/')
     await webFontsSettled(page)

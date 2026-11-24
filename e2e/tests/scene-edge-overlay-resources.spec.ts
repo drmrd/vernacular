@@ -1,7 +1,7 @@
 import { test, expect, type Locator } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
 import { navButton } from './journeys/close-openings-support'
-import { LIVE_VIEW_READY } from './live-pane'
+import { waitForLiveViewReady } from './live-pane'
 import { guardLiveSceneSupport } from './live-webgpu'
 import { drawnRoomCanvas, logReading } from './scene-helpers'
 
@@ -77,7 +77,7 @@ test('ten flips of the surface-edge overlay keep the renderer geometry and textu
 
   // A closed room gives the overlay real wall and floor edges to build and retire.
   const canvas = await drawnRoomCanvas(page)
-  await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+  await waitForLiveViewReady(page)
   const first = await settledReading(canvas, 'first reading, overlay off')
 
   const edges = navButton(page, 'Surface edges')

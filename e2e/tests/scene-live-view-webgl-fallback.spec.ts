@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
+import { waitForLiveViewReady } from './live-pane'
 import { liveSceneCanvas } from './live-pane-frames'
 import { drawnSceneCanvas } from './scene-helpers'
 
@@ -20,10 +21,6 @@ import { drawnSceneCanvas } from './scene-helpers'
 // project, and the linux scene job runs it on SwiftShader, which provides a WebGL 2 context.
 
 const NOTICE_TEXT = 'The 3D preview is running without WebGPU.'
-
-// The marker the session provider sets once the live view is ready
-// (bridge/react/scene-session-provider.tsx).
-const LIVE_VIEW_READY = '[data-live-view-ready="true"]'
 
 // Removes WebGPU before any page script runs, so the engine probe and three's renderer both see a
 // browser without the API.
@@ -82,7 +79,7 @@ test.describe('Live three-dimensional preview without WebGPU', () => {
 
     await expect(region.getByText(NOTICE_TEXT)).toBeHidden()
     await expect(liveSceneCanvas(page)).toBeVisible()
-    await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+    await waitForLiveViewReady(page)
   })
 
   test('says the preview is unavailable when no WebGL 2 context exists either', async ({

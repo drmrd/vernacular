@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
+import { waitForLiveViewReady } from './live-pane'
 import { drawnRoomCanvas, stableFrame } from './scene-helpers'
 
 // The first committed pixel baseline on the render path users actually see: the editor's
@@ -26,11 +27,6 @@ import { drawnRoomCanvas, stableFrame } from './scene-helpers'
 // so the whole budget is margin against future driver drift rather than measured noise.
 const LIVE_VIEW_THRESHOLD = 0.35
 const LIVE_VIEW_MAX_DIFF_PIXEL_RATIO = 0.05
-
-// The session provider (ADR-0170) raises this once the stored session has been applied and a
-// frame has drawn since the latest render-pipeline build settled. Waiting on it, and then on a
-// steady frame, is what keeps the capture off a timeout.
-const LIVE_VIEW_READY = '[data-live-view-ready="true"]'
 
 // Runs in the page. `navigator.gpu` can be present while `requestAdapter()` resolves to null,
 // which is exactly the state the stripped-down headless shell reports; three logs "No available
@@ -59,7 +55,7 @@ test.describe('Live three-dimensional view visual baseline', () => {
     // A named preset pins the camera, so the baseline does not depend on the fitted default.
     await page.getByRole('button', { name: 'Top down' }).click()
 
-    await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+    await waitForLiveViewReady(page)
     await stableFrame(canvas)
 
     await expect(canvas).toHaveScreenshot('live-view-top-down-webgpu.png', {

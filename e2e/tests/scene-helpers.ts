@@ -122,7 +122,9 @@ export async function openHarnessScene(
 // the sky-lit frame. The harness draws its ready frame in the renderer's own animation loop, on
 // a frame of its own, and data-harness-ready turns true in the commit after that frame was
 // drawn, so a capture taken once the attribute is true holds the ready frame. The subject
-// defaults to the text the specs without a subject of their own have always got.
+// defaults to the text the specs without a subject of their own have always got. It then waits
+// for the ground grass (data-ground-texture="ready"), so a capture never holds a flat lawn that
+// is about to be textured, and a failed pack fetch fails the spec instead of writing a flat baseline.
 export async function settledHarnessCanvas(
   page: Page,
   query: string,
@@ -130,6 +132,7 @@ export async function settledHarnessCanvas(
 ): Promise<Locator> {
   const canvas = await openHarnessScene(page, query, subject)
   await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
+  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-ground-texture', 'ready')
   return canvas
 }
 

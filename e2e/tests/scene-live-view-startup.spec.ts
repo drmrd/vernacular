@@ -1,7 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
 import { guardLiveSceneSupport } from './live-webgpu'
-import { selectionStatusOf } from './live-pane'
+import { selectionStatusOf, waitForLiveViewReady } from './live-pane'
 import { SCENE_FAILURE_COPY, sceneFailureAnnouncement } from '../../editor/shell/scene-failure-copy'
 
 // Issue #733: the live three-dimensional pane shows a drawn wall, also when the scene view
@@ -45,10 +45,6 @@ const LOAD_TITLE = SCENE_FAILURE_COPY.load.title
 const LOAD_ANNOUNCEMENT = sceneFailureAnnouncement('load')
 
 const RENDERER_CHUNK = /\/assets\/three\.webgpu-[^/]+\.js$/
-
-// The session provider raises this once a frame has been drawn (ADR-0170). It is raised on a
-// blank pane too, so it only marks the end of the start-up and says nothing about the content.
-const LIVE_VIEW_READY = '[data-live-view-ready="true"]'
 
 // React Three Fiber mounts the canvas at the HTML default (~150px) height, then resizes it to
 // the real pane box; a settled canvas is past that default.
@@ -174,7 +170,7 @@ async function openSplitViewDuringHeldStartUp(
   await duringStartUp()
   await startUp.release()
 
-  await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+  await waitForLiveViewReady(page)
   await expect
     .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
       message: 'waiting for the live 3D canvas to settle past its default size',
@@ -323,7 +319,7 @@ test.describe('Live three-dimensional pane after a failed renderer load', () => 
     ])
 
     await page.getByRole('button', { name: 'Split view' }).click()
-    await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+    await waitForLiveViewReady(page)
     await expect(pane.getByRole('alert')).toBeEmpty()
     await expect(pane.getByRole('toolbar', { name: '3D navigation' })).toBeVisible()
     const canvas = pane.locator('canvas')

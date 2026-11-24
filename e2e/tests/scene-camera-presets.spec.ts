@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { webFontsSettled } from './journeys/support'
 import { expectSameView, frameAfterChange, navButton } from './journeys/close-openings-support'
 import { frameReader } from './frame-pixels'
-import { LIVE_VIEW_READY } from './live-pane'
+import { waitForLiveViewReady } from './live-pane'
 import { waitForDrawnSceneChange } from './live-pane-frames'
 import {
   drawnRoomCanvas,
@@ -193,7 +193,7 @@ async function doorwayFramesOfTwoFloors(
   await leaveTools(page)
   await showFloor(page, 'Ground')
   const canvas = await settledSceneCanvas(page)
-  await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+  await waitForLiveViewReady(page)
   const ground = await doorwayFrame(page, canvas)
   await waitForDrawnSceneChange(page, () => showFloor(page, other.name))
   return { ground, other: await doorwayFrame(page, canvas) }
@@ -278,7 +278,7 @@ test.describe('Live three-dimensional camera presets', () => {
     await placeDoor(page, INNER_DOOR_AT, 1)
     await leaveTools(page)
     const canvas = await settledSceneCanvas(page)
-    await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+    await waitForLiveViewReady(page)
     const floorView = await doorwayFrame(page, canvas)
     await waitForDrawnSceneChange(page, () => showWholeBuilding(page))
     const buildingView = await doorwayFrame(page, canvas)
@@ -302,7 +302,7 @@ test.describe('Live three-dimensional camera presets', () => {
     await placeDoor(page, HOUSE_DOOR_AT, 1)
     await leaveTools(page)
     let canvas = await settledSceneCanvas(page)
-    await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+    await waitForLiveViewReady(page)
     const alone = await doorwayFrame(page, canvas)
     await page.getByRole('button', { name: 'Plan view' }).click()
     await drawWalls(page, OUTBUILDING, 2)
@@ -326,7 +326,7 @@ test.describe('Live three-dimensional camera presets', () => {
     await placeDoor(page, PARTITION_DOOR_AT, 1)
     await selectTool(page)
     const canvas = await settledSceneCanvas(page)
-    await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+    await waitForLiveViewReady(page)
     const before = await doorwayFrame(page, canvas)
     await flipSelectedSwing(page)
     const after = await doorwayFrame(page, canvas)
