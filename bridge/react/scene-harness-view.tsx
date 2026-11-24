@@ -3,7 +3,6 @@ import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   frontDirection,
-  GROUND_GRASS_REFERENCE,
   type Bounds3,
   type CameraPose,
   type ObservationInstant,
@@ -12,7 +11,6 @@ import {
   type SurfaceTreatment,
 } from '../../core'
 import { ADJACENT_ROOMS_CAMERA_POSE } from './adjacent-rooms-fixture'
-import { useAssetRegistry } from './asset-registry-context'
 import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
@@ -28,7 +26,7 @@ import { SceneLighting } from './scene-lighting'
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 import type { TextureStatus } from './texture-cache'
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
-import { useGroundTexture } from './use-ground-texture'
+import { useGroundGrass } from './use-ground-grass'
 
 // Re-exported so the fixtures' own module owns the geometry while every existing
 // import path (the bridge index, and thus app/) keeps resolving HarnessScene here.
@@ -282,7 +280,7 @@ function useFramedHarnessScene(scene: HarnessScene, paint: Record<string, Surfac
     const fixture = HARNESS_FIXTURES[scene]
     return { ...buildFramedScene(fixture, paint), front: frontDirection(fixture) }
   }, [scene, paint])
-  const texture = useGroundTexture(GROUND_GRASS_REFERENCE, useAssetRegistry())
+  const texture = useGroundGrass()
   const groundTexture = useHarnessGround(
     framed.root,
     HARNESS_FIXTURES[scene].gradeElevation,

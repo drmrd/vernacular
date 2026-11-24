@@ -35,7 +35,7 @@ export function buildScene(
   // its neighbors, but only when the view turns the overlay on: it is an opt-in view
   // toggle, off by default in Orbit (ADR-0078, amended by ADR-0132).
   applyEdgeOverlay(root, options)
-  // Seat the building on a grass-colored ground plane at grade, so it reads as
+  // Seat the building on a lawn plane at grade (flat green or grass texture), so it reads as
   // sitting on its site and a partly buried basement's foundation rises through
   // the surface (ADR-0131). Added after the edge overlay so the lawn takes no
   // hidden-line outline.

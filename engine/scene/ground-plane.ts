@@ -148,7 +148,7 @@ function groundMesh(
   const geometry = new THREE.PlaneGeometry(footprint.width, footprint.depth)
   if (appearance !== undefined) writeWorldUvs(geometry, footprint, appearance.tileSize)
   const material = new THREE.MeshStandardMaterial({
-    // Mowed-lawn green standing in for grass; the sky dome's ground bounce keeps only this
+    // Flat lawn green without an appearance; the sky dome's ground bounce keeps only this
     // color's luminance. With an appearance the texture draws on white instead.
     color: appearance === undefined ? GROUND_SURFACE_HEX : 'white',
     map: appearance?.texture ?? null,
@@ -166,7 +166,7 @@ function groundMesh(
 }
 
 /**
- * Adds a grass-colored ground plane at grade, sized to cover the building footprint
+ * Adds a lawn plane at grade (flat green, or the grass texture), sized to cover the building footprint
  * with a surrounding site margin. It reads the footprint from the geometry already in
  * `root`, so it must run after the floors are built. The plane carries no entity id or
  * surface ref, so it never selects or paints an entity. It is still a pickable surface:

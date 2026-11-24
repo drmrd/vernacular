@@ -7,16 +7,15 @@ import {
   type RefObject,
 } from 'react'
 
-import { GROUND_GRASS_REFERENCE, type SceneGraph } from '../../core'
+import { type SceneGraph } from '../../core'
 
-import { useAssetRegistry } from './asset-registry-context'
 import type { FramedScene } from './framed-scene'
 import { createFramedSceneReconciler, type FramedSceneReconciler } from './framed-scene-reconciler'
 import { sceneSessionToggle, useSceneSessionStoreOrLocal } from './scene-session-context'
 import type { TextureStatus } from './texture-cache'
 import type { BuildingViewState } from './use-building-view-state'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
-import { useGroundTexture } from './use-ground-texture'
+import { useGroundGrass } from './use-ground-grass'
 import { useProjectPaint } from './use-project-paint'
 import { useShownSceneGraph } from './use-view-scene-graph'
 
@@ -185,7 +184,7 @@ export function useFramedScene(): FramedSceneState {
   const lifetime = useFramedSceneReconciler(edgeOverlay)
   const { reconciler } = lifetime
   const models = useFurnitureModelCache(graph)
-  const texture = useGroundTexture(GROUND_GRASS_REFERENCE, useAssetRegistry())
+  const texture = useGroundGrass()
   const framed = useMemo(() => {
     // Set before reconcile so the scene it returns, even from a new reconciler after an
     // overlay flip, draws with it.
