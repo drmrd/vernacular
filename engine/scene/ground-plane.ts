@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import { type Bounds3, GROUND_SURFACE_HEX } from '../../core'
+import type { TextureAppearance } from '../loaders/image-texture-loader'
 import { groundPlaneDepthBiasParameters } from '../materials/role-appearance'
 
 /**
@@ -93,14 +94,37 @@ function groundFootprint(sceneRoot: THREE.Object3D): GroundFootprint {
   }
 }
 
-function groundMesh(footprint: GroundFootprint, gradeElevation: number): THREE.Mesh {
+// Writes each vertex's UV from its world position, so a texel keeps its world place when the
+// plane grows. The mesh lies flat with local y along world -z, so v is local y minus the
+// center's world z.
+function writeWorldUvs(
+  geometry: THREE.PlaneGeometry,
+  footprint: GroundFootprint,
+  tileSize: TextureAppearance['tileSize'],
+): void {
+  const positions = geometry.getAttribute('position')
+  const uvs = geometry.getAttribute('uv')
+  for (let index = 0; index < positions.count; index++) {
+    uvs.setXY(
+      index,
+      (positions.getX(index) + footprint.centerX) / tileSize.width,
+      (positions.getY(index) - footprint.centerZ) / tileSize.height,
+    )
+  }
+}
+
+function groundMesh(
+  footprint: GroundFootprint,
+  gradeElevation: number,
+  appearance: TextureAppearance | undefined,
+): THREE.Mesh {
   const geometry = new THREE.PlaneGeometry(footprint.width, footprint.depth)
+  if (appearance !== undefined) writeWorldUvs(geometry, footprint, appearance.tileSize)
   const material = new THREE.MeshStandardMaterial({
     // Mowed-lawn green standing in for grass; the sky dome's ground bounce keeps only this
-    // color's luminance.
-    // Pulling a grass texture through the content-addressed asset pipeline is out of scope
-    // here (a follow-up), so a flat color carries the ground for now.
-    color: GROUND_SURFACE_HEX,
+    // color's luminance. With an appearance the texture draws on white instead.
+    color: appearance === undefined ? GROUND_SURFACE_HEX : 'white',
+    map: appearance?.texture ?? null,
     ...groundPlaneDepthBiasParameters(),
   })
   const mesh = new THREE.Mesh(geometry, material)
@@ -119,11 +143,14 @@ function groundMesh(footprint: GroundFootprint, gradeElevation: number): THREE.M
  * `root`, so it must run after the floors are built. The plane carries no entity id or
  * surface ref, so it never selects or paints an entity. It is still a pickable surface:
  * `pickScene` lets the lawn take a click that lands on open ground. The plane is
- * seated at `gradeElevation`, defaulting to the grade datum when none is supplied.
+ * seated at `gradeElevation`, defaulting to the grade datum when none is supplied. Given an
+ * `appearance`, the plane draws its texture on white, one copy per tile, with copies fixed to
+ * the world origin.
  */
 export function addGroundPlane(
   root: THREE.Object3D,
   gradeElevation: number = GRADE_ELEVATION_MM,
+  appearance?: TextureAppearance,
 ): void {
-  root.add(groundMesh(groundFootprint(root), gradeElevation))
+  root.add(groundMesh(groundFootprint(root), gradeElevation, appearance))
 }
