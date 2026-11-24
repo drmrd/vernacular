@@ -33,11 +33,16 @@ describe('wall ends are read through the wall path', () => {
     'reads wall ends only in the files of the exception list',
     () => {
       const reads = findWallEndReads(program, repositoryRoot)
+      const files = wallEndReadFiles(reads)
       const unlisted = reads
         .filter(({ file }) => !WALL_END_READ_EXCEPTIONS.includes(file))
         .map(describeWallEndRead)
-      const message = `Wall ends read outside the exception list:\n${unlisted.join('\n')}`
-      expect(wallEndReadFiles(reads), message).toEqual([...WALL_END_READ_EXCEPTIONS])
+      const stale = WALL_END_READ_EXCEPTIONS.filter((file) => !files.includes(file))
+      const message = [
+        `Wall ends read outside the exception list:\n${unlisted.join('\n')}`,
+        `Listed files with no wall end read:\n${stale.join('\n')}`,
+      ].join('\n')
+      expect(files, message).toEqual([...WALL_END_READ_EXCEPTIONS])
     },
     PROGRAM_TIMEOUT_MS,
   )
