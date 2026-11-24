@@ -49,8 +49,14 @@ export function normalAlong(path: WallPath, alongMm: number): Point {
 }
 
 export interface PathProjection {
+  /** The nearest point on the path. */
   readonly point: Point
+  /** Distance along the path, clamped to its ends. */
   readonly along: number
+  /**
+   * Signed distance from the path's line, positive on the normal's side. Not clamped: for the
+   * distance to the path, measure to point.
+   */
   readonly offset: number
 }
 
