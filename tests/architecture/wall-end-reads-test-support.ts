@@ -34,6 +34,7 @@ const WALL_TYPES = [
   { name: 'WallSceneNode', file: 'core/scene/scene-graph.ts' },
 ]
 const END_NAMES = ['start', 'end']
+// A guard against a recursive type; unions and intersections are flat, so real walks stay shallow.
 const MAX_TYPE_DEPTH = 8
 const READONLY_ALIAS = 'Readonly'
 const LINE_NUMBER_OFFSET = 1
@@ -67,10 +68,10 @@ function isRepositoryFile(path: string): boolean {
 }
 
 function isDeclaredAsWall(scan: Scan, type: ts.Type): boolean {
-  const declarations = type.getSymbol()?.getDeclarations() ?? []
-  return declarations.some((declaration) => {
+  const symbol = type.getSymbol()
+  const name = symbol?.getName()
+  return (symbol?.getDeclarations() ?? []).some((declaration) => {
     const file = repositoryPath(scan, declaration.getSourceFile().fileName)
-    const name = type.getSymbol()?.getName()
     return WALL_TYPES.some((wall) => wall.name === name && wall.file === file)
   })
 }
@@ -123,7 +124,7 @@ function namesAnEnd(pattern: ts.ObjectBindingPattern): boolean {
   return pattern.elements.some((element) => isEndName(element.propertyName ?? element.name))
 }
 
-function readsOfNode(scan: Scan, node: ts.Node): WallEndForm | undefined {
+function accessOrDestructuringForm(scan: Scan, node: ts.Node): WallEndForm | undefined {
   const accessed = accessedExpression(scan, node)
   if (accessed !== undefined && isWallType(scan, scan.checker.getTypeAtLocation(accessed))) {
     return 'access'
@@ -175,7 +176,8 @@ function isStructuralEndParameter(
   return hasEndProperty(scan, target) && !isWallType(scan, target)
 }
 
-function isReadableCallee(scan: Scan, declaration: ts.SignatureDeclaration): boolean {
+// Passing a wall to the kernel is the sanctioned route, so only other callees count as a read.
+function isNonKernelRepositoryCallee(scan: Scan, declaration: ts.SignatureDeclaration): boolean {
   const path = repositoryPath(scan, declaration.getSourceFile().fileName)
   return isRepositoryFile(path) && !isInKernel(path)
 }
@@ -185,7 +187,7 @@ function passesWallToStructuralParameter(
   call: ts.CallExpression | ts.NewExpression,
 ): boolean {
   const declaration = scan.checker.getResolvedSignature(call)?.getDeclaration()
-  if (declaration === undefined || !isReadableCallee(scan, declaration)) return false
+  if (declaration === undefined || !isNonKernelRepositoryCallee(scan, declaration)) return false
   return (call.arguments ?? []).some((argument, index) => {
     const shape = wallArgumentShape(scan, scan.checker.getTypeAtLocation(argument))
     const parameterType = declaredParameterType(scan, declaration, index)
@@ -198,7 +200,7 @@ function passesWallToStructuralParameter(
 }
 
 function formOfNode(scan: Scan, node: ts.Node): WallEndForm | undefined {
-  const read = readsOfNode(scan, node)
+  const read = accessOrDestructuringForm(scan, node)
   if (read !== undefined) return read
   const isCall = ts.isCallExpression(node) || ts.isNewExpression(node)
   return isCall && passesWallToStructuralParameter(scan, node) ? 'argument' : undefined
