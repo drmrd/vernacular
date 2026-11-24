@@ -1,5 +1,6 @@
 import { DEFAULT_GRADE_ELEVATION_MM } from '../model/site'
 import { doorFamilyOfType, isMarkedDoor, openingKindOfType } from '../registries/opening-kind'
+import { FRONT_DIRECTION_TIE } from '../geometry/tolerance'
 import { dot, negate, subtract } from '../geometry/vector'
 import { exteriorWalls } from './exterior-walls'
 import { FLOOR_NODE_PREFIX, type OpeningSceneNode, type SceneGraph } from './scene-graph'
@@ -24,14 +25,6 @@ function dotWithPlanDown(direction: PlanDirection): number {
   return direction.x * PLAN_DOWN.x + direction.y * PLAN_DOWN.y
 }
 
-/**
- * Two fronts whose dot products with plan-down differ by no more than this are
- * equally near. Outward normals are computed from wall endpoints, so
- * mirror-image walls can differ in the last bits; this is far below any
- * difference a drawn plan can mean.
- */
-const DIRECTION_TIE_TOLERANCE = 1e-9
-
 function hasHingedLeaf(candidate: FrontCandidate): boolean {
   const family = doorFamilyOfType(candidate.opening.type)
   return family === 'swing' || family === 'pivot'
@@ -47,7 +40,7 @@ function beats(candidate: FrontCandidate, current: FrontCandidate): boolean {
   }
   const candidateDot = dotWithPlanDown(candidate.outward)
   const currentDot = dotWithPlanDown(current.outward)
-  if (Math.abs(candidateDot - currentDot) > DIRECTION_TIE_TOLERANCE) {
+  if (Math.abs(candidateDot - currentDot) > FRONT_DIRECTION_TIE) {
     return candidateDot > currentDot
   }
   return candidate.opening.id < current.opening.id
@@ -126,7 +119,7 @@ function firstMarkedDoor(
 function tieBrokenNormal(normal: PlanDirection): PlanDirection {
   const opposite = negate(normal)
   const downGap = dotWithPlanDown(normal) - dotWithPlanDown(opposite)
-  if (Math.abs(downGap) > DIRECTION_TIE_TOLERANCE) {
+  if (Math.abs(downGap) > FRONT_DIRECTION_TIE) {
     return downGap > 0 ? normal : opposite
   }
   return normal.x > opposite.x ? normal : opposite
@@ -142,7 +135,7 @@ function awayFromWallCenter(input: FrontDirectionInput, door: OpeningSceneNode):
   const centerX = (Math.min(...xs) + Math.max(...xs)) / 2
   const centerY = (Math.min(...ys) + Math.max(...ys)) / 2
   const outwardness = dot(subtract(door.center, { x: centerX, y: centerY }), door.normal)
-  if (Math.abs(outwardness) <= DIRECTION_TIE_TOLERANCE) {
+  if (Math.abs(outwardness) <= FRONT_DIRECTION_TIE) {
     return tieBrokenNormal(door.normal)
   }
   return outwardness > 0 ? door.normal : negate(door.normal)

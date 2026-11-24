@@ -197,13 +197,14 @@ Design:
    | `DEFAULT_HIT_TOLERANCE_MM`                               | 150 mm     | `editor/plan/hit-test.ts:16`               | Pick radius                                             |
    | `SNAP_PIXEL_TOLERANCE`                                   | 12 px      | `editor/plan/snap.ts:36`                   | Snap radius                                             |
    | `MARQUEE_DRAG_THRESHOLD_MM`                              | 50 mm      | `editor/plan/select-gesture.ts:51`         | Drag threshold                                          |
-   | `CLICK_TOLERANCE_PX`                                     | 6 px       | `bridge/react/scene-selection.tsx:30`      | Click threshold                                         |
+   | `CLICK_TOLERANCE_PX`                                     | 6 px       | `bridge/react/scene-selection.tsx:29`      | Click threshold                                         |
    | `WALL_ATTACHMENT_TOLERANCE_MM`                           | 100 mm     | `core/scene/wall-attached-furniture.ts:14` | Rule: furniture counts as on a wall                     |
-   | `SLAB_SIDE_FACE_INSET_MM`                                | 0.1 mm     | `engine/scene/room-builder.ts:33`          | Rendering offset (ADR-0150)                             |
+   | `SLAB_SIDE_FACE_INSET_MM`                                | 0.1 mm     | `engine/scene/room-builder.ts:34`          | Rendering offset (ADR-0150)                             |
    | `MITER_LIMIT`                                            | 4          | `core/topology/wall-footprint.ts:68`       | Shape rule (ADR-0080)                                   |
    | `PITCH_LIMIT_EPSILON_RAD`                                | 0.01       | `core/scene/walk-camera.ts:11`             | Camera rule: how near the pole the walk camera may look |
    | `ZENITH_ALIGNMENT_COSINE_EPSILON`                        | 1e-12      | `core/environment/solar-position.ts:57`    | Guard in the sun position formula, not plan geometry    |
    | `COLOR_ACCURACY_TOLERANCE`, `TONE_MAP_EXTREME_TOLERANCE` | 0.06, 0.04 | `core/color/color-accuracy.ts:35`, `:111`  | Color gates, not lengths                                |
+   | `ASPECT_TOLERANCE`                                       | 1e-6       | `bridge/react/drawn-frame-size.ts:16`      | Canvas aspect check, a ratio and not plan geometry      |
 
    Two more distances are rules, not tolerances, and live in the module as named entries rather than on this list: the join distance of point 9 (1 mm, an input rule) and the daylight outline distance of point 12 (1 mm, an acceptance rule for daylight input).
 

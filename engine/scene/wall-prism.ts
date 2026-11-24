@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import {
+  CAP_AREA_LIMIT_MM2,
   WALL_NODE_PREFIX,
   leftNormal,
   planToWorld,
@@ -69,14 +70,6 @@ function squareFootprint(node: WallSceneNode): WallFootprint {
 }
 
 /**
- * mm^2 below which a footprint is degenerate. A real wall footprint spans many
- * orders of magnitude more area, so this only catches a footprint collapsed to a
- * point or self-intersecting with zero net area, where a cap would draw backward
- * or as a zero-area triangle. Such a footprint contributes no top or base cap.
- */
-const CAP_AREA_EPSILON = 1e-6
-
-/**
  * The wall-prism sections in the box's group order: the two end caps, then the top
  * and base caps (when the footprint is non-degenerate), then the `+normal` interior
  * long face (paint side 'left') and the `-normal` exterior long face (paint side
@@ -113,7 +106,7 @@ function capSections(footprint: WallFootprint, height: number): WallSection[] {
   const { aPlus, aMinus, bPlus, bMinus } = footprint
   const perimeter: CapCorners = [aPlus, bPlus, bMinus, aMinus]
   const area = signedArea(perimeter)
-  if (Math.abs(area) < CAP_AREA_EPSILON) {
+  if (Math.abs(area) < CAP_AREA_LIMIT_MM2) {
     return []
   }
   const topCorners = area < 0 ? reverseCorners(perimeter) : perimeter

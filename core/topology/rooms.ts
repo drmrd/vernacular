@@ -1,4 +1,5 @@
 import { insetPolygon, outsetPolygon, pointInPolygon, polygonArea } from '../geometry/polygon'
+import { MIN_FACE_AREA_MM2 } from '../geometry/tolerance'
 import type { Point, RoomOverride, Wall } from '../model/types'
 import { effectiveWallThickness } from '../scene/construction-profile'
 import { buildWallGraph } from './wall-graph'
@@ -42,13 +43,6 @@ export interface Room {
    */
   holes?: Point[][]
 }
-
-/**
- * Smallest positive area, in squared millimeters, that a traced face must exceed
- * to count as a room. Filters out the single negative-area outer (unbounded)
- * face produced by the half-edge walk.
- */
-const MIN_ROOM_AREA = 1
 
 /** Namespace prefix that distinguishes a room id from its stable key. */
 export const ROOM_ID_PREFIX = 'room:'
@@ -138,7 +132,7 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
   // its twin belongs to one of these kept room faces.
   const roomFaces = new Set<number>()
   boundaries.forEach((boundary, index) => {
-    if (polygonArea(boundary.polygon) > MIN_ROOM_AREA) roomFaces.add(index)
+    if (polygonArea(boundary.polygon) > MIN_FACE_AREA_MM2) roomFaces.add(index)
   })
 
   const rooms: Room[] = []

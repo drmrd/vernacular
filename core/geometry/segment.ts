@@ -1,10 +1,5 @@
 import type { Point } from '../model/types'
-
-/** Denominator magnitudes below this are treated as parallel or collinear. */
-const PARALLEL_EPSILON = 1e-9
-
-/** Squared lengths below this mark an effectively zero-length (degenerate) segment. */
-const DEGENERATE_SEGMENT_EPSILON = 1e-9
+import { CROSS_PRODUCT_PARALLEL_LIMIT, DEGENERATE_SQUARED_LENGTH_MM2 } from './tolerance'
 
 /**
  * Intersection point of the two closed segments [a1, a2] and [b1, b2], or null
@@ -20,7 +15,7 @@ export function segmentIntersection(a1: Point, a2: Point, b1: Point, b2: Point):
   const dby = b2.y - b1.y
 
   const denominator = dax * dby - day * dbx
-  if (Math.abs(denominator) < PARALLEL_EPSILON) return null
+  if (Math.abs(denominator) < CROSS_PRODUCT_PARALLEL_LIMIT) return null
 
   // Vector from the start of segment a to the start of segment b.
   const dabx = b1.x - a1.x
@@ -50,7 +45,7 @@ export function lineIntersection(
   dirB: Point,
 ): Point | null {
   const denominator = dirA.x * dirB.y - dirA.y * dirB.x
-  if (Math.abs(denominator) < PARALLEL_EPSILON) return null
+  if (Math.abs(denominator) < CROSS_PRODUCT_PARALLEL_LIMIT) return null
 
   const t = ((pointB.x - pointA.x) * dirB.y - (pointB.y - pointA.y) * dirB.x) / denominator
   return { x: pointA.x + t * dirA.x, y: pointA.y + t * dirA.y }
@@ -68,7 +63,7 @@ export function pointOnSegment(p: Point, a: Point, b: Point, tolerance: number):
   const dy = b.y - a.y
 
   const lengthSquared = dx * dx + dy * dy
-  if (lengthSquared < DEGENERATE_SEGMENT_EPSILON) {
+  if (lengthSquared < DEGENERATE_SQUARED_LENGTH_MM2) {
     const offx = p.x - a.x
     const offy = p.y - a.y
     return Math.hypot(offx, offy) <= tolerance

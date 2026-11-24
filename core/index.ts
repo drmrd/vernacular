@@ -414,7 +414,7 @@ export { rawWallId } from './scene/wall-id'
 export type { JunctionFadeGroup } from './scene/junction-fade'
 export { junctionFadeGroups } from './scene/junction-fade'
 export type { WallPlace, WallRoomSides, WallStretch } from './scene/wall-room-sides'
-export { ROOM_RING_TOLERANCE_MM, roomSidesAt, wallStretches } from './scene/wall-room-sides'
+export { roomSidesAt, wallStretches } from './scene/wall-room-sides'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
 export { sceneGraphForFloor } from './scene/scene-graph-for-floor'
 export { sceneGraphHasGeometry } from './scene/scene-graph-empty'
@@ -571,6 +571,33 @@ export { dimensionGeometry, dimensionLength } from './geometry/dimension'
 export { insetPolygon, pointInPolygon, polygonArea, polygonCentroid } from './geometry/polygon'
 export { lineIntersection, pointOnSegment, segmentIntersection } from './geometry/segment'
 export { dot, leftNormal, leftPerp, shift, subtract, unit } from './geometry/vector'
+export {
+  ANGLE_TOLERANCE_RAD,
+  CAP_AREA_LIMIT_MM2,
+  CROSS_PRODUCT_PARALLEL_LIMIT,
+  DEFAULT_JUNCTION_TOLERANCE_MM,
+  DEGENERATE_SQUARED_LENGTH_MM2,
+  DERIVATION_LENGTH_TOLERANCE_MM,
+  DERIVED_COORDINATE_GRID_MM,
+  FILL_CORNER_MATCH_MM,
+  FRONT_DIRECTION_TIE,
+  GROUND_PICK_TIE_MM,
+  JOIN_DISTANCE_MM,
+  LENGTH_TOLERANCE_MM,
+  MIN_FACE_AREA_MM2,
+  OUTLINE_TOLERANCE_MM,
+  REACH_RAY_PARALLEL_LIMIT,
+  ROOM_RING_TOLERANCE_MM,
+  SMALLEST_IMPERIAL_DISPLAY_STEP_MM,
+  SMALLEST_METRIC_DISPLAY_STEP_MM,
+  SNAP_UNITS_PER_MM,
+  SUPPORTED_EXTENT_MM,
+  UNIT_NORMAL_DOT_LIMIT,
+  VOID_SAME_POINT_MM,
+  WALK_CONTACT_MM,
+  WALL_BOUNDARY_MATCH_MM,
+  WALL_FACE_DEGENERATE_LENGTH_MM,
+} from './geometry/tolerance'
 export type {
   WallFaceCorners,
   WallFaceGap,
@@ -581,7 +608,7 @@ export { wallFaceGeometry } from './geometry/wall-face'
 export type { OpeningGeometry } from './topology/openings'
 export { deriveOpeningGeometry, openingFootprint, MIN_OPENING_WIDTH_MM } from './topology/openings'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
-export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
+export { buildWallGraph } from './topology/wall-graph'
 export type { WallFootprint } from './topology/wall-footprint'
 export { MITER_LIMIT, wallFootprints } from './topology/wall-footprint'
 export type { JunctionFill } from './topology/junction-fill'

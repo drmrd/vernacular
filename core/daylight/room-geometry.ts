@@ -1,4 +1,5 @@
 import { pointInPolygon } from '../geometry/polygon'
+import { OUTLINE_TOLERANCE_MM } from '../geometry/tolerance'
 import type { Point } from '../model/types'
 import type { Vector3 } from '../scene/vector3'
 import type { CellCopy } from './cells-under-walls'
@@ -20,7 +21,7 @@ import {
   VERTICAL_OPENING_SKY_SHARE,
 } from './room-average'
 import type { DaylightInputLocation } from './room-validation'
-import { daylightInputError, OUTLINE_TOLERANCE_MM, validateDaylightRooms } from './room-validation'
+import { daylightInputError, validateDaylightRooms } from './room-validation'
 import type { UprightRectangle } from './upright-form-factor'
 import { doorwayToGlazingFormFactor } from './upright-form-factor'
 

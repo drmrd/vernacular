@@ -1,3 +1,4 @@
+import { REACH_RAY_PARALLEL_LIMIT } from '../geometry/tolerance'
 import { openingTypeHasFill } from '../registries/opening-kind'
 import {
   meetingRailTopMm,
@@ -15,9 +16,6 @@ import type { Vector3 } from './vector3'
 
 /** How far the walker can reach to use an opening, in millimeters (about arm plus lean). */
 export const DEFAULT_INTERACT_REACH_MM = 1500
-
-// Below this the ray runs parallel to the opening plane and never crosses it.
-const PARALLEL_EPSILON = 1e-9
 
 function subtract(a: Vector3, b: Vector3): Vector3 {
   return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }
@@ -149,7 +147,7 @@ interface FrameHit {
  */
 function hitOnFrame(ray: ReachRay, frame: OpeningFrame, extent: ReachExtent): FrameHit | null {
   const denom = dot(ray.direction, frame.normal)
-  if (Math.abs(denom) < PARALLEL_EPSILON) return null
+  if (Math.abs(denom) < REACH_RAY_PARALLEL_LIMIT) return null
   const t = dot(subtract(frame.center, ray.origin), frame.normal) / denom
   if (t <= 0 || t > extent.reachMm) return null
   const hit = add(ray.origin, scale(ray.direction, t))

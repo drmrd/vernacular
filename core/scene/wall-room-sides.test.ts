@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { ROOM_RING_TOLERANCE_MM } from '../geometry/tolerance'
 import { createFloor } from '../model/factories'
 import type { Floor, Point } from '../model/types'
 import { counterClockwiseWalls, pt, wall } from './opening-room-side-test-fixtures'
 import { deriveRoomNodesForFloor, type RoomSceneNode, type WallSceneNode } from './scene-graph'
-import {
-  ROOM_RING_TOLERANCE_MM,
-  roomSidesAt,
-  wallStretches,
-  type WallRoomSides,
-  type WallStretch,
-} from './wall-room-sides'
+import { roomSidesAt, wallStretches, type WallRoomSides, type WallStretch } from './wall-room-sides'
 import {
   centeredEllFloor,
   centeredPartitionFloor,

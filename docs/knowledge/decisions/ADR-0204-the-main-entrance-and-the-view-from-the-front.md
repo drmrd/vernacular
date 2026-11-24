@@ -11,6 +11,7 @@ related:
     decisions/ADR-0139-plan-to-world-orientation,
     decisions/ADR-0038-openings-doors-and-windows,
     decisions/ADR-0179-domain-rules-in-command-handlers,
+    decisions/ADR-0199-derived-tolerances-exact-junctions-and-lengths-that-read-back,
   ]
 sourceFiles:
   [
@@ -33,9 +34,10 @@ sourceFiles:
     docs/specs/2026-11-19-first-view-of-a-project.md,
     docs/plans/2026-11-19-first-view-of-a-project.md,
     docs/specs/2026-11-15-daylight-and-shadow.md,
+    core/geometry/tolerance.ts,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-23
 ---
 
 # ADR-0204: The main entrance and the view from the front
@@ -203,7 +205,8 @@ record.
 - The mark on the door is built. See "Extension, 2026-11-21: the mark".
 - The view from the front: the camera pose the first view opens on and its preset. That part also
   extends this record.
-- `DIRECTION_TIE_TOLERANCE` is meant to move to the kernel tolerance module of #687.
+- `DIRECTION_TIE_TOLERANCE` moved to the kernel tolerance module of #687. See "Update (2026-11-23):
+  the direction tie lives in the tolerance module".
 - No rule was checked against drawn plans that could test it. The five projects of the test corpus (`tests/fixtures/projects/corpus/`)
   have one floor and single swing doors each.
 
@@ -381,3 +384,11 @@ alone over the whole graph. It is not fixed here.
 - The mark survives a reload, because it is part of the document. One
   journey, `e2e/tests/journeys/mark-main-entrance.spec.ts`, marks a door, reloads, and finds the box
   still ticked.
+
+## Update (2026-11-23): the direction tie lives in the tolerance module
+
+The tie tolerance moved to `core/geometry/tolerance.ts` under the name `FRONT_DIRECTION_TIE`, still
+1e-9, and `core/scene/front-direction.ts` imports it from there. Where this record says
+`DIRECTION_TIE_TOLERANCE`, read `FRONT_DIRECTION_TIE`. The front direction picks the same door as
+before. [[ADR-0199-derived-tolerances-exact-junctions-and-lengths-that-read-back]] keeps the value
+as a named entry until the view-from-the-front work changes it.

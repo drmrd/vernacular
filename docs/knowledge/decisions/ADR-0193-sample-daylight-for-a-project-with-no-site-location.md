@@ -55,7 +55,7 @@ sourceFiles:
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
 status: current
-updated: 2026-11-22
+updated: 2026-11-23
 ---
 
 # ADR-0193: Sample daylight for a project with no site location
@@ -160,7 +160,7 @@ scene graph. It returns the outward normal of the wall that hosts the widest ext
   the room.
 - Of two doors of equal width, the one whose outward direction is nearer plan-down wins, judged by
   the dot product with plan-down. Two fronts whose dot products differ by no more than 1e-9
-  (`DIRECTION_TIE_TOLERANCE`) are equally near. The normals are computed from wall endpoints, so
+  (`FRONT_DIRECTION_TIE`) are equally near. The normals are computed from wall endpoints, so
   two walls that mirror each other can differ in the last bits. Without the tolerance, that
   rounding would pick the front where the plan means a tie.
 - Of two that are equally near, the opening id that sorts first as a string wins, so `opening:10`

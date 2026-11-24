@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Floor, Point } from '../model/types'
 import { distance } from '../geometry/point'
-import {
-  buildWallGraph,
-  DEFAULT_JUNCTION_TOLERANCE_MM,
-  type PlanarGraph,
-} from '../topology/wall-graph'
+import { DEFAULT_JUNCTION_TOLERANCE_MM } from '../geometry/tolerance'
+import { buildWallGraph, type PlanarGraph } from '../topology/wall-graph'
 import { exteriorWalls } from './exterior-walls'
 import { junctionFadeGroups, type JunctionFadeGroup } from './junction-fade'
 import type { OpeningSceneNode, RoomSceneNode, WallSceneNode } from './scene-graph'
