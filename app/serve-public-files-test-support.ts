@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { vi } from 'vitest'
 
-/** Test support: a stand-in for `fetch` that answers from the files under the `public` folder. */
+// Test support: a stand-in for `fetch` that answers from the files under the `public` folder.
 
 /** The folder that holds the files the application serves as they are. */
 export const PUBLIC_DIRECTORY = join(import.meta.dirname, '..', 'public')

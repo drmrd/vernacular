@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildFramedScene, refreshGroundPlane } from './framed-scene'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import { onlyGroundPlane } from './ground-plane-test-support'
 import { Texture } from '../../engine/testing'
 import { groundPlaneDrawsWith, isGroundPlane, markCacheHeld } from '../../engine'
 import type { SceneRoot, TextureAppearance } from '../../engine'
@@ -37,14 +38,6 @@ function planesOn(root: SceneRoot) {
   return root.children.filter((child) => isGroundPlane(child))
 }
 
-function onlyPlane(root: SceneRoot) {
-  const planes = planesOn(root)
-  const [plane] = planes
-  if (planes.length !== 1 || !plane)
-    throw new Error(`expected one ground plane, got ${planes.length}`)
-  return plane
-}
-
 describe('buildFramedScene ground appearance', () => {
   it('draws the ground with the appearance in its view options', () => {
     const appearance = appearanceOf(heldTexture().texture)
@@ -63,7 +56,7 @@ describe('refreshGroundPlane with a textured ground', () => {
 
     refreshGroundPlane(root, { gradeElevation: 0, appearance })
 
-    expect(groundPlaneDrawsWith(onlyPlane(root), appearance)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyGroundPlane(root), appearance)).toBe(true)
   })
 
   it('keeps a plane that already draws with the same ground', () => {
@@ -86,7 +79,7 @@ describe('refreshGroundPlane with a textured ground', () => {
 
     refreshGroundPlane(root, { gradeElevation: RAISED_GRADE_MM, appearance })
 
-    const plane = onlyPlane(root)
+    const plane = onlyGroundPlane(root)
     expect(plane).not.toBe(first)
     expect(plane.position.y).toBe(RAISED_GRADE_MM)
     expect(groundPlaneDrawsWith(plane, appearance)).toBe(true)
@@ -101,7 +94,7 @@ describe('refreshGroundPlane with a textured ground', () => {
 
     refreshGroundPlane(root, { gradeElevation: 0, appearance: smaller })
 
-    const plane = onlyPlane(root)
+    const plane = onlyGroundPlane(root)
     expect(plane).not.toBe(first)
     expect(groundPlaneDrawsWith(plane, smaller)).toBe(true)
   })
@@ -112,7 +105,7 @@ describe('refreshGroundPlane with a textured ground', () => {
 
     refreshGroundPlane(root, { gradeElevation: 0, appearance: undefined })
 
-    expect(groundPlaneDrawsWith(onlyPlane(root), undefined)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyGroundPlane(root), undefined)).toBe(true)
   })
 
   it('never frees a held texture while swapping planes', () => {
@@ -134,12 +127,12 @@ describe('a reconciled scene ground', () => {
     const paint: Record<string, SurfaceTreatment> = {}
 
     const first = reconciler.reconcile(raised, paint)
-    const built = onlyPlane(first.root)
+    const built = onlyGroundPlane(first.root)
     expect(built.position.y).toBe(RAISED_GRADE_MM)
     expect(groundPlaneDrawsWith(built, undefined)).toBe(true)
 
     const second = reconciler.reconcile(raised, paint)
     expect(second).toBe(first)
-    expect(onlyPlane(second.root).position.y).toBe(RAISED_GRADE_MM)
+    expect(onlyGroundPlane(second.root).position.y).toBe(RAISED_GRADE_MM)
   })
 })

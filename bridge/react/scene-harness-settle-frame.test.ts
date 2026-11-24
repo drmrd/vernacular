@@ -1,31 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { drawHarnessFrame, type HarnessRenderer } from './scene-harness-ready-frame'
-
-interface StandInRenderer extends HarnessRenderer {
-  runFrame(): void
-}
-
-// The loop runner resets the counts at the start of each frame, then calls the loop, the way
-// three's renderer does; a draw sets the counts of the frame it runs in.
-function createStandInRenderer(): StandInRenderer {
-  let loop: (() => void) | null = null
-  const info = { render: { frameCalls: 0, drawCalls: 0 } }
-  return {
-    info,
-    setAnimationLoop(callback) {
-      loop = callback
-    },
-    getAnimationLoop() {
-      return loop
-    },
-    runFrame() {
-      info.render.frameCalls = 0
-      info.render.drawCalls = 0
-      loop?.()
-    },
-  }
-}
+import { drawHarnessFrame } from './scene-harness-ready-frame'
+import { createStandInRenderer, type StandInRenderer } from './scene-harness-view-test-support'
 
 interface FrameCounts {
   frameCalls: number

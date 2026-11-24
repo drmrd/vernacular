@@ -1,6 +1,32 @@
 import { act, screen } from '@testing-library/react'
 import { Children, createElement, Fragment, isValidElement, useEffect, type ReactNode } from 'react'
+import type { HarnessRenderer } from './scene-harness-ready-frame'
 import type { TextureState } from './texture-cache'
+
+export interface StandInRenderer extends HarnessRenderer {
+  runFrame(): void
+}
+
+// The loop runner resets the counts at the start of each frame, then calls the loop, the way
+// three's renderer does; a draw sets the counts of the frame it runs in.
+export function createStandInRenderer(): StandInRenderer {
+  let loop: (() => void) | null = null
+  const info = { render: { frameCalls: 0, drawCalls: 0 } }
+  return {
+    info,
+    setAnimationLoop(callback) {
+      loop = callback
+    },
+    getAnimationLoop() {
+      return loop
+    },
+    runFrame() {
+      info.render.frameCalls = 0
+      info.render.drawCalls = 0
+      loop?.()
+    },
+  }
+}
 
 // The harness's collaborators for the view tests: the 3D library's state, a renderer with its
 // own animation loop, the lighting readiness the test settles, and a count of drawn frames. The
@@ -13,24 +39,13 @@ const CANVAS_HEIGHT = 240
 const FRAME_RENDER_CALLS = 5
 const FRAME_DRAW_CALLS = 127
 
-const info = { render: { frameCalls: 0, drawCalls: 0 } }
-let loop: (() => void) | null = null
-const flatLawn: TextureState = { status: 'failed' }
-const renderer = {
-  info,
-  setAnimationLoop: (callback: (() => void) | null) => {
-    loop = callback
-  },
-  getAnimationLoop: () => loop,
-}
+const renderer = createStandInRenderer()
+// The default ground state, so a test does not wait on a load.
+const failedGround: TextureState = { status: 'failed' }
 
 export const harness = {
-  info,
-  runFrame: () => {
-    info.render.frameCalls = 0
-    info.render.drawCalls = 0
-    loop?.()
-  },
+  info: renderer.info,
+  runFrame: () => renderer.runFrame(),
   state: {
     gl: renderer,
     scene: {},
@@ -46,16 +61,15 @@ export const harness = {
   oneTimeRenderCalls: 0,
   drawnRoot: undefined as object | undefined,
   settleLighting: undefined as (() => void) | undefined,
-  flatLawn,
-  groundTexture: flatLawn as TextureState,
+  groundTexture: failedGround as TextureState,
 }
 
 export function resetHarness(): void {
   harness.draws = 0
   harness.oneTimeRenderCalls = 0
   harness.settleLighting = undefined
-  harness.groundTexture = flatLawn
-  loop = null
+  harness.groundTexture = failedGround
+  renderer.setAnimationLoop(null)
 }
 
 export function groundTextureModule() {

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import { onlyGroundPlane } from './ground-plane-test-support'
 import { Mesh, Texture, findByEntityId } from '../../engine/testing'
-import { groundPlaneDrawsWith, isGroundPlane, markCacheHeld } from '../../engine'
-import type { SceneRoot, TextureAppearance } from '../../engine'
+import { groundPlaneDrawsWith, markCacheHeld } from '../../engine'
+import type { TextureAppearance } from '../../engine'
 import type { SceneGraph, SceneNode, SurfaceTreatment } from '../../core'
 
 const TILE_MM = 2000
@@ -44,14 +45,6 @@ function heldAppearance(): { appearance: TextureAppearance; dispose: ReturnType<
   return { appearance: { texture, tileSize: { width: TILE_MM, height: TILE_MM } }, dispose }
 }
 
-function onlyPlane(root: SceneRoot) {
-  const planes = root.children.filter((child) => isGroundPlane(child))
-  const [plane] = planes
-  if (planes.length !== 1 || !plane)
-    throw new Error(`expected one ground plane, got ${planes.length}`)
-  return plane
-}
-
 const emptyGraph = (): SceneGraph => ({
   nodes: [],
   walls: [],
@@ -79,7 +72,7 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
 
     expect(second).toBe(first)
     expect(findByEntityId(second.root, 'wall:g1')).toBe(wallGroup)
-    expect(groundPlaneDrawsWith(onlyPlane(second.root), appearance)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyGroundPlane(second.root), appearance)).toBe(true)
   })
 
   it('seats a rebuilt floor set on it', () => {
@@ -91,7 +84,7 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
 
     const moved = reconciler.reconcile(graphWithWall(floorNode(), MOVED_WALL_LENGTH_MM), paint)
 
-    expect(groundPlaneDrawsWith(onlyPlane(moved.root), appearance)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyGroundPlane(moved.root), appearance)).toBe(true)
   })
 
   it('gives the flat lawn back when it is taken away, and never frees a held texture', () => {
@@ -107,7 +100,7 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
     const flat = reconciler.reconcile(moved, paint)
     reconciler.releaseRetired(flat)
 
-    expect(groundPlaneDrawsWith(onlyPlane(flat.root), undefined)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyGroundPlane(flat.root), undefined)).toBe(true)
     expect(dispose).not.toHaveBeenCalled()
   })
 
@@ -119,7 +112,7 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
     reconciler.reconcile(graph, paint)
     reconciler.setGroundAppearance(appearance)
     const scene = reconciler.reconcile(graph, paint)
-    const plane = onlyPlane(scene.root)
+    const plane = onlyGroundPlane(scene.root)
     if (!(plane instanceof Mesh) || Array.isArray(plane.material))
       throw new Error('expected a ground plane mesh with one material')
     const planeMaterialDispose = vi.spyOn(plane.material, 'dispose')
@@ -141,7 +134,7 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
     const second = reconciler.reconcile(graph, paint)
 
     expect(second).toBe(first)
-    expect(groundPlaneDrawsWith(onlyPlane(second.root), appearance)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyGroundPlane(second.root), appearance)).toBe(true)
   })
 
   it('seats a new scene of an empty graph on it', () => {
@@ -151,6 +144,6 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
 
     const scene = reconciler.reconcile(emptyGraph(), noPaint())
 
-    expect(groundPlaneDrawsWith(onlyPlane(scene.root), appearance)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyGroundPlane(scene.root), appearance)).toBe(true)
   })
 })

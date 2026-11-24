@@ -1,8 +1,9 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { groundPlaneDrawsWith, isGroundPlane, markCacheHeld } from '../../engine'
+import { groundPlaneDrawsWith, isGroundPlane } from '../../engine'
 import type { SceneRoot } from '../../engine'
 import { Texture } from '../../engine/testing'
+import { heldGrassAppearance } from './ground-plane-test-support'
 import type { TextureState } from './texture-cache'
 import { SceneHarnessView } from './scene-harness-view'
 import {
@@ -35,8 +36,6 @@ vi.mock('../../engine', async (importOriginal) =>
   ),
 )
 
-const TILE_SIZE_MM = 2000
-
 function drawnGroundPlane() {
   const root = harness.drawnRoot as SceneRoot
   const [plane] = root.children.filter((child) => isGroundPlane(child))
@@ -49,12 +48,7 @@ function groundTextureStatus(): string | null {
 }
 
 function readyGround(): TextureState {
-  const texture = new Texture()
-  markCacheHeld(texture)
-  return {
-    status: 'ready',
-    appearance: { texture, tileSize: { width: TILE_SIZE_MM, height: TILE_SIZE_MM } },
-  }
+  return { status: 'ready', appearance: heldGrassAppearance(new Texture()) }
 }
 
 beforeEach(resetHarness)
