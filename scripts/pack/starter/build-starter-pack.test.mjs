@@ -15,8 +15,8 @@ const OLD_PACK_DIR = resolve('public/packs/vernacular-starter-1.0.0')
 const OLD_CHAIR_HASH = '8a8a0cafbecb2446278c8b61e275c1ac78373a7ccd59ddd5ac7684bf1388341e'
 const LICENSE_ID = 'CC-BY-4.0'
 const ATTRIBUTION = 'The Vernacular Contributors'
-const GRASS_SIDE = 512
-const GRASS_TILE_MM = 2000
+const GRASS_SIDE_PIXELS = 512
+const GRASS_TILE_SIDE_MM = 2000
 const LICENSE_HEADING = 'Attribution 4.0 International'
 const LICENSE_FIRST_SECTION = 'Section 1 -- Definitions.'
 const GENERATOR_SCRIPT = 'scripts/pack/starter/build-starter-pack.mjs'
@@ -142,8 +142,8 @@ describe('the starter pack 1.1.0 build', () => {
 
     expect(grass).toMatchObject({
       mediaType: 'image/png',
-      image: { width: GRASS_SIDE, height: GRASS_SIDE },
-      tileSize: { width: GRASS_TILE_MM, height: GRASS_TILE_MM },
+      image: { width: GRASS_SIDE_PIXELS, height: GRASS_SIDE_PIXELS },
+      tileSize: { width: GRASS_TILE_SIDE_MM, height: GRASS_TILE_SIDE_MM },
       colorSpace: 'srgb',
       categories: ['ground-cover'],
       license: LICENSE_ID,

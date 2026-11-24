@@ -8,7 +8,7 @@ import {
 } from '../../../core/environment/ground-surface.ts'
 import { generateGrassTile } from './grass-tile.mjs'
 
-const TILE_SIZE = 512
+const GRASS_SIDE_PIXELS = 512
 const CHANNELS = ['r', 'g', 'b']
 const MAX_CODE = 255
 const MEAN_TOLERANCE = 0.002
@@ -51,11 +51,11 @@ function meanOf(values) {
 
 function worstBlockDeviation(luminances) {
   const tileMean = meanOf(luminances)
-  const blocksPerAxis = TILE_SIZE / BLOCK_SIZE
+  const blocksPerAxis = GRASS_SIDE_PIXELS / BLOCK_SIZE
   const sums = new Array(blocksPerAxis * blocksPerAxis).fill(0)
   luminances.forEach((value, index) => {
-    const column = index % TILE_SIZE
-    const row = Math.floor(index / TILE_SIZE)
+    const column = index % GRASS_SIDE_PIXELS
+    const row = Math.floor(index / GRASS_SIDE_PIXELS)
     const block = Math.floor(row / BLOCK_SIZE) * blocksPerAxis + Math.floor(column / BLOCK_SIZE)
     sums[block] += value
   })
@@ -74,13 +74,14 @@ function worstBlockDeviation(luminances) {
 function wrapAndInnerSteps(luminances, columnOffset, rowOffset) {
   const wrap = { sum: 0, count: 0 }
   const inner = { sum: 0, count: 0 }
-  for (let row = 0; row < TILE_SIZE; row += 1) {
-    for (let column = 0; column < TILE_SIZE; column += 1) {
+  for (let row = 0; row < GRASS_SIDE_PIXELS; row += 1) {
+    for (let column = 0; column < GRASS_SIDE_PIXELS; column += 1) {
       const nextColumn = column + columnOffset
       const nextRow = row + rowOffset
-      const wraps = nextColumn >= TILE_SIZE || nextRow >= TILE_SIZE
-      const neighbor = (nextRow % TILE_SIZE) * TILE_SIZE + (nextColumn % TILE_SIZE)
-      const step = Math.abs(luminances[row * TILE_SIZE + column] - luminances[neighbor])
+      const wraps = nextColumn >= GRASS_SIDE_PIXELS || nextRow >= GRASS_SIDE_PIXELS
+      const neighbor =
+        (nextRow % GRASS_SIDE_PIXELS) * GRASS_SIDE_PIXELS + (nextColumn % GRASS_SIDE_PIXELS)
+      const step = Math.abs(luminances[row * GRASS_SIDE_PIXELS + column] - luminances[neighbor])
       const total = wraps ? wrap : inner
       total.sum += step
       total.count += 1
@@ -90,11 +91,11 @@ function wrapAndInnerSteps(luminances, columnOffset, rowOffset) {
 }
 
 function firstMipSpreadRatio(luminances) {
-  const cellsPerAxis = TILE_SIZE / MIP_CELL_SIZE
+  const cellsPerAxis = GRASS_SIDE_PIXELS / MIP_CELL_SIZE
   const sums = new Array(cellsPerAxis * cellsPerAxis).fill(0)
   luminances.forEach((value, index) => {
-    const column = Math.floor((index % TILE_SIZE) / MIP_CELL_SIZE)
-    const row = Math.floor(Math.floor(index / TILE_SIZE) / MIP_CELL_SIZE)
+    const column = Math.floor((index % GRASS_SIDE_PIXELS) / MIP_CELL_SIZE)
+    const row = Math.floor(Math.floor(index / GRASS_SIDE_PIXELS) / MIP_CELL_SIZE)
     sums[row * cellsPerAxis + column] += value
   })
   const cells = sums.map((sum) => sum / (MIP_CELL_SIZE * MIP_CELL_SIZE))
@@ -118,9 +119,9 @@ describe('the generated grass tile', () => {
 
   it('has 512 by 512 RGB texels', () => {
     const tile = generateGrassTile()
-    expect(tile.width).toBe(TILE_SIZE)
-    expect(tile.height).toBe(TILE_SIZE)
-    expect(tile.pixels).toHaveLength(TILE_SIZE * TILE_SIZE * CHANNELS.length)
+    expect(tile.width).toBe(GRASS_SIDE_PIXELS)
+    expect(tile.height).toBe(GRASS_SIDE_PIXELS)
+    expect(tile.pixels).toHaveLength(GRASS_SIDE_PIXELS * GRASS_SIDE_PIXELS * CHANNELS.length)
   })
 
   it('has the lawn color as its mean in linear light', () => {
