@@ -1,42 +1,19 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { renderHook, cleanup } from '@testing-library/react'
 
-import type { SceneGraph } from '../../core'
 import { groundPlaneDrawsWith } from '../../engine'
 import type { SceneRoot, TextureAppearance } from '../../engine'
 import { Texture, findByEntityId } from '../../engine/testing'
 import { buildFramedScene } from './framed-scene'
 import { heldGrassAppearance, onlyGroundPlane } from './ground-plane-test-support'
 import { useHarnessGround } from './harness-ground'
+import { groundFloorNode, oneWallGraph } from './one-wall-graph-test-support'
 import type { TextureState, TextureStatus } from './texture-cache'
 
 afterEach(cleanup)
 
 const GRADE_MM = 0
-const WALL_LENGTH_MM = 2000
-const WALL_THICKNESS_MM = 120
-const WALL_HEIGHT_MM = 2400
-
-const graph: SceneGraph = {
-  nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
-  walls: [
-    {
-      id: 'wall:g1',
-      kind: 'wall',
-      floorId: 'g',
-      start: { x: 0, y: 0 },
-      end: { x: WALL_LENGTH_MM, y: 0 },
-      thickness: WALL_THICKNESS_MM,
-      height: WALL_HEIGHT_MM,
-    },
-  ],
-  rooms: [],
-  underlays: [],
-  openings: [],
-  dimensions: [],
-  stairs: [],
-  furniture: [],
-}
+const graph = oneWallGraph(groundFloorNode(), { id: 'wall:g1' })
 
 interface HarnessRender {
   status: TextureStatus

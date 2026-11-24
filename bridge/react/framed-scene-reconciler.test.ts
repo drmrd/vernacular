@@ -9,45 +9,12 @@ import type { Point, SceneGraph, SceneNode, SurfaceTreatment } from '../../core'
 import { isGroundPlane, type SceneRoot } from '../../engine'
 import { collectEntityIds, findByEntityId } from '../../engine/testing'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import { groundFloorNode, oneWallGraph } from './one-wall-graph-test-support'
 
 const WALL_LENGTH_MM = 2000
 const WALL_THICKNESS_MM = 120
 const WALL_HEIGHT_MM = 2400
 const UPPER_FLOOR_ELEVATION_MM = 2700
-
-// A one-floor, one-wall graph wrapping the given floor node, mimicking the
-// active-floor-scoped graph the preview feeds the reconciler. Passing the same
-// floorNode object models an unchanged floor; a fresh object models an edit.
-function floorGraph(floorNode: SceneNode): SceneGraph {
-  const floorId = floorNode.id.slice('floor:'.length)
-  return {
-    nodes: [floorNode],
-    walls: [
-      {
-        id: `wall:${floorId}1`,
-        kind: 'wall',
-        floorId,
-        start: { x: 0, y: 0 },
-        end: { x: WALL_LENGTH_MM, y: 0 },
-        thickness: WALL_THICKNESS_MM,
-        height: WALL_HEIGHT_MM,
-      },
-    ],
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
-}
-
-const groundFloorNode = (): SceneNode => ({
-  id: 'floor:g',
-  kind: 'floor',
-  name: 'Ground',
-  elevation: 0,
-})
 
 const emptyPaint = (): Record<string, SurfaceTreatment> => ({})
 
@@ -57,9 +24,9 @@ describe('createFramedSceneReconciler', () => {
     const node = groundFloorNode()
     const paint = emptyPaint()
 
-    const first = reconciler.reconcile(floorGraph(node), paint)
+    const first = reconciler.reconcile(oneWallGraph(node), paint)
     // A later render passes a fresh scoped-graph container with the same floor node.
-    const second = reconciler.reconcile(floorGraph(node), paint)
+    const second = reconciler.reconcile(oneWallGraph(node), paint)
 
     expect(second).toBe(first)
   })
@@ -68,9 +35,9 @@ describe('createFramedSceneReconciler', () => {
     const reconciler = createFramedSceneReconciler()
     const paint = emptyPaint()
 
-    const first = reconciler.reconcile(floorGraph(groundFloorNode()), paint)
+    const first = reconciler.reconcile(oneWallGraph(groundFloorNode()), paint)
     // An edit replaces the floor with a new object carrying the same id.
-    const second = reconciler.reconcile(floorGraph(groundFloorNode()), paint)
+    const second = reconciler.reconcile(oneWallGraph(groundFloorNode()), paint)
 
     expect(second).not.toBe(first)
   })
@@ -79,9 +46,9 @@ describe('createFramedSceneReconciler', () => {
     const reconciler = createFramedSceneReconciler()
     const node = groundFloorNode()
 
-    const first = reconciler.reconcile(floorGraph(node), emptyPaint())
+    const first = reconciler.reconcile(oneWallGraph(node), emptyPaint())
     // Same unchanged floor node, but a new paint set: materials may differ, so rebuild.
-    const second = reconciler.reconcile(floorGraph(node), emptyPaint())
+    const second = reconciler.reconcile(oneWallGraph(node), emptyPaint())
 
     expect(second).not.toBe(first)
   })
@@ -97,10 +64,10 @@ describe('createFramedSceneReconciler', () => {
       elevation: UPPER_FLOOR_ELEVATION_MM,
     }
 
-    const groundFirst = reconciler.reconcile(floorGraph(ground), paint)
-    const upperBuild = reconciler.reconcile(floorGraph(upper), paint)
+    const groundFirst = reconciler.reconcile(oneWallGraph(ground), paint)
+    const upperBuild = reconciler.reconcile(oneWallGraph(upper), paint)
     // Switch back to the unchanged ground floor (same node reference).
-    const groundAgain = reconciler.reconcile(floorGraph(ground), paint)
+    const groundAgain = reconciler.reconcile(oneWallGraph(ground), paint)
 
     expect(upperBuild).not.toBe(groundFirst)
     expect(groundAgain).toBe(groundFirst)
@@ -252,7 +219,7 @@ describe('createFramedSceneReconciler whole building', () => {
 
   it('renders a single-floor graph as exactly one floor group at its elevation (locks #206)', () => {
     const framed = createFramedSceneReconciler().reconcile(
-      floorGraph(groundFloorNode()),
+      oneWallGraph(groundFloorNode()),
       emptyPaint(),
     )
 
@@ -390,7 +357,7 @@ function groundPlanesOf(root: SceneRoot): SceneRoot['children'] {
 describe('createFramedSceneReconciler ground plane', () => {
   it('seats the assembled root on a ground plane at the graph grade', () => {
     const reconciler = createFramedSceneReconciler()
-    const graph: SceneGraph = { ...floorGraph(groundFloorNode()), gradeElevation: BELOW_GRADE_MM }
+    const graph: SceneGraph = { ...oneWallGraph(groundFloorNode()), gradeElevation: BELOW_GRADE_MM }
 
     const framed = reconciler.reconcile(graph, emptyPaint())
 
@@ -407,7 +374,7 @@ describe('createFramedSceneReconciler ground plane', () => {
     const paint = emptyPaint()
 
     const first = reconciler.reconcile(
-      { ...floorGraph(node), gradeElevation: BELOW_GRADE_MM },
+      { ...oneWallGraph(node), gradeElevation: BELOW_GRADE_MM },
       paint,
     )
     expect(groundPlanesOf(first.root)).toHaveLength(1)
@@ -418,7 +385,7 @@ describe('createFramedSceneReconciler ground plane', () => {
     expect(wallFirstGroup).not.toBeNull()
 
     const second = reconciler.reconcile(
-      { ...floorGraph(node), gradeElevation: ABOVE_GRADE_MM },
+      { ...oneWallGraph(node), gradeElevation: ABOVE_GRADE_MM },
       paint,
     )
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { buildFramedScene, refreshGroundPlane } from './framed-scene'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import { onlyGroundPlane } from './ground-plane-test-support'
+import { groundFloorGraph } from './one-wall-graph-test-support'
 import { Texture } from '../../engine/testing'
 import { groundPlaneDrawsWith, isGroundPlane, markCacheHeld } from '../../engine'
 import type { SceneRoot, TextureAppearance } from '../../engine'
@@ -11,16 +12,7 @@ const TILE_MM = 2000
 const SMALLER_TILE_MM = 1000
 const RAISED_GRADE_MM = 300
 
-const graph: SceneGraph = {
-  nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
-  walls: [],
-  rooms: [],
-  underlays: [],
-  openings: [],
-  dimensions: [],
-  stairs: [],
-  furniture: [],
-}
+const graph = groundFloorGraph()
 
 function heldTexture(): { texture: Texture; dispose: ReturnType<typeof vi.fn> } {
   const texture = new Texture()
@@ -36,6 +28,14 @@ function appearanceOf(texture: Texture, tile = TILE_MM): TextureAppearance {
 
 function planesOn(root: SceneRoot) {
   return root.children.filter((child) => isGroundPlane(child))
+}
+
+function sceneWithTexturedGround() {
+  const { root } = buildFramedScene(graph)
+  const appearance = appearanceOf(heldTexture().texture)
+  refreshGroundPlane(root, { gradeElevation: 0, appearance })
+  const [first] = planesOn(root)
+  return { root, appearance, first }
 }
 
 describe('buildFramedScene ground appearance', () => {
@@ -60,10 +60,7 @@ describe('refreshGroundPlane with a textured ground', () => {
   })
 
   it('keeps a plane that already draws with the same ground', () => {
-    const { root } = buildFramedScene(graph)
-    const appearance = appearanceOf(heldTexture().texture)
-    refreshGroundPlane(root, { gradeElevation: 0, appearance })
-    const [first] = planesOn(root)
+    const { root, appearance, first } = sceneWithTexturedGround()
 
     refreshGroundPlane(root, { gradeElevation: 0, appearance })
 
@@ -72,10 +69,7 @@ describe('refreshGroundPlane with a textured ground', () => {
   })
 
   it('seats a new textured plane at a changed grade', () => {
-    const { root } = buildFramedScene(graph)
-    const appearance = appearanceOf(heldTexture().texture)
-    refreshGroundPlane(root, { gradeElevation: 0, appearance })
-    const [first] = planesOn(root)
+    const { root, appearance, first } = sceneWithTexturedGround()
 
     refreshGroundPlane(root, { gradeElevation: RAISED_GRADE_MM, appearance })
 
