@@ -207,6 +207,11 @@ export function findWallEndReads(program: ts.Program, rootDir: string): WallEndR
   })
 }
 
+/** A read as one line, `file:line form`, for assertions and failure messages. */
+export function describeWallEndRead(read: WallEndRead): string {
+  return `${read.file}:${read.line} ${read.form}`
+}
+
 /** The sorted, unique files of a set of reads. */
 export function wallEndReadFiles(reads: readonly WallEndRead[]): string[] {
   return [...new Set(reads.map((read) => read.file))].sort()
