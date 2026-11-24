@@ -29,15 +29,17 @@ interface HarnessProps {
 
 function recordHarnessGround(appearance: TextureAppearance, first: HarnessProps) {
   const renders: HarnessRender[] = []
+  const planeHeights: number[] = []
   const hook = renderHook(
     ({ root, texture, grade = GRADE_MM }: HarnessProps) => {
       const status = useHarnessGround(root, grade, texture)
       renders.push({ status, drawsGrass: groundPlaneDrawsWith(onlyGroundPlane(root), appearance) })
+      planeHeights.push(onlyGroundPlane(root).position.y)
       return status
     },
     { initialProps: first, reactStrictMode: true },
   )
-  return { ...hook, renders }
+  return { ...hook, renders, planeHeights }
 }
 
 function readyRenders(renders: HarnessRender[]) {
@@ -132,15 +134,22 @@ describe('the harness ground reports loading until the grass is on the plane, th
     const appearance = heldGrassAppearance(new Texture())
     const ready: TextureState = { status: 'ready', appearance }
     const { root } = buildFramedScene(graph)
-    const { renders, rerender, result } = recordHarnessGround(appearance, { root, texture: ready })
+    const { renders, planeHeights, rerender, result } = recordHarnessGround(appearance, {
+      root,
+      texture: ready,
+    })
     expect(result.current).toBe('ready')
     const change = renders.length
 
     rerender({ root, texture: ready, grade: RAISED_GRADE_MM })
 
     const sinceChange = renders.slice(change)
+    const heightsSinceChange = planeHeights.slice(change)
     expect(sinceChange[0]?.status).toBe('loading')
     expect(sinceChange.at(-1)?.status).toBe('ready')
+    sinceChange.forEach((render, index) => {
+      if (render.status === 'ready') expect(heightsSinceChange[index]).toBe(RAISED_GRADE_MM)
+    })
     expect(result.current).toBe('ready')
     expect(onlyGroundPlane(root).position.y).toBe(RAISED_GRADE_MM)
   })
