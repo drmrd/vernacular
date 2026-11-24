@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   linePath,
   normalAlong,
+  offsetPath,
   pathBounds,
   pathEnd,
   pathLength,
@@ -125,5 +126,21 @@ describe('subPath', () => {
     expect(part.kind).toBe('line')
     expectPointNear(pathStart(part), { x: 200, y: 0 })
     expectPointNear(pathEnd(part), { x: 700, y: 0 })
+  })
+})
+
+describe('offsetPath', () => {
+  it("offsets the path to the normal's side", () => {
+    const shifted = offsetPath(HORIZONTAL, 100)
+
+    expectPointNear(pathStart(shifted), { x: 0, y: 100 })
+    expectPointNear(pathEnd(shifted), { x: 1000, y: 100 })
+  })
+
+  it('offsets the path to the other side for a negative distance', () => {
+    const shifted = offsetPath(HORIZONTAL, -100)
+
+    expectPointNear(pathStart(shifted), { x: 0, y: -100 })
+    expectPointNear(pathEnd(shifted), { x: 1000, y: -100 })
   })
 })
