@@ -34,8 +34,8 @@ export interface LiveViewReadinessNotes {
  */
 export function useLiveViewReadiness(groundTexture: TextureStatus): LiveViewReadinessNotes {
   const store = useSceneSessionStoreOrLocal()
-  // Whether a build is in flight lives in a ref rather than in the session: nothing renders
-  // from it, it only decides whether the next drawn frame counts.
+  // Whether a pipeline build or a ground load is in flight lives in refs rather than in the
+  // session: nothing renders from them, they only decide whether the next drawn frame counts.
   const buildInFlightRef = useRef(false)
   const groundInFlightRef = useRef(false)
   useLayoutEffect(() => {
