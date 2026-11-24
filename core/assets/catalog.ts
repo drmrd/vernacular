@@ -5,7 +5,7 @@
 // path it names. A reader ignores fields it does not know.
 
 import { isRecord } from './is-record.ts'
-import { isSemanticVersion } from './semantic-version.ts'
+import { isSemanticVersion, SEMANTIC_VERSION_RULE } from './semantic-version.ts'
 import { isSha256Hex } from './sha256-hex.ts'
 
 export const CATALOG_VERSION = 1
@@ -30,6 +30,10 @@ export type CatalogValidation =
   | { outcome: 'newer-version' }
   | { outcome: 'invalid'; errors: string[] }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && !Array.isArray(value)
+}
+
 function isNonNegativeInteger(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) >= 0
 }
@@ -53,7 +57,7 @@ function failedMessages(checks: Check[]): string[] {
 }
 
 function manifestProblems(manifest: unknown, path: string): string[] {
-  if (!isRecord(manifest)) return [`${path} must be an object`]
+  if (!isPlainObject(manifest)) return [`${path} must be an object`]
   return failedMessages([
     [`${path}.sha256 must be 64 lower-case hex characters`, isSha256Hex(manifest['sha256'])],
     [`${path}.byteLength must be a positive integer`, isPositiveInteger(manifest['byteLength'])],
@@ -61,19 +65,17 @@ function manifestProblems(manifest: unknown, path: string): string[] {
 }
 
 function entryProblems(entry: unknown, path: string): string[] {
-  if (!isRecord(entry)) return [`${path} must be an object`]
+  if (!isPlainObject(entry)) return [`${path} must be an object`]
   return [
     ...failedMessages([
       [`${path}.packId must be a non-empty string`, isNonEmptyString(entry['packId'])],
-      [
-        `${path}.version must be a Semantic Version (for example 1.0.0)`,
-        isSemanticVersion(entry['version']),
-      ],
+      [`${path}.version must be ${SEMANTIC_VERSION_RULE}`, isSemanticVersion(entry['version'])],
       [
         `${path}.formatVersion must be a positive integer`,
         isPositiveInteger(entry['formatVersion']),
       ],
     ]),
+    // The entry checks are split around the manifest checks to keep errors in field order.
     ...manifestProblems(entry['manifest'], `${path}.manifest`),
     ...failedMessages([
       [
@@ -89,7 +91,7 @@ function entryProblems(entry: unknown, path: string): string[] {
 }
 
 export function validateCatalog(value: unknown): CatalogValidation {
-  if (!isRecord(value)) return { outcome: 'invalid', errors: ['catalog must be an object'] }
+  if (!isPlainObject(value)) return { outcome: 'invalid', errors: ['catalog must be an object'] }
   const version = value['catalogVersion']
   if (isPositiveInteger(version) && version > CATALOG_VERSION) return { outcome: 'newer-version' }
   const packs = value['packs']

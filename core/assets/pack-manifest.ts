@@ -10,7 +10,7 @@ import { declaresMediaTypes, MODEL_MEDIA_TYPES, TEXTURE_MEDIA_TYPES } from './as
 import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
-import { isSemanticVersion } from './semantic-version.ts'
+import { isSemanticVersion, SEMANTIC_VERSION_RULE } from './semantic-version.ts'
 import { isSha256Hex } from './sha256-hex.ts'
 import { validateTextureFields } from './texture-asset-rules.ts'
 
@@ -232,7 +232,7 @@ function validatePackFields(source: Record<string, unknown>, errors: string[]): 
     validateRequiredString(source, { key: 'version' }, errors) &&
     !isSemanticVersion(source['version'])
   ) {
-    errors.push('version must be valid SemVer (for example 1.0.0)')
+    errors.push(`version must be ${SEMANTIC_VERSION_RULE}`)
   }
   validateRequiredStringArray(source, { key: 'eras' }, errors)
   validateRequiredStringArray(source, { key: 'categories' }, errors)
