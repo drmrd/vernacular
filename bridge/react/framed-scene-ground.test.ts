@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildFramedScene, refreshGroundPlane } from './framed-scene'
+import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import { Texture } from '../../engine/testing'
 import { groundPlaneDrawsWith, isGroundPlane, markCacheHeld } from '../../engine'
 import type { SceneRoot, TextureAppearance } from '../../engine'
-import type { SceneGraph } from '../../core'
+import type { SceneGraph, SurfaceTreatment } from '../../core'
 
 const TILE_MM = 2000
 const SMALLER_TILE_MM = 1000
@@ -36,6 +37,14 @@ function planesOn(root: SceneRoot) {
   return root.children.filter((child) => isGroundPlane(child))
 }
 
+function onlyPlane(root: SceneRoot) {
+  const planes = planesOn(root)
+  const [plane] = planes
+  if (planes.length !== 1 || !plane)
+    throw new Error(`expected one ground plane, got ${planes.length}`)
+  return plane
+}
+
 describe('buildFramedScene ground appearance', () => {
   it('draws the ground with the appearance in its view options', () => {
     const appearance = appearanceOf(heldTexture().texture)
@@ -54,9 +63,7 @@ describe('refreshGroundPlane with a textured ground', () => {
 
     refreshGroundPlane(root, { gradeElevation: 0, appearance })
 
-    const planes = planesOn(root)
-    expect(planes).toHaveLength(1)
-    expect(groundPlaneDrawsWith(planes[0], appearance)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyPlane(root), appearance)).toBe(true)
   })
 
   it('keeps a plane that already draws with the same ground', () => {
@@ -79,11 +86,10 @@ describe('refreshGroundPlane with a textured ground', () => {
 
     refreshGroundPlane(root, { gradeElevation: RAISED_GRADE_MM, appearance })
 
-    const planes = planesOn(root)
-    expect(planes).toHaveLength(1)
-    expect(planes[0]).not.toBe(first)
-    expect(planes[0]?.position.y).toBe(RAISED_GRADE_MM)
-    expect(groundPlaneDrawsWith(planes[0], appearance)).toBe(true)
+    const plane = onlyPlane(root)
+    expect(plane).not.toBe(first)
+    expect(plane.position.y).toBe(RAISED_GRADE_MM)
+    expect(groundPlaneDrawsWith(plane, appearance)).toBe(true)
   })
 
   it('replaces the plane when only the tile size changes', () => {
@@ -95,10 +101,9 @@ describe('refreshGroundPlane with a textured ground', () => {
 
     refreshGroundPlane(root, { gradeElevation: 0, appearance: smaller })
 
-    const planes = planesOn(root)
-    expect(planes).toHaveLength(1)
-    expect(planes[0]).not.toBe(first)
-    expect(groundPlaneDrawsWith(planes[0], smaller)).toBe(true)
+    const plane = onlyPlane(root)
+    expect(plane).not.toBe(first)
+    expect(groundPlaneDrawsWith(plane, smaller)).toBe(true)
   })
 
   it('gives a flat plane again when the appearance is taken away', () => {
@@ -107,9 +112,7 @@ describe('refreshGroundPlane with a textured ground', () => {
 
     refreshGroundPlane(root, { gradeElevation: 0, appearance: undefined })
 
-    const planes = planesOn(root)
-    expect(planes).toHaveLength(1)
-    expect(groundPlaneDrawsWith(planes[0], undefined)).toBe(true)
+    expect(groundPlaneDrawsWith(onlyPlane(root), undefined)).toBe(true)
   })
 
   it('never frees a held texture while swapping planes', () => {
@@ -121,5 +124,22 @@ describe('refreshGroundPlane with a textured ground', () => {
     refreshGroundPlane(root, { gradeElevation: 0, appearance: undefined })
 
     expect(dispose).not.toHaveBeenCalled()
+  })
+})
+
+describe('a reconciled scene ground', () => {
+  it('sits flat at the grade after a rebuild and again on a cache hit', () => {
+    const reconciler = createFramedSceneReconciler()
+    const raised: SceneGraph = { ...graph, gradeElevation: RAISED_GRADE_MM }
+    const paint: Record<string, SurfaceTreatment> = {}
+
+    const first = reconciler.reconcile(raised, paint)
+    const built = onlyPlane(first.root)
+    expect(built.position.y).toBe(RAISED_GRADE_MM)
+    expect(groundPlaneDrawsWith(built, undefined)).toBe(true)
+
+    const second = reconciler.reconcile(raised, paint)
+    expect(second).toBe(first)
+    expect(onlyPlane(second.root).position.y).toBe(RAISED_GRADE_MM)
   })
 })
