@@ -25,6 +25,8 @@ sourceFiles:
     core/topology/wall-footprint.ts,
     engine/scene/wall-scene-helpers.ts,
     engine/scene/wall-prism.ts,
+    core/geometry/wall-path.ts,
+    tests/architecture/wall-end-read-exceptions.ts,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
     docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md,
   ]
@@ -275,3 +277,15 @@ trial and error.
 - `docs/specs/2026-06-10-vernacular-floor-plan-format.md`, sections 6.5 and 7.
 - `docs/specs/2026-11-14-architecture-refactor-round.md`, sections 5.4 and 6.
 - Issues #80 and #687.
+
+## Update (2026-11-23): the wall path exists
+
+`core/geometry/wall-path.ts` now exists. Its first reader is `buildFloorWallGraph` in
+`engine/scene/wall-scene-helpers.ts`, which builds a floor's wall graph from `pathStart` and
+`pathEnd`. The status and the context above were written before it. The exception list,
+`tests/architecture/wall-end-read-exceptions.ts`, holds 31 files. The check found 32 before the
+first reader moved to the path, which replaces the estimate of at least 26 under "Context".
+
+Some reads pass the check. One is the write of an end through a computed key in
+`core/commands/handlers/wall-commands.ts`, a file that is not on the list. The note in
+[[ADR-0034-future-direction-extensibility-seams]] names the forms the check does not see.
