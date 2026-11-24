@@ -1,7 +1,9 @@
 // core/assets/catalog-selection.ts
 //
 // Which catalog entries this build can read (spec "catalog.json"): per pack id,
-// the newest version whose format this build understands.
+// the newest version whose format this build understands. The packs keep the
+// catalog's order of first appearance: a pack id sits where its first readable
+// entry sits in the catalog.
 
 import type { Catalog, CatalogPackEntry } from './catalog.ts'
 import { comparePackVersions } from './pack-version.ts'
