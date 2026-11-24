@@ -140,10 +140,11 @@ export interface SceneGround {
 /**
  * Seats the assembled root on the site ground plane at grade (issue #477; ADR-0131,
  * ADR-0138). The ground is per-scene, sized to the whole footprint already in `root`, so it
- * runs after the floors are stacked. A plane already seated at the requested grade is kept;
- * otherwise every ground plane on the root is removed and disposed before the fresh one is
- * added, so no stale copy survives a grade edit. Camera framing keeps ignoring it
- * (sceneBounds skips isGroundPlane).
+ * runs after the floors are stacked. A plane is kept only when it is the only one, sits at
+ * the grade, and draws with the same appearance (the same texture and an equal tile size).
+ * Any other case removes and frees every plane (a cache-held texture is never freed) and
+ * adds one, so no stale copy survives a grade edit or an appearance change. Camera framing
+ * keeps ignoring it (sceneBounds skips isGroundPlane).
  */
 export function refreshGroundPlane(root: SceneRoot, ground: SceneGround): void {
   const grade = ground.gradeElevation ?? GRADE_ELEVATION_MM
