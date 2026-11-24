@@ -28,6 +28,9 @@ describe('sub-resource text form', () => {
     expect(text.endsWith('@1.0.0~socket:strike_plate')).toBe(true)
     expect(parseSubResourceText(text)).toEqual({ ok: true, id, part: STRIKE_PLATE })
     expect(SUB_RESOURCE_SEPARATOR).toBe('~')
+  })
+
+  it('lists the twelve sub-resource kinds in the order of the spec table', () => {
     expect(SUB_RESOURCE_KINDS).toEqual([
       'slot',
       'socket',
@@ -42,25 +45,30 @@ describe('sub-resource text form', () => {
       'stream',
       'void',
     ])
+  })
+
+  it('accepts a lowercase name of two to forty-eight characters that starts with a letter', () => {
     for (const name of ['lod0', 'plan_symbol', 'ceiling_plan_symbol', 'ab', 'a'.repeat(48)]) {
-      expect(isSubResourceName(name)).toBe(true)
+      expect(isSubResourceName(name), name).toBe(true)
     }
     for (const name of ['0lod', 'a', 'Strike', 'a'.repeat(49)]) {
-      expect(isSubResourceName(name)).toBe(false)
+      expect(isSubResourceName(name), name).toBe(false)
     }
+  })
 
-    const unknownKind = parseSubResourceText(`${DOOR_TEXT}~widget:x_y`)
-    expect(unknownKind.ok).toBe(false)
-    if (!unknownKind.ok) expect(unknownKind.problem).toContain('kind')
-    const badName = parseSubResourceText(`${DOOR_TEXT}~socket:Strike`)
-    expect(badName.ok).toBe(false)
-    if (!badName.ok) expect(badName.problem).toContain('name')
-    const noTilde = parseSubResourceText(DOOR_TEXT)
-    expect(noTilde.ok).toBe(false)
-    if (!noTilde.ok) expect(noTilde.problem).toMatch(/^kind/)
-    const noColon = parseSubResourceText(`${DOOR_TEXT}~socket`)
-    expect(noColon.ok).toBe(false)
-    if (!noColon.ok) expect(noColon.problem).toMatch(/^name/)
+  it('refuses an unknown kind, a bad name, and a missing kind or name, and names the part', () => {
+    const cases: readonly (readonly [string, RegExp])[] = [
+      [`${DOOR_TEXT}~widget:x_y`, /^kind/],
+      [`${DOOR_TEXT}~socket:Strike`, /^name/],
+      [DOOR_TEXT, /^kind/],
+      [`${DOOR_TEXT}~socket`, /^name/],
+    ]
+
+    for (const [text, expected] of cases) {
+      const parsed = parseSubResourceText(text)
+      expect(parsed.ok, text).toBe(false)
+      if (!parsed.ok) expect(parsed.problem, text).toMatch(expected)
+    }
   })
 
   it('names the part of a malformed sub-resource text', () => {
@@ -72,6 +80,7 @@ describe('sub-resource text form', () => {
       [`${DOOR_TEXT}~widget`, /^kind/],
       [`${DOOR_TEXT}~`, /^kind/],
       [`${DOOR_TEXT}~socket`, /^name/],
+      ['~socket:ab', /^namespace/],
     ]
 
     for (const [text, expected] of cases) {
@@ -87,12 +96,6 @@ describe('sub-resource text form', () => {
     expect(text).not.toContain('#')
     expect(parseSubResourceText(`pack:vernacular-starter@1.0.0#${SOME_HASH}`).ok).toBe(false)
     expect(parseSubResourceText(`${text}#${SOME_HASH}`).ok).toBe(false)
-    let contentHash = ''
-    try {
-      contentHash = parseAssetReference(text).contentHash
-    } catch {
-      return
-    }
-    expect(contentHash).not.toMatch(/^[0-9a-f]{64}$/)
+    expect(() => parseAssetReference(text)).toThrow()
   })
 })

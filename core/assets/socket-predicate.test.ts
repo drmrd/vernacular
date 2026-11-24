@@ -57,30 +57,17 @@ describe('socket predicates', () => {
     ).toBe(false)
   })
 
-  it('refuses a malformed predicate', () => {
-    const malformed = [
-      'HDW',
-      'hdw.*',
-      'HDW.*/*',
-      'HDW.window_sash_casement',
-      'HDW.window_sash_casement/brass_sash_lock@1.0.0',
-      'XYZ.*',
-    ]
-    for (const text of malformed) {
-      const result = parseSocketPredicate(text)
-      expect(result.ok, text).toBe(false)
-      if (!result.ok) expect(result.problem.length, text).toBeGreaterThan(0)
-    }
-
-    const unknownDomain = parseSocketPredicate('XYZ.*')
-    expect(!unknownDomain.ok && unknownDomain.problem).toContain('domain')
-  })
-
   it('names the part of a malformed predicate', () => {
     const subcategoryProblems = ['HDW', 'HDW.*/*', 'HDW.* ', 'HDW.*x', 'HDW.*.x', 'HDW.AB']
     for (const text of subcategoryProblems) {
       const result = parseSocketPredicate(text)
       expect(!result.ok && result.problem, text).toMatch(/^subcategory/)
+    }
+
+    const domainProblems = ['hdw.*', 'XYZ.*']
+    for (const text of domainProblems) {
+      const result = parseSocketPredicate(text)
+      expect(!result.ok && result.problem, text).toMatch(/^domain/)
     }
 
     const slugProblems = [

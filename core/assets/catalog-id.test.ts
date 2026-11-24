@@ -42,22 +42,22 @@ describe('parseCatalogId', () => {
   })
 
   const refusals: ReadonlyArray<readonly [string, string, RegExp]> = [
-    ['an unknown domain', 'core:XYZ.seating/windsor_side_chair@1.0.0', /domain/i],
-    ['a too-short subcategory', 'core:FFE.ab/windsor_side_chair@1.0.0', /subcategory/i],
-    ['a too-short slug', 'core:FFE.seating/a@1.0.0', /slug/i],
-    ['a capitalized slug', 'core:FFE.seating/Windsor@1.0.0', /slug/i],
-    ['a two-part version', 'core:FFE.seating/windsor_side_chair@1.0', /version/i],
-    ['a zero-padded version', 'core:FFE.seating/windsor_side_chair@01.0.0', /version/i],
-    ['build metadata in the version', 'core:FFE.seating/windsor_side_chair@1.0.0+5', /version/i],
-    ['a zero-padded prerelease', 'core:FFE.seating/windsor_side_chair@1.0.0-01', /version/i],
-    ['a missing namespace', 'FFE.seating/windsor_side_chair@1.0.0', /namespace/i],
+    ['an unknown domain', 'core:XYZ.seating/windsor_side_chair@1.0.0', /^domain/],
+    ['a too-short subcategory', 'core:FFE.ab/windsor_side_chair@1.0.0', /^subcategory/],
+    ['a too-short slug', 'core:FFE.seating/a@1.0.0', /^slug/],
+    ['a capitalized slug', 'core:FFE.seating/Windsor@1.0.0', /^slug/],
+    ['a two-part version', 'core:FFE.seating/windsor_side_chair@1.0', /^version/],
+    ['a zero-padded version', 'core:FFE.seating/windsor_side_chair@01.0.0', /^version/],
+    ['build metadata in the version', 'core:FFE.seating/windsor_side_chair@1.0.0+5', /^version/],
+    ['a zero-padded prerelease', 'core:FFE.seating/windsor_side_chair@1.0.0-01', /^version/],
+    ['a missing namespace', 'FFE.seating/windsor_side_chair@1.0.0', /^namespace/],
     [
       'an overlong namespace',
       `org_${'a'.repeat(32)}:FFE.seating/windsor_side_chair@1.0.0`,
-      /namespace/i,
+      /^namespace/,
     ],
-    ['a capitalized namespace', 'Org_x:FFE.seating/windsor_side_chair@1.0.0', /namespace/i],
-    ['a trailing space', 'core:FFE.seating/windsor_side_chair@1.0.0 ', /version/i],
+    ['a capitalized namespace', 'Org_x:FFE.seating/windsor_side_chair@1.0.0', /^namespace/],
+    ['a trailing space', 'core:FFE.seating/windsor_side_chair@1.0.0 ', /^version/],
   ]
 
   it.each(refusals)(
@@ -71,9 +71,10 @@ describe('parseCatalogId', () => {
   )
 
   const missingSeparators: ReadonlyArray<readonly [string, string, RegExp]> = [
-    ['@', 'core:FFE.seating/windsor_side_chair', /version/i],
-    ['/', 'core:FFE.seating', /slug/i],
-    ['.', 'core:FFE', /subcategory/i],
+    ['@', 'core:FFE.seating/windsor_side_chair', /^version/],
+    ['/', 'core:FFE.seating', /^slug/],
+    ['.', 'core:FFE', /^subcategory/],
+    [':', 'core', /^domain/],
   ]
 
   it.each(missingSeparators)(
@@ -85,6 +86,23 @@ describe('parseCatalogId', () => {
       expect(parsed.ok === false && parsed.problem).toMatch(part)
     },
   )
+
+  it('checks the parts left to right before it reports a missing separator', () => {
+    const cases: ReadonlyArray<readonly [string, RegExp]> = [
+      ['Org_x:FFE', /^namespace/],
+      ['core:XYZ.seating', /^domain/],
+      ['core:FFE.Seating', /^subcategory/],
+      ['core:FFE.seating/W', /^slug/],
+      ['mfr_x:HDW.door_locksets_latches/rim_lock', /^namespace prefix "mfr_" is reserved/],
+    ]
+
+    for (const [text, expected] of cases) {
+      const parsed = parseCatalogId(text)
+
+      expect(parsed.ok, text).toBe(false)
+      expect(parsed.ok === false && parsed.problem, text).toMatch(expected)
+    }
+  })
 
   it('refuses the reserved namespace with its own message', () => {
     const parsed = parseCatalogId('mfr_example:HDW.door_locksets_latches/rim_lock@1.0.0')
