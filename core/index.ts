@@ -912,3 +912,20 @@ export type {
 export { decodeDocument } from './format/codec/decode-document'
 export { encodeDocument } from './format/codec/encode-document'
 export { bestEffortProjectName, readStoredFacts } from './format/best-effort-read'
+export type { CatalogId, CatalogIdParse } from './assets/catalog-id'
+export {
+  parseCatalogId,
+  formatCatalogId,
+  categoryOf,
+  RESERVED_NAMESPACE_PREFIXES,
+} from './assets/catalog-id'
+export type { SocketPredicate, SocketPredicateParse } from './assets/socket-predicate'
+export { parseSocketPredicate, matchesPredicate } from './assets/socket-predicate'
+export type { SubResource, SubResourceKind, SubResourceParse } from './assets/sub-resource'
+export {
+  SUB_RESOURCE_KINDS,
+  SUB_RESOURCE_SEPARATOR,
+  isSubResourceName,
+  formatSubResource,
+  parseSubResourceText,
+} from './assets/sub-resource'

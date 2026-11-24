@@ -126,8 +126,8 @@ they do today.
 ### Names follow the format that exists
 
 Field names are camel case, like `contentHash`. Enumerated values are lower case with hyphens, like
-the values of `kind`. The parts of a catalog identifier and the names of sub-resources use
-underscores, because they belong to the grammar of ADR-0235.
+the values of `kind`. Subcategories, slugs, and sub-resource names use underscores, because they
+belong to the grammar of ADR-0235.
 
 ### Provenance is neutral and small
 
