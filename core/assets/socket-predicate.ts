@@ -1,10 +1,10 @@
 import { isAssetDomainCode, type AssetDomainCode } from '../registries/asset-domains.ts'
 import {
   DOMAIN_PROBLEM,
-  DOMAIN_SEPARATOR,
+  SEPARATOR_AFTER_DOMAIN,
   SLUG_PATTERN,
   SLUG_PROBLEM,
-  SLUG_SEPARATOR,
+  SEPARATOR_AFTER_SUBCATEGORY,
   SUBCATEGORY_PATTERN,
   SUBCATEGORY_PROBLEM,
   missingPartProblem,
@@ -27,12 +27,15 @@ function refuse(problem: string): SocketPredicateParse {
   return { ok: false, problem }
 }
 
-function parseCategoryPart(domain: AssetDomainCode, categoryText: string): SocketPredicateParse {
-  const separatorIndex = categoryText.indexOf(SLUG_SEPARATOR)
+function parseSubcategoryAndSlug(
+  domain: AssetDomainCode,
+  categoryText: string,
+): SocketPredicateParse {
+  const separatorIndex = categoryText.indexOf(SEPARATOR_AFTER_SUBCATEGORY)
   if (separatorIndex === -1) {
     return refuse(
       SUBCATEGORY_PATTERN.test(categoryText)
-        ? missingPartProblem('slug', SLUG_SEPARATOR, 'subcategory')
+        ? missingPartProblem('slug', SEPARATOR_AFTER_SUBCATEGORY, 'subcategory')
         : SUBCATEGORY_PROBLEM,
     )
   }
@@ -45,15 +48,15 @@ function parseCategoryPart(domain: AssetDomainCode, categoryText: string): Socke
 }
 
 export function parseSocketPredicate(text: string): SocketPredicateParse {
-  const separatorIndex = text.indexOf(DOMAIN_SEPARATOR)
+  const separatorIndex = text.indexOf(SEPARATOR_AFTER_DOMAIN)
   const domain = separatorIndex === -1 ? text : text.slice(0, separatorIndex)
   if (!isAssetDomainCode(domain)) return refuse(DOMAIN_PROBLEM)
   if (separatorIndex === -1) {
-    return refuse(missingPartProblem('subcategory', DOMAIN_SEPARATOR, 'domain'))
+    return refuse(missingPartProblem('subcategory', SEPARATOR_AFTER_DOMAIN, 'domain'))
   }
   const rest = text.slice(separatorIndex + 1)
   if (rest === WILDCARD) return { ok: true, predicate: { domain } }
-  return parseCategoryPart(domain, rest)
+  return parseSubcategoryAndSlug(domain, rest)
 }
 
 export function matchesPredicate(predicate: SocketPredicate, id: CatalogId): boolean {

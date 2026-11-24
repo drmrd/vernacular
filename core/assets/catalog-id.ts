@@ -58,8 +58,16 @@ const VERSION_PROBLEM =
   'version must be three numbers without leading zeros, optionally followed by a prerelease, and no build metadata'
 
 const PART_NAMES = ['namespace', 'domain', 'subcategory', 'slug', 'version'] as const
-const PART_SEPARATORS = [':', '.', '/', '@'] as const
-export const [, DOMAIN_SEPARATOR, SLUG_SEPARATOR] = PART_SEPARATORS
+const SEPARATOR_AFTER_NAMESPACE = ':'
+export const SEPARATOR_AFTER_DOMAIN = '.'
+export const SEPARATOR_AFTER_SUBCATEGORY = '/'
+const SEPARATOR_AFTER_SLUG = '@'
+const PART_SEPARATORS = [
+  SEPARATOR_AFTER_NAMESPACE,
+  SEPARATOR_AFTER_DOMAIN,
+  SEPARATOR_AFTER_SUBCATEGORY,
+  SEPARATOR_AFTER_SLUG,
+] as const
 
 export function missingPartProblem(missing: string, separator: string, previous: string): string {
   return `${missing} is missing: expected "${separator}" after the ${previous}`
@@ -81,17 +89,19 @@ function namespaceProblem(namespace: string): string | undefined {
   return NAMESPACE_PATTERN.test(namespace) ? undefined : NAMESPACE_PROBLEM
 }
 
-const PART_CHECKS: readonly ((part: string) => string | undefined)[] = [
-  namespaceProblem,
-  (part) => (isAssetDomainCode(part) ? undefined : DOMAIN_PROBLEM),
-  (part) => (SUBCATEGORY_PATTERN.test(part) ? undefined : SUBCATEGORY_PROBLEM),
-  (part) => (SLUG_PATTERN.test(part) ? undefined : SLUG_PROBLEM),
-  (part) => (VERSION_PATTERN.test(part) ? undefined : VERSION_PROBLEM),
-]
+const PART_CHECKS: Record<(typeof PART_NAMES)[number], (part: string) => string | undefined> = {
+  namespace: namespaceProblem,
+  domain: (part) => (isAssetDomainCode(part) ? undefined : DOMAIN_PROBLEM),
+  subcategory: (part) => (SUBCATEGORY_PATTERN.test(part) ? undefined : SUBCATEGORY_PROBLEM),
+  slug: (part) => (SLUG_PATTERN.test(part) ? undefined : SLUG_PROBLEM),
+  version: (part) => (VERSION_PATTERN.test(part) ? undefined : VERSION_PROBLEM),
+}
 
 function firstPartProblem(parts: readonly string[]): string | undefined {
-  for (const [index, part] of parts.entries()) {
-    const problem = PART_CHECKS[index]?.(part)
+  for (const [index, name] of PART_NAMES.entries()) {
+    const part = parts[index]
+    if (part === undefined) return undefined
+    const problem = PART_CHECKS[name](part)
     if (problem !== undefined) return problem
   }
   return undefined
@@ -120,9 +130,9 @@ function splitCatalogId(text: string): SplitResult {
 function validateCatalogParts(raw: RawCatalogParts): CatalogIdParse {
   const { namespace, domain, subcategory, slug, version } = raw
   const problem = firstPartProblem([namespace, domain, subcategory, slug, version])
-  if (problem !== undefined || !isAssetDomainCode(domain)) {
-    return { ok: false, problem: problem ?? DOMAIN_PROBLEM }
-  }
+  if (problem !== undefined) return { ok: false, problem }
+  // Only narrows `domain`: firstPartProblem has already rejected a bad domain.
+  if (!isAssetDomainCode(domain)) return { ok: false, problem: DOMAIN_PROBLEM }
   return { ok: true, id: { namespace, domain, subcategory, slug, version } }
 }
 
@@ -133,9 +143,10 @@ export function parseCatalogId(text: string): CatalogIdParse {
 
 /** Does not validate: trusts the caller to pass an id from `parseCatalogId` or one that meets the grammar. */
 export function formatCatalogId(id: CatalogId): string {
-  return PART_NAMES.map((name, index) => `${id[name]}${PART_SEPARATORS[index] ?? ''}`).join('')
+  const { namespace, domain, subcategory, slug, version } = id
+  return `${namespace}${SEPARATOR_AFTER_NAMESPACE}${domain}${SEPARATOR_AFTER_DOMAIN}${subcategory}${SEPARATOR_AFTER_SUBCATEGORY}${slug}${SEPARATOR_AFTER_SLUG}${version}`
 }
 
 export function categoryOf(id: CatalogId): string {
-  return `${id.domain}${DOMAIN_SEPARATOR}${id.subcategory}`
+  return `${id.domain}${SEPARATOR_AFTER_DOMAIN}${id.subcategory}`
 }
