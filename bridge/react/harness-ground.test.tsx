@@ -52,27 +52,31 @@ function onlyPlane(root: SceneRoot) {
   return plane
 }
 
-interface Render {
+interface HarnessRender {
   status: TextureStatus
   drawsGrass: boolean
 }
 
-interface Props {
+interface HarnessProps {
   root: SceneRoot
   texture: TextureState
 }
 
-function recordHarnessGround(appearance: TextureAppearance, first: Props) {
-  const renders: Render[] = []
+function recordHarnessGround(appearance: TextureAppearance, first: HarnessProps) {
+  const renders: HarnessRender[] = []
   const hook = renderHook(
-    ({ root, texture }: Props) => {
+    ({ root, texture }: HarnessProps) => {
       const status = useHarnessGround(root, GRADE_MM, texture)
       renders.push({ status, drawsGrass: groundPlaneDrawsWith(onlyPlane(root), appearance) })
       return status
     },
-    { initialProps: first },
+    { initialProps: first, reactStrictMode: true },
   )
   return { ...hook, renders }
+}
+
+function readyRenders(renders: HarnessRender[]) {
+  return renders.filter((render) => render.status === 'ready')
 }
 
 describe('the harness ground reports loading until the grass is on the plane, then ready, and rebuilds no other geometry', () => {
@@ -92,6 +96,7 @@ describe('the harness ground reports loading until the grass is on the plane, th
     const sinceArrival = renders.slice(arrival)
     expect(sinceArrival[0]).toEqual({ status: 'loading', drawsGrass: false })
     expect(sinceArrival.at(-1)).toEqual({ status: 'ready', drawsGrass: true })
+    expect(readyRenders(sinceArrival).every((render) => render.drawsGrass)).toBe(true)
     expect(result.current).toBe('ready')
     expect(groundPlaneDrawsWith(onlyPlane(root), appearance)).toBe(true)
     expect(findByEntityId(root, 'wall:g1')).toBe(wall)
@@ -112,6 +117,7 @@ describe('the harness ground reports loading until the grass is on the plane, th
     const sinceSwap = renders.slice(swap)
     expect(sinceSwap[0]).toEqual({ status: 'loading', drawsGrass: false })
     expect(sinceSwap.at(-1)).toEqual({ status: 'ready', drawsGrass: true })
+    expect(readyRenders(sinceSwap).every((render) => render.drawsGrass)).toBe(true)
     expect(result.current).toBe('ready')
     expect(groundPlaneDrawsWith(onlyPlane(second), appearance)).toBe(true)
   })
@@ -119,11 +125,19 @@ describe('the harness ground reports loading until the grass is on the plane, th
   it('reports failed after loading and leaves the flat plane', () => {
     const { root } = buildFramedScene(graph)
     const appearance = heldAppearance()
+    const loading: TextureState = { status: 'loading' }
     const failed: TextureState = { status: 'failed' }
-    const { renders, result } = recordHarnessGround(appearance, { root, texture: failed })
+    const { renders, rerender, result } = recordHarnessGround(appearance, {
+      root,
+      texture: loading,
+    })
+    const arrival = renders.length
 
+    rerender({ root, texture: failed })
+
+    const sinceArrival = renders.slice(arrival)
     expect(renders[0]).toEqual({ status: 'loading', drawsGrass: false })
-    expect(renders.at(-1)).toEqual({ status: 'failed', drawsGrass: false })
+    expect(sinceArrival.at(-1)).toEqual({ status: 'failed', drawsGrass: false })
     expect(result.current).toBe('failed')
     expect(groundPlaneDrawsWith(onlyPlane(root), undefined)).toBe(true)
   })
