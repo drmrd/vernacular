@@ -1,3 +1,4 @@
+import type { Room } from './rooms'
 import type { PlanarGraph } from './wall-graph'
 
 /**
@@ -34,4 +35,42 @@ export function componentCount(graph: PlanarGraph): number {
     }
   }
   return components
+}
+
+/** One room as the invariance properties compare it: its wall ids joined, and its clear area. */
+export interface RoomSignature {
+  readonly walls: string
+  readonly area: number
+}
+
+/** The rooms as pairs of their wall ids and clear area, sorted by wall ids, so order does not matter. */
+export function roomSignature(rooms: readonly Room[]): RoomSignature[] {
+  return rooms
+    .map((room) => ({ walls: room.wallIds.join(','), area: room.area }))
+    .sort((x, y) => x.walls.localeCompare(y.walls) || x.area - y.area)
+}
+
+/**
+ * Lists how two signatures differ: a room whose wall ids differ, or whose area differs by more than
+ * `relativeTolerance` of the larger area. An empty list means the same rooms, so a failure shows
+ * every difference.
+ */
+export function signatureDifferences(
+  expected: readonly RoomSignature[],
+  actual: readonly RoomSignature[],
+  relativeTolerance: number,
+): string[] {
+  if (expected.length !== actual.length) {
+    return [`expected ${expected.length} rooms but found ${actual.length}`]
+  }
+  return expected.flatMap((room, index) => {
+    const other = actual[index]
+    if (other === undefined || other.walls !== room.walls) {
+      return [`room ${index}: walls ${room.walls} became ${other?.walls}`]
+    }
+    const scale = Math.max(Math.abs(room.area), Math.abs(other.area))
+    return Math.abs(room.area - other.area) <= relativeTolerance * scale
+      ? []
+      : [`room ${room.walls}: area ${room.area} became ${other.area}`]
+  })
 }
