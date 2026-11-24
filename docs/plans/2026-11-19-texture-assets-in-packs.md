@@ -514,7 +514,7 @@ rebuild test of cycle 5 is the tripwire.
 the chair and its thumbnail from its own constants, generates the grass, writes the PNG, hashes
 every asset, and writes `manifest.json` (`JSON.stringify` with two spaces and a newline, keys in a
 fixed order), `LICENSE` (the full text of `CC-BY-4.0`, the license of both assets), `NOTICE` (the
-attribution, the generator's path, and the command), and `CHANGELOG.md` (1.0.0, then 1.1.0: "Replace the placeholder chair with a new chair under CC-BY-4.0. Add a generated mown-grass texture."). The hash in
+attribution, the generator's path, and the command), and `CHANGELOG.md` (1.0.0, then 1.1.0: "Replace the placeholder chair with a new placeholder chair under CC-BY-4.0. Add a generated mown-grass texture."). The hash in
 the manifest comes from the bytes the build writes.
 
 **Screenshot baselines.** None move.
