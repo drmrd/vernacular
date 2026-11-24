@@ -39,16 +39,16 @@ export interface WallNetwork {
   readonly walls: readonly NetworkWall[]
   /** The resolved thickness of each wall, by wall id. */
   readonly thickness: ReadonlyMap<string, number>
-  /** The merged wall endpoints of today's wall graph. */
+  /** The merged wall endpoints of `buildWallGraph`. */
   readonly junctions: readonly Point[]
-  /** The pieces of the walls between junctions, in the order of today's wall graph. */
+  /** The pieces of the walls between junctions, in the order of `buildWallGraph`. */
   readonly edges: readonly NetworkEdge[]
 }
 
 const roomsByNetwork = new WeakMap<WallNetwork, readonly Room[]>()
 
-/** The rooms that the build of a network found, in the order of the walk. */
-export function networkRooms(network: WallNetwork): readonly Room[] {
+/** The rooms of a network, from the one walk that its build made. */
+export function derivePlanRooms(network: WallNetwork): readonly Room[] {
   return roomsByNetwork.get(network) ?? []
 }
 
@@ -63,9 +63,15 @@ export function networkWallOf(wall: Wall): NetworkWall {
   }
 }
 
-/** The vertex a graph edge names by index; the origin only stands in for an index no edge has. */
-function junctionAt(graph: PlanarGraph, index: number): Point {
-  return graph.vertices[index] ?? { x: 0, y: 0 }
+function networkEdgesOf(graph: PlanarGraph): NetworkEdge[] {
+  return graph.edges.map((edge, index) => ({
+    index,
+    from: edge.a,
+    to: edge.b,
+    wallId: edge.wallId,
+    path: linePath(graph.vertices[edge.a] as Point, graph.vertices[edge.b] as Point),
+    covers: [],
+  }))
 }
 
 export function deriveWallNetwork(
@@ -83,14 +89,7 @@ export function deriveWallNetwork(
     walls: resolved,
     thickness: new Map(resolved.map((wall) => [wall.id, wall.thickness])),
     junctions: graph.vertices,
-    edges: graph.edges.map((edge, index) => ({
-      index,
-      from: edge.a,
-      to: edge.b,
-      wallId: edge.wallId,
-      path: linePath(junctionAt(graph, edge.a), junctionAt(graph, edge.b)),
-      covers: [],
-    })),
+    edges: networkEdgesOf(graph),
   }
   const thicknessByWallId = new Map(walls.map((wall) => [wall.id, effectiveWallThickness(wall)]))
   roomsByNetwork.set(network, roomsOfGraph(graph, thicknessByWallId))
