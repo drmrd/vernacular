@@ -44,7 +44,7 @@ const SLUG_PROBLEM = `slug must be ${SLUG_MIN_LENGTH} to ${SLUG_MAX_LENGTH} lowe
 const VERSION_PROBLEM =
   'version must be three numbers without leading zeros, optionally followed by a prerelease, and no build metadata'
 
-const PART_NAMES = ['namespace', 'domain', 'subcategory', 'slug'] as const
+const PART_NAMES = ['namespace', 'domain', 'subcategory', 'slug', 'version'] as const
 const PART_SEPARATORS = [':', '.', '/', '@'] as const
 
 interface RawCatalogParts {
@@ -65,7 +65,7 @@ function splitCatalogId(text: string): SplitResult {
     if (separatorIndex === -1) {
       return {
         ok: false,
-        problem: `${PART_NAMES[index]} is missing: expected "${separator}" after it`,
+        problem: `${PART_NAMES[index + 1]} is missing: expected "${separator}" after the ${PART_NAMES[index]}`,
       }
     }
     pieces.push(rest.slice(0, separatorIndex))
