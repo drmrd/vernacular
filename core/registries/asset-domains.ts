@@ -90,3 +90,15 @@ export const builtinAssetDomains: Registry<AssetDomain> = createRegistry(
   ASSET_DOMAIN_REGISTRY_VERSION,
   domainRows.map(([id, name, tier, rank]) => ({ id, name, tier, rank })),
 )
+
+export function isAssetDomainCode(value: string): value is AssetDomainCode {
+  return (ASSET_DOMAIN_CODES as readonly string[]).includes(value)
+}
+
+const ranksByCode = Object.fromEntries(
+  domainRows.map(([code, , , rank]) => [code, rank]),
+) as Record<AssetDomainCode, number>
+
+export function domainRank(code: AssetDomainCode): number {
+  return ranksByCode[code]
+}
