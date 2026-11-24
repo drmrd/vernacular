@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { AssetReference } from '../core'
 import { describe, expect, it, vi } from 'vitest'
 import { AssetRegistry } from '../storage'
 import { createStarterPackSources } from './create-asset-library-registry'
@@ -12,6 +13,10 @@ const CURRENT_PACK_SCOPE = 'pack:vernacular-starter@1.1.0'
 const PREVIOUS_PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
 const PREVIOUS_PACK_DIRECTORY = 'packs/vernacular-starter-1.0.0'
 const PREVIOUS_CHAIR_HASH = '8a8a0cafbecb2446278c8b61e275c1ac78373a7ccd59ddd5ac7684bf1388341e'
+const PREVIOUS_CHAIR_REFERENCE: AssetReference = {
+  scope: PREVIOUS_PACK_SCOPE,
+  contentHash: PREVIOUS_CHAIR_HASH,
+}
 
 interface ManifestAsset {
   contentHash: string
@@ -60,10 +65,7 @@ describe('the application starter pack sources', () => {
       ),
     )
 
-    const resolution = await registry.resolve({
-      scope: PREVIOUS_PACK_SCOPE,
-      contentHash: PREVIOUS_CHAIR_HASH,
-    })
+    const resolution = await registry.resolve(PREVIOUS_CHAIR_REFERENCE)
 
     expect(resolution).toMatchObject({
       outcome: 'resolved',
@@ -77,19 +79,13 @@ describe('the application starter pack sources', () => {
 
     const items = await registry.catalog()
 
-    expect(items.map((item) => item.reference)).toContainEqual({
-      scope: PREVIOUS_PACK_SCOPE,
-      contentHash: PREVIOUS_CHAIR_HASH,
-    })
+    expect(items.map((item) => item.reference)).toContainEqual(PREVIOUS_CHAIR_REFERENCE)
   })
 
-  it('describes the chair of starter pack 1.0.0 as a 500 by 520 by 800 model', async () => {
+  it('describes the chair of starter pack 1.0.0', async () => {
     const registry = new AssetRegistry(createStarterPackSources(servePublicFiles()))
 
-    const description = await registry.describe({
-      scope: PREVIOUS_PACK_SCOPE,
-      contentHash: PREVIOUS_CHAIR_HASH,
-    })
+    const description = await registry.describe(PREVIOUS_CHAIR_REFERENCE)
 
     expect(description).toEqual({
       kind: 'model',
