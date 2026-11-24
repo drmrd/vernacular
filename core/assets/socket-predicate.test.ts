@@ -39,6 +39,7 @@ describe('socket predicates', () => {
     const category = predicateOf('HDW.window_sash_casement/*')
     expect(matchesPredicate(category, lock)).toBe(true)
     expect(matchesPredicate(category, otherHardware)).toBe(false)
+    expect(matchesPredicate(category, idOf('core:FFE.window_sash_casement/x_y@1.0.0'))).toBe(false)
 
     const named = predicateOf('HDW.window_sash_casement/brass_sash_lock')
     expect(matchesPredicate(named, lock)).toBe(true)
@@ -73,5 +74,22 @@ describe('socket predicates', () => {
 
     const unknownDomain = parseSocketPredicate('XYZ.*')
     expect(!unknownDomain.ok && unknownDomain.problem).toContain('domain')
+  })
+
+  it('names the part of a malformed predicate', () => {
+    const subcategoryProblems = ['HDW', 'HDW.*/*', 'HDW.* ', 'HDW.*x', 'HDW.*.x', 'HDW.AB']
+    for (const text of subcategoryProblems) {
+      const result = parseSocketPredicate(text)
+      expect(!result.ok && result.problem, text).toMatch(/^subcategory/)
+    }
+
+    const slugProblems = [
+      'HDW.window_sash_casement',
+      'HDW.window_sash_casement/brass_sash_lock@1.0.0',
+    ]
+    for (const text of slugProblems) {
+      const result = parseSocketPredicate(text)
+      expect(!result.ok && result.problem, text).toMatch(/^slug/)
+    }
   })
 })
