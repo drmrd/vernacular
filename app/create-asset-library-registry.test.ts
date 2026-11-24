@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { AssetReference } from '../core'
+import { GROUND_GRASS_REFERENCE, type AssetReference } from '../core'
 import { describe, expect, it, vi } from 'vitest'
 import { AssetRegistry } from '../storage'
-import { createStarterPackSources } from './create-asset-library-registry'
+import {
+  createHarnessAssetRegistry,
+  createStarterPackSources,
+} from './create-asset-library-registry'
 import { loadPackSupplies } from './pack-supplies'
 
 const PUBLIC_DIRECTORY = join(import.meta.dirname, '..', 'public')
@@ -11,6 +14,7 @@ const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
 const CURRENT_PACK_URL = '/packs/vernacular-starter-1.1.0'
 const CURRENT_PACK_SCOPE = 'pack:vernacular-starter@1.1.0'
+const GRASS_TILE_SIZE_MM = 2000
 const PREVIOUS_PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
 const PREVIOUS_PACK_DIRECTORY = 'packs/vernacular-starter-1.0.0'
 const PREVIOUS_CHAIR_HASH = '8a8a0cafbecb2446278c8b61e275c1ac78373a7ccd59ddd5ac7684bf1388341e'
@@ -101,5 +105,24 @@ describe('the application starter pack sources', () => {
     const supplies = await loadPackSupplies(registry)
 
     expect(supplies?.(PREVIOUS_CHAIR_REFERENCE)).toBe(true)
+  })
+})
+
+describe('the scene harness registry', () => {
+  it('the scene harness registry resolves and describes the ground grass', async () => {
+    const fetchSpy = servePublicFiles()
+    const registry = createHarnessAssetRegistry(fetchSpy)
+
+    const resolution = await registry.resolve(GROUND_GRASS_REFERENCE)
+    const description = await registry.describe(GROUND_GRASS_REFERENCE)
+
+    expect(resolution).toMatchObject({ outcome: 'resolved', resolvedScope: CURRENT_PACK_SCOPE })
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `${CURRENT_PACK_URL}/assets/${GROUND_GRASS_REFERENCE.contentHash}.png`,
+    )
+    expect(description).toMatchObject({
+      kind: 'texture',
+      tileSize: { width: GRASS_TILE_SIZE_MM, height: GRASS_TILE_SIZE_MM },
+    })
   })
 })
