@@ -9,7 +9,7 @@ const EMPTY_CATALOG_NAMES: ReadonlyMap<string, string> = new Map()
 
 // Resolves the asset registry's catalog into a contentHash -> display name map for
 // furnitureLabels. Labels must render synchronously on first paint while the registry's
-// list() (an async read, possibly over IndexedDB or a network pack) is still in flight, so
+// catalog() (an async read, possibly over IndexedDB or a network pack) is still in flight, so
 // this starts at the shared empty map and swaps in the settled catalog once it resolves,
 // guarding against a stale resolve landing after unmount or after the registry itself changes.
 export function useCatalogNames(): ReadonlyMap<string, string> {
@@ -21,7 +21,7 @@ export function useCatalogNames(): ReadonlyMap<string, string> {
     // harmless Object.is no-op since state already holds that exact reference.
     setCatalogNames(EMPTY_CATALOG_NAMES)
     registry
-      .list()
+      .catalog()
       .then((items) => {
         if (cancelled) return
         setCatalogNames(new Map(items.map((item) => [item.reference.contentHash, item.name])))
