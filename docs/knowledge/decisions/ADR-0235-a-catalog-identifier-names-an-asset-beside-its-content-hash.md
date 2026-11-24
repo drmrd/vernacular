@@ -105,9 +105,11 @@ one shape.
 ### An asset has a version of its own
 
 The version in the identifier is the asset's. The pack that carries it has a separate version. One
-identifier, version included, names one manifest entry and one content hash in every pack and every
-store. The pack tool refuses a pack that uses one identifier twice, and the publish step refuses a
-pack whose identifier is already in the store with another hash.
+identifier, version included, names one content hash in every pack and every store. The rest of the
+entry can differ, because a new pack version may change the license or the credit of a file whose
+bytes stay the same (ADR-0229). The pack tool refuses a pack that uses one identifier twice,
+and the publish step refuses a pack whose identifier is already in the store with another
+hash.
 
 A major version changes when a user of the asset could be broken: its pivot, its bounding
 dimensions, a texture's tile size, its set of slots, sockets, ports, or articulation axes, or the

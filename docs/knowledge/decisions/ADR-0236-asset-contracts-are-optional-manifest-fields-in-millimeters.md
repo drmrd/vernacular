@@ -110,9 +110,16 @@ other contracts until each gets its reader.
 
 ### Lengths are millimeters and angles are degrees
 
-Every length in a manifest is a number of millimeters, checked by the one rule in
-`core/assets/manifest-lengths.ts`: dimensions, tile sizes, positions of sockets and ports, spacings,
-thicknesses, size limits, and volumes. Angles are degrees.
+Every length in a manifest is a number of millimeters. Two rules in `core/assets/manifest-lengths.ts`
+check them, one for sizes and one for positions.
+
+A size must be positive: dimensions, tile sizes, spacings, thicknesses, size limits, and the sizes of
+volumes. That is what `isPositiveLengthMm` checks today: a finite number above zero and no more than
+`MAX_LENGTH_MM`. A position is measured from the origin of the model's own frame, so zero and
+negative values are ordinary: the positions of sockets, ports, and volumes, and a pivot. A signed rule
+checks those, a finite number with an absolute value of at most `MAX_LENGTH_MM`. A single rule would
+either refuse a pivot at the origin or accept a model with no width. The first pull request that
+checks a position adds the signed rule. Angles are degrees.
 
 The model file keeps its own unit. The manifest's dimensions decide the size of a placed model, as
 they do today.
@@ -208,8 +215,10 @@ None of these was taken.
 ## What stays open
 
 - The exact shape of each reserved contract.
-- Whether the schema for the manifest allows unknown fields, or lists every reserved field by name.
-  The validator on `main` allows them.
+- Whether the schema lists every reserved field by name. The owner ruled on 2026-11-23 that the
+  manifest schemas allow unknown fields, so the validator and the schema agree, and that an optional
+  field is added to a schema in place, with the same `$id` and no new format version. The schema
+  names only the fields that are checked.
 - Whether a declared pivot replaces the box fit or only adjusts it. That waits on a check of how the
   loader maps a model into the world frame (ADR-0139).
 

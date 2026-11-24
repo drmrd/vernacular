@@ -4,7 +4,7 @@
 
 **Goal:** The asset taxonomy exists in `core/` as data and as checks: two registries hold the thirty domains and the 410 categories, a catalog identifier and a sub-resource parse and format, the pack validator checks the classification fields and the dependency rule, and the library can filter by category. Everything that needs a new reader in the app is ordered behind the investigation or the other effort it waits for.
 
-**Architecture:** Pure data and pure functions in `core/registries/` and `core/assets/`. The pack tool reaches them through `validatePackManifest`, as it does today. The editor reads the category registry for the library filter. No project schema changes, no command, no new layer, and no new package.
+**Architecture:** Pure data and pure functions in `core/registries/` and `core/assets/`. The pack tool reaches them through `validatePackManifest`, as it does today. The shared validator checks grammar only. The pack tool checks that a category is in the registry, so an app built before a registry addition still opens a pack that uses it. The editor reads the category registry for the library filter. No project schema changes, no command, no new layer, and no new package.
 
 **Tech Stack:** TypeScript, Vitest, React for the one editor pull request. No new package.
 
@@ -19,8 +19,8 @@
 - Layer rules of `.claude/rules.md` hold. Everything in pull requests 1 to 4 is in `core/` and imports no React, no Three.js, and no DOM global.
 - Every asset reference stays `(scope, contentHash)` (ADR-0007). No pull request stores a catalog identifier in a project, resolves bytes by one, or keys a cache by one (ADR-0235).
 - No project schema change. `CURRENT_SCHEMA_VERSION` stays 17 and `CURRENT_SCHEMA_REVISION` stays where the base has it. If a cycle seems to need a change to `core/model/types.ts`, stop and ask.
-- `formatVersion` does not move in this plan. Every new manifest field is optional, and a pack with none of them validates exactly as before (ADR-0219, ADR-0236).
-- Lengths in a manifest are millimeters and are checked with `isPositiveLengthMm` from `core/assets/manifest-lengths.ts`. Angles are degrees.
+- `formatVersion` does not move in this plan. Every new manifest field is optional, and a pack with none of them validates exactly as before (ADR-0219, ADR-0236). The manifest schemas under `schema/pack-manifest/` are open: they name only checked fields, and an optional field is added in place with the same `$id`. Removing, retyping, or narrowing a property, or making one required, is a new format version.
+- Lengths in a manifest are millimeters. A size or a volume is checked with `isPositiveLengthMm` from `core/assets/manifest-lengths.ts`. A position or a pivot can be zero or negative, so the first pull request that checks one adds a signed rule beside it (finite, absolute value at most `MAX_LENGTH_MM`). Angles are degrees.
 - Manifest field names are camel case. Enumerated values are lower case with hyphens. Subcategories, slugs, and sub-resource names use underscores.
 - The sub-resource separator in text is a tilde. No code path appends anything to a serialized `scope#contentHash`.
 - No new package. If one proves unavoidable, stop and ask: the 30-day cooldown and exact pins apply.
@@ -37,6 +37,7 @@ Conditions the specification implies and a reviewer should look for first. Each 
 3. The registry and the inventory of the specification cannot drift apart. Pull request 1 cycle 5.
 4. A reference between two objects of tier 3 is refused, and a socket predicate that names a tier 3 category is accepted. Pull request 4 cycle 1 and pull request 2 cycle 6.
 5. A version with build metadata, a leading zero, or two parts is refused in a catalog identifier, as is a numeric prerelease part with a leading zero. Pull request 2 cycle 2.
+6. A category that is well formed but not in the registry passes the shared validator and is refused only by the pack tool, so an older app opens a newer pack. Pull request 3 cycle 3 and cycle 10.
 
 ---
 
@@ -53,7 +54,7 @@ At `7026280d`:
 - `LibraryItem` (`storage/assets/asset-source.ts`, until pull request 3 of the distribution plan moves it) carries `categories: string[]`. `LibraryFilters` (`editor/library/library-filter.ts`) has `query`, `source`, `era`, and `style`. `furnitureItems` keeps items of kind `furniture` only. `matchesQuery` reads the name only.
 - The pack tool (`scripts/pack/vernacular-pack.mjs`) knows `validate` and `build`, and imports `core/assets/*.ts` through explicit `.ts` paths.
 - The starter manifest (`public/packs/vernacular-starter-1.0.0/manifest.json`) has `categories: ["seating"]` and `eras: ["mid-century"]`.
-- `normalizeModelIntoBox(model, node)` (`engine/scene/furniture-model.ts`) places a model at `(footprintCenter.x, node.elevationZ, footprintCenter.y)` and turns it by `-rotationRadians`. The furniture box (`engine/scene/furniture-builder.ts`) goes through `planToWorld`, which maps plan y to world -Z (`core/scene/plan-to-world.ts`). Investigation A checks whether the two agree.
+- `normalizeModelIntoBox(model, node)` (`engine/scene/furniture-model.ts`) placed a model at `(footprintCenter.x, node.elevationZ, footprintCenter.y)` and turned it by `-rotationRadians`, while the furniture box (`engine/scene/furniture-builder.ts`) goes through `planToWorld`, which maps plan y to world -Z (`core/scene/plan-to-world.ts`). The two disagreed, and the fix is on branch `fix/loaded-model-follows-plan-axes`, which routes the position through `planToWorld` and turns the model by `+rotationRadians`. It is not in the base.
 - `FurnitureInstance` (`core/model/types.ts`) has no `extensions` field. Only an opening has a host (`hostWallId`).
 - `ConstructionLayer` is `{ material: string; thickness: number }`, and only the sum of the thicknesses is used (`core/registries/construction-profiles.ts`, `core/scene/construction-profile.ts`).
 
@@ -73,8 +74,8 @@ Each is made once, here.
 2. **Category entry.** `AssetCategory { id, domain, subcategory, name }`, with `id` in the form `FFE.seating`. The registry keeps the order of the specification.
 3. **Display names.** A name comes from the subcategory id: underscores become spaces and the first letter is a capital. A short table of written names covers ids where that reads badly (for example `LGT.ies_distributions` is "IES distributions"). Names are English only for now.
 4. **Parse results.** A parser returns `{ ok: true, ... }` or `{ ok: false, problem: string }`. No parser throws. The problem text names the part that is wrong.
-5. **The grammar does not read the registry.** `parseCatalogId` checks the pattern and the domain code. The manifest validator checks that the category exists.
-6. **Taxonomy form in `categories`.** A category string that starts with three capital letters and a full stop is taken as a taxonomy category and must be in the registry. Any other string is a plain label and stays valid.
+5. **The grammar does not read the registry.** `parseCatalogId` checks the pattern and the domain code. Neither it nor the shared validator checks that a category exists. The pack tool does (decision 6).
+6. **Taxonomy form in `categories`.** A category string that starts with three capital letters and a full stop is taken as a taxonomy category. The shared validator checks its grammar only (`<DOMAIN>.<subcategory>` with the pattern of the registry ids). The pack tool (`scripts/pack/`) checks at build and validate time that it is in the registry. An app built before a registry addition therefore accepts a newer category and shows it as an unknown label. Any other string is a plain label and stays valid. The owner ruled this on 2026-11-23.
 7. **Unknown keys.** A key the validator does not know stays ignored, inside `provenance` and `lifecycle` as elsewhere.
 8. **Which formats.** The new fields are checked whenever they are present, in a pack of any known format.
 9. **References are checked from their text.** The rank rule needs only the two domain codes, so a reference to an asset of another pack is checked the same way. Whether the named asset exists anywhere is not checked until the catalog work provides a way.
@@ -83,17 +84,17 @@ Each is made once, here.
 
 ## What each pull request still waits for
 
-Every decision the pull requests build is ruled. Each pull request below waits only on the work named in its row.
+Every decision the pull requests build is ruled, and investigations A, B, D, and I are answered. Each pull request below waits only on the work named in its row.
 
-| Pull request                    | Record it builds   | What it still waits for                                                                                                     |
-| ------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| 1. Domain and category registry | ADR-0234           | Nothing. All 410 categories enter the registry at once.                                                                     |
-| 2. Catalog identifier           | ADR-0235           | Nothing. An asset keeps its own version, the separator is a tilde, and `mfr_` is reserved and refused.                      |
-| 3. Classification fields        | ADR-0235, ADR-0236 | Investigation B, and pull request 1 of the distribution plan.                                                               |
-| 4. Dependency rule              | ADR-0234           | Pull request 3.                                                                                                             |
-| 5. Library category filter      | ADR-0234           | Pull request 1, and pull request 5 of the distribution plan.                                                                |
-| 6. Layered assemblies           | ADR-0237           | Investigation D, and refactor stage 5. The suggested default finish is ruled, and its cycles are part of this pull request. |
-| 7. Declared pivot               | ADR-0236           | Investigation A, and refactor stage 6.                                                                                      |
+| Pull request                    | Record it builds   | What it still waits for                                                                                                      |
+| ------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1. Domain and category registry | ADR-0234           | Nothing. All 410 categories enter the registry at once.                                                                      |
+| 2. Catalog identifier           | ADR-0235           | Nothing. An asset keeps its own version, the separator is a tilde, and `mfr_` is reserved and refused.                       |
+| 3. Classification fields        | ADR-0235, ADR-0236 | Pull request 1 of the distribution plan (the publish step it extends).                                                       |
+| 4. Dependency rule              | ADR-0234           | Pull request 3.                                                                                                              |
+| 5. Library category filter      | ADR-0234           | Pull request 1, and pull request 5 of the distribution plan.                                                                 |
+| 6. Layered assemblies           | ADR-0237           | Refactor stage 5. Investigation D is answered and the suggested default finish is ruled. Its cycles are written at dispatch. |
+| 7. Declared pivot               | ADR-0236           | Refactor stage 6. The model placement defect is fixed on `fix/loaded-model-follows-plan-axes`, which lands first.            |
 
 Rulings that need no pull request: element ids keep their form, the project id stays out of the document, the store layout of ADR-0229 stays flat with no extension, and a manifest length is in millimeters.
 
@@ -101,15 +102,26 @@ Rulings that need no pull request: element ids keep their form, the project id s
 
 Each is one agent's task and ends in a written answer on the issue that tracks it. None commits code, except that investigation A commits its failing test if it reproduces.
 
-- [ ] **Investigation A: does a loaded model land where its box lands?** Read `engine/scene/furniture-model.ts`, `engine/scene/furniture-builder.ts`, `core/scene/plan-to-world.ts`, `core/scene/scene-graph.ts` (the furniture node), and the bridge code that adds the model group to the scene. Write a test that places an asymmetric model at a plan point away from the origin, turned by an angle that is not a multiple of 90 degrees, and compares the world bounds of the model group with the bounds of the box that `furniture-builder` makes for the same node. If the bounds differ, the test is the reproduction and a `fix/` pull request follows before pull request 7. If they agree, record why and close the question. Nobody files a defect before the test fails. Gates pull request 7.
-- [ ] **Investigation B: the field table.** For each field of the specification's contract table, state its type, its limits, whether a reader that exists could misread a pack that carries it, and so whether `formatVersion` moves (ADR-0219). State whether the planned schema under `schema/pack-manifest/` allows unknown fields, and how an optional field is added to a published schema with no new format version. Read `core/assets/pack-manifest.ts`, ADR-0219, ADR-0229, and pull requests 1, 11, and 13 of the distribution plan. Gates pull request 3.
+- [x] **Investigation A: does a loaded model land where its box lands?** Read `engine/scene/furniture-model.ts`, `engine/scene/furniture-builder.ts`, `core/scene/plan-to-world.ts`, `core/scene/scene-graph.ts` (the furniture node), and the bridge code that adds the model group to the scene. Write a test that places an asymmetric model at a plan point away from the origin, turned by an angle that is not a multiple of 90 degrees, and compares the world bounds of the model group with the bounds of the box that `furniture-builder` makes for the same node. If the bounds differ, the test is the reproduction and a `fix/` pull request follows before pull request 7. If they agree, record why and close the question. Nobody files a defect before the test fails. Gates pull request 7.
+
+  **Answer.** It reproduced. A loaded model was mirrored across plan y = 0 and turned the wrong way, because `furniture-model.ts` wrote plan y as world +Z and negated the rotation, while `planToWorld` maps plan y to world -Z. The fix is on `fix/loaded-model-follows-plan-axes`: a failing test, a fix that places the model through `planToWorld`, an empty refactor marker, and a note in ADR-0095. No screenshot baseline is expected to change. A defect issue is filed with that pull request, so pull request 7 no longer waits on a defect fix, only on refactor stage 6.
+
+- [x] **Investigation B: the field table.** For each field of the specification's contract table, state its type, its limits, whether a reader that exists could misread a pack that carries it, and so whether `formatVersion` moves (ADR-0219). State whether the planned schema under `schema/pack-manifest/` allows unknown fields, and how an optional field is added to a published schema with no new format version. Read `core/assets/pack-manifest.ts`, ADR-0219, ADR-0229, and pull requests 1, 11, and 13 of the distribution plan. Gates pull request 3.
+
+  **Answer.** No field of the contract table moves `formatVersion`. Every reader today picks the keys it knows, and only a new media type or a new `kind` is refused by an old reader. The shared validator checks the grammar of a category and the pack tool checks registry membership (builder decision 6). The manifest schemas are open and an optional field is added in place with the same `$id`. A pivot or a socket position needs a signed length rule, because `isPositiveLengthMm` refuses zero and negatives. `representations` stay reserved, because the pack tool reads a representation file as an orphan and publish leaves it out. Two checks that distribution pull request 1 does not hold moved here: see pull request 3.
+
 - [ ] **Investigation C: kinds and media types for domains with no reader.** For each of the eleven domains with no kind, and for `material` and `palette`, which validate as models today, propose the kind, the media type, and the reader that would use it, or say that the domain needs none because it feeds a registry. Read the specification's kind table, `core/assets/asset-description.ts`, and `core/registries/`. Gates no pull request here. It ends in issues.
-- [ ] **Investigation D: from a layered assembly to a construction profile.** Map the wall subcategories of `LYR` to `ConstructionSystem`, say how a layer's material reference replaces the free string, give the registry id of a pack-supplied profile, and say what a wall shows when the pack is absent. Also give the shape of the suggested default finish for each face, and name the command path that applies an assembly to a wall and writes the finish into the paint map (an existing command, or a new one). Read ADR-0130, ADR-0137, ADR-0237, `core/registries/construction-profiles.ts`, and section 5.5 of the refactor round. Gates pull request 6.
+- [x] **Investigation D: from a layered assembly to a construction profile.** Map the wall subcategories of `LYR` to `ConstructionSystem`, say how a layer's material reference replaces the free string, give the registry id of a pack-supplied profile, and say what a wall shows when the pack is absent. Also give the shape of the suggested default finish for each face, and name the command path that applies an assembly to a wall and writes the finish into the paint map (an existing command, or a new one). Read ADR-0130, ADR-0137, ADR-0237, `core/registries/construction-profiles.ts`, and section 5.5 of the refactor round. Gates pull request 6.
+
+  **Answer.** The owner ruled on 2026-11-23: all five new `ConstructionSystem` values now; a pack profile's id is its serialized asset reference; the apply command snapshots the total into `wall.thickness` and the inspector labels a missing profile; a suggested finish goes only into a face with no treatment; the interior side is derived at apply time. A new command applies an assembly in one undo step. The details are in the outline of pull request 6.
+
 - [ ] **Investigation E: the rounding of the derived geometry key.** Compare candidate rounding steps with the tolerances of ADR-0181 and ADR-0199, and say what step keeps two keys equal exactly when the kernel treats the two shapes as equal. Read ADR-0181, ADR-0199 (on the kernel records branch until it merges), and `core/units/`. Gates no pull request here. It ends in a comment on the specification's open point.
 - [ ] **Investigation F: hosts and sockets.** Say how a socket predicate is checked when one placed element is put in another, using the host relation of refactor stage 5, and whether the hosting tree is stored on the child, as `hostWallId` is, or derived. Read section 5.5 of the refactor round, #679, and `core/model/types.ts`. Gates the deferred host work.
 - [ ] **Investigation G: phase.** The owner ruled that phase is decided with the renovation comparison design of #494, not here, and stays out of the manifest. Compare one phase field on each element with two linked documents for that design. If a field wins, one enumeration covers its values. Gates the deferred phase work.
 - [ ] **Investigation H: works in the public domain by age.** The owner ruled the policy: a first-party file made from such a work carries the first-party license of ADR-0229 (CC-BY-4.0), with the source in `sourceUrl` and a note in the pack's NOTICE, and a file redistributed unchanged is CC0-1.0 only when the source institution states CC0. Write that policy where pack authors read it, and check it against `core/assets/license-policy.ts` and ADR-0229. This is not legal advice. Gates no pull request here.
-- [ ] **Investigation I: does anything in the taxonomy need a change to the store before ADR-0229 merges?** Read ADR-0229, the distribution specification, ADR-0235, and ADR-0236. The expected answer is no. If the answer is yes, raise it on the distribution pull request before it merges.
+- [x] **Investigation I: does anything in the taxonomy need a change to the store before ADR-0229 merges?** Read ADR-0229, the distribution specification, ADR-0235, and ADR-0236. The expected answer is no. If the answer is yes, raise it on the distribution pull request before it merges.
+
+  **Answer.** No change to the store before ADR-0229 merges. Two optional comments go on #1054 after 18:30: the published manifest schema should allow additional properties, and the file lists should walk every `{contentHash, byteLength}` pair an entry names. Three wording fixes landed on this branch: an identifier names one content hash and not one manifest entry; `lifecycle.status` of `withdrawn` never removes a blob; credits show `attribution`.
 
 ## Rules every pull request keeps
 
@@ -205,31 +217,33 @@ Branch `feat/catalog-asset-identifier`. Depends on pull request 1.
 
 ## Pull request 3: the classification fields in the manifest
 
-Branch `feat/manifest-classification-fields`. Depends on pull request 2, on investigation B, and on pull request 1 of the distribution plan.
+Branch `feat/manifest-classification-fields`. Depends on pull request 2 and on pull request 1 of the distribution plan.
 
-**Goal.** The pack validator checks `catalogId`, the taxonomy categories, `provenance`, and `lifecycle`, and a pack with none of them validates as before.
+**Goal.** The pack validator checks `catalogId`, the grammar of taxonomy categories, `provenance`, and `lifecycle`, and a pack with none of them validates as before. The pack tool checks that a taxonomy category is in the registry. Two checks that distribution pull request 1 leaves open live here, because this is the first pull request of this plan that has the fields they read: the one-hash-per-identifier check at publish time and the first-party publish gate. Both need `catalogId` and the checked taxonomy fields, which exist only after this pull request, and both extend the publish step that distribution pull request 1 builds (`scripts/pack/publish-store.mjs`), which this pull request depends on. A pull request that comes later has no new field to add to them.
 
-**What a user sees.** Nothing in the app. A pack author gets new checks from `pnpm pack:validate`.
+**What a user sees.** Nothing in the app. A pack author gets new checks from `pnpm pack:validate` and `pnpm pack:publish`.
 
 **File fence.**
 
 - `core/assets/`: `taxonomy-fields.ts` and its test (new), `pack-manifest.ts`, `pack-manifest.test.ts`, `pack-manifest-shape.ts`, `pack-manifest-shape.test.ts`.
 - `tests/fixtures/packs/example-classified-1.0.0/` (new, written by the fixture script under `scripts/pack/`), and that script with its test.
-- `scripts/pack/vernacular-pack.integration.test.mjs`.
-- The amendments to ADR-0219 and ADR-0007 under "Amendments to decision records". ADR-0007 gets a pointer note only.
+- `scripts/pack/`: `vernacular-pack.mjs` (the registry check), `publish-taxonomy-checks.mjs` and its test (new), the call from `publish-store.mjs`, and `vernacular-pack.integration.test.mjs`.
+- `core/assets/pack-manifest-file.ts` and the generated files under `schema/pack-manifest/`, if distribution pull request 13 has merged: this pull request adds the checked fields to their types and runs `pnpm schema:generate`. If it has not, pull request 13 reads the checked fields into its types, and this pull request does not touch them.
+- The amendments to ADR-0219, ADR-0229, and ADR-0007 under "Amendments to decision records". ADR-0007 gets a pointer note only.
 
 **Interfaces.**
 
-- Consumes: `parseCatalogId`, `categoryOf`, `builtinAssetCategories`, `getEntry`, `comparePackVersions`, `ReadablePackAsset`, `readPackManifest`, `isRecord`.
+- Consumes: `parseCatalogId`, `categoryOf`, `builtinAssetCategories`, `getEntry`, `comparePackVersions`, `ReadablePackAsset`, `readPackManifest`, `isRecord`, and from distribution pull request 1 `publishPack` and the reader of the manifests a store lists. The registry is read by the pack tool and by the check below, not by `validatePackManifest`.
 - Produces:
-  - `taxonomy-fields.ts`: `validateTaxonomyFields(source: Record<string, unknown>, label: string, errors: string[]): void`, the shape of `validateTextureFields`; `validateUniqueCatalogIds(assets: readonly unknown[], errors: string[]): void`; `LIFECYCLE_STATUSES = ['active', 'deprecated', 'withdrawn']`.
+  - `taxonomy-fields.ts`: `validateTaxonomyFields(source: Record<string, unknown>, label: string, errors: string[]): void`, the shape of `validateTextureFields`, which checks grammar only; `validateUniqueCatalogIds(assets: readonly unknown[], errors: string[]): void`; `unknownTaxonomyCategories(manifest: unknown, registry: Registry<AssetCategory>): string[]`, which the pack tool calls and which returns one labeled message for each taxonomy-form category the registry lacks; `LIFECYCLE_STATUSES = ['active', 'deprecated', 'withdrawn']`.
+  - `scripts/pack/publish-taxonomy-checks.mjs`: `checkIdentifierHashes(incoming, stored): string[]` and `checkFirstPartyPack(manifest): string[]`. Names are proposals.
   - `pack-manifest-shape.ts`: `ReadablePackAsset` gains optional `catalogId?: string`, `provenance?: { author?: string; method?: string }`, and `lifecycle?: { status?: LifecycleStatus; replacedBy?: string }`.
 
 ### Cycles
 
 - [ ] **Cycle 1.** `core/assets/taxonomy-fields.test.ts`: "accepts the example entry of the specification and refuses a malformed identifier". Setup: the example entry in a format 2 manifest, without `references`. Assert valid. Assert a manifest with none of the new fields and `categories: ['seating']` is valid, as a guard. Assert `catalogId: 'core:FFE.seating'` gives one error labeled `assets[0].catalogId` that carries the parser's problem text. Fails today: the malformed identifier is accepted. Implementation: `validateTaxonomyFields`, called from `validateAssetFields`.
 - [ ] **Cycle 2.** "the category of the identifier must be in the entry's categories". Assert `catalogId` of `FFE.seating` with `categories: ['FFE.tables_desks']` gives one error labeled `assets[0].catalogId` that names `FFE.seating`. Fails today: accepted. Implementation: the comparison through `categoryOf`.
-- [ ] **Cycle 3.** "a taxonomy category must be in the registry, and a plain label stays valid". Assert `categories: ['FFE.no_such_category']` gives one error labeled `assets[0].categories`; `categories: ['seating', 'FFE.seating']` is valid; a category at pack level is checked the same way. Fails today: accepted. Implementation: builder decision 6.
+- [ ] **Cycle 3.** "a taxonomy category must have the grammar, a plain label stays valid, and a well formed category the registry lacks passes". Assert `categories: ['FFE.Bad Name']` and `categories: ['FFE.']` each give one error labeled `assets[0].categories`; `categories: ['seating', 'FFE.seating']` is valid; `categories: ['FFE.no_such_category']` is valid, because the shared validator does not read the registry; a category at pack level is checked the same way. Fails today: the malformed strings are accepted. Implementation: the grammar check of builder decision 6.
 - [ ] **Cycle 4.** "accepts provenance with an author and a method and refuses other types". Assert `{ author: 'A. Maker', method: 'measured drawing' }` is valid; a number for either, an empty string for either, and a `provenance` that is not an object each give one labeled error; an unknown key inside is ignored. Fails today: every shape is accepted. Implementation: the provenance check.
 - [ ] **Cycle 5.** "accepts a lifecycle and checks what replaces an asset". Assert `status` must be one of the three values. Assert `replacedBy` must parse, must be in the same domain as the entry's `catalogId`, must not equal it, and, when it names the same subcategory and slug, must have a higher version by `comparePackVersions`. Assert `replacedBy` on an entry with no `catalogId` is an error. Fails today: accepted. Implementation: the lifecycle check.
 - [ ] **Cycle 6.** `core/assets/pack-manifest.test.ts`: "one catalog identifier appears once in a pack". Setup: two entries with the same `catalogId`. Assert one error that names both labels. Fails today: accepted. Implementation: `validateUniqueCatalogIds`, called from `validateAssets`.
@@ -237,7 +251,11 @@ Branch `feat/manifest-classification-fields`. Depends on pull request 2, on inve
 - [ ] **Cycle 8.** `core/assets/pack-manifest-shape.test.ts`: "reads the identifier, the provenance, and the lifecycle into the typed asset". Assert the example reads with its `catalogId` and `lifecycle.status` of `active`, and an entry with none of them reads with the fields absent. Fails today: the typed asset drops them. Implementation: the three optional fields.
 - [ ] **Cycle 9.** `scripts/pack/vernacular-pack.integration.test.mjs`: "the classified example pack validates and builds, and the committed fixture is the script's output". Setup: `tests/fixtures/packs/example-classified-1.0.0/` with a chair entry that carries `catalogId`, `provenance`, and `lifecycle`. Assert `validate` and `build` exit with the valid code and the committed tree equals what the fixture script writes. Fails today: no such fixture. Implementation: the fixture and the script's new case.
 
-**What it leaves.** No reader in the app uses the fields. The published schema gains them as investigation B rules.
+- [ ] **Cycle 10.** `scripts/pack/vernacular-pack.integration.test.mjs`: "the pack tool refuses a taxonomy category the registry lacks, and the app validator accepts it". Setup: the classified example with `categories: ['FFE.no_such_category']`. Assert `validatePackManifest` returns valid, and `validate` prints one error that names the category and exits non-zero. Fails today: the tool does not read the registry. Implementation: `unknownTaxonomyCategories`, called from `vernacular-pack.mjs` after the shared validator.
+- [ ] **Cycle 11.** `scripts/pack/publish-taxonomy-checks.test.mjs`: "publish refuses an identifier that the store already holds with another content hash". Setup: a store that lists `core:FFE.seating/windsor_side_chair@1.0.0` under one hash, read from the manifests under `manifests/sha256/` that the publish step already reads, and a pack that carries the same identifier with another hash. Assert one error that names the identifier and both hashes, and an untouched sink. The same identifier with the same hash in another pack publishes. Fails today: the publish step does not read `catalogId`. Implementation: `checkIdentifierHashes`, called from `publishPack`.
+- [ ] **Cycle 12.** "publish holds a pack that carries a `core` identifier to the first-party gate". Assert an error for each of: a missing format field the distribution plan requires, an unchecked or malformed taxonomy field, and a `SUB` or `COT` entry with no `physical` key (presence only: the shape of `physical` stays reserved). A pack with no `core` identifier skips the gate. Fails today: nothing checks them. Implementation: `checkFirstPartyPack`, called from `publishPack`. ADR-0229 gets its amendment in this cycle's `docs:` commit.
+
+**What it leaves.** No reader in the app uses the fields. The published schemas are open: an optional field is added in place with the same `$id` and no new format version. `representations` and every other contract stay reserved, so the pack tool still reads a representation file in `assets/` as an orphan, and publish leaves it out. The pull request that checks `representations` teaches the pack tool and the publish step where those files live.
 
 ## Pull request 4: the dependency rule
 
@@ -300,36 +318,46 @@ Branch `feat/library-category-filter`. Depends on pull request 1 and on pull req
 
 ## Pull request 6: layered assemblies as construction profiles (waits)
 
-Branch `feat/layered-assembly-profiles`. Waits on investigation D and on refactor stage 5 (registries resolved at run time).
+Branch `feat/layered-assembly-profiles`. Waits on refactor stage 5 (registries resolved at run time). Investigation D is answered and the owner has ruled on it.
 
-**Goal.** A pack can add a wall build-up to the construction profile registry, a layer names its material by a taxonomy reference, and applying an assembly copies its suggested default finish for each face into the paint map one time.
+**Goal.** A pack can add a wall build-up to the construction profile registry, a layer names its material by a taxonomy reference, and applying an assembly copies its suggested default finish for each face into the paint map one time, into faces that have no finish yet.
 
 **What a user sees.** Nothing until a control sets a wall's construction profile, which no control does today.
 
-**Outline.** The cycles are written when investigation D ends. They cover:
+**Outline.** The cycles are written when the pull request is dispatched. They cover the following, each settled by a ruling of 2026-11-23 or by the code.
 
-- the layer's material as a `SUB` or `MAT` category or identifier, with the built-in profiles moved to the same form;
-- the `LYR` entry's shape in the manifest;
-- the merge of pack-supplied profiles into the registry context of the session;
-- the fallback for a wall whose profile is absent;
-- the suggested default finish: the manifest check of a suggestion for each of the two faces, which must be a surface treatment of the kind `core/model/paint.ts` holds and may reference only lower-rank assets;
-- a pure function that turns an assembly's suggestions into the paint-map entries for one wall's two faces (red when the interior face gets the exterior suggestion, or a face with no suggestion is written);
-- the command that applies an assembly to a wall: one `dispatch` that sets the profile and writes each suggested finish, so one undo reverses both (red when undo leaves the finish in place);
-- an assembly with no suggestion leaves the paint map unchanged;
-- painting a face after the apply changes the paint map only, and replacing or changing the assembly later does not repaint a wall that already has its finish;
-- the paint map holds no field that points back to the assembly, so `CURRENT_SCHEMA_VERSION` is unchanged.
+_Systems and layers._
+
+- `ConstructionSystem` gains all five new values now: `timber-frame`, `plank-frame`, `mass-concrete`, `earthen`, and `log`. Nothing reads `system` and no saved file holds one, so the change is additive. A `LYR` entry declares its system, and the pack tool refuses a system its subcategory does not allow: `historic_masonry_walls` allows `solid-masonry` and `earthen`; `framed_exterior_walls` allows `platform-frame`, `balloon-frame`, `timber-frame`, `plank-frame`, and `log`; `interior_partition_walls` allows `platform-frame`, `balloon-frame`, `solid-masonry`, and `plank-frame`; `below_grade_foundations` allows `solid-masonry` and `mass-concrete`. `wet_fire_acoustic_strata` is a partial stack and has no system, and the other seven `LYR` subcategories wait for their own decisions.
+- The layer's `material` stays a string. Its content is a `SUB` or `MAT` taxonomy name, category, or identifier, and an optional `framing` holds a `PRF` profile and a spacing in millimeters. The built-in profiles move to the same form, the exact slugs are the builder's choice, and `CONSTRUCTION_PROFILE_REGISTRY_VERSION` moves from 1 to 2. No project schema change, because a saved wall holds only the profile id.
+
+_The id of a pack profile, and a missing pack._
+
+- A pack profile's registry id is the serialized asset reference `pack:<packId>@<packVersion>#<sha256>`, made with `formatAssetReference` and resolved in the order of ADR-0007: the exact reference first, then the same hash in any other source. The registry refuses a pack entry whose id does not parse as a pack reference, so a pack can never shadow a built-in id. The `LYR` entry needs a kind and a media type, which investigation C proposes. The nine callers of `effectiveWallThickness` take the session's registry context.
+- The apply command snapshots the profile total into `wall.thickness` in the same undo step, so a wall whose pack is absent keeps its true thickness and draws as a plain solid wall. The wall inspector labels a profile whose pack is absent as missing and names the reference.
+
+_The suggested finish._
+
+- The suggestion sits on the `LYR` entry, one optional value for each end of the stack, in the two kinds `core/model/paint.ts` holds (`solid` and `pattern`). A string in taxonomy form must be in `COT` for a finish and in `PAT` for a pattern, both below `LYR`. A pure function turns the suggestions into at most two paint-map entries. A finish that does not resolve falls back to `matte`.
+- An apply writes a suggested finish only into a face that has no treatment. A face counts as treated when its whole-face key or any region key under it is present, and the handler checks `state.paint` when it runs, so a redo after other edits stays correct. Paint is part of the asset standard (`COT`, `CLR`, `PAT`, and `MAT` feed the paint map), not a separate feature.
+- The interior side is derived at apply time and nothing is stored. A face is interior where a room lies on that side and exterior where none does, read with `wallStretches` (`core/scene/wall-room-sides.ts`). A partition gets the interior suggestion on both faces. A face whose runs are opposed gets one suggestion for each part through the `region` seam of `SurfaceRef` (ADR-0056). The first cycle of this part checks whether regions render. If they do not yet, the face takes the role of its longest part, and a later pull request replaces the fallback.
+
+_The command._
+
+- A new command `floor/apply-wall-assembly` with `{ floorId, wallId, profileId, thickness, finishes }`, registered with the wall commands (in a new handler file if `wall-commands.ts` would pass 300 lines). The creator in `session/` resolves the profile, refuses an unknown id, and computes `thickness` and `finishes`, so a redo replays the same values. The handler checks `thickness` with `assertPositiveLength`, sets `constructionProfile` and `thickness`, and then adds the finishes to `state.paint`. One `dispatch` is one undo step (red when undo leaves the finish or the thickness in place). With no finishes the paint map is untouched.
+- Painting a face after an apply changes the paint map only, and replacing or changing the assembly later does not repaint a wall that already has its finish. The paint map holds no field that points back to the assembly, so `CURRENT_SCHEMA_VERSION` is unchanged.
 
 `ADR-0137` is amended in this pull request. `ADR-0130` is not changed.
 
 ## Pull request 7: a declared pivot for models (waits)
 
-Branch `feat/declared-model-pivot`. Waits on investigation A, on the `fix/` pull request that may follow it, and on refactor stage 6 (the 3D scene view object), because two scene paths exist until then and both would need the change.
+Branch `feat/declared-model-pivot`. Waits on refactor stage 6 (the 3D scene view object), because two scene paths exist until then and both would need the change. The placement defect that investigation A found is fixed on `fix/loaded-model-follows-plan-axes`, which lands first.
 
 **Goal.** An entry may declare its pivot, and the loader uses it. An entry that declares none is placed by the box fit, as today.
 
 **What a user sees.** A model with a declared pivot sits on its pivot. Everything else is unchanged.
 
-**Outline.** The cycles are written when investigation A ends. They cover: the `placement.pivot` field as a point in millimeters in the model's frame, checked by the validator; the pivot's path from the manifest to the scene node; `normalizeModelIntoBox` with and without a pivot; and a `scene-webgl` test with an asymmetric model away from the origin. `ADR-0095` is amended in this pull request.
+**Outline.** The cycles are written when the pull request is dispatched. They cover: the `placement.pivot` field as a point in millimeters in the model's frame, checked by the validator with a signed length rule (finite, absolute value at most `MAX_LENGTH_MM`) added beside `isPositiveLengthMm`, because a pivot is often zero or negative; the rule that a pack which declares a pivot stays correct when the pivot is ignored, or takes a format version; the pivot's path from the manifest to the scene node; `normalizeModelIntoBox` with and without a pivot; a stated convention for a model's front, which the fix leaves open (after it, local +X follows the footprint width direction, from the top-left corner to the top-right corner); and a `scene-webgl` test with an asymmetric model away from the origin. `ADR-0095` is amended in this pull request. The signed rule also serves the socket and volume contracts when they become checked.
 
 ## Amendments to decision records
 
@@ -340,7 +368,7 @@ No existing record is edited on the branch that carries this plan. Each amendmen
 | ADR-0006 | The registry list gains the domain registry and the category registry.                                                                 | Pull request 1                                                                                                  |
 | ADR-0007 | A pointer note only, saying that the catalog identifier is metadata and that the reference is unchanged. Its decision does not change. | Pull request 3                                                                                                  |
 | ADR-0219 | The optional taxonomy fields, as an example of the rule that an optional field moves no format version.                                | Pull request 3                                                                                                  |
-| ADR-0229 | The optional fields in the manifest example, and the check of one hash for one identifier at publish time.                             | The pull request that adds that check                                                                           |
+| ADR-0229 | The optional fields in the manifest example, and the check of one hash for one identifier at publish time.                             | Pull request 3                                                                                                  |
 | ADR-0229 | A note that sharded blobs and file extensions were considered and not taken.                                                           | The distribution pull request (#1054), before it merges, or the first pull request that edits ADR-0229 after it |
 | ADR-0093 | The category filter.                                                                                                                   | Pull request 5                                                                                                  |
 | ADR-0137 | Pack-supplied profiles, and the layer's material as a taxonomy reference.                                                              | Pull request 6                                                                                                  |
@@ -352,30 +380,28 @@ The design specification is not edited by this plan. Two of its statements need 
 
 ## Deferred work and what it waits for
 
-None of these has cycles here. Each gets an issue when the work starts.
+None of these has cycles here. Each gets an issue when the work starts. The one-hash-per-identifier check and the first-party publish gate are no longer deferred: they are cycles 11 and 12 of pull request 3.
 
-| Work                                                                                                                                           | Waits for                                                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| The check of one hash for one identifier across a store                                                                                        | The distribution plan, pull request 1 (the publish step)              |
-| Sockets, the host relation, and the predicate check when placing                                                                               | Refactor stage 5 and investigation F                                  |
-| `extensions` on furniture                                                                                                                      | Refactor stage 5 (common attributes)                                  |
-| Instanced drawing and the derived geometry key                                                                                                 | Refactor stage 6 and investigation E                                  |
-| Plan symbols and ceiling plan symbols as representations                                                                                       | Refactor stage 7 (the plan drawing model)                             |
-| The phase of a placed element                                                                                                                  | The renovation comparison design (#494) and investigation G           |
-| The first-party publish gate: required format fields, the checked taxonomy fields, and baseline properties on `SUB` and `COT` as reserved data | The distribution plan, pull request 1 (the publish step)              |
-| A void that goes part of the way into a wall                                                                                                   | Wall modifiers (ADR-0034) after the kernel's wall path accessor       |
-| Composed materials (`MAT` from a substrate, coatings, and weathering)                                                                          | The texture assets plan and a material resolver design                |
-| Material slots on a model                                                                                                                      | The composed materials work                                           |
-| Terrain data                                                                                                                                   | A site design that adds it to `Site`, measured from the project datum |
-| Further representations (`lod1`, `lod2`), as `representations` on the entry                                                                    | The distribution plan, pull request 11 (decoders and pack format 3)   |
-| Kinds and readers for the eleven domains with no reader                                                                                        | Investigation C, then one issue for each domain                       |
+| Work                                                                        | Waits for                                                             |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Sockets, the host relation, and the predicate check when placing            | Refactor stage 5 and investigation F                                  |
+| `extensions` on furniture                                                   | Refactor stage 5 (common attributes)                                  |
+| Instanced drawing and the derived geometry key                              | Refactor stage 6 and investigation E                                  |
+| Plan symbols and ceiling plan symbols as representations                    | Refactor stage 7 (the plan drawing model)                             |
+| The phase of a placed element                                               | The renovation comparison design (#494) and investigation G           |
+| A void that goes part of the way into a wall                                | Wall modifiers (ADR-0034) after the kernel's wall path accessor       |
+| Composed materials (`MAT` from a substrate, coatings, and weathering)       | The texture assets plan and a material resolver design                |
+| Material slots on a model                                                   | The composed materials work                                           |
+| Terrain data                                                                | A site design that adds it to `Site`, measured from the project datum |
+| Further representations (`lod1`, `lod2`), as `representations` on the entry | The distribution plan, pull request 11 (decoders and pack format 3)   |
+| Kinds and readers for the eleven domains with no reader                     | Investigation C, then one issue for each domain                       |
 
 ## Order and parallel work
 
-- **Investigations:** A, B, D, and I start at once and run side by side. C, E, F, G, and H can start at any time.
-- **Core lane, in order:** 1, 2, 3, 4. Pull request 1 starts at once. Pull request 3 needs investigation B and pull request 1 of the distribution plan.
+- **Investigations:** A, B, D, and I are answered. C, E, F, G, and H can start at any time.
+- **Core lane, in order:** 1, 2, 3, 4. Pull request 1 starts at once. Pull request 3 needs pull request 1 of the distribution plan.
 - **Editor lane:** 5 after 1 and after pull request 5 of the distribution plan.
-- **Waiting:** 6 and 7.
+- **Waiting:** 6 (refactor stage 5) and 7 (refactor stage 6).
 - Merge order when all are ready: 1, 2, 3, 4, 5.
 
 ## Files shared with other efforts
@@ -385,7 +411,8 @@ None of these has cycles here. Each gets an issue when the work starts.
 - `editor/library/library-filter.ts` and `library-panel.tsx`: rebuilt by the distribution plan, pull request 5. Pull request 5 here lands after it.
 - `core/index.ts`: exports only.
 - The fixture script under `scripts/pack/` and `tests/fixtures/packs/`: the distribution plan adds `example-furniture-1.0.0`. This plan adds `example-classified-1.0.0` and edits no fixture of that plan.
-- `schema/pack-manifest/`: owned by the distribution plan, pull request 13. This plan edits it only as investigation B rules.
+- `schema/pack-manifest/` and `core/assets/pack-manifest-file.ts`: owned by the distribution plan, pull request 13. Pull request 3 here adds the checked fields to the types and regenerates the schemas only if pull request 13 has merged. Otherwise pull request 13 reads those fields into its types.
+- `scripts/pack/publish-store.mjs`: created by the distribution plan, pull request 1. Pull request 3 here adds two calls to the checks of `publish-taxonomy-checks.mjs`.
 
 ## Size
 
@@ -393,12 +420,12 @@ None of these has cycles here. Each gets an issue when the work starts.
 | ---------------------------------------- | ------ |
 | 1. Domain and category registries        | 6      |
 | 2. Catalog identifier and sub-resources  | 9      |
-| 3. Classification fields in the manifest | 9      |
+| 3. Classification fields in the manifest | 12     |
 | 4. Dependency rule                       | 4      |
 | 5. Category filter in the library        | 5      |
 | 6. Layered assemblies (waits)            | open   |
 | 7. Declared pivot (waits)                | open   |
-| Total with cycles                        | 33     |
+| Total with cycles                        | 36     |
 
 ## Issues to file when the work starts
 
@@ -420,7 +447,7 @@ Each goes to the `1.0` milestone unless the owner rules that it blocks the beta.
 - **The inventory is long.** 410 ids typed by hand will hold an error. Cycle 5 of pull request 1 compares the registry with the specification id by id, and the specification's list was checked by script against its source.
 - **A registry of 410 entries with one chair in the library.** The registry is data and takes a few kilobytes. The chip row shows only what items carry, so an empty category never appears.
 - **Reserved fields may be used early.** A pack that fills in a reserved contract validates, because unknown fields are ignored. Its shape may change. The specification says so, and the pack tool could warn. That warning is not in this plan.
-- **The model placement question.** If investigation A reproduces a defect, the fix changes where every loaded model appears. The starter chair's file is a 41-byte placeholder (`public/packs/vernacular-starter-1.0.0/assets/`), so the app has shown the box so far, which would explain why nobody has seen it.
+- **The model placement fix.** Investigation A reproduced the defect, and its fix changes where every loaded model appears. The starter chair's file is a 41-byte placeholder (`public/packs/vernacular-starter-1.0.0/assets/`), so the app has shown the box so far, which explains why nobody saw it. The fix lands on its own pull request before pull request 7.
 - **ADR numbers.** ADR-0234 to ADR-0239 are reserved for this effort. Check `origin/main` before landing.
 
 ## Execution

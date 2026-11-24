@@ -142,8 +142,9 @@ None of these was taken.
   later change to the assembly does not reach walls that already have it.
 - The material id of a layer changes from a free string to a reference into the taxonomy. The
   built-in profiles need the same change, and ADR-0137 needs an amendment when it happens.
-- A project that names a profile from a pack needs that pack to resolve the thickness. What the wall
-  shows when the pack is missing has to be designed.
+- A project that names a profile from a pack needs that pack to resolve the thickness. Applying an
+  assembly writes the profile's total into the wall's own thickness, so a wall whose pack is missing
+  keeps its true thickness, and the inspector labels the profile as missing.
 - No pack can add a registry entry today. The registries are constants in the code, and the
   architecture refactor makes them resolvable at run time
   (`docs/specs/2026-11-14-architecture-refactor-round.md`, section 5.5). Pack-supplied assemblies
@@ -153,11 +154,22 @@ None of these was taken.
 
 ## What stays open
 
-- The registry id of a profile that comes from a pack, and what a wall falls back to when the pack
-  is absent. A missing asset has a placeholder (ADR-0007), and a missing registry entry has no such
-  rule yet.
-- The mapping from the taxonomy's wall subcategories to the three structural systems the registry
-  has today.
+The owner ruled on these on 2026-11-23, and they are decided:
+
+- The registry id of a profile from a pack is the serialized asset reference
+  `pack:<packId>@<packVersion>#<sha256>`, resolved in the order of ADR-0007.
+- A wall whose pack is absent keeps the thickness that applying the assembly wrote, and the inspector
+  labels its profile as missing.
+- The registry gains five structural systems beside the three it has: `timber-frame`, `plank-frame`,
+  `mass-concrete`, `earthen`, and `log`. Each wall subcategory allows a stated few of them, and the
+  pack tool refuses the rest.
+- Applying an assembly writes a suggested finish only into a face that has no treatment.
+- The interior side of a wall is derived when the assembly is applied and is never stored. A face is
+  interior where a room lies on that side and exterior where none does. A partition gets the interior
+  suggestion on both faces, and a face with opposed runs gets one suggestion for each part.
+
+Still open:
+
 - Whether the plan drawing shows the layers of an assembly. The wall poché of ADR-0160 draws one
   fill.
 - Assemblies for floors, roofs, paving, and ground.

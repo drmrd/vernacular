@@ -164,7 +164,7 @@ A slug names the fixed form of the thing, with its trade size when that is part 
 
 The version in a catalog identifier is the asset's own. The pack that carries the asset has a separate version (ADR-0091).
 
-- A published identifier never changes meaning. One identifier, version included, names one manifest entry and one content hash in every pack and store that carries it.
+- A published identifier never changes meaning. One identifier, version included, names one content hash in every pack and store that carries it. The rest of the entry can differ between packs: a new pack version may change the license or the credit of a file whose bytes stay the same (ADR-0229).
 - A major version changes when a user of the asset could be broken: the pivot, the bounding dimensions, the tile size of a texture, the set of slots, sockets, ports, or articulation axes, or the thickness of a layered assembly.
 - A minor or patch version changes for anything else.
 
@@ -239,16 +239,16 @@ Every field below is optional. A pack that has none of them stays valid, and a r
 The hash in the example is a placeholder.
 
 - `catalogId` is the catalog identifier. It is unique within a pack.
-- `categories` keeps its place and its type. A category from this taxonomy is written `<DOMAIN>.<subcategory>`. When an entry has a `catalogId`, the category inside it must be in `categories`. A string that the category registry does not know stays valid and is treated as a plain label, so the starter pack's `seating` keeps working.
+- `categories` keeps its place and its type. A category from this taxonomy is written `<DOMAIN>.<subcategory>`. When an entry has a `catalogId`, the category inside it must be in `categories`. A string that starts with three capital letters and a full stop is read as a taxonomy category. The app checks that it is well formed and nothing more. The pack tool also checks that the registry lists it, and refuses the pack if not. Because the app does not read the registry, a pack built for a newer registry still opens in an older app, which shows the unknown category as a plain label. Any other string is a plain label and stays valid, so the starter pack's `seating` keeps working.
 - `references` lists the catalog identifiers the entry depends on. The pack tool checks each against the dependency rule.
 - `eras` and `styles` keep using the ids of the period and style registries. The `STY` domain classifies style assets. It is not a second list of eras.
-- `lifecycle.status` is `active`, `deprecated`, or `withdrawn`. `lifecycle.replacedBy` names a catalog identifier in the same domain with a higher version or another slug.
+- `lifecycle.status` is `active`, `deprecated`, or `withdrawn`. `lifecycle.replacedBy` names a catalog identifier in the same domain with a higher version or another slug. A `deprecated` or `withdrawn` asset changes how the library lists it. Neither removes a blob: a published file leaves the store only for a legal reason or a defect (ADR-0229).
 
 Field names in a manifest are camel case, like `contentHash` and `mediaType`. Enumerated values are lower case with hyphens, like the values of `kind`. Subcategories, slugs, and sub-resource names use underscores, because they are parts of an identifier.
 
 ### More than one file for one asset
 
-An entry has one `contentHash`: the file the app loads first. An asset with further files (lower levels of detail, a plan symbol) names each as a representation with its own hash, the way a thumbnail is named in ADR-0229:
+An entry has one `contentHash`: the file the app loads first. An asset with further files (lower levels of detail, a plan symbol) names each as a representation with its own hash, the way the distribution specification names a thumbnail, with a name and a media type added:
 
 ```json
 "representations": [
@@ -256,7 +256,7 @@ An entry has one `contentHash`: the file the app loads first. An asset with furt
 ]
 ```
 
-Each of those files is a blob in the store like any other. No reader uses `representations` yet (see "Contracts").
+Each of those files is a blob in the store like any other. No reader uses `representations` yet (see "Contracts"), and the field stays reserved. The pack tool reads a file in `assets/` that no entry names as an orphan, so a pack folder that holds a representation file fails its integrity check today, and publishing leaves such files out. The change that makes the field checked also teaches the pack tool and the publish step where these files live.
 
 ## Contracts
 
@@ -279,9 +279,9 @@ A contract is a group of optional fields on a manifest entry. Ten are defined. T
 
 Notes on individual contracts:
 
-- **Provenance.** `license`, `attribution`, and `sourceUrl` stay where the pack format has them, and `copyright` where the distribution specification adds it. `provenance` adds `author` (a name) and `method` (a free text value). Both are optional. A work that is in the public domain by age is labeled by the first-party rule: a first-party file made from it carries the first-party license of ADR-0229, CC-BY-4.0, with the source in `sourceUrl` and a note in the pack's NOTICE. A file redistributed unchanged is CC0-1.0 only when the source institution states CC0. The allowlist gains no new class.
+- **Provenance.** `license`, `attribution`, and `sourceUrl` stay where the pack format has them, and `copyright` where the distribution specification adds it. `provenance` adds `author` (a name) and `method` (a free text value). Both are optional. Credits show `attribution`, because that field carries the credit a license such as CC-BY-4.0 asks for. `provenance.author` records who made the file and is never shown in its place. A work that is in the public domain by age is labeled by the first-party rule: a first-party file made from it carries the first-party license of ADR-0229, CC-BY-4.0, with the source in `sourceUrl` and a note in the pack's NOTICE. A file redistributed unchanged is CC0-1.0 only when the source institution states CC0. The allowlist gains no new class.
 - **Material slots.** One texture repeat is given in millimeters, the same quantity as `tileSize` in ADR-0219.
-- **Placement.** A declared pivot is a point in the model's own frame, in millimeters. Today the loader fits each model into the box of its manifest dimensions and ignores the model's own origin (ADR-0095). That stays the behavior for an entry that declares no pivot.
+- **Placement.** A declared pivot is a point in the model's own frame, in millimeters, and it can be zero or negative, so it is checked by the signed length rule (see "Units and frames"). Today the loader fits each model into the box of its manifest dimensions and ignores the model's own origin (ADR-0095). That stays the behavior for an entry that declares no pivot.
 - **Cutouts.** A void is `through-cutout` or `partial-depth-recess`. The wall builder cuts every opening through the whole wall today, so the pack tool refuses `partial-depth-recess` until walls support it.
 - **Layered assemblies.** A `LYR` asset describes structural layers only. The visible finish of a wall face stays a surface treatment in the project (ADR-0237). An assembly may suggest a default finish for each face. The app copies it into the project's paint map one time, when the assembly is applied, and keeps no link back. The shape of a suggestion is reserved.
 - **Physical properties.** The renderer ignores what it cannot use. Each quantity has one unit, named in the schema. Entries in `SUB` (substrates) and `COT` (coatings) of a first-party pack carry baseline properties as reserved data that nothing reads yet.
@@ -291,7 +291,7 @@ A contract field that no reader uses is not validated beyond its place in the sc
 
 ## Units and frames
 
-- Every length in a manifest is a number of millimeters: dimensions, tile sizes, socket and port positions, spacings, thicknesses, size limits, volumes.
+- Every length in a manifest is a number of millimeters. A size must be positive and at most 100,000 millimeters: dimensions, tile sizes, spacings, thicknesses, size limits, and the sizes of volumes. A position is measured from the origin of the model's own frame, so it can be zero or negative: the positions of sockets, ports, and volumes, and a pivot. A signed rule checks those: a finite number with an absolute value of at most 100,000 millimeters.
 - Angles in a manifest are degrees.
 - A model file is binary glTF: right-handed, Y up, with its own unit of meters. The app scales the model to the manifest's millimeter dimensions when it places it, so the manifest dimensions are the authority on size.
 - The plan frame has x to the right and y up the page. The world frame is right-handed with Y up, in millimeters, and plan y maps to world -Z (ADR-0139).
