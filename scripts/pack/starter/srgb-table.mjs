@@ -5,6 +5,13 @@
  * same on every engine. Each entry is written out as a literal:
  * LINEAR_TABLE[code] equals round(srgbToLinear(code / 255) * LINEAR_SCALE),
  * where srgbToLinear is the function in core/color/oklab.ts.
+ *
+ * The table literal was generated once from srgbToLinear, and srgb-table.test.mjs
+ * checks every entry, so a hand edit fails the test.
+ *
+ * TARGET_HEX is a literal here because scripts run by plain node cannot import
+ * core/environment/ground-surface.ts (its imports have no file extensions). The
+ * test pins it to GROUND_SURFACE_HEX.
  */
 
 export const LINEAR_SCALE = 1_048_576
