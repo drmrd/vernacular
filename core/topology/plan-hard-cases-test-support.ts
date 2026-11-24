@@ -1,3 +1,7 @@
+/**
+ * The wall vocabulary shared by the plan generators (styles, wall literals, ring helpers),
+ * the hard cases, and `splitWallAt`.
+ */
 import fc from 'fast-check'
 import type { Arbitrary } from 'fast-check'
 import { DERIVATION_LENGTH_TOLERANCE_MM } from '../geometry/tolerance'
@@ -49,6 +53,9 @@ const profileArbitrary: Arbitrary<string | undefined> = fc.oneof(
   { weight: WALLS_WITH_PROFILE_WEIGHT, arbitrary: fc.constantFrom(...CONSTRUCTION_PROFILE_IDS) },
 )
 
+/** The style that stands in when a draw list is shorter than the walls (not reached in practice). */
+export const NO_STYLE: WallStyle = { thickness: 0, profile: undefined, swap: false }
+
 export const wallStyleArbitrary: Arbitrary<WallStyle> = fc.record({
   thickness: fc.constantFrom(...WALL_THICKNESSES_MM),
   profile: profileArbitrary,
@@ -68,9 +75,35 @@ export function makeWall(id: string, ends: WallEnds, style: WallStyle): Wall {
   return style.profile === undefined ? wall : { ...wall, constructionProfile: style.profile }
 }
 
+export const FULL_TURN = 2 * Math.PI
+
+/** A draw from 0 to 1. */
+export const unit = fc.double({ min: 0, max: 1, noNaN: true })
+
 /** The point at `fraction` of the way from `a` to `b`. */
 export function lerp(a: Point, b: Point, fraction: number): Point {
   return { x: a.x + (b.x - a.x) * fraction, y: a.y + (b.y - a.y) * fraction }
+}
+
+/** The item at `index`, counted around the list, so the last item is followed by the first. */
+export function cyclic<T>(items: readonly T[], index: number): T {
+  const item = items[((index % items.length) + items.length) % items.length]
+  if (item === undefined) throw new RangeError('the list is empty')
+  return item
+}
+
+/** The smallest turn, in radians, between a corner's incoming and outgoing side in a closed ring. */
+export function sharpestTurn(corners: readonly { x: number; y: number }[]): number {
+  const turns = corners.map((corner, k) => {
+    const before = cyclic(corners, k - 1)
+    const after = cyclic(corners, k + 1)
+    const inX = corner.x - before.x
+    const inY = corner.y - before.y
+    const outX = after.x - corner.x
+    const outY = after.y - corner.y
+    return Math.atan2(Math.abs(inX * outY - inY * outX), inX * outX + inY * outY)
+  })
+  return Math.min(...turns)
 }
 
 /** The kinds of awkward input the derivation must still return for. */
@@ -110,9 +143,19 @@ const NEAR_OUTSIDE_SPAN_SHARE = 1.95
 const NEAR_PARALLEL_MIN_MM = 1e-6
 const NEAR_PARALLEL_MAX_SHARE = 5
 
-const unit = fc.double({ min: 0, max: 1, noNaN: true })
-
-/** The random choices behind one application of a hard case. */
+/**
+ * The random choices behind one application of a hard case. Each case reads the fields as follows.
+ * - `pick`: the index of the base wall (copy, partial-overlap, zero-length, near-parallel), or of
+ *   the joint group or joint end (zero-length at a joint, both near-junction cases).
+ * - `fractionA`: the start of the overlap (partial-overlap), the position along the base wall
+ *   (zero-length), the distance as a share of the tolerance (both near-junction cases), or the
+ *   log-scale exponent of the sideways offset (near-parallel).
+ * - `fractionB`: the spare share of the overlap range (partial-overlap), or the length as a share
+ *   of the longest zero-length wall (zero-length).
+ * - `angle`: the direction of the zero-length wall or of the end move.
+ * - `atJoint`: whether the zero-length wall sits on a joint and not along a wall.
+ * - `style`: the style of the wall a case adds.
+ */
 export interface HardCaseDraw {
   readonly pick: number
   readonly fractionA: number
@@ -126,7 +169,7 @@ const hardCaseDrawArbitrary: Arbitrary<HardCaseDraw> = fc.record({
   pick: fc.nat(),
   fractionA: unit,
   fractionB: unit,
-  angle: fc.double({ min: 0, max: 2 * Math.PI, noNaN: true }),
+  angle: fc.double({ min: 0, max: FULL_TURN, noNaN: true }),
   atJoint: fc.boolean(),
   style: wallStyleArbitrary,
 })
@@ -148,7 +191,7 @@ export function hardCaseRepeatsArbitrary(count: number): Arbitrary<readonly Hard
   return fc.array(repeat, { minLength: count, maxLength: count })
 }
 
-interface Site {
+interface HardCaseWork {
   readonly walls: Wall[]
   readonly baseCount: number
   readonly id: string
@@ -160,14 +203,14 @@ interface WallEnd {
   readonly point: Point
 }
 
-function baseWall(site: Site, draw: HardCaseDraw): Wall {
+function baseWall(site: HardCaseWork, draw: HardCaseDraw): Wall {
   const wall = site.walls[draw.pick % site.baseCount]
   if (wall === undefined) throw new RangeError('no base wall to act on')
   return wall
 }
 
 /** Groups the ends of base walls that share an exact point, keeping groups of two or more. */
-function jointGroups(site: Site): WallEnd[][] {
+function jointGroups(site: HardCaseWork): WallEnd[][] {
   const groups = new Map<string, WallEnd[]>()
   site.walls.slice(0, site.baseCount).forEach((wall, index) => {
     const ends: WallEnd[] = [
@@ -182,34 +225,34 @@ function jointGroups(site: Site): WallEnd[][] {
   return [...groups.values()].filter((group) => group.length > 1)
 }
 
-function copyWall(site: Site, draw: HardCaseDraw): void {
+function copyWall(site: HardCaseWork, draw: HardCaseDraw): void {
   site.walls.push({ ...baseWall(site, draw), id: site.id })
 }
 
-function addPartialOverlap(site: Site, draw: HardCaseDraw): void {
+function addPartialOverlap(site: HardCaseWork, draw: HardCaseDraw): void {
   const target = baseWall(site, draw)
   const lo = OVERLAP_START_MIN + OVERLAP_START_SPAN * draw.fractionA
-  const room = OVERLAP_END_MAX - lo - OVERLAP_MIN_LENGTH
-  const hi = lo + OVERLAP_MIN_LENGTH + room * draw.fractionB
+  const slack = OVERLAP_END_MAX - lo - OVERLAP_MIN_LENGTH
+  const hi = lo + OVERLAP_MIN_LENGTH + slack * draw.fractionB
   const a = lerp(target.start, target.end, lo)
   const b = lerp(target.start, target.end, hi)
   site.walls.push(makeWall(site.id, { a, b }, draw.style))
 }
 
-function addZeroLength(site: Site, draw: HardCaseDraw): void {
+function addZeroLength(site: HardCaseWork, draw: HardCaseDraw): void {
   const groups = jointGroups(site)
   const group = groups[draw.pick % Math.max(groups.length, 1)]
   const target = baseWall(site, draw)
   const center =
     draw.atJoint && group?.[0] ? group[0].point : lerp(target.start, target.end, draw.fractionA)
-  const half = (draw.fractionB * ZERO_LENGTH_MAX_SHARE * DERIVATION_LENGTH_TOLERANCE_MM) / 2
-  const offset = { x: half * Math.cos(draw.angle), y: half * Math.sin(draw.angle) }
+  const halfLength = (draw.fractionB * ZERO_LENGTH_MAX_SHARE * DERIVATION_LENGTH_TOLERANCE_MM) / 2
+  const offset = { x: halfLength * Math.cos(draw.angle), y: halfLength * Math.sin(draw.angle) }
   const a = { x: center.x - offset.x, y: center.y - offset.y }
   const b = { x: center.x + offset.x, y: center.y + offset.y }
   site.walls.push(makeWall(site.id, { a, b }, draw.style))
 }
 
-function moveJointEnd(site: Site, draw: HardCaseDraw, distance: number): void {
+function moveJointEnd(site: HardCaseWork, draw: HardCaseDraw, distance: number): void {
   const ends = jointGroups(site).flat()
   const end = ends[draw.pick % Math.max(ends.length, 1)]
   const wall = end === undefined ? undefined : site.walls[end.index]
@@ -221,18 +264,18 @@ function moveJointEnd(site: Site, draw: HardCaseDraw, distance: number): void {
   site.walls[end.index] = end.name === 'start' ? { ...wall, start: moved } : { ...wall, end: moved }
 }
 
-function moveEndInside(site: Site, draw: HardCaseDraw): void {
+function moveEndInside(site: HardCaseWork, draw: HardCaseDraw): void {
   const share = NEAR_INSIDE_MIN_SHARE + NEAR_INSIDE_SPAN_SHARE * draw.fractionA
   moveJointEnd(site, draw, share * DERIVATION_LENGTH_TOLERANCE_MM)
 }
 
-function moveEndOutside(site: Site, draw: HardCaseDraw): void {
+function moveEndOutside(site: HardCaseWork, draw: HardCaseDraw): void {
   const share = NEAR_OUTSIDE_MIN_SHARE + NEAR_OUTSIDE_SPAN_SHARE * draw.fractionA
   moveJointEnd(site, draw, share * DERIVATION_LENGTH_TOLERANCE_MM)
 }
 
 /** A wall from a base wall's start to its end, with the end moved sideways on a log scale. */
-function addNearParallel(site: Site, draw: HardCaseDraw): void {
+function addNearParallel(site: HardCaseWork, draw: HardCaseDraw): void {
   const { start, end } = baseWall(site, draw)
   const length = Math.hypot(end.x - start.x, end.y - start.y)
   const maxMm = NEAR_PARALLEL_MAX_SHARE * DERIVATION_LENGTH_TOLERANCE_MM
@@ -244,7 +287,7 @@ function addNearParallel(site: Site, draw: HardCaseDraw): void {
   site.walls.push(makeWall(site.id, { a: start, b: moved }, draw.style))
 }
 
-function applyHardCase(site: Site, kind: HardCase, draw: HardCaseDraw): void {
+function applyHardCase(site: HardCaseWork, kind: HardCase, draw: HardCaseDraw): void {
   switch (kind) {
     case 'copy':
       return copyWall(site, draw)

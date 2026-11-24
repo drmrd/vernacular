@@ -14,24 +14,3 @@ export function nonFiniteNumberPaths(value: unknown, path = 'value'): string[] {
   }
   return []
 }
-
-/** The item at `index`, counted around the list, so the last item is followed by the first. */
-export function cyclic<T>(items: readonly T[], index: number): T {
-  const item = items[((index % items.length) + items.length) % items.length]
-  if (item === undefined) throw new RangeError('the list is empty')
-  return item
-}
-
-/** The smallest turn, in radians, between a corner's incoming and outgoing side in a closed ring. */
-export function sharpestTurn(corners: readonly { x: number; y: number }[]): number {
-  const turns = corners.map((corner, k) => {
-    const before = cyclic(corners, k - 1)
-    const after = cyclic(corners, k + 1)
-    const inX = corner.x - before.x
-    const inY = corner.y - before.y
-    const outX = after.x - corner.x
-    const outY = after.y - corner.y
-    return Math.atan2(Math.abs(inX * outY - inY * outX), inX * outX + inY * outY)
-  })
-  return Math.min(...turns)
-}

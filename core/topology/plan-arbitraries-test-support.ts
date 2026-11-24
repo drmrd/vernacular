@@ -2,16 +2,20 @@ import fc from 'fast-check'
 import type { Arbitrary } from 'fast-check'
 import { SUPPORTED_EXTENT_MM } from '../geometry/tolerance'
 import type { Point, Wall } from '../model/types'
-import { cyclic, sharpestTurn } from './derivation-property-checks-test-support'
 import {
   ALL_HARD_CASES,
+  FULL_TURN,
+  NO_STYLE,
   THIN_WALL_THICKNESSES_MM,
   WALL_THICKNESSES_MM,
   applyHardCases,
+  cyclic,
   hardCaseRepeatsArbitrary,
   lerp,
   makeWall,
+  sharpestTurn,
   splitWallAt,
+  unit,
   wallStyleArbitrary,
 } from './plan-hard-cases-test-support'
 import type { GeneratedPlan, HardCase, WallEnds, WallStyle } from './plan-hard-cases-test-support'
@@ -20,7 +24,7 @@ export { ALL_HARD_CASES, splitWallAt }
 export type { GeneratedPlan, HardCase }
 
 /** How many runs each property gets in the unit tier. */
-export const PROPERTY_RUNS = 200
+export const PROPERTY_RUNS: number = 200
 
 const DEFAULT_MAX_WALLS = 24
 const DEFAULT_EXTENT_MM = 20_000
@@ -34,6 +38,8 @@ const MIN_SPACING_MM = 1500
 const MAX_SPACING_MM = 4000
 const JITTER_FRACTION = 0.1
 const MAX_WALLS_PER_CELL = 4
+/** The least `extentMm` that holds the largest grid, jitter included. */
+const MIN_EXTENT_MM = ((MAX_COLUMNS - 1) * MAX_SPACING_MM) / 2 + MAX_SPACING_MM * JITTER_FRACTION
 const TEE_FOOT_MIN = 0.3
 const TEE_FOOT_SPAN = 0.4
 const TEE_REACH = 0.6
@@ -41,9 +47,7 @@ const LOOP_CIRCUMRADIUS_SHARE = 0.2
 const TRIANGLE_CORNERS = 3
 const SQUARE_CORNERS = 4
 const CELL_CORNERS = 4
-const FULL_TURN = 2 * Math.PI
 
-const unit = fc.double({ min: 0, max: 1, noNaN: true })
 const signedUnit = fc.double({ min: -1, max: 1, noNaN: true })
 const angle = fc.double({ min: 0, max: FULL_TURN, noNaN: true })
 
@@ -58,7 +62,7 @@ const CELL_KINDS = ['none', 'none', 'diagonal', 'cross', 'tee', 'loop'] as const
 interface Cell {
   readonly kind: (typeof CELL_KINDS)[number]
   readonly teeFraction: number
-  readonly thickness: number
+  readonly teeThickness: number
   readonly loopThickness: number
   readonly square: boolean
   readonly turn: number
@@ -67,7 +71,7 @@ interface Cell {
 const cellArbitrary: Arbitrary<Cell> = fc.record({
   kind: fc.constantFrom(...CELL_KINDS),
   teeFraction: unit,
-  thickness: fc.constantFrom(...WALL_THICKNESSES_MM),
+  teeThickness: fc.constantFrom(...WALL_THICKNESSES_MM),
   loopThickness: fc.constantFrom(...THIN_WALL_THICKNESSES_MM),
   square: fc.boolean(),
   turn: angle,
@@ -82,9 +86,10 @@ interface GridDims {
 /**
  * Every draw behind one jittered grid. Thickness is set per straight run: one value for each
  * grid row, each grid column, all main diagonals, all anti-diagonals, and each tee stub. This is
- * the named exclusion of the inset defect (#1165): `insetPolygon` applies no miter limit, so where
+ * the named exclusion of the inset defect (#1165), which only the area properties need: `insetPolygon` applies no miter limit, so where
  * two walls of different thickness meet nearly straight, the clear corner flies off and the room
  * area is wildly wrong. The fix for #1165 removes this rule.
+ * `PlanOptions.mixThicknesses` turns it off, as the totality property does.
  */
 interface GridDraw extends GridDims {
   readonly origin: Point
@@ -104,7 +109,7 @@ function originArbitrary(dims: GridDims, extentMm: number): Arbitrary<Point> {
   const margin = dims.spacing * JITTER_FRACTION
   const axis = (count: number): Arbitrary<number> => {
     const min = margin - extentMm
-    const max = Math.max(min, extentMm - (count - 1) * dims.spacing - margin)
+    const max = extentMm - (count - 1) * dims.spacing - margin
     return fc.double({ min, max, noNaN: true })
   }
   return fc.record({ x: axis(dims.columns), y: axis(dims.rows) })
@@ -204,7 +209,7 @@ function featureSegments(grid: GridDraw, column: number, row: number): Segment[]
       return [main, anti]
     case 'tee': {
       const foot = lerp(p00, p10, TEE_FOOT_MIN + TEE_FOOT_SPAN * cell.teeFraction)
-      return [{ a: foot, b: lerp(foot, center, TEE_REACH), thickness: cell.thickness }]
+      return [{ a: foot, b: lerp(foot, center, TEE_REACH), thickness: cell.teeThickness }]
     }
     case 'loop':
       return loopSegments(center, grid, cell)
@@ -224,10 +229,12 @@ function gridSegments(grid: GridDraw): Segment[] {
 }
 
 /** Builds the walls with ids `w0`, `w1`, and so on, shuffles them, and keeps at most `maxWalls`. */
-function gridWalls(grid: GridDraw, maxWalls: number): Wall[] {
+function gridWalls(grid: GridDraw, maxWalls: number, mixThicknesses: boolean): Wall[] {
   const walls = gridSegments(grid).map((segment, k) => {
-    const style = grid.styles[k] ?? { thickness: 0, profile: undefined, swap: false }
-    return makeWall(`w${k}`, segment, { ...style, thickness: segment.thickness })
+    const style = grid.styles[k] ?? NO_STYLE
+    // Grid walls take their thickness from their run, unless the plan mixes thicknesses.
+    const thickness = mixThicknesses ? style.thickness : segment.thickness
+    return makeWall(`w${k}`, segment, { ...style, thickness })
   })
   return walls
     .map((wall, k) => ({ wall, k, key: grid.order[k] ?? 0 }))
@@ -240,21 +247,33 @@ function gridWalls(grid: GridDraw, maxWalls: number): Wall[] {
 export interface PlanOptions {
   /** The most base walls a plan keeps after the shuffle. The default is 24. */
   readonly maxWalls?: number
-  /** The plan, jitter included, lies within plus or minus this on both axes. The default is 20_000. */
+  /**
+   * The base walls, jitter included, lie within plus or minus this on both axes. Hard cases may
+   * reach past it (an overlap by 0.3 of a wall, an end by 3 tolerances). The default is 20_000.
+   */
   readonly extentMm?: number
   /** The hard cases applied to the base walls. The default is none. */
   readonly hardCases?: readonly HardCase[]
+  /** Draws each wall's thickness on its own, so walls along a straight run may differ. Default false. */
+  readonly mixThicknesses?: boolean
 }
 
 /**
  * Plans from a jittered grid of 2 to 5 by 2 to 4 nodes at a spacing of 1500 to 4000 mm. Each cell
  * may add a diagonal, a cross, a tee stub, or a free-standing loop. Throws `RangeError` when
- * `extentMm` is above `SUPPORTED_EXTENT_MM`.
+ * `extentMm` is above `SUPPORTED_EXTENT_MM` or too small to hold the largest grid.
  */
 export function planArbitrary(options: PlanOptions = {}): Arbitrary<GeneratedPlan> {
-  const { maxWalls = DEFAULT_MAX_WALLS, extentMm = DEFAULT_EXTENT_MM, hardCases = [] } = options
-  if (extentMm > SUPPORTED_EXTENT_MM) {
-    throw new RangeError(`extentMm ${extentMm} exceeds ${SUPPORTED_EXTENT_MM}`)
+  const {
+    maxWalls = DEFAULT_MAX_WALLS,
+    extentMm = DEFAULT_EXTENT_MM,
+    hardCases = [],
+    mixThicknesses = false,
+  } = options
+  if (extentMm > SUPPORTED_EXTENT_MM || extentMm < MIN_EXTENT_MM) {
+    throw new RangeError(
+      `extentMm ${extentMm} is outside ${MIN_EXTENT_MM} to ${SUPPORTED_EXTENT_MM}`,
+    )
   }
   return fc
     .record({
@@ -262,7 +281,7 @@ export function planArbitrary(options: PlanOptions = {}): Arbitrary<GeneratedPla
       repeats: hardCaseRepeatsArbitrary(hardCases.length),
     })
     .map(({ grid, repeats }) => {
-      const walls = applyHardCases(gridWalls(grid, maxWalls), hardCases, repeats)
+      const walls = applyHardCases(gridWalls(grid, maxWalls, mixThicknesses), hardCases, repeats)
       const cases = hardCases.join(',') || 'none'
       const shape = `${grid.columns}x${grid.rows} spacing ${grid.spacing}`
       return { walls, label: `grid ${shape} walls ${walls.length} hard ${cases}` }
@@ -306,15 +325,15 @@ function loopCorners(draw: LoopDraw): Point[] {
 
 /**
  * A star-shaped simple polygon with 3 to `maxCorners` corners, one wall per side, each with its own
- * thickness. Every corner turns by at least 5 degrees. This is a named exclusion of the inset
- * defect (#1165): without it, about 1.7 percent of loops have a corner of under 1 degree, and
+ * thickness. Every corner turns by at least 5 degrees unless `allowSharpCorners` is set. This is a
+ * named exclusion of the inset defect (#1165), which only the area properties need: without it, about 1.7 percent of loops have a corner of under 1 degree, and
  * where walls of different thickness meet that straight, the clear corner flies off. The fix for
  * #1165 removes this rule.
  */
 export function closedLoopArbitrary(
-  options: { readonly maxCorners?: number } = {},
+  options: { readonly maxCorners?: number; readonly allowSharpCorners?: boolean } = {},
 ): Arbitrary<GeneratedPlan> {
-  const { maxCorners = DEFAULT_MAX_CORNERS } = options
+  const { maxCorners = DEFAULT_MAX_CORNERS, allowSharpCorners = false } = options
   return fc
     .record({
       corners: fc.integer({ min: MIN_CORNERS, max: maxCorners }),
@@ -328,11 +347,11 @@ export function closedLoopArbitrary(
       }),
       styles: sized(wallStyleArbitrary, maxCorners),
     })
-    .filter((draw) => sharpestTurn(loopCorners(draw)) >= MIN_CORNER_TURN_RAD)
+    .filter((draw) => allowSharpCorners || sharpestTurn(loopCorners(draw)) >= MIN_CORNER_TURN_RAD)
     .map((draw) => {
       const corners = loopCorners(draw)
       const walls = corners.map((corner, k) => {
-        const style = draw.styles[k] ?? { thickness: 0, profile: undefined, swap: false }
+        const style = draw.styles[k] ?? NO_STYLE
         return makeWall(
           `w${k}`,
           { a: corner, b: cyclic(corners, k + 1) },
