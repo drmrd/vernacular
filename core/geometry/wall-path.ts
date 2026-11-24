@@ -66,6 +66,11 @@ export function subPath(path: WallPath, fromMm: number, toMm: number): WallPath 
   return linePath(pointAlong(path, fromMm), pointAlong(path, toMm))
 }
 
+export function offsetPath(path: WallPath, offsetMm: number): WallPath {
+  const normal = normalAlong(path, 0)
+  return linePath(shift(path.start, normal, offsetMm), shift(path.end, normal, offsetMm))
+}
+
 export interface PathBounds {
   readonly min: Point
   readonly max: Point
