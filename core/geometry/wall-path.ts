@@ -83,6 +83,12 @@ export function reversePath(path: WallPath): WallPath {
   return linePath(path.end, path.start)
 }
 
+// The deviation is unused for a line; an arc will use it.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function flattenPath(path: WallPath, _maxDeviationMm: number): Point[] {
+  return [path.start, path.end]
+}
+
 export interface PathBounds {
   readonly min: Point
   readonly max: Point
