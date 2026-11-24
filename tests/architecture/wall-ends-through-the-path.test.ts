@@ -12,6 +12,7 @@ import {
   findWallEndReads,
   programOfConfig,
   wallEndReadFiles,
+  wallTypesDeclaredIn,
 } from './wall-end-reads-test-support'
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
@@ -24,8 +25,8 @@ describe('wall ends are read through the wall path', () => {
     program = programOfConfig(join(repositoryRoot, 'tsconfig.json'))
   }, PROGRAM_TIMEOUT_MS)
 
-  it('scans a program that holds the wall model, so an empty list means no reads', () => {
-    expect(program.getSourceFile(join(repositoryRoot, 'core/model/types.ts'))).toBeDefined()
+  it('finds the wall types it checks by, so an empty list means no reads', () => {
+    expect(wallTypesDeclaredIn(program, repositoryRoot)).toEqual(['Wall', 'WallSceneNode'])
   })
 
   it(

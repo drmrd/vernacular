@@ -7,6 +7,7 @@ import {
   editorFile,
   expectEachSample,
   readsIn,
+  ROOT,
   SAMPLE_TIMEOUT_MS,
   SEGMENT,
   type Sample,
@@ -14,6 +15,7 @@ import {
   useWith,
   WALL_IMPORT,
 } from './wall-end-read-samples-test-support'
+import { programOfVirtualFiles, wallTypesDeclaredIn } from './wall-end-reads-test-support'
 
 describe('findWallEndReads, wall ends that are read', () => {
   const samples: Sample[] = [
@@ -287,4 +289,20 @@ describe('findWallEndReads, types derived from a wall type', () => {
   ]
 
   expectEachSample(samples)
+})
+
+describe('wallTypesDeclaredIn', () => {
+  it(
+    'leaves out a wall type that is no longer an interface with start or end',
+    () => {
+      const sources: Source[] = [
+        ['core/model/types.ts', 'export type Wall = { start: number; end: number }'],
+        ['core/scene/scene-graph.ts', 'export interface WallSceneNode { end: number }'],
+      ]
+      expect(wallTypesDeclaredIn(programOfVirtualFiles(ROOT, sources), ROOT)).toEqual([
+        'WallSceneNode',
+      ])
+    },
+    SAMPLE_TIMEOUT_MS,
+  )
 })

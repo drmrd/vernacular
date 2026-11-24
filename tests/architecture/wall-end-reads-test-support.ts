@@ -219,6 +219,23 @@ export function findWallEndReads(program: ts.Program, rootDir: string): WallEndR
   })
 }
 
+function declaresWallInterface(source: ts.SourceFile, name: string): boolean {
+  return source.statements.some(
+    (statement) =>
+      ts.isInterfaceDeclaration(statement) &&
+      statement.name.text === name &&
+      statement.members.some((member) => isEndName(member.name)),
+  )
+}
+
+/** The wall types whose file in the program declares them as an interface with `start` or `end`. */
+export function wallTypesDeclaredIn(program: ts.Program, rootDir: string): string[] {
+  return WALL_TYPES.filter((wall) => {
+    const source = program.getSourceFile(join(rootDir, wall.file))
+    return source !== undefined && declaresWallInterface(source, wall.name)
+  }).map((wall) => wall.name)
+}
+
 /** A read as one line, `file:line form`, for assertions and failure messages. */
 export function describeWallEndRead(read: WallEndRead): string {
   return `${read.file}:${read.line} ${read.form}`
