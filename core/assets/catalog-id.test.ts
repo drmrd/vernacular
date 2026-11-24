@@ -64,4 +64,20 @@ describe('parseCatalogId', () => {
       expect(parsed.ok === false && parsed.problem).toMatch(part)
     },
   )
+
+  const missingSeparators: ReadonlyArray<readonly [string, string, RegExp]> = [
+    ['@', 'core:FFE.seating/windsor_side_chair', /version/i],
+    ['/', 'core:FFE.seating', /slug/i],
+    ['.', 'core:FFE', /subcategory/i],
+  ]
+
+  it.each(missingSeparators)(
+    'names the missing part when a separator is absent: no "%s"',
+    (_, text, part) => {
+      const parsed = parseCatalogId(text)
+
+      expect(parsed).toMatchObject({ ok: false })
+      expect(parsed.ok === false && parsed.problem).toMatch(part)
+    },
+  )
 })
