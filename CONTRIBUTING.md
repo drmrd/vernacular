@@ -157,6 +157,43 @@ Asset packs (3D models, textures, color palettes) and registry packs
 that will be documented alongside the publishing CLI. Until then,
 propose contributions of this kind as issues with samples.
 
+### Works in the public domain by age
+
+This section is guidance for people who contribute files to the
+project's own packs. It is not legal advice.
+
+A work can be in the public domain because its copyright term has
+ended. The rules differ by country and by kind of work, so this
+project sets no single year. Before you rely on it, find the source
+institution's own statement about the work's status and keep the link
+to it.
+
+If you make a new file from such a work (a model, a texture, a
+redrawn symbol), that file is a first-party file:
+
+- Give it the license `CC-BY-4.0`, which ADR-0229 gives first-party
+  assets. The license covers what you added, to the extent copyright
+  applies to it. It does not claim the source work.
+- Put the link to the source work in the asset's `sourceUrl`. The pack
+  tool accepts the field as optional, but this policy requires it for
+  these files.
+- Add a line to the pack's `NOTICE` file that names the source and its
+  status, for example: `Chair model derived from a 1902 catalog plate
+held by Example Library (https://example.org/plate-41), which the
+library lists as public domain.`
+- Credit the source in the asset's `attribution`.
+
+If you redistribute a file unchanged (the same bytes), give it
+`CC0-1.0` only when the source institution states CC0 for that file,
+and put the link to that statement in `sourceUrl`. A statement such as
+"no known copyright restrictions" or a public domain mark is not a CC0
+statement. In that case, do not redistribute the file unchanged. Make
+a derived file under the rule above, or ask in an issue.
+
+If the status is unclear, treat it as not public domain. Do not add
+the file to a pack. Open an issue with the source link and what you
+found, and wait for an answer.
+
 ## Hooks and release engineering
 
 Husky installs three git hooks at `pnpm install` time via the `prepare` script:
