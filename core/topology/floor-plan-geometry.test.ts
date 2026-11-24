@@ -91,10 +91,15 @@ describe('deriveFloorPlanGeometry', () => {
   })
 
   it('lists every wall of the floor in the order of the floor', () => {
-    const walls = ['first', 'second', 'third'].map((id, index) =>
+    const rowsByIdInFloorOrder = [
+      ['north', 1],
+      ['east', 0],
+      ['south', 2],
+    ] as const
+    const walls = rowsByIdInFloorOrder.map(([id, row]) =>
       createWall(
-        { x: 0, y: index * WALL_LENGTH_MM },
-        { x: WALL_LENGTH_MM, y: index * WALL_LENGTH_MM },
+        { x: 0, y: row * WALL_LENGTH_MM },
+        { x: WALL_LENGTH_MM, y: row * WALL_LENGTH_MM },
         { id, thickness: RAW_THICKNESS_MM },
       ),
     )
