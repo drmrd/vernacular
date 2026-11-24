@@ -1,11 +1,9 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
-import { distance } from '../geometry/point'
 import { DERIVATION_LENGTH_TOLERANCE_MM } from '../geometry/tolerance'
 import type { Point, Wall } from '../model/types'
 import {
   componentCount,
-  cornersAtVertex,
   nonFiniteNumberPaths,
   roomSignature,
   signatureDifferences,
@@ -19,8 +17,12 @@ import {
   splitWallAt,
 } from './plan-arbitraries-test-support'
 import { deriveRooms } from './rooms'
-import { wallFootprints } from './wall-footprint'
 import { buildWallGraph } from './wall-graph'
+import {
+  expectSharedCorners,
+  meetingWalls,
+  wallsAcrossGap,
+} from './wall-junction-arbitraries-test-support'
 
 describe('the derivation on any generated plan', () => {
   it('returns a graph and rooms whose numbers are all finite, with every hard case', () => {
@@ -65,6 +67,9 @@ describe('the room count of any generated plan', () => {
 const AREA_RELATIVE_TOLERANCE = 1e-6
 const MOVE_EXTENT_MM = 20_000
 const MAX_CORNERS = 8
+const OUTLINE_TOLERANCE_MM = 1e-6
+const THICKNESSES_MM = [100, 114.3, 150, 230, 300, 450]
+const MAX_RATIO_OF_CLOSE_THICKNESSES = 1.5
 
 function moveEnds(walls: readonly Wall[], change: (point: Point) => Point): Wall[] {
   return walls.map((wall) => ({ ...wall, start: change(wall.start), end: change(wall.end) }))
@@ -129,93 +134,6 @@ describe('the rooms of a closed loop', () => {
     )
   })
 })
-
-const OUTLINE_TOLERANCE_MM = 1e-6
-const THICKNESSES_MM = [100, 114.3, 150, 230, 300, 450]
-const MAX_RATIO_OF_CLOSE_THICKNESSES = 1.5
-const MAX_DIRECTION_OFFSET_RAD = 1.5
-
-const point = fc.record({
-  x: fc.double({ min: -MOVE_EXTENT_MM, max: MOVE_EXTENT_MM, noNaN: true }),
-  y: fc.double({ min: -MOVE_EXTENT_MM, max: MOVE_EXTENT_MM, noNaN: true }),
-})
-const heading = fc.double({ min: -Math.PI, max: Math.PI, noNaN: true })
-
-function wallBetween(id: string, start: Point, end: Point): Wall {
-  return { id, start, end, thickness: 100 }
-}
-
-function towards(from: Point, angle: number, length: number): Point {
-  return { x: from.x + length * Math.cos(angle), y: from.y + length * Math.sin(angle) }
-}
-
-/** Wall A ends at p; wall B starts `gap` along the direction u from p; both lie away from the gap. */
-function wallsAcrossGap(gap: fc.Arbitrary<number>): fc.Arbitrary<Wall[]> {
-  const length = fc.double({ min: 500, max: 5000, noNaN: true })
-  const offset = fc.double({
-    min: -MAX_DIRECTION_OFFSET_RAD,
-    max: MAX_DIRECTION_OFFSET_RAD,
-    noNaN: true,
-  })
-  return fc
-    .record({ p: point, u: heading, gap, lengthA: length, lengthB: length, a: offset, b: offset })
-    .map(({ p, u, gap: d, lengthA, lengthB, a, b }) => {
-      const q = towards(p, u, d)
-      return [
-        wallBetween('a', towards(p, u + a + Math.PI, lengthA), p),
-        wallBetween('b', q, towards(q, u + b, lengthB)),
-      ]
-    })
-}
-
-interface MeetingWalls {
-  readonly walls: Wall[]
-  readonly thicknesses: number[]
-  readonly junction: Point
-}
-
-function meetingWalls(
-  degrees: { min: number; max: number },
-  thicknesses: fc.Arbitrary<number[]>,
-): fc.Arbitrary<MeetingWalls> {
-  const length = fc.double({ min: 1000, max: 5000, noNaN: true })
-  return fc
-    .record({
-      junction: point,
-      heading,
-      between: fc.double({ ...degrees, noNaN: true }),
-      lengthA: length,
-      lengthB: length,
-      swapA: fc.boolean(),
-      swapB: fc.boolean(),
-      thicknesses,
-    })
-    .map((draw) => {
-      const far = [
-        towards(draw.junction, draw.heading, draw.lengthA),
-        towards(draw.junction, draw.heading + (draw.between * Math.PI) / 180, draw.lengthB),
-      ] as const
-      const swaps = [draw.swapA, draw.swapB]
-      const walls = far.map((end, index) =>
-        swaps[index]
-          ? wallBetween(`w${index}`, end, draw.junction)
-          : wallBetween(`w${index}`, draw.junction, end),
-      )
-      return { walls, thicknesses: draw.thicknesses, junction: draw.junction }
-    })
-}
-
-function expectSharedCorners({ walls, thicknesses, junction }: MeetingWalls): void {
-  const graph = buildWallGraph(walls)
-  const footprints = wallFootprints(graph, thicknesses)
-  const vertex = graph.vertices.findIndex(
-    (candidate) => distance(candidate, junction) <= DERIVATION_LENGTH_TOLERANCE_MM,
-  )
-
-  expect(cornersAtVertex(graph, footprints, { edgeIndex: 0, vertexIndex: vertex })).toEqual(
-    cornersAtVertex(graph, footprints, { edgeIndex: 1, vertexIndex: vertex }),
-  )
-}
 
 describe('splits, the merge distance, and shared corners', () => {
   it('keep the rooms of a closed loop when any wall is split', () => {
