@@ -203,7 +203,7 @@ Branch `feat/verified-store-reader`. Depends on pull request 1.
 
 **Interfaces.**
 
-- Consumes: `contentHashOf(bytes)`, `validateCatalog`, `readPackManifest`, `manifestPath`, `blobPath`, `packTextPath`, `CatalogPackEntry`.
+- Consumes: `namedFiles`, `contentHashOf(bytes)`, `validateCatalog`, `readPackManifest`, `manifestPath`, `blobPath`, `packTextPath`, `CatalogPackEntry`.
 - Produces:
   - `verified-fetch.ts`: `UNDECLARED_BLOB_LIMIT_BYTES = 67_108_864`; `VerifiedRequest { url: string; sha256: string; maxBytes?: number; onProgress?: (receivedBytes: number) => void; signal?: AbortSignal }`; `VerifiedFetchResult` is `{ outcome: 'ok'; bytes: Uint8Array } | { outcome: 'mismatch' } | { outcome: 'too-long' } | { outcome: 'absent' } | { outcome: 'unreachable' }`; `fetchVerified(fetchFn: typeof fetch, request: VerifiedRequest): Promise<VerifiedFetchResult>`.
   - `store-reader.ts`: `createStoreReader(address: string, fetchFn: typeof fetch): StoreReader`, with `catalog(): Promise<CatalogRead>`, `manifest(entry: CatalogPackEntry): Promise<ManifestRead>`, `blob(contentHash: string, options?: { maxBytes?: number; onProgress?: (receivedBytes: number) => void }): Promise<VerifiedFetchResult>`, and `packText(packId, version, file): Promise<string | undefined>`. `CatalogRead` is `{ outcome: 'ok'; catalog: Catalog } | { outcome: 'newer-version' } | { outcome: 'invalid' } | { outcome: 'unreachable' }`. `ManifestRead` is `{ outcome: 'ok'; manifest: ReadablePackManifest; bytes: Uint8Array } | { outcome: 'rejected' } | { outcome: 'unreachable' }`.
@@ -245,7 +245,7 @@ Branch `feat/catalog-library-service`. Depends on pull request 2.
 
 **Interfaces.**
 
-- Consumes: `StoreReader`, `LibraryLedger`, `RemovableAssetCache`, `selectReadablePacks`, `comparePackVersions`, `readPackManifest`, `createStarterPackSource(fetch)`, `SettingsService`.
+- Consumes: `namedFiles`, `StoreReader`, `LibraryLedger`, `RemovableAssetCache`, `selectReadablePacks`, `comparePackVersions`, `readPackManifest`, `createStarterPackSource(fetch)`, `SettingsService`.
 - Produces:
   - `deployment-config.ts`: `CATALOG_NAME_MAX_LENGTH = 40`; `CatalogSetting { url: string; name?: string }`; `validateDeployment(value: unknown): DeploymentValidation`, which is `{ outcome: 'valid'; catalog: CatalogSetting | null | undefined } | { outcome: 'newer-version' } | { outcome: 'invalid' }`; `CatalogLevels { userAddress?: string; deployment?: { catalog: CatalogSetting | null | undefined }; build?: CatalogSetting }`; `CatalogChoice { url: string; name?: string; source: 'user' | 'deployment' | 'build' }`; `chooseCatalog(levels: CatalogLevels): CatalogChoice | undefined`; `normalizeCatalogAddress(input: string, appOrigin: string): string | undefined`; `catalogDisplayName(choice: CatalogChoice | undefined, catalogFileName?: string): string`.
   - `library-item.ts`: `LibraryItem` (moved here) with new optional fields `license`, `attribution`, `copyright`, `changes`, `sourceUrl`, `shareAlike: boolean`, `byteLength`, `thumbnailBlob: { contentHash; byteLength }`, and `origin: LibraryOrigin`, which is `{ kind: 'yours' } | { kind: 'added'; packId: string; attribution: string } | { kind: 'catalog' } | { kind: 'starter' }`. `libraryItemFromAsset(asset: ReadablePackAsset, context: { scope: string; origin: LibraryOrigin }): LibraryItem`.
@@ -379,7 +379,7 @@ Branch `feat/library-cache-and-storage-settings`. Depends on pull request 5.
 
 **Interfaces.**
 
-- Consumes: `LibraryLedger`, `RemovableAssetCache.delete`, `ProjectIndex.all()`, `ProjectRecord.assetHashes` and `assetListComplete`, `StorageProbeHost`, `normalizeCatalogAddress`, `chooseCatalog`, `LIBRARY_ADDRESS_KEY`, `formatByteSize`.
+- Consumes: `namedFiles`, `LibraryLedger`, `RemovableAssetCache.delete`, `ProjectIndex.all()`, `ProjectRecord.assetHashes` and `assetListComplete`, `StorageProbeHost`, `normalizeCatalogAddress`, `chooseCatalog`, `LIBRARY_ADDRESS_KEY`, `formatByteSize`.
 - Produces:
   - `cache-policy.ts`: `EVICT_ABOVE_FRACTION = 0.95`, `WARN_AT_FRACTION = 0.8`; `BlobFacts { contentHash; byteLength; lastUsedAt; resuppliable; kind }`; `planEviction(input: { blobs: readonly BlobFacts[]; pinned: ReadonlySet<string>; usageBytes: number; quotaBytes: number; incomingBytes: number }): { evict: string[]; fits: boolean }`; `storageLevel(usageBytes: number, quotaBytes: number): 'ok' | 'warn' | 'full'`.
   - `storage-capabilities.ts`: `readStorageUsage(host?: StorageProbeHost): Promise<{ usageBytes: number; quotaBytes: number } | undefined>`, `requestPersistentStorage(host?: StorageProbeHost): Promise<boolean>`.
@@ -427,7 +427,7 @@ Branch `feat/import-a-pack`. Depends on pull request 6.
 
 **Interfaces.**
 
-- Consumes: `readEndRecord`, `readCentralDirectory`, `inflateEntry`, `ARCHIVE_LIMITS`, `ArchiveFailure`, `contentHashOf`, `validatePackManifest`, `readPackManifest`, `licenseProblems`, `PACK_FORMAT_VERSIONS`, `pinnedHashes`, `storageLevel`, `zipFolder`.
+- Consumes: `namedFiles`, `readEndRecord`, `readCentralDirectory`, `inflateEntry`, `ARCHIVE_LIMITS`, `ArchiveFailure`, `contentHashOf`, `validatePackManifest`, `readPackManifest`, `licenseProblems`, `PACK_FORMAT_VERSIONS`, `pinnedHashes`, `storageLevel`, `zipFolder`.
 - Produces:
   - `archive-kind.ts`: `archiveKind(bytes: Uint8Array): 'project' | 'pack' | 'unknown'`.
   - `read-pack-file.ts`: `readPackFile(bytes: Uint8Array, limits: ArchiveLimits = ARCHIVE_LIMITS): Promise<PackFileRead>`. `PackFileRead` is `{ ok: true; manifestBytes: Uint8Array; assets: ReadonlyMap<string, Uint8Array>; thumbnails: ReadonlyMap<string, Uint8Array>; notice?: string } | { ok: false; failure: ArchiveFailure | { kind: 'no-manifest' } }`.
@@ -640,7 +640,7 @@ Branch `feat/store-mirror-schemas-and-guide`. Depends on pull requests 8 and 11.
 
 **Interfaces.**
 
-- Consumes: `publishPack`'s file sink, the paths of `store-paths.ts`, `validateCatalog`, `validatePackManifest`, `validateDeployment`, `LICENSES/`, the existing schema generator.
+- Consumes: `namedFiles`, `publishPack`'s file sink, the paths of `store-paths.ts`, `validateCatalog`, `validatePackManifest`, `validateDeployment`, `LICENSES/`, the existing schema generator.
 - Produces: `mirrorStore(request: { source: string; to: string }, io)`; `reuseToml(packs)`; the commands `mirror <source> --to <dir>` and `reuse <pack-dir> [--check]`.
 
 ### Cycles
