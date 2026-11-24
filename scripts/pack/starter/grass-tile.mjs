@@ -15,7 +15,7 @@ const NOISE_VALUE_COUNT = 2 * NOISE_AMPLITUDE + 1
 
 const HASH_SEED = 0x9e3779b9
 const HASH_COLUMN_MULTIPLIER = 0x85ebca6b
-const HASH_ROW_MULTIPLIER = 0xc2b2ae35
+const HASH_MIX_MULTIPLIER = 0xc2b2ae35
 const HASH_SHIFT_HIGH = 16
 const HASH_SHIFT_MID = 13
 
@@ -24,18 +24,16 @@ const TARGET_CODES = HEX_CHANNEL_OFFSETS.map((start) =>
 )
 const TARGET_LINEAR = TARGET_CODES.map((code) => LINEAR_TABLE[code])
 
-function hashTexelPair(pairColumn, row) {
-  let hash = HASH_SEED ^ Math.imul(pairColumn, HASH_COLUMN_MULTIPLIER)
-  hash = Math.imul(hash ^ (hash >>> HASH_SHIFT_HIGH), HASH_ROW_MULTIPLIER) ^ row
-  hash = Math.imul(hash ^ (hash >>> HASH_SHIFT_MID), HASH_ROW_MULTIPLIER)
+function hashTexel(column, row) {
+  let hash = HASH_SEED ^ Math.imul(column, HASH_COLUMN_MULTIPLIER)
+  hash = Math.imul(hash ^ (hash >>> HASH_SHIFT_HIGH), HASH_MIX_MULTIPLIER) ^ row
+  hash = Math.imul(hash ^ (hash >>> HASH_SHIFT_MID), HASH_MIX_MULTIPLIER)
   return (hash ^ (hash >>> HASH_SHIFT_HIGH)) >>> 0
 }
 
-// Horizontally adjacent texels share one hash and take opposite noise, so every aligned pair of
-// columns, and therefore every block of even width, has noise that sums to zero.
+// Each texel takes independent uniform noise from an integer hash of its position.
 function noiseAt(column, row) {
-  const magnitude = (hashTexelPair(column >> 1, row) % NOISE_VALUE_COUNT) - NOISE_AMPLITUDE
-  return column & 1 ? -magnitude : magnitude
+  return (hashTexel(column, row) % NOISE_VALUE_COUNT) - NOISE_AMPLITUDE
 }
 
 function nearestCode(linearValue) {
