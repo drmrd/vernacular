@@ -75,18 +75,22 @@ const GRASS_TILE_LUMINANCE_ERROR = 0.0000378
  * n, the larger of the relative noise of five captures of each build and the relative gap
  * between the darwin and Linux flat readings. The darwin captures were all the same, so the
  * noise is 0. The Linux gap is pending, to be read on the ubuntu runner after the branch is
- * pushed; the readings of 2026-11-16 put it near 0.0002.
+ * pushed; the committed Linux flat baseline reads 0.5978571, so n is expected near 0.000135.
  */
 const CAPTURE_NOISE = 0
 
 /**
- * The rounding of the flat reading to whole display codes. The flat lawn is one color across
- * the square, so its red and green channels read whole codes (166 and 189 of 255) and can sit up
- * to half a code from the level the renderer computed. The grass spreads each pixel over
- * neighboring codes, so its mean reads between them. Half a code on each channel moves the flat
- * linear level by 1.209 percent up and 1.191 percent down, through the steep part of the tone
- * curve. Without this term the grass, 0.115 percent above the flat reading, falls outside the
- * band.
+ * r, the rounding of the flat reading to whole display codes, which the plan's first band left
+ * out. The flat lawn is one color across the square, so its red and green channels read one code
+ * on every pixel (166 and 189 of 255, on darwin and in the committed Linux baseline), and the
+ * reading can sit up to half a code a channel from the level the renderer computed, in a
+ * direction the capture cannot show. Half a code on all three channels at once, taken through
+ * `linearLevel`, moves the flat level by 1.209 percent up and 1.191 percent down. The term is the
+ * larger, on both sides. The grass on darwin reads 0.115 percent above the flat reading, a tenth
+ * of the term. The band so catches a tile mean off by more than about 1.2 percent; the tile test
+ * holds it to 0.24 percent. If a GPU rounds each mip level of the tile to 8-bit sRGB, the grass
+ * can read up to about 0.5 percent higher there; if Linux lands outside the band, derive a mip
+ * term for it rather than widen this one.
  */
 const FLAT_READING_ROUNDING = 0.01209
 
