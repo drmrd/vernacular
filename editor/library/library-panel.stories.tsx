@@ -8,7 +8,7 @@ import { LibraryPanel } from './library-panel'
 // A relative pack base: the browser-mode MSW worker resolves it against the
 // Storybook iframe origin and intercepts the manifest request, so no real
 // network or on-disk pack is read during the story.
-const BASE = '/packs/vernacular-starter-1.0.0'
+const BASE = '/packs/vernacular-starter-1.1.0'
 
 const EMPTY_STATE = 'Your library is empty'
 
@@ -39,7 +39,7 @@ export default meta
 
 type Story = StoryObj<typeof LibraryPanel>
 
-// The on-disk manifest carries a single asset named 'Example chair', so two
+// The on-disk manifest carries a single model asset named 'Example chair', so two
 // differently named buttons can only come from the mocked response: proof the
 // MSW worker served the manifest with no real network read.
 export const Success: Story = {

@@ -21,6 +21,11 @@ export interface AssetRegistryOptions {
 export interface ScopedAssetSource {
   kind: ScopeKind
   source: AssetSource
+  /**
+   * Absent means listed. An unlisted source still resolves and describes its
+   * hashes, but `list` skips it.
+   */
+  listed?: boolean
 }
 
 /**
@@ -29,7 +34,8 @@ export interface ScopedAssetSource {
  * first, then a hash match in another source by precedence. `describe` asks the
  * sources by the same precedence and returns at once the description from the
  * source named by the reference scope, else the first description found. `list`
- * concatenates every source in scope precedence order.
+ * concatenates every listed source in scope precedence order and skips unlisted
+ * sources; `catalog` does the same but includes the unlisted ones.
  */
 export class AssetRegistry {
   constructor(
@@ -49,12 +55,11 @@ export class AssetRegistry {
   }
 
   async list(): Promise<LibraryItem[]> {
-    const items: LibraryItem[] = []
-    for (const scoped of this.sourcesInOrder(SCOPE_PRECEDENCE)) {
-      const listed = (await scoped.source.list?.()) ?? []
-      items.push(...listed)
-    }
-    return items
+    return this.collectItems((scoped) => scoped.listed !== false)
+  }
+
+  async catalog(): Promise<LibraryItem[]> {
+    return this.collectItems(() => true)
   }
 
   async describe(reference: AssetReference): Promise<AssetDescription | undefined> {
@@ -71,6 +76,17 @@ export class AssetRegistry {
       firstFound ??= description
     }
     return firstFound
+  }
+
+  private async collectItems(
+    include: (scoped: ScopedAssetSource) => boolean,
+  ): Promise<LibraryItem[]> {
+    const items: LibraryItem[] = []
+    for (const scoped of this.sourcesInOrder(SCOPE_PRECEDENCE)) {
+      if (!include(scoped)) continue
+      items.push(...((await scoped.source.list?.()) ?? []))
+    }
+    return items
   }
 
   private availableKinds(): ScopeKind[] {

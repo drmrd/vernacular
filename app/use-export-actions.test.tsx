@@ -11,7 +11,7 @@ import { createTestPorts } from '../session/handle/handle-test-kit'
 import {
   actionsContext,
   openStoredProject,
-  packListing,
+  packCatalogOf,
   READ_FAILURE,
   renderActions,
   settleTheAction,
@@ -186,15 +186,15 @@ describe('the export actions on an open project', () => {
   it('does not count a pack asset that the library of the application lists', async () => {
     const { warnings } = await exportBundle({
       references: [PACK_REFERENCE, USER_REFERENCE],
-      packs: packListing(PACK_REFERENCE),
+      packs: packCatalogOf(PACK_REFERENCE),
     })
 
     expect(warnings).toEqual([ONE_LEFT_OUT_SENTENCE])
   })
 
-  it('shows no warning for a pack asset when the listing of the library fails', async () => {
+  it('shows no warning for a pack asset when the catalog of the library fails', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const failing = { list: () => Promise.reject(new Error(READ_FAILURE)) }
+    const failing = { catalog: () => Promise.reject(new Error(READ_FAILURE)) }
 
     const { warnings, exported } = await exportBundle({
       references: [PACK_REFERENCE],
@@ -237,7 +237,7 @@ describe('the edges of the export warning', () => {
   it('counts a pack asset that the library of the application does not list', async () => {
     const { warnings } = await exportBundle({
       references: [UNLISTED_PACK_REFERENCE],
-      packs: packListing(PACK_REFERENCE),
+      packs: packCatalogOf(PACK_REFERENCE),
     })
 
     expect(warnings).toEqual([ONE_LEFT_OUT_SENTENCE])

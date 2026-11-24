@@ -438,7 +438,9 @@ Branch `feat/starter-pack-grass-texture`. After pull request 1. It can run besid
 **Goal.** A committed generator writes starter pack 1.1.0 with a grass tile whose mean is the lawn
 color, and the application reads 1.1.0.
 
-**What a user sees.** Nothing. The library still lists the one chair, and the ground is still flat.
+**What a user sees.** The library lists the new 1.1.0 chair in place of the old one. A project that
+places the old 1.0.0 chair keeps the chair's name on its scene label and gets no missing-asset
+report on export or open. The ground is still flat.
 
 **File fence.**
 
@@ -452,6 +454,10 @@ color, and the application reads 1.1.0.
   resolves (owner decision of 2026-11-22).
 - `core/environment/ground-surface.ts` (`GROUND_GRASS_REFERENCE`), `core/index.ts` (export).
 - `app/create-asset-library-registry.ts`, `app/create-asset-library-registry.test.ts` (new).
+- `storage/assets/asset-registry.ts`, `storage/assets/asset-registry-catalog.test.ts` (new).
+- `app/pack-supplies.ts`, `app/card-export.ts`, `app/use-project-actions.ts`,
+  `app/use-card-actions.ts`, and the app tests and test-support files that build a pack catalog.
+- `bridge/react/use-catalog-names.ts` and its test.
 - `editor/library/library-launcher.stories.tsx`, `editor/library/library-panel.stories.tsx` (the
   pack address).
 
@@ -501,14 +507,47 @@ rebuild test of cycle 5 is the tripwire.
    kind `texture` in the committed manifest, with the tile size the plan chose. Fails today: no
    constant. Implementation: `core/environment/ground-surface.ts`.
 7. **`app/create-asset-library-registry.test.ts`: "the application's library reads starter pack
-   1.1.0".** `createStarterPackSource(fetch)` is a new export. Setup: a fetch spy serving the
-   committed manifest. Assert `list()` fetched `/packs/vernacular-starter-1.1.0/manifest.json` and
-   listed the 1.1.0 chair only, not the chair of 1.0.0. A second test, "a reference to the chair of
-   starter pack 1.0.0 still resolves": a reference with scope `pack:vernacular-starter@1.0.0` and
-   hash `8a8a0cafbecb2446278c8b61e275c1ac78373a7ccd59ddd5ac7684bf1388341e` resolves to the bytes
-   under `/packs/vernacular-starter-1.0.0/`. Fails today: no such export, and the address is 1.0.0.
+   1.1.0".** `createStarterPackSources(fetch): ScopedAssetSource[]` is a new export. It returns two
+   sources: the 1.1.0 `PackSource`, which is listed, and the 1.0.0 `PackSource` with
+   `listed: false`. One source has one scope id, and the registry reports the id of the source that
+   held the bytes as the resolved scope. So one source cannot list only 1.1.0 and also resolve a
+   1.0.0 reference under the 1.0.0 scope. Tests build
+   `new AssetRegistry(createStarterPackSources(fetch))`.
+   Setup: a fetch spy serving the committed manifest. Assert `list()` fetched
+   `/packs/vernacular-starter-1.1.0/manifest.json` and listed the 1.1.0 chair only, not the chair of
+   1.0.0. A second test, "a reference to the chair of starter pack 1.0.0 still resolves": a
+   reference with scope `pack:vernacular-starter@1.0.0` and hash
+   `8a8a0cafbecb2446278c8b61e275c1ac78373a7ccd59ddd5ac7684bf1388341e` resolves to the bytes under
+   `/packs/vernacular-starter-1.0.0/`. Fails today: no such export, and the address is 1.0.0.
    Implementation: `app/create-asset-library-registry.ts`; the stories follow;
    `public/packs/vernacular-starter-1.0.0/` stays.
+
+Cycles 8 to 11 come from the owner's ruling of 2026-11-23. `loadPackSupplies` (the export and open
+missing-asset check) and `useCatalogNames` (scene furniture labels) used `registry.list()` as the
+full catalog. With the 1.0.0 chair unlisted, a project that placed it got a false "asset missing"
+report and a generic label. The registry needs a read that includes unlisted sources.
+
+8. **`storage/assets/asset-registry-catalog.test.ts`: "the catalog includes unlisted sources that
+   the list skips".** `ScopedAssetSource.listed?: boolean` is new; absent means listed. Assert
+   `list()` skips an unlisted source, and the new `catalog()` lists every source in scope
+   precedence order. A second test pins that an unlisted source still resolves and describes from
+   its own scope. Fails today: no `listed` field and no `catalog()`. Implementation:
+   `storage/assets/asset-registry.ts`.
+9. **`app/create-asset-library-registry.test.ts`: "the catalog holds the 1.0.0 chair and the
+   registry describes it".** Assert the catalog holds the 1.0.0 chair, and `registry.describe` of it
+   is the 500 by 520 by 800 model. Fails today: the 1.0.0 source is not in the catalog.
+   Implementation: `app/create-asset-library-registry.ts` (1.0.0 is a plain `PackSource` marked
+   `listed: false`).
+10. **`app/pack-supplies.test.ts` and the app action test supports: "the 1.0.0 chair counts as
+    supplied".** `loadPackSupplies` takes a `PackCatalog` (`catalog()`) instead of the lister. Assert
+    that, with the real starter pack sources, a reference to the 1.0.0 chair counts as supplied.
+    Fails today: `loadPackSupplies` reads `list()`, which skips the 1.0.0 chair. Implementation:
+    `app/pack-supplies.ts`, with `app/card-export.ts` and `app/use-project-actions.ts` passing the
+    catalog. The delete check in `app/use-card-actions.ts` keeps `list()`.
+11. **`bridge/react/use-catalog-names.test.tsx`: "an item of an unlisted source keeps its name".**
+    Assert that `useCatalogNames` names a furniture item whose source is unlisted. Fails today: the
+    hook reads `list()`, so the item gets a generic label. Implementation:
+    `bridge/react/use-catalog-names.ts` reads `catalog()`.
 
 **The build of starter pack 1.1.0.** `pnpm pack:starter` runs `build-starter-pack.mjs`. It writes
 the chair and its thumbnail from its own constants, generates the grass, writes the PNG, hashes

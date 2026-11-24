@@ -673,6 +673,7 @@ export type { SkyDomeInput } from './environment/sky-dome'
 export { skyDomeRadiance, sunAltitudeOf } from './environment/sky-dome'
 export {
   GROUND_BOUNCE_COLOR,
+  GROUND_GRASS_REFERENCE,
   GROUND_SURFACE_COLOR,
   GROUND_SURFACE_HEX,
 } from './environment/ground-surface'

@@ -10,7 +10,7 @@ import {
 import { bundleFilename, downloadBytes } from '../storage'
 import { exportMissingAssetsText } from './asset-report-text'
 import { exportFailureText, uncheckedCopyText } from './card-action-text'
-import { loadPackSupplies, type LibraryLister } from './pack-supplies'
+import { loadPackSupplies, type PackCatalog } from './pack-supplies'
 import { runExportWithToast } from './use-export-actions'
 
 /** What an export from a card runs on. */
@@ -20,8 +20,8 @@ export interface CardExportParts {
   readonly handle: DocumentHandle | null
   /** The cards on the page, which name the projects that are not open. */
   readonly cards?: readonly ProjectCardModel[] | undefined
-  /** The lister of the library whose packs supply assets, so that they do not count as missing. */
-  readonly packs?: LibraryLister | undefined
+  /** The catalog of the library whose packs supply assets, so that they do not count as missing. */
+  readonly packs?: PackCatalog | undefined
 }
 
 /** The file that the export of the id is expected to make, for the toast until the file exists. */
@@ -41,7 +41,7 @@ interface ExportRun {
   readonly handle: DocumentHandle | undefined
   readonly id: string
   readonly notifications: NotificationApi
-  readonly packs: LibraryLister | undefined
+  readonly packs: PackCatalog | undefined
 }
 
 /**

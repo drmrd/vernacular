@@ -33,3 +33,6 @@ core/format/generated/
 # them byte for byte with the generator's output, so Prettier must not reformat
 # them.
 tests/fixtures/packs/
+
+# Starter pack trees from scripts/pack/starter/build-starter-pack.mjs; a rebuild test pins the bytes.
+public/packs/
