@@ -43,39 +43,78 @@ function errorsFor(asset: Fields): string[] {
   return validatePackManifest(manifestOfFormat(FORMAT_WITH_DISTRIBUTION_FIELDS, asset)).errors
 }
 
-describe('validatePackManifest - distribution fields', () => {
-  it('accepts the four optional distribution fields and refuses malformed ones', () => {
-    const base = specificationAsset()
-    const thumbnail = base.thumbnail as Fields
-    const thumbnailWithoutLength = without(thumbnail, 'byteLength')
+const THUMBNAIL_OBJECT_ERROR = /^assets\[0\]\.thumbnail must be an object/
 
-    expect(validatePackManifest(manifestOfFormat(FORMAT_WITH_DISTRIBUTION_FIELDS, base))).toEqual({
-      valid: true,
-      errors: [],
-    })
+function refusedCases(): [string, Fields, RegExp][] {
+  const base = specificationAsset()
+  const thumbnail = base.thumbnail as Fields
+  return [
+    ['byteLength of zero', { ...base, byteLength: 0 }, /^assets\[0\]\.byteLength/],
+    ['byteLength of -1', { ...base, byteLength: -1 }, /^assets\[0\]\.byteLength/],
+    ['fractional byteLength', { ...base, byteLength: 1.5 }, /^assets\[0\]\.byteLength/],
+    ['string byteLength', { ...base, byteLength: '12' }, /^assets\[0\]\.byteLength/],
+    ['null thumbnail', { ...base, thumbnail: null }, THUMBNAIL_OBJECT_ERROR],
+    ['string thumbnail', { ...base, thumbnail: 'x' }, THUMBNAIL_OBJECT_ERROR],
+    [
+      'short thumbnail contentHash',
+      { ...base, thumbnail: { ...thumbnail, contentHash: 'a'.repeat(SHORT_HASH_LENGTH) } },
+      /^assets\[0\]\.thumbnail\.contentHash/,
+    ],
+    [
+      'missing thumbnail byteLength',
+      { ...base, thumbnail: without(thumbnail, 'byteLength') },
+      /^assets\[0\]\.thumbnail\.byteLength/,
+    ],
+    [
+      'fractional thumbnail byteLength',
+      { ...base, thumbnail: { ...thumbnail, byteLength: 1.5 } },
+      /^assets\[0\]\.thumbnail\.byteLength/,
+    ],
+    [
+      'string thumbnail byteLength',
+      { ...base, thumbnail: { ...thumbnail, byteLength: '12' } },
+      /^assets\[0\]\.thumbnail\.byteLength/,
+    ],
+    ['empty copyright', { ...base, copyright: '' }, /^assets\[0\]\.copyright/],
+    ['numeric copyright', { ...base, copyright: 7 }, /^assets\[0\]\.copyright/],
+    ['blank copyright', { ...base, copyright: '  ' }, /^assets\[0\]\.copyright/],
+    ['numeric changes', { ...base, changes: 7 }, /^assets\[0\]\.changes/],
+  ]
+}
 
-    const refused: [Fields, RegExp][] = [
-      [{ ...base, byteLength: 0 }, /^assets\[0\]\.byteLength/],
-      [{ ...base, byteLength: 1.5 }, /^assets\[0\]\.byteLength/],
-      [{ ...base, byteLength: '12' }, /^assets\[0\]\.byteLength/],
-      [
-        { ...base, thumbnail: { ...thumbnail, contentHash: 'a'.repeat(SHORT_HASH_LENGTH) } },
-        /^assets\[0\]\.thumbnail\.contentHash/,
-      ],
-      [{ ...base, thumbnail: thumbnailWithoutLength }, /^assets\[0\]\.thumbnail\.byteLength/],
-      [{ ...base, copyright: '' }, /^assets\[0\]\.copyright/],
-      [{ ...base, changes: 7 }, /^assets\[0\]\.changes/],
-    ]
-    for (const [asset, pattern] of refused) {
+describe('accepts the four optional distribution fields and refuses malformed ones', () => {
+  it('accepts an asset that carries all four fields', () => {
+    const manifest = manifestOfFormat(FORMAT_WITH_DISTRIBUTION_FIELDS, specificationAsset())
+    expect(validatePackManifest(manifest)).toEqual({ valid: true, errors: [] })
+  })
+
+  it('accepts an asset that carries none of the four fields', () => {
+    let asset = specificationAsset()
+    for (const key of ['byteLength', 'thumbnail', 'copyright', 'changes']) {
+      asset = without(asset, key)
+    }
+    expect(errorsFor(asset)).toEqual([])
+  })
+
+  it.each(refusedCases())(
+    'refuses a %s with one error naming its path',
+    (_name, asset, pattern) => {
       const errors = errorsFor(asset)
       expect(errors).toHaveLength(1)
       expect(errors[0]).toMatch(pattern)
-    }
-  })
+    },
+  )
 
   it('keeps a format 1 manifest with the distribution fields valid', () => {
     const formatOneAsset = without(specificationAsset(), 'mediaType')
     const manifest = manifestOfFormat(1, formatOneAsset)
     expect(validatePackManifest(manifest)).toEqual({ valid: true, errors: [] })
+  })
+
+  it('refuses a malformed field in a format 1 manifest with one error naming its path', () => {
+    const asset = { ...without(specificationAsset(), 'mediaType'), copyright: '' }
+    const errors = validatePackManifest(manifestOfFormat(1, asset)).errors
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatch(/^assets\[0\]\.copyright/)
   })
 })
