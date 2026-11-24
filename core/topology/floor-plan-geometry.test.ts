@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { wallPath } from '../geometry/wall-path'
-import { createFloor, createWall } from '../model/factories'
-import type { Floor, Wall } from '../model/types'
+import { DEFAULT_JUNCTION_TOLERANCE_MM } from '../geometry/tolerance'
+import { createWall } from '../model/factories'
+import type { Wall } from '../model/types'
 import { createRegistry } from '../registries/registry'
 import { effectiveWallThickness } from '../scene/construction-profile'
 import { deriveFloorPlanGeometry } from './floor-plan-geometry'
+import { floorOf, twoRoomWalls } from './plan-geometry-test-support'
 
 const FLOOR_ID = 'g'
 const WALL_ID = 'w'
@@ -14,10 +16,7 @@ const UNKNOWN_PROFILE_RAW_THICKNESS_MM = 180
 const BRICK_ASSEMBLY_THICKNESS_MM = 231
 const CUSTOM_BRICK_THICKNESS_MM = 400
 const BRICK_PROFILE = 'solid-masonry-brick'
-
-function floorOf(walls: Wall[]): Floor {
-  return createFloor('Ground', { id: FLOOR_ID, walls })
-}
+const DOT_POSITION_MM = 1000
 
 function singleWall(constructionProfile?: string, thickness = RAW_THICKNESS_MM): Wall {
   const wall = createWall({ x: 0, y: 0 }, { x: WALL_LENGTH_MM, y: 0 }, { id: WALL_ID, thickness })
@@ -107,5 +106,37 @@ describe('deriveFloorPlanGeometry', () => {
     const { network } = deriveFloorPlanGeometry(floorOf(walls))
 
     expect(network.walls.map((wall) => wall.id)).toEqual(walls.map((wall) => wall.id))
+  })
+})
+
+describe('what the plan geometry sets aside', () => {
+  const dotPoint = { x: DOT_POSITION_MM, y: DOT_POSITION_MM }
+
+  it('lists a wall of no length as set aside', () => {
+    const dot = createWall(dotPoint, dotPoint, { id: 'dot' })
+
+    const { setAside } = deriveFloorPlanGeometry(floorOf([...twoRoomWalls(), dot]))
+
+    expect(setAside.zeroLengthWallIds).toEqual(['dot'])
+    expect(setAside.coveredWallIds).toEqual([])
+    expect(setAside.unboundRecordIds).toEqual([])
+  })
+
+  it('lists a wall shorter than the join distance as set aside', () => {
+    const speck = createWall(
+      dotPoint,
+      { x: DOT_POSITION_MM + DEFAULT_JUNCTION_TOLERANCE_MM / 2, y: DOT_POSITION_MM },
+      { id: 'speck' },
+    )
+
+    const { setAside } = deriveFloorPlanGeometry(floorOf([...twoRoomWalls(), speck]))
+
+    expect(setAside.zeroLengthWallIds).toEqual(['speck'])
+  })
+
+  it('sets nothing aside on a plain floor', () => {
+    const { setAside } = deriveFloorPlanGeometry(floorOf(twoRoomWalls()))
+
+    expect(setAside).toEqual({ zeroLengthWallIds: [], coveredWallIds: [], unboundRecordIds: [] })
   })
 })
