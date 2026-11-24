@@ -71,4 +71,30 @@ describe('the application starter pack sources', () => {
       bytes: expectedBytes,
     })
   })
+
+  it('the catalog includes the chair of starter pack 1.0.0', async () => {
+    const registry = new AssetRegistry(createStarterPackSources(servePublicFiles()))
+
+    const items = await registry.catalog()
+
+    expect(items.map((item) => item.reference)).toContainEqual({
+      scope: PREVIOUS_PACK_SCOPE,
+      contentHash: PREVIOUS_CHAIR_HASH,
+    })
+  })
+
+  it('describes the chair of starter pack 1.0.0 as a 500 by 520 by 800 model', async () => {
+    const registry = new AssetRegistry(createStarterPackSources(servePublicFiles()))
+
+    const description = await registry.describe({
+      scope: PREVIOUS_PACK_SCOPE,
+      contentHash: PREVIOUS_CHAIR_HASH,
+    })
+
+    expect(description).toEqual({
+      kind: 'model',
+      mediaType: 'model/gltf-binary',
+      dimensions: { width: 500, depth: 520, height: 800 },
+    })
+  })
 })
