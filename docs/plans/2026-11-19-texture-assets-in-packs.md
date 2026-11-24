@@ -996,6 +996,12 @@ Then the scene work, in `test(e2e)` commits after the last BLUE. What each captu
     percent plus ε and n below, and ε and n above. A tile decoded in the wrong color space, or
     with the wrong mean, moves the level by far more and fails it. The defect probe of test two
     decodes the grass as `linear`, and its reading must fall outside the band.
+  - Amendment, 2026-11-24: the band gains a term r on both sides, L_flat × (1 − ½(1 − γ)σ² − ε −
+    n − r) to L_flat × (1 + ε + n + r). r is the change half a display code on every channel
+    makes to the flat level (1.209 percent on darwin). The flat reading is whole codes, so "only
+    low" holds for the rendered level, not for the reading. The band then reaches about 1.5
+    percent below and 1.2 percent above. If Linux lands outside it, a mip rounding term is
+    derived for it; r is not widened.
   - The comment records both platforms' readings, σ, ε, n, and the probe, as the existing gates
     do.
 - The two lawn gates are read again with the grass. If each reading moves by less than a tenth of
@@ -1080,18 +1086,18 @@ test --project=scene-webgl --update-snapshots=all <spec>` (ADR-0149).
 
 ### The daylight constraint, as tests
 
-| Check                                                                                 | Where                                      | Pull request |
-| ------------------------------------------------------------------------------------- | ------------------------------------------ | ------------ |
-| The generator's linear table matches the color module, and its target is the lawn hex | `srgb-table.test.mjs`                      | 3            |
-| The tile's linear mean is the lawn color, within 0.002 a channel                      | `grass-tile.test.mjs`                      | 3            |
-| Its luminance is the ground bounce, within 0.0005, and the bounce is 0.21174          | `grass-tile.test.mjs`                      | 3            |
-| The spread is 5 to 20 percent of the mean                                             | `grass-tile.test.mjs`                      | 3            |
-| Every 32 by 32 block is within 1 percent of the mean                                  | `grass-tile.test.mjs`                      | 3            |
-| The tile is sRGB, so the card averages in linear light                                | `image-texture-loader.test.ts`             | 2            |
-| The bounce stays the lawn hex                                                         | `ground-surface.test.ts` (as today)        | none         |
-| Only the texture changes the lawn's material                                          | `ground-plane-appearance.test.ts`, cycle 1 | 4            |
-| The sunlit lawn keeps its mean level, within the band derived from the tile's spread  | `scene-grass-texture.spec.ts`, test two    | 4            |
-| Sun-to-shade ratio and shadow-reach gap still clear their minimums                    | the two gates                              | 4            |
+| Check                                                                                              | Where                                      | Pull request |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------ |
+| The generator's linear table matches the color module, and its target is the lawn hex              | `srgb-table.test.mjs`                      | 3            |
+| The tile's linear mean is the lawn color, within 0.002 a channel                                   | `grass-tile.test.mjs`                      | 3            |
+| Its luminance is the ground bounce, within 0.0005, and the bounce is 0.21174                       | `grass-tile.test.mjs`                      | 3            |
+| The spread is 5 to 20 percent of the mean                                                          | `grass-tile.test.mjs`                      | 3            |
+| Every 32 by 32 block is within 1 percent of the mean                                               | `grass-tile.test.mjs`                      | 3            |
+| The tile is sRGB, so the card averages in linear light                                             | `image-texture-loader.test.ts`             | 2            |
+| The bounce stays the lawn hex                                                                      | `ground-surface.test.ts` (as today)        | none         |
+| Only the texture changes the lawn's material                                                       | `ground-plane-appearance.test.ts`, cycle 1 | 4            |
+| The sunlit lawn keeps its mean level, within the band from the tile's spread and the flat rounding | `scene-grass-texture.spec.ts`, test two    | 4            |
+| Sun-to-shade ratio and shadow-reach gap still clear their minimums                                 | the two gates                              | 4            |
 
 **Why the gates should barely move.** The texture's mean equals the flat color, and the graphics
 card averages in linear light. But a gate first averages display codes, which are a concave
