@@ -102,3 +102,5 @@ const ranksByCode = Object.fromEntries(
 export function domainRank(code: AssetDomainCode): number {
   return ranksByCode[code]
 }
+
+export type SubcategoriesByDomain = Partial<Record<AssetDomainCode, readonly string[]>>

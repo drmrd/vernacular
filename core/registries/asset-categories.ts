@@ -18,7 +18,7 @@ export interface AssetCategory extends RegistryEntry {
 
 export const ASSET_CATEGORY_REGISTRY_VERSION = 1
 
-const subcategoriesByDomain: Readonly<Partial<Record<AssetDomainCode, readonly string[]>>> = {
+const subcategoriesByDomain: Readonly<Record<AssetDomainCode, readonly string[]>> = {
   ...TIER_1_SUBCATEGORIES,
   ...TIER_2_SUBCATEGORIES,
   ...TIER_3_SUBCATEGORIES,
@@ -26,7 +26,7 @@ const subcategoriesByDomain: Readonly<Partial<Record<AssetDomainCode, readonly s
 }
 
 const categories: readonly AssetCategory[] = ASSET_DOMAIN_CODES.flatMap((domain) =>
-  (subcategoriesByDomain[domain] ?? []).map((subcategory) => ({
+  subcategoriesByDomain[domain].map((subcategory) => ({
     id: `${domain}.${subcategory}`,
     domain,
     subcategory,
