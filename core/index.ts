@@ -921,3 +921,11 @@ export {
 } from './assets/catalog-id'
 export type { SocketPredicate, SocketPredicateParse } from './assets/socket-predicate'
 export { parseSocketPredicate, matchesPredicate } from './assets/socket-predicate'
+export type { SubResource, SubResourceKind, SubResourceParse } from './assets/sub-resource'
+export {
+  SUB_RESOURCE_KINDS,
+  SUB_RESOURCE_SEPARATOR,
+  isSubResourceName,
+  formatSubResource,
+  parseSubResourceText,
+} from './assets/sub-resource'
