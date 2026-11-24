@@ -21,7 +21,10 @@ export interface AssetRegistryOptions {
 export interface ScopedAssetSource {
   kind: ScopeKind
   source: AssetSource
-  /** Absent means listed. An unlisted source still resolves and describes its hashes, but `list` skips it. */
+  /**
+   * Absent means listed. An unlisted source still resolves and describes its
+   * hashes, but `list` skips it.
+   */
   listed?: boolean
 }
 
