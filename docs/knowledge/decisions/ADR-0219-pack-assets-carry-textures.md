@@ -56,7 +56,8 @@ On 2026-11-19 he confirmed five defaults of this record:
 - A reader refuses a pack of a newer format as a whole.
 - The library hides textures until finishes use them.
 - A texture is PNG or WebP, each side a power of two from 64 to 2048 pixels, at most 8 MiB, with no animation and no embedded color profile.
-- The CC0-1.0 license of the generated grass is a rule for the starter pack only.
+- The CC0-1.0 license of the generated grass is a rule for the starter pack only. (Replaced on
+  2026-11-21: the grass carries CC-BY-4.0. ADR-0229 records that license decision.)
 
 The other rules below are this record's design. The first code pull request of
 `docs/plans/2026-11-19-texture-assets-in-packs.md` built the format on 2026-11-22. It covers the
@@ -219,14 +220,16 @@ These do not change:
 - A texture is reached by its reference. The asset registry describes it (media type, image size,
   tile size, color space) for the code that draws it. It does not appear in the library.
 
-### The grass of starter pack 1.1.0 is generated, and carries CC0-1.0
+### The grass of starter pack 1.1.0 is generated, and carries CC-BY-4.0
+
+ADR-0229 records this license decision. It replaced the CC0-1.0 first chosen here.
 
 This rule holds for the starter pack only. It is not a rule of section 4.3, and other packs do not
 inherit it.
 
-- The grass may carry `CC0-1.0` because its generator is committed to this repository and reads no
-  image, photograph, or sample from outside it. Its pixels follow from the code and a fixed seed
-  alone.
+- The grass is a first-party asset because its generator is committed to this repository and
+  reads no image, photograph, or sample from outside it. Its pixels follow from the code and a
+  fixed seed alone.
 - The generator stays under the project license (Apache-2.0) in `scripts/`. Only its output goes
   into the pack.
 - The pack's `NOTICE` names the generator's path and the command that rebuilds the pack. The
@@ -237,7 +240,9 @@ inherit it.
 ### What the grass must keep
 
 - Starter pack 1.1.0 is format 2. It keeps the chair of 1.0.0 with the same bytes, the same hash,
-  and the same metadata. It adds one texture of kind `texture`: a tile of mown grass.
+  and the same metadata. It adds one texture of kind `texture`: a tile of mown grass. (Replaced on
+  2026-11-22: 1.1.0 holds a new generated chair under CC-BY-4.0 in place of the CC0-1.0 chair.
+  ADR-0229 records that decision.)
 - The mean of the grass in linear light is the lawn color, `GROUND_SURFACE_COLOR`. Its luminance
   is the ground bounce of the sky, 0.21174.
 - Every part of the tile as large as the ground under a gate square keeps that mean. The plan sets

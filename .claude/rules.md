@@ -40,6 +40,10 @@ These rules apply to every contribution to Vernacular, whether by a human or a C
 
 17. **Humanize prose in Markdown and other text files.** Run new or substantially revised prose through the `humanizer` skill before committing it: specs, plans, ADRs, READMEs, the top-level docs, and any other Markdown or plain-text file. The skill removes the common machine-writing tells, including significance inflation, promotional framing, vague attributions, formulaic "-ing" analyses, the rule of three, padded transitions, copula avoidance, and em-dash overuse. The em-dash prohibition (rule 8) is the mechanical floor here. Apply this to prose only. Leave code blocks, command output, data tables, downloaded canonical text (license texts, the Contributor Covenant), and version-scoped release notes (`CHANGELOG.md`) alone; exact wording matters more than voice there.
 
+## Hard invariant: project commitment
+
+18. **Vernacular is free software and stays free.** Every change keeps the commitments of ADR-0230: the code stays Apache-2.0, every feature is free, a project always exports in the open format with no account, anyone may host every service the app talks to, a published asset never loses rights, and the default library shows no paid item, price, locked tile, upsell, or advertisement. A change that breaks one of them is rejected. See ADR-0230.
+
 ## Clean Code
 
 Applied at every BLUE phase and once at PR time by the `clean-code-reviewer` agent.

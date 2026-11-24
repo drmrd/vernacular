@@ -24,6 +24,7 @@ See `.claude/rules.md` for the authoritative list. The non-negotiable highlights
 8. No em-dashes in newly composed text.
 9. Conventional Commits.
 10. Author identity: `Dan Moore <9156191+drmrd@users.noreply.github.com>`.
+11. Vernacular is free software and stays free. Every change keeps the commitments of ADR-0230.
 
 ## Naming and language policies
 

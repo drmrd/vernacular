@@ -49,6 +49,14 @@ pnpm build      # production build to dist/
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution flow.
 
+## Free, and stays free
+
+Every feature of Vernacular is free, and the code stays under Apache-2.0. Your projects always
+export in the open `.building` format, with no account. You may host every service the app talks
+to yourself. The default library never shows a paid item, a price, a locked item, an upsell, or an
+advertisement, and a published asset never loses rights. The full commitment is in
+[ADR-0230](docs/knowledge/decisions/ADR-0230-vernacular-is-free-software-and-stays-free.md).
+
 ## License
 
 Apache-2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
