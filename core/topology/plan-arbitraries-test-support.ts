@@ -86,10 +86,10 @@ interface GridDims {
 /**
  * Every draw behind one jittered grid. Thickness is set per straight run: one value for each
  * grid row, each grid column, all main diagonals, all anti-diagonals, and each tee stub. This is
- * the named exclusion of the inset defect (#1165), which only the area properties need: `insetPolygon` applies no miter limit, so where
- * two walls of different thickness meet nearly straight, the clear corner flies off and the room
- * area is wildly wrong. The fix for #1165 removes this rule.
- * `PlanOptions.mixThicknesses` turns it off, as the totality property does.
+ * the named exclusion of the inset defect (#1165), which only the area properties need:
+ * `insetPolygon` applies no miter limit, so where two walls of different thickness meet nearly
+ * straight, the clear corner flies off and the room area is wildly wrong. The fix for #1165
+ * removes this rule. `PlanOptions.mixThicknesses` turns it off, as the totality property does.
  */
 interface GridDraw extends GridDims {
   readonly origin: Point
@@ -161,7 +161,7 @@ function nodeAt(grid: GridDraw, column: number, row: number): Point {
   }
 }
 
-/** The grid edges, the rows first and then the columns, kept where the drawn boolean pattern is set. */
+/** The grid edges, rows first and then columns, kept where the drawn boolean pattern is set. */
 function edgeSegments(grid: GridDraw): Segment[] {
   const edges: Segment[] = []
   for (let row = 0; row < grid.rows; row += 1) {
@@ -254,7 +254,11 @@ export interface PlanOptions {
   readonly extentMm?: number
   /** The hard cases applied to the base walls. The default is none. */
   readonly hardCases?: readonly HardCase[]
-  /** Draws each wall's thickness on its own, so walls along a straight run may differ. Default false. */
+  /**
+   * Draws each wall's thickness on its own, so walls along a straight run may differ. It also
+   * drops the thin cap on the walls of a free-standing loop, which then take any thickness up to
+   * 450 mm. Default false.
+   */
   readonly mixThicknesses?: boolean
 }
 
@@ -326,9 +330,9 @@ function loopCorners(draw: LoopDraw): Point[] {
 /**
  * A star-shaped simple polygon with 3 to `maxCorners` corners, one wall per side, each with its own
  * thickness. Every corner turns by at least 5 degrees unless `allowSharpCorners` is set. This is a
- * named exclusion of the inset defect (#1165), which only the area properties need: without it, about 1.7 percent of loops have a corner of under 1 degree, and
- * where walls of different thickness meet that straight, the clear corner flies off. The fix for
- * #1165 removes this rule.
+ * named exclusion of the inset defect (#1165), which only the area properties need: without it,
+ * about 1.7 percent of loops have a corner of under 1 degree, and where walls of different
+ * thickness meet that straight, the clear corner flies off. The fix for #1165 removes this rule.
  */
 export function closedLoopArbitrary(
   options: { readonly maxCorners?: number; readonly allowSharpCorners?: boolean } = {},
