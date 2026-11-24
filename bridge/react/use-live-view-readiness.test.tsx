@@ -17,9 +17,9 @@ function providerAround(store: SceneSessionStore) {
   }
 }
 
-function renderReadinessOn(store: SceneSessionStore, status: TextureStatus) {
-  return renderHook(({ status: groundTexture }) => useLiveViewReadiness(groundTexture), {
-    initialProps: { status },
+function renderReadinessOn(store: SceneSessionStore, groundTexture: TextureStatus) {
+  return renderHook(({ groundTexture }) => useLiveViewReadiness(groundTexture), {
+    initialProps: { groundTexture },
     wrapper: providerAround(store),
   })
 }
@@ -128,7 +128,7 @@ describe('useLiveViewReadiness', () => {
       leaveFrameDrawnFromAnEarlierOpen(store)
       const { result, rerender } = renderReadinessOn(store, 'loading')
 
-      rerender({ status: settled })
+      rerender({ groundTexture: settled })
       expect(frameDrawnFact(store)).toBe(false)
 
       act(() => {
@@ -145,7 +145,7 @@ describe('useLiveViewReadiness', () => {
       result.current.notePipelineBuildStarted()
     })
 
-    rerender({ status: 'ready' })
+    rerender({ groundTexture: 'ready' })
     act(() => {
       result.current.noteFrameDrawn()
     })
@@ -158,6 +158,19 @@ describe('useLiveViewReadiness', () => {
     expect(frameDrawnFact(store)).toBe(true)
   })
 
+  it('keeps a frame uncounted after the pipeline settles while the ground is still loading', () => {
+    const store = createSceneSessionStore()
+    const { result } = renderReadinessOn(store, 'loading')
+
+    act(() => {
+      result.current.notePipelineBuildStarted()
+      result.current.notePipelineSettled()
+      result.current.noteFrameDrawn()
+    })
+
+    expect(frameDrawnFact(store)).toBe(false)
+  })
+
   it('clears a counted frame when the ground starts to load again', () => {
     const store = createSceneSessionStore()
     const { result, rerender } = renderReadinessOn(store, 'ready')
@@ -166,7 +179,7 @@ describe('useLiveViewReadiness', () => {
     })
     expect(frameDrawnFact(store)).toBe(true)
 
-    rerender({ status: 'loading' })
+    rerender({ groundTexture: 'loading' })
 
     expect(frameDrawnFact(store)).toBe(false)
   })
