@@ -1,6 +1,6 @@
 import type { Point, Wall } from '../model/types'
 import { distance } from './point'
-import { shift, subtract, unit } from './vector'
+import { leftPerp, shift, subtract, unit } from './vector'
 
 export interface LinePath {
   readonly kind: 'line'
@@ -36,4 +36,14 @@ export function pathLength(path: WallPath): number {
 
 export function pointAlong(path: WallPath, alongMm: number): Point {
   return shift(path.start, unit(subtract(path.end, path.start)), alongMm)
+}
+
+// The distance is unused for a line; an arc will use it.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function tangentAlong(path: WallPath, _alongMm: number): Point {
+  return unit(subtract(path.end, path.start))
+}
+
+export function normalAlong(path: WallPath, alongMm: number): Point {
+  return leftPerp(tangentAlong(path, alongMm))
 }
