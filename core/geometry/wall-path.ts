@@ -1,5 +1,5 @@
 import type { Point, Wall } from '../model/types'
-import { distance } from './point'
+import { distance, rotatePoint, translatePoint } from './point'
 import { dot, leftPerp, shift, subtract, unit } from './vector'
 
 export interface LinePath {
@@ -69,6 +69,14 @@ export function subPath(path: WallPath, fromMm: number, toMm: number): WallPath 
 export function offsetPath(path: WallPath, offsetMm: number): WallPath {
   const normal = normalAlong(path, 0)
   return linePath(shift(path.start, normal, offsetMm), shift(path.end, normal, offsetMm))
+}
+
+export function translatePath(path: WallPath, delta: Point): WallPath {
+  return linePath(translatePoint(path.start, delta), translatePoint(path.end, delta))
+}
+
+export function rotatePath(path: WallPath, pivot: Point, radians: number): WallPath {
+  return linePath(rotatePoint(path.start, pivot, radians), rotatePoint(path.end, pivot, radians))
 }
 
 export interface PathBounds {
