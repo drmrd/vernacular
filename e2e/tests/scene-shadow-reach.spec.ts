@@ -45,8 +45,8 @@ const SUNLIT_LAWN = squareRegion(28, 140, 24)
  *   shadowed 0.3287, gap 0.0471
  *   Linux, shadow fitted to the casters and their shadow on the ground (this build): sunlit
  *   0.3761, shadowed 0.3291, gap 0.0470 (the probe was not taken)
- *   grass tile on the lawn, 2026-11-24: sunlit 0.3760, shadowed 0.3287, gap 0.0474 (Linux
- *   pending)
+ *   grass tile on the lawn, 2026-11-24: sunlit 0.3760, shadowed 0.3287, gap 0.0474; Linux
+ *   sunlit 0.3769, shadowed 0.3292, gap 0.0477
  *
  * Five captures of each build came back identical to four decimals, so the noise band is under
  * 0.0001 on both. The threshold is the midpoint of the two gaps, (0.0471 + 0.0063) / 2 = 0.0267,

@@ -35,7 +35,7 @@ const SHADOWED_LAWN = squareRegion(150, 109, 24)
  *   before the daylight calibration: 0.1334 / 0.0764 = 1.7455
  *   calibrated daylight (this build): 0.5978 / 0.1008 = 5.9321
  *   Linux, calibrated daylight (this build): 0.5979 / 0.1008 = 5.9329
- *   grass tile on the lawn, 2026-11-24: 0.5985 / 0.1009 = 5.9325 (Linux pending)
+ *   grass tile on the lawn, 2026-11-24: 0.5985 / 0.1009 = 5.9325, Linux 0.6023 / 0.1016 = 5.9303
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * minimum is the midpoint of the two ratios, 3.8388, rounded to 3.839, which clears this build

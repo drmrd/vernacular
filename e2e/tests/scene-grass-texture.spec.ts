@@ -31,8 +31,8 @@ const SHADOW_ON_LAWN_QUERY = '&scene=shadow-on-lawn'
  *
  *   flat lawn: 0.0273 (the shading across the square moves the blue channel by a code or so)
  *   grass (this build): 0.2023
- *   Linux: pending, to be read on the ubuntu runner after the branch is pushed. If the grass
- *   reads lower there, the minimum moves to the midpoint of the flat reading and the lower one.
+ *   Linux grass, the ubuntu runner (SwiftShader), 2026-11-24: 0.4092, so the darwin reading is
+ *   the lower one and the minimum stands.
  *
  * Five captures of each build gave the same readings to six decimals, so the noise band is 0.
  * The minimum is the midpoint of the two readings, (0.0273 + 0.2023) / 2 = 0.1148, rounded to
@@ -45,9 +45,9 @@ const MIN_LAWN_LUMINANCE_SPREAD = 0.115
  * The flat lawn's mean linear level in the square, read as the sun-to-shade gate reads it: the
  * mean display code of the square, taken back through the tone curve.
  *
- * Darwin, 2026-11-24, five captures, all the same: 0.5977765. Linux: pending, to be read on the
- * ubuntu runner after the branch is pushed. On 2026-11-16 the sun-to-shade gate read this square
- * of the same flat lawn at 0.5978 on darwin and 0.5979 on Linux.
+ * Darwin, 2026-11-24, five captures, all the same: 0.5977765. The committed Linux baseline of the
+ * flat lawn reads 0.5978571. On 2026-11-16 the sun-to-shade gate read this square of the same
+ * flat lawn at 0.5978 on darwin and 0.5979 on Linux.
  */
 const FLAT_LAWN_LINEAR_LEVEL = 0.5977765
 
@@ -70,10 +70,10 @@ const GRASS_TILE_LUMINANCE_ERROR = 0.0000378
 /**
  * n, the larger of the relative noise of five captures of each build and the relative gap
  * between the darwin and Linux flat readings. The darwin captures were all the same, so the
- * noise is 0. The Linux gap is pending, to be read on the ubuntu runner after the branch is
- * pushed; the committed Linux flat baseline reads 0.5978571, so n is expected near 0.000135.
+ * noise is 0. The committed Linux flat baseline reads 0.5978571, so the gap is
+ * (0.5978571 - 0.5977765) / 0.5977765 = 0.000135.
  */
-const CAPTURE_NOISE = 0
+const CAPTURE_NOISE = 0.000135
 
 /**
  * r, the rounding of the flat reading to whole display codes, which the plan's first band left
@@ -96,14 +96,15 @@ const TEXEL_SPREAD_DROP = ((1 - ENCODING_EXPONENT) * GRASS_TILE_SPREAD ** 2) / 2
 /**
  * The band the sunlit lawn's mean linear level must lie in with the grass drawn:
  * L_flat × (1 − ½(1 − γ)σ² − ε − n − r) to L_flat × (1 + ε + n + r), with r the rounding above.
- * On darwin the band is 0.58879 to 0.60503.
+ * The band is 0.58871 to 0.60511.
  *
  * Darwin, 2026-11-24, five captures of each build, all the same:
  *
  *   grass (this build): 0.5984666, 0.115 percent above the flat reading
  *   defect probe, the tile decoded as `linear` instead of `srgb`: 1.3765242, 2.3 times the flat
  *   reading and far above the band
- *   Linux: pending, to be read on the ubuntu runner after the branch is pushed.
+ *   Linux grass, the ubuntu runner (SwiftShader), 2026-11-24: 0.6022559, 0.74 percent above the
+ *   Linux flat reading, inside the band. The rounding term covers it, and no mip term is needed.
  */
 const LAWN_LEVEL_LOWER =
   FLAT_LAWN_LINEAR_LEVEL *
