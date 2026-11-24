@@ -125,8 +125,9 @@ export interface RoomMatchTolerance {
 
 /**
  * Lists the ids of the expected rooms that no actual room matches: the same outline corners (a
- * point set, within `outlineMm`) and a clear area within `areaRelative` of the larger area. An
- * empty list means every expected room was found.
+ * point set, within `outlineMm`) and a clear area within `areaRelative` of the larger area. Each
+ * actual room pairs with at most one expected room. An empty list means every expected room was
+ * found.
  */
 export function unmatchedRooms(
   expected: readonly Room[],
@@ -140,8 +141,14 @@ export function unmatchedRooms(
       samePointSet(outlineCorners(room.polygon), outlineCorners(other.polygon), tolerance.outlineMm)
     )
   }
+  const unpaired = [...actual]
   return expected
-    .filter((room) => !actual.some((other) => matches(room, other)))
+    .filter((room) => {
+      const found = unpaired.findIndex((other) => matches(room, other))
+      if (found < 0) return true
+      unpaired.splice(found, 1)
+      return false
+    })
     .map((room) => room.id)
 }
 
