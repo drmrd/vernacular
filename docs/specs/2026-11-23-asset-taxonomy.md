@@ -1,6 +1,6 @@
 # Asset taxonomy: domains, tiers, identifiers, and manifest contracts
 
-Status: design, 2026-11-23. The owner ruled on its decisions on 2026-11-23, and ADR-0234, ADR-0235, ADR-0236, and ADR-0237 (all current) record them. They depend on ADR-0229 and ADR-0230, which are in an open pull request (#1054) and not yet on `main`, and ADR-0235 and ADR-0236 also build on ADR-0181 and ADR-0199, which are on `main`. Statements about the code were read from `main` at `d248d503b`. The "Open points" section lists what stays open.
+Status: design, 2026-11-23. The owner ruled on its decisions on 2026-11-23, and ADR-0234, ADR-0235, ADR-0236, and ADR-0237 (all current) record them. They depend on ADR-0229 and ADR-0230, and ADR-0235 and ADR-0236 also build on ADR-0181 and ADR-0199. All of these records are on `main`. Statements about the code were read from `main` at `d248d503b`. The "Open points" section lists what stays open.
 
 ## Why
 

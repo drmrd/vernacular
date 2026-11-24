@@ -44,9 +44,8 @@ manifest, that a work in the public domain by age is labeled as described under 
 the first checks are the ones listed under the format version, that further files are
 representations on the entry, and that the contract is published as JSON Schema files.
 
-This record depends on ADR-0229 and ADR-0230, which are in an open pull request (#1054), and on
-ADR-0181, ADR-0199, and ADR-0201 to ADR-0203, which are on `main`. The decisions here that build on
-ADR-0229 and ADR-0230 take effect when those records land.
+This record depends on ADR-0229 and ADR-0230, and on ADR-0181, ADR-0199, and ADR-0201 to
+ADR-0203. All of these records are on `main`.
 
 ## Context
 

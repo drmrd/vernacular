@@ -36,8 +36,7 @@ Current, 2026-11-23. Nothing is built yet. The inventory and the grammar are in
 `docs/plans/2026-11-23-asset-taxonomy-adoption.md`. On 2026-11-23 the owner ruled that `kind` and
 the domain both stay, and that all 410 categories enter the registry at once.
 
-This record depends on ADR-0229, which is in an open pull request (#1054) and not yet on `main`.
-The decisions here that build on it take effect when it lands.
+This record depends on ADR-0229, which is on `main`.
 
 ## Context
 

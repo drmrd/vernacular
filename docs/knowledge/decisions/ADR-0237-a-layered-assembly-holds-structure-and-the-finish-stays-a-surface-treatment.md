@@ -33,8 +33,7 @@ Current, 2026-11-23. Nothing is built yet. On 2026-11-23 the owner ruled that a 
 does not own the finish, and that it may suggest a default finish for each face, which the app
 copies into the paint map one time, when the assembly is applied.
 
-This record builds on ADR-0234 and ADR-0236. Both depend on ADR-0229, which is in an open pull
-request (#1054) and not yet on `main`. The decisions here take effect when it lands.
+This record builds on ADR-0234 and ADR-0236. Both depend on ADR-0229, which is on `main`.
 
 ## Context
 

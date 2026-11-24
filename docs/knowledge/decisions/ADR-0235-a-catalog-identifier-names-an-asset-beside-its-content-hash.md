@@ -41,9 +41,8 @@ a version of its own, that the `mfr_` namespace is reserved and refused, that th
 sub-resource uses a tilde, that stored element ids keep their form, and that the project id stays
 out of the document.
 
-This record depends on ADR-0229 and ADR-0230, which are in an open pull request (#1054), and on
-ADR-0181, ADR-0199, and ADR-0201 to ADR-0203, which are on `main`. The decisions here that build on
-ADR-0229 and ADR-0230 take effect when those records land.
+This record depends on ADR-0229 and ADR-0230, and on ADR-0181, ADR-0199, and ADR-0201 to
+ADR-0203. All of these records are on `main`.
 
 ## Context
 
