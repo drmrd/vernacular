@@ -41,9 +41,12 @@ export interface SceneSessionState {
   /** True once the stored session has been applied to the live view. */
   sessionRestored: boolean
   /**
-   * True once a frame has drawn since the latest pipeline build settled. A build clears it
-   * as it starts and the first frame after settlement sets it again, so a frame drawn while
-   * the pipeline is still building never counts.
+   * True once a frame has drawn since the latest pipeline build settled and the ground texture
+   * stopped loading. A build clears it as it starts, and so does a ground texture that starts to
+   * load; the first frame drawn with neither in flight sets it again, so a frame drawn while the
+   * pipeline is still building or the grass is still loading never counts. The name predates the
+   * ground wait and is kept because the session field is read across the bridge and the timing
+   * page.
    */
   frameDrawnSincePipelineSettled: boolean
 }
