@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { type Color, colorFromOkLab, perceptualDistance, srgbToOkLab } from '../../core'
-import { settledHarnessCanvas, sampleCanvasColor } from './scene-helpers'
+import { sampleCanvasColor } from './canvas-patch'
+import { settledHarnessCanvas } from './scene-helpers'
 
 // The glossy-finish contrast gate (issue #541, slice A2 of the rendering-realism campaign).
 // The finish-contrast harness state paints the shell floor semi-gloss and all four walls

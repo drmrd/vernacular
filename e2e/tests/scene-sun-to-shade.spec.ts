@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { linearLevel } from './canvas-patch'
-import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
+import { linearLevel, sampleCanvasColor } from './canvas-patch'
+import {
+  SUN_TO_SHADE_SUNLIT_LAWN,
+  logReading,
+  settledHarnessCanvas,
+  squareRegion,
+} from './scene-helpers'
 
 // The sun-to-shade gate. Daylight on open ground is several times brighter than the shade of a
 // building, and the ratio rests on the balance of the direct sun and the sky that fills the
@@ -18,9 +23,6 @@ const SHADOW_ON_LAWN_QUERY = '&scene=shadow-on-lawn'
 // The lawn inside the building's shadow, north of the north wall: x 150..173, y 109..132. Every
 // edge of the shadow lies at least 5 px outside the square.
 const SHADOWED_LAWN = squareRegion(150, 109, 24)
-// The lawn in the sun east of the shadow, at the same depth in the view: x 236..259,
-// y 109..132. No edge of the shadow or the lawn comes within 13 px of it.
-const SUNLIT_LAWN = squareRegion(236, 109, 24)
 
 /**
  * The smallest ratio of the sunlit lawn's linear level to the shadowed lawn's.
@@ -53,7 +55,7 @@ test.describe('Sun to shade gate', () => {
   }) => {
     const canvas = await settledHarnessCanvas(page, SHADOW_ON_LAWN_QUERY)
 
-    const sunlit = linearLevel(await sampleCanvasColor(page, canvas, SUNLIT_LAWN))
+    const sunlit = linearLevel(await sampleCanvasColor(page, canvas, SUN_TO_SHADE_SUNLIT_LAWN))
     const shadowed = linearLevel(await sampleCanvasColor(page, canvas, SHADOWED_LAWN))
     const ratio = sunlit / shadowed
     logReading('sunlit lawn linear level', sunlit.toFixed(4))

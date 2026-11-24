@@ -8,14 +8,8 @@ import {
   referenceLightingInput,
   srgbToLinear,
 } from '../../core'
-import {
-  CODE_RANGE,
-  luminanceCode,
-  SOUTH_WEST_VIEW_SOUTH_WALL,
-  logReading,
-  sampleCanvasColor,
-  settledHarnessCanvas,
-} from './scene-helpers'
+import { CODE_RANGE, luminanceCode, sampleCanvasColor } from './canvas-patch'
+import { SOUTH_WEST_VIEW_SOUTH_WALL, logReading, settledHarnessCanvas } from './scene-helpers'
 
 // The tone curve gate. The daylight-reference state paints the four exterior wall faces the
 // matte daylight white and lights them from a clear mid-morning sky at the equinox, so the

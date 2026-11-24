@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
+import { sampleCanvasColor } from './canvas-patch'
 import {
   HARNESS_CANVAS_HEIGHT_PX,
   HARNESS_CANVAS_WIDTH_PX,
   logReading,
-  sampleCanvasColor,
   settledHarnessCanvas,
 } from './scene-helpers'
 

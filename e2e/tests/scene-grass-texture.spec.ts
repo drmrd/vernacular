@@ -5,7 +5,7 @@ import {
   sampleCanvasColor,
   samplePatchPixels,
 } from './canvas-patch'
-import { logReading, settledHarnessCanvas, squareRegion } from './scene-helpers'
+import { SUN_TO_SHADE_SUNLIT_LAWN, logReading, settledHarnessCanvas } from './scene-helpers'
 
 // The grass texture gate. The ground draws the starter pack's mown-grass tile on the lawn, and
 // this spec proves the change is visible without moving the lawn's level of light. It reads the
@@ -21,10 +21,6 @@ import { logReading, settledHarnessCanvas, squareRegion } from './scene-helpers'
 
 // The canonical harness state this gate renders.
 const SHADOW_ON_LAWN_QUERY = '&scene=shadow-on-lawn'
-
-// The lawn in the sun east of the building's shadow: x 236..259, y 109..132. It is the sunlit
-// square of the sun-to-shade gate (scene-sun-to-shade.spec.ts).
-const SUNLIT_LAWN = squareRegion(236, 109, 24)
 
 /**
  * The smallest standard deviation of the luminance display codes (0..255) of the pixels of the
@@ -119,7 +115,9 @@ test.describe('Grass texture gate', () => {
   test('the sunlit lawn varies from pixel to pixel as the grass tile does', async ({ page }) => {
     const canvas = await settledHarnessCanvas(page, SHADOW_ON_LAWN_QUERY)
 
-    const spread = luminanceCodeSpread(await samplePatchPixels(page, canvas, SUNLIT_LAWN))
+    const spread = luminanceCodeSpread(
+      await samplePatchPixels(page, canvas, SUN_TO_SHADE_SUNLIT_LAWN),
+    )
     logReading('sunlit lawn luminance code spread', spread.toFixed(4))
 
     expect(
@@ -134,7 +132,7 @@ test.describe('Grass texture gate', () => {
   }) => {
     const canvas = await settledHarnessCanvas(page, SHADOW_ON_LAWN_QUERY)
 
-    const level = linearLevel(await sampleCanvasColor(page, canvas, SUNLIT_LAWN))
+    const level = linearLevel(await sampleCanvasColor(page, canvas, SUN_TO_SHADE_SUNLIT_LAWN))
     logReading('sunlit lawn linear level', level.toFixed(7))
 
     const band = `${LAWN_LEVEL_LOWER.toFixed(5)} to ${LAWN_LEVEL_UPPER.toFixed(5)}`

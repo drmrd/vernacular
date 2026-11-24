@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
+import { sampleCanvasColor } from './canvas-patch'
+import { logReading, settledHarnessCanvas, squareRegion } from './scene-helpers'
 
 // The shadow-reach gate. The solar shadow camera used to fit only the building, the casters,
 // so a shadow that ran off the building was cut off a few metres from it and the lawn past

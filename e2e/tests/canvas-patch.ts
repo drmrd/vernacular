@@ -126,10 +126,15 @@ export async function sampleCanvasColor(
   }
 }
 
+// The linear luminance of a gamma-encoded sampled color: decode the channels, then weigh them.
+function decodedLuminance(color: Srgb): number {
+  const linear = { r: srgbToLinear(color.r), g: srgbToLinear(color.g), b: srgbToLinear(color.b) }
+  return linearLuminance(linear)
+}
+
 // The display code of a sampled color's luminance: decode the channels, weigh them, encode.
 export function luminanceCode(color: Srgb): number {
-  const linear = { r: srgbToLinear(color.r), g: srgbToLinear(color.g), b: srgbToLinear(color.b) }
-  return linearToSrgb(linearLuminance(linear)) * CODE_RANGE
+  return linearToSrgb(decodedLuminance(color)) * CODE_RANGE
 }
 
 // The standard deviation of the luminance display codes (0..255) of a set of pixels.
@@ -143,10 +148,5 @@ export function luminanceCodeSpread(colors: readonly Srgb[]): number {
 // The linear light level behind a sampled color: its luminance, encoded as a display code,
 // taken back through the inverse of the tone curve.
 export function linearLevel(color: Srgb): number {
-  const luminance = linearLuminance({
-    r: srgbToLinear(color.r),
-    g: srgbToLinear(color.g),
-    b: srgbToLinear(color.b),
-  })
-  return agxNeutralInverse(linearToSrgb(luminance))
+  return agxNeutralInverse(linearToSrgb(decodedLuminance(color)))
 }

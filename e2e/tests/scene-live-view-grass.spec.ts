@@ -16,7 +16,7 @@ import { drawnSceneCanvas } from './scene-helpers'
 // accident. The page is not asked for the tile by anything but the live pane, so the request also
 // proves that the pane asks for the grass.
 //
-// Like the neighbouring live-view specs, it runs in the scene-webgl project (the scene- name
+// Like the neighboring live-view specs, it runs in the scene-webgl project (the scene- name
 // prefix routes it there) and self-skips in a browser with no navigator.gpu. Where the browser has
 // no WebGPU adapter, three draws the pane through its WebGL 2 fallback, which the linux scene job
 // exercises.
@@ -36,29 +36,33 @@ interface GrassRequestControl {
   readonly release: () => void
 }
 
+// A promise together with the function that settles it.
+function deferred(): { readonly promise: Promise<void>; readonly resolve: () => void } {
+  let resolve = (): void => {}
+  const promise = new Promise<void>((done) => (resolve = done))
+  return { promise, resolve }
+}
+
 // Holds the response for the grass image until release() runs. Must run before goto.
 async function holdGrassResponse(page: Page): Promise<GrassRequestControl> {
-  let release = (): void => {}
-  let markRequested = (): void => {}
-  const released = new Promise<void>((resolve) => (release = resolve))
-  const requested = new Promise<void>((resolve) => (markRequested = resolve))
+  const released = deferred()
+  const requested = deferred()
   await page.route(GRASS_IMAGE_URL, async (route) => {
-    markRequested()
-    await released
+    requested.resolve()
+    await released.promise
     await route.continue()
   })
-  return { requested, release }
+  return { requested: requested.promise, release: released.resolve }
 }
 
 // Refuses the grass image, as an unreachable pack would. Must run before goto.
 async function refuseGrassRequest(page: Page): Promise<{ readonly requested: Promise<void> }> {
-  let markRequested = (): void => {}
-  const requested = new Promise<void>((resolve) => (markRequested = resolve))
+  const requested = deferred()
   await page.route(GRASS_IMAGE_URL, async (route) => {
-    markRequested()
+    requested.resolve()
     await route.abort('failed')
   })
-  return { requested }
+  return { requested: requested.promise }
 }
 
 async function openEditorWithGpu(page: Page): Promise<void> {

@@ -2,8 +2,6 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { SamplePatch } from './canvas-patch'
 import { waitForDrawnSceneRevision, waitForLiveCanvasReady } from './live-pane-frames'
 
-export { CODE_RANGE, luminanceCode, sampleCanvasColor, type SamplePatch } from './canvas-patch'
-
 // Shared helpers for the live three-dimensional pane specs (navigation, color
 // temperature, selection). The live view renders through the non-deterministic WebGPU
 // backend (ADR-0045), so these specs assert semantically (a settled frame changes after
@@ -104,11 +102,7 @@ export async function drawnRoomWithDoorCanvas(page: Page): Promise<Locator> {
 // SwiftShader lane and self-skips only where no WebGL 2 context can be created; the subject
 // names the spec in the skip message. A caller that needs a step before the readiness wait uses
 // this and waits for the frame itself.
-export async function openHarnessScene(
-  page: Page,
-  query: string,
-  subject: string,
-): Promise<Locator> {
+async function openHarnessScene(page: Page, query: string, subject: string): Promise<Locator> {
   await page.goto(`/?fixture=scene-harness${query}`)
   const canvas = page.getByTestId('scene-harness').locator('canvas')
   await expect(canvas).toBeVisible()
@@ -126,7 +120,8 @@ export async function openHarnessScene(
 // drawn, so a capture taken once the attribute is true holds the ready frame. The subject
 // defaults to the text the specs without a subject of their own have always got. It then waits
 // for the ground grass (data-ground-texture="ready"), so a capture never holds a flat lawn that
-// is about to be textured, and a failed pack fetch fails the spec instead of writing a flat baseline.
+// is about to be textured, and a failed pack fetch fails the spec instead of writing a flat
+// baseline.
 export async function settledHarnessCanvas(
   page: Page,
   query: string,
@@ -200,3 +195,11 @@ export const SOUTH_WEST_VIEW_WEST_WALL = squareRegion(121, 107, 24)
  */
 // eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
 export const SOUTH_WEST_VIEW_SOUTH_WALL = squareRegion(157, 143, 6)
+
+/**
+ * The lawn in the sun east of the building's shadow in the `shadow-on-lawn` frame, at the same
+ * depth in the view as the shadowed lawn: x 236..259, y 109..132. No edge of the shadow or the
+ * lawn comes within 13 px of it. The sun-to-shade gate and the grass texture gate both read it.
+ */
+// eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
+export const SUN_TO_SHADE_SUNLIT_LAWN = squareRegion(236, 109, 24)
