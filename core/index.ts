@@ -598,6 +598,7 @@ export {
   WALL_BOUNDARY_MATCH_MM,
   WALL_FACE_DEGENERATE_LENGTH_MM,
 } from './geometry/tolerance'
+export { pathEnd, pathStart, wallPath } from './geometry/wall-path'
 export type {
   WallFaceCorners,
   WallFaceGap,

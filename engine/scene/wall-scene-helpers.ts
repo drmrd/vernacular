@@ -1,6 +1,9 @@
 import {
   WALL_NODE_PREFIX,
   buildWallGraph,
+  pathEnd,
+  pathStart,
+  wallPath,
   type OpeningSceneNode,
   type PlanarGraph,
   type WallSceneNode,
@@ -9,12 +12,15 @@ import {
 /** Builds the planar wall graph for a floor, keying each edge by stripped model id. */
 export function buildFloorWallGraph(floorWalls: WallSceneNode[]): PlanarGraph {
   return buildWallGraph(
-    floorWalls.map((wall) => ({
-      id: wall.id.slice(WALL_NODE_PREFIX.length),
-      start: wall.start,
-      end: wall.end,
-      thickness: wall.thickness,
-    })),
+    floorWalls.map((wall) => {
+      const path = wallPath(wall)
+      return {
+        id: wall.id.slice(WALL_NODE_PREFIX.length),
+        start: pathStart(path),
+        end: pathEnd(path),
+        thickness: wall.thickness,
+      }
+    }),
   )
 }
 
