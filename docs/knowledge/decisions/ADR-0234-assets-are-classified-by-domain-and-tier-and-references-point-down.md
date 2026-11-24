@@ -88,9 +88,10 @@ The specification lists every subcategory.
 dimensions, and a `texture` entry is a tiled image (ADR-0219). The domain says what the thing is. A
 reader never branches on a domain to decide how to load bytes.
 
-A taxonomy category goes in the existing `categories` field. A string the category registry does not
-know stays valid and is treated as a plain label, so packs that exist today keep working. New kinds
-arrive with their readers.
+A taxonomy category goes in the existing `categories` field. In the app, a string the category
+registry does not know stays valid and is treated as a plain label, so packs that exist today keep
+working and an older app opens a pack built for a newer registry. The pack tool is stricter: it
+refuses a string in taxonomy form that the registry lacks. New kinds arrive with their readers.
 
 ### One rule orders every reference
 
@@ -180,7 +181,9 @@ None of these was taken.
   construction profiles, styles). The registry stays the place the app reads from, and a pack asset
   in such a domain adds entries to it. That needs registries a pack can extend at run time, which
   the architecture refactor provides. The registries are constants in the code today.
-- Amends: ADR-0006 gets a note that the registry list gains the domain and category registries, and
+- Amends: ADR-0006 gets a note that the registry list gains the domain and category registries,
+  that registry entries become pack assets (#1127), and that the finish, floor pattern, trim
+  profile, and construction profile entries gain display names before they take pack entries.
   ADR-0093 gets a note about the category filter. These are pointer notes, and the decisions they
   point at do not change.
 

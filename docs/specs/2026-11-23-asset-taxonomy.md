@@ -312,16 +312,16 @@ No such cache exists today. Meshes loaded from a file stay keyed by content hash
 | State on `main`                                        | Kind                    | Domains                                                                     |
 | ------------------------------------------------------ | ----------------------- | --------------------------------------------------------------------------- |
 | Validates, loads, and shows in the library             | `furniture`             | `FFE`, `APP`                                                                |
-| Validates and loads as a tiled image (ADR-0219)        | `texture`               | `SUB`, `PAT`, `RLF`, `WTH`, where the file is an image                      |
+| Validates and loads as a tiled image (ADR-0219)        | `texture`               | `SUB`, `COT`, `GLZ`, `PAT`, `RLF`, `WTH`, where the file is an image        |
 | Validates as a model, and the library does not show it | `architectural-element` | `STR`, `ENV`, `INT`, `HDW`, `MEP`, `NET`, `KIT`, `SIT`                      |
 | Validates as a model, and nothing reads it             | `trim-profile`          | `PRF`                                                                       |
 | Validates as a model, and nothing reads it             | `stair-component`       | The stair subcategories of `KIT` and `INT`                                  |
 | Validates as a model, which does not suit the content  | `material`, `palette`   | `MAT`, `COT`, `GLZ`, `CLR`                                                  |
-| Validates, and the taxonomy does not classify it       | `underlay-image`        | No domain                                                                   |
-| Validates, and the taxonomy does not classify it       | `preview-only`          | No domain                                                                   |
+| Validates only as a model, so an image is refused      | `underlay-image`        | No domain                                                                   |
+| Validates only as a model, so an image is refused      | `preview-only`          | No domain                                                                   |
 | No kind and no reader                                  | none                    | `LGT`, `VFX`, `SYM`, `BOT`, `LYR`, `RGH`, `LND`, `CTX`, `STY`, `SCT`, `SYS` |
 
-The trim-profile, stair-component, material and palette, and no-kind rows are work to do, because no reader uses those kinds well or at all, and this document does not schedule it. A domain becomes publishable when a pull request adds its reader and says which kind and media type it uses. Pack format 3 of the distribution plan adds one rule that keeps this additive: a reader skips an asset whose kind or media type it does not know and shows it as needing a newer app. Kinds and media types added later then move no format version.
+The taxonomy does not classify the `underlay-image` and `preview-only` kinds. Both validate today only as a model with dimensions (`core/assets/pack-manifest.ts`), so the validator refuses an underlay stored as an image. The trim-profile, stair-component, material and palette, and no-kind rows are work to do, because no reader uses those kinds well or at all, and this document does not schedule it. A domain becomes publishable when a pull request adds its reader and says which kind and media type it uses. Until the skip rule of pack format 3 lands (#1125), that new kind or media type takes a pack format version, because a reader today refuses a kind or media type it does not know. The skip rule makes this additive: a reader skips an asset whose kind or media type it does not know and shows it as needing a newer app. Kinds and media types added after it then move no format version.
 
 Several domains overlap a registry the app already has:
 
@@ -474,7 +474,7 @@ The 410 subcategories, by domain. Tier 1 has 114, tier 2 has 64, tier 3 has 158,
 
 The owner ruled on the rest. These stay open, and each ADR lists the ones that touch it.
 
-1. Which kinds and media types the domains with no reader will use. The owner ruled on the skip rule above. The kind for each domain is decided when its reader lands.
+1. Which kinds and media types the domains with no reader will use. The owner ruled on the skip rule above (#1125). The kind for each domain is decided when its reader lands, and an issue tracks each one: media types per kind (#1126), registry entries as pack assets (#1127), `LYR` (#1128), `CLR` (#1129), `COT` (#1130), `MAT` (#1131), `GLZ` (#1132), `STY` (#1133), `SYM` (#1134), `LGT` (#1135), `LND` (#1136), `BOT` (#1137), `SCT` (#1138), `CTX` (#1139), and `RGH`, `VFX`, and `SYS` (#1140).
 2. The phase of a placed element. The renovation comparison design (#494) decides it, not this document. If it becomes a field on each element, one enumeration covers its values.
 
 ## References
