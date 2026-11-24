@@ -90,6 +90,8 @@ const NOTICE = [
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 const encodeText = (text) => new TextEncoder().encode(text)
 
+// Both entry builders rebuild their objects to fix the key order of the written
+// manifest; do not simplify them to an object spread.
 /**
  * The manifest entry of the chair.
  * @param {string} contentHash
