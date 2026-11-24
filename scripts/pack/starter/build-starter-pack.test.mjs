@@ -24,7 +24,7 @@ const GENERATOR_COMMAND = 'pnpm pack:starter'
 const OLD_CHANGELOG_HEADING = '## 1.0.0'
 const NEW_CHANGELOG_HEADING = '## 1.1.0'
 const NEW_CHANGELOG_TEXT =
-  'Replace the placeholder chair with a new chair under CC-BY-4.0. ' +
+  'Replace the placeholder chair with a new placeholder chair under CC-BY-4.0. ' +
   'Add a generated mown-grass texture.'
 
 function sha256(bytes) {
