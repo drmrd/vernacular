@@ -912,3 +912,5 @@ export type {
 export { decodeDocument } from './format/codec/decode-document'
 export { encodeDocument } from './format/codec/encode-document'
 export { bestEffortProjectName, readStoredFacts } from './format/best-effort-read'
+export type { CatalogId, CatalogIdParse } from './assets/catalog-id'
+export { parseCatalogId } from './assets/catalog-id'
