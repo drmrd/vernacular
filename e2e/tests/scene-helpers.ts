@@ -122,14 +122,24 @@ async function openHarnessScene(page: Page, query: string, subject: string): Pro
 // for the ground grass (data-ground-texture="ready"), so a capture never holds a flat lawn that
 // is about to be textured, and a failed pack fetch fails the spec instead of writing a flat
 // baseline.
+// The harness turns ready only after the sky, the pipeline, and the grass have settled. Under
+// several local workers on one GPU that takes longer than the default 5 s expect limit, so both
+// waits get the limit the live view readiness wait uses.
+const HARNESS_READY_TIMEOUT_MS = 20_000
+
 export async function settledHarnessCanvas(
   page: Page,
   query: string,
   subject = 'the harness gate',
 ): Promise<Locator> {
   const canvas = await openHarnessScene(page, query, subject)
-  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
-  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-ground-texture', 'ready')
+  const harness = page.getByTestId('scene-harness')
+  await expect(harness).toHaveAttribute('data-harness-ready', 'true', {
+    timeout: HARNESS_READY_TIMEOUT_MS,
+  })
+  await expect(harness).toHaveAttribute('data-ground-texture', 'ready', {
+    timeout: HARNESS_READY_TIMEOUT_MS,
+  })
   return canvas
 }
 
