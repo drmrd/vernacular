@@ -60,8 +60,9 @@ interface HarnessFraming {
   ambientOcclusionActive: boolean
 }
 
-// harnessReady: the lighting and the ambient occlusion are settled, so the next draw is the
-// ready frame; drawnReadyFrame: that frame was drawn in the renderer's animation loop.
+// harnessReady: the lighting, the ambient occlusion, and the ground (ready with the grass on the
+// plane, or failed) are settled, so the next draw is the ready frame; drawnReadyFrame: that
+// frame was drawn in the renderer's animation loop.
 interface HarnessReadiness {
   harnessReady: boolean
   drawnReadyFrame: HarnessReadyFrame | null
@@ -235,7 +236,8 @@ function useHarnessAmbientOcclusionReadiness() {
   return { ambientOcclusionSettled, handleAmbientOcclusionSettled }
 }
 
-// Combines the two asynchronous readiness signals into the single gate the captured frame and
+// Combines the three asynchronous readiness signals (lighting, ambient occlusion, and the
+// ground texture not loading) into the single gate the captured frame and
 // SCENE_READY_ATTRIBUTE share. When the ambient-occlusion pass is active the frame
 // waits for both the lazy sky and the pipeline build; when it is inactive the gate is lighting
 // readiness alone, so schematic states keep their existing single-signal
@@ -273,8 +275,8 @@ function harnessAmbientOcclusionActive(environment: HarnessEnvironment | undefin
 }
 
 // Builds and frames the selected fixture, memoized on the scene key and paint so the static
-// frame reuses one derived scene graph across re-renders. Pulled out of HarnessStage so
-// the component stays within the length limit.
+// frame reuses one derived scene graph across re-renders. It also loads the ground grass and
+// returns the status applied to the drawn root as groundTexture. Pulled out of HarnessStage.
 function useFramedHarnessScene(scene: HarnessScene, paint: Record<string, SurfaceTreatment>) {
   const framed = useMemo(() => {
     const fixture = HARNESS_FIXTURES[scene]

@@ -18,7 +18,7 @@ const DRAW_CALLS_ATTRIBUTE = 'data-harness-ready-draw-calls'
 const GROUND_TEXTURE_ATTRIBUTE = 'data-ground-texture'
 
 /**
- * The four readiness attributes of the harness wrapper. With the counts a reader of a capture
+ * The four attributes of the harness wrapper. With the counts a reader of a capture
  * can check that the ready frame ran every pass of its pipeline, on a frame of its own: a frame
  * that shared its renderer frame with another draw, or skipped a pass, shows a different count.
  * Before the ready frame is drawn the two counts are empty strings. The fourth attribute reports
