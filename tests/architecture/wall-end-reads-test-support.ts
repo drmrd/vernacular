@@ -242,6 +242,13 @@ export function wallEndReadFiles(reads: readonly WallEndRead[]): string[] {
 export function programOfConfig(configPath: string): ts.Program {
   const read = ts.readConfigFile(configPath, ts.sys.readFile)
   const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, dirname(configPath))
+  const errors = [read.error, ...parsed.errors].filter((error) => error !== undefined)
+  if (errors.length > 0) {
+    const messages = errors.map(({ messageText }) =>
+      ts.flattenDiagnosticMessageText(messageText, '\n'),
+    )
+    throw new Error(`Cannot read ${configPath}:\n${messages.join('\n')}`)
+  }
   return ts.createProgram({ rootNames: parsed.fileNames, options: parsed.options })
 }
 

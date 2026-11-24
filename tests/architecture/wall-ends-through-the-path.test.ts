@@ -1,11 +1,18 @@
 // @vitest-environment node
 // The rule reads a TypeScript program, which needs Node's fs module, not the project-wide jsdom.
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type ts from 'typescript'
 import { WALL_END_READ_EXCEPTIONS } from './wall-end-read-exceptions'
-import { findWallEndReads, programOfConfig, wallEndReadFiles } from './wall-end-reads-test-support'
+import {
+  describeWallEndRead,
+  findWallEndReads,
+  programOfConfig,
+  wallEndReadFiles,
+} from './wall-end-reads-test-support'
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
 const PROGRAM_TIMEOUT_MS = 120_000
@@ -17,11 +24,19 @@ describe('wall ends are read through the wall path', () => {
     program = programOfConfig(join(repositoryRoot, 'tsconfig.json'))
   }, PROGRAM_TIMEOUT_MS)
 
+  it('scans a program that holds the wall model, so an empty list means no reads', () => {
+    expect(program.getSourceFile(join(repositoryRoot, 'core/model/types.ts'))).toBeDefined()
+  })
+
   it(
     'reads wall ends only in the files of the exception list',
     () => {
-      const files = wallEndReadFiles(findWallEndReads(program, repositoryRoot))
-      expect(files).toEqual([...WALL_END_READ_EXCEPTIONS])
+      const reads = findWallEndReads(program, repositoryRoot)
+      const unlisted = reads
+        .filter(({ file }) => !WALL_END_READ_EXCEPTIONS.includes(file))
+        .map(describeWallEndRead)
+      const message = `Wall ends read outside the exception list:\n${unlisted.join('\n')}`
+      expect(wallEndReadFiles(reads), message).toEqual([...WALL_END_READ_EXCEPTIONS])
     },
     PROGRAM_TIMEOUT_MS,
   )
@@ -29,5 +44,33 @@ describe('wall ends are read through the wall path', () => {
   it('keeps the exception list sorted and free of repeats', () => {
     const sortedUnique = [...new Set(WALL_END_READ_EXCEPTIONS)].sort()
     expect([...WALL_END_READ_EXCEPTIONS]).toEqual(sortedUnique)
+  })
+})
+
+describe('programOfConfig', () => {
+  let directory: string
+
+  beforeAll(() => {
+    directory = mkdtempSync(join(tmpdir(), 'wall-end-reads-'))
+  })
+
+  afterAll(() => {
+    rmSync(directory, { recursive: true, force: true })
+  })
+
+  it('throws when the config file cannot be read', () => {
+    expect(() => programOfConfig(join(directory, 'missing.json'))).toThrow(/missing\.json/)
+  })
+
+  it('throws when the config file is not valid JSON', () => {
+    const path = join(directory, 'broken.json')
+    writeFileSync(path, '{ "compilerOptions": { "strict": ')
+    expect(() => programOfConfig(path)).toThrow(/broken\.json/)
+  })
+
+  it('throws when the config holds an option that does not exist', () => {
+    const path = join(directory, 'tsconfig.json')
+    writeFileSync(path, JSON.stringify({ compilerOptions: { target: 'not-a-target' } }))
+    expect(() => programOfConfig(path)).toThrow(/target/i)
   })
 })
