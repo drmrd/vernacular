@@ -7,7 +7,7 @@ import {
 } from './ground-surface'
 import { linearLuminance } from '../color/contrast'
 import { srgbToLinear } from '../color/oklab'
-import starterPackManifest from '../../public/packs/vernacular-starter-1.1.0/manifest.json'
+import starterPackManifest from '../../public/packs/vernacular-starter-1.1.0/manifest.json' with { type: 'json' }
 
 // The lawn color is one fact stated twice: as the hex the engine paints the ground plane with,
 // and as the linear-light color the sky dome multiplies its light by.
