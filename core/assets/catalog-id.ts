@@ -29,10 +29,10 @@ function restLengthQuantifier(minLength: number, maxLength: number): string {
 const NAMESPACE_PATTERN = new RegExp(
   `^(?:core|(?:org|usr|pkg)_[a-z0-9][a-z0-9-]${restLengthQuantifier(NAMESPACE_TAIL_MIN_LENGTH, NAMESPACE_TAIL_MAX_LENGTH)})$`,
 )
-const SUBCATEGORY_PATTERN = new RegExp(
+export const SUBCATEGORY_PATTERN = new RegExp(
   `^[a-z][a-z0-9_]${restLengthQuantifier(SUBCATEGORY_MIN_LENGTH, SUBCATEGORY_MAX_LENGTH)}$`,
 )
-const SLUG_PATTERN = new RegExp(
+export const SLUG_PATTERN = new RegExp(
   `^[a-z][a-z0-9_]${restLengthQuantifier(SLUG_MIN_LENGTH, SLUG_MAX_LENGTH)}$`,
 )
 const VERSION_PATTERN = new RegExp(
@@ -41,8 +41,8 @@ const VERSION_PATTERN = new RegExp(
 
 const NAMESPACE_PROBLEM = `namespace must be core, or org_, usr_, or pkg_ followed by ${NAMESPACE_TAIL_MIN_LENGTH} to ${NAMESPACE_TAIL_MAX_LENGTH} lowercase letters, digits, or hyphens, starting with a letter or digit`
 const DOMAIN_PROBLEM = 'domain must be a known asset domain code'
-const SUBCATEGORY_PROBLEM = `subcategory must be ${SUBCATEGORY_MIN_LENGTH} to ${SUBCATEGORY_MAX_LENGTH} lowercase letters, digits, or underscores, starting with a letter`
-const SLUG_PROBLEM = `slug must be ${SLUG_MIN_LENGTH} to ${SLUG_MAX_LENGTH} lowercase letters, digits, or underscores, starting with a letter`
+export const SUBCATEGORY_PROBLEM = `subcategory must be ${SUBCATEGORY_MIN_LENGTH} to ${SUBCATEGORY_MAX_LENGTH} lowercase letters, digits, or underscores, starting with a letter`
+export const SLUG_PROBLEM = `slug must be ${SLUG_MIN_LENGTH} to ${SLUG_MAX_LENGTH} lowercase letters, digits, or underscores, starting with a letter`
 const VERSION_PROBLEM =
   'version must be three numbers without leading zeros, optionally followed by a prerelease, and no build metadata'
 

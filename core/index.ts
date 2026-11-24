@@ -919,3 +919,5 @@ export {
   categoryOf,
   RESERVED_NAMESPACE_PREFIXES,
 } from './assets/catalog-id'
+export type { SocketPredicate, SocketPredicateParse } from './assets/socket-predicate'
+export { parseSocketPredicate, matchesPredicate } from './assets/socket-predicate'
