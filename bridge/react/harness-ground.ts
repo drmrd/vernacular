@@ -24,5 +24,7 @@ export function useHarnessGround(
     refreshGroundPlane(root, { gradeElevation, appearance })
     setApplied({ root, status })
   }, [root, gradeElevation, appearance, status])
+  // The gate compares only the root and the status, so an appearance or grade change on the same
+  // root goes unseen; the harness never makes one, as its grass and fixture grade stay fixed.
   return applied?.root === root && applied.status === status ? status : 'loading'
 }
