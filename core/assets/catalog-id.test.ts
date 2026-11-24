@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCatalogId } from './catalog-id.ts'
+import { parseCatalogId, RESERVED_NAMESPACE_PREFIXES } from './catalog-id.ts'
 
 describe('parseCatalogId', () => {
   it('parses a catalog identifier into its five parts', () => {
@@ -80,4 +80,13 @@ describe('parseCatalogId', () => {
       expect(parsed.ok === false && parsed.problem).toMatch(part)
     },
   )
+
+  it('refuses the reserved namespace with its own message', () => {
+    const parsed = parseCatalogId('mfr_example:HDW.door_locksets_latches/rim_lock@1.0.0')
+
+    expect(parsed).toMatchObject({ ok: false })
+    expect(parsed.ok === false && parsed.problem).toMatch(/reserved/i)
+    expect(parsed.ok === false && parsed.problem).toContain('mfr_')
+    expect(RESERVED_NAMESPACE_PREFIXES).toEqual(['mfr_'])
+  })
 })
