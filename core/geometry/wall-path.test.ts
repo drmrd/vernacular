@@ -9,8 +9,10 @@ import {
   pathStart,
   pointAlong,
   projectOntoPath,
+  rotatePath,
   subPath,
   tangentAlong,
+  translatePath,
   wallPath,
 } from './wall-path'
 import type { Point } from '../model/types'
@@ -142,5 +144,23 @@ describe('offsetPath', () => {
 
     expectPointNear(pathStart(shifted), { x: 0, y: -100 })
     expectPointNear(pathEnd(shifted), { x: 1000, y: -100 })
+  })
+})
+
+describe('translatePath', () => {
+  it('moves the path by a delta', () => {
+    const moved = translatePath(HORIZONTAL, { x: 50, y: -30 })
+
+    expectPointNear(pathStart(moved), { x: 50, y: -30 })
+    expectPointNear(pathEnd(moved), { x: 1050, y: -30 })
+  })
+})
+
+describe('rotatePath', () => {
+  it('turns the path about a pivot', () => {
+    const turned = rotatePath(HORIZONTAL, { x: 0, y: 0 }, Math.PI / 2)
+
+    expectPointNear(pathStart(turned), { x: 0, y: 0 })
+    expectPointNear(pathEnd(turned), { x: 0, y: 1000 })
   })
 })
