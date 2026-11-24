@@ -1,4 +1,5 @@
-import type { WallPath } from '../geometry/wall-path'
+import { type WallPath, wallPath } from '../geometry/wall-path'
+import type { Wall } from '../model/types'
 import type { ConstructionProfile } from '../registries/construction-profiles'
 import type { Registry } from '../registries/registry'
 import { effectiveWallThickness } from '../scene/construction-profile'
@@ -10,6 +11,7 @@ export interface PlanGeometryRegistries {
 export interface NetworkWall {
   readonly id: string
   readonly path: WallPath
+  /** The drawn thickness on the input of `deriveWallNetwork`; the resolved thickness on `WallNetwork.walls`. */
   readonly thickness: number
   readonly constructionProfile?: string
 }
@@ -19,6 +21,17 @@ export interface WallNetwork {
   readonly walls: readonly NetworkWall[]
   /** The resolved thickness of each wall, by wall id. */
   readonly thickness: ReadonlyMap<string, number>
+}
+
+export function networkWallOf(wall: Wall): NetworkWall {
+  return {
+    id: wall.id,
+    path: wallPath(wall),
+    thickness: wall.thickness,
+    ...(wall.constructionProfile === undefined
+      ? {}
+      : { constructionProfile: wall.constructionProfile }),
+  }
 }
 
 export function deriveWallNetwork(
