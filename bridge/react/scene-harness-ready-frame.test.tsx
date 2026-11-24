@@ -1,17 +1,22 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { Children, isValidElement, useEffect, type ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { markCacheHeld } from '../../engine'
+import { Texture } from '../../engine/testing'
+import type { TextureState } from './texture-cache'
 import { SceneHarnessView } from './scene-harness-view'
 
 // The harness's collaborators: the 3D library's state, a renderer with its own animation
 // loop, the lighting readiness the test settles, and a count of drawn frames. The renderer
 // stand-in holds one loop and resets its per-frame counts as each frame starts, then calls
-// the loop, the way three's renderer does.
+// the loop, the way three's renderer does. The ground texture state stays one object until a
+// test replaces it, as the real hook's cache does.
 const harness = vi.hoisted(() => {
   const CANVAS_WIDTH = 320
   const CANVAS_HEIGHT = 240
   const info = { render: { frameCalls: 0, drawCalls: 0 } }
   let loop: (() => void) | null = null
+  const flatLawn: TextureState = { status: 'failed' }
   const renderer = {
     info,
     setAnimationLoop: (callback: (() => void) | null) => {
@@ -40,8 +45,12 @@ const harness = vi.hoisted(() => {
     },
     draws: 0,
     settleLighting: undefined as (() => void) | undefined,
+    flatLawn,
+    groundTexture: flatLawn as TextureState,
   }
 })
+
+vi.mock('./use-ground-texture', () => ({ useGroundTexture: () => harness.groundTexture }))
 
 vi.mock('@react-three/fiber', () => ({
   useThree: (select?: (state: typeof harness.state) => unknown) =>
@@ -84,6 +93,7 @@ vi.mock('../../engine', async (importOriginal) => ({
 }))
 
 const READY_RENDER_CALLS = 5
+const TILE_SIZE_MM = 2000
 const FRAMES_AFTER_READY = 3
 const READY_DRAW_CALLS = 127
 
@@ -96,6 +106,19 @@ function readyFrameCalls(): { renderCalls: string | null; drawCalls: string | nu
   return {
     renderCalls: wrapper.getAttribute('data-harness-ready-render-calls'),
     drawCalls: wrapper.getAttribute('data-harness-ready-draw-calls'),
+  }
+}
+
+function groundTextureStatus(): string | null {
+  return screen.getByTestId('scene-harness').getAttribute('data-ground-texture')
+}
+
+function readyGround(): TextureState {
+  const texture = new Texture()
+  markCacheHeld(texture)
+  return {
+    status: 'ready',
+    appearance: { texture, tileSize: { width: TILE_SIZE_MM, height: TILE_SIZE_MM } },
   }
 }
 
@@ -114,6 +137,7 @@ beforeEach(() => {
   harness.draws = 0
   harness.settleLighting = undefined
   harness.resetLoop()
+  harness.groundTexture = harness.flatLawn
 })
 
 afterEach(cleanup)
@@ -199,5 +223,62 @@ describe('SceneHarnessView ready frame', () => {
     await settleLighting()
 
     expect(readyFrameCalls()).toEqual({ renderCalls: '', drawCalls: '' })
+  })
+
+  describe('the harness turns ready only with a frame drawn after the ground has settled, and reports the ground status', () => {
+    beforeEach(() => {
+      harness.groundTexture = { status: 'loading' }
+    })
+
+    it('stays not ready while the ground loads, however many frames run', async () => {
+      render(<SceneHarnessView />)
+      await settleLighting()
+      runFrame()
+      runFrame()
+
+      expect(readiness()).toBe('false')
+      expect(groundTextureStatus()).toBe('loading')
+    })
+
+    it('turns ready with the first frame drawn after the grass is on the plane', async () => {
+      const { rerender } = render(<SceneHarnessView />)
+      await settleLighting()
+      runFrame()
+
+      harness.groundTexture = readyGround()
+      rerender(<SceneHarnessView />)
+
+      expect(groundTextureStatus()).toBe('ready')
+      expect(readiness()).toBe('false')
+      runFrame()
+      expect(readiness()).toBe('true')
+    })
+
+    it('turns ready over the flat lawn when the ground fails, and says so', async () => {
+      const { rerender } = render(<SceneHarnessView />)
+      await settleLighting()
+      runFrame()
+
+      harness.groundTexture = { status: 'failed' }
+      rerender(<SceneHarnessView />)
+      runFrame()
+
+      expect(readiness()).toBe('true')
+      expect(groundTextureStatus()).toBe('failed')
+    })
+
+    it('waits for a frame drawn after the lighting settled when the ground settles first', async () => {
+      const { rerender } = render(<SceneHarnessView />)
+      harness.groundTexture = readyGround()
+      rerender(<SceneHarnessView />)
+      runFrame()
+
+      expect(readiness()).toBe('false')
+      await settleLighting()
+      expect(readiness()).toBe('false')
+      runFrame()
+      expect(readiness()).toBe('true')
+      expect(groundTextureStatus()).toBe('ready')
+    })
   })
 })
