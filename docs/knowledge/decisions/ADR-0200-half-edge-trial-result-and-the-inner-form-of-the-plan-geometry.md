@@ -92,7 +92,7 @@ both designs reach the same result, a measurement does not choose between them.
 
 The trial lives on the branch `feat/half-edge-face-walk-trial`. Its head is commit
 `df5c5efb13850348e037d1f7883a6d6e9bf8c2fc`, 53 commits after its base `d248d503b` on `main`. The
-branch is pushed later so that reviewers can read it. It never merges, and it opens no pull
+branch is on `origin` so that reviewers can read it. It never merges, and it opens no pull
 request. It is kept until the plan geometry pull request merges and is deleted then. It changes no
 file outside `core/topology/`.
 
@@ -366,12 +366,13 @@ shared fan is built from. None of the three is a difference in rooms between the
    cannot close a face. The symptom is `RangeError: Invalid array length`. Two named plans show it:
    the ten walls of the issue, and a room of 4000 by 3000 mm with a wall from (-0.6, 0) to (0.6, 0)
    at its corner. The issue already carries a comment with this cause.
-2. A wall that lies over part of another merges the rooms beside it (#681, a symptom the issue does
-   not list yet). On the corpus plan `21-modern-cad-line-plan-30x35-parking-three-rooms` the wall
-   `w-r3-hall-right` lies inside `w-hall-left`, and two edges join the same junctions. Both walks
-   return 7 rooms where the plan has 8 without the covered wall. The half-edge walk reproduces the
-   result because it keeps today's order between the two edges.
-3. An edge from a junction to itself is listed twice in that junction's edges (no issue yet).
+2. A wall that lies over part of another merges the rooms beside it (#681, a symptom given in [a
+   comment on the issue](https://github.com/drmrd/vernacular/issues/681#issuecomment-7145192723)).
+   On the corpus plan `21-modern-cad-line-plan-30x35-parking-three-rooms` the wall `w-r3-hall-right`
+   lies inside `w-hall-left`, and two edges join the same junctions. Both walks return 7 rooms where
+   the plan has 8 without the covered wall. The half-edge walk reproduces the result because it
+   keeps today's order between the two edges.
+3. An edge from a junction to itself is listed twice in that junction's edges (#1162).
    `vertexIncidence` in `core/topology/wall-footprint.ts` adds an edge once for each of its ends,
    so such an edge appears twice at its one junction. Today's footprints and fills read that list.
    The shared fan is built from it too, and the trial's adapter for the room walk then names one
@@ -506,8 +507,8 @@ Had the owner adopted half-edges, which was not chosen:
   today's order between two edges on one pair of junctions until the pull request for overlapping
   walls does the noding.
 
-In both cases the defects above keep their issues, #1146 and #681, and the fifth fan site moves
-with the consumers of the plan geometry.
+In both cases the defects above keep their issues, #1146, #681, and #1162, and the fifth fan site
+moves with the consumers of the plan geometry.
 
 ## References
 
@@ -526,7 +527,8 @@ with the consumers of the plan geometry.
   measurements, the working rule, and the fallback design.
 - `docs/plans/2026-11-19-geometric-kernel-and-first-arc-wall.md`: the trial's steps and the cycles
   of the plan geometry pull request for each design.
-- Branch `feat/half-edge-face-walk-trial` at `df5c5efb13850348e037d1f7883a6d6e9bf8c2fc`: the
-  trial's code and tests. It never merges.
-- Issues #1146 (a wall whose ends merge into one junction), #681 (overlapping walls), #78
-  (courtyards), #80 (curved walls), #674 and #687 (the plan geometry).
+- Branch `feat/half-edge-face-walk-trial` on `origin` at `df5c5efb13850348e037d1f7883a6d6e9bf8c2fc`:
+  the trial's code and tests. It never merges.
+- Issues #1146 (a wall whose ends merge into one junction), #681 (overlapping walls), #1162 (an edge
+  from a junction to itself listed twice), #78 (courtyards), #80 (curved walls), #674 and #687 (the
+  plan geometry).
