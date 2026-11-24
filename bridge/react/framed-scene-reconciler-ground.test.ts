@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
-import { Texture, findByEntityId } from '../../engine/testing'
+import { Mesh, Texture, findByEntityId } from '../../engine/testing'
 import { groundPlaneDrawsWith, isGroundPlane, markCacheHeld } from '../../engine'
 import type { SceneRoot, TextureAppearance } from '../../engine'
 import type { SceneGraph, SceneNode, SurfaceTreatment } from '../../core'
@@ -52,13 +52,13 @@ function onlyPlane(root: SceneRoot) {
   return plane
 }
 
-const paintWithOneObject = (): Record<string, SurfaceTreatment> => ({})
+const noPaint = (): Record<string, SurfaceTreatment> => ({})
 
 describe('a ground appearance reaches the ground of a stacked scene', () => {
   it('lets an unchanged scene take it in place', () => {
     const reconciler = createFramedSceneReconciler()
     const graph = graphWithWall(floorNode(), WALL_LENGTH_MM)
-    const paint = paintWithOneObject()
+    const paint = noPaint()
     const { appearance } = heldAppearance()
     const first = reconciler.reconcile(graph, paint)
     const wallGroup = findByEntityId(first.root, 'wall:g1')
@@ -73,7 +73,7 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
 
   it('seats a rebuilt floor set on it', () => {
     const reconciler = createFramedSceneReconciler()
-    const paint = paintWithOneObject()
+    const paint = noPaint()
     const { appearance } = heldAppearance()
     reconciler.reconcile(graphWithWall(floorNode(), WALL_LENGTH_MM), paint)
     reconciler.setGroundAppearance(appearance)
@@ -85,10 +85,11 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
 
   it('gives the flat lawn back when it is taken away, and never frees a held texture', () => {
     const reconciler = createFramedSceneReconciler()
-    const paint = paintWithOneObject()
-    const moved = graphWithWall(floorNode(), MOVED_WALL_LENGTH_MM)
+    const paint = noPaint()
     const { appearance, dispose } = heldAppearance()
     reconciler.setGroundAppearance(appearance)
+    reconciler.reconcile(graphWithWall(floorNode(), WALL_LENGTH_MM), paint)
+    const moved = graphWithWall(floorNode(), MOVED_WALL_LENGTH_MM)
     reconciler.reconcile(moved, paint)
 
     reconciler.setGroundAppearance(undefined)
@@ -96,6 +97,25 @@ describe('a ground appearance reaches the ground of a stacked scene', () => {
     reconciler.releaseRetired(flat)
 
     expect(groundPlaneDrawsWith(onlyPlane(flat.root), undefined)).toBe(true)
+    expect(dispose).not.toHaveBeenCalled()
+  })
+
+  it('dispose frees the ground plane of the scene but never a held ground texture', () => {
+    const reconciler = createFramedSceneReconciler()
+    const graph = graphWithWall(floorNode(), WALL_LENGTH_MM)
+    const paint = noPaint()
+    const { appearance, dispose } = heldAppearance()
+    reconciler.reconcile(graph, paint)
+    reconciler.setGroundAppearance(appearance)
+    const scene = reconciler.reconcile(graph, paint)
+    const plane = onlyPlane(scene.root)
+    if (!(plane instanceof Mesh) || Array.isArray(plane.material))
+      throw new Error('expected a ground plane mesh with one material')
+    const planeMaterialDispose = vi.spyOn(plane.material, 'dispose')
+
+    reconciler.dispose()
+
+    expect(planeMaterialDispose).toHaveBeenCalled()
     expect(dispose).not.toHaveBeenCalled()
   })
 })
