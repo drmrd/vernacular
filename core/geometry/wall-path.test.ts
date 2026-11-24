@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   linePath,
   normalAlong,
+  pathBounds,
   pathEnd,
   pathLength,
   pathStart,
@@ -105,5 +106,13 @@ describe('projectOntoPath', () => {
     expect(projection.along).toBe(0)
     expectPointNear(projection.point, { x: 0, y: 0 })
     expect(projection.offset).toBe(-50)
+  })
+})
+
+describe('pathBounds', () => {
+  it('bounds the path by its ends', () => {
+    const path = linePath({ x: 300, y: -200 }, { x: -100, y: 500 })
+
+    expect(pathBounds(path)).toEqual({ min: { x: -100, y: -200 }, max: { x: 300, y: 500 } })
   })
 })
