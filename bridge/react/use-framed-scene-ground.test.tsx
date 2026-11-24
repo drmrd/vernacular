@@ -35,7 +35,7 @@ function onlyPlane(root: SceneRoot) {
 }
 
 describe('the framed scene hook loads the ground grass, seats it on the scene it already shows, and reports its status', () => {
-  it('reports loading on a flat ground, then ready on the same scene drawing the grass, also after an overlay flip', () => {
+  it('reports loading on a flat ground, then ready on the same scene drawing the grass', () => {
     const appearance = heldAppearance()
     showTexture({ status: 'loading' })
     const { result, rerender } = renderHook(() => useFramedScene(), {
@@ -44,7 +44,7 @@ describe('the framed scene hook loads the ground grass, seats it on the scene it
 
     expect(result.current.groundTexture).toBe('loading')
     expect(groundPlaneDrawsWith(onlyPlane(result.current.framed.root), undefined)).toBe(true)
-    expect(vi.mocked(useGroundTexture).mock.calls[0]?.[0]).toEqual(GROUND_GRASS_REFERENCE)
+    expect(useGroundTexture).toHaveBeenCalledWith(GROUND_GRASS_REFERENCE, expect.anything())
 
     const before = result.current.framed
     showTexture({ status: 'ready', appearance })
@@ -53,6 +53,15 @@ describe('the framed scene hook loads the ground grass, seats it on the scene it
     expect(result.current.groundTexture).toBe('ready')
     expect(result.current.framed).toBe(before)
     expect(groundPlaneDrawsWith(onlyPlane(result.current.framed.root), appearance)).toBe(true)
+  })
+
+  it('keeps drawing the grass after an overlay flip', () => {
+    const appearance = heldAppearance()
+    showTexture({ status: 'ready', appearance })
+    const { result } = renderHook(() => useFramedScene(), {
+      wrapper: framedSceneEnvironment().wrapper,
+    })
+    const before = result.current.framed
 
     act(() => result.current.toggleEdgeOverlay())
 
