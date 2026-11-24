@@ -3,6 +3,7 @@ import {
   ASSET_CATEGORY_REGISTRY_VERSION,
   builtinAssetCategories,
   defaultCategoryName,
+  WRITTEN_CATEGORY_NAMES,
 } from './asset-categories.ts'
 import { TIER_1_SUBCATEGORIES } from './asset-categories-tier-1.ts'
 import { TIER_2_SUBCATEGORIES } from './asset-categories-tier-2.ts'
@@ -79,6 +80,51 @@ describe('asset category names', () => {
       expect(entry.name).not.toContain('_')
     }
   })
+
+  it('writes names that read as English for abbreviated and run-together ids', () => {
+    const expectedNames: [string, string][] = [
+      ['SYM.arch_plan_symbols', 'Architectural plan symbols'],
+      ['RGH.elec_cable_runs', 'Electrical cable runs'],
+      ['MEP.solar_storage_ev_gen', 'Solar storage EV generation'],
+      ['STY.era_pre_1840_early_american', 'Before 1840: Early American'],
+      ['STY.era_1840_1900_victorian_revival', '1840 to 1900: Victorian revival'],
+      ['MAT.utility_roughin_finishes', 'Utility rough-in finishes'],
+      ['KIT.electrical_lowvoltage_boxes', 'Electrical low voltage boxes'],
+      ['INT.built_in_kitchen_bath', 'Built-in kitchen bath'],
+      ['SYS.live_telemetry_asbuilt_bindings', 'Live telemetry as-built bindings'],
+      ['APP.handheld_cordless_garage_equip', 'Handheld cordless garage equipment'],
+      ['FFE.window_treatments_softgoods', 'Window treatments soft goods'],
+      ['NET.telecom_wan_demarc', 'Telecom WAN demarcation'],
+    ]
+    const unreadableWords = new RegExp(
+      `\\b(${[
+        'elec',
+        'arch',
+        'gen',
+        'roughin',
+        'lowvoltage',
+        'softgoods',
+        'floorcare',
+        'greenroof',
+        'raingarden',
+        'rockgarden',
+        'asbuilt',
+        'equip',
+        'demarc',
+      ].join('|')})\\b|\\bbuilt in\\b`,
+      'i',
+    )
+
+    for (const id of Object.keys(WRITTEN_CATEGORY_NAMES)) {
+      expect(builtinAssetCategories.entries, id).toHaveProperty([id])
+    }
+    for (const [id, name] of expectedNames) {
+      expect(getEntry(builtinAssetCategories, id)?.name, id).toBe(name)
+    }
+    for (const entry of Object.values(builtinAssetCategories.entries)) {
+      expect(entry.name, entry.id).not.toMatch(unreadableWords)
+    }
+  })
 })
 
 describe('the tier files', () => {
@@ -91,10 +137,11 @@ describe('the tier files', () => {
     ]
 
     tierFiles.forEach((tierFile, index) => {
+      const tier = index + 1
       const domainsOfTier = ASSET_DOMAIN_CODES.filter(
-        (code) => getEntry(builtinAssetDomains, code)?.tier === index + 1,
+        (code) => getEntry(builtinAssetDomains, code)?.tier === tier,
       )
-      expect(Object.keys(tierFile)).toEqual(domainsOfTier)
+      expect(Object.keys(tierFile), `tier ${tier}`).toEqual(domainsOfTier)
     })
   })
 })
