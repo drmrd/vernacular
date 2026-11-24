@@ -88,9 +88,9 @@ returns a group that scales uniformly to fit inside the footprint width, depth, 
 height against the limiting axis, centers on the footprint center in plan, anchors the
 model's base to the elevation, and rotates to the footprint orientation. It places the
 model through `planToWorld`, as the massing box is placed: plan x goes to world X, plan y
-to world -Z, and world Y is up, and the footprint rotation turns the model by the same
-angle about world Y. So a model lands where its box stood. It returns null for geometry that is
-empty or has a zero extent, so a direct caller can fall back. Since #698 the parse
+to world -Z, and world Y is up; the footprint rotation turns the model by the same angle
+about world Y. So a model lands where its box stood. It returns null for geometry that
+is empty or has a zero extent, so a direct caller can fall back. Since #698 the parse
 rejects such a model first, so the live view never reaches that null.
 `buildFurnitureModelGroup` wraps a normalized model as a sub-group that carries the box's scene name and raw entity id but
 no edge overlay, so it selects in step with the plan and reads as a real mesh rather than

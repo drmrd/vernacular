@@ -42,9 +42,9 @@ is the only layer that can read the live canvas.
 
 ### Axis and naming conventions
 
-The plan-to-world map (`planToWorld`) sends plan x to world X, plan y to world Z, and
-height to world Y, with Y up. The plan is drawn screen-style with y increasing
-downward, so plan-north (the top of the plan) is the smaller world Z. The presets
+The plan-to-world map (`planToWorld`) sends plan x to world X, plan y to world -Z, and
+height to world Y, with Y up. The plan is drawn with y increasing upward (ADR-0099),
+so plan-north (the top of the plan) is the smaller world Z. The presets
 follow from that map:
 
 - East is world +X, west is world -X, south is world +Z, north is world -Z.

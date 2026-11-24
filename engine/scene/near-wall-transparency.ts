@@ -8,7 +8,7 @@ import { ownedMeshesByRunIndex, type MeshesByRunIndex } from './near-wall-run-ow
 /** Opacity of a wall the camera looks at from outside, so the interior reads through it. */
 const FADED_OPACITY = 0.1
 
-/** A horizontal point and outward normal in world space (plan y maps to world Z). */
+/** A horizontal point and outward normal in world space (plan y maps to world -Z). */
 interface WorldXZ {
   x: number
   z: number
