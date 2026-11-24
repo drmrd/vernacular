@@ -7,6 +7,7 @@
 // it relies on lives in asset-description.ts.
 
 import { declaresMediaTypes, MODEL_MEDIA_TYPES, TEXTURE_MEDIA_TYPES } from './asset-description.ts'
+import { validateDistributionFields } from './distribution-fields.ts'
 import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
@@ -181,6 +182,7 @@ function validateAssetFields(
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
   validateMediaType(source, context, errors)
+  validateDistributionFields(source, label, errors)
   if (source['kind'] === 'texture' && declaresMediaTypes(context.formatVersion)) {
     validateTextureFields(source, label, errors)
   } else {
