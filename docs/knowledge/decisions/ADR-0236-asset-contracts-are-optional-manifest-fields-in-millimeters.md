@@ -44,9 +44,9 @@ manifest, that a work in the public domain by age is labeled as described under 
 the first checks are the ones listed under the format version, that further files are
 representations on the entry, and that the contract is published as JSON Schema files.
 
-This record depends on records that are not yet on `main`. ADR-0229 and ADR-0230 are in an open pull
-request (#1054), and ADR-0181, ADR-0199, and ADR-0201 to ADR-0203 are on a branch that has not
-merged. The decisions here that build on them take effect when those records land.
+This record depends on ADR-0229 and ADR-0230, which are in an open pull request (#1054), and on
+ADR-0181, ADR-0199, and ADR-0201 to ADR-0203, which are on `main`. The decisions here that build on
+ADR-0229 and ADR-0230 take effect when those records land.
 
 ## Context
 
@@ -219,8 +219,9 @@ None of these was taken.
   manifest schemas allow unknown fields, so the validator and the schema agree, and that an optional
   field is added to a schema in place, with the same `$id` and no new format version. The schema
   names only the fields that are checked.
-- Whether a declared pivot replaces the box fit or only adjusts it. That waits on a check of how the
-  loader maps a model into the world frame (ADR-0139).
+- Whether a declared pivot replaces the box fit or only adjusts it. The check of how the loader maps
+  a model into the world frame (ADR-0139) is done: it found a defect, which #1148 fixed. Pull
+  request 7 of the adoption plan settles the question.
 
 ## References
 

@@ -159,7 +159,8 @@ propose contributions of this kind as issues with samples.
 
 ### Works in the public domain by age
 
-This section is guidance for pack authors. It is not legal advice.
+This section is guidance for people who contribute files to the
+project's own packs. It is not legal advice.
 
 A work can be in the public domain because its copyright term has
 ended. The rules differ by country and by kind of work, so this
@@ -170,8 +171,8 @@ to it.
 If you make a new file from such a work (a model, a texture, a
 redrawn symbol), that file is a first-party file:
 
-- Give it the license `CC-BY-4.0`, the same as every first-party
-  asset. The license covers what you added, to the extent copyright
+- Give it the license `CC-BY-4.0`, which ADR-0229 gives first-party
+  assets. The license covers what you added, to the extent copyright
   applies to it. It does not claim the source work.
 - Put the link to the source work in the asset's `sourceUrl`. The pack
   tool accepts the field as optional, but this policy requires it for

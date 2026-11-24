@@ -41,10 +41,9 @@ a version of its own, that the `mfr_` namespace is reserved and refused, that th
 sub-resource uses a tilde, that stored element ids keep their form, and that the project id stays
 out of the document.
 
-This record depends on records that are not yet on `main`. ADR-0229 and ADR-0230 are in an open pull
-request (#1054), and ADR-0199 and ADR-0201 to ADR-0203 are on a branch that has not merged, as is
-the note that ADR-0199 adds to ADR-0181. ADR-0181 itself is on `main`. The decisions here that build
-on them take effect when those records land.
+This record depends on ADR-0229 and ADR-0230, which are in an open pull request (#1054), and on
+ADR-0181, ADR-0199, and ADR-0201 to ADR-0203, which are on `main`. The decisions here that build on
+ADR-0229 and ADR-0230 take effect when those records land.
 
 ## Context
 
@@ -211,8 +210,8 @@ None of these was taken.
 
 ## What stays open
 
-- The check of one hash for one identifier across a whole store, which needs the catalog and the
-  publish step of ADR-0229.
+- The check of one hash for one identifier across a whole store needs the catalog and the publish
+  step of ADR-0229. The adoption plan builds it in pull request 3, after that publish step lands.
 
 ## References
 

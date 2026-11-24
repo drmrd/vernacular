@@ -1,6 +1,6 @@
 # Asset taxonomy: domains, tiers, identifiers, and manifest contracts
 
-Status: design, 2026-11-23. The owner ruled on its decisions on 2026-11-23, and ADR-0234, ADR-0235, ADR-0236, and ADR-0237 (all current) record them. They depend on ADR-0229 and ADR-0230, which are in an open pull request (#1054) and not yet on `main`, and ADR-0235 and ADR-0236 also build on ADR-0199, which is on a branch that has not merged (ADR-0181 is on `main`, and the branch adds a note to it). Statements about the code were read from `main` at `7026280d7`. The "Open points" section lists what stays open.
+Status: design, 2026-11-23. The owner ruled on its decisions on 2026-11-23, and ADR-0234, ADR-0235, ADR-0236, and ADR-0237 (all current) record them. They depend on ADR-0229 and ADR-0230, which are in an open pull request (#1054) and not yet on `main`, and ADR-0235 and ADR-0236 also build on ADR-0181 and ADR-0199, which are on `main`. Statements about the code were read from `main` at `d248d503b`. The "Open points" section lists what stays open.
 
 ## Why
 
@@ -32,7 +32,7 @@ This document defines all three, and it lists the descriptive fields ("contracts
 
 - **The reference.** A project refers to an asset by `(scope, contentHash)` (ADR-0007). The scope is `pack:<packId>@<version>`, `user`, or `project`, and the written form is `scope#contentHash`. Nothing in this document becomes a key for finding bytes.
 - **The pack.** A pack stays the unit that is authored, versioned, and licensed. Its manifest lists its assets (ADR-0091, ADR-0219, ADR-0229).
-- **The store.** Published packs go into the layout of ADR-0229: `catalog.json`, `manifests/sha256/<manifestHash>.json`, `blobs/sha256/<contentHash>`, and `packs/<packId>-<version>/`. Blobs stay flat and carry no extension, because the manifest holds the media type. Sharded folders and extensions were considered and not taken.
+- **The store.** Published packs go into the store of ADR-0229, in the layout of the distribution specification: `catalog.json`, `manifests/sha256/<manifestHash>.json`, `blobs/sha256/<contentHash>`, and `packs/<packId>-<version>/`. Blobs stay flat and carry no extension, because the manifest holds the media type. Sharded folders and extensions were considered and not taken.
 - **The units.** Lengths in a manifest are millimeters (ADR-0027, ADR-0181, ADR-0219).
 - **The ids in a project.** An element id is an opaque string. This document adds no prefix to it.
 - **The licenses.** Each asset names one SPDX identifier from the allowlist in `core/assets/license-policy.ts`.

@@ -10,9 +10,9 @@
 
 **Spec:** `docs/specs/2026-11-23-asset-taxonomy.md`. Decision records: ADR-0234, ADR-0235, ADR-0236, and ADR-0237, all current. The owner ruled on their decisions on 2026-11-23. Related work: `docs/plans/2026-11-22-asset-pack-distribution.md` (the distribution plan), `docs/specs/2026-11-14-architecture-refactor-round.md` (the refactor round), and `docs/plans/2026-11-19-texture-assets-in-packs.md`.
 
-- Base: branch `docs/asset-taxonomy` at `7026280d`. Paths and signatures were read there.
+- Base: `main` at `d248d503b`. Paths and signatures were read there.
 - The four decision records are current, and the owner has ruled on every decision in them. "What each pull request still waits for" names the investigation or the other effort that each pull request waits on.
-- The distribution plan and ADR-0229 are not merged at this base. ADR-0229 and ADR-0230 are in an open pull request (#1054), and ADR-0181, ADR-0199, and ADR-0201 to ADR-0203 are on a branch that has not merged. The records here depend on them. Where this plan consumes a name from the distribution plan, the pull request says so and lands after it.
+- The distribution plan and ADR-0229 are not merged at this base. ADR-0229 and ADR-0230 are in an open pull request (#1054). ADR-0181, ADR-0199, and ADR-0201 to ADR-0203 are on `main`. The records here depend on them. Where this plan consumes a name from the distribution plan, the pull request says so and lands after it.
 
 ## Global Constraints
 
@@ -43,7 +43,7 @@ Conditions the specification implies and a reviewer should look for first. Each 
 
 ## Facts this plan rests on
 
-At `7026280d`:
+At `d248d503b`:
 
 - `validatePackManifest(manifest: unknown): PackValidationResult` (`core/assets/pack-manifest.ts`) is hand-written. It reads the fields it knows and ignores every other field. `PACK_FORMAT_VERSIONS` is `[1, 2]` and is not exported. `validateAsset` receives `{ label, formatVersion }` and pushes text errors labeled `assets[<n>].<field>`.
 - `categories` is required and non-empty at pack level and at asset level. Its strings are not checked against anything.
@@ -54,7 +54,7 @@ At `7026280d`:
 - `LibraryItem` (`storage/assets/asset-source.ts`, until pull request 3 of the distribution plan moves it) carries `categories: string[]`. `LibraryFilters` (`editor/library/library-filter.ts`) has `query`, `source`, `era`, and `style`. `furnitureItems` keeps items of kind `furniture` only. `matchesQuery` reads the name only.
 - The pack tool (`scripts/pack/vernacular-pack.mjs`) knows `validate` and `build`, and imports `core/assets/*.ts` through explicit `.ts` paths.
 - The starter manifest (`public/packs/vernacular-starter-1.0.0/manifest.json`) has `categories: ["seating"]` and `eras: ["mid-century"]`.
-- `normalizeModelIntoBox(model, node)` (`engine/scene/furniture-model.ts`) placed a model at `(footprintCenter.x, node.elevationZ, footprintCenter.y)` and turned it by `-rotationRadians`, while the furniture box (`engine/scene/furniture-builder.ts`) goes through `planToWorld`, which maps plan y to world -Z (`core/scene/plan-to-world.ts`). The two disagreed, and the fix is on branch `fix/loaded-model-follows-plan-axes`, which routes the position through `planToWorld` and turns the model by `+rotationRadians`. It is not in the base.
+- `normalizeModelIntoBox(model, node)` (`engine/scene/furniture-model.ts`) placed a model at `(footprintCenter.x, node.elevationZ, footprintCenter.y)` and turned it by `-rotationRadians`, while the furniture box (`engine/scene/furniture-builder.ts`) goes through `planToWorld`, which maps plan y to world -Z (`core/scene/plan-to-world.ts`). The two disagreed. The fix merged as #1148: it routes the position through `planToWorld` and turns the model by `+rotationRadians`.
 - `FurnitureInstance` (`core/model/types.ts`) has no `extensions` field. Only an opening has a host (`hostWallId`).
 - `ConstructionLayer` is `{ material: string; thickness: number }`, and only the sum of the thicknesses is used (`core/registries/construction-profiles.ts`, `core/scene/construction-profile.ts`).
 
@@ -84,17 +84,17 @@ Each is made once, here.
 
 ## What each pull request still waits for
 
-Every decision the pull requests build is ruled, and investigations A, B, D, and I are answered. Each pull request below waits only on the work named in its row.
+Every decision the pull requests build is ruled, and all nine investigations, A to I, are answered. Each pull request below waits only on the work named in its row.
 
 | Pull request                    | Record it builds   | What it still waits for                                                                                                      |
 | ------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | 1. Domain and category registry | ADR-0234           | Nothing. All 410 categories enter the registry at once.                                                                      |
-| 2. Catalog identifier           | ADR-0235           | Nothing. An asset keeps its own version, the separator is a tilde, and `mfr_` is reserved and refused.                       |
-| 3. Classification fields        | ADR-0235, ADR-0236 | Pull request 1 of the distribution plan (the publish step it extends).                                                       |
+| 2. Catalog identifier           | ADR-0235           | Pull request 1. An asset keeps its own version, the separator is a tilde, and `mfr_` is reserved and refused.                |
+| 3. Classification fields        | ADR-0235, ADR-0236 | Pull request 2, and pull request 1 of the distribution plan (the publish step it extends).                                   |
 | 4. Dependency rule              | ADR-0234           | Pull request 3.                                                                                                              |
 | 5. Library category filter      | ADR-0234           | Pull request 1, and pull request 5 of the distribution plan.                                                                 |
 | 6. Layered assemblies           | ADR-0237           | Refactor stage 5. Investigation D is answered and the suggested default finish is ruled. Its cycles are written at dispatch. |
-| 7. Declared pivot               | ADR-0236           | Refactor stage 6. The model placement defect is fixed on `fix/loaded-model-follows-plan-axes`, which lands first.            |
+| 7. Declared pivot               | ADR-0236           | Refactor stage 6. The model placement defect is fixed on `main` (#1148).                                                     |
 
 Rulings that need no pull request: element ids keep their form, the project id stays out of the document, the store layout of ADR-0229 stays flat with no extension, and a manifest length is in millimeters.
 
@@ -145,7 +145,7 @@ Each is one agent's task and ends in a written answer on the issue that tracks i
 - A RED brief that changes a public type also updates the fakes and fixtures that build it. New fields on shared types are optional.
 - A script that plain `node` runs imports `core/` files through explicit `.ts` paths, so every new file under `core/assets/` and `core/registries/` that the validator reaches uses explicit `.ts` import paths too.
 - Shared configuration (`package.json` scripts, `.prettierignore`, `.gitignore`, `vite.config.ts`, `eslint.config.js`) changes only where a file fence names it. No file fence in this plan names one.
-- New decision records take the numbers assigned at dispatch and are checked against `origin/main` before landing. This plan holds ADR-0234 to ADR-0237, and ADR-0238 and ADR-0239 stay reserved for it.
+- New decision records take the numbers assigned at dispatch and are checked against `origin/main` before landing. This plan holds ADR-0234 to ADR-0237. ADR-0238 and ADR-0239 are taken on `main` by other work, so a new record here takes the next free number.
 
 ## File Structure
 
@@ -366,7 +366,7 @@ _The command._
 
 ## Pull request 7: a declared pivot for models (waits)
 
-Branch `feat/declared-model-pivot`. Waits on refactor stage 6 (the 3D scene view object), because two scene paths exist until then and both would need the change. The placement defect that investigation A found is fixed on `fix/loaded-model-follows-plan-axes`, which lands first.
+Branch `feat/declared-model-pivot`. Waits on refactor stage 6 (the 3D scene view object), because two scene paths exist until then and both would need the change. The placement defect that investigation A found is fixed on `main` (#1148).
 
 **Goal.** An entry may declare its pivot, and the loader uses it. An entry that declares none is placed by the box fit, as today.
 
@@ -413,7 +413,7 @@ None of these has cycles here. Each gets an issue when the work starts. The one-
 
 ## Order and parallel work
 
-- **Investigations:** A, B, D, and I are answered. C, E, F, G, and H can start at any time.
+- **Investigations:** All nine, A to I, are answered.
 - **Core lane, in order:** 1, 2, 3, 4. Pull request 1 starts at once. Pull request 3 needs pull request 1 of the distribution plan.
 - **Editor lane:** 5 after 1 and after pull request 5 of the distribution plan.
 - **Waiting:** 6 (refactor stage 5) and 7 (refactor stage 6).
@@ -456,14 +456,14 @@ Each goes to the `1.0` milestone unless the owner rules that it blocks the beta.
 
 ## Risks
 
-- **The records depend on unmerged records.** If ADR-0229 or ADR-0230 changes in #1054, or the branch that carries ADR-0181, ADR-0199, and ADR-0201 to ADR-0203 changes, the pull requests that build on them change with them. Pull requests 3, 4, and 6 are the likely ones.
+- **The records depend on unmerged records.** If ADR-0229 or ADR-0230 changes in #1054, the pull requests that build on them change with them. Pull requests 3, 4, and 6 are the likely ones.
 - **A suggested finish can drift from its assembly.** The finish is copied once, so a later edit to the assembly does not repaint a wall. That is the ruled behavior, and cycle tests hold it.
 - **Two plans edit the validator.** Pull request 3 lands after pull request 1 of the distribution plan. If that plan slips, pull request 3 can land first with a local version comparison and a local typed read, and the later rebase removes them.
 - **The inventory is long.** 410 ids typed by hand will hold an error. Cycle 5 of pull request 1 compares the registry with the specification id by id, and the specification's list was checked by script against its source.
 - **A registry of 410 entries with one chair in the library.** The registry is data and takes a few kilobytes. The chip row shows only what items carry, so an empty category never appears.
 - **Reserved fields may be used early.** A pack that fills in a reserved contract validates, because unknown fields are ignored. Its shape may change. The specification says so, and the pack tool could warn. That warning is not in this plan.
-- **The model placement fix.** Investigation A reproduced the defect, and its fix changes where every loaded model appears. The starter chair's file is a 41-byte placeholder (`public/packs/vernacular-starter-1.0.0/assets/`), so the app has shown the box so far, which explains why nobody saw it. The fix lands on its own pull request before pull request 7.
-- **ADR numbers.** ADR-0234 to ADR-0239 are reserved for this effort. Check `origin/main` before landing.
+- **The model placement fix.** Investigation A reproduced the defect, and its fix changes where every loaded model appears. The starter chair's file is a 41-byte placeholder (`public/packs/vernacular-starter-1.0.0/assets/`), so the app showed the box until then, which explains why nobody saw it. The fix merged as #1148, before pull request 7.
+- **ADR numbers.** ADR-0234 to ADR-0237 belong to this effort. ADR-0238 and ADR-0239 are taken on `main`. Check `origin/main` before landing.
 
 ## Execution
 
