@@ -75,9 +75,9 @@ Two registries are seeded so the model has concrete data to build against:
   reference, matching the spec's requirement that element types carry both
   `plan2D` rendering rules and a `scene3D` reference.
 
-The remaining five registries (eras, categories, trim profiles, palettes, room
-purposes) are not seeded yet; they follow the same `createRegistry` shape when
-they land.
+When this record was written, the remaining five registries (eras, categories,
+trim profiles, palettes, room purposes) were not seeded yet; they follow the same
+`createRegistry` shape. The amendment below records the category registry.
 
 ## Consequences
 
@@ -104,9 +104,11 @@ they land.
 ADR-0234 adds two registries in this pattern. `core/registries/asset-domains.ts` holds the thirty
 asset domains, each with its code, name, tier, and rank. `core/registries/asset-categories.ts`
 holds the 410 categories, each with its id, domain, subcategory, and display name. The display
-name comes from the id unless the registry writes one, as it does for acronyms. The category
-registry is the `CategoryRegistry` in the list above. Its data sits in four tier files, because
-one file of 410 entries would pass the 300-line limit.
+name comes from the id unless the registry writes one, as it does for acronyms, abbreviations,
+run-together words, and era names. The category registry is the `CategoryRegistry` in the list
+above. The domain registry has no entry in that list: it is an eighth registry with the same
+shape. The category data sits in four tier files, because one file of 410 entries would pass the
+300-line limit.
 
 Registry entries are planned to become pack assets (#1127). Before the finish, floor pattern, trim
 profile, and construction profile registries take entries from a pack, their entries get display
