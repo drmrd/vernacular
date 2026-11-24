@@ -158,7 +158,7 @@ export interface FramedSceneState {
   toggleEdgeOverlay: () => void
   framed: FramedScene
   modelsVersion: number
-  /** Whether the ground grass texture is loading, ready, or failed. */
+  /** Load status of the ground grass texture; the ground draws flat until it is 'ready'. */
   groundTexture: TextureStatus
   /**
    * Reports that the renderer's React root now draws `scene`; frees what it replaced. The
@@ -187,6 +187,8 @@ export function useFramedScene(): FramedSceneState {
   const models = useFurnitureModelCache(graph)
   const texture = useGroundTexture(GROUND_GRASS_REFERENCE, useAssetRegistry())
   const framed = useMemo(() => {
+    // Set before reconcile so the scene it returns, even from a new reconciler after an
+    // overlay flip, draws with it.
     reconciler.setGroundAppearance(texture.appearance)
     return reconciler.reconcile(graph, paint, models.lookup)
   }, [reconciler, graph, paint, models, texture.appearance])
