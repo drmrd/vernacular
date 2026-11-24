@@ -1,6 +1,7 @@
 import { linearLuminance } from '../color/contrast'
 import { parseHex } from '../color/hex'
 import { type LinearRgb, srgbToLinear } from '../color/oklab'
+import type { AssetReference } from '../model/asset-reference'
 
 /** The mowed-lawn green of the ground surface, as the engine paints it. */
 export const GROUND_SURFACE_HEX = '#5f8a4f'
@@ -25,4 +26,10 @@ export const GROUND_BOUNCE_COLOR: LinearRgb = {
   r: groundBounceLuminance,
   g: groundBounceLuminance,
   b: groundBounceLuminance,
+}
+
+/** The generated mown-grass tile of starter pack 1.1.0, which the ground does not draw yet. */
+export const GROUND_GRASS_REFERENCE: AssetReference = {
+  scope: 'pack:vernacular-starter@1.1.0',
+  contentHash: '6124c956bf1980cfb3da2322f5fc2a55fa4d8e44912faba58618270ced1b8f76',
 }
