@@ -29,13 +29,13 @@ function servePublicFiles() {
   })
 }
 
-function currentFurnitureHash(): string {
+function currentModelHashes(): string[] {
   const manifest = JSON.parse(
     readFileSync(join(PUBLIC_DIRECTORY, CURRENT_PACK_URL, 'manifest.json'), 'utf8'),
   ) as { assets: ManifestAsset[] }
-  const furniture = manifest.assets.find((asset) => asset.kind === 'furniture')
-  if (furniture === undefined) throw new Error('the current starter pack has no furniture asset')
-  return furniture.contentHash
+  return manifest.assets
+    .filter((asset) => asset.kind !== 'texture')
+    .map((asset) => asset.contentHash)
 }
 
 describe('the application starter pack sources', () => {
@@ -46,9 +46,9 @@ describe('the application starter pack sources', () => {
     const items = await registry.list()
 
     expect(fetchSpy).toHaveBeenCalledWith(`${CURRENT_PACK_URL}/manifest.json`)
-    expect(items.map((item) => item.reference)).toEqual([
-      { scope: CURRENT_PACK_SCOPE, contentHash: currentFurnitureHash() },
-    ])
+    expect(items.map((item) => item.reference)).toEqual(
+      currentModelHashes().map((contentHash) => ({ scope: CURRENT_PACK_SCOPE, contentHash })),
+    )
     expect(items.map((item) => item.reference.contentHash)).not.toContain(PREVIOUS_CHAIR_HASH)
   })
 
@@ -65,7 +65,10 @@ describe('the application starter pack sources', () => {
       contentHash: PREVIOUS_CHAIR_HASH,
     })
 
-    expect(resolution).toMatchObject({ outcome: 'resolved', resolvedScope: PREVIOUS_PACK_SCOPE })
-    expect(resolution.outcome === 'resolved' && resolution.bytes).toEqual(expectedBytes)
+    expect(resolution).toMatchObject({
+      outcome: 'resolved',
+      resolvedScope: PREVIOUS_PACK_SCOPE,
+      bytes: expectedBytes,
+    })
   })
 })
