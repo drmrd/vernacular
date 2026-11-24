@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { GROUND_BOUNCE_COLOR, GROUND_SURFACE_COLOR, GROUND_SURFACE_HEX } from './ground-surface'
+import {
+  GROUND_BOUNCE_COLOR,
+  GROUND_GRASS_REFERENCE,
+  GROUND_SURFACE_COLOR,
+  GROUND_SURFACE_HEX,
+} from './ground-surface'
 import { linearLuminance } from '../color/contrast'
 import { srgbToLinear } from '../color/oklab'
+import starterPackManifest from '../../public/packs/vernacular-starter-1.1.0/manifest.json'
 
 // The lawn color is one fact stated twice: as the hex the engine paints the ground plane with,
 // and as the linear-light color the sky dome multiplies its light by.
@@ -9,6 +15,7 @@ import { srgbToLinear } from '../color/oklab'
 const MAX_CHANNEL_CODE = 255
 const COLOR_TOLERANCE = 1e-6
 const LUMINANCE_TOLERANCE = 1e-12
+const GRASS_TILE_SIDE_MM = 2000
 
 function linearChannelOfHex(hex: string, offset: number): number {
   const code = Number.parseInt(hex.slice(offset, offset + 2), 16)
@@ -42,5 +49,18 @@ describe('the ground surface', () => {
   it('bounces as much light as the lawn does, in luminance', () => {
     const difference = linearLuminance(GROUND_BOUNCE_COLOR) - linearLuminance(GROUND_SURFACE_COLOR)
     expect(Math.abs(difference)).toBeLessThan(LUMINANCE_TOLERANCE)
+  })
+
+  it('names the grass texture of the committed starter pack, tiled over two meters', () => {
+    const namedAssets = starterPackManifest.assets.filter(
+      (asset) => asset.contentHash === GROUND_GRASS_REFERENCE.contentHash,
+    )
+
+    expect(GROUND_GRASS_REFERENCE.scope).toBe('pack:vernacular-starter@1.1.0')
+    expect(namedAssets).toHaveLength(1)
+    expect(namedAssets[0]).toMatchObject({
+      kind: 'texture',
+      tileSize: { width: GRASS_TILE_SIDE_MM, height: GRASS_TILE_SIDE_MM },
+    })
   })
 })
