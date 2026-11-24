@@ -148,7 +148,7 @@ describe('the generated grass tile', () => {
 
   it('is not flat, and its spread of luminance stays small', () => {
     const luminances = texelLuminances(generateGrassTile().pixels)
-    const mean = luminances.reduce((sum, value) => sum + value, 0) / luminances.length
+    const mean = meanOf(luminances)
     const variance =
       luminances.reduce((sum, value) => sum + (value - mean) ** 2, 0) / luminances.length
     const spreadRatio = Math.sqrt(variance) / mean
@@ -168,10 +168,17 @@ describe('the generated grass tile', () => {
   it.each([
     ['last column to first', 1, 0],
     ['last row to first', 0, 1],
-  ])('has a step across the wrap edge from the %s no larger than inside', (_, dx, dy) => {
-    const { wrap, inner } = wrapAndInnerSteps(texelLuminances(generateGrassTile().pixels), dx, dy)
-    expect(wrap).toBeLessThanOrEqual(inner * MAX_SEAM_STEP_RATIO)
-  })
+  ])(
+    'has a step across the wrap edge from the %s at most 1.1 times the step inside',
+    (_, columnOffset, rowOffset) => {
+      const { wrap, inner } = wrapAndInnerSteps(
+        texelLuminances(generateGrassTile().pixels),
+        columnOffset,
+        rowOffset,
+      )
+      expect(wrap).toBeLessThanOrEqual(inner * MAX_SEAM_STEP_RATIO)
+    },
+  )
 
   it('keeps its first mip level from going flat', () => {
     const ratio = firstMipSpreadRatio(texelLuminances(generateGrassTile().pixels))
