@@ -193,7 +193,7 @@ The app's own name is fixed in code today (`editor/shell/editor-shell.tsx`, `pub
 | `packId`, `version` | As in the manifest. The version follows Semantic Versioning 2.0.0. Together they are the pack scope of ADR-0007.    |
 | `formatVersion`     | The manifest's format version (ADR-0219). A manifest with none is format 1.                                         |
 | `manifest`          | The manifest file's lower-case hex sha256 and its length in bytes. The file is at `manifests/sha256/<sha256>.json`. |
-| `byteLength`        | Total length of the version's models, textures, and thumbnails. An upper bound, since pack versions share files.    |
+| `byteLength`        | Total length of every file the version's manifest names. An upper bound, since pack versions share files.           |
 | `itemCount`         | The number of assets in the version's manifest.                                                                     |
 
 - `$schema` and `name` are optional. `catalogVersion` moves only when a reader of the earlier version would misread the file, and a reader ignores fields it does not know.
@@ -230,6 +230,7 @@ The manifest is that of ADR-0219, with four optional fields on each asset: `byte
 - `thumbnail.contentHash` is the sha256 of the thumbnail file. In the pack folder the thumbnail stays at `thumbnails/<asset contentHash>.webp`, and in the store it is a blob under its own hash. Without this field the app has nothing to check a thumbnail against, so it shows none.
 - `copyright` is the asset's copyright notice, shown in credits as given. `changes` says what the pack's author changed in someone else's work.
 - Optional fields do not move the format version under the rule of ADR-0219. The pack tool checks `byteLength` and `thumbnail` against the files, and the publish step requires them for format 2 and later. A format 1 pack, such as starter pack 1.0.0, has neither field, so its items show no thumbnail.
+- Code that handles the files of an asset walks every `contentHash` and `byteLength` pair the asset names, rather than a fixed list of fields. Today an asset names its file and its thumbnail. A later optional field that names a file needs no change in the verified fetch, the cache, the size totals, the publish step, or the mirror command.
 - The app fetches a manifest once, checks its sha256 against the catalog entry, validates it with `validatePackManifest`, and keeps it for good. A manifest that fails either check is not used.
 
 ### What a served asset must be
@@ -250,6 +251,8 @@ How a file gets this way belongs to the preparation pipeline.
 - A digest is sha256 as 64 lower-case hex characters, as asset references and `.building` archives already use. The app computes each one with Web Crypto. It does not use the `integrity` option of `fetch`, which fails with a plain network error, because the app must tell a damaged file from a lost connection.
 - Both decoders ship inside the pinned `three` package. The app serves them from its own origin, loads each when the first file needs it, and precaches them.
 - JSON Schemas will be published as the project format's is today, under `schema/catalog/<catalogVersion>/`, `schema/pack-manifest/<formatVersion>/`, and `schema/deployment/1/`, guarded by `pnpm schema:check`. The types in `core/assets/` stay the source of truth, and the copy in the repository is the canonical one. The schemas carry the code's license, Apache-2.0. Each schema's `$id` uses the public base of the project format's schemas, for example `https://drmrd.github.io/vernacular/schema/catalog/1/catalog.schema.json`, and the address is the same for every deployment.
+- A published manifest schema is open, as `validatePackManifest` is. The manifest, each asset, and each nested object of a checked field accept keys the schema does not name, and the schema names only the fields the validator checks. The cost is that a misspelled key passes the schema.
+- A new optional field changes a manifest schema in place, at the same path and under the same `$id`, and does not move `formatVersion`. Removing a field, changing its type, making it required, or narrowing its set of values needs a new format version. So a pack that carries newer optional fields stays valid against an older copy of its schema.
 
 ### How the app builds the library
 
@@ -270,7 +273,7 @@ The library shows one tile for each content hash, from the first source in this 
 
 ### Hash verification
 
-Every file from the network is checked before anything else sees it. A manifest is checked against `manifest.sha256` of its catalog entry, a model or texture against the `contentHash` that named the request, a thumbnail against `thumbnail.contentHash` in the manifest, and each file of an imported pack against the hash that pack's manifest gives for it.
+Every file from the network is checked before anything else sees it. A manifest is checked against `manifest.sha256` of its catalog entry, every file an asset names against the hash the manifest gives for it (a model or texture against its `contentHash`, a thumbnail against `thumbnail.contentHash`), and each file of an imported pack against the hash that pack's manifest gives for it.
 
 - The check is over the bytes as stored, after any transfer encoding is undone.
 - A file that fails is thrown away. It is not written to the device cache, and no loader receives it. The app tries once more, asking the network to skip its cache. A second failure puts the item in the "could not be checked" state.
@@ -454,7 +457,7 @@ This plan also writes a short deployment guide under `docs/`. It covers the stor
 
 ### Publishing and mirroring
 
-- The pack tool gains a publish step. It validates each pack, copies each file to its hash path, writes the manifest under its hash, and adds the entry to `catalog.json`, all in a local directory. Anyone can run it to build a store of their own.
+- The pack tool gains a publish step. It validates each pack, copies each file the manifest names to its hash path, writes the manifest under its hash, and adds the entry to `catalog.json`, all in a local directory. Anyone can run it to build a store of their own.
 - The upload order is blobs, then manifests, then `catalog.json`, so a catalog never names a file that is not there yet.
 - The pack tool also gains a mirror command. It reads a store's catalog, manifests, and blobs, checks every hash, and writes a complete copy.
 - The source files of every first-party catalog asset are public in a repository, under the asset's license. Source files are the modeling file, the original textures, and any generator input. The served files are public there too, so the library does not depend on one host. This plan builds no such repository: the starter set already lives in this one, and the first catalog pack beyond it waits for the follow-up below.
