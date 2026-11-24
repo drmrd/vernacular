@@ -248,3 +248,12 @@ flat-array pipeline stays.
   trigger features the recommendation hangs on.
 - Issue #166 (incremental scene updates): the incremental-invalidation appetite a
   persistent structure would serve.
+
+## Update (2026-11-24): the trial ran
+
+The trial that this record asked for ran on the branch `feat/half-edge-face-walk-trial`,
+which never merges.
+[[ADR-0200-half-edge-trial-result-and-the-inner-form-of-the-plan-geometry]] holds its
+measurements, the defects of the current face walk that it found, and a recommendation.
+On 2026-11-24 the owner took the fallback: the current graph with one shared fan per
+junction. The flat-array pipeline stays. ADR-0200 records the choice and the rule used.
