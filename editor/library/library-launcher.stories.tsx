@@ -9,7 +9,7 @@ import { LibraryLauncher } from './library-launcher'
 // that toggles the LibraryPanel open, staying open while the user places items.
 // The story mocks the pack manifest (ADR-0110) so opening the launcher lists a
 // representative catalog without a real network read.
-const BASE = '/packs/vernacular-starter-1.0.0'
+const BASE = '/packs/vernacular-starter-1.1.0'
 const MID_CENTURY_CHAIR = 'Mid-century chair'
 
 function fetchBackedRegistry(): AssetRegistry {
