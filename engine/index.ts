@@ -3,7 +3,7 @@ export { buildScene } from './scene/build-scene'
 export type { EdgeOverlayOptions } from './scene/edge-overlay'
 export { buildFurnitureMassing } from './scene/furniture-builder'
 export { buildFurnitureModelGroup, parseFurnitureModel } from './scene/furniture-model'
-export { disposeObject, releaseCachedObject } from './scene/dispose-object'
+export { disposeObject, markCacheHeld, releaseCachedObject } from './scene/dispose-object'
 export {
   assembleFloorRoot,
   buildFurnitureSubgroup,
@@ -74,3 +74,13 @@ export {
 export type { AmbientOcclusionPipeline } from './postprocessing/render-scene-frame'
 export { renderSceneFrame } from './postprocessing/render-scene-frame'
 export { buildAmbientOcclusionPipeline } from './postprocessing/ambient-occlusion'
+export type {
+  ImageBitmapDecoder,
+  ImageTextureOptions,
+  TextureAppearance,
+} from './loaders/image-texture-loader'
+export {
+  decodeImageTexture,
+  disposeImageTexture,
+  ImageTextureDecodeError,
+} from './loaders/image-texture-loader'

@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { PackSource } from './pack-source'
 import type { MediaType } from '../../core'
 import type { LibraryItem } from './asset-source'
+import { GRASS_HASH, grassTextureAsset } from './texture-pack-test-support'
 
 const MODEL_HASH = '0'.repeat(64)
-const TEXTURE_HASH = '1'.repeat(64)
+const TEXTURE_HASH = GRASS_HASH
 
 const VALID_MANIFEST = {
   packId: 'vernacular-starter',
@@ -81,19 +82,7 @@ const FORMAT_2_MANIFEST = {
   ...VALID_MANIFEST,
   formatVersion: 2,
   assets: [
-    {
-      contentHash: TEXTURE_HASH,
-      name: 'Mown grass',
-      kind: 'texture',
-      mediaType: 'image/png',
-      image: { width: 256, height: 256 },
-      tileSize: { width: 1000, height: 1000 },
-      colorSpace: 'srgb',
-      license: 'CC0-1.0',
-      attribution: 'Vernacular project',
-      eras: ['mid-century'],
-      categories: ['ground'],
-    },
+    grassTextureAsset(1000),
     { ...VALID_MANIFEST.assets[0], mediaType: 'model/gltf-binary' },
   ],
 }
@@ -194,6 +183,42 @@ describe('PackSource reading an asset from the file of its media type', () => {
     const reader = fakeReader([VALID_MANIFEST], { asset: ASSET_BYTES })
     expect(await new PackSource(reader).read('nope')).toBeUndefined()
     expect(reader.calls.assets).toEqual([])
+  })
+})
+
+describe('PackSource describing an asset', () => {
+  it('describes a texture asset with its image, tile size, and color space', async () => {
+    const source = new PackSource(fakeReader([FORMAT_2_MANIFEST]))
+    expect(await source.describe(TEXTURE_HASH)).toEqual({
+      kind: 'texture',
+      mediaType: 'image/png',
+      image: { width: 256, height: 256 },
+      tileSize: { width: 1000, height: 1000 },
+      colorSpace: 'srgb',
+    })
+  })
+
+  it('describes a model asset with its dimensions', async () => {
+    const source = new PackSource(fakeReader([FORMAT_2_MANIFEST]))
+    expect(await source.describe(MODEL_HASH)).toEqual({
+      kind: 'model',
+      mediaType: 'model/gltf-binary',
+      dimensions: { width: 500, depth: 520, height: 800 },
+    })
+  })
+
+  it('describes a format 1 asset as a model', async () => {
+    const source = new PackSource(fakeReader([VALID_MANIFEST]))
+    expect(await source.describe(MODEL_HASH)).toEqual({
+      kind: 'model',
+      mediaType: 'model/gltf-binary',
+      dimensions: { width: 500, depth: 520, height: 800 },
+    })
+  })
+
+  it('describes an unknown hash as undefined', async () => {
+    const source = new PackSource(fakeReader([FORMAT_2_MANIFEST]))
+    expect(await source.describe('nope')).toBeUndefined()
   })
 })
 

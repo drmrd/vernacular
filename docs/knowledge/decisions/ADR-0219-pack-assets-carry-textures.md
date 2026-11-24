@@ -12,6 +12,7 @@ related:
     decisions/ADR-0130-finishes-system-architecture,
     decisions/ADR-0131-ground-plane-grade-datum,
     decisions/ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point,
+    decisions/ADR-0238-a-texture-cache-lives-for-one-effect-run-of-one-view,
   ]
 sourceFiles:
   [
@@ -26,6 +27,7 @@ sourceFiles:
     scripts/pack/pack-integrity.mjs,
     scripts/pack/vernacular-pack.mjs,
     scripts/pack/generate-fixtures.mjs,
+    storage/assets/asset-source.ts,
     storage/assets/pack-source.ts,
     storage/assets/fetch-pack-reader.ts,
     storage/assets/asset-registry.ts,
@@ -33,17 +35,18 @@ sourceFiles:
     engine/loaders/image-texture-loader.ts,
     engine/scene/furniture-model.ts,
     bridge/react/texture-cache.ts,
+    bridge/react/use-ground-texture.ts,
     core/environment/ground-surface.ts,
   ]
 status: current
-updated: 2026-11-22
+updated: 2026-11-23
 ---
 
 # ADR-0219: Each pack asset declares a media type, and texture assets carry tiled images
 
 ## Status
 
-Current, 2026-11-22, and proposed on 2026-11-20. On 2026-11-18 the owner chose to widen the pack format so that packs can
+Current, 2026-11-23, and proposed on 2026-11-20. On 2026-11-18 the owner chose to widen the pack format so that packs can
 carry texture assets, with this record and an amendment of section 4.3 of the design
 specification. He also chose that the grass of the ground (#409) ships in starter pack 1.1.0.
 
@@ -58,9 +61,10 @@ On 2026-11-19 he confirmed five defaults of this record:
 The other rules below are this record's design. The first code pull request of
 `docs/plans/2026-11-19-texture-assets-in-packs.md` built the format on 2026-11-22. It covers the
 manifest rules, the checks of the pack command line tool, the pack source, and the library's filter
-by kind. The asset registry's description of an asset, the image loader, and the grass come in
-later pull requests of the same plan. The Context section describes the code as it was before the
-first pull request.
+by kind. The second pull request added the asset registry's description of an asset, the image
+loader, and the texture cache on 2026-11-23; ADR-0238 records how the cache holds and frees what
+it decodes. The grass comes in a later pull request of the same plan. The Context section
+describes the code as it was before the first pull request.
 
 ## Context
 
