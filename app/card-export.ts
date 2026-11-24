@@ -20,7 +20,7 @@ export interface CardExportParts {
   readonly handle: DocumentHandle | null
   /** The cards on the page, which name the projects that are not open. */
   readonly cards?: readonly ProjectCardModel[] | undefined
-  /** The lister of the library whose packs supply assets, so that they do not count as missing. */
+  /** The catalog of the library whose packs supply assets, so that they do not count as missing. */
   readonly packs?: PackCatalog | undefined
 }
 

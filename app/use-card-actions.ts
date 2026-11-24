@@ -9,13 +9,17 @@ import {
   type ProjectCardModel,
   type SessionPorts,
 } from '../session'
-import type { AssetCache } from '../storage'
+import type { AssetCache, LibraryItem } from '../storage'
 import { useCardExport } from './card-export'
 import { deleteFailureText, removeFromListFailureText, renameFailureText } from './card-action-text'
 import { createAssetLibrary } from './create-asset-library-registry'
 import { libraryHashesOf } from './library-hashes'
-import type { LibraryLister } from './pack-supplies'
 import type { HistoryNavigation } from './use-history-navigation'
+
+/** A library that lists the items it holds. */
+interface LibraryLister {
+  list(): Promise<readonly LibraryItem[]>
+}
 
 export interface CardActionsParts {
   readonly navigation: HistoryNavigation

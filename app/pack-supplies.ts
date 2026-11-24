@@ -1,11 +1,6 @@
 import { packSuppliesFrom, type LibraryItem, type PackSupplies } from '../storage'
 
-/** A library that lists the items it holds. */
-export interface LibraryLister {
-  list(): Promise<readonly LibraryItem[]>
-}
-
-/** A library whose catalog includes the unlisted pack sources that the listing leaves out. */
+/** A library whose catalog includes the unlisted pack sources that its list leaves out. */
 export interface PackCatalog {
   catalog(): Promise<readonly LibraryItem[]>
 }
