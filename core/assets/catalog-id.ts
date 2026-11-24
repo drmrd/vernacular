@@ -48,6 +48,7 @@ const VERSION_PROBLEM =
 
 const PART_NAMES = ['namespace', 'domain', 'subcategory', 'slug', 'version'] as const
 const PART_SEPARATORS = [':', '.', '/', '@'] as const
+const [, CATEGORY_SEPARATOR] = PART_SEPARATORS
 
 interface RawCatalogParts {
   namespace: string
@@ -98,12 +99,11 @@ export function parseCatalogId(text: string): CatalogIdParse {
   return split.ok ? validateCatalogParts(split.parts) : split
 }
 
+/** Does not validate: trusts the caller to pass an id from `parseCatalogId` or one that meets the grammar. */
 export function formatCatalogId(id: CatalogId): string {
-  const [afterNamespace, afterDomain, afterSubcategory, afterSlug] = PART_SEPARATORS
-  return `${id.namespace}${afterNamespace}${id.domain}${afterDomain}${id.subcategory}${afterSubcategory}${id.slug}${afterSlug}${id.version}`
+  return PART_NAMES.map((name, index) => `${id[name]}${PART_SEPARATORS[index] ?? ''}`).join('')
 }
 
 export function categoryOf(id: CatalogId): string {
-  const [, afterDomain] = PART_SEPARATORS
-  return `${id.domain}${afterDomain}${id.subcategory}`
+  return `${id.domain}${CATEGORY_SEPARATOR}${id.subcategory}`
 }
