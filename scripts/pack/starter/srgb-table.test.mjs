@@ -6,19 +6,23 @@ import { LINEAR_SCALE, LINEAR_TABLE, TARGET_HEX } from './srgb-table.mjs'
 
 const CODE_COUNT = 256
 const MAX_CODE = 255
-const LINEAR_TOLERANCE = 1 / 65535
+const ONE_TABLE_UNIT = 1 / LINEAR_SCALE
 
 describe('the generator sRGB table', () => {
-  it("the generator's table of linear values agrees with the color module, and its target is the lawn hex", () => {
+  it('has 256 integer entries', () => {
     expect(LINEAR_TABLE).toHaveLength(CODE_COUNT)
     expect(LINEAR_TABLE.every(Number.isInteger)).toBe(true)
+  })
 
+  it('agrees with srgbToLinear within one table unit for every code', () => {
     for (let code = 0; code < CODE_COUNT; code += 1) {
       const fromTable = LINEAR_TABLE[code] / LINEAR_SCALE
       const fromModule = srgbToLinear(code / MAX_CODE)
-      expect(Math.abs(fromTable - fromModule)).toBeLessThanOrEqual(LINEAR_TOLERANCE)
+      expect(Math.abs(fromTable - fromModule), `code ${code}`).toBeLessThanOrEqual(ONE_TABLE_UNIT)
     }
+  })
 
+  it('targets the lawn hex', () => {
     expect(TARGET_HEX).toBe(GROUND_SURFACE_HEX)
   })
 })
