@@ -1,5 +1,5 @@
 import { renderOnAStoredProject } from './action-test-support'
-import type { LibraryLister } from './pack-supplies'
+import type { PackCatalog } from './pack-supplies'
 import { useOpenFileAction } from './use-open-file-action'
 
 /** Test support: what the cases of the open file action share. */
@@ -8,6 +8,6 @@ import { useOpenFileAction } from './use-open-file-action'
 export const TOO_LARGE_SENTENCE = 'Open failed: The file is larger than 512 MB.'
 
 /** In-memory ports with a stored project open, and the open file action on it. */
-export function renderOpenFileAction(packs?: LibraryLister) {
+export function renderOpenFileAction(packs?: PackCatalog) {
   return renderOnAStoredProject(useOpenFileAction, packs)
 }

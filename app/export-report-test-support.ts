@@ -21,7 +21,7 @@ import {
   shownMessages,
   shownWarnings,
 } from './action-test-support'
-import type { LibraryLister } from './pack-supplies'
+import type { PackCatalog } from './pack-supplies'
 import { useExportBundleAction } from './use-export-actions'
 
 /** Test support: open projects that place furniture, for the cases of the export report. */
@@ -99,11 +99,11 @@ interface ExportCase {
   /** The assets whose bytes the pool of the project holds. */
   readonly held?: readonly AssetReference[]
   /** The library that tells which pack assets an installed pack brings. */
-  readonly packs?: LibraryLister
+  readonly packs?: PackCatalog
 }
 
 /** The bundle export on `handle`, with the toasts that show, and a log that the warning writes to. */
-function renderBundleExport(handle: DocumentHandle, steps: string[], packs?: LibraryLister) {
+function renderBundleExport(handle: DocumentHandle, steps: string[], packs?: PackCatalog) {
   return renderHook(
     () => {
       const real = useNotifications()

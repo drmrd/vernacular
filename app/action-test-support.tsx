@@ -28,7 +28,7 @@ import {
   namedProject,
   runNothing,
 } from './app-test-support'
-import type { LibraryLister } from './pack-supplies'
+import type { PackCatalog } from './pack-supplies'
 import type { RunFlow } from './use-open-project'
 import type { ProjectActionsContext } from './use-project-actions'
 
@@ -111,8 +111,8 @@ export interface ActionRig {
   /** The project that is open when the case starts. */
   readonly handle: DocumentHandle
   readonly capabilities?: StorageCapabilities
-  /** The library whose listing tells which pack assets an installed pack brings by itself. */
-  readonly packs?: LibraryLister
+  /** The library whose catalog tells which pack assets an installed pack brings by itself. */
+  readonly packs?: PackCatalog
 }
 
 export interface RiggedActions<Actions> {
@@ -215,10 +215,10 @@ export function furnitureItem(reference: AssetReference): LibraryItem {
   }
 }
 
-/** A library whose listing holds one item for each of `references`. */
-export function packListing(...references: AssetReference[]): LibraryLister {
+/** A library whose catalog holds one item for each of `references`. */
+export function packCatalogOf(...references: AssetReference[]): PackCatalog {
   const items = references.map(furnitureItem)
-  return { list: () => Promise.resolve(items) }
+  return { catalog: () => Promise.resolve(items) }
 }
 
 /** A `.json` project file of `project`, as the application writes one. */
@@ -273,7 +273,7 @@ export const STORED_PROJECT_NAME = 'Drafthouse'
 /** In-memory ports with a stored project open, and the adapter hook `useAdapter` on it. */
 export async function renderOnAStoredProject<Actions>(
   useAdapter: (context: ProjectActionsContext) => Actions,
-  packs?: LibraryLister,
+  packs?: PackCatalog,
 ) {
   const ports = createTestPorts()
   const handle = await openStoredProject(ports, STORED_PROJECT_ID, STORED_PROJECT_NAME)

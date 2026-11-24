@@ -4,6 +4,7 @@ import type { AssetReference } from '../core'
 import { describe, expect, it, vi } from 'vitest'
 import { AssetRegistry } from '../storage'
 import { createStarterPackSources } from './create-asset-library-registry'
+import { loadPackSupplies } from './pack-supplies'
 
 const PUBLIC_DIRECTORY = join(import.meta.dirname, '..', 'public')
 const HTTP_OK = 200
@@ -92,5 +93,13 @@ describe('the application starter pack sources', () => {
       mediaType: 'model/gltf-binary',
       dimensions: { width: 500, depth: 520, height: 800 },
     })
+  })
+
+  it('supplies the chair of starter pack 1.0.0 to the missing-asset check', async () => {
+    const registry = new AssetRegistry(createStarterPackSources(servePublicFiles()))
+
+    const supplies = await loadPackSupplies(registry)
+
+    expect(supplies?.(PREVIOUS_CHAIR_REFERENCE)).toBe(true)
   })
 })

@@ -5,7 +5,7 @@ import { ARCHIVE_LIMITS, DocumentDecodeError } from '../storage'
 import { failSaves, storedName } from '../session/handle/handle-test-kit'
 import {
   closeOpenedHandles,
-  packListing,
+  packCatalogOf,
   projectFileOf,
   projectFileReferring,
   READ_FAILURE,
@@ -162,7 +162,7 @@ describe('useOpenFileAction on a file that lacks assets', () => {
   })
 
   it('shows no warning for a pack asset that the library lists', async () => {
-    const { handle, result } = await renderOpenFileAction(packListing(PACK_REFERENCE))
+    const { handle, result } = await renderOpenFileAction(packCatalogOf(PACK_REFERENCE))
 
     await act(async () => {
       await result.current.actions.onImportDroppedFile(projectFileReferring(PACK_REFERENCE))

@@ -9,7 +9,7 @@ import {
   actionsContext,
   closeOpenedHandles,
   openStoredProject,
-  packListing,
+  packCatalogOf,
   projectFileReferring,
   READ_FAILURE,
   settleTheAction,
@@ -48,16 +48,16 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-/** A library that lists nothing, and how often its listing was asked for. */
-function countedListing() {
-  const list = vi.fn(() => Promise.resolve([]))
-  return { packs: { list }, listed: () => list.mock.calls.length }
+/** A library whose catalog is empty, and how often its catalog was asked for. */
+function countedCatalog() {
+  const catalog = vi.fn(() => Promise.resolve([]))
+  return { packs: { catalog }, listed: () => catalog.mock.calls.length }
 }
 
 describe('the warning for a file that lacks assets, when the library is not known', () => {
-  it('shows no warning for a pack asset, and opens the file, when the listing of the library fails', async () => {
+  it('shows no warning for a pack asset, and opens the file, when the catalog of the library fails', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const failing = { list: () => Promise.reject(new Error(READ_FAILURE)) }
+    const failing = { catalog: () => Promise.reject(new Error(READ_FAILURE)) }
     const { handle, result } = await renderOpenFileAction(failing)
 
     await act(async () => {
@@ -85,7 +85,7 @@ describe('the warning for a file that lacks assets, when the library is not know
 
 describe('the warning for a file that lacks assets, when the library lists some', () => {
   it('counts only the asset that the library does not list, in the singular', async () => {
-    const { result } = await renderOpenFileAction(packListing(PACK_REFERENCE))
+    const { result } = await renderOpenFileAction(packCatalogOf(PACK_REFERENCE))
 
     await act(async () => {
       await result.current.actions.onImportDroppedFile(
@@ -96,8 +96,8 @@ describe('the warning for a file that lacks assets, when the library lists some'
     await waitFor(() => expect(shownWarnings(result)).toEqual([importMissingAssetsText(1)]))
   })
 
-  it('asks the library for its listing one time for an import that refers to many assets', async () => {
-    const { packs, listed } = countedListing()
+  it('asks the library for its catalog one time for an import that refers to many assets', async () => {
+    const { packs, listed } = countedCatalog()
     const { handle, result } = await renderOpenFileAction(packs)
 
     await act(async () => {
@@ -175,8 +175,8 @@ describe('the warning for a file that is not opened', () => {
     expect(shownWarnings(result)).toEqual([importMissingAssetsText(1)])
   })
 
-  it('does not ask the library for its listing about a file that cannot be read', async () => {
-    const { packs, listed } = countedListing()
+  it('does not ask the library for its catalog about a file that cannot be read', async () => {
+    const { packs, listed } = countedCatalog()
     const { result } = await renderOpenFileAction(packs)
 
     await act(async () => {
@@ -188,8 +188,8 @@ describe('the warning for a file that is not opened', () => {
     expect(listed()).toBe(0)
   })
 
-  it('does not ask the library for its listing about a file above the size limit', async () => {
-    const { packs, listed } = countedListing()
+  it('does not ask the library for its catalog about a file above the size limit', async () => {
+    const { packs, listed } = countedCatalog()
     const { result } = await renderOpenFileAction(packs)
     const { file } = unreadableFile({ size: ARCHIVE_LIMITS.archiveBytes + 1 })
 
