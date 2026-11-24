@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { FurnitureSceneNode, Point } from '../../core'
-import { FURNITURE_NODE_PREFIX } from '../../core'
+import { FURNITURE_NODE_PREFIX, planToWorld } from '../../core'
 import { parseGltfBytes } from '../loaders/gltf-loader'
 import { disposeObject, markObjectHeld } from './dispose-object'
 import { markShadowCasters } from './shadow-casters'
@@ -83,12 +83,14 @@ export function normalizeModelIntoBox(
   inner.add(model)
 
   // Outer wrapper scales uniformly, rotates about the vertical axis, and places it in plan.
-  // Plan x maps to world x, plan y maps to world z; world y is up at the elevation.
+  // The position goes through planToWorld (plan x to world X, plan north to world -Z, world Y up
+  // at the elevation); a plan angle counterclockwise from +x turns the model by the same angle about Y.
   const outer = new THREE.Group()
   outer.add(inner)
   outer.scale.setScalar(scale)
-  outer.rotation.y = -rotationRadians
-  outer.position.set(footprintCenter.x, node.elevationZ, footprintCenter.y)
+  outer.rotation.y = rotationRadians
+  const world = planToWorld(footprintCenter, node.elevationZ)
+  outer.position.set(world.x, world.y, world.z)
   return outer
 }
 
