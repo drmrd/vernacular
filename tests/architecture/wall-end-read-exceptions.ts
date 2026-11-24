@@ -1,3 +1,5 @@
+// The test does not see an object spread, a computed key, a structural type, or a destructuring
+// assignment, so check those by hand before the list counts as empty.
 // Each later change takes files off this list, and it must be empty before an arc reaches a user.
 export const WALL_END_READ_EXCEPTIONS: readonly string[] = [
   'core/clipboard/clipboard.ts',
