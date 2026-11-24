@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { linePath, pathEnd, pathLength, pathStart, pointAlong, wallPath } from './wall-path'
+import {
+  linePath,
+  normalAlong,
+  pathEnd,
+  pathLength,
+  pathStart,
+  pointAlong,
+  tangentAlong,
+  wallPath,
+} from './wall-path'
 import type { Point } from '../model/types'
 
 const DIAGONAL = wallPath({ start: { x: 0, y: 0 }, end: { x: 3000, y: 4000 } })
@@ -49,5 +58,17 @@ describe('pointAlong', () => {
   it('finds the point at a distance along the path', () => {
     expectPointNear(pointAlong(DIAGONAL, 2500), { x: 1500, y: 2000 })
     expectPointNear(pointAlong(DIAGONAL, 0), { x: 0, y: 0 })
+  })
+})
+
+describe('tangentAlong', () => {
+  it('gives the unit tangent from start to end', () => {
+    expectPointNear(tangentAlong(DIAGONAL, 2500), { x: 0.6, y: 0.8 })
+  })
+})
+
+describe('normalAlong', () => {
+  it('gives the unit normal to the left of start to end', () => {
+    expectPointNear(normalAlong(DIAGONAL, 2500), { x: -0.8, y: 0.6 })
   })
 })
