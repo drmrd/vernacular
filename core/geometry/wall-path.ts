@@ -62,6 +62,10 @@ export function projectOntoPath(path: WallPath, point: Point): PathProjection {
   return { point: pointAlong(path, along), along, offset }
 }
 
+export function subPath(path: WallPath, fromMm: number, toMm: number): WallPath {
+  return linePath(pointAlong(path, fromMm), pointAlong(path, toMm))
+}
+
 export interface PathBounds {
   readonly min: Point
   readonly max: Point
