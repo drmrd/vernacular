@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { ASSET_CATEGORY_REGISTRY_VERSION, builtinAssetCategories } from './asset-categories.ts'
+import {
+  ASSET_CATEGORY_REGISTRY_VERSION,
+  builtinAssetCategories,
+  defaultCategoryName,
+} from './asset-categories.ts'
 import { TIER_1_SUBCATEGORIES } from './asset-categories-tier-1.ts'
 import { TIER_2_SUBCATEGORIES } from './asset-categories-tier-2.ts'
 import { TIER_3_SUBCATEGORIES } from './asset-categories-tier-3.ts'
@@ -57,6 +61,23 @@ describe('builtinAssetCategories', () => {
     const seating = getEntry(builtinAssetCategories, 'FFE.seating')
     expect(seating?.domain).toBe('FFE')
     expect(seating?.subcategory).toBe('seating')
+  })
+})
+
+describe('asset category names', () => {
+  it('gives each category a display name from its id unless one is written', () => {
+    expect(defaultCategoryName('window_sash_casement')).toBe('Window sash casement')
+    expect(getEntry(builtinAssetCategories, 'FFE.seating')?.name).toBe('Seating')
+    expect(getEntry(builtinAssetCategories, 'LGT.ies_distributions')?.name).toBe(
+      'IES distributions',
+    )
+    expect(getEntry(builtinAssetCategories, 'LGT.hdri_environment_maps')?.name).toBe(
+      'HDRI environment maps',
+    )
+    for (const entry of Object.values(builtinAssetCategories.entries)) {
+      expect(entry.name).not.toBe('')
+      expect(entry.name).not.toContain('_')
+    }
   })
 })
 
