@@ -74,6 +74,7 @@ describe('categoriesOfDomain', () => {
     expect(hardware.every((category) => category.domain === 'HDW')).toBe(true)
     expect(hardware.map((category) => category.subcategory)).toEqual(TIER_3_SUBCATEGORIES.HDW)
     expect(categoriesOfDomain('LGT')).toHaveLength(8)
+    expect(Object.isFrozen(hardware)).toBe(true)
   })
 })
 

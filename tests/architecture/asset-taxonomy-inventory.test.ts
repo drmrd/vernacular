@@ -20,23 +20,44 @@ interface InventoryDomain {
 
 function inventorySection(specification: string): string {
   const start = specification.search(/^## Inventory$/m)
+  if (start === -1) {
+    throw new Error(`${SPECIFICATION_PATH} has no "## Inventory" section`)
+  }
+  // Skip the first character so the search below cannot match the "## " that opens this section.
   const rest = specification.slice(start + 1)
   const next = rest.search(/^## /m)
   return next === -1 ? rest : rest.slice(0, next)
 }
 
+function required(value: string | undefined, what: string): string {
+  if (value === undefined) {
+    throw new Error(`Malformed inventory: missing ${what}`)
+  }
+  return value
+}
+
 function parseInventory(section: string): InventoryDomain[] {
   const headings = [...section.matchAll(/^#### `([A-Z]{3})`: (.+) \((\d+)\)$/gm)]
   return headings.map((heading, index) => {
-    const bodyStart = (heading.index ?? 0) + heading[0].length
+    const label = heading[0]
+    const bodyStart = Number(required(heading.index?.toString(), `index of heading ${label}`))
     const bodyEnd = headings[index + 1]?.index ?? section.length
-    const paragraph =
-      section
-        .slice(bodyStart, bodyEnd)
-        .split(/\n\s*\n/)
-        .find((block) => block.trim() !== '') ?? ''
-    const ids = [...paragraph.matchAll(/`([^`]+)`/g)].map((match) => match[1] ?? '')
-    return { code: heading[1] ?? '', name: heading[2] ?? '', count: Number(heading[3]), ids }
+    const paragraph = section
+      .slice(bodyStart + label.length, bodyEnd)
+      .split(/\n\s*\n/)
+      .find((block) => block.trim() !== '')
+    if (paragraph === undefined) {
+      throw new Error(`Malformed inventory: no id paragraph under heading ${label}`)
+    }
+    const ids = [...paragraph.matchAll(/`([^`]+)`/g)].map((match) =>
+      required(match[1], `id in ${label}`),
+    )
+    return {
+      code: required(heading[1], `code of heading ${label}`),
+      name: required(heading[2], `name of heading ${label}`),
+      count: Number(required(heading[3], `count of heading ${label}`)),
+      ids,
+    }
   })
 }
 
