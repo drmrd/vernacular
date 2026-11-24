@@ -1,9 +1,11 @@
 // @vitest-environment node
 // The detector reads a TypeScript program, which needs Node's fs module, not the project-wide jsdom.
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import ts from 'typescript'
-import { describeWallEndRead, findWallEndReads } from './wall-end-reads-test-support'
+import {
+  describeWallEndRead,
+  findWallEndReads,
+  programOfVirtualFiles,
+} from './wall-end-reads-test-support'
 
 const ROOT = '/virtual-repository'
 const SAMPLE_TIMEOUT_MS = 30_000
@@ -37,35 +39,8 @@ const POINT_IMPORT = "import type { Point } from '../model/types'"
 const SEGMENT = '{ start: Point; end: Point }'
 const CALLER_PARAMETERS = 'wall: Wall, walls: Wall[], maybe: Wall[] | undefined'
 
-function programFromSources(sources: readonly Source[]): ts.Program {
-  const options: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    strict: true,
-    noEmit: true,
-    skipLibCheck: true,
-    types: [],
-  }
-  const host = ts.createCompilerHost(options)
-  const virtual = new Map(sources.map(([path, text]) => [join(ROOT, path), text]))
-  const { fileExists, readFile, directoryExists, getSourceFile } = host
-  host.fileExists = (name) => virtual.has(name) || fileExists.call(host, name)
-  host.readFile = (name) => virtual.get(name) ?? readFile.call(host, name)
-  host.directoryExists = (name) =>
-    [...virtual.keys()].some((path) => path.startsWith(`${name}/`)) ||
-    (directoryExists?.call(host, name) ?? false)
-  host.getSourceFile = (name, languageVersion, ...rest) => {
-    const text = virtual.get(name)
-    return text === undefined
-      ? getSourceFile.call(host, name, languageVersion, ...rest)
-      : ts.createSourceFile(name, text, languageVersion)
-  }
-  return ts.createProgram({ rootNames: [...virtual.keys()], options, host })
-}
-
 function readsIn(sources: readonly Source[]): string[] {
-  const program = programFromSources([...BASE_SOURCES, ...sources])
+  const program = programOfVirtualFiles(ROOT, [...BASE_SOURCES, ...sources])
   return findWallEndReads(program, ROOT).map(describeWallEndRead)
 }
 
@@ -272,6 +247,43 @@ describe('findWallEndReads, the other forms of the rule', () => {
       callerOf(
         `export function use<T extends ${SEGMENT}>(_value: T): number { return 0 }`,
         'b.use(wall)',
+      ),
+      ['editor/c.ts:3 argument'],
+    ],
+    [
+      'flags a read through an element access with a key of type start or end',
+      [editorFile("export const first = (wall: Wall, key: 'start' | 'end') => wall[key]")],
+      ['editor/a.ts:2 access'],
+    ],
+    [
+      'does not flag an element access whose key is a variable named start',
+      [
+        editorFile(
+          "export const first = (wall: Wall) => { const start = 'id'; return wall[start] }",
+        ),
+      ],
+      [],
+    ],
+    [
+      'flags a read on a readonly wall',
+      [editorFile('export const first = (wall: Readonly<Wall>) => wall.start')],
+      ['editor/a.ts:2 access'],
+    ],
+    [
+      'flags a nullable list of walls passed to a nullable list parameter',
+      callerOf(useWith(`readonly ${SEGMENT}[] | undefined`), 'b.use(maybe)'),
+      ['editor/c.ts:3 argument'],
+    ],
+    [
+      'flags a wall passed to a rest parameter',
+      callerOf(`export function use(..._values: ${SEGMENT}[]): number { return 0 }`, 'b.use(wall)'),
+      ['editor/c.ts:3 argument'],
+    ],
+    [
+      'flags walls spread into a rest parameter',
+      callerOf(
+        `export function use(..._values: ${SEGMENT}[]): number { return 0 }`,
+        'b.use(...walls)',
       ),
       ['editor/c.ts:3 argument'],
     ],

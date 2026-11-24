@@ -1,4 +1,4 @@
-import { dirname, relative, sep } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import ts from 'typescript'
 
 /** The folders that may read a wall's ends: the geometric kernel. */
@@ -35,6 +35,7 @@ const WALL_TYPES = [
 ]
 const END_NAMES = ['start', 'end']
 const MAX_TYPE_DEPTH = 8
+const READONLY_ALIAS = 'Readonly'
 const LINE_NUMBER_OFFSET = 1
 
 interface Scan {
@@ -74,12 +75,17 @@ function isDeclaredAsWall(scan: Scan, type: ts.Type): boolean {
   })
 }
 
+function readonlyTarget(type: ts.Type): ts.Type | undefined {
+  return type.aliasSymbol?.getName() === READONLY_ALIAS ? type.aliasTypeArguments?.[0] : undefined
+}
+
 function isWallMember(scan: Scan, type: ts.Type, depth: number): boolean {
   if (depth > MAX_TYPE_DEPTH) return false
   if (type.isUnionOrIntersection()) {
     return type.types.some((member) => isWallMember(scan, member, depth + 1))
   }
-  return isDeclaredAsWall(scan, type)
+  const target = readonlyTarget(type)
+  return target === undefined ? isDeclaredAsWall(scan, type) : isWallMember(scan, target, depth + 1)
 }
 
 function isWallType(scan: Scan, type: ts.Type): boolean {
@@ -96,9 +102,18 @@ function isEndName(name: ts.Node | undefined): boolean {
   return text !== undefined && END_NAMES.includes(text)
 }
 
-function accessedExpression(node: ts.Node): ts.Expression | undefined {
+/** Whether a key's type is the string `'start'` or `'end'`, or a union that holds one of them. */
+function isEndKeyType(type: ts.Type): boolean {
+  if (type.isStringLiteral()) return END_NAMES.includes(type.value)
+  return type.isUnion() && type.types.some(isEndKeyType)
+}
+
+function accessedExpression(scan: Scan, node: ts.Node): ts.Expression | undefined {
   if (ts.isPropertyAccessExpression(node) && isEndName(node.name)) return node.expression
-  if (ts.isElementAccessExpression(node) && isEndName(node.argumentExpression)) {
+  if (
+    ts.isElementAccessExpression(node) &&
+    isEndKeyType(scan.checker.getTypeAtLocation(node.argumentExpression))
+  ) {
     return node.expression
   }
   return undefined
@@ -109,7 +124,7 @@ function namesAnEnd(pattern: ts.ObjectBindingPattern): boolean {
 }
 
 function readsOfNode(scan: Scan, node: ts.Node): WallEndForm | undefined {
-  const accessed = accessedExpression(node)
+  const accessed = accessedExpression(scan, node)
   if (accessed !== undefined && isWallType(scan, scan.checker.getTypeAtLocation(accessed))) {
     return 'access'
   }
@@ -124,9 +139,12 @@ function elementTypeOfList(scan: Scan, type: ts.Type): ts.Type | undefined {
   return scan.checker.getTypeArguments(type as ts.TypeReference)[0]
 }
 
-function isWallOrWallList(scan: Scan, type: ts.Type): boolean {
-  const element = elementTypeOfList(scan, type)
-  return isWallType(scan, element ?? type)
+/** Whether an argument of this type is a wall, a list of walls, or neither. */
+function wallArgumentShape(scan: Scan, type: ts.Type): 'wall' | 'list' | undefined {
+  const bare = scan.checker.getNonNullableType(type)
+  const element = elementTypeOfList(scan, bare)
+  if (element !== undefined) return isWallType(scan, element) ? 'list' : undefined
+  return isWallType(scan, bare) ? 'wall' : undefined
 }
 
 function declaredParameterType(
@@ -136,9 +154,10 @@ function declaredParameterType(
 ): ts.Type | undefined {
   const parameter = declaration.parameters[Math.min(index, declaration.parameters.length - 1)]
   if (parameter === undefined) return undefined
-  const declared = scan.checker.getNonNullableType(scan.checker.getTypeAtLocation(parameter))
-  const constraint = scan.checker.getBaseConstraintOfType(declared)
-  return constraint ?? declared
+  const written = scan.checker.getNonNullableType(scan.checker.getTypeAtLocation(parameter))
+  const declared =
+    parameter.dotDotDotToken === undefined ? written : (elementTypeOfList(scan, written) ?? written)
+  return scan.checker.getBaseConstraintOfType(declared) ?? declared
 }
 
 function hasEndProperty(scan: Scan, type: ts.Type): boolean {
@@ -168,11 +187,13 @@ function passesWallToStructuralParameter(
   const declaration = scan.checker.getResolvedSignature(call)?.getDeclaration()
   if (declaration === undefined || !isReadableCallee(scan, declaration)) return false
   return (call.arguments ?? []).some((argument, index) => {
-    const type = scan.checker.getTypeAtLocation(argument)
-    if (!isWallOrWallList(scan, type)) return false
+    const shape = wallArgumentShape(scan, scan.checker.getTypeAtLocation(argument))
     const parameterType = declaredParameterType(scan, declaration, index)
-    const passesList = elementTypeOfList(scan, scan.checker.getNonNullableType(type)) !== undefined
-    return parameterType !== undefined && isStructuralEndParameter(scan, parameterType, passesList)
+    return (
+      shape !== undefined &&
+      parameterType !== undefined &&
+      isStructuralEndParameter(scan, parameterType, shape === 'list')
+    )
   })
 }
 
@@ -222,4 +243,35 @@ export function programOfConfig(configPath: string): ts.Program {
   const read = ts.readConfigFile(configPath, ts.sys.readFile)
   const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, dirname(configPath))
   return ts.createProgram({ rootNames: parsed.fileNames, options: parsed.options })
+}
+
+/** A type-checked program over virtual files, each a repository-relative path and its text. */
+export function programOfVirtualFiles(
+  rootDir: string,
+  sources: readonly (readonly [path: string, text: string])[],
+): ts.Program {
+  const options: ts.CompilerOptions = {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    strict: true,
+    noEmit: true,
+    skipLibCheck: true,
+    types: [],
+  }
+  const host = ts.createCompilerHost(options)
+  const virtual = new Map(sources.map(([path, text]) => [join(rootDir, path), text]))
+  const { fileExists, readFile, directoryExists, getSourceFile } = host
+  host.fileExists = (name) => virtual.has(name) || fileExists.call(host, name)
+  host.readFile = (name) => virtual.get(name) ?? readFile.call(host, name)
+  host.directoryExists = (name) =>
+    [...virtual.keys()].some((path) => path.startsWith(`${name}/`)) ||
+    (directoryExists?.call(host, name) ?? false)
+  host.getSourceFile = (name, languageVersion, ...rest) => {
+    const text = virtual.get(name)
+    return text === undefined
+      ? getSourceFile.call(host, name, languageVersion, ...rest)
+      : ts.createSourceFile(name, text, languageVersion)
+  }
+  return ts.createProgram({ rootNames: [...virtual.keys()], options, host })
 }
