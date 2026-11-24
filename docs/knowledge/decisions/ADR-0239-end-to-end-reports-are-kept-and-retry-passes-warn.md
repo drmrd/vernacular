@@ -81,9 +81,9 @@ The details:
   run, so without separate folders a green run would delete the evidence of every step but the
   last. That job has no HTML report. `test-results/` and the JSON files hold the screenshot and the
   error.
-- The artifact name ends in `-attempt-<run attempt>`. A re-run that reuses a fixed name may be
-  refused as a name conflict, so each attempt keeps its own artifact name, and the report of the
-  earlier attempt stays.
+- The artifact name ends in `-attempt-<run attempt>`. The attempt number tells which attempt a
+  report came from, so the report of a failed first attempt and the report of a re-run stay apart.
+  A re-run of a job with a fixed artifact name was checked and is not refused.
 - `storage-browser` and the `pnpm storybook:test` step run Vitest in browser mode and have no
   retries. The two manual baseline-refresh workflows already upload on `always()`. None of them
   changed.
