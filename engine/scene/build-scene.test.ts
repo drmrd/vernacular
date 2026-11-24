@@ -287,3 +287,19 @@ describe('buildScene surface edges', () => {
     expect((wall as THREE.Mesh).userData.entityId).toBe('wall:w1')
   })
 })
+
+const GROUND_TILE_WIDTH_MM = 2000
+const GROUND_TILE_HEIGHT_MM = 1000
+
+describe('buildScene ground appearance', () => {
+  it('draws the ground with the appearance in its options', () => {
+    const texture = new THREE.Texture()
+    const tileSize = { width: GROUND_TILE_WIDTH_MM, height: GROUND_TILE_HEIGHT_MM }
+    const graph = projectWithFloor(createFloor('Ground', { id: 'g', walls: [hostWall()] }))
+
+    const root = buildScene(graph, undefined, { groundAppearance: { texture, tileSize } })
+
+    const ground = root.children.find(isGroundPlane) as THREE.Mesh
+    expect((ground.material as THREE.MeshStandardMaterial).map).toBe(texture)
+  })
+})
