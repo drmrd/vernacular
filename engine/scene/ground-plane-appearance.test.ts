@@ -94,14 +94,22 @@ describe('groundPlaneDrawsWith', () => {
     return groundMesh(root)
   }
 
-  it('a ground plane tells whether it already draws with an appearance', () => {
+  it('a flat ground plane draws with no appearance and not with a texture', () => {
     const flat = groundMesh(addedFlatGround())
-    const textured = texturedPlane()
 
     expect(groundPlaneDrawsWith(flat, undefined)).toBe(true)
     expect(groundPlaneDrawsWith(flat, { texture, tileSize })).toBe(false)
+  })
+
+  it('a textured ground plane draws with the same texture and tile size by value', () => {
+    const textured = texturedPlane()
 
     expect(groundPlaneDrawsWith(textured, { texture, tileSize: { ...tileSize } })).toBe(true)
+  })
+
+  it('a textured ground plane does not draw with another texture, tile size, or none', () => {
+    const textured = texturedPlane()
+
     expect(groundPlaneDrawsWith(textured, { texture: new THREE.Texture(), tileSize })).toBe(false)
     expect(
       groundPlaneDrawsWith(textured, {
@@ -110,7 +118,9 @@ describe('groundPlaneDrawsWith', () => {
       }),
     ).toBe(false)
     expect(groundPlaneDrawsWith(textured, undefined)).toBe(false)
+  })
 
+  it('an object that is not a ground plane draws with nothing', () => {
     expect(groundPlaneDrawsWith(new THREE.Group(), undefined)).toBe(false)
   })
 })
