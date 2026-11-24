@@ -41,8 +41,8 @@ export const SMALLEST_IMPERIAL_DISPLAY_STEP_MM = MM_PER_INCH / FINEST_INCH_DENOM
 export const SMALLEST_METRIC_DISPLAY_STEP_MM = 0.1
 
 /**
- * Two plan points no farther apart than this are joined: the merge distance of the wall graph and the
- * derivation.
+ * Two plan points no farther apart than this are joined: the merge distance of the wall graph and
+ * the derivation.
  */
 export const JOIN_DISTANCE_MM = 1
 
