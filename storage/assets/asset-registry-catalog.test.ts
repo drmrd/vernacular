@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AssetReference } from '../../core'
+import type { AssetReference, TextureDescription } from '../../core'
 import { AssetRegistry } from './asset-registry'
 import type { AssetSource, LibraryItem } from './asset-source'
 
@@ -51,7 +51,7 @@ describe('AssetRegistry unlisted sources', () => {
     expect(await registry.list()).toEqual([newPackItem])
   })
 
-  it('returns the items of unlisted and listed sources from catalog in scope precedence order', async () => {
+  it('includes unlisted sources in catalog, in scope precedence order', async () => {
     const items = await registryWithAnUnlistedOldPack().catalog()
 
     expect(items).toEqual([userItem, oldPackItem, newPackItem])
@@ -77,5 +77,29 @@ describe('AssetRegistry unlisted sources', () => {
     const resolution = await registry.resolve(reference)
 
     expect(resolution.outcome).toBe('resolved')
+    if (resolution.outcome === 'resolved') {
+      expect(resolution.resolvedScope).toBe(OLD_PACK_ID)
+      expect(resolution.bytes).toEqual(OLD_PACK_BYTES)
+    }
+  })
+
+  it('still describes the hash held by an unlisted source', async () => {
+    const description: TextureDescription = {
+      kind: 'texture',
+      mediaType: 'image/png',
+      image: { width: 512, height: 512 },
+      tileSize: { width: 1000, height: 1000 },
+      colorSpace: 'srgb',
+    }
+    const unlistedPack: AssetSource = {
+      id: OLD_PACK_ID,
+      read: async () => undefined,
+      describe: async (hash) => (hash === OLD_PACK_HASH ? description : undefined),
+    }
+    const registry = new AssetRegistry([{ kind: 'pack', source: unlistedPack, listed: false }])
+
+    const described = await registry.describe({ scope: OLD_PACK_ID, contentHash: OLD_PACK_HASH })
+
+    expect(described).toEqual(description)
   })
 })
