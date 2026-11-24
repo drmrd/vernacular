@@ -15,6 +15,8 @@ const MEAN_TOLERANCE = 0.002
 const LUMINANCE_TOLERANCE = 0.0005
 const ADR_0192_BOUNCE_LUMINANCE = 0.21174
 const BOUNCE_PIN_TOLERANCE = 0.00001
+const MIN_SPREAD_RATIO = 0.05
+const MAX_SPREAD_RATIO = 0.2
 const FORBIDDEN_FUNCTIONS = ['random', 'pow']
 
 function linearMean(pixels) {
@@ -24,6 +26,15 @@ function linearMean(pixels) {
     sums[CHANNELS[index % CHANNELS.length]] += srgbToLinear(pixels[index] / MAX_CODE)
   }
   return Object.fromEntries(CHANNELS.map((channel) => [channel, sums[channel] / texelCount]))
+}
+
+function texelLuminances(pixels) {
+  const luminances = []
+  for (let index = 0; index < pixels.length; index += CHANNELS.length) {
+    const [r, g, b] = CHANNELS.map((_, offset) => srgbToLinear(pixels[index + offset] / MAX_CODE))
+    luminances.push(linearLuminance({ r, g, b }))
+  }
+  return luminances
 }
 
 function throwing(name) {
@@ -67,6 +78,16 @@ describe('the generated grass tile', () => {
     expect(Math.abs(GROUND_BOUNCE_COLOR.r - ADR_0192_BOUNCE_LUMINANCE)).toBeLessThanOrEqual(
       BOUNCE_PIN_TOLERANCE,
     )
+  })
+
+  it('is not flat, and its spread of luminance stays small', () => {
+    const luminances = texelLuminances(generateGrassTile().pixels)
+    const mean = luminances.reduce((sum, value) => sum + value, 0) / luminances.length
+    const variance =
+      luminances.reduce((sum, value) => sum + (value - mean) ** 2, 0) / luminances.length
+    const spreadRatio = Math.sqrt(variance) / mean
+    expect(spreadRatio).toBeGreaterThanOrEqual(MIN_SPREAD_RATIO)
+    expect(spreadRatio).toBeLessThanOrEqual(MAX_SPREAD_RATIO)
   })
 
   it('is the same on every run', () => {
