@@ -27,7 +27,7 @@ sourceFiles:
     docs/plans/2026-11-19-texture-assets-in-packs.md,
   ]
 status: current
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # ADR-0238: A texture cache lives for one effect run of one view
@@ -41,6 +41,9 @@ third owner of held resources to [[ADR-0226-a-replaced-scene-build-frees-what-it
 It supersedes nothing.
 
 Nothing draws a texture yet. The fourth pull request of the plan puts the grass on the ground.
+(Replaced on 2026-11-24: that pull request landed, and the ground plane of the live view and of
+the scene harness draws the grass that this cache decodes. The amendment of
+[[ADR-0131-ground-plane-grade-datum]] records how.)
 
 ## Context
 

@@ -39,7 +39,7 @@ sourceFiles:
     core/environment/ground-surface.ts,
   ]
 status: current
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # ADR-0219: Each pack asset declares a media type, and texture assets carry tiled images
@@ -64,8 +64,9 @@ The other rules below are this record's design. The first code pull request of
 manifest rules, the checks of the pack command line tool, the pack source, and the library's filter
 by kind. The second pull request added the asset registry's description of an asset, the image
 loader, and the texture cache on 2026-11-23; ADR-0238 records how the cache holds and frees what
-it decodes. The grass comes in a later pull request of the same plan. The Context section
-describes the code as it was before the first pull request.
+it decodes. The fourth pull request of the same plan put the grass on the ground on 2026-11-24;
+the amendment of ADR-0131 records how the plane draws it. The Context section describes the code as
+it was before the first pull request.
 
 ## Context
 

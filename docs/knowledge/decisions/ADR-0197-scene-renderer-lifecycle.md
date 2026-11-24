@@ -30,7 +30,7 @@ sourceFiles:
     scripts/story-coverage/uncovered-components.ts,
   ]
 status: current
-updated: 2026-11-22
+updated: 2026-11-24
 ---
 
 # ADR-0197: The 3D canvas wrapper releases every renderer it builds and tells a failed load from a failed start
@@ -392,6 +392,12 @@ and the capture helpers for other live-pane specs to share.
 2026-11-21: `useDrawnRevision` replaces `useFirstFrameReadiness`. `data-harness-ready` now turns
 `true` on the first frame of the mount that was drawn at the canvas's current size, and the wrapper
 also names the scene revision it holds and the revision its last such frame drew. See ADR-0231.
+
+2026-11-24: `useLiveViewReadiness` now clears the drawn-frame fact at mount when the mount starts
+with the ground texture loading, and whenever a pipeline build starts. It never clears
+`sessionRestored`, so a mount that starts with the ground settled in schematic lighting can still
+read `data-live-view-ready="true"` from an earlier open. Issue #829 stays open, and that attribute
+is still not the signal for the swap.
 
 `bridge/react/scene-renderer-canvas-strict-mode.test.tsx` renders the wrapper under StrictMode with a
 stand-in canvas that calls `gl` in a plain effect, which StrictMode runs twice. The stand-in

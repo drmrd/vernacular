@@ -949,6 +949,35 @@ after cycle 11.
     `failed` and stays flat. The wiring is proved end to end by every harness spec, which waits for
     `data-ground-texture="ready"` from the scene work on.
 
+12. **`bridge/react/scene-harness-settle-frame.test.ts` (new): "the harness reports its ready
+    frame only after a settle frame has drawn".** Added on 2026-11-24, after the scene work showed
+    `scene-harness-ready-frame.spec.ts` reading 18 render calls instead of 5 in some runs (see the
+    note on that spec below). The cause: three's PMREM filter of the sky environment map is
+    one-time GPU work that runs in the first draw after the map is written, and it added 13 render
+    calls to the frame it landed in. When that was the ready frame, the reported counts were not
+    those of a steady-state frame. The owner ruled the fix into this pull request. The test calls
+    `drawHarnessFrame(renderer, draw, onReadyFrame?)` with a stand-in renderer whose animation loop
+    the test steps by hand. Assert:
+    - Without `onReadyFrame`, one renderer frame runs `draw` once and nothing is reported.
+    - With it, the first renderer frame runs `draw` and reports nothing (the settle frame).
+    - The second renderer frame runs `draw` again and reports `{ renderCalls, drawCalls }` read
+      from `renderer.info.render` in that frame, not the counts the settle frame left.
+    - A cancel before the first frame draws nothing; a cancel between the frames skips the second
+      draw and the report.
+    - A later request replaces a pending one, because a renderer keeps one loop.
+
+    The same RED commit moves the shared mocks of the harness view tests into
+    `scene-harness-view-test-support.ts`, splits the ground cases of cycle 9 into
+    `scene-harness-ready-frame-ground.test.tsx`, and has every view test run the settle frame
+    before the ready frame (`runSettleAndReadyFrames`). Fails today: `drawHarnessFrame` is not
+    exported (TS2305). Implementation:
+    `scene-harness-ready-frame.ts` gains `drawHarnessFrame`, which nests a second
+    `drawOnNextRendererFrame` inside the first when `onReadyFrame` is given and returns a cancel
+    for whichever request is pending. `StaticFrame` in `scene-harness-view.tsx` calls it in place
+    of its own `drawOnNextRendererFrame`, passing `handleReadyFrameDrawn` only while
+    `harnessReady` is true. BLUE closed with an empty marker. Verified end to end:
+    `scene-harness-ready-frame.spec.ts` passes 40 of 40 runs on darwin (`--repeat-each=20`).
+
 Then the scene work, in `test(e2e)` commits after the last BLUE. What each capture waits on:
 
 | Capture                                                     | Waits on today                              | After the first commit                       | After the scene work                                          |
@@ -963,7 +992,10 @@ Then the scene work, in `test(e2e)` commits after the last BLUE. What each captu
   `--update-snapshots` can never write a flat baseline.
 - `e2e/tests/scene-harness-ready-frame.spec.ts` asserts the render calls of the ready frame (5 in
   the window-light state, 2 in the default shell). The grass adds no render pass. The spec is run
-  and is expected to hold.
+  and is expected to hold. (Amended 2026-11-24: it did not hold. Some runs read 18 render calls
+  instead of 5, on `main` too, because the PMREM filter of the sky environment map landed in the
+  ready frame. The owner ruled the fix into this pull request as cycle 12, the settle frame. With
+  it the spec passes 40 of 40 runs on darwin with `--repeat-each=20`.)
 - `e2e/tests/scene-live-view-grass.spec.ts` (new) proves the live wiring of cycle 10. It
   self-skips without a rendering backend, as its neighbors do.
   - Test one holds the response for the grass image with `page.route`, opens the 3D view, and

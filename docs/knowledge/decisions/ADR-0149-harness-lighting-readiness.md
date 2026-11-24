@@ -16,13 +16,14 @@ sourceFiles:
     bridge/react/scene-lighting.tsx,
     bridge/react/scene-harness-view.tsx,
     bridge/react/scene-harness-ready-frame.ts,
+    bridge/react/harness-ground.ts,
     bridge/react/scene-harness-state-key.ts,
     engine/renderer/draw-on-next-renderer-frame.ts,
     e2e/tests/scene-solar.spec.ts,
     e2e/tests/scene-harness-ready-frame.spec.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-24
 ---
 
 # ADR-0149: Harness lighting readiness and where scene baselines render
@@ -137,3 +138,30 @@ One limit follows from the change. The harness depends on the browser's animatio
 hidden page the renderer's loop does not run, so the harness never draws and never turns ready,
 and a run there ends at its time limit and does not capture a wrong frame. Issue #759 tracked the
 change.
+
+## Amendment 2026-11-24: a settle frame comes before the ready frame, and the gate waits for the ground
+
+The update of 2026-11-19 says that the harness draws one frame on a fresh renderer frame and
+reports the render calls and the draw calls of that draw. Two things changed with the fourth pull
+request of `docs/plans/2026-11-19-texture-assets-in-packs.md`, for issue #409.
+
+The ready frame is now the second of two draws. Once every gate is open, `drawHarnessFrame` in
+`bridge/react/scene-harness-ready-frame.ts` draws a settle frame that reports nothing. On the next
+renderer frame it draws again and reports that frame's counts as the ready frame, so
+`data-harness-ready` and the two count attributes come from the second draw. The cause was
+one-time GPU work. When the sky's environment map is written, three runs its PMREM filter in the
+next draw, and that filter added 13 render calls to the frame it landed in. In some runs it
+landed in the ready frame, and `e2e/tests/scene-harness-ready-frame.spec.ts` read 18 render calls
+where it expects 5. That happened on `main` as well. With the settle frame the spec passed 40 of
+40 runs on darwin (`--repeat-each=20`). The cancel stops whichever of the two draws is still
+pending. A draw with no ready-frame callback, such as the mount frame, is still one draw.
+
+The gate also waits for the ground. The harness loads the starter pack grass with `useGroundGrass`
+and puts it on the drawn root with `useHarnessGround` (`bridge/react/harness-ground.ts`), which
+reports `ready` only in a commit after the plane was swapped. `useHarnessReadiness` in
+`bridge/react/scene-harness-view.tsx` adds `groundTexture !== 'loading'` to its gate. A failed load
+opens the gate too, and the frame shows the flat lawn. The wrapper reports the applied status in a
+fourth attribute, `data-ground-texture`, as `loading`, `ready`, or `failed`. `settledHarnessCanvas`
+in `e2e/tests/scene-helpers.ts` waits for `data-ground-texture="ready"` after
+`data-harness-ready`, so a failed pack fetch fails the harness specs and cannot write a flat
+baseline. [[ADR-0131-ground-plane-grade-datum]] records how the plane draws the grass.
