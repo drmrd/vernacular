@@ -43,6 +43,24 @@ export function isGroundPlane(object: THREE.Object3D): boolean {
   return object.userData.ground === true
 }
 
+/**
+ * True when `plane` is a ground plane that was drawn with `appearance`: the same texture object
+ * and a tile size equal by value, or no appearance at all for a flat plane.
+ */
+export function groundPlaneDrawsWith(
+  plane: THREE.Object3D,
+  appearance: TextureAppearance | undefined,
+): boolean {
+  if (!isGroundPlane(plane)) return false
+  const drawn = plane.userData.appearance as TextureAppearance | undefined
+  if (drawn === undefined || appearance === undefined) return drawn === appearance
+  return (
+    drawn.texture === appearance.texture &&
+    drawn.tileSize.width === appearance.tileSize.width &&
+    drawn.tileSize.height === appearance.tileSize.height
+  )
+}
+
 function findGroundPlane(root: THREE.Object3D): THREE.Object3D | null {
   let level: THREE.Object3D[] = [root]
   while (level.length > 0) {
@@ -130,6 +148,7 @@ function groundMesh(
   const mesh = new THREE.Mesh(geometry, material)
   mesh.name = GROUND_PLANE_NAME
   mesh.userData.ground = true
+  mesh.userData.appearance = appearance
   // Lay the XY plane flat into the XZ ground plane, normal pointing up.
   mesh.rotation.x = -Math.PI / 2
   mesh.position.set(footprint.centerX, gradeElevation, footprint.centerZ)

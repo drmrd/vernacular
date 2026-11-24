@@ -14,6 +14,7 @@ export {
 export {
   addGroundPlane,
   groundExtent,
+  groundPlaneDrawsWith,
   isGroundPlane,
   GRADE_ELEVATION_MM,
 } from './scene/ground-plane'
