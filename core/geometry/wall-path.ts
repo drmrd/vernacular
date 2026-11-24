@@ -61,3 +61,15 @@ export function projectOntoPath(path: WallPath, point: Point): PathProjection {
   const along = Math.max(0, Math.min(unclampedAlong, pathLength(path)))
   return { point: pointAlong(path, along), along, offset }
 }
+
+export interface PathBounds {
+  readonly min: Point
+  readonly max: Point
+}
+
+export function pathBounds(path: WallPath): PathBounds {
+  return {
+    min: { x: Math.min(path.start.x, path.end.x), y: Math.min(path.start.y, path.end.y) },
+    max: { x: Math.max(path.start.x, path.end.x), y: Math.max(path.start.y, path.end.y) },
+  }
+}
