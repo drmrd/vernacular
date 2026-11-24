@@ -9,6 +9,7 @@ import {
   pathStart,
   pointAlong,
   projectOntoPath,
+  reversePath,
   rotatePath,
   subPath,
   tangentAlong,
@@ -162,5 +163,14 @@ describe('rotatePath', () => {
 
     expectPointNear(pathStart(turned), { x: 0, y: 0 })
     expectPointNear(pathEnd(turned), { x: 0, y: 1000 })
+  })
+})
+
+describe('reversePath', () => {
+  it('swaps the ends', () => {
+    const reversed = reversePath(HORIZONTAL)
+
+    expectPointNear(pathStart(reversed), { x: 1000, y: 0 })
+    expectPointNear(pathEnd(reversed), { x: 0, y: 0 })
   })
 })
