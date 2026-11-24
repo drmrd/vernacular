@@ -26,6 +26,11 @@ export function createStarterPackSources(fetchFn: typeof fetch): ScopedAssetSour
   ]
 }
 
+/** The registry of the render harness: the starter packs only, with no user source. */
+export function createHarnessAssetRegistry(fetchFn: typeof fetch): AssetRegistry {
+  return new AssetRegistry(createStarterPackSources(fetchFn))
+}
+
 export interface AssetLibrary {
   registry: AssetRegistry
   userSource: UserSource

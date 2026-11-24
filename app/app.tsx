@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ActiveFloorProvider,
+  AssetRegistryProvider,
   EditorSessionProvider,
   SceneHarnessView,
   SelectionProvider,
@@ -14,6 +15,7 @@ import {
 } from '../editor'
 import { AppSettings, type AppSettingsProps } from './app-settings'
 import { AssetProviders } from './asset-providers'
+import { createHarnessAssetRegistry } from './create-asset-library-registry'
 import type { BuiltSessionPorts } from './create-session-ports'
 import { NotificationProvider, ThemeProvider } from '../editor/design-system'
 import { probeStorageCapabilities, type AssetCache, type StorageCapabilities } from '../storage'
@@ -80,19 +82,7 @@ export interface AppProps {
 
 export function App(props: AppProps) {
   if (requestedFixture() === SCENE_HARNESS_FIXTURE) {
-    // The `?scene=` param names either a harness geometry fixture or a named
-    // environment state; see resolveHarnessScene in harness-environment.ts for the
-    // shared keyspace and resolution precedence between the two.
-    const sceneParam = searchParam('scene')
-    const environment = harnessEnvironmentState(sceneParam)
-    return (
-      <SceneHarnessView
-        colorTemperatureK={requestedColorTemperature()}
-        paint={requestedHarnessPaint()}
-        scene={resolveHarnessScene(sceneParam ?? undefined)}
-        environment={environment}
-      />
-    )
+    return <SceneHarnessApp />
   }
   // The notification provider wraps AppWorkspace (not a tree inside EditorWorkspace) so every emit
   // site sits under it: the storage check in AppWorkspace's body and the file-op hooks in
@@ -103,6 +93,26 @@ export function App(props: AppProps) {
         <AppWorkspace {...props} />
       </NotificationProvider>
     </AppSettings>
+  )
+}
+
+function SceneHarnessApp() {
+  // Made once: a registry made on each render would start the texture load again.
+  const registry = useMemo(() => createHarnessAssetRegistry(globalThis.fetch.bind(globalThis)), [])
+  // The `?scene=` param names either a harness geometry fixture or a named
+  // environment state; see resolveHarnessScene in harness-environment.ts for the
+  // shared keyspace and resolution precedence between the two.
+  const sceneParam = searchParam('scene')
+  const environment = harnessEnvironmentState(sceneParam)
+  return (
+    <AssetRegistryProvider registry={registry}>
+      <SceneHarnessView
+        colorTemperatureK={requestedColorTemperature()}
+        paint={requestedHarnessPaint()}
+        scene={resolveHarnessScene(sceneParam ?? undefined)}
+        environment={environment}
+      />
+    </AssetRegistryProvider>
   )
 }
 
