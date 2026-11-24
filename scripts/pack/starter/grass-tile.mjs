@@ -9,6 +9,7 @@ const HEX_CHANNEL_OFFSETS = [1, 3, 5]
 
 // Each texel's linear value is scaled by (NOISE_DENOMINATOR + noise) / NOISE_DENOMINATOR, with noise
 // uniform in [-NOISE_AMPLITUDE, NOISE_AMPLITUDE]. That is a spread of about 10 percent of the mean.
+// Each block's mean noise is then subtracted, which shifts the values by a few units per block.
 const NOISE_DENOMINATOR = 1024
 const NOISE_AMPLITUDE = 177
 const NOISE_VALUE_COUNT = 2 * NOISE_AMPLITUDE + 1
@@ -44,12 +45,12 @@ function noiseAt(column, row) {
 
 function blockMeanNoise(blockColumn, blockRow) {
   let sum = 0
-  for (let row = blockRow * BLOCK_SIZE; row < (blockRow + 1) * BLOCK_SIZE; row += 1) {
-    for (
-      let column = blockColumn * BLOCK_SIZE;
-      column < (blockColumn + 1) * BLOCK_SIZE;
-      column += 1
-    ) {
+  const top = blockRow * BLOCK_SIZE
+  const left = blockColumn * BLOCK_SIZE
+  const bottom = top + BLOCK_SIZE
+  const right = left + BLOCK_SIZE
+  for (let row = top; row < bottom; row += 1) {
+    for (let column = left; column < right; column += 1) {
       sum += noiseAt(column, row)
     }
   }
