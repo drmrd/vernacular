@@ -5,7 +5,7 @@ import { GROUND_SURFACE_HEX } from '../../core'
 import type { TextureAppearance } from '../loaders/image-texture-loader'
 import { groundPlaneDepthBiasParameters } from '../materials/role-appearance'
 
-import { addGroundPlane, isGroundPlane } from './ground-plane'
+import { addGroundPlane, groundPlaneDrawsWith, isGroundPlane } from './ground-plane'
 
 const BOX_WIDTH_MM = 4000
 const BOX_DEPTH_MM = 3000
@@ -82,5 +82,35 @@ describe('addGroundPlane without an appearance', () => {
 
     expect(material.map).toBeNull()
     expect(`#${material.color.getHexString()}`).toBe(GROUND_SURFACE_HEX)
+  })
+})
+
+describe('groundPlaneDrawsWith', () => {
+  const texture = new THREE.Texture()
+  const tileSize = { width: TILE_WIDTH_MM, height: TILE_HEIGHT_MM }
+  const texturedPlane = (): THREE.Object3D => {
+    const root = rootWithOffCenterBox()
+    addGroundPlane(root, 0, { texture, tileSize })
+    return groundMesh(root)
+  }
+
+  it('a ground plane tells whether it already draws with an appearance', () => {
+    const flat = groundMesh(addedFlatGround())
+    const textured = texturedPlane()
+
+    expect(groundPlaneDrawsWith(flat, undefined)).toBe(true)
+    expect(groundPlaneDrawsWith(flat, { texture, tileSize })).toBe(false)
+
+    expect(groundPlaneDrawsWith(textured, { texture, tileSize: { ...tileSize } })).toBe(true)
+    expect(groundPlaneDrawsWith(textured, { texture: new THREE.Texture(), tileSize })).toBe(false)
+    expect(
+      groundPlaneDrawsWith(textured, {
+        texture,
+        tileSize: { width: TILE_HEIGHT_MM, height: TILE_HEIGHT_MM },
+      }),
+    ).toBe(false)
+    expect(groundPlaneDrawsWith(textured, undefined)).toBe(false)
+
+    expect(groundPlaneDrawsWith(new THREE.Group(), undefined)).toBe(false)
   })
 })
