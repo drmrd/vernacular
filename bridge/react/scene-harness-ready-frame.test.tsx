@@ -1,7 +1,8 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { Children, isValidElement, useEffect, type ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { markCacheHeld } from '../../engine'
+import { groundPlaneDrawsWith, isGroundPlane, markCacheHeld } from '../../engine'
+import type { SceneRoot } from '../../engine'
 import { Texture } from '../../engine/testing'
 import type { TextureState } from './texture-cache'
 import { SceneHarnessView } from './scene-harness-view'
@@ -44,6 +45,7 @@ const harness = vi.hoisted(() => {
       },
     },
     draws: 0,
+    drawnRoot: undefined as object | undefined,
     settleLighting: undefined as (() => void) | undefined,
     flatLawn,
     groundTexture: flatLawn as TextureState,
@@ -59,15 +61,18 @@ vi.mock('@react-three/fiber', () => ({
 }))
 
 // Renders the canvas children without a canvas, leaving out the 3D library's own elements.
+// The scene root a primitive element mounts is kept as the drawn root.
 vi.mock('./scene-renderer-canvas', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mock key must equal the name of the component export
-  SceneRendererCanvas: ({ children }: { children: ReactNode }) => (
-    <>
-      {Children.toArray(children).filter(
-        (child) => isValidElement(child) && typeof child.type !== 'string',
-      )}
-    </>
-  ),
+  SceneRendererCanvas: ({ children }: { children: ReactNode }) => {
+    const elements = Children.toArray(children).filter(isValidElement)
+    for (const element of elements) {
+      if (element.type === 'primitive') {
+        harness.drawnRoot = (element.props as { object: object }).object
+      }
+    }
+    return <>{elements.filter((element) => typeof element.type !== 'string')}</>
+  },
 }))
 
 vi.mock('./scene-lighting', () => ({
@@ -93,9 +98,9 @@ vi.mock('../../engine', async (importOriginal) => ({
 }))
 
 const READY_RENDER_CALLS = 5
-const TILE_SIZE_MM = 2000
 const FRAMES_AFTER_READY = 3
 const READY_DRAW_CALLS = 127
+const TILE_SIZE_MM = 2000
 
 function readiness(): string | null {
   return screen.getByTestId('scene-harness').getAttribute('data-harness-ready')
@@ -107,6 +112,13 @@ function readyFrameCalls(): { renderCalls: string | null; drawCalls: string | nu
     renderCalls: wrapper.getAttribute('data-harness-ready-render-calls'),
     drawCalls: wrapper.getAttribute('data-harness-ready-draw-calls'),
   }
+}
+
+function drawnGroundPlane() {
+  const root = harness.drawnRoot as SceneRoot
+  const [plane] = root.children.filter((child) => isGroundPlane(child))
+  if (!plane) throw new Error('the drawn root has no ground plane')
+  return plane
 }
 
 function groundTextureStatus(): string | null {
@@ -245,13 +257,15 @@ describe('SceneHarnessView ready frame', () => {
       await settleLighting()
       runFrame()
 
-      harness.groundTexture = readyGround()
+      const ground = readyGround()
+      harness.groundTexture = ground
       rerender(<SceneHarnessView />)
 
       expect(groundTextureStatus()).toBe('ready')
       expect(readiness()).toBe('false')
       runFrame()
       expect(readiness()).toBe('true')
+      expect(groundPlaneDrawsWith(drawnGroundPlane(), ground.appearance)).toBe(true)
     })
 
     it('turns ready over the flat lawn when the ground fails, and says so', async () => {
@@ -261,8 +275,9 @@ describe('SceneHarnessView ready frame', () => {
 
       harness.groundTexture = { status: 'failed' }
       rerender(<SceneHarnessView />)
-      runFrame()
 
+      expect(readiness()).toBe('false')
+      runFrame()
       expect(readiness()).toBe('true')
       expect(groundTextureStatus()).toBe('failed')
     })
