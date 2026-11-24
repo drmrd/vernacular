@@ -199,6 +199,12 @@ pnpm e2e --update-snapshots=missing --project=chromium
 
 Review the regenerated PNG before committing.
 
+### In CI
+
+CI runs each Playwright test up to three times (`retries: 2`) and uses one worker. Every end-to-end job (`e2e`, `scene-visual`, `storybook-build`, and `live-view-visual`) uploads its report as an artifact for 7 days, whether the job passed or failed. The artifact name ends in `-attempt-<n>`, the run attempt: the attempt number tells which attempt a report came from, so the report of a failed first attempt and the report of a re-run stay apart.
+
+A test that fails and then passes on a retry leaves the job green. The job writes a warning to its job summary and an annotation on the test file, so the retry is easy to find. Open the report artifact to see the screenshot and the error of the failed attempt. The report has no trace of that first attempt, because a trace is recorded only for the retry. If your change touches the plan canvas or the journeys, read the retry-check line in the job summary before you merge. [ADR-0239](docs/knowledge/decisions/ADR-0239-end-to-end-reports-are-kept-and-retry-passes-warn.md) gives the reasons, and issue #1116 tracks the switch to failing the job on a retry pass.
+
 ## Performance budgets
 
 [Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci) measures Vernacular's production bundle against category-level budgets:

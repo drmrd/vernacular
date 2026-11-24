@@ -1,0 +1,365 @@
+{
+  "config": {
+    "configFile": "/work/playwright.config.ts",
+    "rootDir": "/work/e2e/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/work/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/work/e2e/tests",
+        "testIgnore": [],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json",
+        {
+          "outputFile": "/work/reports/playwright/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.60.0",
+    "workers": 9,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "journeys/snap-along-wall.spec.ts",
+      "file": "journeys/snap-along-wall.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "opens the plan",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-23T14:03:08.983Z",
+                  "annotations": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "36c93ce00c650f2e6fd8-b02f7cf78225ff05af42",
+          "file": "journeys/snap-along-wall.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "always fails",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m\n    at /work/e2e/tests/journeys/snap-along-wall.spec.ts:14:13",
+                    "location": {
+                      "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                      "column": 13,
+                      "line": 14
+                    },
+                    "snippet": "  12 |\n  13 | test('always fails', () => {\n> 14 |   expect(1).toBe(2)\n     |             ^\n  15 | })\n  16 |\n  17 | test.skip('is skipped', () => {})"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                        "column": 13,
+                        "line": 14
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m\n\n  12 |\n  13 | test('always fails', () => {\n> 14 |   expect(1).toBe(2)\n     |             ^\n  15 | })\n  16 |\n  17 | test.skip('is skipped', () => {})\n    at /work/e2e/tests/journeys/snap-along-wall.spec.ts:14:13"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-23T14:03:09.770Z",
+                  "annotations": [],
+                  "errorLocation": {
+                    "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                    "column": 13,
+                    "line": 14
+                  }
+                },
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 10,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m\n    at /work/e2e/tests/journeys/snap-along-wall.spec.ts:14:13",
+                    "location": {
+                      "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                      "column": 13,
+                      "line": 14
+                    },
+                    "snippet": "  12 |\n  13 | test('always fails', () => {\n> 14 |   expect(1).toBe(2)\n     |             ^\n  15 | })\n  16 |\n  17 | test.skip('is skipped', () => {})"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                        "column": 13,
+                        "line": 14
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m\n\n  12 |\n  13 | test('always fails', () => {\n> 14 |   expect(1).toBe(2)\n     |             ^\n  15 | })\n  16 |\n  17 | test.skip('is skipped', () => {})\n    at /work/e2e/tests/journeys/snap-along-wall.spec.ts:14:13"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-11-23T14:03:10.443Z",
+                  "annotations": [],
+                  "errorLocation": {
+                    "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                    "column": 13,
+                    "line": 14
+                  }
+                },
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 10,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m\n    at /work/e2e/tests/journeys/snap-along-wall.spec.ts:14:13",
+                    "location": {
+                      "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                      "column": 13,
+                      "line": 14
+                    },
+                    "snippet": "  12 |\n  13 | test('always fails', () => {\n> 14 |   expect(1).toBe(2)\n     |             ^\n  15 | })\n  16 |\n  17 | test.skip('is skipped', () => {})"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                        "column": 13,
+                        "line": 14
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m1\u001b[39m\n\n  12 |\n  13 | test('always fails', () => {\n> 14 |   expect(1).toBe(2)\n     |             ^\n  15 | })\n  16 |\n  17 | test.skip('is skipped', () => {})\n    at /work/e2e/tests/journeys/snap-along-wall.spec.ts:14:13"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 2,
+                  "startTime": "2026-11-23T14:03:11.152Z",
+                  "annotations": [],
+                  "errorLocation": {
+                    "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                    "column": 13,
+                    "line": 14
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "36c93ce00c650f2e6fd8-d927bf0e29401c539c63",
+          "file": "journeys/snap-along-wall.spec.ts",
+          "line": 13,
+          "column": 1
+        },
+        {
+          "title": "is skipped",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "location": {
+                    "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                    "line": 17,
+                    "column": 6
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-23T14:03:11.208Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "location": {
+                        "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                        "line": 17,
+                        "column": 6
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "36c93ce00c650f2e6fd8-faac7b51e056c9a5595c",
+          "file": "journeys/snap-along-wall.spec.ts",
+          "line": 17,
+          "column": 6
+        }
+      ],
+      "suites": [
+        {
+          "title": "plan canvas",
+          "file": "journeys/snap-along-wall.spec.ts",
+          "line": 7,
+          "column": 6,
+          "specs": [
+            {
+              "title": "snaps along a wall",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 4,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n    at /work/e2e/tests/journeys/snap-along-wall.spec.ts:9:28",
+                        "location": {
+                          "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                          "column": 28,
+                          "line": 9
+                        },
+                        "snippet": "   7 | test.describe('plan canvas', () => {\n   8 |   test('snaps along a wall', ({}, testInfo) => {\n>  9 |     expect(testInfo.retry).toBeGreaterThan(0)\n     |                            ^\n  10 |   })\n  11 | })\n  12 |"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                            "column": 28,
+                            "line": 9
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\n   7 | test.describe('plan canvas', () => {\n   8 |   test('snaps along a wall', ({}, testInfo) => {\n>  9 |     expect(testInfo.retry).toBeGreaterThan(0)\n     |                            ^\n  10 |   })\n  11 | })\n  12 |\n    at /work/e2e/tests/journeys/snap-along-wall.spec.ts:9:28"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-23T14:03:09.041Z",
+                      "annotations": [],
+                      "errorLocation": {
+                        "file": "/work/e2e/tests/journeys/snap-along-wall.spec.ts",
+                        "column": 28,
+                        "line": 9
+                      }
+                    },
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 9,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-11-23T14:03:09.720Z",
+                      "annotations": []
+                    }
+                  ],
+                  "status": "flaky"
+                }
+              ],
+              "id": "36c93ce00c650f2e6fd8-ea14110910212648b76e",
+              "file": "journeys/snap-along-wall.spec.ts",
+              "line": 8,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-23T14:03:08.304Z",
+    "duration": 2915.819,
+    "expected": 1,
+    "skipped": 1,
+    "unexpected": 1,
+    "flaky": 1
+  }
+}
