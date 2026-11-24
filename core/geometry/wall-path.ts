@@ -1,5 +1,6 @@
 import type { Point, Wall } from '../model/types'
 import { distance } from './point'
+import { shift, subtract, unit } from './vector'
 
 export interface LinePath {
   readonly kind: 'line'
@@ -31,4 +32,8 @@ export function pathEnd(path: WallPath): Point {
 
 export function pathLength(path: WallPath): number {
   return distance(path.start, path.end)
+}
+
+export function pointAlong(path: WallPath, alongMm: number): Point {
+  return shift(path.start, unit(subtract(path.end, path.start)), alongMm)
 }
