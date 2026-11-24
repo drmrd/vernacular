@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { parseCatalogId, RESERVED_NAMESPACE_PREFIXES } from './catalog-id.ts'
+import {
+  categoryOf,
+  formatCatalogId,
+  parseCatalogId,
+  RESERVED_NAMESPACE_PREFIXES,
+} from './catalog-id.ts'
 
 describe('parseCatalogId', () => {
   it('parses a catalog identifier into its five parts', () => {
@@ -88,5 +93,30 @@ describe('parseCatalogId', () => {
     expect(parsed.ok === false && parsed.problem).toMatch(/reserved/i)
     expect(parsed.ok === false && parsed.problem).toContain('mfr_')
     expect(RESERVED_NAMESPACE_PREFIXES).toEqual(['mfr_'])
+  })
+
+  it('formats an identifier to the text it was parsed from, and gives its category', () => {
+    const texts = [
+      'core:FFE.seating/windsor_side_chair@1.0.0',
+      'org_period-house:HDW.window_sash_casement/brass_sash_lock@2.1.0-rc.1',
+      'usr_dana:FFE.seating/windsor_side_chair@1.0.0',
+      'pkg_parlor-set:FFE.seating/windsor_side_chair@1.0.0',
+    ]
+
+    for (const text of texts) {
+      const parsed = parseCatalogId(text)
+
+      expect(parsed.ok && formatCatalogId(parsed.id)).toBe(text)
+    }
+
+    const first = parseCatalogId(texts[0] as string)
+    expect(first.ok && categoryOf(first.id)).toBe('FFE.seating')
+  })
+
+  it('does not read the category registry', () => {
+    expect(parseCatalogId('core:FFE.not_in_the_registry/thing@1.0.0')).toMatchObject({
+      ok: true,
+      id: { subcategory: 'not_in_the_registry' },
+    })
   })
 })
