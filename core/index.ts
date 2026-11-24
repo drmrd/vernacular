@@ -953,3 +953,5 @@ export {
 export type { DataRemovingRepair, RepairOffer } from './repairs/repair-list'
 export { DATA_REMOVING_REPAIRS, findRepairOffer } from './repairs/repair-list'
 export { repairOfferFor } from './repairs/find-repair-offer'
+export type { Catalog, CatalogPackEntry, CatalogValidation } from './assets/catalog'
+export { CATALOG_VERSION, validateCatalog } from './assets/catalog'
