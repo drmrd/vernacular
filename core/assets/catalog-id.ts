@@ -97,3 +97,13 @@ export function parseCatalogId(text: string): CatalogIdParse {
   const split = splitCatalogId(text)
   return split.ok ? validateCatalogParts(split.parts) : split
 }
+
+export function formatCatalogId(id: CatalogId): string {
+  const [afterNamespace, afterDomain, afterSubcategory, afterSlug] = PART_SEPARATORS
+  return `${id.namespace}${afterNamespace}${id.domain}${afterDomain}${id.subcategory}${afterSubcategory}${id.slug}${afterSlug}${id.version}`
+}
+
+export function categoryOf(id: CatalogId): string {
+  const [, afterDomain] = PART_SEPARATORS
+  return `${id.domain}${afterDomain}${id.subcategory}`
+}
