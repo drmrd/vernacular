@@ -13,6 +13,7 @@ import type { TextureState, TextureStatus } from './texture-cache'
 afterEach(cleanup)
 
 const GRADE_MM = 0
+const RAISED_GRADE_MM = 450
 const graph = oneWallGraph(groundFloorNode(), { id: 'wall:g1' })
 
 interface HarnessRender {
@@ -23,13 +24,14 @@ interface HarnessRender {
 interface HarnessProps {
   root: SceneRoot
   texture: TextureState
+  grade?: number
 }
 
 function recordHarnessGround(appearance: TextureAppearance, first: HarnessProps) {
   const renders: HarnessRender[] = []
   const hook = renderHook(
-    ({ root, texture }: HarnessProps) => {
-      const status = useHarnessGround(root, GRADE_MM, texture)
+    ({ root, texture, grade = GRADE_MM }: HarnessProps) => {
+      const status = useHarnessGround(root, grade, texture)
       renders.push({ status, drawsGrass: groundPlaneDrawsWith(onlyGroundPlane(root), appearance) })
       return status
     },
@@ -103,5 +105,57 @@ describe('the harness ground reports loading until the grass is on the plane, th
     expect(sinceArrival.at(-1)).toEqual({ status: 'failed', drawsGrass: false })
     expect(result.current).toBe('failed')
     expect(groundPlaneDrawsWith(onlyGroundPlane(root), undefined)).toBe(true)
+  })
+
+  it('reports loading for a new appearance on the same root until the plane draws it', () => {
+    const first = heldGrassAppearance(new Texture())
+    const second = heldGrassAppearance(new Texture())
+    const { root } = buildFramedScene(graph)
+    const { renders, rerender, result } = recordHarnessGround(second, {
+      root,
+      texture: { status: 'ready', appearance: first },
+    })
+    expect(result.current).toBe('ready')
+    const change = renders.length
+
+    rerender({ root, texture: { status: 'ready', appearance: second } })
+
+    const sinceChange = renders.slice(change)
+    expect(sinceChange[0]).toEqual({ status: 'loading', drawsGrass: false })
+    expect(sinceChange.at(-1)).toEqual({ status: 'ready', drawsGrass: true })
+    expect(readyRenders(sinceChange).every((render) => render.drawsGrass)).toBe(true)
+    expect(result.current).toBe('ready')
+    expect(groundPlaneDrawsWith(onlyGroundPlane(root), second)).toBe(true)
+  })
+
+  it('reports loading for a new grade on the same root until the plane sits at it', () => {
+    const appearance = heldGrassAppearance(new Texture())
+    const ready: TextureState = { status: 'ready', appearance }
+    const { root } = buildFramedScene(graph)
+    const { renders, rerender, result } = recordHarnessGround(appearance, { root, texture: ready })
+    expect(result.current).toBe('ready')
+    const change = renders.length
+
+    rerender({ root, texture: ready, grade: RAISED_GRADE_MM })
+
+    const sinceChange = renders.slice(change)
+    expect(sinceChange[0]?.status).toBe('loading')
+    expect(sinceChange.at(-1)?.status).toBe('ready')
+    expect(result.current).toBe('ready')
+    expect(onlyGroundPlane(root).position.y).toBe(RAISED_GRADE_MM)
+  })
+
+  it('never reports loading again when nothing about the ground changed', () => {
+    const appearance = heldGrassAppearance(new Texture())
+    const ready: TextureState = { status: 'ready', appearance }
+    const { root } = buildFramedScene(graph)
+    const { renders, rerender } = recordHarnessGround(appearance, { root, texture: ready })
+    const quiet = renders.length
+
+    rerender({ root, texture: ready })
+
+    const sinceQuiet = renders.slice(quiet)
+    expect(sinceQuiet.length).toBeGreaterThan(0)
+    expect(sinceQuiet.every((render) => render.status === 'ready')).toBe(true)
   })
 })
