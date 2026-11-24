@@ -42,8 +42,9 @@ sub-resource uses a tilde, that stored element ids keep their form, and that the
 out of the document.
 
 This record depends on records that are not yet on `main`. ADR-0229 and ADR-0230 are in an open pull
-request (#1054), and ADR-0181, ADR-0199, and ADR-0201 to ADR-0203 are on a branch that has not
-merged. The decisions here that build on them take effect when those records land.
+request (#1054), and ADR-0199 and ADR-0201 to ADR-0203 are on a branch that has not merged, as is
+the note that ADR-0199 adds to ADR-0181. ADR-0181 itself is on `main`. The decisions here that build
+on them take effect when those records land.
 
 ## Context
 
@@ -155,6 +156,15 @@ then share cached geometry. The key is not stored in a project, and it is not us
 placing elements. Meshes loaded from a file stay keyed by content hash, as in
 `bridge/react/furniture-model-cache.ts`.
 
+Before hashing, lengths are integer counts of the derived coordinate grid of ADR-0199 (1e-6 mm,
+`DERIVED_COORDINATE_GRID_MM`), rounded half away from zero, and angles are integer counts of 1e-9
+degree. The manifest fields that change the geometry, such as the pivot, are rounded by the same
+rule, and the cache builds from the rounded values. No rounded value is ever stored. Equal keys mean
+every parameter is less than one step apart, so the shapes are the same to the kernel. The converse
+cannot hold for any key, because two values within the length tolerance can straddle a grid
+boundary. Such a miss costs one rebuild and never a wrong shape. The specification gives the full
+contract.
+
 ## Alternatives considered
 
 None of these was taken.
@@ -201,8 +211,6 @@ None of these was taken.
 
 ## What stays open
 
-- The rounding of parameters in the derived geometry key. It has to agree with the tolerance model
-  of ADR-0181 and ADR-0199 before a cache uses it.
 - The check of one hash for one identifier across a whole store, which needs the catalog and the
   publish step of ADR-0229.
 

@@ -1,6 +1,6 @@
 # Asset taxonomy: domains, tiers, identifiers, and manifest contracts
 
-Status: design, 2026-11-23. The owner ruled on its decisions on 2026-11-23, and ADR-0234, ADR-0235, ADR-0236, and ADR-0237 (all current) record them. They depend on ADR-0229 and ADR-0230, which are in an open pull request (#1054) and not yet on `main`, and ADR-0235 and ADR-0236 also build on ADR-0181 and ADR-0199, on a branch that has not merged. Statements about the code were read from `main` at `7026280d7`. The "Open points" section lists what stays open.
+Status: design, 2026-11-23. The owner ruled on its decisions on 2026-11-23, and ADR-0234, ADR-0235, ADR-0236, and ADR-0237 (all current) record them. They depend on ADR-0229 and ADR-0230, which are in an open pull request (#1054) and not yet on `main`, and ADR-0235 and ADR-0236 also build on ADR-0199, which is on a branch that has not merged (ADR-0181 is on `main`, and the branch adds a note to it). Statements about the code were read from `main` at `7026280d7`. The "Open points" section lists what stays open.
 
 ## Why
 
@@ -299,7 +299,11 @@ A contract field that no reader uses is not validated beyond its place in the sc
 
 ### A key for derived geometry
 
-Some assets will be built from a base asset and parameters, such as a profile swept to a length. When a cache for such geometry exists, its key is the SHA-256 of the base asset's content hash, a zero byte, and the parameters as canonical JSON (RFC 8785) after rounding. The key is never stored in a project, and it is never used for walls or for placing an element. The rounding step is open: it must agree with the tolerance model of ADR-0181 and ADR-0199 before any cache uses it. No such cache exists today. Meshes loaded from a file stay keyed by content hash.
+Some assets will be built from a base asset and parameters, such as a profile swept to a length. When a cache for such geometry exists, its key is the SHA-256 of the base asset's content hash, a zero byte, and the parameters as canonical JSON (RFC 8785) after rounding. The key is never stored in a project, and it is never used for walls or for placing an element. The parameters include the manifest fields that change the geometry, such as a declared pivot, and the dimensions when the cache holds geometry built at that size. Before hashing, each length is written as an integer count of `DERIVED_COORDINATE_GRID_MM` (1e-6 mm), the grid the kernel rounds derived coordinates to, rounded half away from zero. Each angle is written as an integer count of 1e-9 degree, and counts and names are written as they are. Any other real parameter gets a step small enough that one step moves no vertex more than 1e-6 mm. The steps are named entries of the tolerance module, and the cache imports them. The cache builds the geometry from the rounded values, so its output depends only on the key. No rounded value is ever stored.
+
+What this guarantees: two equal keys come from parameters less than one step apart, a thousandth of the length tolerance, so a cache never gives one shape the geometry of a shape the kernel tells apart. Values already on the grid, which includes every multiple of 0.1 mm and of 1/64 inch, keep their value, so for them the keys are equal exactly when the values are. What it does not guarantee: two values within the length tolerance can still get two keys, for instance when they straddle a grid boundary. No key can do better, because "closer than 0.001 mm" is not transitive and key equality is. Such a miss costs one more build and never a wrong shape. A coarser step, the length tolerance itself, was rejected because every odd multiple of 1/16 inch lies exactly on its cell boundaries.
+
+No such cache exists today. Meshes loaded from a file stay keyed by content hash.
 
 ## How domains meet kinds and registries
 
@@ -317,7 +321,7 @@ Some assets will be built from a base asset and parameters, such as a profile sw
 | Validates, and the taxonomy does not classify it       | `preview-only`          | No domain                                                                   |
 | No kind and no reader                                  | none                    | `LGT`, `VFX`, `SYM`, `BOT`, `LYR`, `RGH`, `LND`, `CTX`, `STY`, `SCT`, `SYS` |
 
-The trim-profile, stair-component, material and palette, and no-kind rows are work to do, because no reader uses those kinds well or at all, and this document does not schedule it. A domain becomes publishable when a pull request adds its reader and says which kind and media type it uses.
+The trim-profile, stair-component, material and palette, and no-kind rows are work to do, because no reader uses those kinds well or at all, and this document does not schedule it. A domain becomes publishable when a pull request adds its reader and says which kind and media type it uses. Pack format 3 of the distribution plan adds one rule that keeps this additive: a reader skips an asset whose kind or media type it does not know and shows it as needing a newer app. Kinds and media types added later then move no format version.
 
 Several domains overlap a registry the app already has:
 
@@ -470,9 +474,8 @@ The 410 subcategories, by domain. Tier 1 has 114, tier 2 has 64, tier 3 has 158,
 
 The owner ruled on the rest. These stay open, and each ADR lists the ones that touch it.
 
-1. Which kinds and media types the domains with no reader will use.
-2. The rounding step of the derived geometry key.
-3. The phase of a placed element. The renovation comparison design (#494) decides it, not this document. If it becomes a field on each element, one enumeration covers its values.
+1. Which kinds and media types the domains with no reader will use. The owner ruled on the skip rule above. The kind for each domain is decided when its reader lands.
+2. The phase of a placed element. The renovation comparison design (#494) decides it, not this document. If it becomes a field on each element, one enumeration covers its values.
 
 ## References
 
