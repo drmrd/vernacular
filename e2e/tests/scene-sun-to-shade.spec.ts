@@ -1,11 +1,5 @@
 import { test, expect } from '@playwright/test'
-import {
-  agxNeutralInverse,
-  linearLuminance,
-  linearToSrgb,
-  srgbToLinear,
-  type Srgb,
-} from '../../core'
+import { linearLevel } from './canvas-patch'
 import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
 
 // The sun-to-shade gate. Daylight on open ground is several times brighter than the shade of a
@@ -50,17 +44,6 @@ const SUNLIT_LAWN = squareRegion(236, 109, 24)
  * to set a bound at.
  */
 const SUN_TO_SHADE_MIN_RATIO = 3.839
-
-// The linear light level behind a sampled color: its luminance, encoded as a display code,
-// taken back through the inverse of the tone curve.
-function linearLevel(color: Srgb): number {
-  const luminance = linearLuminance({
-    r: srgbToLinear(color.r),
-    g: srgbToLinear(color.g),
-    b: srgbToLinear(color.b),
-  })
-  return agxNeutralInverse(linearToSrgb(luminance))
-}
 
 test.describe('Sun to shade gate', () => {
   test('the sunlit lawn reads brighter than the shadowed lawn by a daylight ratio', async ({
