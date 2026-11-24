@@ -10,7 +10,7 @@ import {
   useExportPdfAction,
   useExportPlanAction,
 } from './use-export-actions'
-import type { LibraryLister } from './pack-supplies'
+import type { PackCatalog } from './pack-supplies'
 import { useOpenFileAction } from './use-open-file-action'
 import type { RunFlow } from './use-open-project'
 
@@ -22,7 +22,7 @@ export interface ProjectActionsContext {
   capabilities: StorageCapabilities
   notifications: NotificationApi
   /** The library whose packs supply assets by themselves, so that those assets do not count as missing. */
-  packs?: LibraryLister
+  packs?: PackCatalog
   /** Shows the Projects page over the open project. Without it the menu has no Switch projects. */
   showProjects?: () => void
 }
