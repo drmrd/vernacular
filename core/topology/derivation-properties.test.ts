@@ -141,6 +141,8 @@ describe('the rooms of a closed loop', () => {
           .join(',')
 
         expect(original.map((room) => room.walls)).toEqual([boundingWalls])
+        expect(Number.isFinite(original[0]?.area), 'original room area').toBe(true)
+        expect(Number.isFinite(overdrawn[0]?.area), 'overdrawn room area').toBe(true)
         expect(original[0]?.area).toBeGreaterThan(0)
         expect(signatureDifferences(original, overdrawn, AREA_RELATIVE_TOLERANCE)).toEqual([])
       }),
