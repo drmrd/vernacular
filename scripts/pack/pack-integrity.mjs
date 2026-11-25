@@ -178,8 +178,8 @@ function statedEntries(assets, verifiedAssets) {
 }
 
 /**
- * Confirm each model asset has a WebP thumbnail in the pack; a texture's thumbnail is optional
- * but must be WebP when present.
+ * Every model requires a thumbnail file. A texture requires one when its manifest entry
+ * declares a thumbnail. Validate the WebP header of each asset thumbnail found in the pack.
  * @param {object[]} assets
  * @param {PackReader} reader
  * @param {{ errors: string[], formatVersion: unknown }} context
