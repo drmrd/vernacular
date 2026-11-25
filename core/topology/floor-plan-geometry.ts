@@ -57,7 +57,7 @@ export interface FloorPlanGeometry {
   readonly openingSpans: readonly OpeningSpan[]
 }
 
-function setAsideOf(network: WallNetwork): SetAside {
+function collectSetAside(network: WallNetwork): SetAside {
   const wallIdsReachingAnotherJunction = new Set(
     network.edges.filter((edge) => !isLoopEdge(edge)).map((edge) => edge.wallId),
   )
@@ -68,6 +68,18 @@ function setAsideOf(network: WallNetwork): SetAside {
     coveredWallIds: [],
     unboundRecordIds: [],
   }
+}
+
+const setAsideByNetwork = new WeakMap<WallNetwork, SetAside>()
+
+/** Kept per network, like its rooms, so an edit that keeps the network keeps the set-aside too. */
+function setAsideOf(network: WallNetwork): SetAside {
+  let setAside = setAsideByNetwork.get(network)
+  if (setAside === undefined) {
+    setAside = collectSetAside(network)
+    setAsideByNetwork.set(network, setAside)
+  }
+  return setAside
 }
 
 interface CenterOnEdge {
