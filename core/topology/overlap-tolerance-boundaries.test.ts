@@ -197,8 +197,8 @@ it('preserves full coverage when a wall is split into collinear pieces', () => {
           const split = pieces.map(({ start, end }, index) =>
             createWall(start, end, { id: `piece-${index}` }),
           )
-          const reversed = pieces
-            .toReversed()
+          const reversed = [...pieces]
+            .reverse()
             .map(({ start, end }, index) => createWall(end, start, { id: `piece-${index}` }))
           const coverings = [
             { label: 'whole wall', walls: [whole] },
