@@ -1,7 +1,9 @@
 import { wallPath } from '../geometry/wall-path'
 import { createFloor, createWall } from '../model/factories'
 import type { Floor, Opening, Point, Wall } from '../model/types'
-import type { NetworkWall } from './wall-network'
+import { effectiveWallThickness } from '../scene/construction-profile'
+import { buildWallGraph } from './wall-graph'
+import { deriveWallNetwork, type NetworkWall, type WallNetwork } from './wall-network'
 
 const FLOOR_ID = 'g'
 const WALL_THICKNESS_MM = 114
@@ -90,4 +92,23 @@ export function twoRoomWalls(): Wall[] {
       { x: TWO_ROOM_PARTITION_X_MM, y: TWO_ROOM_DEPTH_MM },
     ),
   ]
+}
+
+/** The wall network of the walls, as the plan geometry builds it. */
+export function networkOf(walls: readonly Wall[]): WallNetwork {
+  return deriveWallNetwork(networkWallsOf(walls))
+}
+
+/** The graph of today and the resolved thickness of each of its edges, for the walls. */
+export function todaysGraphAndThickness(walls: readonly Wall[]) {
+  const graph = buildWallGraph(walls)
+  const wallsById = new Map(walls.map((wall) => [wall.id, wall]))
+  const thicknessByEdge = graph.edges.map((edge) => {
+    const wall = wallsById.get(edge.wallId)
+    if (wall === undefined) {
+      throw new Error(`expected a wall ${edge.wallId}`)
+    }
+    return effectiveWallThickness(wall)
+  })
+  return { graph, thicknessByEdge }
 }
