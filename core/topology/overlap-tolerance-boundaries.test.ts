@@ -229,3 +229,33 @@ it('preserves full coverage when a wall is split into collinear pieces', () => {
     { seed: 284531, numRuns: 48 },
   )
 })
+
+it('fully covers an offset draw across a shared endpoint of near-collinear walls', () => {
+  const junction = { x: 0, y: 0 }
+  const left = createWall({ x: -100, y: 0 }, junction, { id: 'left-wall' })
+  const shallow = createWall(junction, { x: 100, y: 1 }, { id: 'shallow-wall' })
+  const steep = createWall(junction, { x: 100, y: 16 }, { id: 'steep-wall' })
+  const start = { x: -10, y: -0.5 }
+  const end = { x: 10, y: -0.5 }
+  const seam = { x: 0, y: -0.5 }
+
+  for (const { label, draw, uncovered } of [
+    {
+      label: 'left to right',
+      draw: { start, end },
+      uncovered: { start: seam, end },
+    },
+    {
+      label: 'right to left',
+      draw: { start: end, end: start },
+      uncovered: { start: end, end: seam },
+    },
+  ]) {
+    expect.soft(uncoveredParts([left, shallow], draw), label).toEqual([])
+    expect.soft(drawnWallNote([left, shallow], draw), label).toBe('This wall was already there.')
+    expect.soft(uncoveredParts([left, steep], draw), label).toEqual([uncovered])
+    expect
+      .soft(drawnWallNote([left, steep], draw), label)
+      .toBe('Part of this wall was already there.')
+  }
+})
