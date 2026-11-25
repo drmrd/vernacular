@@ -13,33 +13,71 @@ export function uncoveredParts(existing: readonly Wall[], drawn: WallPart): Wall
   return uncoveredPartsOf(registerWallStretches(existing).coverage, drawn)
 }
 
+interface CoveredInterval extends WallPart {
+  /** The authored bounds, in draw order. */
+  readonly source: WallPart
+}
+
 /** Clip against the two planes perpendicular to the authored wall at its endpoints. */
-function clipToWallBounds(drawn: WallPart, wall: WallPart): WallPart {
+function clipToWallBounds(drawn: WallPart, wall: WallPart): CoveredInterval {
   const wallDirection = subtract(wall.end, wall.start)
   const drawDirection = subtract(drawn.end, drawn.start)
   const forward = dot(wallDirection, drawDirection) > 0
 
-  function cut(query: WallPart, boundary: Point, inward: Point): Point {
-    const from = dot(subtract(query.start, boundary), inward)
-    if (from >= 0) return query.start
-    const to = dot(subtract(query.end, boundary), inward)
-    const nearStart = -from <= to
-    const near = nearStart ? query.start : query.end
-    const far = nearStart ? query.end : query.start
-    if (dot(subtract(boundary, near), leftPerp(drawDirection)) === 0) return boundary
-    // Interpolating from the nearer end keeps even a one-ULP gap at that end.
-    return shift(near, subtract(far, near), (nearStart ? from : -to) / (from - to))
+  const startFirst = drawDirection.x > 0 || (drawDirection.x === 0 && drawDirection.y > 0)
+  const queryOrigin = startFirst ? drawn.start : drawn.end
+  const queryNormal = leftPerp(startFirst ? drawDirection : negate(drawDirection))
+  const tangent = leftPerp(wallDirection)
+  const scale = Math.abs(tangent.x) > Math.abs(tangent.y) ? tangent.x : tangent.y
+  const planeTangent = { x: tangent.x / scale, y: tangent.y / scale }
+
+  function cut(endpoint: Point, boundary: Point, inward: Point): Point {
+    if (dot(subtract(endpoint, boundary), inward) >= 0) return endpoint
+    // Adjacent walls meet the draw at the same point on their shared end plane.
+    const offset = dot(subtract(queryOrigin, boundary), queryNormal)
+    if (offset === 0) return boundary
+    return shift(boundary, planeTangent, offset / dot(planeTangent, queryNormal))
   }
 
   const alongDraw = forward ? wallDirection : negate(wallDirection)
   return {
-    start: cut(drawn, forward ? wall.start : wall.end, alongDraw),
-    end: cut(
-      { start: drawn.end, end: drawn.start },
-      forward ? wall.end : wall.start,
-      negate(alongDraw),
-    ),
+    start: cut(drawn.start, forward ? wall.start : wall.end, alongDraw),
+    end: cut(drawn.end, forward ? wall.end : wall.start, negate(alongDraw)),
+    source: forward ? wall : { start: wall.end, end: wall.start },
   }
+}
+
+function endpointKey({ x, y }: Point): string {
+  return `${x}:${y}`
+}
+
+/** Include each continuing pair's interior junction before unrelated intervals join the union. */
+function joinInteriorJunctions(
+  intervals: readonly CoveredInterval[],
+  compare: (a: Point, b: Point) => number,
+  tolerance: number,
+): WallPart[] {
+  const endingAt = new Map<string, CoveredInterval[]>()
+  for (const interval of intervals) {
+    const key = endpointKey(interval.source.end)
+    const incident = endingAt.get(key) ?? []
+    incident.push(interval)
+    endingAt.set(key, incident)
+  }
+  return intervals.map((interval) => {
+    let start = interval.start
+    const right = interval.source
+    for (const neighbor of endingAt.get(endpointKey(right.start)) ?? []) {
+      const left = neighbor.source
+      if (
+        compare(neighbor.end, start) < 0 &&
+        dot(subtract(left.end, left.start), subtract(right.end, right.start)) > 0 &&
+        onOneLine(left.start, left.end, right.start, right.end, tolerance)
+      )
+        start = neighbor.end
+    }
+    return { start, end: interval.end }
+  })
 }
 
 export function uncoveredPartsOf(coverage: WallCoverage, drawn: WallPart): WallPart[] {
@@ -52,7 +90,7 @@ function findDrawnWallCoverage(
 ): { parts: WallPart[]; hasCoverage: boolean } {
   const direction = subtract(drawn.end, drawn.start)
   const compare = (a: Point, b: Point): number => dot(subtract(a, b), direction)
-  const covered: WallPart[] = []
+  const covered: CoveredInterval[] = []
   for (const wall of owners) {
     if (!onOneLine(drawn.start, drawn.end, wall.start, wall.end, tolerance)) continue
     if (overlappingBounds(drawn, wall.bounds, tolerance))
@@ -62,7 +100,8 @@ function findDrawnWallCoverage(
 
   const parts: WallPart[] = []
   let coveredEnd = drawn.start
-  for (const interval of covered.sort((left, right) => compare(left.start, right.start))) {
+  const joined = joinInteriorJunctions(covered, compare, tolerance)
+  for (const interval of joined.sort((left, right) => compare(left.start, right.start))) {
     if (compare(interval.start, coveredEnd) > 0) {
       parts.push({ start: coveredEnd, end: interval.start })
     }
