@@ -100,6 +100,12 @@ function runIndexesUnderEdge(edge: GraphEdge, lookup: RunLookup): number[] {
   })
 }
 
+/** True for an edge whose two ends merged into one junction; the junction fills leave it out. */
+function isEdgeFromJunctionToItself(graph: PlanarGraph, edgeIndex: number): boolean {
+  const edge = graph.edges[edgeIndex] as GraphEdge
+  return edge.a === edge.b
+}
+
 /**
  * One fade group per 3+-way junction, pairing the junction (by its incident `edgeIndexes`) with the
  * exterior runs its incident edges lie on. Membership is per incident edge, not per wall: a wall
@@ -118,7 +124,10 @@ export function junctionFadeGroups(
 ): JunctionFadeGroup[] {
   const lookup = buildRunLookup(graph, walls, exteriorWalls(walls, rooms, openings))
   const groups: JunctionFadeGroup[] = []
-  for (const edgeIndexes of vertexIncidence(graph).values()) {
+  for (const incident of vertexIncidence(graph).values()) {
+    const edgeIndexes = incident.filter(
+      (edgeIndex) => !isEdgeFromJunctionToItself(graph, edgeIndex),
+    )
     if (edgeIndexes.length < MIN_FADE_INCIDENCE) continue
     const wallIds = new Set<string>()
     const runIndexes = new Set<number>()
