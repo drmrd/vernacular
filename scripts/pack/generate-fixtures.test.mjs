@@ -11,10 +11,11 @@ import { publishPackToDisk } from './publish-store.mjs'
 const fixturesRoot = fileURLToPath(new URL('../../tests/fixtures/packs/', import.meta.url))
 const bundledPacksRoot = fileURLToPath(new URL('../../public/packs/', import.meta.url))
 const committedStore = fileURLToPath(new URL('../../tests/fixtures/store/', import.meta.url))
+const furnitureFixture = 'example-furniture-1.0.0'
 const storePacks = [
   join(bundledPacksRoot, 'vernacular-starter-1.0.0'),
   join(bundledPacksRoot, 'vernacular-starter-1.1.1'),
-  join(fixturesRoot, 'example-furniture-1.0.0'),
+  join(fixturesRoot, furnitureFixture),
 ]
 
 /** In-memory sink: records every file a builder writes, keyed by path under the packs root. */
@@ -116,6 +117,10 @@ describe('the fixture generator', () => {
           join(fixturesRoot, directory),
         )
       }
+      await expectSameFiles(
+        join(generatedFixtures, 'packs', furnitureFixture),
+        join(fixturesRoot, furnitureFixture),
+      )
     } finally {
       await rm(generatedFixtures, { recursive: true, force: true })
     }
