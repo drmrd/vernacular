@@ -32,7 +32,7 @@ function scale(point: Point, factor: number): Point {
 }
 
 /** Where an opening sits along its host wall once it is kept on the wall, in millimeters. */
-export interface OpeningPlacementAlongWall {
+export interface OpeningOnWall {
   /** The center's distance from the wall start, clamped so both jambs stay on the wall. */
   readonly position: number
   /** The width, clamped to the wall length. */
@@ -47,7 +47,7 @@ export function clampedOpeningPlacement(
   position: number,
   width: number,
   wallLength: number,
-): OpeningPlacementAlongWall {
+): OpeningOnWall {
   const clampedWidth = Math.min(width, wallLength)
   const half = clampedWidth / 2
   return { position: Math.max(half, Math.min(position, wallLength - half)), width: clampedWidth }
