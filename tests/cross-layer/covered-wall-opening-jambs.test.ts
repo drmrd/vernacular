@@ -7,6 +7,7 @@ import {
   decodeDocument,
   deriveSceneGraph,
   encodeDocument,
+  type SceneGraph,
 } from '../../core'
 import { drawPlan } from '../../editor/plan/draw-plan'
 import { recordingContext } from '../../editor/plan/draw-plan-test-fixtures'
@@ -22,7 +23,7 @@ const DOOR_WIDTH = 600
 const WALL_LINE_Y = 700
 const VIEWPORT = { scale: 1, offset: { x: 0, y: WALL_LINE_Y } }
 
-function savedDoorAt(center: number) {
+function savedDoorAt(center: number, authoredWall: 'owner' | 'tail' = 'tail') {
   const origin = { x: 0, y: 0 }
   const owner = createWall(
     origin,
@@ -39,8 +40,8 @@ function savedDoorAt(center: number) {
   const door = createOpening({
     id: 'door',
     type: 'single-swing-door',
-    hostWallId: host.id,
-    position: HOST_START - center,
+    hostWallId: authoredWall === 'owner' ? owner.id : host.id,
+    position: authoredWall === 'owner' ? center : HOST_START - center,
     width: DOOR_WIDTH,
     height: 2000,
     orientation: { hinge: 'start', facing: 'positive' },
@@ -60,6 +61,19 @@ function savedDoorAt(center: number) {
   return decoded.value.project
 }
 
+function renderPlan(graph: SceneGraph) {
+  const plan = recordingContext()
+  drawPlan(plan.ctx, {
+    walls: graph.walls,
+    openings: toDrawableOpenings(graph.openings, new Set()),
+    viewport: VIEWPORT,
+    width: HOST_START + 200,
+    height: 1000,
+    selectedIds: new Set(),
+  })
+  return plan
+}
+
 function jambEnds(plan: ReturnType<typeof recordingContext>, x: number): number[] {
   const ends = plan.segments
     .filter(
@@ -77,15 +91,7 @@ function jambEnds(plan: ReturnType<typeof recordingContext>, x: number): number[
 it('ends each saved door jamb at the wall faces beside that jamb', () => {
   for (const center of [OWNERSHIP_BOUNDARY - 100, OWNERSHIP_BOUNDARY, OWNERSHIP_BOUNDARY + 100]) {
     const graph = deriveSceneGraph(savedDoorAt(center))
-    const plan = recordingContext()
-    drawPlan(plan.ctx, {
-      walls: graph.walls,
-      openings: toDrawableOpenings(graph.openings, new Set()),
-      viewport: VIEWPORT,
-      width: HOST_START + 200,
-      height: 1000,
-      selectedIds: new Set(),
-    })
+    const plan = renderPlan(graph)
 
     const westJamb = center - DOOR_WIDTH / 2
     const eastJamb = center + DOOR_WIDTH / 2
@@ -100,4 +106,12 @@ it('ends each saved door jamb at the wall faces beside that jamb', () => {
       leafEnd: { x: eastJamb, y: -DOOR_WIDTH },
     })
   }
+})
+
+it('draws the full door jamb when the adjoining wall continues beyond the door host', () => {
+  const center = OWNERSHIP_BOUNDARY - DOOR_WIDTH / 2
+  const plan = renderPlan(deriveSceneGraph(savedDoorAt(center, 'owner')))
+
+  expect.soft(jambEnds(plan, OWNERSHIP_BOUNDARY - DOOR_WIDTH), 'west jamb').toEqual([640, 760])
+  expect.soft(jambEnds(plan, OWNERSHIP_BOUNDARY), 'east jamb').toEqual([550, 850])
 })
