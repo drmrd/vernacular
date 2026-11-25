@@ -19,8 +19,8 @@ import { useWallKeyboard } from './use-wall-keyboard'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
+import { dispatchWallVertex } from './dispatch-wall-vertex'
 import {
-  dispatchWallVertex,
   backspaceWallTool,
   cancelWallTool,
   drawingVertex,

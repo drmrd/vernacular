@@ -1,5 +1,4 @@
-import { addWall, drawnWallNote, type Point } from '../../core'
-import type { EditorSession } from '../../bridge'
+import { addWall, type Point } from '../../core'
 
 export type WallToolState = { phase: 'idle' } | { phase: 'drawing'; vertices: readonly Point[] }
 
@@ -80,22 +79,6 @@ export function advanceWallTool(
     state: { phase: 'drawing', vertices: [...vertices, point] },
     commands: commitSegment(from, point, floorId),
   }
-}
-
-/** Apply each wall against the floor as it stands just before the command. */
-export function dispatchWallVertex(
-  { session, toolState }: { session: EditorSession; toolState: WallToolState },
-  point: Point,
-  floorId: string,
-): WallToolResult & { note: string | undefined } {
-  const result = advanceWallTool(toolState, point, floorId)
-  let note: string | undefined
-  for (const command of result.commands ?? []) {
-    const floor = session.getProject().floors.find((floor) => floor.id === floorId)
-    note = drawnWallNote(floor?.walls ?? [], command.params.wall)
-    session.dispatch(command)
-  }
-  return { ...result, note }
 }
 
 /** End the run. Each placed segment is already committed, so finishing adds no wall. */

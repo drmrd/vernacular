@@ -15,7 +15,8 @@ import type { PlacementRefusal } from './overlay-announce'
 import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
 import { stairPlacementCommand } from './place-stair'
 import { selectPlacedEntity, selectPlacedOpening, selectPlacedStair } from './select-placed-entity'
-import { dispatchWallVertex, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
+import { dispatchWallVertex } from './dispatch-wall-vertex'
+import { cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
 import {
   advanceDimensionTool,
   cancelDimensionTool,
