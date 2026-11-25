@@ -11,11 +11,16 @@ related:
     decisions/ADR-0043-dom-overlay-and-accessibility,
     decisions/ADR-0049-integration-acceptance-gate,
     decisions/ADR-0097-evaluate-doubly-connected-edge-list-for-plan-geometry,
+    decisions/ADR-0200-half-edge-trial-result-and-the-inner-form-of-the-plan-geometry,
   ]
 sourceFiles:
   [
     docs/specs/2026-06-10-editor-experience-makeover.md,
     core/topology/rooms.ts,
+    core/topology/room-walk.ts,
+    core/topology/room-holes.ts,
+    core/topology/wall-network.ts,
+    core/topology/wall-face-records.ts,
     core/geometry/polygon.ts,
     core/scene/scene-graph.ts,
     core/scene/scene-graph-deriver.ts,
@@ -25,7 +30,7 @@ sourceFiles:
     e2e/journey-coverage.json,
   ]
 status: current
-updated: 2026-06-12
+updated: 2026-11-24
 ---
 
 # ADR-0058: Donut and courtyard rooms via hole rings in room derivation
@@ -184,3 +189,20 @@ light well as habitable floor.
   and final required capability).
 - Design specification, section 3.2 ("Rooms are derived, not authored").
   </invoke>
+
+## Update (2026-11-24): the containment pass stays, inside the plan geometry
+
+ADR-0200 compared this containment pass with explicit half-edges, where a hole would be an
+inner cycle of a face. The owner chose to keep the pass, so the decision above stands. The
+pass now runs once for each wall network build, inside the plan geometry. The face walk and
+the call to the pass live together in `core/topology/room-walk.ts`, and the containment
+test itself (`immediateContainer`, `assignHoles`) is in `core/topology/room-holes.ts`.
+`deriveRooms` in `rooms.ts` returns the network's rooms.
+
+The wall faces add one rule. A wall face along a hole names the room around the hole. The
+outer cycle of a free-standing group of walls forms a face that is no room of its own. The
+walk gives that face the room that the pass made the group's container, and
+`core/topology/wall-face-records.ts` lists the stretch against that room.
+
+Read this record again when courtyards (#78) are scheduled. ADR-0200 names them, with curved
+walls, as the reason to ask the half-edge question again.

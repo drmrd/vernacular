@@ -21,6 +21,7 @@ related:
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0038-openings-doors-and-windows,
     decisions/ADR-0001-six-layer-architecture,
+    decisions/ADR-0200-half-edge-trial-result-and-the-inner-form-of-the-plan-geometry,
   ]
 sourceFiles:
   [
@@ -33,9 +34,12 @@ sourceFiles:
     core/scene/construction-profile.ts,
     core/registries/construction-profiles.ts,
     engine/scene/wall-builder.ts,
+    core/topology/wall-network.ts,
+    core/topology/wall-network-memo.ts,
+    core/topology/rooms-construction-profile.test.ts,
   ]
 status: current
-updated: 2026-06-29
+updated: 2026-11-24
 ---
 
 # ADR-0137: A wall references a construction profile that drives its footprint thickness
@@ -161,3 +165,21 @@ boundary in [[ADR-0001-six-layer-architecture]].
   engine a reader).
 - Issue #365 (wall construction profiles). Issue #380 (per-layer 3D wall materials),
   deferred from this change.
+
+## Update (2026-11-24): the wall network resolves each thickness once
+
+The wall network in `core/topology/wall-network.ts` now resolves the thickness of each wall
+one time, with `effectiveWallThickness`, and keeps the result on `WallNetwork.thickness`
+and on each entry of `WallNetwork.walls`. The rooms, the wall footprints, and the junction
+fills all read that one number, so they cannot disagree about how thick a wall is.
+
+The registries come in as an argument: `deriveWallNetwork(walls, registries)` and
+`wallNetworkFor(walls, registries)` take a `PlanGeometryRegistries` object that holds the
+construction-profile registry. Without it, the built-in registry applies. The memo keys on
+the wall list and on that object, so a network built with other registries is a separate
+entry. An unknown profile id still keeps the raw `thickness` of the wall, as the decision
+above says.
+
+The room inset of #674 follows the registries given. A room derived through the network is
+bounded by the thickness those registries resolve, not the thickness of the built-in
+profiles alone.

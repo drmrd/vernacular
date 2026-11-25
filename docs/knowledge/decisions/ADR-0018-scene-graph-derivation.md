@@ -11,6 +11,7 @@ related:
     decisions/ADR-0026-room-derivation-planar-face-enumeration,
     decisions/ADR-0036-room-metadata-overrides-and-labels,
     decisions/ADR-0037-image-underlay-and-calibration,
+    decisions/ADR-0200-half-edge-trial-result-and-the-inner-form-of-the-plan-geometry,
   ]
 sourceFiles:
   [
@@ -23,9 +24,17 @@ sourceFiles:
     core/scene/scene-graph-parity-fixtures.ts,
     core/scene/scene-graph-deriver-floor-id.test.ts,
     tests/performance/scene-rebuild-counts.test.ts,
+    core/scene/scene-graph-for-floor.ts,
+    core/scene/scene-graph-plan-geometry.test.ts,
+    core/scene/plan-geometry-builds.test.ts,
+    core/topology/floor-plan-geometry.ts,
+    core/topology/wall-network.ts,
+    core/topology/wall-network-memo.ts,
+    core/topology/get-or-create.ts,
+    core/topology/openings.ts,
   ]
 status: current
-updated: 2026-11-18
+updated: 2026-11-24
 ---
 
 # ADR-0018: Scene-graph derivation as a memoized projection
@@ -274,3 +283,37 @@ Two functions that narrow a derived graph still list its fields by hand:
 `SceneGraph`, so a new required field fails to compile there, but each must pass the
 optional `gradeElevation` through by hand, and a new optional field could be dropped
 without an error. A follow-up, issue #873, tracks this.
+
+## Update (2026-11-24): one plan geometry for each floor, read by the room nodes
+
+The scene graph now carries a `planGeometry` field: one `FloorPlanGeometry` for each floor,
+in floor order. It holds the wall network of the floor (its walls with their thickness
+resolved, junctions, edges, junction fans, footprints, junction fills, and both faces of
+every wall), the rooms, the walls and records set aside from them, and the span of each
+opening along its edge. The field is optional in the interface, so hand-built literals can
+omit it, and `sceneGraphForFloor` filters it by floor like the other lists.
+
+`assembleSceneGraph` lists the field once. `SceneNodeDerivations` has a new `planGeometry`
+member, and `roomNodes` now takes that geometry as its second argument. `deriveSceneGraph`
+passes `deriveFloorPlanGeometry` through `PURE_NODE_DERIVATIONS`, and
+`createSceneGraphDeriver()` passes the function that `createPlanGeometryDeriver()` returns,
+so both entry points set the field. The room nodes copy their rooms from the geometry
+(`roomNodesFromPlanGeometry`) in place of a face walk of their own. `deriveRoomNodesForFloor`
+keeps its signature and wraps that function. The room cache still keys on `floor.walls`, and
+a hit can ignore the geometry, because the rooms depend only on those walls.
+
+The three parts of a geometry are kept by their stated inputs, not by the floor alone. The
+deriver keeps the whole geometry for each `Floor` object. Under it, the network is kept for
+a wall list and a registries object (`wallNetworkFor`), the rooms and the left-out walls
+for a network, and the opening spans for a network and an openings list. An opening edit
+gives a new floor with the same wall list, so it finds the network and the rooms already
+built and recomputes only the spans. The count of network builds does not move, which
+`core/scene/plan-geometry-builds.test.ts` checks. A wall edit builds one network for the
+floor, and the rooms, footprints, and fills all come from it.
+
+An opening span uses the same clamped placement as the 3D wall opening, through
+`clampedOpeningPlacement`, so the plan and the walls agree on which edge holds an opening.
+The deriver builds its networks with the built-in registries, as `deriveRooms` does.
+
+`sceneGraphForBuilding` in `bridge/react/view-scene-graph.ts` still leaves the field out
+when it narrows a graph, like the other hand-listed copies noted above.
