@@ -59,16 +59,14 @@ export function roomsOfGraph(
     faceBoundary(face, graph.vertices, { thicknessByWallId, faceOfHalfEdge }),
   )
   const { rooms, roomOfFace } = roomsOfFaces(boundaries)
-  const containers = rooms.map((inner) => immediateContainer(inner, rooms))
+  const containerOfRoom = rooms.map((inner) => immediateContainer(inner, rooms))
   const roomOfHalfEdge = roomOfEachHalfEdge({
     outlineFaceOfHalfEdge: outlineFacesOf(boundaries, halfEdges.length),
     roomOfFace,
-    containerOfRoom: containers.map((room) =>
-      room === undefined ? undefined : rooms.indexOf(room),
-    ),
+    containerOfRoom,
   })
   return {
-    rooms: assignHoles(rooms, containers),
+    rooms: assignHoles(rooms, containerOfRoom),
     roomsBesideEdge: graph.edges.map((_edge, edgeIndex) => ({
       left: roomOfHalfEdge[halfEdgeFromA(edgeIndex)],
       right: roomOfHalfEdge[halfEdgeFromB(edgeIndex)],

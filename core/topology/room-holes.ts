@@ -15,19 +15,17 @@ function isContainedBy(inner: Room, outer: Room): boolean {
 }
 
 /**
- * The immediate container of `inner`: among all rooms that contain it, the one with
+ * The index of the immediate container of `inner`: among all rooms that contain it, the one with
  * the smallest area, so a nested void is punched once at the level it belongs to.
  * Returns `undefined` when no room contains `inner`.
  */
-export function immediateContainer(inner: Room, rooms: readonly Room[]): Room | undefined {
-  const containers = rooms.filter(
-    (candidate) => candidate !== inner && isContainedBy(inner, candidate),
-  )
-  return containers.reduce<Room | undefined>(
-    (smallest, candidate) =>
-      smallest === undefined || candidate.area < smallest.area ? candidate : smallest,
-    undefined,
-  )
+export function immediateContainer(inner: Room, rooms: readonly Room[]): number | undefined {
+  let smallest: number | undefined
+  rooms.forEach((candidate, index) => {
+    if (candidate === inner || !isContainedBy(inner, candidate)) return
+    if (smallest === undefined || candidate.area < (rooms[smallest] as Room).area) smallest = index
+  })
+  return smallest
 }
 
 /**
@@ -37,9 +35,9 @@ export function immediateContainer(inner: Room, rooms: readonly Room[]): Room | 
  */
 export function assignHoles(
   rooms: readonly Room[],
-  containers: readonly (Room | undefined)[],
+  containers: readonly (number | undefined)[],
 ): Room[] {
-  const holesByRoom = new Map<Room, Point[][]>()
+  const holesByRoom = new Map<number, Point[][]>()
   for (const [index, inner] of rooms.entries()) {
     const container = containers[index]
     if (container === undefined) continue
@@ -50,7 +48,7 @@ export function assignHoles(
       holesByRoom.set(container, [inner.polygon])
     }
   }
-  return rooms.map((room) => withHoles(room, holesByRoom.get(room)))
+  return rooms.map((room, index) => withHoles(room, holesByRoom.get(index)))
 }
 
 /** Attach holes and the void-reduced area to a container; pass others through. */
