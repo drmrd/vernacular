@@ -29,9 +29,8 @@ export function junctionFanBuildCount(): number {
 export function junctionFans(graph: PlanarGraph): JunctionFans {
   fanBuilds += 1
   const fans = new Map<number, readonly number[]>()
-  for (const [junction, edgeIndexes] of vertexIncidence(graph)) {
-    const reachingFar = edgeIndexes.filter((edgeIndex) => !isSelfLoop(graph, edgeIndex))
-    fans.set(junction, edgesCounterclockwise(graph, junction, reachingFar))
+  for (const [junction, edgeIndexes] of incidentEdgesWithoutLoops(graph)) {
+    fans.set(junction, edgesCounterclockwise(graph, junction, edgeIndexes))
   }
   return fans
 }
@@ -47,6 +46,21 @@ export function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
     if (!isSelfLoop(graph, index)) pushIncident(incidence, edge.b, index)
   }
   return incidence
+}
+
+/**
+ * Each graph vertex's incident edge indexes in ascending order, with every edge from a junction to
+ * itself left out. The junction fans and the junction fade groups both read this set.
+ */
+export function incidentEdgesWithoutLoops(graph: PlanarGraph): Map<number, number[]> {
+  const withoutLoops = new Map<number, number[]>()
+  for (const [junction, edgeIndexes] of vertexIncidence(graph)) {
+    withoutLoops.set(
+      junction,
+      edgeIndexes.filter((edgeIndex) => !isSelfLoop(graph, edgeIndex)),
+    )
+  }
+  return withoutLoops
 }
 
 /** True for an edge whose two ends merged into one junction. */

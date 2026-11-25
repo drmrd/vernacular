@@ -6,7 +6,7 @@ import type { Point } from '../model/types'
 import { type FanOptions, junctionFans } from './junction-fans'
 import type { GraphEdge, PlanarGraph } from './wall-graph'
 
-export { vertexIncidence } from './junction-fans'
+export { incidentEdgesWithoutLoops, vertexIncidence } from './junction-fans'
 
 /**
  * The plan-space footprint of one wall edge: its four ground-plane corners, two at
