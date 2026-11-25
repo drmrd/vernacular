@@ -186,6 +186,25 @@ function expectExposedTailToKeepItsOpening(): void {
     .toMatchObject([{ center: { x: 5000, y: 0 }, hostThickness: COPY_THICKNESS, hostWallId: COPY }])
 }
 
+it('reuses a saved door projection on an overlapping wall after an unrelated edit', () => {
+  const project = reopened(projectWith(floorWithDoor()))
+  const [floor] = project.floors
+  if (floor === undefined) throw new Error('Expected the saved ground floor')
+
+  const derive = createSceneGraphDeriver()
+  const first = derive(project)
+  expectDoorProjection(first, OWNER_THICKNESS, 'saved door on the thinner owner')
+
+  const detachedWall = createWall({ x: 0, y: 5000 }, { x: 1000, y: 5000 }, { id: 'detached-wall' })
+  const after = derive({
+    ...project,
+    floors: [{ ...floor, walls: [...floor.walls, detachedWall] }],
+  })
+
+  expect(after.walls.map(({ id }) => id)).toContain('wall:detached-wall')
+  expect(after.openings[0]).toBe(first.openings[0])
+})
+
 it('cuts a saved door into the wall that owns the overlap and preserves the authored handing', () => {
   const project = reopened(projectWith(floorWithDoor()))
   const [floor] = project.floors
