@@ -4,9 +4,9 @@ import {
   deriveFloorNode,
   deriveFurnitureNode,
   deriveOpeningNode,
-  deriveRoomNodesForFloor,
   deriveStairNodes,
   deriveWallNode,
+  roomNodesFromPlanGeometry,
 } from './scene-graph'
 import { assembleSceneGraph } from './scene-graph-assembly'
 import type { SceneNodeDerivations } from './scene-graph-assembly'
@@ -19,6 +19,7 @@ import type {
   Stair,
   Wall,
 } from '../model/types'
+import { createPlanGeometryDeriver, type FloorPlanGeometry } from '../topology/floor-plan-geometry'
 import type {
   FurnitureSceneNode,
   OpeningSceneNode,
@@ -132,12 +133,13 @@ function openingNodesFor(
  * array, the `overrides` reference, `defaultCeilingHeight`, and the floor's id
  * are all unchanged. Keying on `floor.walls` lets an edit that yields a new
  * floor with the same walls (an opening edit) reuse the rooms, while an
- * override edit or a ceiling height change still rebuilds them. Module-scope so
+ * override edit or a ceiling height change still rebuilds them. A miss reads the
+ * rooms of the floor's plan geometry. Module-scope so
  * the deriver closure stays under its line cap, like `openingNodesFor`.
  */
 function roomNodesFor(
   roomCache: WeakMap<readonly Wall[], CachedRoomNodes>,
-  floor: Floor,
+  { floor, geometry }: { floor: Floor; geometry: FloorPlanGeometry },
   overrides: RoomOverrides,
 ): RoomSceneNode[] {
   const cached = roomCache.get(floor.walls)
@@ -149,7 +151,7 @@ function roomNodesFor(
   ) {
     return cached.nodes
   }
-  const nodes = deriveRoomNodesForFloor(floor, overrides)
+  const nodes = roomNodesFromPlanGeometry(floor, geometry, overrides)
   roomCache.set(floor.walls, {
     floorId: floor.id,
     overrides,
@@ -253,12 +255,15 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
   const furnitureCache = new WeakMap<FurnitureInstance, CachedFurnitureNode>()
+  const planGeometry = createPlanGeometryDeriver()
 
   const derivations: SceneNodeDerivations = {
     ...PURE_NODE_DERIVATIONS,
     floorNode: (floor) => memoizeByRef(floorCache, floor, () => deriveFloorNode(floor)),
     wallNode: (floor, wall) => wallNodeFor(wallCache, floor, wall),
-    roomNodes: (floor, overrides) => roomNodesFor(roomCache, floor, overrides),
+    planGeometry: (floor) => planGeometry(floor),
+    roomNodes: (floor, geometry, overrides) =>
+      roomNodesFor(roomCache, { floor, geometry }, overrides),
     openingNodes: (floor, rooms) => openingNodesFor(openingCache, floor, rooms),
     stairNodes: (project) =>
       memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project)),

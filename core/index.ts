@@ -633,6 +633,27 @@ export type { OpeningPlacement, ResolvedOpeningEdge } from './topology/opening-e
 export { resolveOpeningEdge } from './topology/opening-edge'
 export type { Room } from './topology/rooms'
 export { ROOM_ID_PREFIX, applyRoomOverrides, deriveRooms, roomKey } from './topology/rooms'
+export type {
+  FloorPlanGeometry,
+  NetworkEdge,
+  NetworkWall,
+  OpeningSpan,
+  PlanGeometryRegistries,
+  PlanRoom,
+  SetAside,
+  WallFaceRecord,
+  WallNetwork,
+  WallSide,
+} from './topology/floor-plan-geometry'
+export {
+  createPlanGeometryDeriver,
+  deriveFloorPlanGeometry,
+  deriveOpeningSpans,
+  derivePlanRooms,
+  deriveWallNetwork,
+} from './topology/floor-plan-geometry'
+export { wallNetworkBuildCount, wallNetworkFor } from './topology/wall-network-memo'
+export { junctionFanBuildCount } from './topology/junction-fans'
 export { stairWellPolygon } from './topology/stair-well'
 export type { ClipboardSnapshot, InstantiatedEntities } from './clipboard/clipboard'
 export {

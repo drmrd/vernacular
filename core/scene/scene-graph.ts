@@ -20,8 +20,10 @@ import type {
   UnderlaySource,
   Wall,
 } from '../model/types'
+import { deriveFloorPlanGeometry } from '../topology/floor-plan-geometry'
+import type { FloorPlanGeometry } from '../topology/floor-plan-geometry'
 import { deriveOpeningGeometry } from '../topology/openings'
-import { applyRoomOverrides, deriveRooms } from '../topology/rooms'
+import { applyRoomOverrides } from '../topology/rooms'
 
 // Kind-prefixed ids keep node ids globally unique within the scene graph.
 export const FLOOR_NODE_PREFIX = 'floor:'
@@ -192,6 +194,11 @@ export interface SceneGraph {
    * the underground filter and the engine ground plane read the right datum.
    */
   gradeElevation?: number
+  /**
+   * The plan geometry of each floor, in floor order. Optional so hand-built literals omit it; both
+   * scene graph entry points always set it, and the room nodes read their rooms from it.
+   */
+  planGeometry?: FloorPlanGeometry[]
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -305,7 +312,15 @@ export function deriveRoomNodesForFloor(
   floor: Floor,
   overrides?: Readonly<Record<string, RoomOverride>>,
 ): RoomSceneNode[] {
-  return applyRoomOverrides(deriveRooms(floor.walls), overrides).map((room) => ({
+  return roomNodesFromPlanGeometry(floor, deriveFloorPlanGeometry(floor), overrides)
+}
+
+export function roomNodesFromPlanGeometry(
+  floor: Floor,
+  geometry: FloorPlanGeometry,
+  overrides: Readonly<Record<string, RoomOverride>> | undefined,
+): RoomSceneNode[] {
+  return applyRoomOverrides(geometry.rooms, overrides).map((room) => ({
     // room.id already carries the `room:` namespace prefix from the topology
     // layer (see core/topology/rooms.ts), so it is used directly here rather
     // than re-prefixed, unlike the locally namespaced floor and wall node ids.
@@ -348,7 +363,8 @@ export function deriveStairNodes(project: Project): StairSceneNode[] {
 export const PURE_NODE_DERIVATIONS: SceneNodeDerivations = {
   floorNode: deriveFloorNode,
   wallNode: deriveWallNode,
-  roomNodes: deriveRoomNodesForFloor,
+  planGeometry: (floor) => deriveFloorPlanGeometry(floor),
+  roomNodes: roomNodesFromPlanGeometry,
   underlayNodes: deriveUnderlayNodesForFloor,
   openingNodes: deriveOpeningNodesForFloor,
   dimensionNodes: deriveDimensionNodesForFloor,
