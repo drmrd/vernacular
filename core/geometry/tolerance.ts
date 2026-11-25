@@ -71,16 +71,18 @@ export function onOneLine(
   b2: Point,
   tolerance = DERIVATION_LENGTH_TOLERANCE_MM,
 ): boolean {
-  const lengthA = distance(a1, a2)
-  const lengthB = distance(b1, b2)
-  function containsBoth(start: Point, end: Point, other: readonly Point[]): boolean {
-    const normal = leftPerp(subtract(end, start))
-    const limit = tolerance * distance(start, end)
-    return other.every((point) => Math.abs(dot(subtract(point, start), normal)) <= limit)
+  const directionA = subtract(a2, a1)
+  const directionB = subtract(b2, b1)
+  const squaredLengthA = dot(directionA, directionA)
+  const squaredLengthB = dot(directionB, directionB)
+  function containsBoth(start: Point, direction: Point, other: readonly Point[]): boolean {
+    const normal = leftPerp(direction)
+    const squaredLimit = tolerance ** 2 * dot(direction, direction)
+    return other.every((point) => dot(subtract(point, start), normal) ** 2 <= squaredLimit)
   }
   return (
-    (lengthA < lengthB || containsBoth(a1, a2, [b1, b2])) &&
-    (lengthB < lengthA || containsBoth(b1, b2, [a1, a2]))
+    (squaredLengthA < squaredLengthB || containsBoth(a1, directionA, [b1, b2])) &&
+    (squaredLengthB < squaredLengthA || containsBoth(b1, directionB, [a1, a2]))
   )
 }
 

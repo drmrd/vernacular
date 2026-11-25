@@ -1,15 +1,10 @@
-import { overlappingEndpoints } from './overlapping-endpoints'
-import { dot, shift, subtract, unit } from '../geometry/vector'
+import { overlappingEndpoints, projectOntoLine } from './overlapping-endpoints'
+import { dot, subtract } from '../geometry/vector'
 import type { Point, Wall } from '../model/types'
 
 export interface WallPart {
   readonly start: Point
   readonly end: Point
-}
-
-interface CoveredInterval {
-  readonly start: number
-  readonly end: number
 }
 
 export function uncoveredParts(existing: readonly Wall[], drawn: WallPart): WallPart[] {
@@ -21,29 +16,27 @@ function findDrawnWallCoverage(
   drawn: WallPart,
 ): { parts: WallPart[]; hasCoverage: boolean } {
   const direction = subtract(drawn.end, drawn.start)
-  const squaredLength = dot(direction, direction)
-  const project = (point: Point): number => dot(subtract(point, drawn.start), direction)
-  const length = Math.sqrt(squaredLength)
-
-  const covered: CoveredInterval[] = []
+  const compare = (a: Point, b: Point): number => dot(subtract(a, b), direction)
+  const covered: WallPart[] = []
   for (const wall of existing) {
     const overlap = overlappingEndpoints(drawn, wall)
-    if (overlap) covered.push({ start: project(overlap.start), end: project(overlap.end) })
+    if (overlap) covered.push(overlap)
   }
   if (covered.length === 0) return { parts: [drawn], hasCoverage: false }
 
-  const tangent = unit(direction)
-  const pointAt = (projection: number): Point =>
-    projection === 0 ? drawn.start : shift(drawn.start, tangent, projection / length)
   const parts: WallPart[] = []
-  let coveredEnd = 0
-  for (const interval of covered.sort((left, right) => left.start - right.start)) {
-    if (interval.start > coveredEnd) {
-      parts.push({ start: pointAt(coveredEnd), end: pointAt(interval.start) })
+  let coveredEnd = drawn.start
+  for (const interval of covered.sort((left, right) => compare(left.start, right.start))) {
+    if (compare(interval.start, coveredEnd) > 0) {
+      parts.push({
+        start: projectOntoLine(coveredEnd, drawn),
+        end: projectOntoLine(interval.start, drawn),
+      })
     }
-    coveredEnd = Math.max(coveredEnd, interval.end)
+    if (compare(interval.end, coveredEnd) > 0) coveredEnd = interval.end
   }
-  if (coveredEnd < squaredLength) parts.push({ start: pointAt(coveredEnd), end: drawn.end })
+  if (compare(drawn.end, coveredEnd) > 0)
+    parts.push({ start: projectOntoLine(coveredEnd, drawn), end: drawn.end })
   return {
     parts: parts.filter(({ start, end }) => start.x !== end.x || start.y !== end.y),
     hasCoverage: true,

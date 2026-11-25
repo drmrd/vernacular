@@ -1,8 +1,8 @@
 import { distance } from '../geometry/point'
 import { pointOnSegment, segmentIntersection } from '../geometry/segment'
 import { DEFAULT_JUNCTION_TOLERANCE_MM, onOneLine } from '../geometry/tolerance'
-import { dot, shift, subtract } from '../geometry/vector'
-import { overlappingEndpoints } from './overlapping-endpoints'
+import { dot, subtract } from '../geometry/vector'
+import { overlappingEndpoints, projectOntoLine } from './overlapping-endpoints'
 import type { WallPart } from './uncovered-parts'
 import type { Point, Wall } from '../model/types'
 
@@ -48,14 +48,19 @@ export function buildWallGraph(
     return vertices.length - 1
   }
 
-  const earlierWalls: WallPart[] = []
+  const ownerStretches: WallPart[] = []
   for (const wall of walls) {
     if (distance(wall.start, wall.end) <= tolerance) continue
-    const aligned = alignOverlapEndpoints(wall, earlierWalls, tolerance)
-    const a = vertexIndexFor(aligned.start)
-    const b = vertexIndexFor(aligned.end)
-    earlierWalls.push(aligned)
-    edges.push({ a, b, wallId: wall.id })
+    const parts = nodeWallOverlaps(wall, ownerStretches, tolerance)
+    parts.forEach((part) => {
+      const a = vertexIndexFor(part.start)
+      const b = vertexIndexFor(part.end)
+      if (parts.length > 1 && a === b) return
+      edges.push({ a, b, wallId: wall.id })
+      if (!part.covered) {
+        ownerStretches.push({ start: vertices[a] ?? part.start, end: vertices[b] ?? part.end })
+      }
+    })
   }
 
   // Crossing pass: register each interior X-crossing between a pair of edges as
@@ -72,28 +77,36 @@ export function buildWallGraph(
   return { vertices, edges: assignStretchOwners(splitEdges) }
 }
 
-function alignOverlapEndpoints(
+interface NodedPart extends WallPart {
+  readonly covered?: boolean
+}
+
+function nodeWallOverlaps(
   wall: WallPart,
-  earlierWalls: WallPart[],
+  owners: readonly WallPart[],
   tolerance: number,
-): WallPart {
-  let { start, end } = wall
-  for (const owner of earlierWalls) {
-    const overlap = overlappingEndpoints(owner, wall, tolerance)
-    if (!overlap) continue
-    const direction = subtract(owner.end, owner.start)
-    function project(point: Point): Point {
-      return shift(
-        owner.start,
-        direction,
-        dot(subtract(point, owner.start), direction) / dot(direction, direction),
-      )
-    }
-    if (start === wall.start && (start === overlap.start || start === overlap.end))
-      start = project(start)
-    if (end === wall.end && (end === overlap.start || end === overlap.end)) end = project(end)
+): NodedPart[] {
+  let parts: NodedPart[] = [wall]
+  for (const owner of owners) {
+    parts = parts.flatMap((part) => {
+      if (part.covered) return [part]
+      const overlap = overlappingEndpoints(owner, part, tolerance)
+      if (!overlap) return [part]
+      const direction = subtract(owner.end, owner.start)
+      const forward = dot(subtract(part.end, part.start), direction) >= 0
+      const lower = forward ? overlap.start : overlap.end
+      const upper = forward ? overlap.end : overlap.start
+      const start = projectOntoLine(lower, owner)
+      const end = projectOntoLine(upper, owner)
+      const split: NodedPart[] = []
+      if (dot(subtract(lower, part.start), direction) !== 0)
+        split.push({ start: part.start, end: start })
+      split.push({ start, end, covered: true })
+      if (dot(subtract(upper, part.end), direction) !== 0) split.push({ start: end, end: part.end })
+      return split
+    })
   }
-  return { start, end }
+  return parts
 }
 
 /** Duplicate stretches leave a junction at the same angle and confuse the room walk. */
