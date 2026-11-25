@@ -1,6 +1,6 @@
 // scripts/pack/starter/build-starter-pack.mjs
 //
-// Build of the starter pack 1.1.0 under public/packs/. The chair's bytes and metadata are
+// Build of the starter pack under public/packs/. The chair's bytes and metadata are
 // constants here and the grass texture is generated, so no fixture script feeds the shipped
 // pack. Run with `pnpm pack:starter`; the output is committed and a test rebuilds it byte for
 // byte. Importing this module has no side effects: only running it as the entry point writes
@@ -14,10 +14,11 @@ import { encodePng } from '../png-encoder.mjs'
 import { generateGrassTile } from './grass-tile.mjs'
 
 const PACK_ID = 'vernacular-starter'
-const PACK_VERSION = '1.1.0'
+const PACK_VERSION = '1.1.1'
 const FORMAT_VERSION = 2
 const LICENSE = 'CC-BY-4.0'
 const ATTRIBUTION = 'The Vernacular Contributors'
+const COPYRIGHT = `Copyright 2026 ${ATTRIBUTION}`
 const GENERATOR_PATH = 'scripts/pack/starter/build-starter-pack.mjs'
 const BUILD_COMMAND = 'pnpm pack:starter'
 const LICENSE_TEXT_URL = new URL('./CC-BY-4.0.txt', import.meta.url)
@@ -78,6 +79,11 @@ const CHANGELOG = [
   '- Replace the placeholder chair with a new placeholder chair under CC-BY-4.0. Add a generated',
   '  mown-grass texture.',
   '',
+  '## 1.1.1',
+  '',
+  '- Record file sizes and copyright notices for both assets, plus the chair thumbnail hash and',
+  '  file size.',
+  '',
 ].join('\n')
 
 const NOTICE = [
@@ -101,11 +107,17 @@ function chairEntry(contentHash) {
   const { name, kind, mediaType, eras, styles, categories, dimensions } = CHAIR
   return {
     contentHash,
+    byteLength: CHAIR_BYTES.byteLength,
+    thumbnail: {
+      contentHash: sha256(THUMBNAIL_BYTES),
+      byteLength: THUMBNAIL_BYTES.byteLength,
+    },
     name,
     kind,
     mediaType,
     license: LICENSE,
     attribution: ATTRIBUTION,
+    copyright: COPYRIGHT,
     eras,
     styles,
     categories,
@@ -116,18 +128,21 @@ function chairEntry(contentHash) {
 /**
  * The manifest entry of the grass texture.
  * @param {string} contentHash
+ * @param {number} byteLength
  * @param {{ width: number, height: number }} image
  * @returns {object}
  */
-function grassEntry(contentHash, image) {
+function grassEntry(contentHash, byteLength, image) {
   const { name, kind, mediaType, eras, categories } = GRASS
   return {
     contentHash,
+    byteLength,
     name,
     kind,
     mediaType,
     license: LICENSE,
     attribution: ATTRIBUTION,
+    copyright: COPYRIGHT,
     eras,
     categories,
     image: { width: image.width, height: image.height },
@@ -138,10 +153,10 @@ function grassEntry(contentHash, image) {
 
 /**
  * The pack manifest, with keys in a fixed order.
- * @param {{ chairHash: string, grassHash: string, grassImage: { width: number, height: number } }} hashes
+ * @param {{ chairHash: string, grassHash: string, grassByteLength: number, grassImage: { width: number, height: number } }} files
  * @returns {object}
  */
-function manifest({ chairHash, grassHash, grassImage }) {
+function manifest({ chairHash, grassHash, grassByteLength, grassImage }) {
   return {
     packId: PACK_ID,
     version: PACK_VERSION,
@@ -151,7 +166,7 @@ function manifest({ chairHash, grassHash, grassImage }) {
     eras: [...CHAIR.eras, ...GRASS.eras],
     styles: CHAIR.styles,
     categories: [...CHAIR.categories, ...GRASS.categories],
-    assets: [chairEntry(chairHash), grassEntry(grassHash, grassImage)],
+    assets: [chairEntry(chairHash), grassEntry(grassHash, grassByteLength, grassImage)],
   }
 }
 
@@ -168,6 +183,7 @@ export async function buildStarterPack() {
     manifest({
       chairHash,
       grassHash,
+      grassByteLength: grassBytes.byteLength,
       grassImage: { width: grassTile.width, height: grassTile.height },
     }),
     null,
