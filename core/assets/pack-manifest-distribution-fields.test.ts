@@ -1,33 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { validatePackManifest } from './pack-manifest.ts'
-import { validManifest } from './pack-manifest-test-support.ts'
+import { specificationAsset, validManifest } from './pack-manifest-test-support.ts'
 
 const SHORT_HASH_LENGTH = 63
 const FORMAT_WITH_DISTRIBUTION_FIELDS = 2
 
 type Fields = Record<string, unknown>
-
-function specificationAsset(): Fields {
-  return {
-    contentHash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-    byteLength: 19512,
-    thumbnail: {
-      contentHash: 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
-      byteLength: 4096,
-    },
-    name: 'Example armchair',
-    kind: 'furniture',
-    mediaType: 'model/gltf-binary',
-    license: 'CC-BY-4.0',
-    attribution: 'The Vernacular Contributors',
-    copyright: 'Copyright 2026 The Vernacular Contributors',
-    changes: 'Rebuilt the legs',
-    sourceUrl: 'https://example.org/vernacular/example-armchair',
-    eras: ['mid-century'],
-    categories: ['seating'],
-    dimensions: { width: 760, depth: 820, height: 900 },
-  }
-}
 
 function without(fields: Fields, key: string): Fields {
   const copy = { ...fields }

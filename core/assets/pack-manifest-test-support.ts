@@ -43,3 +43,25 @@ export function manifestWith(texture: Fields): Fields {
     assets: [texture],
   }
 }
+
+export function specificationAsset(): Fields {
+  return {
+    contentHash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+    byteLength: 19512,
+    thumbnail: {
+      contentHash: 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
+      byteLength: 4096,
+    },
+    name: 'Example armchair',
+    kind: 'furniture',
+    mediaType: 'model/gltf-binary',
+    license: 'CC-BY-4.0',
+    attribution: 'The Vernacular Contributors',
+    copyright: 'Copyright 2026 The Vernacular Contributors',
+    changes: 'Rebuilt the legs',
+    sourceUrl: 'https://example.org/vernacular/example-armchair',
+    eras: ['mid-century'],
+    categories: ['seating'],
+    dimensions: { width: 760, depth: 820, height: 900 },
+  }
+}
