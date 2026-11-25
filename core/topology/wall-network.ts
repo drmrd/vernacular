@@ -49,7 +49,11 @@ const roomsByNetwork = new WeakMap<WallNetwork, readonly Room[]>()
 
 /** The rooms of a network, from the one walk that its build made. */
 export function derivePlanRooms(network: WallNetwork): readonly Room[] {
-  return roomsByNetwork.get(network) ?? []
+  const rooms = roomsByNetwork.get(network)
+  if (rooms === undefined) {
+    throw new Error('derivePlanRooms needs a network that deriveWallNetwork built')
+  }
+  return rooms
 }
 
 export function networkWallOf(wall: Wall): NetworkWall {

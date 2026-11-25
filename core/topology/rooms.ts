@@ -1,9 +1,7 @@
 import { polygonArea } from '../geometry/polygon'
 import type { Point, RoomOverride, Wall } from '../model/types'
-import { effectiveWallThickness } from '../scene/construction-profile'
 import { ROOM_ID_PREFIX, roomKey } from './room-key'
-import { roomsOfGraph } from './room-walk'
-import { buildWallGraph } from './wall-graph'
+import { derivePlanRooms, deriveWallNetwork, networkWallOf } from './wall-network'
 
 export { ROOM_ID_PREFIX, roomKey }
 
@@ -86,8 +84,6 @@ function mergeOverride(room: Room, override: RoomOverride | undefined): Room {
  * graph. See the design specification, section 3.2 ("Rooms are derived from wall
  * topology"). Each closed loop of walls becomes one room.
  */
-export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: number }): Room[] {
-  const graph = buildWallGraph(walls, options)
-  const thicknessByWallId = new Map(walls.map((wall) => [wall.id, effectiveWallThickness(wall)]))
-  return roomsOfGraph(graph, thicknessByWallId)
+export function deriveRooms(walls: readonly Wall[]): Room[] {
+  return [...derivePlanRooms(deriveWallNetwork(walls.map(networkWallOf)))]
 }

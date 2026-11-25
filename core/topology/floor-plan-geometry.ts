@@ -1,4 +1,5 @@
 import type { Floor } from '../model/types'
+import type { Room } from './rooms'
 import {
   deriveWallNetwork,
   derivePlanRooms,
@@ -20,9 +21,12 @@ export interface SetAside {
   readonly unboundRecordIds: readonly string[]
 }
 
+export type PlanRoom = Room
+
 export interface FloorPlanGeometry {
   readonly floorId: string
   readonly network: WallNetwork
+  readonly rooms: readonly PlanRoom[]
   readonly setAside: SetAside
 }
 
@@ -42,5 +46,10 @@ export function deriveFloorPlanGeometry(
   registries?: PlanGeometryRegistries,
 ): FloorPlanGeometry {
   const network = deriveWallNetwork(floor.walls.map(networkWallOf), registries)
-  return { floorId: floor.id, network, setAside: setAsideOf(network) }
+  return {
+    floorId: floor.id,
+    network,
+    rooms: derivePlanRooms(network),
+    setAside: setAsideOf(network),
+  }
 }
