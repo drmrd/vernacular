@@ -180,38 +180,80 @@ describe('how often the fans are computed', () => {
   })
 })
 
-describe('a wall whose two ends merge into one junction', () => {
-  const speckWalls = [...counterClockwiseWalls(), wall('speck', pt(-0.6, 0), pt(0.6, 0))]
+interface SpeckCase {
+  name: string
+  walls: Wall[]
+}
 
-  function speckEdgeIndex(graph: ReturnType<typeof buildWallGraph>): number {
+const SPECK_WALL_THICKNESS_MM = 600
+
+function thickened(walls: Wall[]): Wall[] {
+  return walls.map((each) => ({ ...each, thickness: SPECK_WALL_THICKNESS_MM }))
+}
+
+function speckAtCorner(): Wall[] {
+  return [...counterClockwiseWalls(), wall('speck', pt(-0.6, 0), pt(0.6, 0))]
+}
+
+const speckCases: SpeckCase[] = [
+  { name: 'at a corner of two walls', walls: speckAtCorner() },
+  {
+    name: 'at a junction of three walls',
+    walls: [...speckAtCorner(), wall('stub', pt(0, 0), pt(-1500, -1500))],
+  },
+  { name: 'with 600 mm walls', walls: thickened(speckAtCorner()) },
+]
+
+describe('a wall whose two ends merge into one junction', () => {
+  function speckEdge(graph: ReturnType<typeof buildWallGraph>): {
+    index: number
+    junction: number
+  } {
     const index = graph.edges.findIndex((edge) => edge.a === edge.b)
-    expect(index, 'the graph holds an edge from a junction to itself').toBeGreaterThanOrEqual(0)
-    return index
+    const edge = graph.edges[index]
+    if (edge === undefined) {
+      throw new Error('expected the graph to hold an edge from a junction to itself')
+    }
+    return { index, junction: edge.a }
   }
 
-  it('lists an edge from a junction to itself once among the edges of its junction', () => {
-    const graph = buildWallGraph(speckWalls)
-    const index = speckEdgeIndex(graph)
-    const junction = (graph.edges[index] as { a: number }).a
+  describe.each(speckCases)('$name', ({ walls }) => {
+    it('lists an edge from a junction to itself once among the edges of its junction', () => {
+      const graph = buildWallGraph(walls)
+      const { index, junction } = speckEdge(graph)
 
-    const edgesAtJunction = vertexIncidence(graph).get(junction) ?? []
+      const edgesAtJunction = vertexIncidence(graph).get(junction) ?? []
 
-    expect(edgesAtJunction.filter((edgeIndex) => edgeIndex === index)).toEqual([index])
+      expect(edgesAtJunction.filter((edgeIndex) => edgeIndex === index)).toEqual([index])
+    })
+
+    it('leaves an edge from a junction to itself out of the fan of its junction', () => {
+      const graph = buildWallGraph(walls)
+      const { index, junction } = speckEdge(graph)
+
+      expect(junctionFans(graph).get(junction)).not.toContain(index)
+    })
+
+    it('leaves an edge from a junction to itself out of every junction fill', () => {
+      const { index } = speckEdge(buildWallGraph(walls))
+
+      const filledEdges = networkOf(walls).fills.flatMap((fill) => fill.edgeIndexes)
+
+      expect(filledEdges).not.toContain(index)
+    })
+
+    it('sets the wall aside and gives the other walls their room when both ends merge into one junction', () => {
+      const geometry = deriveFloorPlanGeometry(floorOf(walls))
+
+      expect(geometry.rooms).toHaveLength(1)
+      expect(geometry.setAside.zeroLengthWallIds).toEqual(['speck'])
+      expect(deriveRooms(walls)).toHaveLength(1)
+    })
   })
 
-  it('leaves an edge from a junction to itself out of the fan of its junction', () => {
-    const graph = buildWallGraph(speckWalls)
-    const index = speckEdgeIndex(graph)
-    const junction = (graph.edges[index] as { a: number }).a
-
-    expect(junctionFans(graph).get(junction)).not.toContain(index)
-  })
-
-  it('gives the other walls their room when both ends of one wall merge into one junction', () => {
-    const geometry = deriveFloorPlanGeometry(floorOf(speckWalls))
+  it('names the walls around the room when both ends of one wall merge into one junction', () => {
+    const geometry = deriveFloorPlanGeometry(floorOf(speckAtCorner()))
 
     expect(geometry.rooms.map((room) => room.wallIds)).toEqual([['east', 'north', 'south', 'west']])
-    expect(geometry.setAside.zeroLengthWallIds).toEqual(['speck'])
-    expect(deriveRooms(speckWalls)).toHaveLength(1)
   })
 })
