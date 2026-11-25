@@ -222,3 +222,69 @@ it('cuts a saved door into the wall that owns the overlap and preserves the auth
     .soft(reopened(project).floors[0]?.openings)
     .toMatchObject([{ id: DOOR, hostWallId: COPY, position: DOOR_POSITION, orientation: HANDING }])
 })
+
+it('keeps a saved doorway open through both walls where ownership changes', () => {
+  const project = reopened(projectWith(floorWithDoor(WALL_LENGTH + DOOR_POSITION)))
+  const graph = deriveSceneGraph(project)
+  const root = buildScene(graph)
+  const wallMeshes: Mesh[] = []
+  root.traverse((object) => {
+    if (
+      object instanceof Mesh &&
+      [`wall:${OWNER}`, `wall:${COPY}`].includes(object.userData.entityId)
+    ) {
+      wallMeshes.push(object)
+    }
+  })
+  expect(wallMeshes.map((mesh) => mesh.userData.entityId).sort()).toEqual([
+    `wall:${COPY}`,
+    `wall:${OWNER}`,
+  ])
+  const [wall] = wallMeshes
+  if (wall === undefined) throw new Error('Expected the physical walls on both sides of the door')
+  root.updateMatrixWorld(true)
+
+  const westJamb = WALL_LENGTH - DOOR_WIDTH / 2
+  const eastJamb = WALL_LENGTH + DOOR_WIDTH / 2
+  const passageHeight = DOOR_HEIGHT / 2
+  for (const side of [-1, 1]) {
+    const crossWall = (x: number, height: number) => {
+      const from = wall.position.clone().set(x, height, side * 1000)
+      const direction = wall.position.clone().set(0, 0, -side)
+      return new Raycaster(from, direction).intersectObjects(wallMeshes, false)
+    }
+    for (const x of [westJamb + 1, WALL_LENGTH - 1, WALL_LENGTH + 1, eastJamb - 1]) {
+      expect
+        .soft(crossWall(x, passageHeight), `through the opening at x=${x} from side ${side}`)
+        .toHaveLength(0)
+    }
+
+    const westFace = OWNER_THICKNESS / 2
+    const eastFace = COPY_THICKNESS / 2
+    expect.soft(crossWall(westJamb - 1, passageHeight)[0]?.point.z).toBeCloseTo(side * westFace)
+    expect.soft(crossWall(eastJamb + 1, passageHeight)[0]?.point.z).toBeCloseTo(side * eastFace)
+    expect
+      .soft(crossWall(WALL_LENGTH - 1, DOOR_HEIGHT + 1)[0]?.point.z)
+      .toBeCloseTo(side * westFace)
+    expect
+      .soft(crossWall(WALL_LENGTH + 1, DOOR_HEIGHT + 1)[0]?.point.z)
+      .toBeCloseTo(side * eastFace)
+
+    const from = wall.position.clone().set(WALL_LENGTH + side * 100, passageHeight, 0)
+    const direction = wall.position.clone().set(-side, 0, 0)
+    const seam = new Raycaster(from, direction, 0, 200).intersectObjects(wallMeshes, false)
+    expect.soft(seam, `across the ownership boundary from side ${side}`).toHaveLength(0)
+  }
+
+  expect.soft(graph.openings).toMatchObject([
+    {
+      hostWallId: COPY,
+      center: { x: WALL_LENGTH, y: 0 },
+      along: { x: -1, y: 0 },
+      orientation: HANDING,
+    },
+  ])
+  expect
+    .soft(reopened(project).floors[0]?.openings)
+    .toMatchObject([{ id: DOOR, hostWallId: COPY, position: DOOR_POSITION, orientation: HANDING }])
+})
