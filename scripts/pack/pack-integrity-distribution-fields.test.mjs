@@ -1,29 +1,30 @@
 import { describe, expect, it } from 'vitest'
 import { checkPackIntegrity } from './pack-integrity.mjs'
-import { thumbnailSignature } from './texture-test-bytes.mjs'
+import { TEXTURE_SIDE, rgbPng, thumbnailSignature } from './texture-test-bytes.mjs'
 
 const HASH = 'a'.repeat(64)
 const THUMBNAIL_HASH = 'b'.repeat(64)
 const OTHER_HASH = 'c'.repeat(64)
-const MODEL_FILE = `assets/${HASH}.glb`
+const MODEL_FILENAME = `${HASH}.glb`
 const THUMBNAIL_FILE = `thumbnails/${HASH}.webp`
 const MODEL_BYTES = Uint8Array.of(1, 2, 3)
 const THUMBNAIL_BYTES = thumbnailSignature()
 const WRONG_LENGTH = 999
+const TEXTURE_TILE_SIZE_MM = 1000
 
-/** A reader for a pack with one model and its thumbnail, with known sizes and digests. */
-function readerWithModelAndThumbnail() {
-  const files = new Set([MODEL_FILE, THUMBNAIL_FILE, 'LICENSE', 'NOTICE', 'CHANGELOG.md'])
-  const digests = { [MODEL_FILE]: HASH, [THUMBNAIL_FILE]: THUMBNAIL_HASH }
+/** A reader for a pack with one asset and its thumbnail, with known sizes and digests. */
+function readerWithAssetAndThumbnail(assetFilename = MODEL_FILENAME, assetBytes = MODEL_BYTES) {
+  const assetFile = `assets/${assetFilename}`
+  const files = new Set([assetFile, THUMBNAIL_FILE, 'LICENSE', 'NOTICE', 'CHANGELOG.md'])
+  const digests = { [assetFile]: HASH, [THUMBNAIL_FILE]: THUMBNAIL_HASH }
   return {
     dirName: 'chair-pack-1.0.0',
     listDir: async (relative) =>
-      ({ assets: [`${HASH}.glb`], thumbnails: [`${HASH}.webp`] })[relative] ?? [],
+      ({ assets: [assetFilename], thumbnails: [`${HASH}.webp`] })[relative] ?? [],
     exists: async (relative) => files.has(relative),
     sha256: async (relative) => digests[relative] ?? '',
-    readBytes: async (relative) => (relative === MODEL_FILE ? MODEL_BYTES : THUMBNAIL_BYTES),
-    size: async (relative) =>
-      relative === MODEL_FILE ? MODEL_BYTES.length : THUMBNAIL_BYTES.length,
+    readBytes: async (relative) => (relative === assetFile ? assetBytes : THUMBNAIL_BYTES),
+    size: async (relative) => (relative === assetFile ? assetBytes.length : THUMBNAIL_BYTES.length),
   }
 }
 
@@ -35,7 +36,7 @@ function manifestWith(fields, formatVersion = 2) {
 async function errorsFor(fields, formatVersion = 2) {
   const result = await checkPackIntegrity(
     manifestWith(fields, formatVersion),
-    readerWithModelAndThumbnail(),
+    readerWithAssetAndThumbnail(),
   )
   return result.errors
 }
@@ -80,11 +81,31 @@ describe('checkPackIntegrity for the stated fields outside the format 2 happy pa
   })
 
   it('reports one error when a stated thumbnail file is missing from the pack', async () => {
-    const reader = readerWithModelAndThumbnail()
+    const reader = readerWithAssetAndThumbnail()
     const exists = reader.exists
     reader.exists = async (relative) => relative !== THUMBNAIL_FILE && exists(relative)
     const thumbnail = { contentHash: THUMBNAIL_HASH, byteLength: THUMBNAIL_BYTES.length }
     const result = await checkPackIntegrity(manifestWith({ thumbnail }), reader)
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatch(new RegExp(`^asset ${HASH}: thumbnail missing`))
+  })
+
+  it('reports one error when a stated texture thumbnail is missing from the pack', async () => {
+    const textureBytes = rgbPng(TEXTURE_SIDE)
+    const reader = readerWithAssetAndThumbnail(`${HASH}.png`, textureBytes)
+    const exists = reader.exists
+    reader.exists = async (relative) => relative !== THUMBNAIL_FILE && exists(relative)
+    const manifest = manifestWith({
+      kind: 'texture',
+      name: 'Gray stone',
+      mediaType: 'image/png',
+      image: { width: TEXTURE_SIDE, height: TEXTURE_SIDE },
+      tileSize: { width: TEXTURE_TILE_SIZE_MM, height: TEXTURE_TILE_SIZE_MM },
+      colorSpace: 'srgb',
+      byteLength: textureBytes.length,
+      thumbnail: { contentHash: THUMBNAIL_HASH, byteLength: THUMBNAIL_BYTES.length },
+    })
+    const result = await checkPackIntegrity(manifest, reader)
     expect(result.errors).toHaveLength(1)
     expect(result.errors[0]).toMatch(new RegExp(`^asset ${HASH}: thumbnail missing`))
   })
