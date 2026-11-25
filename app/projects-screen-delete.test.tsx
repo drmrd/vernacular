@@ -190,8 +190,8 @@ describe('A delete from the card of a project on the Projects page', () => {
   it('says that the changes of the open project were not saved, and keeps both cards, when its save fails', async () => {
     const ports = await durablePortsWith(FIRST_ID, SECOND_ID)
     const { bar } = await openFirstProjectOn(ports)
-    await addAFloor()
     failSaves(ports.workspace)
+    await addAFloor()
     await showThePageOn(bar)
     await findCardLink(FIRST_NAME)
 
@@ -243,8 +243,8 @@ describe('Remove from list on the card of a folder project', () => {
     const { bar } = renderAppAt(ports, PROJECTS_ADDRESS)
     await clickCardOf(FOLDER_NAME)
     await expectOpenProject(FOLDER_NAME)
-    await addAFloor()
     vi.spyOn(directory, 'writeFile').mockRejectedValue(new Error('the folder cannot be written'))
+    await addAFloor()
     await showThePageOn(bar)
     await findCardLink(FOLDER_NAME)
 
