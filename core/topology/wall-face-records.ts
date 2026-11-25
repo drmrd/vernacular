@@ -1,6 +1,6 @@
 import { projectOntoPath, type WallPath } from '../geometry/wall-path'
 import type { Point } from '../model/types'
-import type { RoomWalk } from './room-walk'
+import type { EdgeSideRooms, RoomWalk } from './room-walk'
 import type { Room } from './rooms'
 import type { NetworkEdge, WallNetwork } from './wall-network'
 
@@ -31,47 +31,24 @@ export interface PlanRoom extends Room {
 
 const SIDES: readonly WallSide[] = ['positive', 'negative']
 
-/** The half-edge twinned with this one: edge `i` makes half-edges `2i` and `2i + 1`. */
-function twinOf(halfEdge: number): number {
-  return halfEdge % 2 === 0 ? halfEdge + 1 : halfEdge - 1
-}
-
-/** The room of the face whose outline holds a half-edge, among the faces that became rooms. */
-function walkedRoomOf(walk: RoomWalk, halfEdge: number): number | undefined {
-  const face = walk.outlineFaceOfHalfEdge[halfEdge]
-  return face === undefined ? undefined : walk.roomOfFace.get(face)
-}
-
-/**
- * The room along each half-edge. A face that became no room and runs around rooms that the hole
- * pass gave to a container (the outer cycle of a free-standing group of walls) bounds that
- * container. A half-edge outside every outline bounds no room.
- */
-function roomOfEachHalfEdge(walk: RoomWalk): (number | undefined)[] {
-  const roomOfFace = new Map(walk.roomOfFace)
-  walk.outlineFaceOfHalfEdge.forEach((face, halfEdge) => {
-    const twinRoom = walkedRoomOf(walk, twinOf(halfEdge))
-    const container = twinRoom === undefined ? undefined : walk.containerOfRoom[twinRoom]
-    if (face !== undefined && !roomOfFace.has(face) && container !== undefined) {
-      roomOfFace.set(face, container)
-    }
-  })
-  return walk.outlineFaceOfHalfEdge.map((face) =>
-    face === undefined ? undefined : roomOfFace.get(face),
-  )
-}
-
 /** What one face's stretches are cut from. */
 interface FaceContext {
   readonly path: WallPath
   readonly junctions: readonly Point[]
-  readonly roomOfHalfEdge: readonly (number | undefined)[]
+  readonly roomsBesideEdge: readonly EdgeSideRooms[]
 }
 
 /**
- * The stretches of one face over the wall's edges, in order from its start. The graph keeps each
- * edge in its wall's direction, so half-edge `2i` runs from start to end and its face lies on
- * the positive side. Neighbors with the same room join.
+ * The room on one side of an edge. The graph keeps each edge in its wall's direction, so the
+ * positive side of the wall is the left of the edge.
+ */
+function roomOnSide(rooms: EdgeSideRooms | undefined, side: WallSide): number | undefined {
+  return side === 'positive' ? rooms?.left : rooms?.right
+}
+
+/**
+ * The stretches of one face over the wall's edges, in order from its start. Neighbors with the
+ * same room join.
  */
 function faceStretches(
   edges: readonly NetworkEdge[],
@@ -80,8 +57,7 @@ function faceStretches(
 ): WallFaceStretch[] {
   const stretches: { fromMm: number; toMm: number; roomIndex: number | undefined }[] = []
   for (const edge of edges) {
-    const halfEdge = side === 'positive' ? 2 * edge.index : 2 * edge.index + 1
-    const roomIndex = context.roomOfHalfEdge[halfEdge]
+    const roomIndex = roomOnSide(context.roomsBesideEdge[edge.index], side)
     const alongOf = (junction: number): number =>
       projectOntoPath(context.path, context.junctions[junction] as Point).along
     const previous = stretches[stretches.length - 1]
@@ -96,10 +72,13 @@ export function wallFaceRecords(
   network: Pick<WallNetwork, 'walls' | 'junctions' | 'edges'>,
   walk: RoomWalk,
 ): WallFaceRecord[] {
-  const roomOfHalfEdge = roomOfEachHalfEdge(walk)
   return network.walls.flatMap((wall) => {
     const edges = network.edges.filter((edge) => edge.wallId === wall.id)
-    const context = { path: wall.path, junctions: network.junctions, roomOfHalfEdge }
+    const context = {
+      path: wall.path,
+      junctions: network.junctions,
+      roomsBesideEdge: walk.roomsBesideEdge,
+    }
     return SIDES.map((side) => ({
       wallId: wall.id,
       side,

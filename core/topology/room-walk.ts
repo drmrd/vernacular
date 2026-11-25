@@ -16,6 +16,8 @@ const DEFAULT_WALL_THICKNESS = 0
 
 /** A directed half of an undirected graph edge, carrying its source wall's id. */
 interface HalfEdge {
+  /** Position of this half-edge in the walk's half-edge list (see {@link halfEdgeFromA}). */
+  index: number
   /** Index into the graph's vertices of the half-edge's tail. */
   from: number
   /** Index into the graph's vertices of the half-edge's head. */
@@ -24,18 +26,19 @@ interface HalfEdge {
   wallId: string
 }
 
-/** The rooms of a wall graph and what the face walk found on the way to them. */
+/** The indexes into a walk's rooms of the room on each side of one graph edge, if any. */
+export interface EdgeSideRooms {
+  /** The room to the left of the edge from its `a` end to its `b` end. */
+  readonly left: number | undefined
+  /** The room to the right of the edge from its `a` end to its `b` end. */
+  readonly right: number | undefined
+}
+
+/** The rooms of a wall graph and the room that the face walk found on each side of each edge. */
 export interface RoomWalk {
   readonly rooms: Room[]
-  /**
-   * By half-edge (edge `i` makes half-edge `2i` from its `a` end and `2i + 1` from its `b` end): the
-   * face whose outline holds it. Undefined when no face walks it or the spike removal dropped it.
-   */
-  readonly outlineFaceOfHalfEdge: readonly (number | undefined)[]
-  /** The index into `rooms` of the room that each kept face became, by face index. */
-  readonly roomOfFace: ReadonlyMap<number, number>
-  /** By room index: the index of the room that the hole pass gave it to as a hole. */
-  readonly containerOfRoom: readonly (number | undefined)[]
+  /** By graph edge index: the room on each side of the edge. */
+  readonly roomsBesideEdge: readonly EdgeSideRooms[]
 }
 
 /**
@@ -55,14 +58,37 @@ export function roomsOfGraph(
   const boundaries = faces.map((face) =>
     faceBoundary(face, graph.vertices, { thicknessByWallId, faceOfHalfEdge }),
   )
-  // A face becomes a room when its centerline polygon clears the minimum area;
-  // the negative-area outer (unbounded) face is excluded. An edge is shared when
-  // its twin belongs to one of these kept room faces.
+  const { rooms, roomOfFace } = roomsOfFaces(boundaries)
+  const containers = rooms.map((inner) => immediateContainer(inner, rooms))
+  const roomOfHalfEdge = roomOfEachHalfEdge({
+    outlineFaceOfHalfEdge: outlineFacesOf(boundaries, halfEdges.length),
+    roomOfFace,
+    containerOfRoom: containers.map((room) =>
+      room === undefined ? undefined : rooms.indexOf(room),
+    ),
+  })
+  return {
+    rooms: assignHoles(rooms, containers),
+    roomsBesideEdge: graph.edges.map((_edge, edgeIndex) => ({
+      left: roomOfHalfEdge[halfEdgeFromA(edgeIndex)],
+      right: roomOfHalfEdge[halfEdgeFromB(edgeIndex)],
+    })),
+  }
+}
+
+/**
+ * The rooms that the faces became, and the index of each kept face's room. A face becomes a room
+ * when its centerline polygon clears the minimum area; the negative-area outer (unbounded) face is
+ * excluded. An edge is shared when its twin belongs to one of these kept room faces.
+ */
+function roomsOfFaces(boundaries: readonly FaceBoundary[]): {
+  rooms: Room[]
+  roomOfFace: Map<number, number>
+} {
   const roomFaces = new Set<number>()
   boundaries.forEach((boundary, index) => {
     if (polygonArea(boundary.polygon) > MIN_FACE_AREA_MM2) roomFaces.add(index)
   })
-
   const rooms: Room[] = []
   const roomOfFace = new Map<number, number>()
   for (const faceIndex of roomFaces) {
@@ -71,18 +97,53 @@ export function roomsOfGraph(
     roomOfFace.set(faceIndex, rooms.length)
     rooms.push(buildRoom(boundary, roomFaces))
   }
-  const containers = rooms.map((inner) => immediateContainer(inner, rooms))
-  const outlineFaces = new Map(
-    boundaries.flatMap((boundary, faceIndex) => boundary.outline.map((half) => [half, faceIndex])),
+  return { rooms, roomOfFace }
+}
+
+/**
+ * By half-edge index: the face whose outline holds it. Undefined when no face walks it or the
+ * spike removal dropped it.
+ */
+function outlineFacesOf(
+  boundaries: readonly FaceBoundary[],
+  halfEdgeCount: number,
+): (number | undefined)[] {
+  const outlineFaceOfHalfEdge = new Array<number | undefined>(halfEdgeCount).fill(undefined)
+  boundaries.forEach((boundary, faceIndex) => {
+    for (const halfEdge of boundary.outline) outlineFaceOfHalfEdge[halfEdge] = faceIndex
+  })
+  return outlineFaceOfHalfEdge
+}
+
+/** What the walk found on the way to the room along each half-edge. */
+interface WalkedFaces {
+  /** By half-edge index: the face whose outline holds it. */
+  readonly outlineFaceOfHalfEdge: readonly (number | undefined)[]
+  /** The index of the room that each kept face became, by face index. */
+  readonly roomOfFace: ReadonlyMap<number, number>
+  /** By room index: the index of the room that the hole pass gave it to as a hole. */
+  readonly containerOfRoom: readonly (number | undefined)[]
+}
+
+/**
+ * The room along each half-edge, by half-edge index. A face that became no room and runs around
+ * rooms that the hole pass gave to a container (the outer cycle of a free-standing group of walls)
+ * bounds that container. A half-edge outside every outline bounds no room.
+ */
+function roomOfEachHalfEdge(walked: WalkedFaces): (number | undefined)[] {
+  const { outlineFaceOfHalfEdge, containerOfRoom } = walked
+  const roomOfFace = new Map(walked.roomOfFace)
+  outlineFaceOfHalfEdge.forEach((face, halfEdge) => {
+    const twinFace = outlineFaceOfHalfEdge[twinOf(halfEdge)]
+    const twinRoom = twinFace === undefined ? undefined : walked.roomOfFace.get(twinFace)
+    const container = twinRoom === undefined ? undefined : containerOfRoom[twinRoom]
+    if (face !== undefined && !roomOfFace.has(face) && container !== undefined) {
+      roomOfFace.set(face, container)
+    }
+  })
+  return outlineFaceOfHalfEdge.map((face) =>
+    face === undefined ? undefined : roomOfFace.get(face),
   )
-  return {
-    rooms: assignHoles(rooms, containers),
-    outlineFaceOfHalfEdge: halfEdges.map((half) => outlineFaces.get(half)),
-    roomOfFace,
-    containerOfRoom: containers.map((room) =>
-      room === undefined ? undefined : rooms.indexOf(room),
-    ),
-  }
 }
 
 /**
@@ -114,14 +175,27 @@ function buildRoom(boundary: FaceBoundary, roomFaces: ReadonlySet<number>): Room
   }
 }
 
+/** The index of the half-edge that leaves edge `edgeIndex` from its `a` end. */
+function halfEdgeFromA(edgeIndex: number): number {
+  return 2 * edgeIndex
+}
+
+/** The index of the half-edge that leaves edge `edgeIndex` from its `b` end. */
+function halfEdgeFromB(edgeIndex: number): number {
+  return 2 * edgeIndex + 1
+}
+
+/** The index of the half-edge that runs the other way along the same edge. */
+function twinOf(halfEdge: number): number {
+  return halfEdge % 2 === 0 ? halfEdge + 1 : halfEdge - 1
+}
+
 /** Emit two directed half-edges, one in each direction, for every undirected edge. */
 function buildHalfEdges(edges: readonly { a: number; b: number; wallId: string }[]): HalfEdge[] {
-  const halfEdges: HalfEdge[] = []
-  for (const edge of edges) {
-    halfEdges.push({ from: edge.a, to: edge.b, wallId: edge.wallId })
-    halfEdges.push({ from: edge.b, to: edge.a, wallId: edge.wallId })
-  }
-  return halfEdges
+  return edges.flatMap((edge, edgeIndex) => [
+    { index: halfEdgeFromA(edgeIndex), from: edge.a, to: edge.b, wallId: edge.wallId },
+    { index: halfEdgeFromB(edgeIndex), from: edge.b, to: edge.a, wallId: edge.wallId },
+  ])
 }
 
 /** Stable key for a directed half-edge: its ordered endpoints and host wall. */
@@ -153,10 +227,8 @@ function twinFaceIndexOf(half: HalfEdge, faceOfHalfEdge: ReadonlyMap<string, num
 }
 
 /**
- * Each junction's outgoing half-edge indices, in the order of its fan. Edge `i` makes
- * half-edge `2i` from its `a` end and `2i + 1` from its `b` end, as `buildHalfEdges` emits them.
- * The fans leave out an edge from a junction to itself, so its two half-edges are in no list and
- * no face walk steps onto them.
+ * Each junction's outgoing half-edge indices, in the order of its fan. The fans leave out an edge
+ * from a junction to itself, so its two half-edges are in no list and no face walk steps onto them.
  */
 function outgoingFromFans(graph: PlanarGraph, fans: JunctionFans): Map<number, number[]> {
   const outgoing = new Map<number, number[]>()
@@ -165,7 +237,7 @@ function outgoingFromFans(graph: PlanarGraph, fans: JunctionFans): Map<number, n
       junction,
       edgeIndexes.map((edgeIndex) => {
         const leavesFromA = (graph.edges[edgeIndex] as GraphEdge).a === junction
-        return leavesFromA ? 2 * edgeIndex : 2 * edgeIndex + 1
+        return leavesFromA ? halfEdgeFromA(edgeIndex) : halfEdgeFromB(edgeIndex)
       }),
     )
   }
@@ -260,8 +332,8 @@ interface BoundaryCorner {
    * shared (a kept room face) or perimeter (the exterior face), per ADR-0129.
    */
   twinFaceIndex: number
-  /** The half-edge that leaves this corner along the outline. */
-  halfEdge: HalfEdge
+  /** The index of the half-edge that leaves this corner along the outline. */
+  halfEdge: number
 }
 
 /** Read-only inputs shared while building one face's boundary. */
@@ -280,8 +352,8 @@ interface FaceBoundary {
   twinFaceIndices: number[]
   /** Sorted, unique ids of the walls that enclose the face. */
   wallIds: string[]
-  /** The half-edges that leave the corners of `polygon`, in step with it. */
-  outline: HalfEdge[]
+  /** The indexes of the half-edges that leave the corners of `polygon`, in step with it. */
+  outline: number[]
 }
 
 /**
@@ -301,7 +373,7 @@ function faceBoundary(
   const polygon: Point[] = []
   const edgeOffsets: number[] = []
   const twinFaceIndices: number[] = []
-  const outline: HalfEdge[] = []
+  const outline: number[] = []
   for (const corner of corners) {
     const vertex = vertices[corner.vertexIndex]
     // Skipping a vertex also skips its paired offset, twin face, and half-edge,
@@ -326,7 +398,7 @@ function toBoundaryCorners(face: readonly HalfEdge[], context: BoundaryContext):
       vertexIndex: half.from,
       halfThickness: thickness / 2,
       twinFaceIndex: twinFaceIndexOf(half, context.faceOfHalfEdge),
-      halfEdge: half,
+      halfEdge: half.index,
     }
   })
 }
