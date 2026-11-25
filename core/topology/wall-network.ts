@@ -89,13 +89,13 @@ export function deriveWallNetwork(
   const graph = buildWallGraph(
     walls.map((wall) => ({ ...wall, start: pathStart(wall.path), end: pathEnd(wall.path) })),
   )
+  const thickness = new Map(resolved.map((wall) => [wall.id, wall.thickness]))
   const network: WallNetwork = {
     walls: resolved,
-    thickness: new Map(resolved.map((wall) => [wall.id, wall.thickness])),
+    thickness,
     junctions: graph.vertices,
     edges: networkEdgesOf(graph),
   }
-  const thicknessByWallId = new Map(walls.map((wall) => [wall.id, effectiveWallThickness(wall)]))
-  roomsByNetwork.set(network, roomsOfGraph(graph, thicknessByWallId))
+  roomsByNetwork.set(network, roomsOfGraph(graph, network.thickness))
   return network
 }
