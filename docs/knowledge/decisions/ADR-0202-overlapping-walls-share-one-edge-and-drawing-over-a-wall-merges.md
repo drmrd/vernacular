@@ -91,6 +91,12 @@ uses that wall's thickness. [Issue #681](https://github.com/drmrd/vernacular/iss
 10. One kernel function computes the parts. The handler calls it, and the wall tool calls it for the
     preview, so the user sees what will be added before the click.
 
+For a straight wall draw, the first wall supplies the derived line used to test overlap on each
+shared stretch. Clipping preserves the stretch's original extent along the wall at its saved
+endpoints. If two continuing stretches share a saved endpoint and both qualify as overlaps, they
+cover the draw continuously through that endpoint. A positive gap between saved endpoints stays
+uncovered even if the graph registers them as one junction.
+
 ### Moving, pasting, and dragging walls
 
 Moving a wall, pasting one, or dragging an endpoint can also produce an overlap. The same ownership
