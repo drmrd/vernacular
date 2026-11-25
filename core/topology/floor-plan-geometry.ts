@@ -145,20 +145,25 @@ export function deriveFloorPlanGeometry(
  */
 export function createPlanGeometryDeriver(): (floor: Floor) => FloorPlanGeometry {
   const geometryByFloor = new WeakMap<Floor, FloorPlanGeometry>()
-  const spansByNetwork = new WeakMap<
-    WallNetwork,
-    { readonly openings: readonly Opening[]; readonly spans: readonly OpeningSpan[] }
-  >()
+  const spansByNetwork = new WeakMap<WallNetwork, WeakMap<readonly Opening[], OpeningSpan[]>>()
+  const spansFor = (network: WallNetwork, openings: readonly Opening[]): OpeningSpan[] => {
+    let spansByOpenings = spansByNetwork.get(network)
+    if (spansByOpenings === undefined) {
+      spansByOpenings = new WeakMap()
+      spansByNetwork.set(network, spansByOpenings)
+    }
+    let spans = spansByOpenings.get(openings)
+    if (spans === undefined) {
+      spans = deriveOpeningSpans(network, openings)
+      spansByOpenings.set(openings, spans)
+    }
+    return spans
+  }
   return (floor) => {
     const kept = geometryByFloor.get(floor)
     if (kept !== undefined) return kept
     const network = wallNetworkFor(floor.walls)
-    let spans = spansByNetwork.get(network)
-    if (spans?.openings !== floor.openings) {
-      spans = { openings: floor.openings, spans: deriveOpeningSpans(network, floor.openings) }
-      spansByNetwork.set(network, spans)
-    }
-    const geometry = geometryOf(floor, network, spans.spans)
+    const geometry = geometryOf(floor, network, spansFor(network, floor.openings))
     geometryByFloor.set(floor, geometry)
     return geometry
   }
