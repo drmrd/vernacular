@@ -134,8 +134,9 @@ function openingNodesFor(
  * are all unchanged. Keying on `floor.walls` lets an edit that yields a new
  * floor with the same walls (an opening edit) reuse the rooms, while an
  * override edit or a ceiling height change still rebuilds them. A miss reads the
- * rooms of the floor's plan geometry. Module-scope so
- * the deriver closure stays under its line cap, like `openingNodesFor`.
+ * rooms of the floor's plan geometry. A hit can ignore `geometry`, because those
+ * rooms depend only on `floor.walls`, the cache key. Module-scope so the deriver
+ * closure stays under its line cap, like `openingNodesFor`.
  */
 function roomNodesFor(
   roomCache: WeakMap<readonly Wall[], CachedRoomNodes>,
