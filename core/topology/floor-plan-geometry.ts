@@ -1,6 +1,6 @@
-import { distance } from '../geometry/point'
 import { pathLength, pointAlong } from '../geometry/wall-path'
-import type { Floor, Opening, Point } from '../model/types'
+import type { Floor, Opening } from '../model/types'
+import { distanceAlongEdge } from './opening-edge'
 import {
   isLoopEdge,
   type PlanRoom,
@@ -70,7 +70,13 @@ function setAsideOf(network: WallNetwork): SetAside {
   }
 }
 
-function edgeHoldingCenter(network: WallNetwork, opening: Opening) {
+interface CenterOnEdge {
+  readonly edge: NetworkEdge
+  readonly alongMm: number
+  readonly width: number
+}
+
+function edgeHoldingCenter(network: WallNetwork, opening: Opening): CenterOnEdge | undefined {
   const wall = network.walls.find((candidate) => candidate.id === opening.hostWallId)
   if (wall === undefined) return undefined
   const wallLength = pathLength(wall.path)
@@ -82,12 +88,11 @@ function edgeHoldingCenter(network: WallNetwork, opening: Opening) {
   )
   for (const edge of network.edges) {
     if (edge.wallId !== opening.hostWallId) continue
-    const from = network.junctions[edge.from] as Point
-    const to = network.junctions[edge.to] as Point
-    const length = distance(from, to)
-    const alongMm =
-      ((center.x - from.x) * (to.x - from.x) + (center.y - from.y) * (to.y - from.y)) / length
-    if (length > 0 && alongMm >= 0 && alongMm <= length) return { edge, alongMm, width }
+    const from = network.junctions[edge.from]
+    const to = network.junctions[edge.to]
+    if (from === undefined || to === undefined) continue
+    const alongMm = distanceAlongEdge(center, from, to)
+    if (alongMm !== undefined) return { edge, alongMm, width }
   }
   return undefined
 }
