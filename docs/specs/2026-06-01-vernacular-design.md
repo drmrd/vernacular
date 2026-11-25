@@ -177,6 +177,8 @@ my-house/
   .house-autosave/        ← sidecar snapshots (gitignored by convention)
 ```
 
+> Amended on 2026-11-22 (ADR-0214). The document file is `vernacular.json` (ADR-0047). A project folder can also hold a second document file, `vernacular.format-<N>.json`. A build writes it when it finds a `vernacular.json` that a newer build saved, so that neither file is lost. The format specification has the rule in sections 2.2 and 7.
+
 For sharing/export: the folder is zipped as `.house.zip`. Re-opening a `.house.zip` unpacks to a working folder (or to OPFS where filesystem access is limited).
 
 **Reasons for this shape:**

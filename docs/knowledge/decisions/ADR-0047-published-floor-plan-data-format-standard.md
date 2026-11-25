@@ -29,6 +29,7 @@ related:
     decisions/ADR-0046-period-style-and-room-purpose-registries,
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0178-schema-version-and-revision,
+    decisions/ADR-0214-a-save-keeps-a-newer-stored-file-and-writes-beside-it,
   ]
 sourceFiles:
   [
@@ -36,7 +37,7 @@ sourceFiles:
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-22
 ---
 
 # ADR-0047: Published floor-plan data format standard (Vernacular Floor Plan Format)
@@ -90,6 +91,11 @@ normatively in the companion specification. The decisions that shape it:
    the current `project.json` and `.house.zip`. Because the project is pre-1.0 (a 0.x series),
    this is a clean break with no compatibility shim: the old names are deprecated and the change
    is recorded in the release notes.
+
+   > Amended by [[ADR-0214-a-save-keeps-a-newer-stored-file-and-writes-beside-it]] on 2026-11-22. `vernacular.json` stays
+   > the one canonical Document of a project. A folder can also hold second document files under the
+   > reserved names `vernacular.format-<N>.json`. Each is a complete Document that a build at an
+   > older schema version wrote beside a newer `vernacular.json`. No archive carries one.
 
 2. **Generate the JSON Schema from the TypeScript types.** `core/model/` stays the single source
    of truth. A build step generates `schema/<version>/vernacular.schema.json`, committed as the

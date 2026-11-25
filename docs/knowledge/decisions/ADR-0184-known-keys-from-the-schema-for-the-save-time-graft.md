@@ -9,6 +9,7 @@ related:
     decisions/ADR-0178-schema-version-and-revision,
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0047-published-floor-plan-data-format-standard,
+    decisions/ADR-0214-a-save-keeps-a-newer-stored-file-and-writes-beside-it,
   ]
 sourceFiles:
   [
@@ -22,7 +23,7 @@ sourceFiles:
     core/format/codec/read-stored-document.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-22
 ---
 
 # ADR-0184: The save-time graft reads a table of known keys generated from the schema
@@ -38,6 +39,9 @@ does not know it at that place.
 > Amended on 2026-11-17 (issue #734). The previous file is brought current on its schema version
 > and on every registry version before the graft. A file at the current schema version can still
 > be behind on a registry, and a key that a registry migration removed came back through the graft.
+
+> Amended on 2026-11-22 (issues #741 and #842, ADR-0214). The record now states the three cases in
+> which a save makes no graft and what the store does in each.
 
 ## Context
 
@@ -76,6 +80,14 @@ no graft and saved the loss.
   registry migration removed or renamed does not return through the graft (#734).
 - Command handlers copy by spread. A test runs every registered command against a document that
   carries `extensions` and an unknown key on every object, and both must survive.
+- A save makes no graft in three cases, and in none of them does it lose the stored bytes. First,
+  the stored `vernacular.json` is at a newer schema version than the build: the store leaves it as
+  it is, writes the document to the second document file `vernacular.format-<N>.json`, and grafts
+  onto the earlier content of that file (ADR-0214). Second, the migration of the previous file
+  throws. Third, the previous file does not parse to a project. In the second and third cases the
+  store copies the previous bytes to `.house-backups/` under the never-replace rule, writes the
+  document with no graft, and gives the reason in the save report. A higher `schemaRevision` at
+  the same `schemaVersion` is none of these cases, because the graft keeps what that file added.
 
 ## Consequences
 

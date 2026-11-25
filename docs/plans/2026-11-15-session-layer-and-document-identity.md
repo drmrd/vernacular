@@ -170,24 +170,32 @@ differently.
     after the save and coalesces to one per 2 seconds.
 22. **Wording the spec leaves open:**
 
-    | Text                            | Wording                                                                                                                 |
-    | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-    | Empty Projects page             | "There are no saved projects yet."                                                                                      |
-    | Last change                     | "Changed " and `Intl.DateTimeFormat` with `dateStyle: 'medium'`, `timeStyle: 'short'`                                   |
-    | Floors                          | "1 floor", "&lt;n&gt; floors"                                                                                           |
-    | No name from a best-effort read | "Unnamed project"                                                                                                       |
-    | A repaired copy                 | "&lt;name&gt; (repaired copy)"                                                                                          |
-    | An unchecked copy file          | `<slug>-unchecked-copy.building`                                                                                        |
-    | The general repair              | "It removes 3 fields that the format does not define." ("1 field")                                                      |
-    | Import with missing assets      | "The file did not include 2 of the assets this project uses. They show as missing."                                     |
-    | Export with missing assets      | "The export does not include 1 asset, because this browser does not have it."                                           |
-    | Saved with a fault              | "This project has a fault in its data. A copy of its last sound state is kept. You can export it."                      |
-    | Saved by a newer build          | "A newer version of Vernacular saved this project. The data it added is kept."                                          |
-    | Save failed during a switch     | "The changes could not be saved, so the project stays open."                                                            |
-    | Unknown id                      | "This project is not stored in this browser."                                                                           |
-    | Folder with no project          | "This folder holds no Vernacular project."                                                                              |
-    | Temporary storage banner        | "This browser is not keeping your projects. They last until this tab closes. To keep one, export it, or open a folder." |
-    | Save status, temporary storage  | "In this tab only"                                                                                                      |
+    | Text                                   | Wording                                                                                                                                                                                                        |
+    | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | Empty Projects page                    | "There are no saved projects yet."                                                                                                                                                                             |
+    | Last change                            | "Changed " and `Intl.DateTimeFormat` with `dateStyle: 'medium'`, `timeStyle: 'short'`                                                                                                                          |
+    | Floors                                 | "1 floor", "&lt;n&gt; floors"                                                                                                                                                                                  |
+    | No name from a best-effort read        | "Unnamed project"                                                                                                                                                                                              |
+    | A repaired copy                        | "&lt;name&gt; (repaired copy)"                                                                                                                                                                                 |
+    | An unchecked copy file                 | `<slug>-unchecked-copy.building`                                                                                                                                                                               |
+    | The general repair                     | "It removes 3 fields that the format does not define." ("1 field")                                                                                                                                             |
+    | Import with missing assets             | "The file did not include 2 of the assets this project uses. They show as missing."                                                                                                                            |
+    | Export with missing assets             | "The export does not include 1 asset, because this browser does not have it."                                                                                                                                  |
+    | Saved with a fault                     | "This project has a fault in its data. A copy of its last sound state is kept. You can export it."                                                                                                             |
+    | Saved by a newer build                 | "A newer version of Vernacular saved this project. The data it added is kept."                                                                                                                                 |
+    | Save failed during a switch            | "The changes could not be saved, so the project stays open."                                                                                                                                                   |
+    | Unknown id                             | "This project is not stored in this browser."                                                                                                                                                                  |
+    | Folder with no project                 | "This folder holds no Vernacular project."                                                                                                                                                                     |
+    | Temporary storage banner               | "This browser is not keeping your projects. They last until this tab closes. To keep one, export it, or open a folder."                                                                                        |
+    | Save status, temporary storage         | "In this tab only"                                                                                                                                                                                             |
+    | Saved beside a newer file              | "A newer version of Vernacular saved this project's plan file, and this version cannot read it. Your changes are saved in a second plan file. You can choose between the two plan files on the Projects page." |
+    | Save status, second file               | "Saved in a second plan file"                                                                                                                                                                                  |
+    | An unreadable stored file was replaced | "The stored plan file could not be read. A copy of it is kept with the project's backups."                                                                                                                     |
+    | Card state line, second file           | "This project has a second plan file."                                                                                                                                                                         |
+    | Card action, second file               | "Choose a plan file"                                                                                                                                                                                           |
+    | A project made from a second file      | "&lt;name&gt; (second plan file)"                                                                                                                                                                              |
+    | The second file's name                 | `vernacular.format-<N>.json`                                                                                                                                                                                   |
+    | Two readable plan files, no dialog     | "This project has two plan files. Open it from the Projects page to choose one."                                                                                                                               |
 
     The banner's folder clause shows only where the browser offers folder access.
 
