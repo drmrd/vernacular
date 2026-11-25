@@ -38,7 +38,7 @@ export const ASSET_KINDS: readonly AssetKind[] = Object.freeze([
   'preview-only',
 ])
 
-const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
+export const PACK_FORMAT_VERSIONS = Object.freeze([1, 2] as const)
 
 export interface PackValidationResult {
   valid: boolean
@@ -210,7 +210,10 @@ function validateAssets(assets: unknown, formatVersion: unknown, errors: string[
 }
 
 function isKnownFormatVersion(formatVersion: unknown): boolean {
-  return typeof formatVersion === 'number' && PACK_FORMAT_VERSIONS.includes(formatVersion)
+  return (
+    typeof formatVersion === 'number' &&
+    (PACK_FORMAT_VERSIONS as readonly number[]).includes(formatVersion)
+  )
 }
 
 function validateFormatVersion(formatVersion: unknown, errors: string[]): void {
