@@ -140,3 +140,18 @@ it('keeps the uncovered parts of a wall in drawing order and reports any covered
     expect.soft(drawnWallNote(walls, drawn), name).toBe(note)
   }
 })
+
+it('reports full coverage when a snapped retrace leaves no distinct endpoints', () => {
+  const existing = horizontal(2500, 6250, -1900)
+  const walls = [createWall(existing.start, existing.end, { id: 'existing-wall' })]
+  const retrace = { start: { x: 2500, y: -1899.9999999999998 }, end: existing.end }
+  // This is the next representable coordinate below the existing wall's start.
+  const shortExtension = horizontal(2499.9999999999995, 6250, -1900)
+
+  expect.soft(uncoveredParts(walls, retrace)).toEqual([])
+  expect.soft(drawnWallNote(walls, retrace)).toBe(coveredNote)
+  expect
+    .soft(uncoveredParts(walls, shortExtension))
+    .toEqual([horizontal(shortExtension.start.x, existing.start.x, -1900)])
+  expect(drawnWallNote(walls, shortExtension)).toBe(partialNote)
+})

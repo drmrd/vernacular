@@ -15,6 +15,7 @@ import {
   LENGTH_TOLERANCE_MM,
   MIN_FACE_AREA_MM2,
   OUTLINE_TOLERANCE_MM,
+  pointsCoincide,
   REACH_RAY_PARALLEL_LIMIT,
   ROOM_RING_TOLERANCE_MM,
   SMALLEST_IMPERIAL_DISPLAY_STEP_MM,
@@ -101,6 +102,13 @@ const todaysEntries = [
 describe("today's geometric constants in the tolerance module", () => {
   it('sets the join distance to 1 mm', () => {
     expect(JOIN_DISTANCE_MM).toBe(1)
+  })
+
+  it('treats points as coincident up to and including one millimeter apart', () => {
+    const point = { x: 0, y: 0 }
+
+    expect(pointsCoincide(point, { x: 1, y: 0 })).toBe(true)
+    expect(pointsCoincide(point, { x: 1 + Number.EPSILON, y: 0 })).toBe(false)
   })
 
   it('ties the graph merge distance, the derivation length, and the room ring to the join distance', () => {
