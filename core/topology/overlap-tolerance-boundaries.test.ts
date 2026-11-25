@@ -72,3 +72,36 @@ it('honors the same overlap boundaries in either direction and preserves open ga
     expect.soft(drawnWallNote(walls, drawn), label).toBe(note)
   }
 })
+
+it('preserves physical wall coverage across drawing order and direction at numeric boundaries', () => {
+  const level = horizontal(0, 1.625)
+  const tilted = { start: { x: 0.625, y: -0.25 }, end: { x: 2.125, y: 0.375 } }
+
+  for (const { existing, drawn, label } of [
+    { existing: level, drawn: tilted, label: 'tilted wall drawn second' },
+    { existing: tilted, drawn: level, label: 'level wall drawn second' },
+  ]) {
+    const walls = [createWall(existing.start, existing.end, { id: 'existing' })]
+
+    expect.soft(uncoveredParts(walls, drawn), label).toEqual([drawn])
+    expect.soft(drawnWallNote(walls, drawn), label).toBeUndefined()
+  }
+
+  const diagonal = createWall({ x: 0, y: 0 }, { x: 99, y: 20 }, { id: 'diagonal' })
+  const oneMillimeterOff = { start: { x: 14.75, y: 4 }, end: { x: 39.5, y: 9 } }
+
+  expect.soft(uncoveredParts([diagonal], oneMillimeterOff)).toEqual([])
+  expect.soft(drawnWallNote([diagonal], oneMillimeterOff)).toBe('This wall was already there.')
+
+  const nextCoordinate = 1 + Number.EPSILON
+  const covering = horizontal(100, nextCoordinate)
+  const walls = [createWall(covering.start, covering.end, { id: 'covering' })]
+
+  for (const { drawn, exposed, label } of [
+    { drawn: horizontal(100, 1), exposed: horizontal(nextCoordinate, 1), label: 'uncovered tail' },
+    { drawn: horizontal(1, 100), exposed: horizontal(1, nextCoordinate), label: 'uncovered head' },
+  ]) {
+    expect.soft(uncoveredParts(walls, drawn), label).toEqual([exposed])
+    expect.soft(drawnWallNote(walls, drawn), label).toBe('Part of this wall was already there.')
+  }
+})
