@@ -16,10 +16,11 @@ import {
 import { drawDimension, type DrawableDimension } from './draw-dimension'
 import { drawFurniture, type DrawableFurniture } from './draw-furniture'
 import { drawGhost } from './draw-ghost'
-import { drawOpening, type DrawableOpening } from './draw-opening'
+import { drawOpening, type DrawableOpening, type JambThickness } from './draw-opening'
 import { drawStair } from './draw-stair'
 import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
+import { jambThicknessFor } from './opening-jamb-thickness'
 import { openingCorners, openingJambs } from './opening-geometry'
 import { openingSpansAlong, type HostWallRun } from './opening-spans'
 import type { Bounds } from './fit'
@@ -191,7 +192,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   // The wall network is resolved once and shared by the two wall passes below.
   // Both passes read the same mitred, opening-broken geometry, so building the
   // graph twice would cost the same work and risk the passes disagreeing.
-  const wallEdges = drawableWallEdges(options)
+  const { wallEdges, jambThickness } = drawableWallEdges(options)
   // Underlays paint first so they sit beneath the grid and the plan.
   drawUnderlays(ctx, options.underlays, options.viewport)
   if (options.grid) drawGrid(ctx, options)
@@ -205,7 +206,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   drawSurfacePaintLayer(ctx, options)
   drawWallFaces(ctx, wallEdges, options)
   // Openings break the wall stroke, so they paint after the walls.
-  drawOpenings(ctx, options)
+  drawOpenings(ctx, options, jambThickness)
   // Furniture sits above the wall/opening layer but below the interaction overlays.
   drawFurnitureLayer(ctx, options)
   if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options)
@@ -279,10 +280,14 @@ function strokeHoverRing(ctx: PlanDrawingContext, ring: Point[], options: DrawPl
 }
 
 /** Paint each opening's plan symbol over the wall stroke it breaks. */
-function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+function drawOpenings(
+  ctx: PlanDrawingContext,
+  options: DrawPlanOptions,
+  jambThickness: JambThickness,
+): void {
   const palette = paletteOf(options)
   for (const opening of options.openings ?? []) {
-    drawOpening(ctx, opening, { viewport: options.viewport, palette })
+    drawOpening(ctx, opening, { viewport: options.viewport, palette, jambThickness })
   }
 }
 
@@ -409,7 +414,7 @@ interface DrawableWallEdge {
 }
 
 /** The mitred, opening-broken symbology of every wall edge on the plan. */
-function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
+function drawableWallEdges(options: DrawPlanOptions) {
   const graph = (options.wallGraphFor ?? planWallGraph)(options.walls)
   const wallByEdgeId = new Map(options.walls.map((wall) => [strippedWallId(wall), wall]))
   // The graph comes from `options.wallGraphFor` when given, else `planWallGraph` builds it for
@@ -421,7 +426,7 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
   })
   const footprints = wallFootprints(graph, thicknessByEdge)
   const openings = openingNodesOf(options)
-  return graph.edges.map((edge, index) => {
+  const wallEdges: DrawableWallEdge[] = graph.edges.map((edge, index) => {
     const wall = wallByEdgeId.get(edge.wallId)
     const selected = wall !== undefined && options.selectedIds.has(wall.id)
     const corners = footprints[index]
@@ -437,6 +442,8 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
     const gaps = openingSpansAlong(centerline, openings)
     return { stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
   })
+  const jambThickness = jambThicknessFor(graph, thicknessByEdge)
+  return { wallEdges, jambThickness }
 }
 
 /** The scene nodes behind the plan's drawable openings, the form both wall layers project onto their walls. */
