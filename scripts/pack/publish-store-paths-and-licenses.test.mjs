@@ -33,6 +33,7 @@ async function checkPackIdPortability(fixture) {
 async function checkDirectoryAliases(fixture) {
   const aliases = [
     ['case', 'parlor-furniture', 'Parlor-furniture'],
+    ['case folding with long s', 'store', '\u017Ftore'],
     ['Unicode normalization', 'café-furniture', 'cafe\u0301-furniture'],
   ]
   for (const [label, original, alias] of aliases) {

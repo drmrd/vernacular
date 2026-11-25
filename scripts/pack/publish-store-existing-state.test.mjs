@@ -105,17 +105,24 @@ async function checkRetryCatalog(fixture, published) {
     ['item count', { itemCount: entry.itemCount + 1 }],
     ['pack format', { formatVersion: entry.formatVersion + 1 }],
   ]
-  for (const [label, change] of changes) {
-    const store = memoryStore(published)
-    const altered = { ...catalog, packs: [{ ...entry, ...change }] }
-    const bytes = Buffer.from(JSON.stringify(altered))
-    store.files.set(CATALOG_FILE, Buffer.from(bytes))
+  for (const [field, change] of changes) {
+    const inconsistent = { ...entry, ...change }
+    for (const [order, packs] of [
+      ['single row', [inconsistent]],
+      ['before a matching row', [inconsistent, entry]],
+      ['after a matching row', [entry, inconsistent]],
+    ]) {
+      const label = `inconsistent ${field} in the catalog (${order})`
+      const store = memoryStore(published)
+      const bytes = Buffer.from(JSON.stringify({ ...catalog, packs }))
+      store.files.set(CATALOG_FILE, Buffer.from(bytes))
 
-    await expectRefusal(store, () => publish(store, fixture), {
-      label: `inconsistent ${label} in the catalog`,
-      reason: /catalog|manifest|pack|length|count|format/i,
-    })
-    expect.soft(store.files.get(CATALOG_FILE)?.equals(bytes), label).toBe(true)
+      await expectRefusal(store, () => publish(store, fixture), {
+        label,
+        reason: /catalog|manifest|pack|length|count|format/i,
+      })
+      expect.soft(store.files.get(CATALOG_FILE)?.equals(bytes), label).toBe(true)
+    }
   }
 }
 
