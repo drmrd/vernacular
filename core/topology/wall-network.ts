@@ -98,10 +98,18 @@ function networkEdgesOf(graph: PlanarGraph): NetworkEdge[] {
   }))
 }
 
+let networkBuilds = 0
+
+/** How many times `deriveWallNetwork` has run; a memo hit runs none. */
+export function wallNetworkBuildCount(): number {
+  return networkBuilds
+}
+
 export function deriveWallNetwork(
   walls: readonly NetworkWall[],
   registries?: PlanGeometryRegistries,
 ): WallNetwork {
+  networkBuilds += 1
   const resolved = walls.map((wall) => ({
     ...wall,
     thickness: effectiveWallThickness(wall, registries?.constructionProfiles),
