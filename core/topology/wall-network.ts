@@ -46,7 +46,11 @@ export interface WallNetwork {
   readonly junctions: readonly Point[]
   /** The pieces of the walls between junctions, in the order of `buildWallGraph`. */
   readonly edges: readonly NetworkEdge[]
-  /** Each junction's edge indexes, counterclockwise by leaving angle; one entry per junction with an edge. */
+  /**
+   * Each junction's edge indexes, counterclockwise by leaving angle; one entry per junction with an
+   * edge. An edge from a junction to itself is left out, so a junction whose only other edge is
+   * such a loop gets an empty fan.
+   */
   readonly fans: JunctionFans
   /** The plan-space footprint of each edge, in the order of `edges`. */
   readonly footprints: readonly WallFootprint[]

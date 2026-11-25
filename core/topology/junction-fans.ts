@@ -3,7 +3,10 @@ import type { Point } from '../model/types'
 
 import type { GraphEdge, PlanarGraph } from './wall-graph'
 
-/** Junction to its incident edge indexes, counterclockwise by leaving angle. */
+/**
+ * Junction to its incident edge indexes, counterclockwise by leaving angle. An edge from a
+ * junction to itself is left out.
+ */
 export type JunctionFans = ReadonlyMap<number, readonly number[]>
 
 /** Optional input of the functions that read junction fans: fans already ordered counterclockwise. */
@@ -18,7 +21,11 @@ export function junctionFanBuildCount(): number {
   return fanBuilds
 }
 
-/** Each junction's incident edge indexes, counterclockwise by leaving angle. */
+/**
+ * Each junction's incident edge indexes, counterclockwise by leaving angle. An edge from a
+ * junction to itself is left out, so a junction whose only other edge is such a loop gets an
+ * empty fan.
+ */
 export function junctionFans(graph: PlanarGraph): JunctionFans {
   fanBuilds += 1
   const fans = new Map<number, readonly number[]>()
@@ -29,7 +36,10 @@ export function junctionFans(graph: PlanarGraph): JunctionFans {
   return fans
 }
 
-/** Maps each graph vertex to the indices of the edges incident to it. */
+/**
+ * Maps each graph vertex to the indices of the edges incident to it. An edge from a junction to
+ * itself is listed once, unlike in the fans, which leave it out.
+ */
 export function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
   const incidence = new Map<number, number[]>()
   for (const [index, edge] of graph.edges.entries()) {
@@ -40,7 +50,7 @@ export function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
 }
 
 /** True for an edge whose two ends merged into one junction. */
-export function isSelfLoop(graph: PlanarGraph, edgeIndex: number): boolean {
+function isSelfLoop(graph: PlanarGraph, edgeIndex: number): boolean {
   const edge = graph.edges[edgeIndex] as GraphEdge
   return edge.a === edge.b
 }

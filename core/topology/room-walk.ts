@@ -182,6 +182,8 @@ function twinFaceIndexOf(half: HalfEdge, faceOfHalfEdge: ReadonlyMap<string, num
 /**
  * Each junction's outgoing half-edge indices, in the order of its fan. Edge `i` makes
  * half-edge `2i` from its `a` end and `2i + 1` from its `b` end, as `buildHalfEdges` emits them.
+ * The fans leave out an edge from a junction to itself, so its two half-edges are in no list and
+ * no face walk steps onto them.
  */
 function outgoingFromFans(graph: PlanarGraph, fans: JunctionFans): Map<number, number[]> {
   const outgoing = new Map<number, number[]>()
@@ -206,7 +208,8 @@ interface FaceWalk {
 /**
  * Trace every face of the half-edge graph. From each unvisited half-edge, follow
  * the clockwise-previous-of-the-twin successor until the walk returns to its
- * start; each closed walk is one face.
+ * start; each closed walk is one face. A half-edge from a junction to itself starts no walk: it
+ * would trace a face of one point with no area, and `nextHalfEdge` finds no twin for it.
  */
 function enumerateFaces(
   halfEdges: readonly HalfEdge[],
@@ -217,10 +220,15 @@ function enumerateFaces(
   const faces: HalfEdge[][] = []
 
   for (const start of halfEdges.keys()) {
-    if (visited.has(start)) continue
+    if (visited.has(start) || isFromJunctionToItself(halfEdges[start])) continue
     faces.push(traceFace(start, walk, visited))
   }
   return faces
+}
+
+/** True for a half-edge whose two ends are one junction. */
+function isFromJunctionToItself(half: HalfEdge | undefined): boolean {
+  return half !== undefined && half.from === half.to
 }
 
 /** Walk one face starting from a half-edge index, marking each visited half-edge. */
@@ -239,7 +247,9 @@ function traceFace(start: number, walk: FaceWalk, visited: Set<number>): HalfEdg
 
 /**
  * The successor of a half-edge in a face walk: the half-edge immediately before
- * this one's twin, cyclically, in the angle-sorted outgoing list at the head.
+ * this one's twin, cyclically, in the angle-sorted outgoing list at the head. A half-edge from a
+ * junction to itself has no twin in that list, so it is its own successor; `enumerateFaces` never
+ * starts a walk there.
  */
 function nextHalfEdge(
   index: number,

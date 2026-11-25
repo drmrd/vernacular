@@ -15,7 +15,10 @@ export type { NetworkEdge, NetworkWall, PlanGeometryRegistries, WallNetwork }
 
 /** What the plan geometry leaves out of the rooms, by wall or record id. */
 export interface SetAside {
-  /** Walls with no edge in the network because their two ends are within the join distance. */
+  /**
+   * Walls with no edge that reaches another junction, because their two ends are within the join
+   * distance or merged into one junction.
+   */
   readonly zeroLengthWallIds: readonly string[]
   readonly coveredWallIds: readonly string[]
   readonly unboundRecordIds: readonly string[]
@@ -31,12 +34,12 @@ export interface FloorPlanGeometry {
 }
 
 function setAsideOf(network: WallNetwork): SetAside {
-  const wallIdsWithEdges = new Set(
+  const wallIdsReachingAnotherJunction = new Set(
     network.edges.filter((edge) => edge.from !== edge.to).map((edge) => edge.wallId),
   )
   return {
     zeroLengthWallIds: network.walls
-      .filter((wall) => !wallIdsWithEdges.has(wall.id))
+      .filter((wall) => !wallIdsReachingAnotherJunction.has(wall.id))
       .map((wall) => wall.id),
     coveredWallIds: [],
     unboundRecordIds: [],
