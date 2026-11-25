@@ -4,7 +4,7 @@ import { deriveFloorPlanGeometry } from './floor-plan-geometry'
 import { legacyDeriveRooms } from './legacy-room-walk-test-support'
 import { planArbitrary, PROPERTY_RUNS } from './plan-arbitraries-test-support'
 import { fixtureFloors } from './plan-geometry-fixture-floors-test-support'
-import { floorOf } from './plan-geometry-test-support'
+import { floorOf, twoRoomWalls } from './plan-geometry-test-support'
 import { deriveRooms } from './rooms'
 import type { Room } from './rooms'
 import type { Wall } from '../model/types'
@@ -43,6 +43,20 @@ describe('the rooms of the plan geometry', () => {
     it("gives the rooms of today's walk through deriveRooms on every fixture floor", () => {
       expect(deriveRooms(walls).map(roomFields)).toEqual(legacyDeriveRooms(walls).map(roomFields))
     })
+  })
+
+  it('returns a new array from each call of deriveRooms', () => {
+    const walls = twoRoomWalls()
+    const first = deriveRooms(walls)
+    const second = deriveRooms(walls)
+    const whole = second.map(roomFields)
+
+    first.splice(0)
+
+    expect(first).not.toBe(second)
+    expect(second.map(roomFields)).toEqual(whole)
+    expect(deriveRooms(walls).map(roomFields)).toEqual(whole)
+    expect(whole.length).toBeGreaterThan(0)
   })
 
   it('finds at least one room, one hole, and one profile wall among the fixture floors', () => {
