@@ -3,7 +3,7 @@ import { MIN_FACE_AREA_MM2 } from '../geometry/tolerance'
 import type { Point } from '../model/types'
 import { ROOM_ID_PREFIX, roomKey } from './room-key'
 import type { Room } from './rooms'
-import type { PlanarGraph } from './wall-graph'
+import type { GraphEdge, PlanarGraph } from './wall-graph'
 
 /**
  * Wall thickness, in millimeters, assumed for a face edge whose host wall is
@@ -30,9 +30,10 @@ interface HalfEdge {
 export function roomsOfGraph(
   graph: PlanarGraph,
   thicknessByWallId: ReadonlyMap<string, number>,
+  fans: ReadonlyMap<number, readonly number[]>,
 ): Room[] {
   const halfEdges = buildHalfEdges(graph.edges)
-  const faces = enumerateFaces(halfEdges, graph.vertices)
+  const faces = enumerateFaces(halfEdges, outgoingFromFans(graph, fans))
   const faceOfHalfEdge = facesByHalfEdge(faces)
 
   const boundaries = faces.map((face) =>
@@ -178,40 +179,24 @@ function twinFaceIndexOf(half: HalfEdge, faceOfHalfEdge: ReadonlyMap<string, num
 }
 
 /**
- * Group half-edge indices by their tail vertex, each group sorted ascending by
- * the half-edge's outgoing direction angle.
+ * Each junction's outgoing half-edge indices, in the order of its fan. Edge `i` makes
+ * half-edge `2i` from its `a` end and `2i + 1` from its `b` end, as `buildHalfEdges` emits them.
  */
-function outgoingByVertex(
-  halfEdges: readonly HalfEdge[],
-  vertices: readonly Point[],
+function outgoingFromFans(
+  graph: PlanarGraph,
+  fans: ReadonlyMap<number, readonly number[]>,
 ): Map<number, number[]> {
   const outgoing = new Map<number, number[]>()
-  for (const [index, half] of halfEdges.entries()) {
-    const group = outgoing.get(half.from) ?? []
-    group.push(index)
-    outgoing.set(half.from, group)
-  }
-  for (const group of outgoing.values()) {
-    group.sort(
-      (left, right) =>
-        halfEdgeAngle(halfEdges, left, vertices) - halfEdgeAngle(halfEdges, right, vertices),
+  for (const [junction, edgeIndexes] of fans) {
+    outgoing.set(
+      junction,
+      edgeIndexes.map((edgeIndex) => {
+        const leavesFromA = (graph.edges[edgeIndex] as GraphEdge).a === junction
+        return leavesFromA ? 2 * edgeIndex : 2 * edgeIndex + 1
+      }),
     )
   }
   return outgoing
-}
-
-/** Direction angle of a half-edge measured from its tail to its head. */
-function halfEdgeAngle(
-  halfEdges: readonly HalfEdge[],
-  index: number,
-  vertices: readonly Point[],
-): number {
-  const half = halfEdges[index]
-  if (half === undefined) return 0
-  const from = vertices[half.from]
-  const to = vertices[half.to]
-  if (from === undefined || to === undefined) return 0
-  return Math.atan2(to.y - from.y, to.x - from.x)
 }
 
 /** Read-only half-edge graph data shared across a single pass of face tracing. */
@@ -225,11 +210,11 @@ interface FaceWalk {
  * the clockwise-previous-of-the-twin successor until the walk returns to its
  * start; each closed walk is one face.
  */
-function enumerateFaces(halfEdges: readonly HalfEdge[], vertices: readonly Point[]): HalfEdge[][] {
-  const walk: FaceWalk = {
-    halfEdges,
-    outgoing: outgoingByVertex(halfEdges, vertices),
-  }
+function enumerateFaces(
+  halfEdges: readonly HalfEdge[],
+  outgoing: ReadonlyMap<number, number[]>,
+): HalfEdge[][] {
+  const walk: FaceWalk = { halfEdges, outgoing }
   const visited = new Set<number>()
   const faces: HalfEdge[][] = []
 
