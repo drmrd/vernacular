@@ -13,7 +13,14 @@ interface CoveredInterval {
 }
 
 export function uncoveredParts(existing: readonly Wall[], drawn: WallPart): WallPart[] {
-  if (pointsCoincide(drawn.start, drawn.end)) return [drawn]
+  return findDrawnWallCoverage(existing, drawn).parts
+}
+
+function findDrawnWallCoverage(
+  existing: readonly Wall[],
+  drawn: WallPart,
+): { parts: WallPart[]; hasCoverage: boolean } {
+  if (pointsCoincide(drawn.start, drawn.end)) return { parts: [drawn], hasCoverage: false }
   const direction = subtract(drawn.end, drawn.start)
   const squaredLength = dot(direction, direction)
   const project = (point: Point): number => dot(subtract(point, drawn.start), direction)
@@ -29,7 +36,7 @@ export function uncoveredParts(existing: readonly Wall[], drawn: WallPart): Wall
     const end = Math.min(squaredLength, Math.max(first, second))
     if (end - start > minimumOverlap) covered.push({ start, end })
   }
-  if (covered.length === 0) return [drawn]
+  if (covered.length === 0) return { parts: [drawn], hasCoverage: false }
 
   const tangent = unit(direction)
   const pointAt = (projection: number): Point =>
@@ -43,12 +50,12 @@ export function uncoveredParts(existing: readonly Wall[], drawn: WallPart): Wall
     coveredEnd = Math.max(coveredEnd, interval.end)
   }
   if (coveredEnd < squaredLength) parts.push({ start: pointAt(coveredEnd), end: drawn.end })
-  return parts
+  return { parts, hasCoverage: true }
 }
 
 export function drawnWallNote(existing: readonly Wall[], drawn: WallPart): string | undefined {
-  const parts = uncoveredParts(existing, drawn)
+  const { parts, hasCoverage } = findDrawnWallCoverage(existing, drawn)
+  if (!hasCoverage) return undefined
   if (parts.length === 0) return 'This wall was already there.'
-  if (parts[0] !== drawn) return 'Part of this wall was already there.'
-  return undefined
+  return 'Part of this wall was already there.'
 }
