@@ -178,11 +178,13 @@ async function expectRepeatablePublish(legacy, latest) {
   expectSameFiles(publishedBlobs(store), blobs)
   expect(catalogPacks(store)).toEqual(expectedEntries)
   const beforeRetry = storeSnapshot(store)
+  const writesBeforeRetry = store.writes.length
 
   await publishToStore(latest, store)
 
   expect(catalogPacks(store)).toEqual(expectedEntries)
   expectSameFiles(storeSnapshot(store), beforeRetry)
+  expect(store.writes).toHaveLength(writesBeforeRetry)
   const immutableWrites = store.writes.filter((path) => path !== CATALOG_PATH)
   expect(immutableWrites.sort()).toEqual(
     [...beforeRetry.keys()].filter((path) => path !== CATALOG_PATH).sort(),
