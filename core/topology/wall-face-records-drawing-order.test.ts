@@ -3,7 +3,6 @@ import type { Wall } from '../model/types'
 import { counterClockwiseWalls, pt, wall } from '../scene/opening-room-side-test-fixtures'
 import { deriveFloorPlanGeometry, type WallFaceRecord, type WallSide } from './floor-plan-geometry'
 import { faceOf, floorOf, SIDES, twoRoomWalls } from './plan-geometry-test-support'
-import { deriveRooms } from './rooms'
 
 const OUTER_MIN_MM = 0
 const OUTER_MAX_MM = 10000
@@ -59,33 +58,40 @@ describe('the faces of a courtyard and its outer walls that all run clockwise', 
 })
 
 describe('the faces of two walls that run between the same pair of junctions', () => {
-  it('bounds no room along two copies of one wall of a room, matching deriveRooms', () => {
+  it('bounds the room on the inside face of the earlier outside wall', () => {
     const walls = [...counterClockwiseWalls(), wall('south-copy', pt(0, 0), pt(4000, 0))]
 
     const { network, rooms } = deriveFloorPlanGeometry(floorOf(walls))
 
-    expect(rooms).toHaveLength(deriveRooms(walls).length)
-    for (const wallId of ['south', 'south-copy']) {
-      for (const side of SIDES) {
-        expect(faceOf(network, wallId, side).stretches).toEqual([
-          { fromMm: 0, toMm: 4000, roomIndex: undefined },
-        ])
-      }
+    expect(rooms).toHaveLength(1)
+    expect(faceOf(network, 'south', 'positive').stretches).toEqual([
+      { fromMm: 0, toMm: 4000, roomIndex: 0 },
+    ])
+    expect(faceOf(network, 'south', 'negative').stretches).toEqual([
+      { fromMm: 0, toMm: 4000, roomIndex: undefined },
+    ])
+    for (const side of SIDES) {
+      expect(faceOf(network, 'south-copy', side).stretches).toEqual([])
     }
   })
 
-  it('bounds no room along two copies of the wall that two rooms share', () => {
+  it('bounds distinct rooms on the two faces of the earlier partition wall', () => {
     const walls = [...twoRoomWalls(), wall('shared-copy', pt(4000, 0), pt(4000, 3000))]
 
     const { network, rooms } = deriveFloorPlanGeometry(floorOf(walls))
+    const westRoomIndex = rooms.findIndex((room) => room.wallIds.includes('west'))
+    const eastRoomIndex = rooms.findIndex((room) => room.wallIds.includes('east'))
 
-    expect(rooms).toHaveLength(deriveRooms(walls).length)
-    for (const wallId of ['shared', 'shared-copy']) {
-      for (const side of SIDES) {
-        expect(faceOf(network, wallId, side).stretches).toEqual([
-          { fromMm: 0, toMm: SHARED_WALL_LENGTH_MM, roomIndex: undefined },
-        ])
-      }
+    expect(rooms).toHaveLength(2)
+    expect(new Set([westRoomIndex, eastRoomIndex])).toEqual(new Set([0, 1]))
+    expect(faceOf(network, 'shared', 'positive').stretches).toEqual([
+      { fromMm: 0, toMm: SHARED_WALL_LENGTH_MM, roomIndex: westRoomIndex },
+    ])
+    expect(faceOf(network, 'shared', 'negative').stretches).toEqual([
+      { fromMm: 0, toMm: SHARED_WALL_LENGTH_MM, roomIndex: eastRoomIndex },
+    ])
+    for (const side of SIDES) {
+      expect(faceOf(network, 'shared-copy', side).stretches).toEqual([])
     }
   })
 })
