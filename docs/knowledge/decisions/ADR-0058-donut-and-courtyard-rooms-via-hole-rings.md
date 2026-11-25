@@ -188,7 +188,6 @@ light well as habitable floor.
 - ADR-0049 (integration-acceptance gate; the `donut-room` journey is the eleventh
   and final required capability).
 - Design specification, section 3.2 ("Rooms are derived, not authored").
-  </invoke>
 
 ## Update (2026-11-24): the containment pass stays, inside the plan geometry
 

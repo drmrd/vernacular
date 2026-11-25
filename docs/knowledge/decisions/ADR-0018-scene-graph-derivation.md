@@ -309,10 +309,12 @@ for a network, and the opening spans for a network and an openings list. An open
 gives a new floor with the same wall list, so it finds the network and the rooms already
 built and recomputes only the spans. The count of network builds does not move, which
 `core/scene/plan-geometry-builds.test.ts` checks. A wall edit builds one network for the
-floor, and the rooms, footprints, and fills all come from it.
+floor, and its rooms, footprints, and fills all come from it. The 3D walls and the 2D plan
+still build their own wall graph for now.
 
 An opening span uses the same clamped placement as the 3D wall opening, through
-`clampedOpeningPlacement`, so the plan and the walls agree on which edge holds an opening.
+`clampedOpeningPlacement` and the shared edge rule `distanceAlongEdge`, so the plan and the
+walls agree on which edge holds an opening.
 The deriver builds its networks with the built-in registries, as `deriveRooms` does.
 
 `sceneGraphForBuilding` in `bridge/react/view-scene-graph.ts` still leaves the field out

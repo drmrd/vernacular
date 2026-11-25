@@ -170,8 +170,11 @@ boundary in [[ADR-0001-six-layer-architecture]].
 
 The wall network in `core/topology/wall-network.ts` now resolves the thickness of each wall
 one time, with `effectiveWallThickness`, and keeps the result on `WallNetwork.thickness`
-and on each entry of `WallNetwork.walls`. The rooms, the wall footprints, and the junction
-fills all read that one number, so they cannot disagree about how thick a wall is.
+and on each entry of `WallNetwork.walls`. The rooms and the network's own footprints and
+junction fills all read that one number, so they cannot disagree about how thick a wall is.
+The drawn 3D walls and the 2D plan still resolve the thickness themselves with the built-in
+registry, so they match the network only while it is built with the built-in registry, as
+both scene graph entry points do.
 
 The registries come in as an argument: `deriveWallNetwork(walls, registries)` and
 `wallNetworkFor(walls, registries)` take a `PlanGeometryRegistries` object that holds the
