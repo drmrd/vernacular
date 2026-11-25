@@ -81,7 +81,8 @@ async function writeBlobs({ packDir, storeDir }, io, assets) {
   for (const asset of assets) {
     for (const { file, sourcePath } of namedFilesWithSources(asset)) {
       const bytes = await readRequiredFile(io, join(packDir, sourcePath))
-      await io.writeFile(join(storeDir, blobPath(file.contentHash)), bytes)
+      const target = join(storeDir, blobPath(file.contentHash))
+      if ((await io.readFile(target)) === undefined) await io.writeFile(target, bytes)
       byteLength += file.byteLength ?? bytes.byteLength
     }
   }
@@ -103,6 +104,10 @@ export async function publishPack(request, io) {
   const catalogPath = join(storeDir, CATALOG_FILE)
   const catalog = await readCatalog(io, catalogPath)
   const sha256 = createHash('sha256').update(manifestBytes).digest('hex')
+  const existing = catalog?.packs.find(
+    (entry) => entry.packId === packId && entry.version === version,
+  )
+  if (existing?.manifest.sha256 === sha256) return
   const byteLength = await writeBlobs(request, io, assets)
   await io.writeFile(join(storeDir, manifestPath(sha256)), manifestBytes)
   for (const file of PACK_TEXT_FILES) {
