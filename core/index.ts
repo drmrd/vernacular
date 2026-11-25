@@ -113,6 +113,8 @@ export type {
   ReadablePackManifest,
 } from './assets/pack-manifest-shape'
 export { namedFiles, readPackManifest } from './assets/pack-manifest-shape'
+export type { PackTextFile } from './assets/store-paths'
+export { CATALOG_FILE, blobPath, manifestPath, packTextPath } from './assets/store-paths'
 export type { Registry, RegistryEntry } from './registries/registry'
 export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
 export type { Finish } from './registries/finishes'
