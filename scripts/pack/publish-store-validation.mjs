@@ -18,13 +18,19 @@ function textDirectoryKey({ packId, version }) {
   ) {
     throw new Error(`packId ${JSON.stringify(packId)} cannot name a portable pack directory`)
   }
-  return directory.normalize('NFC').toLowerCase()
+  // Case-insensitive filesystems can fold a character to several, such as ß to ss.
+  // The dotless i stays distinct in the default Unicode case fold.
+  return directory
+    .normalize('NFD')
+    .replace(/[^\u0131]/gu, (character) => character.toLowerCase().toUpperCase().toLowerCase())
+    .normalize('NFD')
 }
 
 /** @param {CatalogPackEntry[]} packs @param {{ manifest: ReadablePackManifest, digest: string }} incoming */
 export function publishedEntry(packs, { manifest, digest }) {
   const directory = textDirectoryKey(manifest)
   let published
+  let hasDuplicate = false
   for (const entry of packs) {
     if (textDirectoryKey(entry) !== directory) continue
     const scope = `${entry.packId}-${entry.version}`
@@ -35,7 +41,13 @@ export function publishedEntry(packs, { manifest, digest }) {
     }
     if (entry.manifest.sha256 !== digest)
       throw new Error(`${scope}: a different manifest is already published`)
+    hasDuplicate ||= published !== undefined
     published = entry
+  }
+  if (hasDuplicate) {
+    throw new Error(
+      `${manifest.packId}-${manifest.version}: duplicate catalog entries for pack scope`,
+    )
   }
   return published
 }
