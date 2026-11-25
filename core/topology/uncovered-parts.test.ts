@@ -219,3 +219,49 @@ it('adds nothing when a new draw retraces a wall between its merged endpoints', 
     expect.soft(drawnWallNote(walls, draw), label).toBe(coveredNote)
   }
 })
+
+it('keeps the longitudinal extension when a rotated wall endpoint merges across the wall line', () => {
+  const junction = { x: 0, y: 0 }
+  const anchor = createWall({ x: -3000, y: 4000 }, junction, { id: 'anchor' })
+  // A step of (-3, 4) is perpendicular to the saved run of (4000, 3000).
+  const shifts = [
+    { label: 'transverse shift', x: -3 / 8, y: 4 / 8, extensionMm: 0 },
+    {
+      label: 'transverse and longitudinal shift',
+      x: -3 / 8 + 4 / 16,
+      y: 4 / 8 + 3 / 16,
+      extensionMm: 5 / 16,
+    },
+  ]
+
+  for (const { label, x, y, extensionMm } of shifts) {
+    const farEnd = { x: 4000 + x, y: 3000 + y }
+    const walls = [anchor, createWall({ x, y }, farEnd, { id: 'diagonal' })]
+    const extensionFraction = extensionMm / Math.hypot(farEnd.x, farEnd.y)
+    const extensionEnd = {
+      x: expect.closeTo(farEnd.x * extensionFraction, 3),
+      y: expect.closeTo(farEnd.y * extensionFraction, 3),
+    }
+
+    for (const reversed of [false, true]) {
+      const direction = reversed ? 'toward the junction' : 'from the junction'
+      const description = `${label}, ${direction}`
+      const draw = reversed ? { start: farEnd, end: junction } : { start: junction, end: farEnd }
+
+      if (extensionMm === 0) {
+        const retrace = createWall(draw.start, draw.end, { id: 'rotated-retrace' })
+        expect
+          .soft(buildWallGraph([...walls, retrace]).edges, description)
+          .not.toContainEqual(expect.objectContaining({ wallId: retrace.id }))
+        expect.soft(uncoveredParts(walls, draw), description).toEqual([])
+        expect.soft(drawnWallNote(walls, draw), description).toBe(coveredNote)
+      } else {
+        const extension = reversed
+          ? { start: extensionEnd, end: junction }
+          : { start: junction, end: extensionEnd }
+        expect.soft(uncoveredParts(walls, draw), description).toEqual([extension])
+        expect.soft(drawnWallNote(walls, draw), description).toBe(partialNote)
+      }
+    }
+  }
+})
