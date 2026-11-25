@@ -8,6 +8,9 @@ import { buildWallGraph } from './wall-graph'
 import { deriveWallNetwork, type NetworkWall, type WallNetwork } from './wall-network'
 
 const FLOOR_ID = 'g'
+
+/** Both sides of a wall, positive then negative. */
+export const SIDES: readonly WallSide[] = ['positive', 'negative']
 const WALL_THICKNESS_MM = 114
 const TEE_ARM_MM = 2000
 const TEE_STEM_MM = 1500

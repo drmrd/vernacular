@@ -26,13 +26,12 @@ import {
   type WallFaceStretch,
   type WallSide,
 } from './floor-plan-geometry'
-import { faceOf, floorOf, stubRoomWalls, twoRoomWalls } from './plan-geometry-test-support'
+import { faceOf, floorOf, SIDES, stubRoomWalls, twoRoomWalls } from './plan-geometry-test-support'
 
 type Side = WallSide
 type WallFace = WallFaceRecord
 type FaceStretch = WallFaceStretch
 
-const SIDES: readonly Side[] = ['positive', 'negative']
 const PARTITION_X_MM = 4000
 const COURTYARD_WALL_IDS = ['c-s', 'c-e', 'c-n', 'c-w']
 

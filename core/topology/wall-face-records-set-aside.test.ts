@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { Wall } from '../model/types'
 import { counterClockwiseWalls, pt, wall } from '../scene/opening-room-side-test-fixtures'
-import { deriveFloorPlanGeometry, type WallSide } from './floor-plan-geometry'
-import { faceOf, floorOf } from './plan-geometry-test-support'
-
-const SIDES: readonly WallSide[] = ['positive', 'negative']
+import { deriveFloorPlanGeometry } from './floor-plan-geometry'
+import { faceOf, floorOf, SIDES } from './plan-geometry-test-support'
 
 interface SetAsideCase {
   name: string
   walls: Wall[]
 }
 
+// The first case is a regression pin: a speck free of other walls gives the faces no edge to
+// stretch along, so only the other two cases reach the loop-edge guard.
 const setAsideCases: SetAsideCase[] = [
   {
     name: 'both ends within the join distance, free of other walls',
