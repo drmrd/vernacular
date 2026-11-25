@@ -26,7 +26,7 @@ import {
   twoRoomWalls,
 } from './plan-geometry-test-support'
 import { deriveRooms } from './rooms'
-import { wallFootprints } from './wall-footprint'
+import { type WallFootprint, wallFootprints } from './wall-footprint'
 import { buildWallGraph } from './wall-graph'
 import { deriveWallNetwork, type WallNetwork } from './wall-network'
 
@@ -204,6 +204,21 @@ const speckCases: SpeckCase[] = [
   { name: 'with 600 mm walls', walls: thickened(speckAtCorner()) },
 ]
 
+function footprintCorners(footprint: WallFootprint | undefined): Point[] {
+  if (footprint === undefined) {
+    throw new Error('expected a footprint')
+  }
+  return [footprint.aPlus, footprint.aMinus, footprint.bPlus, footprint.bMinus]
+}
+
+function footprintsByWallId(network: WallNetwork, skippedWallId: string) {
+  return new Map(
+    network.edges.flatMap((edge, index) =>
+      edge.wallId === skippedWallId ? [] : [[edge.wallId, network.footprints[index]] as const],
+    ),
+  )
+}
+
 describe('a wall whose two ends merge into one junction', () => {
   function speckEdge(graph: ReturnType<typeof buildWallGraph>): {
     index: number
@@ -248,6 +263,31 @@ describe('a wall whose two ends merge into one junction', () => {
       expect(geometry.rooms).toHaveLength(1)
       expect(geometry.setAside.zeroLengthWallIds).toEqual(['speck'])
       expect(deriveRooms(walls)).toHaveLength(1)
+    })
+
+    it('gives an edge from a junction to itself a footprint with every corner at its junction', () => {
+      const network = networkOf(walls)
+      const { index, junction } = speckEdge(buildWallGraph(walls))
+      const junctionPoint = network.junctions[junction]
+
+      expect(footprintCorners(network.footprints[index])).toEqual(Array(4).fill(junctionPoint))
+    })
+
+    it('gives an edge from a junction to itself a footprint at its junction from the graph alone', () => {
+      const { graph, thicknessByEdge } = todaysGraphAndThickness(walls)
+      const { index, junction } = speckEdge(graph)
+
+      const footprints = wallFootprints(graph, thicknessByEdge)
+
+      expect(footprintCorners(footprints[index])).toEqual(Array(4).fill(graph.vertices[junction]))
+    })
+
+    it('leaves the footprints of the other walls as they are without the wall', () => {
+      const withoutSpeck = walls.filter((each) => each.id !== 'speck')
+
+      expect(footprintsByWallId(networkOf(walls), 'speck')).toEqual(
+        footprintsByWallId(networkOf(withoutSpeck), 'speck'),
+      )
     })
   })
 
