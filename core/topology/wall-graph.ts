@@ -22,8 +22,8 @@ export interface PlanarGraph {
 /**
  * Build a planar graph from a set of walls. Endpoints within tolerance of an
  * already-seen vertex are merged into a single junction; zero-length walls
- * (both endpoints within tolerance of each other) are skipped. Each remaining
- * wall contributes one edge between its two distinct vertex indices.
+ * (both endpoints within tolerance of each other) are skipped. Walls are split
+ * at interior junctions, and the first wall owns each shared stretch.
  */
 export function buildWallGraph(
   walls: readonly Wall[],
@@ -61,7 +61,19 @@ export function buildWallGraph(
   // considered; X-crossings are not introduced here.
   const splitEdges = edges.flatMap((edge) => splitEdgeAtInteriorVertices(edge, vertices, tolerance))
 
-  return { vertices, edges: splitEdges }
+  return { vertices, edges: keepFirstEdgePerStretch(splitEdges) }
+}
+
+/** Duplicate stretches leave a junction at the same angle and confuse the room walk. */
+function keepFirstEdgePerStretch(edges: readonly GraphEdge[]): GraphEdge[] {
+  const seenStretches = new Set<string>()
+  return edges.filter(({ a, b }) => {
+    if (a === b) return true
+    const stretch = `${Math.min(a, b)}:${Math.max(a, b)}`
+    if (seenStretches.has(stretch)) return false
+    seenStretches.add(stretch)
+    return true
+  })
 }
 
 /**
