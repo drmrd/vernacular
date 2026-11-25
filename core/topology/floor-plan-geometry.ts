@@ -1,5 +1,11 @@
 import type { Floor } from '../model/types'
-import type { PlanRoom, WallFaceRecord, WallFaceStretch, WallSide } from './wall-face-records'
+import {
+  isLoopEdge,
+  type PlanRoom,
+  type WallFaceRecord,
+  type WallFaceStretch,
+  type WallSide,
+} from './wall-face-records'
 import {
   deriveWallNetwork,
   derivePlanRooms,
@@ -42,7 +48,7 @@ export interface FloorPlanGeometry {
 
 function setAsideOf(network: WallNetwork): SetAside {
   const wallIdsReachingAnotherJunction = new Set(
-    network.edges.filter((edge) => edge.from !== edge.to).map((edge) => edge.wallId),
+    network.edges.filter((edge) => !isLoopEdge(edge)).map((edge) => edge.wallId),
   )
   return {
     zeroLengthWallIds: network.walls

@@ -1,6 +1,5 @@
 import { projectOntoPath, type WallPath } from '../geometry/wall-path'
 import type { Point } from '../model/types'
-import { isSelfLoop } from './junction-fans'
 import type { EdgeSideRooms, RoomWalk } from './room-walk'
 import type { Room } from './rooms'
 import type { NetworkEdge, WallNetwork } from './wall-network'
@@ -69,6 +68,11 @@ function faceStretches(
   }, [])
 }
 
+/** True for an edge from a junction to itself, which bounds no stretch of a wall face. */
+export function isLoopEdge(edge: NetworkEdge): boolean {
+  return edge.from === edge.to
+}
+
 /**
  * The network's edges, grouped by the id of their wall, each group in network order. An edge
  * from a junction to itself bounds no stretch, so it is left out.
@@ -76,7 +80,7 @@ function faceStretches(
 function edgesByWallId(edges: readonly NetworkEdge[]): Map<string, NetworkEdge[]> {
   const byWallId = new Map<string, NetworkEdge[]>()
   for (const edge of edges) {
-    if (isSelfLoop({ a: edge.from, b: edge.to })) continue
+    if (isLoopEdge(edge)) continue
     const group = byWallId.get(edge.wallId)
     if (group === undefined) byWallId.set(edge.wallId, [edge])
     else group.push(edge)
