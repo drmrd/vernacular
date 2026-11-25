@@ -350,9 +350,9 @@ Design:
 
 #### The check
 
-A stored project that fails decode does not open. A failed open writes nothing, so the stored bytes are as they were.
+A stored project that fails decode does not open. A failed open writes no file of the project, so the stored bytes are as they were. It writes only the record in the project index, which says why the project did not open.
 
-A recovery snapshot that fails decode is not restored. It moves to the project's backups, where no prune removes it, and the recovery prompt says that the copy could not be read and is kept.
+A recovery snapshot that fails decode is not restored. It moves to the project's backups, where no prune removes it, and a notice says that the copy could not be read and is kept.
 
 #### Two classes of repair
 
@@ -376,16 +376,16 @@ The dialog shows on the Projects page in three cases: at start when the most rec
   | The storage did not answer       | "The storage did not answer."                                       |
   | The folder cannot be reached     | "The folder is not available."                                      |
 
-- Two more sentences follow: "The stored project is kept unchanged." and "You can export a copy from the Projects page."
+- Two more sentences follow: "The stored file is kept unchanged." and "You can export a copy from the Projects page."
 - A details box, closed at first, holds the technical text: the error, the paths in the document, the format version, and the build.
 - The controls are Close and Export. "Try again" shows only when the storage did not answer or the folder was not available. Close returns to the page.
 - When a repair applies, the dialog says what it removes, for example "It removes the extra data from 2 paint entries.", and offers to open with the repair. The repair has already run in memory by then, and nothing has been written.
-- That offer leads to a choice. "Open as a new project" comes first and is the primary control. The stored project is not touched, and the new project's name says that it is a repaired copy. "Replace the stored project" carries the warning "The data that the repair removes is lost. You cannot undo this action." A replace keeps a backup of the stored bytes by the backup rule of the first stage before it writes. Cancel returns to the dialog. For a folder project, a new project made from a repair is stored in this browser, and a replace writes into the folder.
+- That offer leads to a choice dialog titled "Open the repaired project". Its first sentence is "A new file stores a repaired version of this project. The stored file stays unchanged." "Open as a new project" comes first and is the primary control. The stored project is not touched, and the new project's name says that it is a repaired copy. "Replace the stored project" carries the warning "The data that the repair removes is lost. You cannot undo this action." A replace keeps a backup of the stored bytes by the backup rule of the first stage before it writes. Cancel returns to the dialog. For a folder project, a new project made from a repair is stored in this browser, and a replace writes into the folder.
 - "Start a new project" is not in the dialog. The page has New project. The first stage builds that control and this stage removes it.
 
 #### A failed import
 
-A failed import shows the same dialog without Export and without the replace choice, because the user still has the file and nothing is stored. An archive over a limit gets the sentence "The file is larger than Vernacular can open."
+A failed import shows the same dialog on the Projects page, with the title "This file did not open." It has no "kept unchanged" sentence and no export sentence, and no Export control, because the user still has the file and nothing is stored. When the bytes are not a project, the reason is "The file is not a Vernacular project." Its other reasons are the sentences of the table above. When a repair applies, the choice dialog says "A new file stores a repaired version of this project. The file that you chose stays unchanged." and offers "Open as a new project" and Cancel, with no replace choice. An archive over a limit gets the sentence "The file is larger than Vernacular can open."
 
 Left to the builder: the final wording, which the design language may adjust as long as each sentence stays a statement, and the name given to a repaired copy.
 

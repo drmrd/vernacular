@@ -7,11 +7,11 @@ import {
   clickCardOf,
   expectOpenProject,
   findCardLink,
-  findThePageAlert,
   findTheProjectsPage,
   renderAppAt,
   settleForAWhile,
 } from './app-test-support'
+import { findTheFailedOpenDialog } from './failed-open-dialog-test-support'
 import { FIRST_ID, PROJECTS_ADDRESS, nameOf } from './history-navigation-test-support'
 import {
   FOLDER_ID,
@@ -26,7 +26,7 @@ import {
   textOfTheCards,
 } from './projects-screen-test-support'
 
-const FOLDER_UNAVAILABLE_SENTENCE = 'The folder of this project cannot be reached.'
+const FOLDER_UNAVAILABLE_CAUSE = 'The folder is not available.'
 
 setUpProjectsScreenTests()
 
@@ -87,7 +87,7 @@ describe('The card of a folder project whose folder handle is gone', () => {
 
     await clickCardOf(FOLDER_NAME)
 
-    expect(await findThePageAlert()).toHaveTextContent(FOLDER_UNAVAILABLE_SENTENCE)
+    expect(await findTheFailedOpenDialog()).toHaveTextContent(FOLDER_UNAVAILABLE_CAUSE)
     expect(await findTheProjectsPage()).toBeInTheDocument()
   })
 })

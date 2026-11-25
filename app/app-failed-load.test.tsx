@@ -11,9 +11,7 @@ import {
 import {
   START_ID,
   expectOpenProject,
-  failedOpenSentence,
   findCardLink,
-  findThePageAlert,
   findTheProjectsPage,
   lockedIds,
   openProjectName,
@@ -25,6 +23,11 @@ import {
   stubCapableStorage,
   usedLast,
 } from './app-test-support'
+import {
+  NEWER_VERSION_CAUSE,
+  closeTheDialog,
+  findTheFailedOpenDialog,
+} from './failed-open-dialog-test-support'
 
 const SECOND_ID = 'project-second'
 
@@ -95,7 +98,7 @@ describe('The application opens the project that was used last', () => {
 })
 
 describe('The application that starts from the records of the index', () => {
-  it('shows the page with the notice and a card for the project used last when it did not open', async () => {
+  it('shows the page with the dialog and a card for the project used last when it did not open', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     await plantFailedProject(ports)
@@ -106,7 +109,8 @@ describe('The application that starts from the records of the index', () => {
 
     renderApp(ports)
 
-    expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
+    expect(await findTheFailedOpenDialog()).toHaveTextContent(NEWER_VERSION_CAUSE)
+    await closeTheDialog()
     const page = await findTheProjectsPage()
     await findCardLink('Second House')
     const failedCards = within(page)

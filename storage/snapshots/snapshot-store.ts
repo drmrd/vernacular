@@ -2,6 +2,7 @@ import { decodeDocument } from '../../core'
 import type { CodecOptions, DecodeResult, Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { encodeForWrite, openDecodedDocument } from '../documents/open-decoded'
+import { setAsideRefusedSnapshots } from './set-aside-refused'
 
 /**
  * The directory of recovery snapshots, a sidecar of the document. An export and an import leave
@@ -74,6 +75,18 @@ export class SnapshotStore {
     return bytes === undefined ? undefined : decodeDocument(bytes, this.codec)
   }
 
+  /** Moves each rolling snapshot file that does not decode to the backups; resolves with the count. */
+  async setAsideRefused(): Promise<number> {
+    const names = await this.directory.list(AUTOSAVE_DIRECTORY)
+    return setAsideRefusedSnapshots(
+      this.directory,
+      this.codec,
+      names
+        .filter((name) => this.isRollingSnapshotFile(name))
+        .map((name) => `${AUTOSAVE_DIRECTORY}/${name}`),
+    )
+  }
+
   private async newestSnapshotBytes(): Promise<Uint8Array | undefined> {
     const [newest] = await this.rollingNamesNewestFirst()
     return newest === undefined
@@ -94,18 +107,24 @@ export class SnapshotStore {
   }
 
   /**
-   * Whether prune deletes the file: the session-start snapshot or a name of the exact form
-   * `snapshot-<anything>.json`. This is narrower than the rolling rule below on purpose, so that a
-   * foreign file such as `snapshot-notes.txt` survives a prune.
+   * Whether prune deletes the file: the session-start snapshot or a rolling snapshot file.
    */
   private isSnapshotFile(name: string): boolean {
-    return (
-      name === SESSION_START_FILE ||
-      (name.startsWith(SNAPSHOT_PREFIX) && name.endsWith(SNAPSHOT_SUFFIX))
-    )
+    return name === SESSION_START_FILE || this.isRollingSnapshotFile(name)
   }
 
-  /** The names with the snapshot prefix, which is the rule that isRecoverable counts by. */
+  /**
+   * Whether the name has the exact form `snapshot-<anything>.json`, so that a foreign file such as
+   * `snapshot-notes.txt` is neither pruned nor set aside.
+   */
+  private isRollingSnapshotFile(name: string): boolean {
+    return name.startsWith(SNAPSHOT_PREFIX) && name.endsWith(SNAPSHOT_SUFFIX)
+  }
+
+  /**
+   * The names with the snapshot prefix. isRecoverable uses this wide rule as
+   * it is; restore and prune narrow it to names with a timestamp.
+   */
   private async rollingSnapshotNames(): Promise<string[]> {
     const names = await this.directory.list(AUTOSAVE_DIRECTORY)
     return names.filter((name) => name.startsWith(SNAPSHOT_PREFIX))

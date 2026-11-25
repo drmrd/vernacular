@@ -270,3 +270,52 @@ describe('useFocusTrap and the keys behind it', () => {
     })
   })
 })
+
+function SummaryDialog() {
+  const ref = useFocusTrap<HTMLDivElement>()
+  return (
+    <div ref={ref} role="dialog" aria-label="Summarized">
+      <details>
+        <summary>More</summary>
+        <p>Further text</p>
+      </details>
+      <button type="button">Close</button>
+    </div>
+  )
+}
+
+function MarkedDialog() {
+  const ref = useFocusTrap<HTMLDivElement>()
+  return (
+    <div ref={ref} role="dialog" aria-label="Marked">
+      <input aria-label="Earlier field" />
+      <button type="button" data-initial-focus="">
+        Marked
+      </button>
+    </div>
+  )
+}
+
+describe('useFocusTrap and a summary element', () => {
+  it('counts a summary as focusable at both ends of the Tab cycle', async () => {
+    const user = userEvent.setup()
+    render(<SummaryDialog />)
+    const summary = screen.getByText('More')
+    const close = screen.getByRole('button', { name: 'Close' })
+
+    close.focus()
+    await user.tab()
+    expect(summary).toHaveFocus()
+
+    await user.tab({ shift: true })
+    expect(close).toHaveFocus()
+  })
+})
+
+describe('useFocusTrap and the element marked for the first focus', () => {
+  it('gives the first focus to the marked element although an earlier field can take focus', () => {
+    render(<MarkedDialog />)
+
+    expect(screen.getByRole('button', { name: 'Marked' })).toHaveFocus()
+  })
+})

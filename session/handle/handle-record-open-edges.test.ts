@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ProjectIndex } from '../../storage'
 import { sampleRecord } from '../../storage/project-index/project-record-test-kit'
-import {
-  currentBytes,
-  documentBreakingFormatRules,
-} from '../../tests/storage/conformance/conformance-documents'
+import { currentBytes } from '../../tests/storage/conformance/conformance-documents'
 import { settle } from '../autosave/save-gate-test-kit'
 import {
   createTestPorts,
@@ -32,7 +29,7 @@ function rejectCallsOf(index: ProjectIndex, method: 'get' | 'put'): Error {
   return error
 }
 
-/** How many warnings named `error`. The store warns on its own when it opens despite faults. */
+/** How many warnings named `error`. */
 function warningsAbout(error: Error): number {
   return consoleWarn.mock.calls.filter((call: unknown[]) => call.includes(error)).length
 }
@@ -92,31 +89,6 @@ describe('the note of a failed open when the index refuses', () => {
 })
 
 describe('the time of change of an open whose read gives none', () => {
-  it('an open despite format faults with no stored record gives a record with no time of change', async () => {
-    const ports = createTestPorts()
-    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
-
-    await openOrThrow(ports, workspaceRequest(PROJECT_ID))
-
-    const record = await recordOf(ports, PROJECT_ID)
-    expect(record?.lastOpen.opened).toBe(true)
-    expect(record?.lastChangedAt).toBeUndefined()
-  })
-
-  it('an open despite format faults whose index read rejects opens, writes no record, and warns once', async () => {
-    const ports = createTestPorts()
-    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
-    const refusal = rejectCallsOf(ports.index, 'get')
-    const put = vi.spyOn(ports.index, 'put')
-
-    const opened = await openDocumentHandle(ports, workspaceRequest(PROJECT_ID))
-    await settle()
-
-    expect(opened.ok).toBe(true)
-    expect(put).not.toHaveBeenCalled()
-    expect(warningsAbout(refusal)).toBe(1)
-  })
-
   it('a sound open from a store that gives no time keeps the time of change of the record', async () => {
     const ports = createTestPorts()
     await placeDocument(ports, PROJECT_ID, currentBytes())
@@ -130,5 +102,22 @@ describe('the time of change of an open whose read gives none', () => {
       lastChangedAt: RECORDED_CHANGE,
       assetListComplete: true,
     })
+  })
+
+  it('a sound open whose index read rejects opens, writes no record, and warns once', async () => {
+    const ports = createTestPorts()
+    await placeDocument(ports, PROJECT_ID, currentBytes())
+    hideTimesOfChange(ports)
+    const refusal = rejectCallsOf(ports.index, 'get')
+    const get = vi.spyOn(ports.index, 'get')
+    const put = vi.spyOn(ports.index, 'put')
+
+    const opened = await openDocumentHandle(ports, workspaceRequest(PROJECT_ID))
+    await settle()
+
+    expect(get).toHaveBeenCalled()
+    expect(opened.ok).toBe(true)
+    expect(put).not.toHaveBeenCalled()
+    expect(warningsAbout(refusal)).toBe(1)
   })
 })

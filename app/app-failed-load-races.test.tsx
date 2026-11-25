@@ -19,7 +19,6 @@ import {
   chooseFromTheProjectMenu,
   editTheProject,
   expectOpenProject,
-  findThePageAlert,
   findTheShell,
   lockCalls,
   lockedIds,
@@ -32,6 +31,7 @@ import {
   startNewProjectFromThePage,
   stubCapableStorage,
 } from './app-test-support'
+import { closeTheDialog } from './failed-open-dialog-test-support'
 
 const KEPT_NAME = 'Kept House'
 
@@ -66,7 +66,7 @@ describe('A new project that opens after a failed start', () => {
     await reconcileIndex(ports)
     vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
     renderApp(ports)
-    await findThePageAlert()
+    await closeTheDialog()
     const letTheReadGo = holdNextRead(ports.workspace)
 
     await userEvent.click(newProjectButton())
@@ -89,6 +89,7 @@ describe('A save that finishes after another new project started', () => {
     await plantFailedProject(ports)
     const saves = logSaves(ports.workspace)
     renderApp(ports)
+    await closeTheDialog()
     await startNewProjectFromThePage()
     const letTheSavesGo = saves.hold()
     await editTheProject()
@@ -131,7 +132,7 @@ describe('Guards on starting a new project from the Projects page', () => {
     const ports = recordingPorts(log)
     await plantFailedProject(ports)
     renderApp(ports)
-    await findThePageAlert()
+    await closeTheDialog()
 
     await userEvent.dblClick(newProjectButton())
 
@@ -147,7 +148,7 @@ describe('Guards on starting a new project from the Projects page', () => {
     const ports = recordingPorts(log)
     await plantFailedProject(ports)
     renderApp(ports)
-    await findThePageAlert()
+    await closeTheDialog()
     const letTheReadGo = holdNextRead(ports.workspace)
     await userEvent.click(newProjectButton())
     const error = vi.spyOn(console, 'error')

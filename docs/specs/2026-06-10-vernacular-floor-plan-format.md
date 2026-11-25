@@ -273,8 +273,9 @@ accompanying ADR.
   revision Q does one of four things.
   - M < N: it migrates the Document up the chain.
   - M = N and Q ≤ R: it validates the Document with no tolerance for unknown fields. A field the
-    schema does not define, outside `extensions`, is a validation error. The error is reported,
-    and the field is still preserved (section 6.4).
+    schema does not define, outside `extensions`, is a validation error. A Document with a
+    validation error is refused: the reader does not open it, and the stored file stays as it is,
+    with the field in it (section 6.4).
   - M = N and Q > R: a newer build wrote the Document with additive fields this reader does not
     know. The reader reads it tolerantly, MUST obey the preservation rule (section 6.4), and
     SHOULD tell the user that a newer build wrote it.
@@ -291,9 +292,8 @@ accompanying ADR.
   from a file a newer build wrote stay under that file's revision, so the next read checks them
   tolerantly. The application reads a Document without `schemaRevision`, or with a value that is
   not a non-negative integer, as revision 0. A Document migrated from an older version carries
-  no revision until its next save. The document codec work described in
-  `2026-11-14-architecture-refactor-round.md` decides how a validation error is reported
-  (section 8 still rules out a user-facing hard rejection).
+  no revision until its next save. The application reports a validation error by refusing the
+  Document (section 8).
 
 ## 8. Schema generation and validation
 
@@ -311,9 +311,20 @@ accompanying ADR.
   The generated strict validator checks a Document on every read, after migration, and on every
   write, in every build. A Document at a higher `schemaRevision` than the application's is checked
   with the tolerant one (section 7, ADR-0178). Both run as generated code, so the application
-  carries no schema compiler. The validators are also used in continuous integration and tests;
-  a failed check is not a user-facing hard rejection, because migrations are the user-facing
-  compatibility path.
+  carries no schema compiler. The validators are also used in continuous integration and tests.
+- **Refusal and repairs (non-normative).** The application refuses a Document that fails the
+  strict check, on every path that reads one: a stored project, an imported file, and a recovery
+  snapshot. It writes nothing to the stored file, and it tells the user why. Migrations stay the
+  compatibility path for older versions, so a Document that migrates and then passes the check
+  opens. A save that finds a fault in the Document still writes it, and the application keeps the
+  last stored file that passed the check as a backup. Two repairs remove data, and each is the
+  user's choice (ADR-0190). One removes, from an entry under `paint`, each field that only another
+  kind of paint entry defines. The other removes each field that the format does not define,
+  outside `extensions`. The application offers a repair only when the repaired Document passes the
+  strict check and the Document does not come from a higher revision. The user can open the
+  repaired Document as a new project, which leaves the stored file as it is. For a stored project
+  the user can also replace it, and the application then keeps the stored bytes as a backup. A
+  fault of any other kind has no repair.
 - **Drift guard.** Continuous integration regenerates the schema and both validators and fails if
   a committed file differs from the regenerated one, keeping the published schema and the
   validators in lockstep with the types. The guard also fails when the generated schema changes

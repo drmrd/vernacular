@@ -117,23 +117,6 @@ describe('the record that an open writes', () => {
     expect(await recordOf(ports, PROJECT_ID)).toBeUndefined()
     expect(put).not.toHaveBeenCalled()
   })
-
-  it('a document that opens despite format faults gets a record that says it opened, with an asset list that is not complete, and keeps the time of change of its record', async () => {
-    const ports = fixedPorts()
-    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
-    await ports.index.put(sampleRecord({ id: PROJECT_ID, lastChangedAt: RECORDED_CHANGE }))
-
-    const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
-
-    const record = await recordOf(ports, PROJECT_ID)
-    expect(record).toMatchObject({
-      name: handle.session.getProject().meta.name,
-      assetListComplete: false,
-      lastChangedAt: RECORDED_CHANGE,
-      lastUsedAt: OPENED_AT.toISOString(),
-    })
-    expect(record?.lastOpen).toStrictEqual({ opened: true, build: BUILD })
-  })
 })
 
 describe('the record after an open that failed', () => {
@@ -157,6 +140,21 @@ describe('the record after an open that failed', () => {
       lastOpen: { opened: false, build: BUILD, reason: decodeKindOf(NOT_JSON) },
     })
     expect(lockHeldAtPut).toEqual([true])
+  })
+
+  it('a document that breaks the format rules gets a record that says it did not open, with the reason', async () => {
+    const ports = fixedPorts()
+    await placeDocument(ports, PROJECT_ID, documentBreakingFormatRules())
+    const before = sampleRecord({ id: PROJECT_ID, lastChangedAt: RECORDED_CHANGE })
+    await ports.index.put(before)
+
+    const failure = await failureOf(ports, workspaceRequest(PROJECT_ID))
+
+    expect(failure.kind).toBe('did-not-open')
+    expect(await recordOf(ports, PROJECT_ID)).toEqual({
+      ...before,
+      lastOpen: { opened: false, build: BUILD, reason: 'format-rules' },
+    })
   })
 
   it('a failed open of a project with no record writes none', async () => {

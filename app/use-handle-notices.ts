@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNotifications } from '../editor/design-system'
 import type { DocumentHandle, HandleNotice } from '../session'
+import { RECOVERY_COPY_KEPT } from './open-failure-text'
 
 export const SAVED_WITH_FAULTS =
   'This project has a fault in its data. A copy of its last sound state is kept. You can export it.'
@@ -34,6 +35,9 @@ function showNotice(
       return
     case 'saved-by-newer-build':
       info(SAVED_BY_NEWER_BUILD)
+      return
+    case 'recovery-copy-kept':
+      warning(RECOVERY_COPY_KEPT)
       return
     default:
       return assertNever(notice)

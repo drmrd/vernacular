@@ -49,9 +49,12 @@ export { WorkspaceFiles } from './project-files/workspace-files'
 export { FolderFiles } from './project-files/folder-files'
 export { DocumentDecodeError } from './documents/document-decode-error'
 export { DocumentStore, WorkspaceDocumentStore } from './documents/document-store'
-export type { SaveReport, StoreRead, StoreReadFailure } from './documents/document-store'
-export { openDespiteFaults } from './documents/open-decoded'
-export type { FormatRulesFailure } from './documents/open-decoded'
+export type {
+  ReplaceReport,
+  SaveReport,
+  StoreRead,
+  StoreReadFailure,
+} from './documents/document-store'
 export type { ProjectSnapshots } from './documents/project-snapshots'
 export { OpfsProjectStore, createOpfsProjectStore } from './opfs/opfs-project-store'
 export { ZipBundleProjectStore } from './zip/zip-bundle-project-store'

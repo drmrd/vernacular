@@ -8,7 +8,15 @@ import { readArchive, type ArchiveFailure } from '../zip/read-archive'
 export type ProjectFileFailure =
   | { readonly kind: 'unsupported-file'; readonly fileName: string }
   | { readonly kind: 'archive'; readonly archive: ArchiveFailure }
-  | { readonly kind: 'decode'; readonly decode: DecodeFailure }
+  | {
+      readonly kind: 'decode'
+      readonly decode: DecodeFailure
+      /** The checked assets of an archive whose document gave `format-rules`. Absent otherwise. */
+      readonly supplied?: {
+        readonly assets: ReadonlyMap<string, Uint8Array>
+        readonly rejectedAssets: readonly string[]
+      }
+    }
 
 /** The project of a file, with the assets that the file supplied, or why the file gave none. */
 export type ProjectFileRead =
@@ -25,8 +33,8 @@ export type ProjectFileRead =
 type Failed = Extract<ProjectFileRead, { readonly ok: false }>
 
 /**
- * Decodes the document bytes. A document that only breaks the format rules opens under the interim
- * rule, with its faults in a warning; nothing is stored yet, so no migration backup is written.
+ * Decodes the document bytes. A document that fails to decode, one that breaks the format rules
+ * included, is refused; nothing is stored yet, so no migration backup is written.
  */
 function readDocument(
   document: Uint8Array,
@@ -37,6 +45,10 @@ function readDocument(
   return { ok: true, project, assets, rejectedAssets }
 }
 
+/**
+ * The archive's project. A document that breaks the format rules gives its failure with the checked
+ * assets, so that a repaired copy can still bring them.
+ */
 async function readArchiveFile(
   bytes: Uint8Array,
   limits?: ArchiveLimits,
@@ -45,7 +57,16 @@ async function readArchiveFile(
   if (!read.ok) {
     return { ok: false, failure: { kind: 'archive', archive: read.failure } }
   }
-  return readDocument(read.document, read.assets, read.rejectedAssets)
+  const { assets, rejectedAssets } = read
+  try {
+    return readDocument(read.document, assets, rejectedAssets)
+  } catch (error) {
+    if (error instanceof DocumentDecodeError && error.failure.kind === 'format-rules') {
+      const supplied = { assets, rejectedAssets }
+      return { ok: false, failure: { kind: 'decode', decode: error.failure, supplied } }
+    }
+    throw error
+  }
 }
 
 function decodeFailed(error: unknown): Failed {

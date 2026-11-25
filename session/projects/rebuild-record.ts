@@ -1,5 +1,5 @@
 import { readStoredFacts, type DecodeFailure } from '../../core'
-import { openDespiteFaults, PROJECT_FILE, type ProjectRecord, type StoreRead } from '../../storage'
+import { PROJECT_FILE, type ProjectRecord, type StoreRead } from '../../storage'
 import type { SessionPorts } from '../ports'
 import { recordOfOpened, type OpenedRecordBasis } from './project-facts'
 
@@ -103,26 +103,6 @@ async function unopenedFromStore(
   return { record, putInIndex: stored !== undefined }
 }
 
-/**
- * The interim rule: a document that only breaks the format rules opens anyway, so its record says
- * it opened, and its asset list is not trusted. When even its facts cannot be built, it counts as a
- * document that did not open.
- */
-async function recordDespiteFaults(
-  run: RebuildRun,
-  basis: RecordBasis,
-  decode: Extract<DecodeFailure, { readonly kind: 'format-rules' }>,
-): Promise<RebuiltRecord> {
-  try {
-    return {
-      record: recordOfOpened(openDespiteFaults(decode), { ...basis, passedCheck: false }),
-      putInIndex: true,
-    }
-  } catch {
-    return unopenedFromStore(run, basis, decode.kind)
-  }
-}
-
 /** The record of a read that answered, with the time of use that it keeps. */
 async function recordOfRead(
   run: RebuildRun,
@@ -143,9 +123,6 @@ async function recordOfRead(
       record: recordOfOpened(read.value.project, { ...basis, passedCheck: true }),
       putInIndex: true,
     }
-  }
-  if (read.decode.kind === 'format-rules') {
-    return recordDespiteFaults(run, basis, read.decode)
   }
   return unopenedFromStore(run, basis, read.decode.kind)
 }

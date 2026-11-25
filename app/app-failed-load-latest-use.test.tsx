@@ -10,8 +10,6 @@ import {
   chooseFromTheProjectMenu,
   editTheProject,
   expectOpenProject,
-  failedOpenSentence,
-  findThePageAlert,
   openProjectName,
   plantFailedProject,
   plantProject,
@@ -23,6 +21,11 @@ import {
   stubCapableStorage,
   usedLast,
 } from './app-test-support'
+import {
+  NEWER_VERSION_CAUSE,
+  closeTheDialog,
+  findTheFailedOpenDialog,
+} from './failed-open-dialog-test-support'
 
 const FIRST_ID = 'project-first'
 const SECOND_ID = 'project-second'
@@ -62,13 +65,14 @@ describe('The start after a project started from a failed load', () => {
     stubCapableStorage()
     const ports = await durablePortsWithAFailedProject()
     renderApp(ports)
+    await closeTheDialog()
     await startNewProjectFromThePage()
     await screen.findByRole('button', { name: /add floor/i })
     cleanup()
 
     renderApp(reloadOf(ports))
 
-    expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
+    expect(await findTheFailedOpenDialog()).toHaveTextContent(NEWER_VERSION_CAUSE)
     expect(await recordIdsBesideTheFailedOne(ports)).toEqual([])
   })
 
@@ -76,6 +80,7 @@ describe('The start after a project started from a failed load', () => {
     stubCapableStorage()
     const ports = await durablePortsWithAFailedProject()
     renderApp(ports)
+    await closeTheDialog()
     await startNewProjectFromThePage()
     await editTheProject()
     await expectTheSaveReportedSaved()
@@ -96,6 +101,7 @@ describe('The start after a project started from a failed load', () => {
     const ports = await durablePortsWithAFailedProject()
     const put = vi.spyOn(ports.index, 'put').mockRejectedValue(new Error('the index is full'))
     renderApp(ports)
+    await closeTheDialog()
     await startNewProjectFromThePage()
 
     await editTheProject()

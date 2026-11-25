@@ -283,6 +283,5 @@ the assets in the archive. The narrower rule has these reasons:
 - `docs/plans/2026-11-15-session-layer-and-document-identity.md`, the section on assets that travel
   with documents.
 - ADR-0007 (content-addressed assets), ADR-0042 (the asset pool), ADR-0047 (the published format),
-  ADR-0003 (the typed results of an import), ADR-0190 (the interim rule under which a document with
-  format faults still opens).
+  ADR-0003 (the typed results of an import), ADR-0190 (a document with format faults does not open).
 - Issues #673 and #672.

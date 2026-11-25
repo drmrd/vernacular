@@ -1,13 +1,20 @@
 import { useCallback } from 'react'
 import type { NotificationApi } from '../editor/design-system'
-import { importFile, type ImportResult } from '../session'
+import {
+  importFile,
+  type FlowResult,
+  type ImportedFile,
+  type ImportFailure,
+  type ImportResult,
+} from '../session'
 import { ARCHIVE_LIMITS } from '../storage'
 import { importMissingAssetsText } from './asset-report-text'
 import { failureMessage } from './failure-message'
-import { archiveTooLargeText } from './open-failure-text'
+import { openFailureReason } from './open-failure-text'
 import { loadPackSupplies } from './pack-supplies'
-import { useSwitchFlow } from './project-action-helpers'
+import type { RunFlow } from './use-open-project'
 import type { ProjectActionsContext } from './use-project-actions'
+import { useSwitchNotices } from './use-switch-notices'
 
 // Reads the bytes through the file's own reader, so a file that cannot be read rejects with its
 // own error. A File with no such reader (the test environment's) is read through a FileReader.
@@ -39,35 +46,106 @@ function openFilePicker(onFile: (file: File) => void | Promise<void>): void {
   input.click()
 }
 
+/** A refusal of a file that holds no project it can open, as opposed to a file of another type. */
+export type RefusedFileFailure = Exclude<ImportFailure, { readonly kind: 'unsupported-file' }>
+
+/** A file that did not import, and the file as it was read, for an import with its repair. */
+export interface RefusedFile {
+  readonly failure: RefusedFileFailure
+  /** Absent for a file that was refused before it was read. */
+  readonly file?: ImportedFile
+}
+
 /**
  * What the import reads: the notices, the library of pack supplies, and the owner of the open
- * project.
+ * project. With `onRefusedFile`, a file that holds no project it can open goes there in place of
+ * the notice.
  */
-export type OpenFileContext = Pick<ProjectActionsContext, 'notifications' | 'packs' | 'runFlow'>
+export type OpenFileContext = Pick<ProjectActionsContext, 'notifications' | 'packs' | 'runFlow'> & {
+  readonly onRefusedFile?: ((refused: RefusedFile) => void) | undefined
+}
 
 // Shows the refusal of a file above the size limit of the archive reader, and says whether it did.
-function refuseLargeFile(file: File, notifications: NotificationApi): boolean {
+function refuseLargeFile(
+  file: File,
+  notifications: NotificationApi,
+  onRefusedFile: OpenFileContext['onRefusedFile'],
+): boolean {
   if (file.size <= ARCHIVE_LIMITS.archiveBytes) {
     return false
   }
-  const reason = archiveTooLargeText('archiveBytes', ARCHIVE_LIMITS.archiveBytes)
-  notifications.error(failureMessage('Open', reason))
+  const failure: RefusedFileFailure = {
+    kind: 'archive-too-large',
+    limit: 'archiveBytes',
+    allowed: ARCHIVE_LIMITS.archiveBytes,
+  }
+  if (onRefusedFile === undefined) {
+    notifications.error(failureMessage('Open', openFailureReason(failure)))
+  } else {
+    onRefusedFile({ failure })
+  }
   return true
+}
+
+/** The refusal of an import that holds no project it can open, or undefined for any other result. */
+function refusedFileFailure(
+  result: FlowResult<ImportFailure> | undefined,
+): RefusedFileFailure | undefined {
+  if (result === undefined || result.ok) {
+    return undefined
+  }
+  const { failure } = result
+  return failure.kind === 'did-not-import' || failure.kind === 'archive-too-large'
+    ? failure
+    : undefined
+}
+
+/**
+ * Runs the import of the file that was read through the owner of the open project, and gives what
+ * the owner gave. An import that opened the project with assets missing shows one warning with the
+ * count.
+ */
+export async function importWithAssetWarning(
+  runFlow: RunFlow,
+  request: ImportedFile,
+  notifications: NotificationApi,
+): Promise<FlowResult<ImportFailure> | undefined> {
+  let imported: ImportResult | undefined
+  const result = await runFlow(async (ports, current) => {
+    imported = await importFile(ports, current, request)
+    return imported
+  })
+  if (imported?.ok === true && imported.missingAssets.length > 0) {
+    notifications.warning(importMissingAssetsText(imported.missingAssets.length))
+  }
+  return result
+}
+
+/** The file as the import reads it: its name, its bytes, and the supplies of the packs. */
+async function importRequest(file: File, bytes: Uint8Array, packs: OpenFileContext['packs']) {
+  const packSupplies = await loadPackSupplies(packs)
+  const request: ImportedFile = {
+    name: file.name,
+    bytes,
+    ...(packSupplies === undefined ? {} : { packSupplies }),
+  }
+  return request
 }
 
 // Refuses a file above the size limit before reading it, then reads the bytes of the file outside
 // the flow, so a file that cannot be read shows why and runs no flow. The import then opens the
 // copy under a new id and stores it. A failure shows "Open failed: " with the reason, with no
-// Retry. An import that opened the project with assets missing shows one warning with the count.
+// Retry, unless the context takes the refusal of a file that holds no project it can open. An
+// import that opened the project with assets missing shows one warning with the count.
 export function useOpenFileAction(context: OpenFileContext): {
   onImportDroppedFile: (file: File) => Promise<void>
   onImportFile: () => void
 } {
-  const { notifications, packs, runFlow } = context
-  const runSwitch = useSwitchFlow(runFlow)
+  const { notifications, packs, runFlow, onRefusedFile } = context
+  const notify = useSwitchNotices()
   const importAndActivate = useCallback(
     async (file: File) => {
-      if (refuseLargeFile(file, notifications)) {
+      if (refuseLargeFile(file, notifications, onRefusedFile)) {
         return
       }
       let bytes: Uint8Array
@@ -77,22 +155,16 @@ export function useOpenFileAction(context: OpenFileContext): {
         notifications.error(failureMessage('Open', error))
         return
       }
-      const name = file.name
-      const packSupplies = await loadPackSupplies(packs)
-      let imported: ImportResult | undefined
-      await runSwitch(async (ports, current) => {
-        imported = await importFile(ports, current, {
-          name,
-          bytes,
-          ...(packSupplies === undefined ? {} : { packSupplies }),
-        })
-        return imported
-      })
-      if (imported?.ok === true && imported.missingAssets.length > 0) {
-        notifications.warning(importMissingAssetsText(imported.missingAssets.length))
+      const request = await importRequest(file, bytes, packs)
+      const result = await importWithAssetWarning(runFlow, request, notifications)
+      const refused = refusedFileFailure(result)
+      if (onRefusedFile !== undefined && refused !== undefined) {
+        onRefusedFile({ failure: refused, file: request })
+      } else {
+        notify(result)
       }
     },
-    [runSwitch, notifications, packs],
+    [runFlow, notify, notifications, packs, onRefusedFile],
   )
   return {
     onImportDroppedFile: importAndActivate,

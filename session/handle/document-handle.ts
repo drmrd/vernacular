@@ -1,5 +1,5 @@
 import type { DocumentStore, ProjectLockHold, ProjectSnapshots, SaveReport } from '../../storage'
-import { createAutosave } from '../autosave/create-autosave'
+import { type Autosave, createAutosave } from '../autosave/create-autosave'
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuarded } from '../guarded-call'
 import { registerHandle } from './handle-internals'
@@ -20,13 +20,15 @@ export interface DocumentHandleParts {
   /** A session built ahead on the opened project; when absent, the handle builds its own. */
   readonly session?: EditorSession
   /**
-   * The snapshots of the request's id on the store, obtained ahead; when absent, the handle asks
-   * the store for them. After a restore, the closed old handle and the new handle share one
-   * snapshots object, which is safe because that object holds no state of a session.
+   * The snapshots of the request's id on the store. After a restore, the closed old handle and the
+   * new handle share one snapshots object, which is safe because that object holds no state of a
+   * session.
    */
-  readonly snapshots?: ProjectSnapshots
+  readonly snapshots: ProjectSnapshots
   /** True: the autosave writes no recovery snapshot and removes none. `snapshots` is unchanged. */
   readonly leaveSnapshots?: boolean
+  /** True: the open moved a recovery copy that cannot be read to the backups; the handle says so. */
+  readonly recoveryCopyKept?: boolean
   /** The record writes of the project; a restore passes on those of the handle before it. */
   readonly records: RecordKeeper
   /**
@@ -66,16 +68,10 @@ function createSaveStatusCell(): SaveStatusCell {
   }
 }
 
-/**
- * Raises saved-with-faults for a store save that found faults, unless the document opened despite
- * format faults: such a document was faulty already, so no sound copy is kept for it.
- */
-function reportFaultsTo(
-  notices: HandleNotices,
-  opened: OpenedProject,
-): (report: SaveReport) => void {
+/** Raises saved-with-faults for a store save that found faults. */
+function reportFaultsTo(notices: HandleNotices): (report: SaveReport) => void {
   return (report) => {
-    if (!opened.openedDespiteFaults && report.faults.length > 0) {
+    if (report.faults.length > 0) {
       notices.raise('saved-with-faults')
     }
   }
@@ -123,6 +119,25 @@ function listenToWrites(parts: WriteListenerParts): WriteListeners {
   }
 }
 
+/** The autosave of a handle, which leaves the recovery snapshots alone when the parts say so. */
+function createHandleAutosave(
+  parts: DocumentHandleParts,
+  session: EditorSession,
+  writes: WriteListeners,
+): Autosave {
+  const autosave = createAutosave({
+    session,
+    store: parts.store,
+    projectId: parts.request.id,
+    snapshots: parts.snapshots,
+    ...writes,
+  })
+  if (parts.leaveSnapshots === true) {
+    autosave.leaveSnapshots()
+  }
+  return autosave
+}
+
 /**
  * Builds the handle of an opened project: its session, its autosave, its status, its notices, and
  * its save, flush, and close. It records the store and the hand-over of the handle in the internal
@@ -136,16 +151,14 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
   if (opened.savedByNewerBuild) {
     notices.raise('saved-by-newer-build')
   }
-  const snapshots = parts.snapshots ?? store.snapshots(request.id)
-  const reportFaults = reportFaultsTo(notices, opened)
+  if (parts.recoveryCopyKept === true) {
+    notices.raise('recovery-copy-kept')
+  }
+  const { snapshots } = parts
+  const reportFaults = reportFaultsTo(notices)
   const storedFlag = createStoredFlag(parts.stored ?? false)
-  const autosave = createAutosave({
-    session,
-    store,
-    projectId: request.id,
-    ...(parts.leaveSnapshots === true ? {} : { snapshots }),
-    ...listenToWrites({ session, status, reportFaults, records, storedFlag }),
-  })
+  const writes = listenToWrites({ session, status, reportFaults, records, storedFlag })
+  const autosave = createHandleAutosave(parts, session, writes)
   const { save, flush, close, handOver } = createSavePath({ autosave, hold, records })
   const handle: DocumentHandle = {
     id: request.id,
@@ -160,6 +173,13 @@ export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle
     flush,
     close,
   }
-  registerHandle(handle, { request, store, records, handOver, stored: storedFlag.get })
+  registerHandle(handle, {
+    request,
+    store,
+    records,
+    handOver,
+    leaveSnapshots: autosave.leaveSnapshots,
+    stored: storedFlag.get,
+  })
   return handle
 }

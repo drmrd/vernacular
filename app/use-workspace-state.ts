@@ -94,6 +94,24 @@ interface CrashRecoveryContext {
   offered: WeakSet<DocumentHandle> | undefined
 }
 
+/**
+ * Offers a recovery only while the snapshots still hold a copy that can be restored. An answer
+ * that arrives after the open project changed does nothing.
+ */
+async function dismissUnlessRecoverable(
+  snapshots: ProjectSnapshots,
+  dismiss: () => void,
+  isLive: () => boolean,
+): Promise<void> {
+  try {
+    if (!(await snapshots.isRecoverable()) && isLive()) {
+      dismiss()
+    }
+  } catch (error) {
+    console.error('checking for a recovered copy failed', error)
+  }
+}
+
 interface RecoveryHandlersContext extends Omit<CrashRecoveryContext, 'handle' | 'offered'> {
   snapshots: ProjectSnapshots
   dismiss: () => void
@@ -123,6 +141,9 @@ function buildRecovery(context: RecoveryHandlersContext): Recovery {
             return
           }
           notify(result, { action: 'Restore' })
+          if (result.failure.kind === 'did-not-restore') {
+            await dismissUnlessRecoverable(snapshots, dismiss, isLive)
+          }
         },
       }),
     // Pruning deletes every recovered snapshot, so it is gated behind the ADR-0104

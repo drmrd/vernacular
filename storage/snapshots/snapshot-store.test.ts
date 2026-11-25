@@ -11,10 +11,9 @@ import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
   bytesOf,
   fixtureDocument,
-  UNKNOWN_FIELD,
-  UNKNOWN_WALL_FIELD_PATH,
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
+import { DocumentDecodeError } from '../documents/document-decode-error'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { SnapshotStore } from './snapshot-store'
 
@@ -176,16 +175,16 @@ describe('SnapshotStore', () => {
     expect(restored?.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
   })
 
-  it('restores the migrated document of a snapshot that fails the check and warns of the fault', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  it('gives the failure of a snapshot that fails the check, and no document', async () => {
     const store = await storeHoldingSnapshot(bytesFailingTheCheck())
 
-    const restored = await store.restore()
+    const error = await store.restore().then(
+      () => undefined,
+      (rejected: unknown) => rejected,
+    )
 
-    expect(restored?.floors[0]?.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
-    expect(
-      warn.mock.calls.some((args) => JSON.stringify(args).includes(UNKNOWN_WALL_FIELD_PATH)),
-    ).toBe(true)
+    expect(error).toBeInstanceOf(DocumentDecodeError)
+    expect((error as DocumentDecodeError).failure.kind).toBe('format-rules')
   })
 })
 

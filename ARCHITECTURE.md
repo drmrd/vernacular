@@ -81,21 +81,27 @@ holds the editor session, the project lock, autosave, and the recovery
 snapshots, and which saves the project. The flows in `session/flows/`
 open, switch, import, export, rename, delete, and restore a project, and
 remove a folder project from the list. A switch writes the open project
-before it opens the next one. An export of a project that did not open
-gives an unchecked copy of its stored files, with its snapshots and
-backups (ADR-0191). A delete removes the project's document, backups,
-snapshots, and record, and each pool asset that no other project and no
-library item uses. It removes no asset while the asset list of any
-project is not known. A record lists the assets of the current document
-only, so a delete can still remove bytes that a snapshot, a backup, or
-an undo step of another project names. Remove from list forgets the
-folder and its record and touches no file of the folder. The handle also writes the project index, the store
-of one record per project. The start, the recent list, and the cards of the Projects page
-(`listProjectCards` in `session/projects/project-cards.ts`) read it through `reconcileIndex`
-(`session/projects/`), which rebuilds the index from the project store. In `app/`, one hook,
-`useOpenProject` in `app/use-open-project.ts`, holds the one open
-handle and runs one flow at a time. `app/create-session-ports.ts` is the
-one production file of `app/` that names a store (ADR-0212).
+before it opens the next one. A document that fails the format check does
+not open, and the refusal writes no file of the project (ADR-0190). The
+failure carries the repair that would fix it, when `core/repairs/` has one,
+and the failed-open dialog of `editor/projects/` shows it. The flows
+`openRepairedAsNew` and `replaceWithRepaired` (`session/flows/open-failed.ts`)
+open the repaired document as a new project or replace the stored one. An
+export of a project that did not open gives an unchecked copy of its stored
+files, with its snapshots and backups (ADR-0191). A delete removes the
+project's document, backups, snapshots, and record, and each pool asset that
+no other project and no library item uses. It removes no asset while the
+asset list of any project is not known. A record lists the assets of the
+current document only, so a delete can still remove bytes that a snapshot, a
+backup, or an undo step of another project names. Remove from list forgets
+the folder and its record and touches no file of the folder. The handle also
+writes the project index, the store of one record per project. The start,
+the recent list, and the cards of the Projects page (`listProjectCards` in
+`session/projects/project-cards.ts`) read it through `reconcileIndex`
+(`session/projects/`), which rebuilds the index from the project store. In
+`app/`, one hook, `useOpenProject` in `app/use-open-project.ts`, holds the
+one open handle and runs one flow at a time. `app/create-session-ports.ts`
+is the one production file of `app/` that names a store (ADR-0212).
 
 The address of a project lives in `app/`. `app/address.ts` reads and
 writes the fragment of the page address, `app/use-history-navigation.ts`

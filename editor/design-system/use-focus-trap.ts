@@ -6,15 +6,24 @@ const FOCUSABLE_SELECTOR = [
   'select:not([disabled])',
   'textarea:not([disabled])',
   'a[href]',
+  'details > summary:first-of-type',
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
 const PROGRAMMATIC_FOCUS_ONLY = '-1'
+const INITIAL_FOCUS_ATTRIBUTE = 'data-initial-focus'
 
 function focusableDescendants(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
     (element) => element.getAttribute('tabindex') !== PROGRAMMATIC_FOCUS_ONLY,
   )
+}
+
+// The trap does not check whether the marked element, or the first focusable one, is visible,
+// so focusing a hidden one leaves focus where it was.
+function firstFocusTarget(container: HTMLElement): HTMLElement | undefined {
+  const focusable = focusableDescendants(container)
+  return focusable.find((element) => element.hasAttribute(INITIAL_FOCUS_ATTRIBUTE)) ?? focusable[0]
 }
 
 function tabTarget(
@@ -143,7 +152,9 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  * Makes the element that holds the returned ref a modal focus trap for as long as it is mounted.
  *
  * On mount it remembers the focused element as the opener and focuses the first focusable
- * descendant. While it is mounted:
+ * descendant, or the focusable descendant that carries the `data-initial-focus` attribute when
+ * there is one. Only the first `summary` child of a `details` element counts as focusable (the
+ * one a browser focuses). While it is mounted:
  * - Tab and Shift+Tab wrap inside the container. When focus is on none of the focusable
  *   descendants (on the container itself, say), Tab goes to the first and Shift+Tab to the last.
  * - The container can hold focus: it gets `tabindex="-1"` unless it already has a tabindex, so a
@@ -155,7 +166,8 @@ function restoreFocus(opener: HTMLElement | null, container: HTMLElement): void 
  *   `document` or `window` does not see it. Handlers inside the container, React ones included,
  *   still receive every key, and keyup passes untouched so that held keys are released. A keydown
  *   that starts outside the container is held back as well, and focus moves to the first
- *   focusable descendant (the container when there is none). A `keydown` that starts while a trap
+ *   focusable descendant (the container when there is none), not to the one marked with
+ *   `data-initial-focus`. A `keydown` that starts while a trap
  *   is the active one is held back from the bubble-phase listeners on `document` and `window`
  *   even when the trap unmounts while that event is being handled. The hold is for that one event
  *   only.
@@ -177,7 +189,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T
     }
     const opener = document.activeElement as HTMLElement | null
     const undoFocusable = makeContainerFocusable(container)
-    focusableDescendants(container)[0]?.focus()
+    firstFocusTarget(container)?.focus()
     const onKeyDown = (event: KeyboardEvent) => trapTab(event, container)
     const onMouseDown = (event: MouseEvent) => keepFocusOnPressOutside(event, container)
     const onBodyKeyDown = (event: KeyboardEvent) => pullFocusIntoTrap(event, container)

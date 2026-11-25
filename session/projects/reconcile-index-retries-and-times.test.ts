@@ -136,16 +136,17 @@ describe('the times of a record that replaces an earlier one', () => {
     expect(await ports.index.get('a')).toEqual(expected)
   })
 
-  it('a document that fails only the strict check takes the listed time, not the time of change of the record that it replaces', async () => {
+  it('a document that fails only the strict check gets a record that did not open and takes the listed time, not the time of change of the record that it replaces', async () => {
     const ports = rebuildPorts()
-    await placeDocument(ports, 'a', documentBreakingFormatRules())
+    const bytes = documentBreakingFormatRules()
+    await placeDocument(ports, 'a', bytes)
     await ports.index.put(
       sampleRecord({ id: 'a', lastChangedAt: EARLIER_CHANGE, lastUsedAt: USED_AT }),
     )
 
     const [record] = await reconcileIndex(ports)
 
-    expect([record?.lastChangedAt, record?.lastUsedAt]).toEqual([STORED_AT, USED_AT])
+    expect(record).toEqual({ ...failedRecord('a', bytes, 'format-rules'), lastUsedAt: USED_AT })
     expect((await ports.index.get('a'))?.lastChangedAt).toBe(STORED_AT)
   })
 

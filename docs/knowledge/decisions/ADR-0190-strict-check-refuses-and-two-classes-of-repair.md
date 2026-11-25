@@ -21,9 +21,12 @@ sourceFiles:
     app/app.tsx,
     core/migrations/migrate.ts,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
+    core/repairs/repair-list.ts,
+    session/flows/open-failed.ts,
+    session/handle/read-for-open.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-21
 ---
 
 # ADR-0190: A document that fails the strict check does not open, and repairs come in two classes
@@ -35,8 +38,9 @@ Current. The owner took decisions 13, 14, and 15 of section 4.1 of
 owner confirmed two calls below, each in place of a stated alternative: a failed check never blocks
 a save, and the general repair is an offer in the dialog. The owner approved the rest the same
 day, with that specification. It supersedes the part of ADR-0051 that lets a document open after a
-failed check, and it amends ADR-0178, ADR-0182, and ADR-0183. The code changes with #685. Until
-then validation runs only in a development build and never stops a load.
+failed check, and it amends ADR-0178, ADR-0182, and ADR-0183. The code is in place (#685, #631).
+Strict validation runs in every build. A document that fails it does not open on any read path,
+and the failed-open dialog and the two repairs ship with that refusal.
 
 ## Context
 
@@ -62,21 +66,28 @@ has one `kind` and also carries fields that only another variant defines.
   migration backup is written after a decode that migrated and succeeded, before the document
   reaches the caller.
 - A recovery snapshot that fails decode is not restored. It moves to the project's backups by the
-  rule of ADR-0182, so no prune removes the unsaved work in it, and the recovery prompt says that
-  the copy is kept.
+  rule of ADR-0182, as the kind `refused-snapshot`, so no prune removes the unsaved work in it. The
+  move runs when its project opens, before autosave starts, and again when a restore finds a copy
+  that cannot be read. A notice then says that the copy could not be read and is kept.
 - The user decides what happens next. A dialog says that the project did not open, gives the
   reason, and has details that can be expanded. It offers Close, Export, and, when a known repair
   applies, opening with the repair. The "Start a new project" control that the first stage builds
-  is removed from that dialog. The Projects page has New project. A failed import shows the same
-  dialog without Export and without the replace choice, because the user still has the file.
-- The refusal reaches users only together with the dialog, in one pull request. The codec builds
-  the strict check first. Until the dialog lands, a failed check is reported and the document
-  opens, on every path that reads one. In that interval a document that migrated and then failed
-  the check still gets its migration backup before it opens.
+  is removed from that dialog. The Projects page has New project. The dialog shows on the Projects
+  page, for a stored project that did not open, whether at the start, from a card, or from an
+  address, and for a file that did not import there. A failed import shows the same dialog under
+  the title "This file did not open.", without Export and without the replace choice, because the
+  user still has the file. A file that fails to import from the editor still shows a notice with
+  the reason.
+- The refusal reaches users together with the dialog, in one pull request. A refused open writes
+  no file of the project: no migration backup, no document, and no snapshot. It writes only the
+  record in the project index, which says why the project did not open.
 - A repair that loses no data is a step in the migration chain. It takes the next `schemaVersion`,
   runs with no question, and has a test that shows every value of the input is in the output.
-- A repair that removes data is never in the chain. It is an entry in a named list in `core/`. It
-  runs in memory first, writes nothing, says what it removes, and is always the user's choice.
+- A repair that removes data is never in the chain. It is an entry in a named list in `core/`
+  (`core/repairs/repair-list.ts`). It runs in memory first, writes nothing, says what it removes,
+  and is always the user's choice. A document that comes from a higher revision gets no offer,
+  because a newer build may define the fields that the repair would remove, and a repair is
+  offered only when the repaired document passes the strict check.
 - The list starts with two entries. The first is the mixed paint entry of #624, and the repair
   removes the fields of the other variant. The second is general: a field that the format does not
   define, outside `extensions`, anywhere in the document. The repair removes each such field, and
@@ -87,9 +98,13 @@ has one `kind` and also carries fields that only another variant defines.
   this stage.
 - The repaired project can open as a new project, which is the first choice and leaves the stored
   project untouched. It can also replace the stored project, with the plain warning "The data that
-  the repair removes is lost. You cannot undo this action." A replace keeps a backup of the stored
-  bytes by the rule of ADR-0182. For a folder project, a new project made from a repair is stored
-  in the browser, and a replace writes into the folder.
+  the repair removes is lost. You cannot undo this action." A replace reads the stored file again
+  under the project's lock and writes only when the file still fails in the same way and the
+  repair removes the same paths that the user saw. It keeps the stored bytes as a backup of the
+  kind `pre-repair` by the rule of ADR-0182, and it writes the repaired document without the
+  restore of unknown keys that a save does, so the removed data does not come back. For a folder
+  project, a new project made from a repair is stored in the browser, and a replace writes into
+  the folder.
 - A failed check never blocks a save. The save is written, the last stored file that passed the
   check is kept as a backup, and the user is told. The alternative was to refuse the save, which
   loses the work since the last save.

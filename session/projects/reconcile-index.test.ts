@@ -1,28 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { decodeDocument } from '../../core'
-import type { Project } from '../../core'
-import { openDespiteFaults, withMemoryFallback } from '../../storage'
-import type { FormatRulesFailure, ProjectRecord } from '../../storage'
+import { withMemoryFallback } from '../../storage'
+import type { ProjectRecord } from '../../storage'
 import { failingIndex, sampleRecord } from '../../storage/project-index/project-record-test-kit'
 import {
   currentBytes,
   documentBreakingFormatRules,
 } from '../../tests/storage/conformance/conformance-documents'
-import { UNKNOWN_WALL_FIELD_PATH } from '../../tests/fixtures/projects/versions/fixture-documents'
-import {
-  IN_WORKSPACE,
-  openOrThrow,
-  placeDocument,
-  rename,
-  workspaceRequest,
-} from '../handle/handle-test-kit'
+import { openOrThrow, placeDocument, rename, workspaceRequest } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
 import { UNNAMED_PROJECT, displayNameOf, reconcileIndex } from '..'
-import { factsOf } from './project-facts'
 import {
   EARLIER_CHANGE,
   LATER_BUILD_HASH,
-  REBUILD_BUILD,
   STORED_AT,
   USED_AT,
   documentNamed,
@@ -57,16 +46,6 @@ async function openAndClose(ports: TestPorts, ids: readonly string[]): Promise<v
     const handle = await openOrThrow(ports, workspaceRequest(id))
     await handle.close()
   }
-}
-
-/** The project that a document which fails only the strict check opens as. */
-function openedDespiteFaults(bytes: Uint8Array): Project {
-  const decoded = decodeDocument(bytes)
-  if (decoded.ok || decoded.failure.kind !== 'format-rules') {
-    throw new Error(`Expected only the format rules to fail: ${JSON.stringify(decoded)}`)
-  }
-  const failure: FormatRulesFailure = decoded.failure
-  return openDespiteFaults(failure)
 }
 
 describe('the records that the rebuild makes from the stored projects', () => {
@@ -122,29 +101,14 @@ describe('the records that the rebuild makes from the stored projects', () => {
     expect(await ports.index.all()).toEqual(records)
   })
 
-  it('a project that fails only the strict check gets its facts from the failed document and a record that says it opened, with a warning that carries the faults', async () => {
+  it('a project that fails only the strict check gets a record that says it did not open, with its facts from the stored bytes', async () => {
     const ports = rebuildPorts()
     const bytes = documentBreakingFormatRules()
     await placeDocument(ports, 'a', bytes)
-    const facts = factsOf(openedDespiteFaults(bytes))
-    consoleWarn.mockClear()
 
     const [record] = await reconcileIndex(ports)
 
-    expect(record).toEqual({
-      id: 'a',
-      location: IN_WORKSPACE,
-      name: facts.name,
-      floorCount: facts.floorCount,
-      preview: facts.preview,
-      assetHashes: facts.assetHashes,
-      assetListComplete: false,
-      lastChangedAt: STORED_AT,
-      lastUsedAt: STORED_AT,
-      lastOpen: { opened: true, build: REBUILD_BUILD },
-    })
-    expect(record?.lastOpen).toStrictEqual({ opened: true, build: REBUILD_BUILD })
-    expect(JSON.stringify(consoleWarn.mock.calls)).toContain(UNKNOWN_WALL_FIELD_PATH)
+    expect(record).toEqual(failedRecord('a', bytes, 'format-rules'))
   })
 
   it('an index that rejects every call falls back to one rebuilt in memory', async () => {

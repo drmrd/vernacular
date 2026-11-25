@@ -32,6 +32,8 @@ const NOT_STORED_SENTENCE = 'This project is not stored in this browser.'
 const FOLDER_EMPTY_SENTENCE = 'This folder holds no Vernacular project.'
 const FOLDER_PERMISSION_SENTENCE = 'Vernacular has no permission to use this folder.'
 const FOLDER_UNAVAILABLE_SENTENCE = 'The folder of this project cannot be reached.'
+const RECOVERY_COPY_UNREADABLE_SENTENCE =
+  "A recovery copy could not be read. It is kept with the project's backups."
 const STORAGE_MESSAGE = 'The storage of this browser is full.'
 /** Each archive limit and the sentence of an archive above it, at the default value of the limit. */
 const ARCHIVE_TOO_LARGE_SENTENCES: readonly (readonly [ArchiveLimitName, string])[] = [
@@ -170,19 +172,24 @@ describe('useSwitchNotices for a failure with a reason', () => {
   it('a document that does not decode shows "Open failed: " and the sentence of the decode failure', async () => {
     const notJson: DecodeFailure = { kind: 'not-json', message: 'Unexpected token' }
     const newer: DecodeFailure = { kind: 'newer-version', version: 99, buildVersion: 1 }
-    const notAProject: DecodeFailure = { kind: 'not-a-project' }
 
     await showResults([
       failed({ kind: 'did-not-open', decode: notJson }),
       failed({ kind: 'did-not-import', decode: newer }),
-      failed({ kind: 'did-not-restore', decode: notAProject }),
     ])
 
-    expect(screen.getAllByRole('alert')).toHaveLength(3)
-    for (const decode of [notJson, newer, notAProject]) {
+    expect(screen.getAllByRole('alert')).toHaveLength(2)
+    for (const decode of [notJson, newer]) {
       const sentence = new DocumentDecodeError(decode).message
       expect(screen.getByText(`Open failed: ${sentence}`)).toBeInTheDocument()
     }
+  })
+
+  it('a recovery copy that does not decode says that it could not be read and is kept', async () => {
+    await showResult(failed({ kind: 'did-not-restore', decode: { kind: 'not-a-project' } }))
+
+    expectOneError(RECOVERY_COPY_UNREADABLE_SENTENCE)
+    expect(screen.queryByText(/^Open failed/)).not.toBeInTheDocument()
   })
 
   it('an unsupported file shows "Open failed: Unsupported project file: " and the name', async () => {

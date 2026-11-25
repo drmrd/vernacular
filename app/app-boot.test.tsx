@@ -19,7 +19,6 @@ import {
   editTheProject,
   expectOpenProject,
   findCardLink,
-  findThePageAlert,
   findTheProjectsPage,
   findTheShell,
   lockCalls,
@@ -34,6 +33,7 @@ import {
   storedIds,
   stubCapableStorage,
 } from './app-test-support'
+import { closeTheDialog, findTheFailedOpenDialog } from './failed-open-dialog-test-support'
 
 const KEPT_NAME = 'Kept House'
 const OPEN_ELSEWHERE_LINE = 'Already open in another tab.'
@@ -149,26 +149,26 @@ describe('The application boots from its ports', () => {
 })
 
 describe('The application after a failed start', () => {
-  it('shows the Projects page with a notice when the project fails to load', async () => {
+  it('shows the failed-open dialog over the Projects page when the project fails to load', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     const read = vi.spyOn(ports.workspace, 'read').mockRejectedValue(new Error('disk fault'))
 
     renderApp(ports)
 
-    expect(await findThePageAlert()).toHaveTextContent(/could not open the project/i)
+    expect(await findTheFailedOpenDialog()).toBeInTheDocument()
     // The failure is the one of these ports, not of a store resolved elsewhere.
     expect(read).toHaveBeenCalled()
   })
 
-  it('names the underlying failure in the notice of the page', async () => {
+  it('names the underlying failure in the dialog', async () => {
     stubCapableStorage()
     const ports = createTestPorts()
     vi.spyOn(ports.workspace, 'read').mockRejectedValue(new Error('stored project is corrupt'))
 
     renderApp(ports)
 
-    expect(await findThePageAlert()).toHaveTextContent(/stored project is corrupt/i)
+    expect(await findTheFailedOpenDialog()).toHaveTextContent(/stored project is corrupt/i)
   })
 
   it('says on the card that the project is open in another tab when another tab holds it', async () => {
@@ -193,7 +193,7 @@ describe('The application after a failed start', () => {
 
     renderApp(ports)
 
-    await findThePageAlert()
+    await closeTheDialog()
     await clickCardOf(KEPT_NAME)
 
     expect(await findTheShell()).toBeInTheDocument()
@@ -206,6 +206,7 @@ describe('The application after a failed start', () => {
     const save = vi.spyOn(ports.workspace, 'save')
 
     renderApp(ports)
+    await closeTheDialog()
     await startNewProjectFromThePage()
 
     await findTheShell()
@@ -223,7 +224,7 @@ describe('The application after a failed start', () => {
     const ports = createTestPorts()
     await plantFailedProject(ports)
     renderApp(ports)
-    await findThePageAlert()
+    await closeTheDialog()
     const letTheReadGo = holdNextRead(ports.workspace)
 
     await startNewProjectFromThePage()
@@ -257,7 +258,7 @@ describe('The application that resolves its ports', () => {
 
     render(<App resolvePorts={resolvePorts} />)
 
-    await findThePageAlert()
+    await closeTheDialog()
     await clickCardOf(KEPT_NAME)
 
     await findTheShell()

@@ -6,7 +6,6 @@ import { createTestPorts, type TestPorts } from '../session/handle/handle-test-k
 import {
   FAILED_ID,
   NEW_PROJECT_NAME,
-  findThePageAlert,
   findTheShell,
   openProjectName,
   plantProject,
@@ -14,6 +13,7 @@ import {
   startNewProjectFromThePage,
   stubCapableStorage,
 } from './app-test-support'
+import { closeTheDialog } from './failed-open-dialog-test-support'
 import { holdIndexReads, type ReleaseReads } from './held-index-test-support'
 
 const KEPT_NAME = 'Kept House'
@@ -71,7 +71,7 @@ describe('The Projects page while the index does not answer', () => {
     await reconcileIndex(ports)
     vi.spyOn(ports.workspace, 'read').mockRejectedValueOnce(new Error('disk fault'))
     renderApp(ports)
-    await findThePageAlert()
+    await closeTheDialog()
     releaseReads = holdIndexReads(ports.index)
     return ports
   }

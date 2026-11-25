@@ -6,8 +6,6 @@ import {
   bytesOf,
   fixtureDocument,
   metaOf,
-  UNKNOWN_FIELD,
-  UNKNOWN_WALL_FIELD_PATH,
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { ARCHIVE_LIMITS } from '../zip/archive-limits'
@@ -35,10 +33,6 @@ function sampleProject() {
 
 function sampleBytes(): Uint8Array {
   return encodeDocument(sampleProject(), undefined).bytes
-}
-
-function warnedAbout(spy: { mock: { calls: unknown[][] } }, path: string): boolean {
-  return spy.mock.calls.some((args) => JSON.stringify(args).includes(path))
 }
 
 function archiveOf(files: Record<string, Uint8Array>): Uint8Array {
@@ -107,14 +101,13 @@ describe('importProjectFile', () => {
     })
   })
 
-  it('a .json file that fails only the format rules opens and warns of the fault', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  it('a file that only breaks the format rules gives the decode failure', async () => {
     const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
 
-    const read = readOf(await importProjectFile('plan.json', bytesOf(document)))
-
-    expect(read.project.floors[0]!.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
-    expect(warnedAbout(warn, UNKNOWN_WALL_FIELD_PATH)).toBe(true)
+    expect(await importProjectFile('plan.json', bytesOf(document))).toMatchObject({
+      ok: false,
+      failure: { kind: 'decode', decode: { kind: 'format-rules' } },
+    })
   })
 
   it('a .json file gives no assets and no rejected assets', async () => {
@@ -126,15 +119,44 @@ describe('importProjectFile', () => {
 })
 
 describe('importProjectFile for a .building archive', () => {
-  it('a migrated archive document that breaks the format rules opens and warns of the fault', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  it('an archive whose migrated document breaks the format rules gives the decode failure', async () => {
     const document = withUnknownWallField(fixtureDocument(OLDER_VERSION))
     const bytes = archiveOf({ [DOCUMENT_FILE]: bytesOf(document) })
 
-    const read = readOf(await importProjectFile('plan.building', bytes))
+    expect(await importProjectFile('plan.building', bytes)).toMatchObject({
+      ok: false,
+      failure: { kind: 'decode', decode: { kind: 'format-rules' } },
+    })
+  })
 
-    expect(read.project.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
-    expect(warnedAbout(warn, UNKNOWN_WALL_FIELD_PATH)).toBe(true)
+  it('an archive whose document breaks the format rules gives the failure with its checked assets', async () => {
+    const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
+    const bytes = buildZip([
+      documentEntry(bytesOf(document)),
+      await assetEntry(MODEL),
+      await misnamedAssetEntry(MODEL, IMAGE),
+    ])
+
+    expect(await importProjectFile('plan.building', bytes)).toMatchObject({
+      ok: false,
+      failure: {
+        kind: 'decode',
+        decode: { kind: 'format-rules' },
+        supplied: {
+          assets: new Map([[await contentHashOf(MODEL), MODEL]]),
+          rejectedAssets: [await contentHashOf(IMAGE)],
+        },
+      },
+    })
+  })
+
+  it('a JSON file that breaks the format rules gives the failure with no assets', async () => {
+    const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
+
+    const read = await importProjectFile('plan.json', bytesOf(document))
+
+    expect(read).toMatchObject({ ok: false, failure: { kind: 'decode' } })
+    expect(read).not.toHaveProperty('failure.supplied')
   })
 
   it('an archive whose document is not JSON gives decode with not-json', async () => {

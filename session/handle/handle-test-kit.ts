@@ -224,6 +224,7 @@ export function recordSnapshots(
       prune: () => step('prune', () => real.prune()),
       isRecoverable: () => real.isRecoverable(),
       restore: () => real.restore(),
+      setAsideRefused: () => Promise.resolve(0),
     }
   }
 }

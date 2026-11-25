@@ -7,7 +7,6 @@ import {
   backToTheProject,
   clickCardOf,
   expectOpenProject,
-  failedOpenSentence,
   filesUnder,
   findCardLink,
   findThePageAlert,
@@ -24,6 +23,11 @@ import {
   nameOf,
 } from './history-navigation-test-support'
 import {
+  NEWER_VERSION_CAUSE,
+  closeTheDialog,
+  findTheFailedOpenDialog,
+} from './failed-open-dialog-test-support'
+import {
   addAFloor,
   expectTheEditAndUndoIt,
   findTheCardThatDidNotOpen,
@@ -39,14 +43,15 @@ const SAVE_FAILED_SENTENCE = 'The changes could not be saved, so the project sta
 setUpProjectsScreenTests()
 
 describe('A click on the card of a project that did not open', () => {
-  it('shows the reason in the alert of the page, and keeps the page and its address', async () => {
+  it('shows the reason in the dialog, and keeps the page and its address', async () => {
     const ports = await portsWithAProjectThatDoesNotOpen()
     const { bar } = renderAppAt(ports, PROJECTS_ADDRESS)
 
     await userEvent.click(await findTheCardThatDidNotOpen())
 
-    expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
+    expect(await findTheFailedOpenDialog()).toHaveTextContent(NEWER_VERSION_CAUSE)
     expect(bar.hash()).toBe(PROJECTS_ADDRESS)
+    await closeTheDialog()
     expect(await findTheProjectsPage()).toBeInTheDocument()
   })
 
@@ -54,7 +59,7 @@ describe('A click on the card of a project that did not open', () => {
     const ports = await portsWithAProjectThatDoesNotOpen()
     renderAppAt(ports, PROJECTS_ADDRESS)
     await userEvent.click(await findTheCardThatDidNotOpen())
-    await findThePageAlert()
+    await closeTheDialog()
 
     await clickCardOf(nameOf(FIRST_ID))
 
@@ -69,7 +74,7 @@ describe('A click on the card of a project that did not open', () => {
     const filesBefore = await filesUnder(ports.root, FAILED_ID)
 
     await userEvent.click(card)
-    await findThePageAlert()
+    await findTheFailedOpenDialog()
     await settleForAWhile()
 
     expect(filesBefore.size).toBeGreaterThan(0)
@@ -85,27 +90,27 @@ describe('A click on the card of a project that did not open', () => {
     const readsBefore = heldIds.mock.calls.length
 
     await userEvent.click(card)
-    await findThePageAlert()
+    await findTheFailedOpenDialog()
 
     await waitFor(() => expect(heldIds).toHaveBeenCalledTimes(readsBefore + 1))
     await settleForAWhile()
     expect(heldIds).toHaveBeenCalledTimes(readsBefore + 1)
   })
 
-  it('clears the earlier notice while a new try runs, and shows the notice of that try when it fails', async () => {
+  it('clears the earlier dialog while a new try runs, and shows the dialog of that try when it fails', async () => {
     const ports = await portsWithAProjectThatDoesNotOpen()
     renderAppAt(ports, PROJECTS_ADDRESS)
     const card = await findTheCardThatDidNotOpen()
     await userEvent.click(card)
-    await findThePageAlert()
+    await closeTheDialog()
     const letTheReadGo = holdNextRead(ports.workspace)
 
     await userEvent.click(card)
 
     await settleForAWhile()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     letTheReadGo()
-    expect(await findThePageAlert()).toHaveTextContent(await failedOpenSentence(ports))
+    expect(await findTheFailedOpenDialog()).toHaveTextContent(NEWER_VERSION_CAUSE)
   })
 })
 

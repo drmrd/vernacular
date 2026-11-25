@@ -1,10 +1,10 @@
 import type { DecodeFailure, DecodeResult } from '../../core'
-import { openDespiteFaults } from '../../storage'
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuardedAsync } from '../guarded-call'
 import { createDocumentHandle } from '../handle/document-handle'
 import { type HandleInternals, internalsOf } from '../handle/handle-internals'
 import type { DocumentHandle } from '../handle/handle-types'
+import { setAsideRefusedCopies } from '../handle/set-aside-refused-copies'
 import type { OpenedProject } from '../handle/read-for-open'
 import { storageUnavailable } from '../handle/thrown-failures'
 import { type FlowResult, flushFailed } from './flow-result'
@@ -31,29 +31,19 @@ function refused(failure: RestoreRefusal): Refused {
   return { ok: false, failure }
 }
 
-/**
- * The document of the recovered copy. A copy that only breaks the format rules restores anyway
- * under the interim rule of the storage layer, which warns with its faults; it counts as opened
- * despite faults.
- */
+/** The document of the recovered copy, or why the copy does not restore. */
 function decideDocument(restored: DecodeResult): OpenedProject | Refused {
   if (restored.ok) {
-    return { project: restored.value.project, savedByNewerBuild: false, openedDespiteFaults: false }
+    return { project: restored.value.project, savedByNewerBuild: false }
   }
-  const { failure } = restored
-  if (failure.kind !== 'format-rules') {
-    return refused({ kind: 'did-not-restore', decode: failure })
-  }
-  return {
-    project: openDespiteFaults(failure),
-    savedByNewerBuild: false,
-    openedDespiteFaults: true,
-  }
+  return refused({ kind: 'did-not-restore', decode: restored.failure })
 }
 
 /**
  * Reads the newest snapshot and builds the new session, before the current handle gives anything
- * up. Every failure here leaves the current handle as it was.
+ * up. A failure here leaves the current handle open and its project unchanged. One step can still
+ * change it: when a refused copy cannot be moved to the backups, the handle stops its snapshot
+ * writes and prunes, so that the copy outlives its saves.
  */
 async function prepareRestore(current: DocumentHandle): Promise<Prepared> {
   try {
@@ -64,6 +54,11 @@ async function prepareRestore(current: DocumentHandle): Promise<Prepared> {
     }
     const opened = decideDocument(restored)
     if ('ok' in opened) {
+      // A copy that does not decode moves to the backups, so the prompt stops offering it.
+      // A copy that stays where it is must outlive the saves of the handle that stays open.
+      if ((await setAsideRefusedCopies(current.snapshots)) === 'failed') {
+        internals.leaveSnapshots()
+      }
       return opened
     }
     return { ok: true, opened, session: createEditorSession(opened.project), internals }

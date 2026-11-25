@@ -15,6 +15,8 @@ export interface HandleInternals {
   readonly records: RecordKeeper
   /** Ends the handle as a close does, keeps the lock, and gives it to the caller. */
   handOver(): Promise<HandOver>
+  /** From now on the handle writes no recovery snapshot and removes none; its saves go on. */
+  leaveSnapshots(): void
   /** Whether the store holds the project of the handle. Reads memory only. */
   readonly stored: () => boolean
 }

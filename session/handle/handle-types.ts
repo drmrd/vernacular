@@ -1,4 +1,4 @@
-import type { DecodeFailure, Project } from '../../core'
+import type { DecodeFailure, Project, RepairOffer } from '../../core'
 import type { ProjectLocation, ProjectSnapshots } from '../../storage'
 import type { AutosaveStatus } from '../autosave/create-autosave'
 import type { EditorSession } from '../editor-session/editor-session'
@@ -6,7 +6,12 @@ import type { EditorSession } from '../editor-session/editor-session'
 /** Why a project did not open. */
 export type OpenFailure =
   | { readonly kind: 'open-elsewhere' | 'not-found' | 'folder-permission' | 'folder-unavailable' }
-  | { readonly kind: 'did-not-open'; readonly decode: DecodeFailure }
+  | {
+      readonly kind: 'did-not-open'
+      readonly decode: DecodeFailure
+      /** A repair that would let the document open, when there is one. */
+      readonly repair?: RepairOffer
+    }
   | { readonly kind: 'storage-unavailable'; readonly message: string }
 
 /** Whether the changes of an open project are stored. */
@@ -16,7 +21,7 @@ export type SaveStatus = AutosaveStatus
 export type SaveOutcome = { readonly ok: true } | { readonly ok: false; readonly message: string }
 
 /** Something the user should hear about an open project, given once for each handle. */
-export type HandleNotice = 'saved-by-newer-build' | 'saved-with-faults'
+export type HandleNotice = 'saved-by-newer-build' | 'saved-with-faults' | 'recovery-copy-kept'
 
 /** One open project: its session, its save state, and the lock that keeps it in this tab. */
 export interface DocumentHandle {

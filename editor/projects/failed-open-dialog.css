@@ -1,0 +1,32 @@
+.failed-open-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.failed-open-dialog__sentence,
+.failed-open-dialog__repair-list {
+  margin: 0;
+}
+
+.failed-open-dialog__repair-list {
+  padding-left: var(--space-3);
+}
+
+.failed-open-dialog__technical-label {
+  font-weight: var(--font-weight-semibold);
+}
+
+.failed-open-dialog__technical-value {
+  margin: 0 0 var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.failed-open-dialog__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { CURRENT_SCHEMA_VERSION } from '../../core'
 import {
-  UNKNOWN_WALL_FIELD_PATH,
   bytesOf,
   fixtureDocument,
   withUnknownWallField,
@@ -69,6 +67,7 @@ function failFirstPrune(ports: TestPorts, error: Error): void {
       },
       isRecoverable: () => real.isRecoverable(),
       restore: () => real.restore(),
+      setAsideRefused: () => Promise.resolve(0),
     }
   }
 }
@@ -277,15 +276,16 @@ describe('the snapshots and a restore', () => {
     )
   }
 
-  it('the restore of a snapshot that fails the check gives its migrated document with a warning', async () => {
+  it('the restore of a snapshot that fails the check gives the failure', async () => {
     const { ports, handle } = await openStored()
     await plantMigratedFaultySnapshot(ports, handle)
-    vi.mocked(console.warn).mockClear()
 
-    const restored = handleOf(await restoreSnapshot(handle))
+    const result = await restoreSnapshot(handle)
 
-    expect(restored.session.getProject().meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
-    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).toContain(UNKNOWN_WALL_FIELD_PATH)
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { kind: 'did-not-restore', decode: { kind: 'format-rules' } },
+    })
   })
 
   it('after a restore, the save of the restored document prunes the snapshots', async () => {

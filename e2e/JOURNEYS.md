@@ -26,3 +26,4 @@ adds the journey test.
 | recent-projects    | switches between two stored projects from the recent list                                           | required |
 | project-addresses  | reloads on a project address and follows Back and Forward across two projects and the Projects page | required |
 | two-projects       | keeps two projects across a switch from the page, a reload, and the history                         | required |
+| failed-open-repair | opens a repaired copy of a project that did not open and keeps the stored project unchanged         | required |

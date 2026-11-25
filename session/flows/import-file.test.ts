@@ -4,11 +4,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from '../../core'
 import type { Project } from '../../core'
 import { InMemoryAssetCache, exportProjectBundle, isValidProjectId } from '../../storage'
+import { treeOf } from '../../storage/documents/document-store-test-kit'
 import {
   bytesOf,
   fixtureDocument,
   metaOf,
-  UNKNOWN_WALL_FIELD_PATH,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
 import {
   currentBytes,
@@ -23,6 +23,7 @@ import {
   handleOf,
   openOrThrow,
   placeDocument,
+  recordOf,
   recordingPorts,
   rename,
   storedName,
@@ -31,6 +32,7 @@ import {
 import type { TestPorts } from '../handle/handle-test-kit'
 import { importFile } from './import-file'
 import type { ImportedFile } from './import-file'
+import { mixedPaintBytes, TWO_PAINT_ENTRIES_SENTENCE } from './open-failed-test-kit'
 import { switchProject } from './switch-project'
 
 const CURRENT_ID = 'a'
@@ -109,14 +111,34 @@ describe('an import of a .json file', () => {
     expect(await storedIds(ports)).toEqual([first.id, second.id].sort())
   })
 
-  it('a file that fails the check opens its migrated document with a warning', async () => {
+  it('a refused file leaves the current project open and every store as it was', async () => {
     const ports = createTestPorts()
+    const current = await openCurrent(ports)
     const file = { name: 'faulty.json', bytes: documentBreakingFormatRules() }
+    const before = [await treeOf(ports.root), await recordOf(ports, CURRENT_ID)]
 
-    const handle = handleOf(await importFile(ports, undefined, file))
+    const result = await importFile(ports, current, file)
 
-    expect(isValidProjectId(handle.id)).toBe(true)
-    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).toContain(UNKNOWN_WALL_FIELD_PATH)
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { kind: 'did-not-import', decode: { kind: 'format-rules' } },
+    })
+    expect(await ports.locks.heldIds()).toEqual(new Set([CURRENT_ID]))
+    expect(await storedIds(ports)).toEqual([CURRENT_ID])
+    expect([await treeOf(ports.root), await recordOf(ports, CURRENT_ID)]).toEqual(before)
+  })
+
+  it('a refused file with a mixed paint entry carries a repair', async () => {
+    const ports = createTestPorts()
+
+    const file = { name: 'mixed.json', bytes: mixedPaintBytes() }
+
+    const result = await importFile(ports, undefined, file)
+
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { kind: 'did-not-import', repair: { sentences: [TWO_PAINT_ENTRIES_SENTENCE] } },
+    })
   })
 
   it('the copy is stored before the flow resolves, with no edit', async () => {

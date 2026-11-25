@@ -9,6 +9,8 @@ export const FOLDER_PERMISSION = 'Vernacular has no permission to use this folde
 export const FOLDER_UNAVAILABLE = 'The folder of this project cannot be reached.'
 export const SAVE_FAILED_DURING_SWITCH =
   'The changes could not be saved, so the project stays open.'
+export const RECOVERY_COPY_KEPT =
+  "A recovery copy could not be read. It is kept with the project's backups."
 
 /** The refusals that an import, an open folder, or a restore adds to the failures of a switch. */
 export type FlowRefusal = ImportFailure | FolderRefusal | RestoreRefusal
@@ -43,12 +45,14 @@ export function storageUnavailableOf(error: unknown): SwitchFailure {
   return { kind: 'storage-unavailable', message }
 }
 
-/** The kinds of failure that carry their own detail: a decode failure, a message, a file name. */
+/**
+ * The kinds of failure that carry their own detail: a message, a file name, or a decode failure
+ * other than the fixed one of a recovery copy that did not restore.
+ */
 type DetailedKind =
   | 'archive-too-large'
   | 'did-not-open'
   | 'did-not-import'
-  | 'did-not-restore'
   | 'storage-unavailable'
   | 'unsupported-file'
 
@@ -60,7 +64,10 @@ type FixedCause = Exclude<OpenFailureCause, DetailedCause>
 type FixedKind = FixedCause['kind']
 
 /** The fixed kinds that the first switch of isDetailedKind leaves to the second one. */
-type RestKind = Exclude<FixedKind, 'flush-failed' | 'open-elsewhere' | 'not-found'>
+type RestKind = Exclude<
+  FixedKind,
+  'flush-failed' | 'open-elsewhere' | 'not-found' | 'did-not-restore'
+>
 
 /**
  * The text of each failure that never changes. The switch names every fixed kind and has no
@@ -81,6 +88,8 @@ function fixedReason(kind: FixedKind): string {
       return FOLDER_UNAVAILABLE
     case 'flush-failed':
       return SAVE_FAILED_DURING_SWITCH
+    case 'did-not-restore':
+      return RECOVERY_COPY_KEPT
     case 'cancelled':
     case 'nothing-to-restore':
       return ''
@@ -109,13 +118,13 @@ function isDetailedKind(kind: OpenFailureCause['kind']): boolean {
     case 'archive-too-large':
     case 'did-not-open':
     case 'did-not-import':
-    case 'did-not-restore':
     case 'storage-unavailable':
     case 'unsupported-file':
       return true
     case 'flush-failed':
     case 'open-elsewhere':
     case 'not-found':
+    case 'did-not-restore':
       return false
     default:
       return isDetailedRestKind(kind)
@@ -131,7 +140,6 @@ function detailedReason(failure: DetailedCause): string {
   switch (failure.kind) {
     case 'did-not-open':
     case 'did-not-import':
-    case 'did-not-restore':
       return new DocumentDecodeError(failure.decode).message
     case 'storage-unavailable':
       return failure.message

@@ -4,13 +4,17 @@ import userEvent from '@testing-library/user-event'
 import { DID_NOT_OPEN } from '../editor/projects'
 import { createTestPorts, recordOf, type TestPorts } from '../session/handle/handle-test-kit'
 import {
+  NEWER_VERSION_CAUSE,
+  STORED_TITLE,
+  closeTheDialog,
+  findTheFailedOpenDialog,
+} from './failed-open-dialog-test-support'
+import {
   AUTOSAVE_TIMEOUT_MS,
   FAILED_ID,
   chooseFromTheProjectMenu,
   editTheProject,
-  failedOpenSentence,
   filesUnder,
-  findThePageAlert,
   findTheProjectsPage,
   logSaves,
   plantFailedProject,
@@ -79,8 +83,8 @@ describe('Two tabs that start a new project after a failed load', () => {
     const failedBefore = await filesUnder(firstPorts.root, FAILED_ID)
     const first = boot(firstPorts)
     const second = boot(secondPorts)
-    await findThePageAlert(first)
-    await findThePageAlert(second)
+    await closeTheDialog({ container: first })
+    await closeTheDialog({ container: second })
 
     await startNewProjectFromThePage(first)
     await editTheProjectIn(first)
@@ -105,14 +109,13 @@ describe('Two tabs that start a new project after a failed load', () => {
 })
 
 describe('The Projects page after a failed load', () => {
-  it('says why the saved project did not open, keeps its card, and offers a new project', async () => {
+  it('shows the dialog that says why the saved project did not open, keeps its card, and offers a new project', async () => {
     stubCapableStorage()
     const ports = await durablePortsWithAFailedProject()
     const tab = boot(ports)
 
-    const alert = await findThePageAlert(tab)
-
-    expect(alert).toHaveTextContent(await failedOpenSentence(ports))
+    expect(await findTheFailedOpenDialog(STORED_TITLE, tab)).toHaveTextContent(NEWER_VERSION_CAUSE)
+    await closeTheDialog({ container: tab })
     const page = await findTheProjectsPage(tab)
     expect(within(page).getByText(DID_NOT_OPEN)).toBeInTheDocument()
     expect(within(page).getByRole('button', { name: 'New project' })).toBeInTheDocument()

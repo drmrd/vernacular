@@ -6,6 +6,7 @@ import {
   createStatusReporter,
   createWriteProgress,
   flushWrites,
+  leaveSnapshots,
   needsWrite,
 } from './autosave-write'
 import { createTrackedWriteQueue } from './tracked-write-queue'
@@ -53,6 +54,8 @@ export interface Autosave {
   /** True when a write is needed, or when a write of this autosave runs or waits in its queue,
    *  whoever asked for it. */
   hasWorkLeft(): boolean
+  /** From now on, every write saves the project and writes or removes no recovery snapshot. */
+  leaveSnapshots(): void
   /** Ends the session subscription and the wait. A write that waits never starts. */
   dispose(): void
 }
@@ -100,6 +103,7 @@ export function createAutosave(config: AutosaveConfig): Autosave {
       return flushWrites(queue, progress)
     },
     hasWorkLeft: () => needsWrite(progress) || queue.latest() !== undefined,
+    leaveSnapshots: () => leaveSnapshots(progress),
     dispose() {
       progress.disposed = true
       unsubscribe()

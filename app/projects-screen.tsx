@@ -11,13 +11,15 @@ import { ProjectsPage, type OpenProjectLink } from '../editor/projects'
 import type { AssetCache } from '../storage'
 import { addressFor } from './address'
 import { createInitialProject } from './create-initial-project'
+import { PageDialog } from './page-dialog'
 import { pageNoticeText } from './page-notice-text'
 import type { PageNotice, PageScreen } from './resolve-place'
 import type { HistoryNavigation } from './use-history-navigation'
 import { isSwitchFailure, type Flow, type RunFlow } from './use-open-project'
 import { useCardActions } from './use-card-actions'
-import { usePageActions } from './use-page-actions'
+import { useLibraryPacks, usePageActions } from './use-page-actions'
 import { requestedDesignLanguage } from './url-seams'
+import { useFailedOpenDialog } from './use-failed-open-dialog'
 import { useProjectCards } from './use-project-cards'
 
 export interface ProjectsScreenProps {
@@ -125,17 +127,19 @@ function usePageTries(pageTries: PageTries) {
   const { navigation, screen, refresh } = pageTries
   const [tried, setTried] = useState<TriedNotice | null>(null)
   const actionTries = useActionTries(pageTries, setTried)
+  const onTryFailed = (id: string, failure: SwitchFailure) => {
+    setTried((previous) => withNotice(previous, { id, failure }))
+    refresh()
+  }
   // The notice clears while the try runs. A try that gives a project leaves the page, and a try
   // that is refused because another runs changed nothing, so only a try that fails sets the notice
   // again and reads the cards again.
   const runTry = (id: string, flow: Flow) => {
     actionTries.onTryStart()
     void navigation.runPageFlow(flow).then((result) => {
-      if (result === undefined || result.ok) {
-        return
+      if (result !== undefined && !result.ok) {
+        onTryFailed(id, result.failure)
       }
-      setTried((previous) => withNotice(previous, { id, failure: result.failure }))
-      refresh()
     })
   }
   const openId = navigation.handle?.id
@@ -150,7 +154,8 @@ function usePageTries(pageTries: PageTries) {
     createNewProject(ports, current, createInitialProject)
   const onNewProject =
     openId === undefined ? navigation.startFresh : () => runTry(openId, newProject)
-  return { notice: shownNotice(screen.notice, tried), onOpen, onNewProject, ...actionTries }
+  const notice = shownNotice(screen.notice, tried)
+  return { notice, onOpen, onNewProject, onTryFailed, ...actionTries }
 }
 
 /**
@@ -171,30 +176,42 @@ function useActionNotice(refresh: () => void) {
 }
 
 /**
+ * The tries, the card actions, and the dialog of the page. A notice under no card stays a sentence
+ * of the page; the dialog takes the notice of a card, the start, or an address.
+ */
+function useScreenParts({ navigation, screen, ports, libraryAssets }: ProjectsScreenProps) {
+  const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
+  const { actionNotice, clearActionNotice, onActionEnd } = useActionNotice(refresh)
+  const tries = usePageTries({ navigation, screen, refresh, clearActionNotice })
+  const { onTryStart, runActionFlow, onOpen, onTryFailed } = tries
+  const cardActions = useCardActions({
+    ...{ navigation, ports, cards, libraryAssets, onActionEnd },
+    onActionStart: onTryStart,
+  })
+  const packs = useLibraryPacks(libraryAssets)
+  const failedOpen = useFailedOpenDialog({
+    ...{ ports, packs, runActionFlow, onOpen, onTryFailed },
+    notice: tries.notice?.id === UNDER_NO_CARD ? undefined : tries.notice,
+    runPageFlow: navigation.runPageFlow,
+  })
+  const { onRefusedFile, clearFile } = failedOpen
+  const actions = usePageActions({
+    ...{ runActionFlow, onTryStart, ports, packs },
+    onRefusedFile,
+    clearFile,
+  })
+  const pageNotice = failedOpen.takesNotice ? undefined : tries.notice
+  const notice = actionNotice ?? pageNoticeText(pageNotice, cards)
+  return { cards, tries, cardActions, actions, failedOpen, notice }
+}
+
+/**
  * The Projects page in the application: the stored projects, a click that opens each, and the
  * actions that start, import, or open a project.
  */
 export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
-  const { navigation, screen, ports, libraryAssets } = props
-  const { cards, refresh } = useProjectCards(ports, navigation.handle?.id)
-  const { actionNotice, clearActionNotice, onActionEnd } = useActionNotice(refresh)
-  const tries = usePageTries({ navigation, screen, refresh, clearActionNotice })
-  const cardActions = useCardActions({
-    navigation,
-    ports,
-    cards,
-    libraryAssets,
-    onActionStart: tries.onTryStart,
-    onActionEnd,
-  })
-  const actions = usePageActions({
-    runActionFlow: tries.runActionFlow,
-    onTryStart: tries.onTryStart,
-    ports,
-    libraryAssets,
-  })
-  const openProject = openProjectLink(navigation)
-  const notice = actionNotice ?? pageNoticeText(tries.notice, cards)
+  const { cards, tries, cardActions, actions, failedOpen, notice } = useScreenParts(props)
+  const openProject = openProjectLink(props.navigation)
   return (
     <ThemeProvider designLanguage={requestedDesignLanguage()}>
       <ProjectsPage
@@ -207,6 +224,7 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
         {...(openProject === undefined ? {} : { openProject })}
         {...(notice === undefined ? {} : { notice })}
       />
+      <PageDialog failedOpen={failedOpen} onOpen={tries.onOpen} onExport={cardActions.onExport} />
       <ToastRegion />
     </ThemeProvider>
   )

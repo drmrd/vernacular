@@ -121,13 +121,14 @@ describe('an export of a project that is not open in this tab', () => {
     expect(recoveryPathsOf(result.bytes)).toEqual([])
   })
 
-  it('a document that fails the strict check exports as an ordinary archive', async () => {
+  it('a document that fails the strict check exports as an unchecked copy with its stored bytes', async () => {
     const ports = createTestPorts()
     await placeDocument(ports, FIRST_ID, documentBreakingFormatRules())
+    const [stored] = [...(await storedBytesOf(ports, [FIRST_ID])).values()]
 
     const result = await exportProject(ports, undefined, { id: FIRST_ID })
 
-    expect(archiveOf(result).bytes.length).toBeGreaterThan(0)
+    expect(filesOfArchive(uncheckedCopyOf(result).bytes)).toEqual(stored)
   })
 
   it('reports the assets of a closed project that the pool lacks', async () => {

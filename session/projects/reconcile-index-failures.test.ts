@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import type { ProjectRecord, StoreRead } from '../../storage'
 import { failingIndex, sampleRecord } from '../../storage/project-index/project-record-test-kit'
-import { UNKNOWN_WALL_FIELD_PATH } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { documentBreakingFormatRules } from '../../tests/storage/conformance/conformance-documents'
 import { placeDocument } from '../handle/handle-test-kit'
 import type { TestPorts } from '../handle/handle-test-kit'
@@ -237,13 +236,13 @@ describe('runs whose steps all answer', () => {
     expect(consoleWarn).not.toHaveBeenCalled()
   })
 
-  it("a document that fails only the strict check gives the store's warning with its faults, and no warning that counts failed steps", async () => {
+  it('a document that fails only the strict check gets the record of a document that did not open, and no warning that counts failed steps', async () => {
     const ports = rebuildPorts()
-    await placeDocument(ports, 'a', documentBreakingFormatRules())
+    const bytes = documentBreakingFormatRules()
+    await placeDocument(ports, 'a', bytes)
 
-    await reconcileIndex(ports)
+    expect(await reconcileIndex(ports)).toEqual([failedRecord('a', bytes, 'format-rules')])
 
-    expect(JSON.stringify(consoleWarn.mock.calls)).toContain(UNKNOWN_WALL_FIELD_PATH)
     expect(stepWarnings(consoleWarn.mock.calls)).toEqual([])
   })
 

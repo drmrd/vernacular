@@ -19,9 +19,11 @@ sourceFiles:
     storage/snapshots/snapshot-store.ts,
     session/autosave/create-autosave.ts,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
+    storage/documents/replace-stored.ts,
+    storage/snapshots/set-aside-refused.ts,
   ]
 status: current
-updated: 2026-11-17
+updated: 2026-11-21
 ---
 
 # ADR-0182: Migration backups live in their own directory until the project is deleted
@@ -39,10 +41,19 @@ prune (`storage/snapshots/snapshot-store.ts`) removes only the snapshot files it
 > Amended by [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]] on 2026-11-15. The backup
 > is written after a decode that migrated and succeeded, before the document reaches the caller,
 > and no longer before the migration runs. Decode works in memory, so a migration that fails
-> cannot touch the stored file. The same backup rule keeps the last stored file that passed the
-> check when a save writes a document that fails it, the stored bytes when a repair replaces
-> them, and a recovery snapshot that fails the check. The directory, the lifetime, and the rule
-> against overwriting are unchanged.
+> cannot touch the stored file. The same backup rule keeps three more kinds of file, each named
+> `<kind>-v<version>-<digest>.json`:
+>
+> - `last-valid` holds the last stored file that passed the check. A save that writes a document
+>   with faults writes it first.
+> - `pre-repair` holds the stored bytes when a repair replaces them. The replace writes it before it
+>   writes the repaired document.
+> - `refused-snapshot` holds a recovery snapshot that fails the check. The snapshot moves here when
+>   its project opens, and when a restore finds a copy it cannot read. The backup is written before
+>   the snapshot is removed. The version in the name is 0 when the bytes carry no readable version.
+>
+> The directory, the lifetime, and the rule against overwriting are unchanged. A refused open
+> writes no backup.
 
 > Amended by [[ADR-0191-export-on-every-card-and-unchecked-copy]] on 2026-11-15. One export carries
 > backups and recovery snapshots: the unchecked copy of a project that did not open. An ordinary

@@ -43,7 +43,11 @@ import {
   nameOf,
 } from './history-navigation-test-support'
 import { FOLDER_EMPTY } from './open-failure-text'
-import { TOO_LARGE_SENTENCE } from './open-file-action-test-support'
+import {
+  FILE_TITLE,
+  closeTheDialog,
+  findTheFailedOpenDialog,
+} from './failed-open-dialog-test-support'
 import {
   FOLDER_ID,
   FOLDER_NAME,
@@ -59,6 +63,7 @@ import {
 } from './projects-screen-test-support'
 
 const IMPORTED_NAME = 'Imported House'
+const TOO_LARGE_CAUSE = 'The file is larger than Vernacular can open.'
 const DIRECTORY_NAME = 'Old house'
 const ONE_MISSING_SENTENCE =
   'The file did not include 1 of the assets this project uses. It shows as missing.'
@@ -167,14 +172,15 @@ describe('Importing a file from the Projects page', () => {
     expect(screen.queryByText(ONE_MISSING_SENTENCE)).not.toBeInTheDocument()
   })
 
-  it('shows the refusal of a file above the size limit as an alert, and keeps the page', async () => {
+  it('shows the refusal of a file above the size limit in the dialog of a file, and keeps the page', async () => {
     const ports = await durablePortsWith(FIRST_ID)
     await renderThePageOn(ports)
     chooseInThePicker(unreadableFile({ size: ARCHIVE_LIMITS.archiveBytes + 1 }).file)
 
     await clickPageAction('Import file')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(TOO_LARGE_SENTENCE)
+    expect(await findTheFailedOpenDialog(FILE_TITLE)).toHaveTextContent(TOO_LARGE_CAUSE)
+    await closeTheDialog({ title: FILE_TITLE })
     expect(await findTheProjectsPage()).toBeInTheDocument()
     expect(lockedIds(ports)).toEqual([])
   })

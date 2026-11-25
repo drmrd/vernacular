@@ -36,6 +36,13 @@ export { exportArchive } from './flows/export-archive'
 export type { ExportFailure, ExportProjectResult, ExportRequest } from './flows/export-project'
 export { exportProject } from './flows/export-project'
 export { restoreSnapshot } from './flows/restore-snapshot'
+export type {
+  RepairedCopyRequest,
+  RepairedCopyResult,
+  ReplaceRefusal,
+  ReplaceRequest,
+} from './flows/open-failed'
+export { openRepairedAsNew, repairedCopyName, replaceWithRepaired } from './flows/open-failed'
 export type { DeleteFailure, DeleteRequest, DeleteResult } from './flows/delete-project'
 export { deleteProject } from './flows/delete-project'
 export type { RemoveFromListFailure, RemoveFromListResult } from './flows/remove-folder-from-list'

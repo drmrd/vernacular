@@ -16,7 +16,6 @@ import {
   builtPorts,
   editTheProject,
   expectOpenProject,
-  findThePageAlert,
   findTheProjectsPage,
   findTheShell,
   lockCalls,
@@ -29,6 +28,7 @@ import {
   storedIds,
   stubCapableStorage,
 } from './app-test-support'
+import { closeTheDialog } from './failed-open-dialog-test-support'
 
 const KEPT_NAME = 'Kept House'
 const NO_STORAGE = 'no storage backend'
@@ -139,7 +139,7 @@ describe('Retry clicked twice in one batch', () => {
 describe('The card of a project that did not open, clicked twice in one batch', () => {
   /** Clicks the card of the kept project twice before React renders again. */
   async function clickTheCardTwice(): Promise<void> {
-    await findThePageAlert()
+    await closeTheDialog()
     const page = await findTheProjectsPage()
     const card = await within(page).findByRole('link', { name: new RegExp(KEPT_NAME) })
     act(() => {

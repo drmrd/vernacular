@@ -9,15 +9,15 @@ import type {
 } from '../../core'
 import type { AssetCache } from '../asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
-import { ProjectNotFoundError } from '../project-store'
 import { PROJECT_FILE } from '../project-files/project-file-name'
 import type { ProjectFiles, RemovableProjectFiles } from '../project-files/project-files'
 import { collectReferencedAssets } from '../project-files/referenced-assets'
-import { writeBackup } from './document-backups'
-import { DocumentDecodeError } from './document-decode-error'
-import { mayOpenDespiteFaults, openDespiteFaults, warnAboutEncodeProblems } from './open-decoded'
+import { ProjectNotFoundError } from '../project-store'
+import { writeBackup, storedVersionOf } from './document-backups'
+import { warnAboutEncodeProblems } from './open-decoded'
 import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
+import { replaceStoredDocument } from './replace-stored'
 import { listStoredFiles } from './stored-files'
 
 /** Why a read gave no document. */
@@ -40,6 +40,11 @@ export interface SaveReport {
   /** The time of last change of the document file after the write; absent when the store cannot tell. */
   readonly lastChangedAt?: string
 }
+
+/** What a replace of the stored document did: it wrote, or it found faults and wrote nothing. */
+export type ReplaceReport =
+  | { readonly replaced: true }
+  | { readonly replaced: false; readonly faults: readonly FormatFault[] }
 
 /** One listed project: its id and when its document file last changed. */
 export interface ProjectSummary {
@@ -162,6 +167,26 @@ export class DocumentStore {
   }
 
   /**
+   * Replaces the stored document with the project, encoded with no previous document. Keeps the
+   * stored bytes as a `pre-repair` backup before the write. Rejects with ProjectNotFoundError
+   * when no document is stored.
+   */
+  async replaceStored(id: string, project: Project): Promise<ReplaceReport> {
+    if (!this.files.holds(id)) {
+      throw new ProjectNotFoundError(id)
+    }
+    return replaceStoredDocument(
+      {
+        id,
+        directory: this.files.projectDirectory(id),
+        ...(this.options === undefined ? {} : { options: this.options }),
+        prepareAssets: (replacement) => this.files.prepareAssets(id, hashesToCopy(replacement)),
+      },
+      project,
+    )
+  }
+
+  /**
    * Keeps the previous file when this write breaks the format rules and the previous file did not.
    * The check on the previous file is one more decode of its bytes, made only for a faulty write.
    */
@@ -177,8 +202,7 @@ export class DocumentStore {
     if (!previousResult.ok) {
       return false
     }
-    const { migratedFrom, project } = previousResult.value
-    const version = migratedFrom ?? project.meta.schemaVersion
+    const version = storedVersionOf(previousResult)
     await writeBackup(directory, 'last-valid', { version, bytes: previous })
     return true
   }
@@ -200,33 +224,6 @@ export class DocumentStore {
       return new Map()
     }
     return listStoredFiles(this.files.projectDirectory(id))
-  }
-
-  /**
-   * Interim: opens a document that breaks the format rules, after the migration backup when the
-   * file was migrated. The rule itself lives in `openDespiteFaults`. The backup holds the file as
-   * stored at the time of this call, which is part of the interim rule; a later change removes this
-   * method, because a caller that holds only the failure cannot name the bytes that failed.
-   */
-  async openDespiteFormatFaults(id: string, failure: DecodeFailure): Promise<Project> {
-    if (!mayOpenDespiteFaults(failure)) {
-      throw new DocumentDecodeError(failure)
-    }
-    const { migratedFrom } = failure
-    if (migratedFrom === undefined) {
-      return openDespiteFaults(failure)
-    }
-    const bytes = this.files.holds(id)
-      ? await this.files.projectDirectory(id).readFile(PROJECT_FILE)
-      : undefined
-    if (bytes === undefined) {
-      throw new ProjectNotFoundError(id)
-    }
-    await writeBackup(this.files.projectDirectory(id), 'pre-migration', {
-      version: migratedFrom,
-      bytes,
-    })
-    return openDespiteFaults(failure)
   }
 }
 

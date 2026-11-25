@@ -1,11 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DID_NOT_OPEN } from '../editor/projects'
-import { ARCHIVE_LIMITS, DocumentDecodeError, InMemoryDirectory } from '../storage'
+import { ARCHIVE_LIMITS, InMemoryDirectory } from '../storage'
 import { failSaves, pickFolder, type TestPorts } from '../session/handle/handle-test-kit'
 import { projectFileOf, unreadableFile } from './action-test-support'
-import { TOO_LARGE_SENTENCE } from './open-file-action-test-support'
+import { FILE_TITLE, findTheFailedOpenDialog } from './failed-open-dialog-test-support'
 import {
   FAILED_ID,
   backToTheProject,
@@ -48,12 +47,16 @@ import {
 
 setUpProjectsScreenTests()
 
-const NOT_A_PROJECT_REASON = new DocumentDecodeError({ kind: 'not-a-project' }).message
+const TOO_LARGE_CAUSE = 'The file is larger than Vernacular can open.'
+const NOT_A_PROJECT_CAUSE = 'The file is not a Vernacular project.'
 
-/** Renders the page with a notice up: the card of a project that did not open was clicked. */
+/** Renders the page with a notice up: Open folder was chosen on a folder whose project did not open. */
 async function renderThePageWithANotice(ports: TestPorts): Promise<void> {
+  const directory = await listFolderProject(ports, projectFromANewerBuild())
   renderAppAt(ports, PROJECTS_ADDRESS)
-  await userEvent.click(await findTheCardThatDidNotOpen())
+  await findTheCardThatDidNotOpen()
+  pickFolder(ports, directory)
+  await clickPageAction('Open folder')
   await findThePageAlert()
 }
 
@@ -128,7 +131,7 @@ describe('A page notice that is up when the user starts another try', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('is replaced by the one toast of a dropped file above the size limit, with no cards read', async () => {
+  it('is replaced by the dialog of a dropped file above the size limit, with no cards read', async () => {
     const ports = await portsWithAProjectThatDoesNotOpen()
     await renderThePageWithANotice(ports)
     const heldIds = vi.spyOn(ports.locks, 'heldIds')
@@ -136,23 +139,21 @@ describe('A page notice that is up when the user starts another try', () => {
     await dropOnThePage(unreadableFile({ size: ARCHIVE_LIMITS.archiveBytes + 1 }).file)
     await settleForAWhile()
 
-    const alerts = screen.getAllByRole('alert')
-    expect(alerts).toHaveLength(1)
-    expect(alerts[0]).toHaveTextContent(TOO_LARGE_SENTENCE)
+    expect(await findTheFailedOpenDialog(FILE_TITLE)).toHaveTextContent(TOO_LARGE_CAUSE)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(heldIds).not.toHaveBeenCalled()
   })
 
   it.each(['chosen in the picker', 'dropped on the page'] as const)(
-    'is replaced by the one toast of a file that does not import, %s',
+    'is replaced by the dialog of a file that does not import, %s',
     async (way) => {
       await renderThePageWithANotice(await portsWithAProjectThatDoesNotOpen())
 
       await importTheFile(new File(['not a project'], 'broken.building'), way)
       await settleForAWhile()
 
-      const alerts = screen.getAllByRole('alert')
-      expect(alerts).toHaveLength(1)
-      expect(alerts[0]).toHaveTextContent(`Open failed: ${NOT_A_PROJECT_REASON}`)
+      expect(await findTheFailedOpenDialog(FILE_TITLE)).toHaveTextContent(NOT_A_PROJECT_CAUSE)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     },
   )
 })

@@ -12,7 +12,6 @@ import type { CodecOptions, Project, ProjectShape, SchemaMigration } from '../..
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { FolderFiles } from '../project-files/folder-files'
 import { DocumentStore } from './document-store'
-import { readProject } from './document-store-test-kit'
 
 const PROJECT_ID = 'house'
 const DOCUMENT_PATH = 'vernacular.json'
@@ -99,7 +98,6 @@ describe('a save grafts from the migrated previous file', () => {
   it('keeps a key a migration removed out of the saved file and keeps the unknown key', async () => {
     const directory = await directoryHolding(storedBytes(1))
     const store = storeOver(directory, migrationTo([removeLegacyElevation]))
-    await readProject(store, PROJECT_ID)
 
     await store.save(PROJECT_ID, nextProject())
 
