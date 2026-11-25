@@ -1,8 +1,10 @@
 import { createWall } from '../../model/factories'
 import type { Floor, Point, Project, Wall, WallEnd } from '../../model/types'
+import { uncoveredParts } from '../../topology/uncovered-parts'
 import { assertPositiveLength } from '../../units/length-bounds'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
+import { mapTargetFloor } from './map-target-floor'
 
 export type { WallEnd } from '../../model/types'
 
@@ -38,14 +40,33 @@ export function addWall(floorId: string, start: Point, end: Point): Command<AddW
   }
 }
 
-// Reassigns the whole floors slice because the inverse-capture proxy records
-// only the root's top-level properties; the edited floor becomes a new object
-// while untouched floors keep their reference for entity-keyed dirty tracking.
 const addWallHandler: CommandHandler<Project, AddWallParams> = {
-  apply(state, params) {
-    state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId ? { ...floor, walls: [...floor.walls, params.wall] } : floor,
+  apply(state, { floorId, wall }) {
+    const floor = state.floors.find((candidate) => candidate.id === floorId)
+    if (floor === undefined) return
+
+    const parts = uncoveredParts(floor.walls, wall)
+    if (parts.length === 0) return
+
+    const occupiedIds = new Set(
+      [floor.walls, floor.openings, floor.dimensions, floor.underlays, floor.furniture].flatMap(
+        (entities) => entities.map(({ id }) => id),
+      ),
     )
+    let partNumber = 2
+    const walls = parts.map((part, index) => {
+      if (part === wall) return wall
+      if (index === 0) return { ...wall, ...part }
+
+      let id: string
+      do {
+        id = `${wall.id}-part-${partNumber}`
+        partNumber += 1
+      } while (occupiedIds.has(id))
+      return { ...wall, ...part, id }
+    })
+
+    mapTargetFloor(state, floorId, () => ({ ...floor, walls: [...floor.walls, ...walls] }))
   },
 }
 
