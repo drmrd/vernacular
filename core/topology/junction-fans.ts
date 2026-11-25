@@ -64,7 +64,7 @@ export function incidentEdgesWithoutLoops(graph: PlanarGraph): Map<number, numbe
 }
 
 /** True for an edge whose two ends merged into one junction. */
-export function isSelfLoop(edge: GraphEdge): boolean {
+export function isSelfLoop(edge: Pick<GraphEdge, 'a' | 'b'>): boolean {
   return edge.a === edge.b
 }
 
