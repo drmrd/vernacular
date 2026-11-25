@@ -105,3 +105,43 @@ it('preserves physical wall coverage across drawing order and direction at numer
     expect.soft(drawnWallNote(walls, drawn), label).toBe('Part of this wall was already there.')
   }
 })
+
+it('fully covers an offset draw across the shared endpoint of adjacent walls', () => {
+  const cases = [
+    {
+      label: 'equal wall lengths',
+      left: -10.2,
+      junction: -0.2,
+      right: 9.8,
+      drawStart: -1.3,
+      drawEnd: 0.9,
+    },
+    {
+      label: 'unequal wall lengths',
+      left: -1,
+      junction: 2.1,
+      right: 34.1,
+      drawStart: -0.5,
+      drawEnd: 10,
+    },
+  ]
+
+  for (const { label, left, junction, right, drawStart, drawEnd } of cases) {
+    const sharedEnd = { x: junction, y: 0 }
+    const walls = [
+      createWall({ x: left, y: 0 }, sharedEnd, { id: 'left-wall' }),
+      createWall(sharedEnd, { x: right, y: 0 }, { id: 'right-wall' }),
+    ]
+    const start = { x: drawStart, y: 0.5 }
+    const end = { x: drawEnd, y: 0.5 }
+
+    for (const { direction, draw } of [
+      { direction: 'left to right', draw: { start, end } },
+      { direction: 'right to left', draw: { start: end, end: start } },
+    ]) {
+      const description = `${label}, ${direction}`
+      expect.soft(uncoveredParts(walls, draw), description).toEqual([])
+      expect.soft(drawnWallNote(walls, draw), description).toBe('This wall was already there.')
+    }
+  }
+})
