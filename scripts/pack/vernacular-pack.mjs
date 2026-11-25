@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 // scripts/pack/vernacular-pack.mjs
 //
-// vernacular-pack CLI (design specification section 4.3). Subcommands:
-// `validate <packDir>` and `build <packDir>`. Both validate the manifest and
-// check the pack's files on disk (content hashes, texture headers, thumbnails).
-// `build` also writes a build report beside the pack; thumbnail baking and
-// publishing are not done here.
+// Each pack command validates the manifest and reviews the files on disk.
+// Build writes a report beside the pack. Publish adds the pack to a local store.
 
 import { access, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
@@ -14,19 +11,24 @@ import { fileURLToPath } from 'node:url'
 import { validatePackManifest } from '../../core/assets/pack-manifest.ts'
 import { checkPackIntegrity, manifestAssets } from './pack-integrity.mjs'
 import { isShareAlike, shareAlikeWarning } from '../../core/assets/license-policy.ts'
+import { publishPackToDisk } from './publish-store.mjs'
 import { isRecord } from '../../core/assets/is-record.ts'
 
 const EXIT_OK = 0
 const EXIT_INVALID = 1
 const EXIT_USAGE = 2
 const EXIT_INTERNAL = 3
-const USAGE = 'Usage: vernacular-pack <validate|build> <packDir>'
+const USAGE = [
+  'Usage: vernacular-pack <validate|build> <packDir>',
+  '       vernacular-pack publish <packDir> --store <dir> [--name <text>]',
+].join('\n')
 
 /**
  * @typedef {object} PackCliDeps
  * @property {(packDir: string) => Promise<unknown>} readManifest
  * @property {(packDir: string) => import('./pack-integrity.mjs').PackReader} createReader
  * @property {(packDir: string, report: object) => Promise<void>} writeReport
+ * @property {typeof publishPackToDisk} publishPack
  * @property {(message: string) => void} log
  * @property {(message: string) => void} error
  */
@@ -118,14 +120,42 @@ function reportErrors(deps, packDir, errors) {
   }
 }
 
+/** @param {string} packDir @param {string[]} flags */
+function publishRequest(packDir, flags) {
+  const options = new Map()
+  while (flags.length) {
+    const flag = flags.shift()
+    const value = flags.shift()
+    if (flag !== '--store' && flag !== '--name') return
+    if (options.has(flag) || !value?.trim() || value.startsWith('-')) return
+    options.set(flag, value)
+  }
+  if (!options.has('--store') || packDir.startsWith('-')) return
+  const request = { packDir, storeDir: options.get('--store') }
+  return options.has('--name') ? { ...request, name: options.get('--name') } : request
+}
+
+/** @param {import('./publish-store.mjs').PublishRequest} request @param {PackCliDeps} deps */
+async function publishValidatedPack(request, deps) {
+  try {
+    await deps.publishPack(request)
+    deps.log(`Published ${request.packDir} to ${request.storeDir}`)
+    return EXIT_OK
+  } catch (cause) {
+    deps.error(`Could not publish ${request.packDir} to ${request.storeDir}: ${String(cause)}`)
+    return EXIT_INVALID
+  }
+}
+
 /**
  * @param {readonly string[]} argv arguments after the node binary and script path
  * @param {PackCliDeps} deps
  * @returns {Promise<number>} the process exit code
  */
 export async function runPackCli(argv, deps) {
-  const [command, packDir] = argv
-  if ((command !== 'validate' && command !== 'build') || !packDir) {
+  const [command, packDir, ...flags] = argv
+  const request = command === 'publish' && packDir ? publishRequest(packDir, flags) : undefined
+  if (!packDir || (command !== 'validate' && command !== 'build' && !request)) {
     deps.error(USAGE)
     return EXIT_USAGE
   }
@@ -147,6 +177,7 @@ export async function runPackCli(argv, deps) {
     reportErrors(deps, packDir, review.errors)
     return EXIT_INVALID
   }
+  if (request) return publishValidatedPack(request, deps)
   deps.log(`${command}: ${packDir} is a valid pack`)
   return EXIT_OK
 }
@@ -212,6 +243,7 @@ if (isDirectInvocation) {
     readManifest: readManifestFromDisk,
     createReader: createNodePackReader,
     writeReport: writeReportToDisk,
+    publishPack: publishPackToDisk,
     log: (message) => console.log(message),
     error: (message) => console.error(message),
   })

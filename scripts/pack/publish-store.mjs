@@ -1,3 +1,4 @@
+import { withStoreWriter } from './publish-store-disk.mjs'
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { declaresMediaTypes, isModelAsset } from '../../core/assets/asset-description.ts'
@@ -225,4 +226,9 @@ export async function publishPack(request, io) {
   const catalogBytes = Buffer.from(`${JSON.stringify(nextCatalog, null, JSON_INDENT)}\n`)
   for (const [path, file] of files.writes) await io.writeFile(path, file)
   await io.writeFile(catalogPath, catalogBytes)
+}
+
+/** @param {PublishRequest} request */
+export function publishPackToDisk(request) {
+  return withStoreWriter(request.storeDir, (io) => publishPack(request, io))
 }
