@@ -191,7 +191,7 @@ async function checkThumbnails(assets, reader, context) {
     if (!isSha256Hex(asset.contentHash)) continue
     const file = thumbnailPath(asset)
     if (!(await reader.exists(file))) {
-      if (!isTextureAsset(asset, formatVersion)) {
+      if (asset.thumbnail !== undefined || !isTextureAsset(asset, formatVersion)) {
         errors.push(`asset ${asset.contentHash}: thumbnail missing`)
       }
       continue
