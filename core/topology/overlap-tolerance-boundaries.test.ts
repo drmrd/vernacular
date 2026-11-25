@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { expect, it } from 'vitest'
 import { createWall, drawnWallNote, uncoveredParts, type WallPart } from '../index'
 
@@ -144,4 +145,87 @@ it('fully covers an offset draw across the shared endpoint of adjacent walls', (
       expect.soft(drawnWallNote(walls, draw), description).toBe('This wall was already there.')
     }
   }
+})
+
+it('preserves full coverage when a wall is split into collinear pieces', () => {
+  const geometry = fc.record({
+    leftLength: fc.integer({ min: 64, max: 512 }),
+    rightLength: fc.integer({ min: 64, max: 512 }),
+    splitNumerator: fc.integer({ min: -(2 ** 50), max: 2 ** 50 }),
+    extraSplit: fc.boolean(),
+    startTrim: fc.integer({ min: 2, max: 7 }),
+    endTrim: fc.integer({ min: 2, max: 7 }),
+    offset: fc.integer({ min: -6, max: 6 }),
+    tilt: fc.constantFrom(-3, -1, 1, 3),
+  })
+
+  fc.assert(
+    fc.property(
+      geometry,
+      ({
+        leftLength,
+        rightLength,
+        splitNumerator,
+        extraSplit,
+        startTrim,
+        endTrim,
+        offset,
+        tilt,
+      }) => {
+        const first = -leftLength / 8
+        const last = rightLength / 8
+        // A fine dyadic cut remains exactly collinear even when the run ends are much farther away.
+        const splitAt = splitNumerator / 2 ** 52
+        const stops = extraSplit ? [splitAt, 3.25, last] : [splitAt, last]
+
+        for (const [dx, dy] of [
+          [1, 0],
+          [0, 1],
+          [4, 3],
+        ] as const) {
+          const at = (station: number, across = 0) => ({
+            x: dx * station - (dy * across) / 64,
+            y: dy * station + (dx * across) / 64,
+          })
+          const whole = createWall(at(first), at(last), { id: 'whole' })
+          let previous = first
+          const pieces = stops.map((station) => {
+            const piece = { start: at(previous), end: at(station) }
+            previous = station
+            return piece
+          })
+          const split = pieces.map(({ start, end }, index) =>
+            createWall(start, end, { id: `piece-${index}` }),
+          )
+          const reversed = pieces
+            .toReversed()
+            .map(({ start, end }, index) => createWall(end, start, { id: `piece-${index}` }))
+          const coverings = [
+            { label: 'whole wall', walls: [whole] },
+            { label: 'split wall', walls: split },
+            { label: 'reversed split wall', walls: reversed },
+          ]
+
+          const draws = [offset, offset + tilt].flatMap((endOffset) => {
+            const start = at(first + startTrim / 8, offset)
+            const end = at(last - endTrim / 8, endOffset)
+            return [
+              { start, end },
+              { start: end, end: start },
+            ]
+          })
+
+          for (const draw of draws) {
+            for (const { label, walls } of coverings) {
+              expect(
+                { parts: uncoveredParts(walls, draw), note: drawnWallNote(walls, draw) },
+                `${label} along (${dx}, ${dy}) with draw ${JSON.stringify(draw)}`,
+              ).toEqual({ parts: [], note: 'This wall was already there.' })
+            }
+          }
+        }
+      },
+    ),
+    { seed: 284531, numRuns: 48 },
+  )
 })
