@@ -38,3 +38,18 @@ it('nodes later walls to the physical stretches of the walls that own them', () 
   const tail = withTail.edges.find((edge) => edge.wallId === 'longer')
   expect.soft(shared?.to, 'the exposed tail meets the owner at a shared junction').toBe(tail?.from)
 })
+
+it('joins the exposed start of a later wall to the shared stretch', () => {
+  const owner = wall('owner', pt(0, 0), pt(100, 0))
+  const longer = wall('longer', pt(210, 2.75), pt(10, -0.75))
+  const network = networkOf([owner, longer])
+
+  expect.soft(stretches(network)).toEqual([
+    { wallId: 'owner', from: pt(0, 0), to: pt(10, 0), covers: [] },
+    { wallId: 'owner', from: pt(10, 0), to: pt(100, 0), covers: ['longer'] },
+    { wallId: 'longer', from: pt(210, 2.75), to: pt(100, 0), covers: [] },
+  ])
+  expect.soft(network.junctions).toHaveLength(4)
+  const [, shared, exposed] = network.edges
+  expect.soft(exposed?.to).toBe(shared?.to)
+})
