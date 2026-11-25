@@ -69,19 +69,30 @@ export function buildWallGraph(
 /** Duplicate stretches leave a junction at the same angle and confuse the room walk. */
 function assignStretchOwners(edges: readonly GraphEdge[]): GraphEdge[] {
   const ownerByStretch = new Map<string, GraphEdge>()
-  return edges.filter((edge) => {
+  const retainedEdges: GraphEdge[] = []
+
+  for (const edge of edges) {
     const { a, b } = edge
-    if (a === b) return true
+    if (a === b) {
+      retainedEdges.push(edge)
+      continue
+    }
+
     const stretch = `${Math.min(a, b)}:${Math.max(a, b)}`
     const owner = ownerByStretch.get(stretch)
-    if (owner === undefined) {
-      ownerByStretch.set(stretch, edge)
-      return true
+    if (owner !== undefined) {
+      const coveredWallIds = (owner.covers ??= [])
+      coveredWallIds.push(edge.wallId)
+      continue
     }
-    const coveredWallIds = (owner.covers ??= [])
-    coveredWallIds.push(edge.wallId)
-    return false
-  })
+
+    const ownedEdge = { ...edge }
+    if (edge.covers !== undefined) ownedEdge.covers = [...edge.covers]
+    ownerByStretch.set(stretch, ownedEdge)
+    retainedEdges.push(ownedEdge)
+  }
+
+  return retainedEdges
 }
 
 /**
