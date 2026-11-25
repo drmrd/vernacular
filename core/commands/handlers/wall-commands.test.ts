@@ -140,6 +140,41 @@ describe('addWall', () => {
     }
   })
 
+  it('skips an ID already used by an opening when one draw adds three wall pieces', () => {
+    const project = projectWithFinishedWall()
+    const ground = project.floors[0]!
+    ground.walls.push(createWall({ x: 5000, y: 0 }, { x: 6000, y: 0 }, { id: 'second-host' }))
+    const command = addWall('g', { x: -1000, y: 0 }, { x: 7000, y: 0 })
+
+    const withoutCollision = structuredClone(project)
+    dispatcherFor(withoutCollision).dispatch(command)
+    const candidateWalls = withoutCollision.floors[0]!.walls.slice(2)
+    expect(candidateWalls).toHaveLength(3)
+    ground.openings[0] = { ...ground.openings[0]!, id: candidateWalls[1]!.id }
+
+    const before = structuredClone(project)
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(command)
+
+    const floor = project.floors[0]!
+    const added = floor.walls.slice(2)
+    expect(added.map(({ start, end }) => ({ start, end }))).toEqual([
+      wallSegment(-1000, 0),
+      wallSegment(4000, 5000),
+      wallSegment(6000, 7000),
+    ])
+    expect(added[0]?.id).toBe(command.params.wall.id)
+    expect(floor.openings).toEqual(before.floors[0]?.openings)
+    const ids = [...floor.walls, ...floor.openings].map(({ id }) => id)
+    expect(new Set(ids).size).toBe(ids.length)
+
+    const after = structuredClone(project)
+    expect(dispatcher.undo()).toBe(true)
+    expect(project).toEqual(before)
+    expect(dispatcher.redo()).toBe(true)
+    expect(project).toEqual(after)
+  })
+
   it('appends a wall to the named floor', () => {
     const project = projectWithFloor()
     const dispatcher = dispatcherFor(project)
