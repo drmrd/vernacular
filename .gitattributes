@@ -1,0 +1,8 @@
+# Keep pack and store bytes stable across checkouts.
+/public/packs/** -text
+/tests/fixtures/packs/** -text
+/tests/fixtures/store/** -text
+
+# Pack builders copy these text files into generated packs.
+/scripts/pack/starter/CC-BY-4.0.txt text eol=lf
+/scripts/pack/example-furniture/*.txt text eol=lf

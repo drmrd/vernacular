@@ -107,6 +107,14 @@ export {
 } from './assets/asset-description'
 export type { AssetKind, PackValidationResult } from './assets/pack-manifest'
 export { ASSET_KINDS, validatePackManifest } from './assets/pack-manifest'
+export type {
+  NamedFile,
+  ReadablePackAsset,
+  ReadablePackManifest,
+} from './assets/pack-manifest-shape'
+export { namedFiles, readPackManifest } from './assets/pack-manifest-shape'
+export type { PackTextFile } from './assets/store-paths'
+export { CATALOG_FILE, blobPath, manifestPath, packTextPath } from './assets/store-paths'
 export type { Registry, RegistryEntry } from './registries/registry'
 export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
 export type { Finish } from './registries/finishes'
@@ -953,3 +961,9 @@ export {
 export type { DataRemovingRepair, RepairOffer } from './repairs/repair-list'
 export { DATA_REMOVING_REPAIRS, findRepairOffer } from './repairs/repair-list'
 export { repairOfferFor } from './repairs/find-repair-offer'
+export type { Catalog, CatalogPackEntry, CatalogValidation } from './assets/catalog'
+export { CATALOG_VERSION, validateCatalog } from './assets/catalog'
+export { comparePackVersions } from './assets/pack-version'
+export type { ReadablePackSelection } from './assets/catalog-selection'
+export { selectReadablePacks } from './assets/catalog-selection'
+export { isAllowedLicenseMove, mostPermissiveLicense } from './assets/license-moves'

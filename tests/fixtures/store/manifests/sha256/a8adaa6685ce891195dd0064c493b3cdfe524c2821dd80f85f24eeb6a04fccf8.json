@@ -1,0 +1,92 @@
+{
+
+  "packId": "example-furniture",
+  "version": "1.0.0",
+  "formatVersion": 2,
+  "license": "CC-BY-4.0",
+  "attribution": "Jane Roe",
+  "eras": [
+    "mid-century"
+  ],
+  "categories": [
+    "seating",
+    "lighting"
+  ],
+  "assets": [
+    {
+      "contentHash": "821078871bb03179c9a328f30a2152a56f568584d579fc6e3ea1213462a2b0e3",
+      "byteLength": 2048,
+      "thumbnail": {
+        "contentHash": "ecf1281cf151916a424865400e22520cdf860eee682d5cfc7be18576e6968f35",
+        "byteLength": 44
+      },
+      "name": "Example sofa",
+      "kind": "furniture",
+      "mediaType": "model/gltf-binary",
+      "license": "CC0-1.0",
+      "attribution": "Jane Roe",
+      "eras": [
+        "mid-century"
+      ],
+      "categories": [
+        "seating"
+      ],
+      "dimensions": {
+        "width": 1000,
+        "depth": 1000,
+        "height": 2000
+      }
+    },
+    {
+      "contentHash": "9bd9079ca72520ab93e7a54ad320876e842f9468f27490e1f0b5e65467334ed7",
+      "byteLength": 1936,
+      "thumbnail": {
+        "contentHash": "2e014579bc7872635996ad587c59288e4f06a100146b065c9739b79077b5e2c9",
+        "byteLength": 44
+      },
+      "name": "Example lamp",
+      "kind": "furniture",
+      "mediaType": "model/gltf-binary",
+      "license": "CC-BY-4.0",
+      "attribution": "Jane Roe",
+      "copyright": "Copyright 2026 Jane Roe",
+      "sourceUrl": "https://example.org/vernacular/fixtures/example-lamp",
+      "eras": [
+        "mid-century"
+      ],
+      "categories": [
+        "lighting"
+      ],
+      "dimensions": {
+        "width": 300,
+        "depth": 300,
+        "height": 1500
+      }
+    },
+    {
+      "contentHash": "0b616ba679e3ed9f6e8547ff3feb2aed10ab7c9aa334617a35d7f2f4a0cd61c7",
+      "byteLength": 1936,
+      "thumbnail": {
+        "contentHash": "46640606216777255e2d3a5ec5a97de9a8cc85705f034514f613d09ab1541a9c",
+        "byteLength": 44
+      },
+      "name": "Example settee",
+      "kind": "furniture",
+      "mediaType": "model/gltf-binary",
+      "license": "CC-BY-SA-4.0",
+      "attribution": "Jane Roe",
+      "changes": "Rescaled the original mesh and changed its finish to blue.",
+      "eras": [
+        "mid-century"
+      ],
+      "categories": [
+        "seating"
+      ],
+      "dimensions": {
+        "width": 1500,
+        "depth": 700,
+        "height": 700
+      }
+    }
+  ]
+}

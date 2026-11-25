@@ -1,0 +1,15 @@
+Example furniture test pack
+
+Jane Roe and the lamp's source URL are sample manifest data.
+
+The sofa copies the repository's e2e/fixtures/cube.glb byte for byte. The
+lamp and settee use scaled and recolored versions of the same mesh.
+
+Example sofa (CC0-1.0, Jane Roe)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Example lamp (CC-BY-4.0, Jane Roe)
+https://creativecommons.org/licenses/by/4.0/
+
+Example settee (CC-BY-SA-4.0, Jane Roe)
+https://creativecommons.org/licenses/by-sa/4.0/

@@ -132,7 +132,7 @@ describe('runPackCli failures', () => {
   it('prints usage and returns exit code 2 for an unknown command', async () => {
     const cliDeps = deps(validManifest())
 
-    expect(await runPackCli(['publish', 'packs/example'], cliDeps)).toBe(2)
+    expect(await runPackCli(['unknown', 'packs/example'], cliDeps)).toBe(2)
     expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Usage'))
   })
 

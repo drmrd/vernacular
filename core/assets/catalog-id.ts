@@ -1,4 +1,5 @@
 import { isAssetDomainCode, type AssetDomainCode } from '../registries/asset-domains.ts'
+import { isSemanticVersion } from './semantic-version.ts'
 
 export interface CatalogId {
   namespace: string
@@ -18,9 +19,6 @@ const SUBCATEGORY_MIN_LENGTH = 3
 const SUBCATEGORY_MAX_LENGTH = 48
 const SLUG_MIN_LENGTH = 2
 const SLUG_MAX_LENGTH = 64
-
-const VERSION_NUMBER = String.raw`(?:0|[1-9][0-9]*)`
-const PRERELEASE_PART = String.raw`(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)`
 
 function restLengthQuantifier(minLength: number, maxLength: number): string {
   return `{${minLength - 1},${maxLength - 1}}`
@@ -42,9 +40,6 @@ export const SUBCATEGORY_PATTERN = lowercaseWordPattern(
   SUBCATEGORY_MAX_LENGTH,
 )
 export const SLUG_PATTERN = lowercaseWordPattern(SLUG_MIN_LENGTH, SLUG_MAX_LENGTH)
-const VERSION_PATTERN = new RegExp(
-  String.raw`^${VERSION_NUMBER}\.${VERSION_NUMBER}\.${VERSION_NUMBER}(?:-${PRERELEASE_PART}(?:\.${PRERELEASE_PART})*)?$`,
-)
 
 const NAMESPACE_PROBLEM = `namespace must be core, or org_, usr_, or pkg_ followed by ${NAMESPACE_TAIL_MIN_LENGTH} to ${NAMESPACE_TAIL_MAX_LENGTH} lowercase letters, digits, or hyphens, starting with a letter or digit`
 export const DOMAIN_PROBLEM = 'domain must be a known asset domain code'
@@ -94,7 +89,7 @@ const PART_CHECKS: Record<(typeof PART_NAMES)[number], (part: string) => string 
   domain: (part) => (isAssetDomainCode(part) ? undefined : DOMAIN_PROBLEM),
   subcategory: (part) => (SUBCATEGORY_PATTERN.test(part) ? undefined : SUBCATEGORY_PROBLEM),
   slug: (part) => (SLUG_PATTERN.test(part) ? undefined : SLUG_PROBLEM),
-  version: (part) => (VERSION_PATTERN.test(part) ? undefined : VERSION_PROBLEM),
+  version: (part) => (isSemanticVersion(part) ? undefined : VERSION_PROBLEM),
 }
 
 function firstPartProblem(parts: readonly string[]): string | undefined {

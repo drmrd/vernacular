@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 // scripts/pack/vernacular-pack.mjs
 //
-// vernacular-pack CLI (design specification section 4.3). Subcommands:
-// `validate <packDir>` and `build <packDir>`. Both validate the manifest and
-// check the pack's files on disk (content hashes, texture headers, thumbnails).
-// `build` also writes a build report beside the pack; thumbnail baking and
-// publishing are not done here.
+// Each pack command validates the manifest and reviews the files on disk.
+// Build writes a report beside the pack. Publish adds the pack to a local store.
 
 import { access, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
@@ -14,19 +11,26 @@ import { fileURLToPath } from 'node:url'
 import { validatePackManifest } from '../../core/assets/pack-manifest.ts'
 import { checkPackIntegrity, manifestAssets } from './pack-integrity.mjs'
 import { isShareAlike, shareAlikeWarning } from '../../core/assets/license-policy.ts'
+import { publishPackToDisk } from './publish-store.mjs'
 import { isRecord } from '../../core/assets/is-record.ts'
 
 const EXIT_OK = 0
 const EXIT_INVALID = 1
 const EXIT_USAGE = 2
 const EXIT_INTERNAL = 3
-const USAGE = 'Usage: vernacular-pack <validate|build> <packDir>'
+const PUBLISH_FLAGS = new Set(['--store', '--name'])
+const USAGE = [
+  'Usage: vernacular-pack <validate|build> <packDir>',
+  '       vernacular-pack publish <packDir> --store <dir> [--name <text>]',
+].join('\n')
 
 /**
  * @typedef {object} PackCliDeps
+ * @property {typeof readPackPublicationFromDisk} [readPackPublication]
  * @property {(packDir: string) => Promise<unknown>} readManifest
  * @property {(packDir: string) => import('./pack-integrity.mjs').PackReader} createReader
  * @property {(packDir: string, report: object) => Promise<void>} writeReport
+ * @property {typeof publishPackToDisk} publishPack
  * @property {(message: string) => void} log
  * @property {(message: string) => void} error
  */
@@ -118,24 +122,77 @@ function reportErrors(deps, packDir, errors) {
   }
 }
 
+/** @param {string} packDir @param {readonly string[]} flags */
+function publishRequest(packDir, flags) {
+  if (packDir.startsWith('-')) return
+  const options = new Map()
+  for (let index = 0; index < flags.length; index += 2) {
+    const flag = flags[index]
+    const value = flags[index + 1]
+    if (!PUBLISH_FLAGS.has(flag) || options.has(flag)) return
+    if (!value?.trim() || value.startsWith('-')) return
+    options.set(flag, value)
+  }
+  const storeDir = options.get('--store')
+  if (!storeDir) return
+  const name = options.get('--name')
+  return name === undefined ? { packDir, storeDir } : { packDir, storeDir, name }
+}
+
+/** @param {readonly string[]} argv */
+function parseCommand(argv) {
+  const [command, packDir, ...flags] = argv
+  if (!packDir) return
+  if (command === 'validate' || command === 'build') return { command, packDir }
+  if (command !== 'publish') return
+  const request = publishRequest(packDir, flags)
+  if (request) return { command, packDir, request }
+}
+
+/** @param {NonNullable<ReturnType<typeof parseCommand>>} command @param {PackCliDeps} deps */
+async function readPackForCommand({ packDir, request }, deps) {
+  try {
+    if (request && deps.readPackPublication) {
+      const publisher = await deps.readPackPublication(packDir)
+      return { manifest: publisher.manifest, publisher }
+    }
+    return { manifest: await deps.readManifest(packDir), publisher: deps }
+  } catch (cause) {
+    deps.error(`Could not read manifest in ${packDir}: ${String(cause)}`)
+  }
+}
+
+/**
+ * @param {import('./publish-store.mjs').PublishRequest} request
+ * @param {PackCliDeps} deps
+ * @param {Pick<PackCliDeps, 'publishPack'>} publisher
+ */
+async function publishValidatedPack(request, deps, publisher) {
+  try {
+    await publisher.publishPack(request)
+    deps.log(`Published ${request.packDir} to ${request.storeDir}`)
+    return EXIT_OK
+  } catch (cause) {
+    deps.error(`Could not publish ${request.packDir} to ${request.storeDir}: ${String(cause)}`)
+    return EXIT_INVALID
+  }
+}
+
 /**
  * @param {readonly string[]} argv arguments after the node binary and script path
  * @param {PackCliDeps} deps
  * @returns {Promise<number>} the process exit code
  */
 export async function runPackCli(argv, deps) {
-  const [command, packDir] = argv
-  if ((command !== 'validate' && command !== 'build') || !packDir) {
+  const parsed = parseCommand(argv)
+  if (!parsed) {
     deps.error(USAGE)
     return EXIT_USAGE
   }
-  let manifest
-  try {
-    manifest = await deps.readManifest(packDir)
-  } catch (cause) {
-    deps.error(`Could not read manifest in ${packDir}: ${String(cause)}`)
-    return EXIT_INVALID
-  }
+  const { command, packDir, request } = parsed
+  const input = await readPackForCommand(parsed, deps)
+  if (!input) return EXIT_INVALID
+  const { manifest, publisher } = input
   const review = await reviewPack(manifest, deps.createReader(packDir))
   for (const warning of review.warnings) {
     deps.log(`warning: ${warning}`)
@@ -147,6 +204,7 @@ export async function runPackCli(argv, deps) {
     reportErrors(deps, packDir, review.errors)
     return EXIT_INVALID
   }
+  if (request) return publishValidatedPack(request, deps, publisher)
   deps.log(`${command}: ${packDir} is a valid pack`)
   return EXIT_OK
 }
@@ -155,6 +213,16 @@ export async function runPackCli(argv, deps) {
 export async function readManifestFromDisk(packDir) {
   const raw = await readFile(join(packDir, 'manifest.json'), 'utf8')
   return JSON.parse(raw)
+}
+
+/** Bind publication to the exact manifest bytes the CLI will review. @param {string} packDir */
+export async function readPackPublicationFromDisk(packDir) {
+  const bytes = await readFile(join(packDir, 'manifest.json'))
+  return {
+    manifest: JSON.parse(bytes.toString('utf8')),
+    /** @param {import('./publish-store.mjs').PublishRequest} request */
+    publishPack: (request) => publishPackToDisk(request, bytes),
+  }
 }
 
 /**
@@ -210,8 +278,10 @@ const isDirectInvocation =
 if (isDirectInvocation) {
   runPackCli(process.argv.slice(2), {
     readManifest: readManifestFromDisk,
+    readPackPublication: readPackPublicationFromDisk,
     createReader: createNodePackReader,
     writeReport: writeReportToDisk,
+    publishPack: publishPackToDisk,
     log: (message) => console.log(message),
     error: (message) => console.error(message),
   })

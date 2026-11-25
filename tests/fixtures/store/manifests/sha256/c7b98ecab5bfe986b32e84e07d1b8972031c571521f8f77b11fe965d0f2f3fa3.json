@@ -1,0 +1,89 @@
+{
+  "packId": "vernacular-starter",
+  "version": "1.1.1",
+  "formatVersion": 2,
+  "license": "CC-BY-4.0",
+  "attribution": "The Vernacular Contributors",
+  "eras": [
+    "mid-century",
+    "colonial",
+    "early-republic",
+    "antebellum",
+    "victorian",
+    "edwardian",
+    "interwar",
+    "postwar",
+    "contemporary",
+    "unknown"
+  ],
+  "styles": [
+    "mid-century-modern"
+  ],
+  "categories": [
+    "seating",
+    "ground-cover"
+  ],
+  "assets": [
+    {
+      "contentHash": "a85d7326ae9ea5891e0d21444ab54a11173f10d3e67dced1d3bda7e03cdd0c72",
+      "byteLength": 47,
+      "thumbnail": {
+        "contentHash": "3fe79651a92ea3850c3fc3dd9519a67c7f70b598fa238a3fd92042f6446e6452",
+        "byteLength": 12
+      },
+      "name": "Example chair",
+      "kind": "furniture",
+      "mediaType": "model/gltf-binary",
+      "license": "CC-BY-4.0",
+      "attribution": "The Vernacular Contributors",
+      "copyright": "Copyright 2026 The Vernacular Contributors",
+      "eras": [
+        "mid-century"
+      ],
+      "styles": [
+        "mid-century-modern"
+      ],
+      "categories": [
+        "seating"
+      ],
+      "dimensions": {
+        "width": 500,
+        "depth": 520,
+        "height": 800
+      }
+    },
+    {
+      "contentHash": "6124c956bf1980cfb3da2322f5fc2a55fa4d8e44912faba58618270ced1b8f76",
+      "byteLength": 787072,
+      "name": "Mown grass",
+      "kind": "texture",
+      "mediaType": "image/png",
+      "license": "CC-BY-4.0",
+      "attribution": "The Vernacular Contributors",
+      "copyright": "Copyright 2026 The Vernacular Contributors",
+      "eras": [
+        "colonial",
+        "early-republic",
+        "antebellum",
+        "victorian",
+        "edwardian",
+        "interwar",
+        "postwar",
+        "contemporary",
+        "unknown"
+      ],
+      "categories": [
+        "ground-cover"
+      ],
+      "image": {
+        "width": 512,
+        "height": 512
+      },
+      "tileSize": {
+        "width": 2000,
+        "height": 2000
+      },
+      "colorSpace": "srgb"
+    }
+  ]
+}

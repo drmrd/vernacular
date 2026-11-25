@@ -12,11 +12,13 @@ import {
   packAssetMediaType,
 } from '../../core/assets/asset-description.ts'
 import { isRecord } from '../../core/assets/is-record.ts'
+import { isSha256Hex } from '../../core/assets/sha256-hex.ts'
 import { TEXTURE_LIMITS } from '../../core/assets/texture-asset-rules.ts'
 import {
   textureFileProblems,
   textureFileSizeProblems,
 } from '../../core/assets/texture-file-rules.ts'
+import { checkStatedFiles, statedFileEntries } from './pack-integrity-distribution-fields.mjs'
 
 /**
  * @typedef {object} PackReader
@@ -28,11 +30,12 @@ import {
  * @property {(rel: string) => Promise<number>} size            file size in bytes
  */
 
+/** @typedef {import('./pack-integrity-distribution-fields.mjs').StatedFileEntry} StatedFileEntry */
+
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
 const THUMBNAIL_EXTENSION = '.webp'
 const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
-const SHA256_PATTERN = /^[0-9a-f]{64}$/
 const WEBP_HEADER_LENGTH = 12
 const RIFF_SIGNATURE = [0x52, 0x49, 0x46, 0x46]
 const WEBP_SIGNATURE = [0x57, 0x45, 0x42, 0x50]
@@ -91,6 +94,15 @@ function assetPath(asset) {
 }
 
 /**
+ * The pack-relative path of an asset's thumbnail.
+ * @param {{ contentHash: string }} asset
+ * @returns {string}
+ */
+function thumbnailPath(asset) {
+  return `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
+}
+
+/**
  * Confirm each asset's file bytes hash to its declared content hash.
  * @param {object[]} assets
  * @param {PackReader} reader
@@ -101,7 +113,7 @@ async function checkAssetHashes(assets, reader, context) {
   const { errors } = context
   const verified = []
   for (const asset of assets) {
-    if (!SHA256_PATTERN.test(asset.contentHash)) continue
+    if (!isSha256Hex(asset.contentHash)) continue
     const file = assetPath(asset)
     if (!(await reader.exists(file))) {
       errors.push(`asset ${asset.contentHash}: asset file missing at ${file}`)
@@ -142,8 +154,32 @@ async function checkTextureFiles(assets, reader, context) {
 }
 
 /**
- * Confirm each model asset has a WebP thumbnail in the pack; a texture's thumbnail is optional
- * but must be WebP when present.
+ * The stated asset byte lengths of verified assets, then the stated thumbnail fields of all assets.
+ * @param {object[]} assets
+ * @param {object[]} verifiedAssets   assets whose files are present and hash correctly
+ * @returns {StatedFileEntry[]}
+ */
+function statedEntries(assets, verifiedAssets) {
+  const lengths = verifiedAssets.flatMap((a) =>
+    statedFileEntries(
+      { assetHash: a.contentHash, file: assetPath(a) },
+      { byteLength: a.byteLength },
+    ),
+  )
+  const thumbnails = assets
+    .filter((a) => isRecord(a.thumbnail) && isSha256Hex(a.contentHash))
+    .flatMap((a) =>
+      statedFileEntries(
+        { assetHash: a.contentHash, file: thumbnailPath(a), labelPrefix: 'thumbnail.' },
+        a.thumbnail,
+      ),
+    )
+  return [...lengths, ...thumbnails]
+}
+
+/**
+ * Every model requires a thumbnail file. A texture requires one when its manifest entry
+ * declares a thumbnail. Validate the WebP header of each asset thumbnail found in the pack.
  * @param {object[]} assets
  * @param {PackReader} reader
  * @param {{ errors: string[], formatVersion: unknown }} context
@@ -152,10 +188,10 @@ async function checkTextureFiles(assets, reader, context) {
 async function checkThumbnails(assets, reader, context) {
   const { errors, formatVersion } = context
   for (const asset of assets) {
-    if (!SHA256_PATTERN.test(asset.contentHash)) continue
-    const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
+    if (!isSha256Hex(asset.contentHash)) continue
+    const file = thumbnailPath(asset)
     if (!(await reader.exists(file))) {
-      if (!isTextureAsset(asset, formatVersion)) {
+      if (asset.thumbnail !== undefined || !isTextureAsset(asset, formatVersion)) {
         errors.push(`asset ${asset.contentHash}: thumbnail missing`)
       }
       continue
@@ -232,6 +268,7 @@ export async function checkPackIntegrity(manifest, reader) {
   const assets = manifestAssets(manifest)
   const verifiedAssets = await checkAssetHashes(assets, reader, context)
   await checkTextureFiles(verifiedAssets, reader, context)
+  await checkStatedFiles(statedEntries(assets, verifiedAssets), reader, context)
   await checkThumbnails(assets, reader, context)
   await checkOrphans(assets, reader, context)
   await checkRequiredFiles(reader, context)

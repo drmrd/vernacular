@@ -7,9 +7,12 @@
 // it relies on lives in asset-description.ts.
 
 import { declaresMediaTypes, MODEL_MEDIA_TYPES, TEXTURE_MEDIA_TYPES } from './asset-description.ts'
+import { validateDistributionFields } from './distribution-fields.ts'
 import { isRecord } from './is-record.ts'
 import { licenseProblems } from './license-policy.ts'
 import { isPositiveLengthMm, positiveLengthMmProblem } from './manifest-lengths.ts'
+import { isSemanticVersion, SEMANTIC_VERSION_RULE } from './semantic-version.ts'
+import { isSha256Hex } from './sha256-hex.ts'
 import { validateTextureFields } from './texture-asset-rules.ts'
 
 export type AssetKind =
@@ -35,15 +38,13 @@ export const ASSET_KINDS: readonly AssetKind[] = Object.freeze([
   'preview-only',
 ])
 
-const PACK_FORMAT_VERSIONS: readonly number[] = Object.freeze([1, 2])
+export const PACK_FORMAT_VERSIONS = Object.freeze([1, 2] as const)
 
 export interface PackValidationResult {
   valid: boolean
   errors: string[]
 }
 
-const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
-const SHA256_PATTERN = /^[0-9a-f]{64}$/
 const URL_PREFIX_PATTERN = /^https?:\/\/\S+$/
 
 const DIMENSION_AXES = ['width', 'depth', 'height'] as const
@@ -164,7 +165,7 @@ function validateAssetFields(
   const { label } = context
   if (
     validateRequiredString(source, { key: 'contentHash', label: `${label}.contentHash` }, errors) &&
-    !SHA256_PATTERN.test(String(source['contentHash']))
+    !isSha256Hex(source['contentHash'])
   ) {
     errors.push(`${label}.contentHash must be a sha256 hex digest`)
   }
@@ -181,6 +182,7 @@ function validateAssetFields(
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
   validateMediaType(source, context, errors)
+  validateDistributionFields(source, label, errors)
   if (source['kind'] === 'texture' && declaresMediaTypes(context.formatVersion)) {
     validateTextureFields(source, label, errors)
   } else {
@@ -208,7 +210,10 @@ function validateAssets(assets: unknown, formatVersion: unknown, errors: string[
 }
 
 function isKnownFormatVersion(formatVersion: unknown): boolean {
-  return typeof formatVersion === 'number' && PACK_FORMAT_VERSIONS.includes(formatVersion)
+  return (
+    typeof formatVersion === 'number' &&
+    (PACK_FORMAT_VERSIONS as readonly number[]).includes(formatVersion)
+  )
 }
 
 function validateFormatVersion(formatVersion: unknown, errors: string[]): void {
@@ -230,9 +235,9 @@ function validatePackFields(source: Record<string, unknown>, errors: string[]): 
   validateRequiredString(source, { key: 'attribution' }, errors)
   if (
     validateRequiredString(source, { key: 'version' }, errors) &&
-    !SEMVER_PATTERN.test(String(source['version']))
+    !isSemanticVersion(source['version'])
   ) {
-    errors.push('version must be valid SemVer (for example 1.0.0)')
+    errors.push(`version must be ${SEMANTIC_VERSION_RULE}`)
   }
   validateRequiredStringArray(source, { key: 'eras' }, errors)
   validateRequiredStringArray(source, { key: 'categories' }, errors)

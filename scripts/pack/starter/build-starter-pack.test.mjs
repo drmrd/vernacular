@@ -10,11 +10,15 @@ import { buildStarterPack } from './build-starter-pack.mjs'
 import { generateGrassTile } from './grass-tile.mjs'
 
 // Vitest runs with the project root as the working directory.
-const NEW_PACK_DIR = resolve('public/packs/vernacular-starter-1.1.0')
-const OLD_PACK_DIR = resolve('public/packs/vernacular-starter-1.0.0')
+const PACKS_DIR = resolve('public/packs')
+const RELEASED_PACK_DIR = join(PACKS_DIR, 'vernacular-starter-1.1.0')
+const OLD_PACK_DIR = join(PACKS_DIR, 'vernacular-starter-1.0.0')
+const PUBLISHABLE_PACK_VERSION = '1.1.1'
+const STARTER_PACK_FORMAT_VERSION = 2
 const OLD_CHAIR_HASH = '8a8a0cafbecb2446278c8b61e275c1ac78373a7ccd59ddd5ac7684bf1388341e'
 const LICENSE_ID = 'CC-BY-4.0'
 const ATTRIBUTION = 'The Vernacular Contributors'
+const COPYRIGHT = 'Copyright 2026 The Vernacular Contributors'
 const GRASS_SIDE_PIXELS = 512
 const GRASS_TILE_SIDE_MM = 2000
 const LICENSE_HEADING = 'Attribution 4.0 International'
@@ -22,8 +26,8 @@ const LICENSE_FIRST_SECTION = 'Section 1 -- Definitions.'
 const GENERATOR_SCRIPT = 'scripts/pack/starter/build-starter-pack.mjs'
 const GENERATOR_COMMAND = 'pnpm pack:starter'
 const OLD_CHANGELOG_HEADING = '## 1.0.0'
-const NEW_CHANGELOG_HEADING = '## 1.1.0'
-const NEW_CHANGELOG_TEXT =
+const RELEASED_CHANGELOG_HEADING = '## 1.1.0'
+const RELEASED_CHANGELOG_TEXT =
   'Replace the placeholder chair with a new placeholder chair under CC-BY-4.0. ' +
   'Add a generated mown-grass texture.'
 
@@ -56,6 +60,12 @@ async function readCommittedFiles(dir, prefix = '') {
   return files
 }
 
+function builtFile(built, path) {
+  const bytes = built.get(path)
+  expect(bytes, `built file ${path}`).toBeDefined()
+  return bytes
+}
+
 function assetOfKind(manifest, kind) {
   const found = manifest.assets.filter((asset) => asset.kind === kind)
   expect(found, `assets of kind ${kind}`).toHaveLength(1)
@@ -74,15 +84,56 @@ function collectingDeps() {
   }
 }
 
-describe('the starter pack 1.1.0 build', () => {
+describe('the starter pack build', () => {
   let built
+  let manifest
+  let builtPackDir
 
   beforeAll(async () => {
     built = await buildStarterPack()
+    manifest = JSON.parse(Buffer.from(builtFile(built, 'manifest.json')).toString('utf8'))
+    builtPackDir = join(PACKS_DIR, `${manifest.packId}-${manifest.version}`)
   })
 
-  it('writes exactly the files committed under the 1.1.0 pack directory', async () => {
-    const committed = await readCommittedFiles(NEW_PACK_DIR)
+  it('states the file lengths, chair thumbnail, and copyright for starter pack 1.1.1', async () => {
+    const released = await readManifestFromDisk(RELEASED_PACK_DIR)
+    const releasedChair = assetOfKind(released, 'furniture')
+    const releasedGrass = assetOfKind(released, 'texture')
+    const chair = assetOfKind(manifest, 'furniture')
+    const grass = assetOfKind(manifest, 'texture')
+    const chairBytes = builtFile(built, `assets/${chair.contentHash}.glb`)
+    const grassBytes = builtFile(built, `assets/${grass.contentHash}.png`)
+    const thumbnailBytes = builtFile(built, `thumbnails/${chair.contentHash}.webp`)
+    const releasedThumbnail = await readFile(
+      join(RELEASED_PACK_DIR, 'thumbnails', `${releasedChair.contentHash}.webp`),
+    )
+
+    expect(sameBytes(thumbnailBytes, releasedThumbnail)).toBe(true)
+    expect(grass).not.toHaveProperty('thumbnail')
+    expect(built.has(`thumbnails/${grass.contentHash}.webp`)).toBe(false)
+    expect({ manifest, chair, grass }).toMatchObject({
+      manifest: {
+        packId: 'vernacular-starter',
+        formatVersion: STARTER_PACK_FORMAT_VERSION,
+        license: LICENSE_ID,
+        version: PUBLISHABLE_PACK_VERSION,
+      },
+      chair: {
+        contentHash: releasedChair.contentHash,
+        byteLength: chairBytes.length,
+        thumbnail: { contentHash: sha256(thumbnailBytes), byteLength: thumbnailBytes.length },
+        copyright: COPYRIGHT,
+      },
+      grass: {
+        contentHash: releasedGrass.contentHash,
+        byteLength: grassBytes.length,
+        copyright: COPYRIGHT,
+      },
+    })
+  })
+
+  it('writes exactly the files committed for the built pack version', async () => {
+    const committed = await readCommittedFiles(builtPackDir)
 
     const differing = [...built].filter(
       ([path, bytes]) => !committed.has(path) || !sameBytes(bytes, committed.get(path)),
@@ -96,15 +147,15 @@ describe('the starter pack 1.1.0 build', () => {
   it('passes the pack validator with the real readers', async () => {
     const deps = collectingDeps()
 
-    const exitCode = await runPackCli(['validate', NEW_PACK_DIR], deps)
+    const exitCode = await runPackCli(['validate', builtPackDir], deps)
 
     expect(exitCode, deps.lines.join('\n')).toBe(0)
   })
 
   it('declares the starter pack at version 1.1.0 in format 2 under CC-BY-4.0', async () => {
-    const manifest = await readManifestFromDisk(NEW_PACK_DIR)
+    const released = await readManifestFromDisk(RELEASED_PACK_DIR)
 
-    expect(manifest).toMatchObject({
+    expect(released).toMatchObject({
       formatVersion: 2,
       version: '1.1.0',
       packId: 'vernacular-starter',
@@ -113,7 +164,6 @@ describe('the starter pack 1.1.0 build', () => {
   })
 
   it('replaces the chair with a new one that keeps the old chair description', async () => {
-    const manifest = await readManifestFromDisk(NEW_PACK_DIR)
     const oldChair = assetOfKind(await readManifestFromDisk(OLD_PACK_DIR), 'furniture')
     const chair = assetOfKind(manifest, 'furniture')
     const chairBytes = built.get(`assets/${chair.contentHash}.glb`)
@@ -136,9 +186,8 @@ describe('the starter pack 1.1.0 build', () => {
   })
 
   it('adds a tileable mown-grass texture covering every period', async () => {
-    const manifest = await readManifestFromDisk(NEW_PACK_DIR)
     const grass = assetOfKind(manifest, 'texture')
-    const committedPng = await readFile(join(NEW_PACK_DIR, 'assets', `${grass.contentHash}.png`))
+    const committedPng = await readFile(join(builtPackDir, 'assets', `${grass.contentHash}.png`))
 
     expect(grass).toMatchObject({
       mediaType: 'image/png',
@@ -155,7 +204,7 @@ describe('the starter pack 1.1.0 build', () => {
   })
 
   it('ships the full CC-BY-4.0 text, a notice naming the generator, and a changelog', async () => {
-    const text = async (name) => readFile(join(NEW_PACK_DIR, name), 'utf8')
+    const text = async (name) => readFile(join(builtPackDir, name), 'utf8')
 
     const license = await text('LICENSE')
     const notice = await text('NOTICE')
@@ -166,7 +215,7 @@ describe('the starter pack 1.1.0 build', () => {
     expect(notice).toContain(GENERATOR_SCRIPT)
     expect(notice).toContain(GENERATOR_COMMAND)
     expect(changelog).toContain(OLD_CHANGELOG_HEADING)
-    const newSection = changelog.split(NEW_CHANGELOG_HEADING)[1] ?? ''
-    expect(newSection.replace(/\s+/g, ' ')).toContain(NEW_CHANGELOG_TEXT)
+    const releasedSection = changelog.split(RELEASED_CHANGELOG_HEADING)[1] ?? ''
+    expect(releasedSection.replace(/\s+/g, ' ')).toContain(RELEASED_CHANGELOG_TEXT)
   })
 })

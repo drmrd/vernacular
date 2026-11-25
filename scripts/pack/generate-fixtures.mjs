@@ -1,9 +1,9 @@
 // scripts/pack/generate-fixtures.mjs
 //
-// Generator for the pack fixtures under tests/fixtures/packs/. It writes pack
-// trees with real bytes whose hashes the integrity check can verify: a
-// well-formed model pack and a well-formed texture pack that pass, plus a
-// deliberately broken pack for each that exercises its failure paths. Run with
+// Generates packs under tests/fixtures/packs/ and publishes the example store
+// under tests/fixtures/store/. The pack fixtures include a model pack and a
+// texture pack that pass the integrity check, plus a deliberately broken pack
+// of each type. Run with
 // `node scripts/pack/generate-fixtures.mjs`; the output is committed, so re-run
 // it only when a fixture changes. Importing this module has no side effects:
 // only running it as the entry point writes to disk.
@@ -12,9 +12,15 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { CATALOG_FILE } from '../../core/assets/store-paths.ts'
 import { encodePng } from './png-encoder.mjs'
+import {
+  EXAMPLE_FURNITURE_DIRECTORY,
+  writeExampleFurniturePack,
+} from './example-furniture/build-example-furniture.mjs'
+import { publishPackToDisk } from './publish-store.mjs'
 
-const root = fileURLToPath(new URL('../../tests/fixtures/packs/', import.meta.url))
+const fixturesRoot = fileURLToPath(new URL('../../tests/fixtures/', import.meta.url))
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex')
 
 // A minimal 12-byte WebP header: "RIFF" + a four-byte size + "WEBP". Enough for the
@@ -245,22 +251,46 @@ export const FIXTURE_PACKS = [
   { directory: BROKEN_PACK_DIRECTORY, write: writeBrokenPack },
   { directory: TEXTURE_PACK_DIRECTORY, write: writeTexturePack },
   { directory: BROKEN_TEXTURE_PACK_DIRECTORY, write: writeBrokenTexturePack },
+  { directory: EXAMPLE_FURNITURE_DIRECTORY, write: writeExampleFurniturePack },
 ]
 
-const diskSink = {
-  async writeFile(relativePath, bytes) {
-    const target = join(root, relativePath)
-    await mkdir(dirname(target), { recursive: true })
-    await writeFile(target, bytes)
-  },
-}
+const STORE_STARTER_PACKS = ['vernacular-starter-1.0.0', 'vernacular-starter-1.1.1'].map(
+  (directory) => fileURLToPath(new URL(`../../public/packs/${directory}`, import.meta.url)),
+)
 
-async function main() {
-  for (const { directory, write } of FIXTURE_PACKS) {
-    await rm(join(root, directory), { recursive: true, force: true })
-    await write(diskSink)
+/** @param {string} storeDir A directory reserved for generated store output. */
+export async function generateFixtureStore(
+  storeDir,
+  furniturePackDir = join(fixturesRoot, 'packs', EXAMPLE_FURNITURE_DIRECTORY),
+) {
+  for (const path of [CATALOG_FILE, 'blobs', 'manifests', 'packs']) {
+    await rm(join(storeDir, path), { recursive: true, force: true })
+  }
+  for (const packDir of [...STORE_STARTER_PACKS, furniturePackDir]) {
+    await publishPackToDisk({ packDir, storeDir, name: 'Example Library' })
   }
 }
+
+async function main(fixturesDirectory = fixturesRoot) {
+  const packsDirectory = join(fixturesDirectory, 'packs')
+  const diskSink = {
+    async writeFile(relativePath, bytes) {
+      const target = join(packsDirectory, relativePath)
+      await mkdir(dirname(target), { recursive: true })
+      await writeFile(target, bytes)
+    },
+  }
+  for (const { directory, write } of FIXTURE_PACKS) {
+    await rm(join(packsDirectory, directory), { recursive: true, force: true })
+    await write(diskSink)
+  }
+  await generateFixtureStore(
+    join(fixturesDirectory, 'store'),
+    join(packsDirectory, EXAMPLE_FURNITURE_DIRECTORY),
+  )
+}
+
+export { main as generateFixtures }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
