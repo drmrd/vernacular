@@ -9,7 +9,6 @@ import {
   junctionFills,
   openingVoidContour,
   planToWorld,
-  resolveOpeningEdge,
   subtract,
   wallFootprints,
   wallHeight,
@@ -34,6 +33,14 @@ import { tessellateContourLoop } from './contour-tessellation'
 import { buildJunctionFill } from './junction-fill-builder'
 import { buildWallPrism, wallFaceRef } from './wall-prism'
 import { buildSectionMesh } from './wall-surface-table'
+import {
+  aperturesIntersect,
+  contourSegments,
+  wallOutsideApertures,
+  type ElevationSegment,
+} from './wall-aperture-union'
+import { clipAtRunEnd, standingEndSegments } from './wall-opening-clip'
+import { openingsByEdge, type EdgeOpening } from './wall-opening-runs'
 import { markWallSpan } from './wall-span'
 
 /** Inputs for building a floor's walls from its planar graph. */
@@ -59,11 +66,12 @@ export function buildWalls(input: WallBuildInput): THREE.Group {
     return node === undefined ? 0 : effectiveWallThickness(node)
   })
   const footprints = wallFootprints(input.graph, thicknessByEdge)
+  const cuts = openingsByEdge(input.graph, input.openingsByWall)
   input.graph.edges.forEach((edge, index) => {
     const host = wallsByModelId.get(edge.wallId)
     const node = edgeWallNode(edge, input.graph.vertices, host)
     if (host === undefined || node === null) return
-    const openings = openingsOnEdge(edge, input)
+    const openings = cuts.get(edge) ?? []
     const footprint = footprints[index] as WallFootprint
     const mesh =
       openings.length === 0
@@ -111,25 +119,6 @@ function fillHeight(
     .filter((node): node is WallSceneNode => node !== undefined)
     .map(wallHeight)
   return heights.length === 0 ? null : Math.max(...heights)
-}
-
-/** An opening that resolves to a given edge, paired with its distance along it. */
-interface EdgeOpening {
-  opening: OpeningSceneNode
-  positionAlongEdge: number
-}
-
-/** The openings whose center resolves to this edge, each with its along position. */
-function openingsOnEdge(edge: GraphEdge, input: WallBuildInput): EdgeOpening[] {
-  const candidates = input.openingsByWall.get(edge.wallId) ?? []
-  const onEdge: EdgeOpening[] = []
-  for (const opening of candidates) {
-    const resolved = resolveOpeningEdge(opening, input.graph)
-    if (resolved?.edge === edge) {
-      onEdge.push({ opening, positionAlongEdge: resolved.positionAlongEdge })
-    }
-  }
-  return onEdge
 }
 
 /** Indexes wall nodes by their stripped model id (the graph edges' `wallId`). */
@@ -278,7 +267,8 @@ function outlineRectangle(frame: EdgeFrame): ElevationCorners {
 interface TriangulatedOutline {
   points: THREE.Vector2[]
   triangles: Triangle[]
-  holeLoops: THREE.Vector2[][]
+  reveals: ElevationSegment[]
+  clippedEnds: Set<number>
 }
 
 /**
@@ -335,19 +325,10 @@ function isOuterBoundaryEdge(from: THREE.Vector2, to: THREE.Vector2, frame: Edge
  * outline (a door's floor edge sits on `v = 0`, so it is skipped). The closing edge
  * from the last corner back to the first lines the loop's final side.
  */
-function revealPositions(frame: EdgeFrame, holeLoops: THREE.Vector2[][]): number[] {
-  const positions: number[] = []
-  for (const loop of holeLoops) {
-    for (let index = 0; index < loop.length; index += 1) {
-      const from = loop[index] as THREE.Vector2
-      const to = loop[(index + 1) % loop.length] as THREE.Vector2
-      if (isOuterBoundaryEdge(from, to, frame)) continue
-      // A hole loop runs opposite to the outline, so the outer cap's corner order
-      // turns the reveal normal toward the void.
-      positions.push(...outerCapPositions(frame, from, to))
-    }
-  }
-  return positions
+function revealPositions(frame: EdgeFrame, reveals: ElevationSegment[]): number[] {
+  return reveals.flatMap(([from, to]) =>
+    isOuterBoundaryEdge(from, to, frame) ? [] : outerCapPositions(frame, from, to),
+  )
 }
 
 /** The profile path's contiguous sections, in a fixed geometry order. The two long
@@ -384,14 +365,14 @@ function openingWallSections(
     {
       role: 'exteriorFace',
       positions: [
-        ...outerCapPositions(frame, top, base),
-        ...outerCapPositions(frame, baseEnd, topEnd),
-      ],
+        ...standingEndSegments(outline, [top, base]),
+        ...standingEndSegments(outline, [baseEnd, topEnd]),
+      ].flatMap(([from, to]) => outerCapPositions(frame, from, to)),
     },
   ]
   // Reveal faces line the cut. A degenerate outline with no lined edges adds no
   // section, so the mesh carries no empty reveal material group.
-  const reveal = revealPositions(frame, outline.holeLoops)
+  const reveal = revealPositions(frame, outline.reveals)
   if (reveal.length > 0) sections.push({ role: 'reveal', positions: reveal })
   return sections
 }
@@ -407,13 +388,25 @@ interface OpeningWall {
 /** Triangulates the wall's elevation outline with each opening's void cut as a hole. */
 function triangulatedWallOutline(frame: EdgeFrame, openings: EdgeOpening[]): TriangulatedOutline {
   const outline = outlineRectangle(frame)
-  const holeLoops = openings.map((entry) =>
-    voidHoleLoop(openingVoidContour(entry.opening), entry.positionAlongEdge),
+  const clippedEnds = new Set(openings.flatMap((entry) => entry.clippedEnds))
+  const holeLoops = openings.map((entry) => {
+    const loop = voidHoleLoop(openingVoidContour(entry.opening), entry.positionAlongEdge)
+    return entry.clippedEnds.reduce(clipAtRunEnd, loop)
+  })
+  const sharedAperture = holeLoops.some((loop, index) =>
+    holeLoops.some(
+      (other, next) =>
+        next > index &&
+        openings[next]!.opening.hostWallId !== openings[index]!.opening.hostWallId &&
+        aperturesIntersect(loop, other),
+    ),
   )
+  if (sharedAperture) return { ...wallOutsideApertures(outline, holeLoops), clippedEnds }
   return {
     points: [...outline, ...holeLoops.flat()],
     triangles: THREE.ShapeUtils.triangulateShape(outline, holeLoops) as Triangle[],
-    holeLoops,
+    reveals: holeLoops.flatMap(contourSegments),
+    clippedEnds,
   }
 }
 

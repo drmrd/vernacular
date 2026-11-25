@@ -2,6 +2,7 @@ import { dimensionLength } from '../geometry/dimension'
 import type { AssetReference } from '../model/asset-reference'
 import { furnitureFootprintCorners } from '../model/furniture-footprint'
 import { effectiveWallThickness } from './construction-profile'
+import { openingsWithHosts, type OpeningWithHost } from './opening-hosts'
 import { withRoomSide } from './opening-room-side'
 import { assembleSceneGraph } from './scene-graph-assembly'
 import type { SceneNodeDerivations } from './scene-graph-assembly'
@@ -117,15 +118,13 @@ export interface OpeningSceneNode {
   height: number
   sillHeight: number
   /**
-   * The host wall's effective assembly thickness: resolved through its
-   * construction profile via `effectiveWallThickness`, falling back to the
-   * raw wall thickness when it carries no profile.
+   * Effective thickness of the wall that owns the stretch at the opening's center.
    */
   hostThickness: number
   orientation: OpeningOrientation
   /**
-   * Id of the wall this opening cuts. Nodes from `deriveOpeningNode` always
-   * carry it, sourced from the opening's host wall. It is optional because
+   * Id of the authored host wall, which sets the opening's position and direction.
+   * Nodes from `deriveOpeningNode` always carry it. It is optional because
    * hand-built `OpeningSceneNode` literals (chiefly fixtures) omit it; the
    * opening-to-edge resolver treats its absence as an opening it cannot place.
    */
@@ -267,14 +266,24 @@ export function deriveOpeningNode(
   }
 }
 
+export function projectOpeningNode(
+  floor: Floor,
+  { opening, hostWall, thickness }: OpeningWithHost,
+  rooms: readonly RoomSceneNode[],
+): OpeningSceneNode {
+  const node = deriveOpeningNode(floor, opening, hostWall)
+  node.hostThickness = thickness
+  return withRoomSide(node, rooms)
+}
+
 export function deriveOpeningNodesForFloor(
   floor: Floor,
   rooms: readonly RoomSceneNode[],
+  geometry = deriveFloorPlanGeometry(floor),
 ): OpeningSceneNode[] {
-  return floor.openings.flatMap((opening) => {
-    const hostWall = floor.walls.find((wall) => wall.id === opening.hostWallId)
-    return hostWall ? [withRoomSide(deriveOpeningNode(floor, opening, hostWall), rooms)] : []
-  })
+  return openingsWithHosts(floor, geometry).map((hosted) =>
+    projectOpeningNode(floor, hosted, rooms),
+  )
 }
 
 export function deriveDimensionNode(floor: Floor, dimension: Dimension): DimensionSceneNode {

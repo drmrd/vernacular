@@ -10,7 +10,9 @@ related:
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0032-broad-then-narrow-hit-test-and-multi-select,
     decisions/ADR-0036-room-metadata-overrides-and-labels,
+    decisions/ADR-0058-donut-and-courtyard-rooms-via-hole-rings,
     decisions/ADR-0097-evaluate-doubly-connected-edge-list-for-plan-geometry,
+    decisions/ADR-0202-overlapping-walls-share-one-edge-and-drawing-over-a-wall-merges,
   ]
 sourceFiles:
   [
@@ -26,7 +28,7 @@ sourceFiles:
     core/geometry/tolerance.ts,
   ]
 status: current
-updated: 2026-11-23
+updated: 2026-11-25
 ---
 
 # ADR-0026: Room derivation via planar-face enumeration over wall topology
@@ -78,8 +80,8 @@ The smallest reusable building blocks, each a pure function with no state:
   unbounded outer face.
 - `segmentIntersection(a1, a2, b1, b2)` (`segment.ts`): the parametric
   segment-segment intersection point, or `null` when the segments are parallel,
-  collinear, or disjoint. Collinear overlap deliberately returns `null` (it is out
-  of scope, see below).
+  collinear, or disjoint. The wall graph uses the endpoints to find the limits of
+  a collinear overlap.
 - `pointOnSegment(p, a, b, tolerance)` (`segment.ts`): whether a point lies on a
   closed segment within tolerance, including the interior, used for T-junction
   detection.
@@ -87,7 +89,7 @@ The smallest reusable building blocks, each a pure function with no state:
 ### 2. Arrangement noding into a planar graph (`core/topology/wall-graph.ts`)
 
 `buildWallGraph(walls)` turns the raw walls into a `PlanarGraph` of merged
-vertices and edges, noding the arrangement in three passes:
+vertices and edges.
 
 - **Endpoint merge (junction detection).** Each wall endpoint is matched against
   already-seen vertices within `DEFAULT_JUNCTION_TOLERANCE_MM` (1 mm) and merged
@@ -98,8 +100,13 @@ vertices and edges, noding the arrangement in three passes:
   cross in their interiors gain a shared vertex at the crossing.
 - **T-junction splitting.** Where any existing vertex lies on an edge's interior,
   the edge is replaced by a chain of sub-edges between the ordered split points
-  (ordered by projection parameter along the edge). Each sub-edge carries the
-  original wall's id, so wall provenance survives splitting.
+  (ordered by projection parameter along the edge).
+- **Shared straight stretches.** After splitting, two collinear walls have the same
+  pair of junctions along their overlap, even if one runs in the opposite direction.
+  The graph keeps one edge there. The first wall in floor order supplies its id and
+  direction, and the edge lists the later wall ids as covered. The room walk traces
+  the owner's edge once, so drawing along a room boundary preserves the room and
+  its clear area.
 
 The endpoint scan is O(n^2) over wall count, acceptable for expected counts; a
 spatial index is the deferred optimization behind the same signature.
@@ -126,9 +133,6 @@ spatial index is the deferred optimization behind the same signature.
 - The room id is `room:` followed by the sorted, unique bounding wall ids joined by
   `-`, so the id is stable across re-derivations and independent of traversal order.
   Downstream selection (a later slice) can rely on that stability.
-
-The twin lookup matches on `wallId` as well as endpoint reversal, so parallel edges
-(two distinct walls between the same vertex pair) still resolve to the correct twin.
 
 ### Scene-graph projection (`core/scene/`)
 
@@ -190,10 +194,11 @@ inset is an additive refinement behind the same `deriveRooms` signature.
   renders the fill only.
 - **No room selection or hit-testing.** Selecting a room and any room spatial index
   belong with a later selection-and-hit-index slice.
-- **Best-effort only, documented as out of scope:** collinear overlapping walls
-  (segment intersection returns `null` for collinear pairs, so an overlap is not
-  noded), polygons with holes (courtyard or island topologies), and
-  self-touching/figure-eight arrangements. Zero-length walls are ignored.
+- The original face walk deferred collinear overlaps, holes, and self-touching
+  arrangements. ADR-0202 covers straight wall overlaps. ADR-0058 covers holes
+  formed by separate inner loops, such as courtyards. Self-touching boundaries
+  such as a figure eight remain outside the scope of this decision. The room
+  walk skips zero-length walls.
 
 ## Alternatives considered
 

@@ -40,9 +40,16 @@ export interface PlanAuthoringDeps {
   rotation?: number
 }
 
+export interface WallDrawNotice {
+  text: string
+  attempt: number
+}
+
 export interface PlanAuthoringResult {
   candidate: Point
   announcement: string
+  wallNotice: WallDrawNotice | undefined
+  reportWallDraw: (note: string | undefined) => void
   // A pointer move calls this so a fresh snap/selection announcement is not
   // permanently masked by a stale keyboard-authoring step: the live region
   // otherwise keeps prioritizing the non-empty authoring announcement.
@@ -217,15 +224,16 @@ function useDiscardKeyboardRuns(
   }, [tool, activeFloorId, setWallState, setDimensionState])
 }
 
-// A sentence that stays would make the first vertex of the next run write the
-// same text, and a screen reader does not speak text that did not change.
-function useClearKeyboardAnnouncement(
-  { tool, activeFloorId }: RunScope,
-  clearAnnouncement: () => void,
-): void {
-  useEffect(() => {
-    clearAnnouncement()
-  }, [tool, activeFloorId, clearAnnouncement])
+function useAuthoringFeedback({ tool, activeFloorId }: RunScope) {
+  const [announcement, setAnnouncement] = useState('')
+  const [wallNotice, setWallNotice] = useState<WallDrawNotice>()
+  const reportWallDraw = useCallback((note: string | undefined) => {
+    setWallNotice((last) => (note ? { text: note, attempt: (last?.attempt ?? 0) + 1 } : undefined))
+    setAnnouncement(note ?? '')
+  }, [])
+  const clearAnnouncement = useCallback(() => setAnnouncement(''), [])
+  useEffect(() => reportWallDraw(undefined), [tool, activeFloorId, reportWallDraw])
+  return { announcement, wallNotice, reportWallDraw, clearAnnouncement, setAnnouncement }
 }
 
 /**
@@ -244,25 +252,21 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
   const [wallToolState, setWallToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [dimensionToolState, setDimensionToolState] =
     useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
-  const [announcement, setAnnouncement] = useState('')
-  const clearAnnouncement = useCallback(() => setAnnouncement(''), [])
+  const feedback = useAuthoringFeedback(deps)
+  const { setAnnouncement, reportWallDraw } = feedback
   useDiscardKeyboardRuns(deps, setWallToolState, setDimensionToolState)
-  useClearKeyboardAnnouncement(deps, clearAnnouncement)
 
   useEffect(() => {
     if (!isAuthoringTool(tool)) {
       return undefined
     }
+    const run = { session, selection, activeFloorId, candidate, setCandidate, setAnnouncement }
     return listenForAuthoringKeys(
-      buildAuthoringTools(
-        { session, selection, activeFloorId, candidate, setCandidate, setAnnouncement },
-        tool,
-        {
-          wall: { state: wallToolState, setState: setWallToolState },
-          dimension: { state: dimensionToolState, setState: setDimensionToolState },
-          placement,
-        },
-      ),
+      buildAuthoringTools({ ...run, reportWallDraw }, tool, {
+        wall: { state: wallToolState, setState: setWallToolState },
+        dimension: { state: dimensionToolState, setState: setDimensionToolState },
+        placement,
+      }),
     )
   }, [
     session,
@@ -272,8 +276,10 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     candidate,
     wallToolState,
     dimensionToolState,
+    reportWallDraw,
+    setAnnouncement,
     placement,
   ])
 
-  return { candidate, announcement, clearAnnouncement }
+  return { candidate, ...feedback }
 }

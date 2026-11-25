@@ -1,5 +1,6 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
+import { distance } from '../geometry/point'
 import { DERIVATION_LENGTH_TOLERANCE_MM } from '../geometry/tolerance'
 import type { Point, Wall } from '../model/types'
 import {
@@ -17,6 +18,8 @@ import {
   planArbitrary,
   splitWallAt,
 } from './plan-arbitraries-test-support'
+import { squareLoopWalls } from './plan-geometry-test-support'
+import { lerp } from './plan-hard-cases-test-support'
 import { deriveRooms } from './rooms'
 import { buildWallGraph } from './wall-graph'
 import {
@@ -97,6 +100,56 @@ function expectSameRooms(original: readonly Wall[], transformed: readonly Wall[]
 }
 
 describe('the rooms of a closed loop', () => {
+  it('keep their bounding walls and clear areas when overdrawn along any wall', () => {
+    const squares = fc.integer({ min: 1500, max: 8000 }).map((side) => ({
+      walls: squareLoopWalls(0, side, 'square'),
+      label: `square side ${side}`,
+    }))
+    const loops = fc.oneof(squares, closedLoopArbitrary({ allowSharpCorners: true }))
+    const spans = fc.oneof(
+      fc.constant([0, 1] as const),
+      fc
+        .integer({ min: 0, max: 99 })
+        .chain((start) =>
+          fc.integer({ min: start + 1, max: 100 }).map((end) => [start / 100, end / 100] as const),
+        ),
+    )
+    const strokes = fc.record({ choice: fc.nat(), span: spans, reversed: fc.boolean() })
+
+    fc.assert(
+      fc.property(loops, strokes, (plan, { choice, span: [from, to], reversed }) => {
+        const wall = plan.walls[choice % plan.walls.length]
+        if (wall === undefined) throw new Error('expected a wall on the closed loop')
+
+        const first = lerp(wall.start, wall.end, from)
+        const second = lerp(wall.start, wall.end, to)
+        const overdraw = {
+          ...wall,
+          id: 'overdraw',
+          start: reversed ? second : first,
+          end: reversed ? first : second,
+        }
+        expect(distance(overdraw.start, overdraw.end)).toBeGreaterThan(
+          DERIVATION_LENGTH_TOLERANCE_MM,
+        )
+
+        const original = roomSignature(deriveRooms(plan.walls))
+        const overdrawn = roomSignature(deriveRooms([...plan.walls, overdraw]))
+        const boundingWalls = plan.walls
+          .map((each) => each.id)
+          .sort()
+          .join(',')
+
+        expect(original.map((room) => room.walls)).toEqual([boundingWalls])
+        expect(Number.isFinite(original[0]?.area), 'original room area').toBe(true)
+        expect(Number.isFinite(overdrawn[0]?.area), 'overdrawn room area').toBe(true)
+        expect(original[0]?.area).toBeGreaterThan(0)
+        expect(signatureDifferences(original, overdrawn, AREA_RELATIVE_TOLERANCE)).toEqual([])
+      }),
+      { numRuns: PROPERTY_RUNS },
+    )
+  })
+
   it('do not change when the walls are reordered', () => {
     const keys = fc.array(fc.double({ min: 0, max: 1, noNaN: true }), {
       minLength: MAX_CORNERS,

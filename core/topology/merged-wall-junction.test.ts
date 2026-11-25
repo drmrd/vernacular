@@ -134,6 +134,15 @@ describe('a wall whose two ends merge into one junction', () => {
     })
   })
 
+  it('retains each wall whose endpoints merge to the same junction', () => {
+    const walls = [...speckAtCorner(), wall('perpendicular-speck', pt(0, -0.6), pt(0, 0.6))]
+
+    const loopEdges = buildWallGraph(walls).edges.filter((edge) => edge.a === edge.b)
+
+    expect(loopEdges.map((edge) => edge.wallId).sort()).toEqual(['perpendicular-speck', 'speck'])
+    expect(new Set(loopEdges.map((edge) => edge.a)).size).toBe(1)
+  })
+
   it('names the walls around the room when both ends of one wall merge into one junction', () => {
     const geometry = deriveFloorPlanGeometry(floorOf(speckAtCorner()))
 

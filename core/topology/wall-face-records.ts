@@ -47,7 +47,7 @@ function roomOnSide(rooms: EdgeSideRooms | undefined, side: WallSide): number | 
 
 /**
  * The stretches of one face over the wall's edges, in order from its start. Neighbors with the
- * same room join.
+ * same room join when their edges meet.
  */
 function faceStretches(
   edges: readonly NetworkEdge[],
@@ -55,11 +55,15 @@ function faceStretches(
   context: FaceContext,
 ): WallFaceStretch[] {
   const alongOf = (point: Point): number => projectOntoPath(context.path, point).along
-  return edges.reduce<WallFaceStretch[]>((stretches, edge) => {
+  return edges.reduce<WallFaceStretch[]>((stretches, edge, index) => {
     const roomIndex = roomOnSide(context.roomsBesideEdge[edge.index], side)
     const previous = stretches[stretches.length - 1]
     const toMm = alongOf(edge.path.end)
-    if (previous !== undefined && previous.roomIndex === roomIndex) {
+    if (
+      previous !== undefined &&
+      previous.roomIndex === roomIndex &&
+      edges[index - 1]?.to === edge.from
+    ) {
       stretches[stretches.length - 1] = { ...previous, toMm }
     } else {
       stretches.push({ fromMm: alongOf(edge.path.start), toMm, roomIndex })

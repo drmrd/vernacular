@@ -19,8 +19,8 @@ import { useWallKeyboard } from './use-wall-keyboard'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
+import { dispatchWallVertex } from './dispatch-wall-vertex'
 import {
-  advanceWallTool,
   backspaceWallTool,
   cancelWallTool,
   drawingVertex,
@@ -62,6 +62,7 @@ function drawFloorId(context: PointerContext): string | undefined {
 interface PointerOutcome {
   state: WallToolState
   committed: boolean
+  note?: string | undefined
 }
 
 /** Applies a wall-tool click and returns the next wall-tool state; other tools are inert here. */
@@ -73,9 +74,8 @@ function applyPointer(world: Point, context: PointerContext): PointerOutcome {
   if (floorId === undefined) {
     return { state: context.toolState, committed: false }
   }
-  const result = advanceWallTool(context.toolState, world, floorId)
-  result.commands?.forEach((command) => context.session.dispatch(command))
-  return { state: result.state, committed: (result.commands?.length ?? 0) > 0 }
+  const result = dispatchWallVertex(context, world, floorId)
+  return { state: result.state, committed: (result.commands?.length ?? 0) > 0, note: result.note }
 }
 
 /** Whether the run still owns the newest recorded change, and a way to claim it. */
@@ -123,7 +123,10 @@ export interface PlanInteraction {
   preview: PreviewSegment | undefined
   ghost: PreviewSegment[]
   snap: SnapResult | null
-  onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
+  onPointerDown: (
+    event: PointerEvent<HTMLCanvasElement>,
+    reportWallDraw?: (note: string | undefined) => void,
+  ) => void
   onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
   onDoubleClick: () => void
   onPointerLeave: () => void
@@ -246,10 +249,7 @@ interface WallGestureDeps {
   activeFloorId: string | null
 }
 
-interface WallGesture {
-  onDoubleClick: () => void
-  onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
-}
+type WallGesture = Pick<PlanInteraction, 'onPointerDown' | 'onDoubleClick'>
 
 // Abandons an open run and reports whether there was one, so the Escape ladder
 // knows whether this rung answered the key. A sibling of useSegmentStepBack: both
@@ -293,12 +293,13 @@ function useWallGesture({
   toolStateRef.current = toolState
   const history = useHistoryOwnership(session)
 
-  const onPointerDown = useCallback(
-    (event: PointerEvent<HTMLCanvasElement>) => {
+  const onPointerDown = useCallback<WallGesture['onPointerDown']>(
+    (event, reportWallDraw) => {
       const world = snapping.resolve(eventToWorld(event, viewport))
       const outcome = applyPointer(world, { session, tool, toolState, activeFloorId })
       if (outcome.committed) {
         history.markCommitted()
+        reportWallDraw?.(outcome.note)
       }
       setToolState(outcome.state)
     },

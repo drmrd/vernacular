@@ -1,4 +1,7 @@
+import type { Point } from '../model/types'
 import { MM_PER_INCH } from '../units/length-units'
+import { distance } from './point'
+import { dot, leftPerp, subtract } from './vector'
 
 /** Two lengths closer than this are the same length. */
 export const LENGTH_TOLERANCE_MM = 0.001
@@ -54,6 +57,34 @@ export const DEFAULT_JUNCTION_TOLERANCE_MM = JOIN_DISTANCE_MM
  * derivation switches to the length tolerance.
  */
 export const DERIVATION_LENGTH_TOLERANCE_MM = DEFAULT_JUNCTION_TOLERANCE_MM
+
+export function pointsCoincide(a: Point, b: Point): boolean {
+  return distance(a, b) <= DERIVATION_LENGTH_TOLERANCE_MM
+}
+
+/** Whether both ends of the shorter segment lie within tolerance of the other's line. */
+// eslint-disable-next-line max-params -- a pair of endpoints specifies each segment
+export function onOneLine(
+  a1: Point,
+  a2: Point,
+  b1: Point,
+  b2: Point,
+  tolerance = DERIVATION_LENGTH_TOLERANCE_MM,
+): boolean {
+  const directionA = subtract(a2, a1)
+  const directionB = subtract(b2, b1)
+  const squaredLengthA = dot(directionA, directionA)
+  const squaredLengthB = dot(directionB, directionB)
+  function containsBoth(start: Point, direction: Point, other: readonly Point[]): boolean {
+    const normal = leftPerp(direction)
+    const squaredLimit = tolerance ** 2 * dot(direction, direction)
+    return other.every((point) => dot(subtract(point, start), normal) ** 2 <= squaredLimit)
+  }
+  return (
+    (squaredLengthA < squaredLengthB || containsBoth(a1, directionA, [b1, b2])) &&
+    (squaredLengthB < squaredLengthA || containsBoth(b1, directionB, [a1, a2]))
+  )
+}
 
 /**
  * How closely a room ring follows its walls (core/scene/wall-room-sides.ts); equals the graph

@@ -1,4 +1,4 @@
-import { addWall, type Command, type Point } from '../../core'
+import { addWall, type Point } from '../../core'
 
 export type WallToolState = { phase: 'idle' } | { phase: 'drawing'; vertices: readonly Point[] }
 
@@ -10,7 +10,7 @@ const MIN_LOOP_VERTICES = 3
 
 export interface WallToolResult {
   state: WallToolState
-  commands?: readonly Command[]
+  commands?: readonly ReturnType<typeof addWall>[]
 }
 
 // A run ends when an advance returns to idle without committing a wall: the only
@@ -48,7 +48,7 @@ export function drawingVertex(state: WallToolState): Point | undefined {
   return state.phase === 'drawing' ? lastVertex(state.vertices) : undefined
 }
 
-function commitSegment(from: Point, to: Point, floorId: string): Command[] {
+function commitSegment(from: Point, to: Point, floorId: string): ReturnType<typeof addWall>[] {
   return [addWall(floorId, from, to)]
 }
 

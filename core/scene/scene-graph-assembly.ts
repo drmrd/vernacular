@@ -27,7 +27,11 @@ export interface SceneNodeDerivations {
     overrides: Project['roomOverrides'],
   ) => RoomSceneNode[]
   readonly underlayNodes: (floor: Floor) => UnderlaySceneNode[]
-  readonly openingNodes: (floor: Floor, rooms: readonly RoomSceneNode[]) => OpeningSceneNode[]
+  readonly openingNodes: (
+    floor: Floor,
+    rooms: readonly RoomSceneNode[],
+    geometry: FloorPlanGeometry,
+  ) => OpeningSceneNode[]
   readonly dimensionNodes: (floor: Floor) => DimensionSceneNode[]
   readonly stairNodes: (project: Project) => StairSceneNode[]
   readonly furnitureNode: (floor: Floor, item: FurnitureInstance) => FurnitureSceneNode
@@ -54,8 +58,8 @@ export function assembleSceneGraph(project: Project, derive: SceneNodeDerivation
     ),
     rooms: roomsByFloor.flat(),
     underlays: project.floors.flatMap((floor) => derive.underlayNodes(floor)),
-    openings: project.floors.flatMap((floor, index) =>
-      derive.openingNodes(floor, roomsByFloor[index] ?? []),
+    openings: floorsWithGeometry.flatMap(({ floor, geometry }, index) =>
+      derive.openingNodes(floor, roomsByFloor[index] ?? [], geometry),
     ),
     dimensions: project.floors.flatMap((floor) => derive.dimensionNodes(floor)),
     stairs: derive.stairNodes(project),

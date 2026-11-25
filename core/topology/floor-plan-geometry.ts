@@ -1,7 +1,7 @@
 import { pathLength, pointAlong } from '../geometry/wall-path'
 import type { Floor, Opening } from '../model/types'
 import { getOrCreate } from './get-or-create'
-import { distanceAlongEdge } from './opening-edge'
+import { distanceAlongEdge, edgeCarriesWall } from './opening-edge'
 import { clampedOpeningPlacement } from './openings'
 import {
   isLoopEdge,
@@ -39,6 +39,7 @@ export interface SetAside {
    * distance or merged into one junction.
    */
   readonly zeroLengthWallIds: readonly string[]
+  /** Walls whose stretches are all owned by earlier walls, in floor order. */
   readonly coveredWallIds: readonly string[]
   readonly unboundRecordIds: readonly string[]
 }
@@ -63,14 +64,18 @@ export interface FloorPlanGeometry {
 }
 
 function collectSetAside(network: WallNetwork): SetAside {
-  const wallIdsReachingAnotherJunction = new Set(
+  const ownerIds = new Set(
     network.edges.filter((edge) => !isLoopEdge(edge)).map((edge) => edge.wallId),
   )
+  const coveredIds = new Set(network.edges.flatMap((edge) => edge.covers))
+  const wallIdsWithoutOwnedStretch = network.walls
+    .map((wall) => wall.id)
+    .filter((wallId) => !ownerIds.has(wallId))
   return {
-    zeroLengthWallIds: network.walls
-      .filter((wall) => !wallIdsReachingAnotherJunction.has(wall.id))
-      .map((wall) => wall.id),
-    coveredWallIds: [],
+    zeroLengthWallIds: wallIdsWithoutOwnedStretch.filter((wallId) => !coveredIds.has(wallId)),
+    coveredWallIds: [
+      ...new Set(wallIdsWithoutOwnedStretch.filter((wallId) => coveredIds.has(wallId))),
+    ],
     unboundRecordIds: [],
   }
 }
@@ -98,7 +103,7 @@ function edgeHoldingCenter(network: WallNetwork, opening: Opening): CenterOnEdge
   )
   const center = pointAlong(wall.path, position)
   for (const edge of network.edges) {
-    if (edge.wallId !== opening.hostWallId) continue
+    if (!edgeCarriesWall(edge, opening.hostWallId)) continue
     const from = network.junctions[edge.from]
     const to = network.junctions[edge.to]
     if (from === undefined || to === undefined) continue

@@ -28,9 +28,13 @@ const HIGHLIGHT_BAND_WIDTH = BAND_LINE_WIDTH + PLAN_INK_EMPHASIS
 const HALF = 0.5
 const FACE_SIDES = ['left', 'right'] as const
 
-/** The walls to paint plus the lookups that resolve each face treatment and the active surface. */
+interface SurfacePaintWall extends WallSceneNode {
+  covers?: readonly string[]
+}
+
+/** The wall runs to paint plus the lookups that resolve each face treatment and the active surface. */
 export interface SurfacePaintLayer {
-  walls: readonly WallSceneNode[]
+  walls: readonly SurfacePaintWall[]
   /** RAW wall id (no `wall:` prefix) + side -> treatment, or undefined when unpainted. */
   treatmentForFace: (wallId: string, side: 'left' | 'right') => SurfaceTreatment | undefined
   activeSurface: SurfaceRef | null
@@ -88,13 +92,6 @@ function strokeSegment(painter: SurfacePainter, from: Point, to: Point): void {
   painter.ctx.stroke()
 }
 
-/** One painted wall face: the wall, the side it faces, and the treatment resolved for it. */
-interface PaintedFace {
-  wall: WallSceneNode
-  side: 'left' | 'right'
-  treatment: SurfaceTreatment
-}
-
 /** The wall's endpoints offset perpendicular toward `side` by half the resolved assembly thickness. */
 function offsetBand(wall: WallSceneNode, side: 'left' | 'right'): { from: Point; to: Point } {
   const direction = unitDirection(wall.start, wall.end)
@@ -119,111 +116,78 @@ function offsetBand(wall: WallSceneNode, side: 'left' | 'right'): { from: Point;
  * each jamb the poche and the face lines already take.
  */
 function bandStretches(
-  wall: WallSceneNode,
+  wall: SurfacePaintWall,
   openings: readonly OpeningSceneNode[],
 ): WallFaceStretch[] {
   const left = offsetBand(wall, 'left')
   const right = offsetBand(wall, 'right')
+  const centerline = {
+    start: wall.start,
+    end: wall.end,
+    wallId: rawWallId(wall),
+    covers: wall.covers ?? [],
+  }
   return wallFaceGeometry({
     start: wall.start,
     end: wall.end,
     corners: { aPlus: left.from, bPlus: left.to, aMinus: right.from, bMinus: right.to },
-    gaps: openingSpansAlong(
-      { start: wall.start, end: wall.end, wallId: rawWallId(wall) },
-      openings,
-    ),
+    gaps: openingSpansAlong(centerline, openings),
   })
 }
 
-/** The parts of one side's face band left standing between `wall`'s openings, in order from its start. */
-function faceBands(
-  wall: WallSceneNode,
+/** Stroke the standing stretches of one side's face band. */
+function strokeFaceBands(
+  painter: SurfacePainter,
+  stretches: readonly WallFaceStretch[],
   side: 'left' | 'right',
-  openings: readonly OpeningSceneNode[],
-): { from: Point; to: Point }[] {
-  return bandStretches(wall, openings).map((stretch) => {
+): void {
+  for (const stretch of stretches) {
     const face = side === 'left' ? stretch.plusFace : stretch.minusFace
-    return { from: face[0], to: face[1] }
-  })
-}
-
-/** Stroke each standing part of one wall face's band in the treatment color. */
-function strokeBand(painter: SurfacePainter, face: PaintedFace): void {
-  const { wall, side, treatment } = face
-  if (treatment.kind !== 'solid') {
-    return
-  }
-  painter.ctx.strokeStyle = treatment.color.srgbHex
-  painter.ctx.lineWidth = BAND_LINE_WIDTH
-  for (const band of faceBands(wall, side, painter.openings)) {
-    strokeSegment(painter, band.from, band.to)
+    strokeSegment(painter, face[0], face[1])
   }
 }
 
 /** Paint a band for each painted face of one wall, skipping faces without a treatment. */
 function drawWallBands(
   painter: SurfacePainter,
-  wall: WallSceneNode,
+  wall: SurfacePaintWall,
   layer: SurfacePaintLayer,
 ): void {
+  let stretches: WallFaceStretch[] | undefined
   for (const side of FACE_SIDES) {
     const treatment = layer.treatmentForFace(rawWallId(wall), side)
-    if (treatment !== undefined) {
-      strokeBand(painter, { wall, side, treatment })
-    }
+    if (treatment?.kind !== 'solid') continue
+    stretches ??= bandStretches(wall, painter.openings)
+    painter.ctx.strokeStyle = treatment.color.srgbHex
+    painter.ctx.lineWidth = BAND_LINE_WIDTH
+    strokeFaceBands(painter, stretches, side)
   }
-}
-
-/** The wall whose raw id matches the active wall-face surface, or undefined when none is active. */
-function activeWall(layer: SurfacePaintLayer): WallSceneNode | undefined {
-  const active = layer.activeSurface
-  if (active === null || active.kind !== 'wall-face') {
-    return undefined
-  }
-  return layer.walls.find((wall) => rawWallId(wall) === active.wallId)
 }
 
 /**
- * Stroke the brass accent centerline over the active wall so the user sees the
- * painted target. It runs the whole wall, openings included: it names which wall
- * is being painted rather than marking a face, and a wall with a door in it is
- * still one wall.
+ * Stroke the brass accent centerline over the runs owned by the active wall,
+ * including its openings.
  */
 function drawActiveHighlight(painter: SurfacePainter, layer: SurfacePaintLayer): void {
-  const wall = activeWall(layer)
-  if (wall === undefined) {
-    return
+  const active = layer.activeSurface
+  if (active?.kind !== 'wall-face') return
+  for (const wall of layer.walls) {
+    if (rawWallId(wall) !== active.wallId) continue
+    painter.ctx.strokeStyle = ACTIVE_HIGHLIGHT_COLOR
+    painter.ctx.lineWidth = ACTIVE_HIGHLIGHT_WIDTH
+    strokeSegment(painter, wall.start, wall.end)
   }
-  painter.ctx.strokeStyle = ACTIVE_HIGHLIGHT_COLOR
-  painter.ctx.lineWidth = ACTIVE_HIGHLIGHT_WIDTH
-  strokeSegment(painter, wall.start, wall.end)
-}
-
-/** The wall (with the face side) matching the highlighted wall-face surface, or undefined when none. */
-function highlightedWall(
-  layer: SurfacePaintLayer,
-): { wall: WallSceneNode; side: 'left' | 'right' } | undefined {
-  const highlighted = layer.highlightedSurface
-  if (highlighted === null || highlighted === undefined || highlighted.kind !== 'wall-face') {
-    return undefined
-  }
-  const wall = layer.walls.find((candidate) => rawWallId(candidate) === highlighted.wallId)
-  if (wall === undefined) {
-    return undefined
-  }
-  return { wall, side: highlighted.side }
 }
 
 /** Stroke the brass accent band along the highlighted wall face, even when that face is unpainted. */
 function drawHighlightedFace(painter: SurfacePainter, layer: SurfacePaintLayer): void {
-  const highlighted = highlightedWall(layer)
-  if (highlighted === undefined) {
-    return
-  }
-  painter.ctx.strokeStyle = ACTIVE_HIGHLIGHT_COLOR
-  painter.ctx.lineWidth = HIGHLIGHT_BAND_WIDTH
-  for (const band of faceBands(highlighted.wall, highlighted.side, painter.openings)) {
-    strokeSegment(painter, band.from, band.to)
+  const highlighted = layer.highlightedSurface
+  if (highlighted?.kind !== 'wall-face') return
+  for (const wall of layer.walls) {
+    if (rawWallId(wall) !== highlighted.wallId) continue
+    painter.ctx.strokeStyle = ACTIVE_HIGHLIGHT_COLOR
+    painter.ctx.lineWidth = HIGHLIGHT_BAND_WIDTH
+    strokeFaceBands(painter, bandStretches(wall, painter.openings), highlighted.side)
   }
 }
 

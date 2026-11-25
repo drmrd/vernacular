@@ -1,4 +1,4 @@
-import type { OpeningSceneNode, Point, WallFaceGap } from '../../core'
+import { edgeCarriesWall, type OpeningSceneNode, type Point, type WallFaceGap } from '../../core'
 import { openingJambs, projectPointOntoWall } from './opening-geometry'
 
 /**
@@ -10,6 +10,7 @@ export interface HostWallRun {
   end: Point
   /** The raw wall id, without the scene-node prefix, which is what `hostWallId` carries. */
   wallId: string
+  covers?: readonly string[]
 }
 
 /**
@@ -26,7 +27,7 @@ export function openingSpansAlong(
   openings: readonly OpeningSceneNode[],
 ): WallFaceGap[] {
   return openings
-    .filter((opening) => opening.hostWallId === run.wallId)
+    .filter((opening) => edgeCarriesWall(run, opening.hostWallId))
     .map((opening) => {
       const jambs = openingJambs(opening)
       return {

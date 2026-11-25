@@ -22,6 +22,7 @@ import {
 import type { SnapResult } from './snap'
 import { Compass } from './compass'
 import { scaleBar } from './scale-bar'
+import type { WallDrawNotice } from './use-plan-authoring'
 import { useOverlayKeyboard, type OverlayKeyboard } from './use-overlay-keyboard'
 import { worldToScreen, type ScreenPoint, type Viewport } from './viewport'
 
@@ -56,6 +57,7 @@ export interface PlanOverlayProps {
   // The live keyboard authoring announcement ("Wall vertex dropped", etc.); when
   // non-empty it wins the single live region over the snap/selection text.
   authoringAnnouncement?: string
+  wallNotice?: WallDrawNotice | undefined
   // The project site's north bearing in radians (the angle from plan-up to true
   // north), rotating the compass so the mark points at true north. Absent or zero
   // leaves north pointing up, the plan as drawn.
@@ -327,19 +329,19 @@ interface StatusLayerProps {
 function StatusLayer({ overlay, selected }: StatusLayerProps): ReactElement {
   const { placementRefusal, refusalAttempt } = useOpeningTool()
   const refusal = refusalText(overlay.tool, placementRefusal)
+  const notice = refusal || overlay.wallNotice?.text
+  const announcementKey = refusal ? `refusal-${refusalAttempt}` : overlay.wallNotice?.attempt
   const snapStatus = snapStatusLabel(overlay.snap)
   return (
     <>
-      {refusal ? (
+      {notice ? (
         <div className="plan-overlay__refusal" aria-hidden="true">
-          {refusal}
+          {notice}
         </div>
       ) : null}
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite" aria-atomic="true">
-        <span key={refusal ? `refusal-${refusalAttempt}` : 'announcement'}>
-          {liveAnnouncement(overlay, selected, refusal)}
-        </span>
+        <span key={announcementKey}>{liveAnnouncement(overlay, selected, refusal)}</span>
       </div>
     </>
   )

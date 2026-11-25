@@ -40,7 +40,10 @@ const CRANK_TICK_FRACTION = 0.3
 const HALF = 0.5
 
 /** The seam plus the viewport and resolved palette colors, the collaborators every routine threads through, bundled so helpers stay within the parameter limit. */
+export type JambThickness = (node: OpeningSceneNode, jamb: Point) => number
+
 interface OpeningPainter {
+  jambThickness?: JambThickness | undefined
   ctx: PlanDrawingContext
   viewport: Viewport
   /** The drawing ink for jamb caps and family symbols, from the palette wall color. */
@@ -142,8 +145,9 @@ function tracePolygon(painter: OpeningPainter, corners: readonly Point[]): void 
 function drawJambCaps(painter: OpeningPainter, node: OpeningSceneNode): void {
   painter.ctx.strokeStyle = painter.ink
   painter.ctx.lineWidth = OPENING_INK_WIDTH
-  const across = scale(node.normal, node.hostThickness * HALF)
   for (const jamb of [hingeJamb(node), otherJamb(node)]) {
+    const thickness = painter.jambThickness?.(node, jamb) ?? node.hostThickness
+    const across = scale(node.normal, thickness * HALF)
     strokeSegment(painter, add(jamb, scale(across, -1)), add(jamb, across))
   }
 }
@@ -337,10 +341,11 @@ function drawSelectionHighlight(painter: OpeningPainter, node: OpeningSceneNode)
 export function drawOpening(
   ctx: PlanDrawingContext,
   opening: DrawableOpening,
-  render: { viewport: Viewport; palette: PlanPalette },
+  render: { viewport: Viewport; palette: PlanPalette; jambThickness?: JambThickness },
 ): void {
   const painter: OpeningPainter = {
     ctx,
+    jambThickness: render.jambThickness,
     viewport: render.viewport,
     ink: render.palette.wall,
     selection: render.palette.selection,

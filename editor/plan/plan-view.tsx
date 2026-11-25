@@ -131,6 +131,7 @@ function buildScene(
 ): PlanScene {
   const { graph, interaction, dimensionTool, planSelection } = inputs
   const { wallEditing, underlayLayer, openingLayer, furnitureLayer } = inputs
+  const guide = wallEditing.preview ?? dimensionTool.preview
   return {
     walls: graph.walls,
     rooms: graph.rooms,
@@ -138,7 +139,7 @@ function buildScene(
     hoveredId: inputs.planHover.hoveredId,
     // The endpoint drag, the wall tool, and the dimension tool never preview at
     // once (each gated on its own tool), so one resolved preview leaf covers all.
-    preview: wallEditing.preview ?? interaction.preview ?? dimensionTool.preview,
+    preview: guide ? { ...guide, fullLengthGuide: true } : interaction.preview,
     snap: interaction.snap,
     marquee: planSelection.marquee,
     endpointHandles: inputs.selectedWall,
@@ -410,6 +411,7 @@ function buildOverlayProps(layers: PlanLayers, readout: DragReadout | undefined)
     layer: layers.layer,
     authoringCandidate: layers.authoring.candidate,
     authoringAnnouncement: layers.authoring.announcement,
+    wallNotice: layers.authoring.wallNotice,
     northBearing: layers.northBearing,
     ...(interaction.preview ? { preview: interaction.preview } : {}),
     ...(readout ? { readout } : {}),
@@ -452,6 +454,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       stairPlacement: layers.stairPlacement,
       hover: layers.planHover,
       wallFaceHighlight: layers.wallFaceHighlight,
+      reportWallDraw: layers.authoring.reportWallDraw,
       clearAuthoringAnnouncement: layers.authoring.clearAnnouncement,
     }),
     overlay: buildOverlayProps(layers, readout),

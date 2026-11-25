@@ -50,6 +50,7 @@ export interface PointerSources {
   // fresh pointer interaction, so it supersedes a stale authoring step ("Wall vertex
   // dropped") that would otherwise keep masking the live snap/selection text.
   clearAuthoringAnnouncement: () => void
+  reportWallDraw?: (note: string | undefined) => void
 }
 
 // The select-tool footprint grabs, in priority order: an opening jamb resize beats
@@ -97,7 +98,7 @@ function composedPointerDown(
   if (entityPointerDown(sources, event) || selectionMove.onPointerDown(event)) return
   if (sources.underlayMove.onPointerDown(event)) return
   calibration.onPointerDown(event)
-  interaction.onPointerDown(event)
+  interaction.onPointerDown(event, sources.reportWallDraw)
   dimensionTool.onPointerDown(event)
   openingPlacement.onPointerDown(event)
   furniturePlacement.onPointerDown(event)

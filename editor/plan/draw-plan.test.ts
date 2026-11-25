@@ -13,6 +13,7 @@ import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan
 import { labelBox, labelsOverlap } from './label-layout'
 import { PLAN_INK_WIDTH } from './plan-ink'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
+import { createPlanWallGraphMemo } from './plan-wall-graph'
 import { RULER_THICKNESS_PX } from './ruler'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
@@ -107,6 +108,47 @@ function pocheFills(recorder: PlanRecorder): string[] {
   return recorder.fills.filter((fill) => fill === DEFAULT_PLAN_PALETTE.poche)
 }
 
+function extraPreviewEndpointReads(wallCount: number): number {
+  let endpointReads = 0
+  const walls = Array.from({ length: wallCount }, (_, index): WallSceneNode => {
+    const y = index * 500
+    const start = { x: wall.start.x, y }
+    const end = { x: wall.end.x, y }
+    return {
+      ...wall,
+      id: `wall:${index}`,
+      get start() {
+        endpointReads += 1
+        return start
+      },
+      get end() {
+        endpointReads += 1
+        return end
+      },
+    }
+  })
+  const options = planOptions({
+    walls,
+    viewport: { scale: 0.02 },
+    wallGraphFor: createPlanWallGraphMemo(),
+  })
+  const start = { x: 500, y: 0 }
+
+  drawPlan(recordingContext().ctx, options)
+  endpointReads = 0
+  drawPlan(recordingContext().ctx, options)
+  const baselineReads = endpointReads
+
+  drawPlan(recordingContext().ctx, { ...options, preview: { start, end: { x: 1500, y: 0 } } })
+  endpointReads = 0
+  const moved = recordingContext()
+  drawPlan(moved.ctx, { ...options, preview: { start, end: { x: 2500, y: 0 } } })
+  expect(moved.segments.filter(({ style }) => style === DEFAULT_PLAN_PALETTE.preview)).toHaveLength(
+    1,
+  )
+  return endpointReads - baselineReads
+}
+
 describe('drawPlan', () => {
   it('clears the surface and draws each wall as poche filled between two face lines', () => {
     const recorder = recordingContext()
@@ -162,6 +204,14 @@ describe('drawPlan', () => {
     expect(recorder.arcs).toHaveLength(1)
     expect(recorder.arcs[0]?.x).toBe(previewStart.x)
     expect(recorder.arcs[0]?.y).toBe(previewStart.y)
+  })
+
+  it('does at most twice the added wall endpoint work for a moving preview when the wall count doubles', () => {
+    const wallCount = 24
+
+    expect(extraPreviewEndpointReads(2 * wallCount)).toBeLessThanOrEqual(
+      2 * extraPreviewEndpointReads(wallCount),
+    )
   })
 
   it('paints the selected wall endpoint handles when the option is set and omits them otherwise', () => {
@@ -1240,7 +1290,7 @@ describe('drawPlan palette', () => {
 
     drawPlan(
       recorder.ctx,
-      planOptions({ palette, preview: { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } } }),
+      planOptions({ palette, preview: { start: { x: 0, y: 500 }, end: { x: 1000, y: 500 } } }),
     )
 
     const previewSegment = recorder.segments[recorder.segments.length - 1]

@@ -2,6 +2,8 @@
 import {
   DEFAULT_METRIC_PREFERENCES,
   effectiveWallThickness,
+  uncoveredParts,
+  uncoveredPartsOf,
   wallFaceGeometry,
   wallFootprints,
   type OpeningSceneNode,
@@ -9,16 +11,18 @@ import {
   type RoomSceneNode,
   type StairSceneNode,
   type UnitPreferences,
+  type WallCoverage,
   type WallFaceStretch,
   type WallSceneNode,
 } from '../../core'
 import { drawDimension, type DrawableDimension } from './draw-dimension'
 import { drawFurniture, type DrawableFurniture } from './draw-furniture'
 import { drawGhost } from './draw-ghost'
-import { drawOpening, type DrawableOpening } from './draw-opening'
+import { drawOpening, type DrawableOpening, type JambThickness } from './draw-opening'
 import { drawStair } from './draw-stair'
 import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
+import { jambThicknessFor } from './opening-jamb-thickness'
 import { openingCorners, openingJambs } from './opening-geometry'
 import { openingSpansAlong, type HostWallRun } from './opening-spans'
 import type { Bounds } from './fit'
@@ -68,6 +72,7 @@ export interface PlanDrawingContext {
 }
 
 export interface PreviewSegment {
+  fullLengthGuide?: boolean
   start: Point
   end: Point
 }
@@ -107,9 +112,8 @@ export interface DrawPlanOptions {
   /** The canvas color palette; defaults to the warm light-theme palette when absent. */
   palette?: PlanPalette
   /**
-   * Resolves the planar graph of the drawn walls. A caller that redraws often passes a
-   * memoized resolver so the graph is reused between scene changes; absent, the graph is
-   * built on every draw.
+   * Resolves the planar graph of the drawn walls. A memoized resolver can reuse the
+   * graph and preview coverage between scene changes.
    */
   wallGraphFor?: PlanWallGraphResolver
 }
@@ -189,7 +193,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   // The wall network is resolved once and shared by the two wall passes below.
   // Both passes read the same mitred, opening-broken geometry, so building the
   // graph twice would cost the same work and risk the passes disagreeing.
-  const wallEdges = drawableWallEdges(options)
+  const { wallEdges, jambThickness, coverage } = drawableWallEdges(options)
   // Underlays paint first so they sit beneath the grid and the plan.
   drawUnderlays(ctx, options.underlays, options.viewport)
   if (options.grid) drawGrid(ctx, options)
@@ -200,16 +204,16 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   // paint is applied to, so a band reads as a finish laid over the wall's cut
   // cavity, while the face lines are the cut plane itself and stay on top.
   drawWallPoche(ctx, wallEdges, options)
-  drawSurfacePaintLayer(ctx, options)
+  drawSurfacePaintLayer(ctx, wallEdges, options)
   drawWallFaces(ctx, wallEdges, options)
   // Openings break the wall stroke, so they paint after the walls.
-  drawOpenings(ctx, options)
+  drawOpenings(ctx, options, jambThickness)
   // Furniture sits above the wall/opening layer but below the interaction overlays.
   drawFurnitureLayer(ctx, options)
   if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options)
   if (options.openingResizeHandles)
     drawOpeningResizeHandles(ctx, options.openingResizeHandles, options.viewport)
-  if (options.preview) drawPreview(ctx, options.preview, options)
+  drawPreview(ctx, options, coverage)
   if (options.snap) drawSnapIndicator(ctx, options.snap, options.viewport)
   if (options.marquee) drawMarquee(ctx, options.marquee, options)
   drawRoomLabels(ctx, options)
@@ -277,10 +281,14 @@ function strokeHoverRing(ctx: PlanDrawingContext, ring: Point[], options: DrawPl
 }
 
 /** Paint each opening's plan symbol over the wall stroke it breaks. */
-function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+function drawOpenings(
+  ctx: PlanDrawingContext,
+  options: DrawPlanOptions,
+  jambThickness: JambThickness,
+): void {
   const palette = paletteOf(options)
   for (const opening of options.openings ?? []) {
-    drawOpening(ctx, opening, { viewport: options.viewport, palette })
+    drawOpening(ctx, opening, { viewport: options.viewport, palette, jambThickness })
   }
 }
 
@@ -400,26 +408,30 @@ function strokeFaceLine(
  * joint tile. The owning wall node is resolved per edge for its selection state.
  */
 interface DrawableWallEdge {
+  centerline?: PaintCenterline
   /** The standing stretches the edge's openings leave, in order from its start. */
   stretches: WallFaceStretch[]
   /** Whether the wall node this edge came from is selected. */
   selected: boolean
 }
 
+interface PaintCenterline extends HostWallRun {
+  covers: readonly string[]
+}
+
 /** The mitred, opening-broken symbology of every wall edge on the plan. */
-function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
-  const graph = (options.wallGraphFor ?? planWallGraph)(options.walls)
+function drawableWallEdges(options: DrawPlanOptions) {
+  const resolver = options.wallGraphFor ?? planWallGraph
+  const geometry = resolver.withCoverage?.(options.walls)
+  const graph = geometry?.graph ?? resolver(options.walls)
   const wallByEdgeId = new Map(options.walls.map((wall) => [strippedWallId(wall), wall]))
-  // The graph comes from `options.wallGraphFor` when given, else `planWallGraph` builds it for
-  // this call, so every edge's `wallId` is in the lookup and the `undefined` branch below is
-  // unreachable; it exists only to satisfy noUncheckedIndexedAccess.
   const thicknessByEdge = graph.edges.map((edge) => {
     const wall = wallByEdgeId.get(edge.wallId)
     return wall === undefined ? 0 : effectiveWallThickness(wall)
   })
   const footprints = wallFootprints(graph, thicknessByEdge)
   const openings = openingNodesOf(options)
-  return graph.edges.map((edge, index) => {
+  const wallEdges: DrawableWallEdge[] = graph.edges.map((edge, index) => {
     const wall = wallByEdgeId.get(edge.wallId)
     const selected = wall !== undefined && options.selectedIds.has(wall.id)
     const corners = footprints[index]
@@ -431,10 +443,17 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
     if (corners === undefined || start === undefined || end === undefined) {
       return { stretches: [], selected }
     }
-    const centerline: HostWallRun = { start, end, wallId: edge.wallId }
+    const centerline: PaintCenterline = {
+      start,
+      end,
+      wallId: edge.wallId,
+      covers: edge.covers ?? [],
+    }
     const gaps = openingSpansAlong(centerline, openings)
-    return { stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
+    return { centerline, stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
   })
+  const jambThickness = jambThicknessFor(graph, thicknessByEdge)
+  return { wallEdges, jambThickness, coverage: geometry?.coverage }
 }
 
 /** The scene nodes behind the plan's drawable openings, the form both wall layers project onto their walls. */
@@ -442,14 +461,52 @@ function openingNodesOf(options: DrawPlanOptions): OpeningSceneNode[] {
   return (options.openings ?? []).map((opening) => opening.node)
 }
 
+/** Use the graph runs for overlapping walls. Other bands keep their authored endpoints at junctions. */
+function paintWallRuns(walls: readonly WallSceneNode[], edges: readonly DrawableWallEdge[]) {
+  const overlappingIds = new Set<string>()
+  for (const { centerline } of edges) {
+    if (centerline?.covers.length) {
+      overlappingIds.add(centerline.wallId)
+      for (const coveredId of centerline.covers) overlappingIds.add(coveredId)
+    }
+  }
+  if (overlappingIds.size === 0) return walls
+  const runsByWallId = new Map<string, PaintCenterline[]>()
+  for (const { centerline } of edges) {
+    if (centerline === undefined || !overlappingIds.has(centerline.wallId)) continue
+    const runs = runsByWallId.get(centerline.wallId) ?? []
+    runs.push(centerline)
+    runsByWallId.set(centerline.wallId, runs)
+  }
+  return walls.flatMap((wall) => {
+    const wallId = strippedWallId(wall)
+    if (!overlappingIds.has(wallId)) return [wall]
+    return (runsByWallId.get(wallId) ?? []).map(({ start, end, covers }) => ({
+      ...wall,
+      start,
+      end,
+      covers,
+    }))
+  })
+}
+
 /** Paint the surface-paint face bands and the active-surface highlight beneath the wall strokes. */
-function drawSurfacePaintLayer(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+function drawSurfacePaintLayer(
+  ctx: PlanDrawingContext,
+  edges: readonly DrawableWallEdge[],
+  options: DrawPlanOptions,
+): void {
   if (options.surfacePaint === undefined) return
   const { walls, viewport } = options
   // The bands break at the same jambs the poche and face lines do, so the layer
   // needs the openings as well as the walls.
   const openings = openingNodesOf(options)
-  drawSurfacePaint(ctx, { walls, viewport, openings, ...options.surfacePaint })
+  drawSurfacePaint(ctx, {
+    walls: paintWallRuns(walls, edges),
+    viewport,
+    openings,
+    ...options.surfacePaint,
+  })
 }
 
 /** Paint each dimension as an annotation overlay above the plan. */
@@ -541,28 +598,27 @@ function traceRingPath(ctx: PlanDrawingContext, ring: readonly Point[], viewport
 
 function drawPreview(
   ctx: PlanDrawingContext,
-  preview: PreviewSegment,
   options: DrawPlanOptions,
+  coverage: WallCoverage | undefined,
 ): void {
+  const { preview, walls } = options
+  if (preview === undefined) return
   const color = paletteOf(options).preview
-  const start = worldToScreen(preview.start, options.viewport)
-  const end = worldToScreen(preview.end, options.viewport)
-  drawPreviewLine(ctx, { start, end }, color)
-  drawStartMarker(ctx, start, color)
-}
-
-function drawPreviewLine(
-  ctx: PlanDrawingContext,
-  segment: { start: Point; end: Point },
-  color: string,
-): void {
   ctx.lineCap = LINE_CAP
   ctx.lineWidth = PREVIEW_LINE_WIDTH
   ctx.strokeStyle = color
-  ctx.beginPath()
-  ctx.moveTo(segment.start.x, segment.start.y)
-  ctx.lineTo(segment.end.x, segment.end.y)
-  ctx.stroke()
+  const uncovered = () =>
+    coverage ? uncoveredPartsOf(coverage, preview) : uncoveredParts(walls, preview)
+  const parts = preview.fullLengthGuide ? [preview] : uncovered()
+  for (const part of parts) {
+    const start = worldToScreen(part.start, options.viewport)
+    const end = worldToScreen(part.end, options.viewport)
+    ctx.beginPath()
+    ctx.moveTo(start.x, start.y)
+    ctx.lineTo(end.x, end.y)
+    ctx.stroke()
+  }
+  drawStartMarker(ctx, worldToScreen(preview.start, options.viewport), color)
 }
 
 function drawStartMarker(ctx: PlanDrawingContext, center: Point, color: string): void {

@@ -38,7 +38,7 @@ export interface NetworkEdge {
   readonly wallId: string
   /** The straight path between the two junctions. */
   readonly path: WallPath
-  /** Ids of the walls this edge covers; none until overlapping walls are handled. */
+  /** Ids of the later walls this edge covers, in floor order. */
   readonly covers: readonly string[]
 }
 
@@ -94,7 +94,7 @@ function networkEdgesOf(graph: PlanarGraph): NetworkEdge[] {
     to: edge.b,
     wallId: edge.wallId,
     path: linePath(graph.vertices[edge.a] as Point, graph.vertices[edge.b] as Point),
-    covers: [],
+    covers: edge.covers ?? [],
   }))
 }
 
