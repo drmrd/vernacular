@@ -1,8 +1,6 @@
-import { distance } from '../geometry/point'
 import { pointOnSegment, segmentIntersection } from '../geometry/segment'
 import { DEFAULT_JUNCTION_TOLERANCE_MM, onOneLine } from '../geometry/tolerance'
-import { nodeWallOverlaps } from './node-wall-overlaps'
-import type { WallPart } from './uncovered-parts'
+import { registerWallStretches, type WallCoverage } from './register-wall-stretches'
 import type { Point, Wall } from '../model/types'
 
 /** An edge connecting two vertices of the planar graph, carrying its source wall's id. */
@@ -33,34 +31,16 @@ export function buildWallGraph(
   walls: readonly Wall[],
   options?: { tolerance?: number },
 ): PlanarGraph {
+  return buildWallGraphWithCoverage(walls, options).graph
+}
+
+/** Build the wall graph and retain the registered stretches for subsequent draw previews. */
+export function buildWallGraphWithCoverage(
+  walls: readonly Wall[],
+  options?: { tolerance?: number },
+): { graph: PlanarGraph; coverage: WallCoverage } {
   const tolerance = options?.tolerance ?? DEFAULT_JUNCTION_TOLERANCE_MM
-  const vertices: Point[] = []
-  const edges: GraphEdge[] = []
-
-  // Linear scan per endpoint (O(n^2) over all walls) is acceptable for the
-  // expected wall counts; switch to a spatial index if profiling flags it.
-  function vertexIndexFor(point: Point): number {
-    for (const [index, vertex] of vertices.entries()) {
-      if (distance(vertex, point) <= tolerance) return index
-    }
-    vertices.push(point)
-    return vertices.length - 1
-  }
-
-  const ownerStretches: WallPart[] = []
-  for (const wall of walls) {
-    if (distance(wall.start, wall.end) <= tolerance) continue
-    const parts = nodeWallOverlaps(wall, ownerStretches, tolerance)
-    parts.forEach((part) => {
-      const a = vertexIndexFor(part.start)
-      const b = vertexIndexFor(part.end)
-      if (parts.length > 1 && a === b) return
-      edges.push({ a, b, wallId: wall.id })
-      if (!part.covered) {
-        ownerStretches.push({ start: vertices[a] ?? part.start, end: vertices[b] ?? part.end })
-      }
-    })
-  }
+  const { vertices, edges, vertexIndexFor, coverage } = registerWallStretches(walls, tolerance)
 
   // Crossing pass: register each interior X-crossing between a pair of edges as
   // a graph vertex. The splitting pass below then splits both crossing edges at
@@ -73,7 +53,7 @@ export function buildWallGraph(
   // considered; X-crossings are not introduced here.
   const splitEdges = edges.flatMap((edge) => splitEdgeAtInteriorVertices(edge, vertices, tolerance))
 
-  return { vertices, edges: assignStretchOwners(splitEdges) }
+  return { graph: { vertices, edges: assignStretchOwners(splitEdges) }, coverage }
 }
 
 /** Duplicate stretches leave a junction at the same angle and confuse the room walk. */

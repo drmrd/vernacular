@@ -1,5 +1,6 @@
-import { exposedWallStretches } from './node-wall-overlaps'
-import { overlappingEndpoints, projectOntoLine } from './overlapping-endpoints'
+import { registerWallStretches, type WallCoverage } from './register-wall-stretches'
+import { overlappingBounds, projectOntoLine } from './overlapping-endpoints'
+import { onOneLine } from '../geometry/tolerance'
 import { dot, subtract } from '../geometry/vector'
 import type { Point, Wall } from '../model/types'
 
@@ -9,18 +10,23 @@ export interface WallPart {
 }
 
 export function uncoveredParts(existing: readonly Wall[], drawn: WallPart): WallPart[] {
-  return findDrawnWallCoverage(existing, drawn).parts
+  return uncoveredPartsOf(registerWallStretches(existing).coverage, drawn)
+}
+
+export function uncoveredPartsOf(coverage: WallCoverage, drawn: WallPart): WallPart[] {
+  return findDrawnWallCoverage(coverage, drawn).parts
 }
 
 function findDrawnWallCoverage(
-  existing: readonly Wall[],
+  { owners, tolerance }: WallCoverage,
   drawn: WallPart,
 ): { parts: WallPart[]; hasCoverage: boolean } {
   const direction = subtract(drawn.end, drawn.start)
   const compare = (a: Point, b: Point): number => dot(subtract(a, b), direction)
   const covered: WallPart[] = []
-  for (const wall of exposedWallStretches(existing)) {
-    const overlap = overlappingEndpoints(drawn, wall)
+  for (const wall of owners) {
+    if (!onOneLine(drawn.start, drawn.end, wall.start, wall.end, tolerance)) continue
+    const overlap = overlappingBounds(drawn, wall.bounds, tolerance)
     if (overlap) covered.push(overlap)
   }
   if (covered.length === 0) return { parts: [drawn], hasCoverage: false }
@@ -45,7 +51,8 @@ function findDrawnWallCoverage(
 }
 
 export function drawnWallNote(existing: readonly Wall[], drawn: WallPart): string | undefined {
-  const { parts, hasCoverage } = findDrawnWallCoverage(existing, drawn)
+  const { coverage } = registerWallStretches(existing)
+  const { parts, hasCoverage } = findDrawnWallCoverage(coverage, drawn)
   if (!hasCoverage) return undefined
   if (parts.length === 0) return 'This wall was already there.'
   return 'Part of this wall was already there.'

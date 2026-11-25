@@ -1,6 +1,4 @@
-import { DERIVATION_LENGTH_TOLERANCE_MM } from '../geometry/tolerance'
 import { dot, subtract } from '../geometry/vector'
-import type { Wall } from '../model/types'
 import { overlappingEndpoints, projectOntoLine } from './overlapping-endpoints'
 import type { WallPart } from './uncovered-parts'
 
@@ -34,14 +32,4 @@ export function nodeWallOverlaps(
     })
   }
   return parts
-}
-
-export function exposedWallStretches(walls: readonly Wall[]): readonly WallPart[] {
-  const owners: WallPart[] = []
-  for (const wall of walls) {
-    for (const part of nodeWallOverlaps(wall, owners, DERIVATION_LENGTH_TOLERANCE_MM)) {
-      if (!part.covered) owners.push(part)
-    }
-  }
-  return owners
 }

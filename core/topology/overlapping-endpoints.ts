@@ -10,6 +10,14 @@ export function overlappingEndpoints(
   tolerance = DERIVATION_LENGTH_TOLERANCE_MM,
 ): WallPart | undefined {
   if (!onOneLine(first.start, first.end, second.start, second.end, tolerance)) return undefined
+  return overlappingBounds(first, second, tolerance)
+}
+
+export function overlappingBounds(
+  first: WallPart,
+  second: WallPart,
+  tolerance: number,
+): WallPart | undefined {
   if (!projectedOverlap(second, first, tolerance)) return undefined
   return projectedOverlap(first, second, tolerance)
 }
