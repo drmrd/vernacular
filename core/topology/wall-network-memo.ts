@@ -1,4 +1,5 @@
 import type { Wall } from '../model/types'
+import { getOrCreate } from './get-or-create'
 import {
   deriveWallNetwork,
   networkWallOf,
@@ -21,15 +22,8 @@ export function wallNetworkFor(
   walls: readonly Wall[],
   registries?: PlanGeometryRegistries,
 ): WallNetwork {
-  let networksByRegistries = networksByWalls.get(walls)
-  if (networksByRegistries === undefined) {
-    networksByRegistries = new WeakMap()
-    networksByWalls.set(walls, networksByRegistries)
-  }
-  let network = networksByRegistries.get(registries ?? withoutRegistries)
-  if (network === undefined) {
-    network = deriveWallNetwork(walls.map(networkWallOf), registries)
-    networksByRegistries.set(registries ?? withoutRegistries, network)
-  }
-  return network
+  const networksByRegistries = getOrCreate(networksByWalls, walls, () => new WeakMap())
+  return getOrCreate(networksByRegistries, registries ?? withoutRegistries, () =>
+    deriveWallNetwork(walls.map(networkWallOf), registries),
+  )
 }

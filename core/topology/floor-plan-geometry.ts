@@ -1,5 +1,6 @@
 import { pathLength, pointAlong } from '../geometry/wall-path'
 import type { Floor, Opening } from '../model/types'
+import { getOrCreate } from './get-or-create'
 import { distanceAlongEdge } from './opening-edge'
 import { clampedOpeningPlacement } from './openings'
 import {
@@ -78,12 +79,7 @@ const setAsideByNetwork = new WeakMap<WallNetwork, SetAside>()
 
 /** Kept per network, like its rooms, so an edit that keeps the network keeps the set-aside too. */
 function setAsideOf(network: WallNetwork): SetAside {
-  let setAside = setAsideByNetwork.get(network)
-  if (setAside === undefined) {
-    setAside = collectSetAside(network)
-    setAsideByNetwork.set(network, setAside)
-  }
-  return setAside
+  return getOrCreate(setAsideByNetwork, network, () => collectSetAside(network))
 }
 
 interface CenterOnEdge {
@@ -169,24 +165,12 @@ export function createPlanGeometryDeriver(): (floor: Floor) => FloorPlanGeometry
     WeakMap<readonly Opening[], readonly OpeningSpan[]>
   >()
   const spansFor = (network: WallNetwork, openings: readonly Opening[]): readonly OpeningSpan[] => {
-    let spansByOpenings = spansByNetwork.get(network)
-    if (spansByOpenings === undefined) {
-      spansByOpenings = new WeakMap()
-      spansByNetwork.set(network, spansByOpenings)
-    }
-    let spans = spansByOpenings.get(openings)
-    if (spans === undefined) {
-      spans = deriveOpeningSpans(network, openings)
-      spansByOpenings.set(openings, spans)
-    }
-    return spans
+    const spansByOpenings = getOrCreate(spansByNetwork, network, () => new WeakMap())
+    return getOrCreate(spansByOpenings, openings, () => deriveOpeningSpans(network, openings))
   }
-  return (floor) => {
-    const kept = geometryByFloor.get(floor)
-    if (kept !== undefined) return kept
-    const network = wallNetworkFor(floor.walls)
-    const geometry = geometryOf(floor, network, spansFor(network, floor.openings))
-    geometryByFloor.set(floor, geometry)
-    return geometry
-  }
+  return (floor) =>
+    getOrCreate(geometryByFloor, floor, () => {
+      const network = wallNetworkFor(floor.walls)
+      return geometryOf(floor, network, spansFor(network, floor.openings))
+    })
 }
