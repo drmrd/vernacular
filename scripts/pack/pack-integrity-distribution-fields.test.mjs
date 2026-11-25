@@ -27,13 +27,16 @@ function readerWithModelAndThumbnail() {
   }
 }
 
-function manifestWith(fields) {
+function manifestWith(fields, formatVersion = 2) {
   const asset = { contentHash: HASH, kind: 'model', name: 'Chair', ...fields }
-  return { packId: 'chair-pack', version: '1.0.0', formatVersion: 2, assets: [asset] }
+  return { packId: 'chair-pack', version: '1.0.0', formatVersion, assets: [asset] }
 }
 
-async function errorsFor(fields) {
-  const result = await checkPackIntegrity(manifestWith(fields), readerWithModelAndThumbnail())
+async function errorsFor(fields, formatVersion = 2) {
+  const result = await checkPackIntegrity(
+    manifestWith(fields, formatVersion),
+    readerWithModelAndThumbnail(),
+  )
   return result.errors
 }
 
@@ -66,5 +69,23 @@ describe('checkPackIntegrity for the stated length and thumbnail fields of a for
 
   it('reports no error when the fields are absent', async () => {
     expect(await errorsFor({})).toEqual([])
+  })
+})
+
+describe('checkPackIntegrity for the stated fields outside the format 2 happy path', () => {
+  it('reports one error for a wrong byteLength in a format 1 pack', async () => {
+    const errors = await errorsFor({ byteLength: WRONG_LENGTH }, 1)
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatch(new RegExp(`^asset ${HASH}: byteLength`))
+  })
+
+  it('reports one error when a stated thumbnail file is missing from the pack', async () => {
+    const reader = readerWithModelAndThumbnail()
+    const exists = reader.exists
+    reader.exists = async (relative) => relative !== THUMBNAIL_FILE && exists(relative)
+    const thumbnail = { contentHash: THUMBNAIL_HASH, byteLength: THUMBNAIL_BYTES.length }
+    const result = await checkPackIntegrity(manifestWith({ thumbnail }), reader)
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatch(new RegExp(`^asset ${HASH}: thumbnail missing`))
   })
 })
