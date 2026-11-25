@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
 import {
+  buildWallGraph,
   createWall,
   DERIVATION_LENGTH_TOLERANCE_MM,
   drawnWallNote,
@@ -170,4 +171,27 @@ it('uses only the physical stretches of saved walls to cover a new draw', () => 
   const alongTail = horizontal(175, 190, 1.5)
   expect.soft(uncoveredParts([owner, withExposedTail], alongTail)).toEqual([])
   expect.soft(drawnWallNote([owner, withExposedTail], alongTail)).toBe(coveredNote)
+})
+
+it('uses the wall line after existing endpoints merge to decide what a new draw adds', () => {
+  const walls = [
+    createWall({ x: 0, y: -4000 }, { x: 0, y: 0 }, { id: 'vertical' }),
+    createWall({ x: 0, y: 0.9 }, { x: 4000, y: 0.9 }, { id: 'horizontal' }),
+  ]
+  const covered = horizontal(100, 400, -0.8)
+  const separate = horizontal(100, 400, 1.7)
+  const coveredWall = createWall(covered.start, covered.end, { id: 'covered-draw' })
+  const separateWall = createWall(separate.start, separate.end, { id: 'separate-draw' })
+
+  expect
+    .soft(buildWallGraph([...walls, coveredWall]).edges.map(({ wallId }) => wallId))
+    .not.toContain(coveredWall.id)
+  expect
+    .soft(buildWallGraph([...walls, separateWall]).edges.map(({ wallId }) => wallId))
+    .toContain(separateWall.id)
+
+  expect.soft(uncoveredParts(walls, covered)).toEqual([])
+  expect.soft(drawnWallNote(walls, covered)).toBe(coveredNote)
+  expect.soft(uncoveredParts(walls, separate)).toEqual([separate])
+  expect(drawnWallNote(walls, separate)).toBeUndefined()
 })
