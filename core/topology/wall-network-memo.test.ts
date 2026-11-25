@@ -1,29 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { builtinConstructionProfiles } from '../registries/construction-profiles'
-import { createRegistry } from '../registries/registry'
-import { brickSquareWalls, networkWallsOf, twoRoomWalls } from './plan-geometry-test-support'
+import {
+  brickRegistries,
+  brickSquareWalls,
+  CUSTOM_BRICK_THICKNESS_MM,
+  networkWallsOf,
+  twoRoomWalls,
+} from './plan-geometry-test-support'
 import { deriveWallNetwork } from './wall-network'
 import { wallNetworkBuildCount, wallNetworkFor } from './wall-network-memo'
 
-const BRICK_PROFILE = 'solid-masonry-brick'
-const CUSTOM_BRICK_THICKNESS_MM = 400
+const NO_BUILDS = 0
 const ONE_BUILD = 1
 const TWO_BUILDS = 2
 
 function builtinRegistries() {
   return { constructionProfiles: builtinConstructionProfiles }
-}
-
-function brickRegistries() {
-  return {
-    constructionProfiles: createRegistry(1, [
-      {
-        id: BRICK_PROFILE,
-        system: 'solid-masonry' as const,
-        layers: [{ material: 'brick', thickness: CUSTOM_BRICK_THICKNESS_MM }],
-      },
-    ]),
-  }
 }
 
 describe('wallNetworkFor', () => {
@@ -87,7 +79,7 @@ describe('wallNetworkFor', () => {
 
     expect(networkAgain).toBe(networkA)
     expect(buildsAfterBoth - buildsBefore).toBe(TWO_BUILDS)
-    expect(wallNetworkBuildCount()).toBe(buildsAfterBoth)
+    expect(wallNetworkBuildCount() - buildsAfterBoth).toBe(NO_BUILDS)
   })
 
   it('gives the network that deriveWallNetwork gives for the same walls', () => {
@@ -102,5 +94,14 @@ describe('wallNetworkFor', () => {
     expect(wallNetworkFor(brickWalls, registries).walls[0]?.thickness).toBe(
       CUSTOM_BRICK_THICKNESS_MM,
     )
+  })
+
+  it('counts a direct build of deriveWallNetwork', () => {
+    const walls = twoRoomWalls()
+    const buildsBefore = wallNetworkBuildCount()
+
+    deriveWallNetwork(networkWallsOf(walls))
+
+    expect(wallNetworkBuildCount() - buildsBefore).toBe(ONE_BUILD)
   })
 })

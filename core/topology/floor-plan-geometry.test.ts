@@ -3,10 +3,16 @@ import { wallPath } from '../geometry/wall-path'
 import { DEFAULT_JUNCTION_TOLERANCE_MM } from '../geometry/tolerance'
 import { createWall } from '../model/factories'
 import type { Point, Wall } from '../model/types'
-import { createRegistry } from '../registries/registry'
 import { effectiveWallThickness } from '../scene/construction-profile'
 import { deriveFloorPlanGeometry } from './floor-plan-geometry'
-import { brickSquareWalls, floorOf, twoRoomWalls } from './plan-geometry-test-support'
+import {
+  BRICK_PROFILE,
+  brickRegistries,
+  brickSquareWalls,
+  CUSTOM_BRICK_THICKNESS_MM,
+  floorOf,
+  twoRoomWalls,
+} from './plan-geometry-test-support'
 
 const FLOOR_ID = 'g'
 const WALL_ID = 'w'
@@ -14,8 +20,6 @@ const WALL_LENGTH_MM = 4000
 const RAW_THICKNESS_MM = 114
 const UNKNOWN_PROFILE_RAW_THICKNESS_MM = 180
 const BRICK_ASSEMBLY_THICKNESS_MM = 231
-const CUSTOM_BRICK_THICKNESS_MM = 400
-const BRICK_PROFILE = 'solid-masonry-brick'
 const DOT_POSITION_MM = 1000
 const SQUARE_SIDE_MM = 5000
 
@@ -30,18 +34,6 @@ function thicknessesOfOnlyWall(wall: Wall): {
 } {
   const { network } = deriveFloorPlanGeometry(floorOf([wall]))
   return { onWall: network.walls[0]?.thickness, inMap: network.thickness.get(WALL_ID) }
-}
-
-function brickRegistries() {
-  return {
-    constructionProfiles: createRegistry(1, [
-      {
-        id: BRICK_PROFILE,
-        system: 'solid-masonry' as const,
-        layers: [{ material: 'brick', thickness: CUSTOM_BRICK_THICKNESS_MM }],
-      },
-    ]),
-  }
 }
 
 describe('deriveFloorPlanGeometry', () => {

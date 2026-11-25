@@ -1,6 +1,7 @@
 import { wallPath } from '../geometry/wall-path'
 import { createFloor, createWall } from '../model/factories'
 import type { Floor, Opening, Point, Wall } from '../model/types'
+import { createRegistry } from '../registries/registry'
 import { effectiveWallThickness } from '../scene/construction-profile'
 import { counterClockwiseWalls, pt, wall } from '../scene/opening-room-side-test-fixtures'
 import type { WallFaceRecord, WallSide } from './wall-face-records'
@@ -9,8 +10,6 @@ import { deriveWallNetwork, type NetworkWall, type WallNetwork } from './wall-ne
 
 const FLOOR_ID = 'g'
 
-/** Both sides of a wall, positive then negative. */
-export const SIDES: readonly WallSide[] = ['positive', 'negative']
 const WALL_THICKNESS_MM = 114
 const TEE_ARM_MM = 2000
 const TEE_STEM_MM = 1500
@@ -19,9 +18,15 @@ const TWO_ROOM_WIDTH_MM = 8000
 const TWO_ROOM_DEPTH_MM = 3000
 const TWO_ROOM_PARTITION_X_MM = 4000
 const BRICK_SQUARE_SIDE_MM = 5000
-const BRICK_PROFILE = 'solid-masonry-brick'
 const STUB_X_MM = 2000
 const STUB_LENGTH_MM = 1000
+
+/** The id of the solid brick construction profile. */
+export const BRICK_PROFILE = 'solid-masonry-brick'
+/** The thickness of the one layer of the profile that `brickRegistries` registers. */
+export const CUSTOM_BRICK_THICKNESS_MM = 400
+/** Both sides of a wall, positive then negative. */
+export const SIDES: readonly WallSide[] = ['positive', 'negative']
 
 function wallOf(id: string, start: Point, end: Point): Wall {
   return createWall(start, end, { id, thickness: WALL_THICKNESS_MM })
@@ -99,6 +104,19 @@ export function twoRoomWalls(): Wall[] {
       { x: TWO_ROOM_PARTITION_X_MM, y: TWO_ROOM_DEPTH_MM },
     ),
   ]
+}
+
+/** Registries whose brick profile is one layer of `CUSTOM_BRICK_THICKNESS_MM`. */
+export function brickRegistries() {
+  return {
+    constructionProfiles: createRegistry(1, [
+      {
+        id: BRICK_PROFILE,
+        system: 'solid-masonry' as const,
+        layers: [{ material: 'brick', thickness: CUSTOM_BRICK_THICKNESS_MM }],
+      },
+    ]),
+  }
 }
 
 /** The wall network of the walls, as the plan geometry builds it. */
