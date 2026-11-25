@@ -3,6 +3,7 @@ import {
   DEFAULT_METRIC_PREFERENCES,
   effectiveWallThickness,
   uncoveredParts,
+  uncoveredPartsOf,
   wallFaceGeometry,
   wallFootprints,
   type OpeningSceneNode,
@@ -10,6 +11,7 @@ import {
   type RoomSceneNode,
   type StairSceneNode,
   type UnitPreferences,
+  type WallCoverage,
   type WallFaceStretch,
   type WallSceneNode,
 } from '../../core'
@@ -110,9 +112,8 @@ export interface DrawPlanOptions {
   /** The canvas color palette; defaults to the warm light-theme palette when absent. */
   palette?: PlanPalette
   /**
-   * Resolves the planar graph of the drawn walls. A caller that redraws often passes a
-   * memoized resolver so the graph is reused between scene changes; absent, the graph is
-   * built on every draw.
+   * Resolves the planar graph of the drawn walls. A memoized resolver can reuse the
+   * graph and preview coverage between scene changes.
    */
   wallGraphFor?: PlanWallGraphResolver
 }
@@ -192,7 +193,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   // The wall network is resolved once and shared by the two wall passes below.
   // Both passes read the same mitred, opening-broken geometry, so building the
   // graph twice would cost the same work and risk the passes disagreeing.
-  const { wallEdges, jambThickness } = drawableWallEdges(options)
+  const { wallEdges, jambThickness, coverage } = drawableWallEdges(options)
   // Underlays paint first so they sit beneath the grid and the plan.
   drawUnderlays(ctx, options.underlays, options.viewport)
   if (options.grid) drawGrid(ctx, options)
@@ -212,7 +213,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options)
   if (options.openingResizeHandles)
     drawOpeningResizeHandles(ctx, options.openingResizeHandles, options.viewport)
-  if (options.preview) drawPreview(ctx, options.preview, options)
+  drawPreview(ctx, options, coverage)
   if (options.snap) drawSnapIndicator(ctx, options.snap, options.viewport)
   if (options.marquee) drawMarquee(ctx, options.marquee, options)
   drawRoomLabels(ctx, options)
@@ -420,11 +421,10 @@ interface PaintCenterline extends HostWallRun {
 
 /** The mitred, opening-broken symbology of every wall edge on the plan. */
 function drawableWallEdges(options: DrawPlanOptions) {
-  const graph = (options.wallGraphFor ?? planWallGraph)(options.walls)
+  const resolver = options.wallGraphFor ?? planWallGraph
+  const geometry = resolver.withCoverage?.(options.walls)
+  const graph = geometry?.graph ?? resolver(options.walls)
   const wallByEdgeId = new Map(options.walls.map((wall) => [strippedWallId(wall), wall]))
-  // The graph comes from `options.wallGraphFor` when given, else `planWallGraph` builds it for
-  // this call, so every edge's `wallId` is in the lookup and the `undefined` branch below is
-  // unreachable; it exists only to satisfy noUncheckedIndexedAccess.
   const thicknessByEdge = graph.edges.map((edge) => {
     const wall = wallByEdgeId.get(edge.wallId)
     return wall === undefined ? 0 : effectiveWallThickness(wall)
@@ -453,7 +453,7 @@ function drawableWallEdges(options: DrawPlanOptions) {
     return { centerline, stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
   })
   const jambThickness = jambThicknessFor(graph, thicknessByEdge)
-  return { wallEdges, jambThickness }
+  return { wallEdges, jambThickness, coverage: geometry?.coverage }
 }
 
 /** The scene nodes behind the plan's drawable openings, the form both wall layers project onto their walls. */
@@ -598,14 +598,18 @@ function traceRingPath(ctx: PlanDrawingContext, ring: readonly Point[], viewport
 
 function drawPreview(
   ctx: PlanDrawingContext,
-  preview: PreviewSegment,
   options: DrawPlanOptions,
+  coverage: WallCoverage | undefined,
 ): void {
+  const { preview, walls } = options
+  if (preview === undefined) return
   const color = paletteOf(options).preview
   ctx.lineCap = LINE_CAP
   ctx.lineWidth = PREVIEW_LINE_WIDTH
   ctx.strokeStyle = color
-  const parts = preview.fullLengthGuide ? [preview] : uncoveredParts(options.walls, preview)
+  const uncovered = () =>
+    coverage ? uncoveredPartsOf(coverage, preview) : uncoveredParts(walls, preview)
+  const parts = preview.fullLengthGuide ? [preview] : uncovered()
   for (const part of parts) {
     const start = worldToScreen(part.start, options.viewport)
     const end = worldToScreen(part.end, options.viewport)

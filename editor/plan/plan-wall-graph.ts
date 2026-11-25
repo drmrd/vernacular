@@ -1,4 +1,9 @@
-import { buildWallGraph, WALL_NODE_PREFIX, type PlanarGraph, type WallSceneNode } from '../../core'
+import {
+  buildWallGraphWithCoverage,
+  WALL_NODE_PREFIX,
+  type PlanarGraph,
+  type WallSceneNode,
+} from '../../core'
 
 /** The wall's raw model id, without the scene-node namespace. */
 export function strippedWallId(wall: WallSceneNode): string {
@@ -9,8 +14,8 @@ export function strippedWallId(wall: WallSceneNode): string {
  * The planar graph of the drawn walls. The scene-node prefix is stripped from each
  * id so that a graph edge's `wallId` matches the raw host id an opening carries.
  */
-export function planWallGraph(walls: readonly WallSceneNode[]): PlanarGraph {
-  return buildWallGraph(
+function planWallGeometry(walls: readonly WallSceneNode[]) {
+  return buildWallGraphWithCoverage(
     walls.map((wall) => ({
       id: strippedWallId(wall),
       start: wall.start,
@@ -20,22 +25,32 @@ export function planWallGraph(walls: readonly WallSceneNode[]): PlanarGraph {
   )
 }
 
-/** Maps the drawn walls to their planar graph. */
-export type PlanWallGraphResolver = (walls: readonly WallSceneNode[]) => PlanarGraph
+/** Maps the drawn walls to their planar graph, with optional coverage for previews. */
+export type PlanWallGraphResolver = ((walls: readonly WallSceneNode[]) => PlanarGraph) & {
+  withCoverage?: typeof planWallGeometry
+}
+
+function graphResolver(withCoverage: typeof planWallGeometry): PlanWallGraphResolver {
+  return Object.assign((walls: readonly WallSceneNode[]) => withCoverage(walls).graph, {
+    withCoverage,
+  })
+}
+
+export const planWallGraph = graphResolver(planWallGeometry)
 
 /**
  * A single-entry cache over `planWallGraph`. It keeps the last walls array it saw,
- * compared by reference, and that array's graph, so redraws between two scene
- * changes (pan, zoom, hover, snap) reuse the graph and a new walls array rebuilds it.
+ * compared by reference, and that array's graph and coverage, so redraws between
+ * scene changes reuse both.
  */
 export function createPlanWallGraphMemo(): PlanWallGraphResolver {
   let lastWalls: readonly WallSceneNode[] | undefined
-  let lastGraph: PlanarGraph | undefined
-  return (walls) => {
-    if (lastGraph === undefined || walls !== lastWalls) {
-      lastGraph = planWallGraph(walls)
+  let lastGeometry: ReturnType<typeof planWallGeometry> | undefined
+  return graphResolver((walls) => {
+    if (lastGeometry === undefined || walls !== lastWalls) {
+      lastGeometry = planWallGeometry(walls)
       lastWalls = walls
     }
-    return lastGraph
-  }
+    return lastGeometry
+  })
 }
