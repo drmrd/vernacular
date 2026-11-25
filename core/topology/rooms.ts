@@ -1,7 +1,8 @@
 import { polygonArea } from '../geometry/polygon'
 import type { Point, RoomOverride, Wall } from '../model/types'
 import { ROOM_ID_PREFIX, roomKey } from './room-key'
-import { derivePlanRooms, deriveWallNetwork, networkWallOf } from './wall-network'
+import { derivePlanRooms } from './wall-network'
+import { wallNetworkFor } from './wall-network-memo'
 
 export { ROOM_ID_PREFIX, roomKey }
 
@@ -86,5 +87,5 @@ function mergeOverride(room: Room, override: RoomOverride | undefined): Room {
  * also carries the wall faces that bound it.
  */
 export function deriveRooms(walls: readonly Wall[]): Room[] {
-  return [...derivePlanRooms(deriveWallNetwork(walls.map(networkWallOf)))]
+  return [...derivePlanRooms(wallNetworkFor(walls))]
 }
