@@ -70,7 +70,7 @@ function projectWithFinishedWall(): Project {
   return project
 }
 
-describe('addWall', () => {
+describe('addWall with existing walls', () => {
   it('adds only the exposed pieces of a stroke in one undoable draw', () => {
     const cases = [
       {
@@ -101,6 +101,9 @@ describe('addWall', () => {
       const upper = project.floors[1]
       const dispatcher = dispatcherFor(project)
       const command = addWall('g', stroke.start, stroke.end)
+      const originalFloors = project.floors
+      const originalGround = originalFloors[0]!
+      const originalWalls = originalGround.walls
 
       dispatcher.dispatch(command)
 
@@ -120,10 +123,15 @@ describe('addWall', () => {
 
       if (expected.length === 0) {
         expect.soft(project, label).toEqual(before)
+        expect.soft(project.floors, label).toBe(originalFloors)
+        expect.soft(ground, label).toBe(originalGround)
+        expect.soft(ground.walls, label).toBe(originalWalls)
         continue
       }
 
       expect.soft(added[0]?.id, label).toBe(command.params.wall.id)
+      const addedIds = added.map(({ id }) => id)
+      expect.soft(addedIds, label).not.toContain('')
       const wallIds = project.floors.flatMap((floor) => floor.walls.map((wall) => wall.id))
       expect.soft(new Set(wallIds).size, label).toBe(wallIds.length)
 
@@ -174,7 +182,9 @@ describe('addWall', () => {
     expect(dispatcher.redo()).toBe(true)
     expect(project).toEqual(after)
   })
+})
 
+describe('addWall', () => {
   it('appends a wall to the named floor', () => {
     const project = projectWithFloor()
     const dispatcher = dispatcherFor(project)
