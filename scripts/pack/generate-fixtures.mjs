@@ -14,6 +14,10 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CATALOG_FILE } from '../../core/assets/store-paths.ts'
 import { encodePng } from './png-encoder.mjs'
+import {
+  EXAMPLE_FURNITURE_DIRECTORY,
+  writeExampleFurniturePack,
+} from './example-furniture/build-example-furniture.mjs'
 import { publishPackToDisk } from './publish-store.mjs'
 
 const fixturesRoot = fileURLToPath(new URL('../../tests/fixtures/', import.meta.url))
@@ -247,21 +251,22 @@ export const FIXTURE_PACKS = [
   { directory: BROKEN_PACK_DIRECTORY, write: writeBrokenPack },
   { directory: TEXTURE_PACK_DIRECTORY, write: writeTexturePack },
   { directory: BROKEN_TEXTURE_PACK_DIRECTORY, write: writeBrokenTexturePack },
+  { directory: EXAMPLE_FURNITURE_DIRECTORY, write: writeExampleFurniturePack },
 ]
 
-const STORE_PACKS = [
-  '../../public/packs/vernacular-starter-1.0.0',
-  '../../public/packs/vernacular-starter-1.1.1',
-  '../../tests/fixtures/packs/example-furniture-1.0.0',
-]
+const STORE_STARTER_PACKS = ['vernacular-starter-1.0.0', 'vernacular-starter-1.1.1'].map(
+  (directory) => fileURLToPath(new URL(`../../public/packs/${directory}`, import.meta.url)),
+)
 
 /** @param {string} storeDir A directory reserved for generated store output. */
-export async function generateFixtureStore(storeDir) {
+export async function generateFixtureStore(
+  storeDir,
+  furniturePackDir = join(fixturesRoot, 'packs', EXAMPLE_FURNITURE_DIRECTORY),
+) {
   for (const path of [CATALOG_FILE, 'blobs', 'manifests', 'packs']) {
     await rm(join(storeDir, path), { recursive: true, force: true })
   }
-  for (const source of STORE_PACKS) {
-    const packDir = fileURLToPath(new URL(source, import.meta.url))
+  for (const packDir of [...STORE_STARTER_PACKS, furniturePackDir]) {
     await publishPackToDisk({ packDir, storeDir, name: 'Example Library' })
   }
 }
@@ -279,7 +284,10 @@ async function main(fixturesDirectory = fixturesRoot) {
     await rm(join(packsDirectory, directory), { recursive: true, force: true })
     await write(diskSink)
   }
-  await generateFixtureStore(join(fixturesDirectory, 'store'))
+  await generateFixtureStore(
+    join(fixturesDirectory, 'store'),
+    join(packsDirectory, EXAMPLE_FURNITURE_DIRECTORY),
+  )
 }
 
 export { main as generateFixtures }
