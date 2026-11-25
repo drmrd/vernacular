@@ -55,6 +55,7 @@ function refusedCases(): [string, Fields, RegExp][] {
     ['string byteLength', { ...base, byteLength: '12' }, /^assets\[0\]\.byteLength/],
     ['null thumbnail', { ...base, thumbnail: null }, THUMBNAIL_OBJECT_ERROR],
     ['string thumbnail', { ...base, thumbnail: 'x' }, THUMBNAIL_OBJECT_ERROR],
+    ['array thumbnail', { ...base, thumbnail: [] }, THUMBNAIL_OBJECT_ERROR],
     [
       'short thumbnail contentHash',
       { ...base, thumbnail: { ...thumbnail, contentHash: 'a'.repeat(SHORT_HASH_LENGTH) } },
