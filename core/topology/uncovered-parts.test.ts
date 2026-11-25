@@ -265,3 +265,34 @@ it('keeps the longitudinal extension when a rotated wall endpoint merges across 
     }
   }
 })
+
+it('adds nothing when a new draw repeats the saved endpoints of a wall merged at a junction', () => {
+  const junction = { x: 0, y: 0 }
+  const anchor = createWall({ x: 0, y: -4000 }, junction, { id: 'anchor' })
+  const retraces = [
+    { label: 'saved start before the junction', savedX: -0.5, start: { x: -0.5, y: 0.5 } },
+    { label: 'saved start past the junction', savedX: 0.5, start: { x: 0.5, y: 0.5 } },
+    { label: 'merged start inside the saved extent', savedX: -0.5, start: junction },
+  ]
+
+  for (const { label, savedX, start } of retraces) {
+    const saved = horizontal(savedX, savedX + 4000, 0.5)
+    const walls = [anchor, createWall(saved.start, saved.end, { id: 'saved-wall' })]
+
+    for (const { direction, draw } of [
+      { direction: 'from the junction', draw: { start, end: saved.end } },
+      { direction: 'toward the junction', draw: { start: saved.end, end: start } },
+    ]) {
+      const description = `${label}, ${direction}`
+      const retrace = createWall(draw.start, draw.end, { id: 'retrace' })
+      expect
+        .soft(
+          buildWallGraph([...walls, retrace]).edges.map(({ wallId }) => wallId),
+          description,
+        )
+        .not.toContain(retrace.id)
+      expect.soft(uncoveredParts(walls, draw), description).toEqual([])
+      expect.soft(drawnWallNote(walls, draw), description).toBe(coveredNote)
+    }
+  }
+})
