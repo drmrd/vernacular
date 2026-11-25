@@ -78,6 +78,32 @@ export function signatureDifferences(
   })
 }
 
+const SEGMENT_GRID_MM = 1e-6
+
+function gridKey(point: Point): string {
+  return `${Math.round(point.x / SEGMENT_GRID_MM)},${Math.round(point.y / SEGMENT_GRID_MM)}`
+}
+
+/**
+ * Lists the directed segments, as `from -> to` on a 1e-6 mm grid, that more than one room walks.
+ * Derived rooms wind counter-clockwise (ADR-0026 keeps only faces of positive signed area), so a
+ * segment shared by two rooms runs in opposite directions, once on each side of the edge. A directed
+ * segment in two rooms means an edge bounds two rooms on one side. An empty list means none does.
+ */
+export function directedSegmentsInManyRooms(rooms: readonly Room[]): string[] {
+  const roomsBySegment = new Map<string, number>()
+  for (const room of rooms) {
+    room.polygon.forEach((from, index) => {
+      const to = room.polygon[(index + 1) % room.polygon.length] as Point
+      const key = `${gridKey(from)} -> ${gridKey(to)}`
+      roomsBySegment.set(key, (roomsBySegment.get(key) ?? 0) + 1)
+    })
+  }
+  return [...roomsBySegment]
+    .filter(([, count]) => count > 1)
+    .map(([key, count]) => `${key} in ${count} rooms`)
+}
+
 const COLLINEAR_TOLERANCE_MM = 1e-6
 
 function distanceToChord(point: Point, from: Point, to: Point): number {

@@ -4,6 +4,7 @@ import { DERIVATION_LENGTH_TOLERANCE_MM } from '../geometry/tolerance'
 import type { Point, Wall } from '../model/types'
 import {
   componentCount,
+  directedSegmentsInManyRooms,
   nonFiniteNumberPaths,
   roomSignature,
   signatureDifferences,
@@ -58,6 +59,15 @@ describe('the room count of any generated plan', () => {
         const degenerateRooms = deriveRooms(plan.walls).filter((room) => room.polygon.length < 3)
 
         expect(degenerateRooms).toEqual([])
+      }),
+      { numRuns: PROPERTY_RUNS },
+    )
+  })
+
+  it('lets every edge bound at most one room on each side', () => {
+    fc.assert(
+      fc.property(planArbitrary(), (plan) => {
+        expect(directedSegmentsInManyRooms(deriveRooms(plan.walls))).toEqual([])
       }),
       { numRuns: PROPERTY_RUNS },
     )
