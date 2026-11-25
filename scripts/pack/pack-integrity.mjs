@@ -91,6 +91,15 @@ function assetPath(asset) {
 }
 
 /**
+ * The pack-relative path of an asset's thumbnail.
+ * @param {{ contentHash: string }} asset
+ * @returns {string}
+ */
+function thumbnailPath(asset) {
+  return `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
+}
+
+/**
  * Confirm each asset's file bytes hash to its declared content hash.
  * @param {object[]} assets
  * @param {PackReader} reader
@@ -142,6 +151,50 @@ async function checkTextureFiles(assets, reader, context) {
 }
 
 /**
+ * Confirm each stated byteLength equals the size of its asset file.
+ * @param {object[]} assets   assets whose files are present and hash correctly
+ * @param {PackReader} reader
+ * @param {{ errors: string[], formatVersion: unknown }} context
+ * @returns {Promise<void>}
+ */
+async function checkStatedByteLengths(assets, reader, context) {
+  const { errors } = context
+  for (const asset of assets.filter((a) => a.byteLength !== undefined)) {
+    const fileSize = await reader.size(assetPath(asset))
+    if (fileSize !== asset.byteLength) {
+      errors.push(
+        `asset ${asset.contentHash}: byteLength ${asset.byteLength} does not match the file size ${fileSize}`,
+      )
+    }
+  }
+}
+
+/**
+ * Confirm each stated thumbnail hash and length equals those of its thumbnail file.
+ * @param {object[]} assets
+ * @param {PackReader} reader
+ * @param {{ errors: string[], formatVersion: unknown }} context
+ * @returns {Promise<void>}
+ */
+async function checkStatedThumbnailFields(assets, reader, context) {
+  const { errors } = context
+  for (const asset of assets.filter((a) => isRecord(a.thumbnail) && isSha256Hex(a.contentHash))) {
+    const file = thumbnailPath(asset)
+    if (!(await reader.exists(file))) continue
+    const { contentHash, byteLength } = asset.thumbnail
+    if (contentHash !== undefined && contentHash !== (await reader.sha256(file))) {
+      errors.push(`asset ${asset.contentHash}: thumbnail.contentHash does not match ${file}`)
+    }
+    const fileSize = await reader.size(file)
+    if (byteLength !== undefined && byteLength !== fileSize) {
+      errors.push(
+        `asset ${asset.contentHash}: thumbnail.byteLength ${byteLength} does not match the file size ${fileSize}`,
+      )
+    }
+  }
+}
+
+/**
  * Confirm each model asset has a WebP thumbnail in the pack; a texture's thumbnail is optional
  * but must be WebP when present.
  * @param {object[]} assets
@@ -153,7 +206,7 @@ async function checkThumbnails(assets, reader, context) {
   const { errors, formatVersion } = context
   for (const asset of assets) {
     if (!isSha256Hex(asset.contentHash)) continue
-    const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
+    const file = thumbnailPath(asset)
     if (!(await reader.exists(file))) {
       if (!isTextureAsset(asset, formatVersion)) {
         errors.push(`asset ${asset.contentHash}: thumbnail missing`)
@@ -232,7 +285,9 @@ export async function checkPackIntegrity(manifest, reader) {
   const assets = manifestAssets(manifest)
   const verifiedAssets = await checkAssetHashes(assets, reader, context)
   await checkTextureFiles(verifiedAssets, reader, context)
+  await checkStatedByteLengths(verifiedAssets, reader, context)
   await checkThumbnails(assets, reader, context)
+  await checkStatedThumbnailFields(assets, reader, context)
   await checkOrphans(assets, reader, context)
   await checkRequiredFiles(reader, context)
   checkDirName(manifest, reader, context)
