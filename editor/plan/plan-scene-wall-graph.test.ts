@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { createElement } from 'react'
 import { cleanup, render } from '@testing-library/react'
 import {
-  buildWallGraph,
+  buildWallGraphWithCoverage,
   DEFAULT_METRIC_PREFERENCES,
   type Point,
   type WallSceneNode,
@@ -16,7 +16,7 @@ import { DEFAULT_PLAN_SCALE, worldToScreen, type Viewport } from './viewport'
 // A pass-through spy: the real builder still runs, the mock only counts the calls.
 vi.mock('../../core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../core')>()
-  return { ...actual, buildWallGraph: vi.fn(actual.buildWallGraph) }
+  return { ...actual, buildWallGraphWithCoverage: vi.fn(actual.buildWallGraphWithCoverage) }
 })
 
 type Recorder = ReturnType<typeof recordingContext>
@@ -98,7 +98,7 @@ function wallInkEndsAtScreenX(recorder: Recorder, screenX: number): boolean {
 
 describe('the plan wall graph across redraws', () => {
   beforeEach(() => {
-    vi.mocked(buildWallGraph).mockClear()
+    vi.mocked(buildWallGraphWithCoverage).mockClear()
   })
   afterEach(cleanup)
 
@@ -109,7 +109,7 @@ describe('the plan wall graph across redraws', () => {
     plan.redrawOver(sceneOver(walls, ZOOMED_VIEWPORT))
 
     expect(plan.draws).toHaveLength(2)
-    expect(buildWallGraph).toHaveBeenCalledTimes(1)
+    expect(buildWallGraphWithCoverage).toHaveBeenCalledTimes(1)
   })
 
   it('builds the wall graph again after the walls change and draws the moved wall', () => {
@@ -121,7 +121,7 @@ describe('the plan wall graph across redraws', () => {
     plan.redrawOver(sceneOver(movedWalls, ZOOMED_VIEWPORT))
 
     expect(plan.draws).toHaveLength(3)
-    expect(buildWallGraph).toHaveBeenCalledTimes(2)
+    expect(buildWallGraphWithCoverage).toHaveBeenCalledTimes(2)
     const movedEndX = worldToScreen(MOVED_WALL_END, ZOOMED_VIEWPORT).x
     expect(wallInkEndsAtScreenX(plan.draws[2] as Recorder, movedEndX)).toBe(true)
   })
