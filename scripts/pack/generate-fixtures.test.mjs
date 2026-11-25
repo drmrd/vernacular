@@ -47,7 +47,7 @@ async function seedStaleFixtureBlob(storeDir) {
   await writeFile(join(blobDir, digest), bytes)
 }
 
-async function expectSameStore(actualDir, expectedDir) {
+async function expectSameFiles(actualDir, expectedDir) {
   const paths = await filePaths(expectedDir)
   await expect(filePaths(actualDir), actualDir).resolves.toEqual(paths)
   for (const path of paths) {
@@ -90,15 +90,34 @@ describe('the fixture generator', () => {
       for (const packDir of storePacks) {
         await publishPackToDisk({ packDir, storeDir: publishedStore, name: 'Example Library' })
       }
-      await expectSameStore(committedStore, publishedStore)
+      await expectSameFiles(committedStore, publishedStore)
 
       const { generateFixtureStore } = await import('./generate-fixtures.mjs')
       const generatedStore = join(temporaryRoot, 'generated')
       await seedStaleFixtureBlob(generatedStore)
       await generateFixtureStore(generatedStore)
-      await expectSameStore(generatedStore, publishedStore)
+      await expectSameFiles(generatedStore, publishedStore)
     } finally {
       await rm(temporaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('generates the pack fixtures and store under the requested fixture root', async () => {
+    const generatedFixtures = await mkdtemp(join(tmpdir(), 'vernacular-generated-fixtures-'))
+    try {
+      const { generateFixtures } = await import('./generate-fixtures.mjs')
+      expect(generateFixtures).toBeTypeOf('function')
+      await generateFixtures(generatedFixtures)
+
+      await expectSameFiles(join(generatedFixtures, 'store'), committedStore)
+      for (const { directory } of FIXTURE_PACKS) {
+        await expectSameFiles(
+          join(generatedFixtures, 'packs', directory),
+          join(fixturesRoot, directory),
+        )
+      }
+    } finally {
+      await rm(generatedFixtures, { recursive: true, force: true })
     }
   })
 })
