@@ -23,7 +23,8 @@ export function junctionFans(graph: PlanarGraph): JunctionFans {
   fanBuilds += 1
   const fans = new Map<number, readonly number[]>()
   for (const [junction, edgeIndexes] of vertexIncidence(graph)) {
-    fans.set(junction, edgesCounterclockwise(graph, junction, edgeIndexes))
+    const reachingFar = edgeIndexes.filter((edgeIndex) => !isSelfLoop(graph, edgeIndex))
+    fans.set(junction, edgesCounterclockwise(graph, junction, reachingFar))
   }
   return fans
 }
@@ -33,9 +34,15 @@ export function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
   const incidence = new Map<number, number[]>()
   for (const [index, edge] of graph.edges.entries()) {
     pushIncident(incidence, edge.a, index)
-    pushIncident(incidence, edge.b, index)
+    if (!isSelfLoop(graph, index)) pushIncident(incidence, edge.b, index)
   }
   return incidence
+}
+
+/** True for an edge whose two ends merged into one junction. */
+export function isSelfLoop(graph: PlanarGraph, edgeIndex: number): boolean {
+  const edge = graph.edges[edgeIndex] as GraphEdge
+  return edge.a === edge.b
 }
 
 /** Records `edgeIndex` against the vertex it touches, building the incidence map. */

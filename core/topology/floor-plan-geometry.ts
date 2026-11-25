@@ -31,7 +31,9 @@ export interface FloorPlanGeometry {
 }
 
 function setAsideOf(network: WallNetwork): SetAside {
-  const wallIdsWithEdges = new Set(network.edges.map((edge) => edge.wallId))
+  const wallIdsWithEdges = new Set(
+    network.edges.filter((edge) => edge.from !== edge.to).map((edge) => edge.wallId),
+  )
   return {
     zeroLengthWallIds: network.walls
       .filter((wall) => !wallIdsWithEdges.has(wall.id))
