@@ -3,11 +3,16 @@
 import { describe, expect, it } from 'vitest'
 import { PassThroughDirectory } from '../documents/document-store-test-kit'
 import { createProjectSnapshots } from '../documents/project-snapshots'
-import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { SnapshotStore } from './snapshot-store'
+import {
+  AUTOSAVE_DIRECTORY,
+  BACKUP_DIRECTORY,
+  NOT_A_PROJECT_VERSION,
+  backupPathOf,
+  holding,
+  notJson,
+} from './snapshot-set-aside-test-kit'
 
-const AUTOSAVE_DIRECTORY = '.house-autosave'
-const BACKUP_DIRECTORY = '.house-backups'
 const GONE_PATH = `${AUTOSAVE_DIRECTORY}/snapshot-1.json`
 const REFUSED_PATH = `${AUTOSAVE_DIRECTORY}/snapshot-2.json`
 
@@ -19,16 +24,6 @@ class VanishingSnapshotDirectory extends PassThroughDirectory {
   }
 }
 
-function notJson(): Uint8Array {
-  return new TextEncoder().encode('{"this is": not json')
-}
-
-async function holding(files: Record<string, Uint8Array>): Promise<InMemoryDirectory> {
-  const directory = new InMemoryDirectory()
-  for (const [path, bytes] of Object.entries(files)) await directory.writeFile(path, bytes)
-  return directory
-}
-
 describe('SnapshotStore.setAsideRefused over a snapshot that is gone at read time', () => {
   it('skips the snapshot that reads as gone, writes no backup for it, and still moves the rest', async () => {
     const inner = await holding({ [GONE_PATH]: notJson(), [REFUSED_PATH]: notJson() })
@@ -37,7 +32,7 @@ describe('SnapshotStore.setAsideRefused over a snapshot that is gone at read tim
     expect(await store.setAsideRefused()).toBe(1)
 
     expect(await inner.list(BACKUP_DIRECTORY)).toHaveLength(1)
-    expect((await inner.list(AUTOSAVE_DIRECTORY)).sort()).toEqual(['snapshot-1.json'])
+    expect(await inner.list(AUTOSAVE_DIRECTORY)).toEqual(['snapshot-1.json'])
   })
 })
 
@@ -49,10 +44,6 @@ describe('createProjectSnapshots(...).setAsideRefused', () => {
     expect(await createProjectSnapshots(directory).setAsideRefused()).toBe(1)
 
     expect(await directory.list(AUTOSAVE_DIRECTORY)).toEqual([])
-    const backups = await directory.list(BACKUP_DIRECTORY)
-    const backupBytes = await Promise.all(
-      backups.map((name) => directory.readFile(`${BACKUP_DIRECTORY}/${name}`)),
-    )
-    expect(backupBytes).toEqual([bytes])
+    expect(await directory.readFile(backupPathOf(NOT_A_PROJECT_VERSION, bytes))).toEqual(bytes)
   })
 })
