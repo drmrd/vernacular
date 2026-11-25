@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
-import { assetFileName, packAssetMediaType } from '../../core/assets/asset-description.ts'
 import { CATALOG_VERSION, validateCatalog } from '../../core/assets/catalog.ts'
-import { namedFiles, readPackManifest } from '../../core/assets/pack-manifest-shape.ts'
+import { namedFilesWithSources, readPackManifest } from '../../core/assets/pack-manifest-shape.ts'
 import { comparePackVersions } from '../../core/assets/pack-version.ts'
 import {
   blobPath,
@@ -80,10 +79,8 @@ function compareCatalogEntries(left, right) {
 async function writeBlobs({ packDir, storeDir }, io, assets) {
   let byteLength = 0
   for (const asset of assets) {
-    const modelOrTexture = `assets/${assetFileName(asset.contentHash, packAssetMediaType(asset))}`
-    for (const [index, file] of namedFiles(asset).entries()) {
-      const source = index === 0 ? modelOrTexture : `thumbnails/${asset.contentHash}.webp`
-      const bytes = await readRequiredFile(io, join(packDir, source))
+    for (const { file, sourcePath } of namedFilesWithSources(asset)) {
+      const bytes = await readRequiredFile(io, join(packDir, sourcePath))
       await io.writeFile(join(storeDir, blobPath(file.contentHash)), bytes)
       byteLength += file.byteLength ?? bytes.byteLength
     }
