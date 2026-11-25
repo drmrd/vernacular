@@ -11,6 +11,8 @@ export interface GraphEdge {
   b: number
   /** The id of the wall this edge was derived from. */
   wallId: string
+  /** Later walls covering the same stretch, in floor order. */
+  covers?: string[]
 }
 
 /** A planar graph of merged wall endpoints (vertices) and the walls between them (edges). */
@@ -61,18 +63,24 @@ export function buildWallGraph(
   // considered; X-crossings are not introduced here.
   const splitEdges = edges.flatMap((edge) => splitEdgeAtInteriorVertices(edge, vertices, tolerance))
 
-  return { vertices, edges: keepFirstEdgePerStretch(splitEdges) }
+  return { vertices, edges: assignStretchOwners(splitEdges) }
 }
 
 /** Duplicate stretches leave a junction at the same angle and confuse the room walk. */
-function keepFirstEdgePerStretch(edges: readonly GraphEdge[]): GraphEdge[] {
-  const seenStretches = new Set<string>()
-  return edges.filter(({ a, b }) => {
+function assignStretchOwners(edges: readonly GraphEdge[]): GraphEdge[] {
+  const ownerByStretch = new Map<string, GraphEdge>()
+  return edges.filter((edge) => {
+    const { a, b } = edge
     if (a === b) return true
     const stretch = `${Math.min(a, b)}:${Math.max(a, b)}`
-    if (seenStretches.has(stretch)) return false
-    seenStretches.add(stretch)
-    return true
+    const owner = ownerByStretch.get(stretch)
+    if (owner === undefined) {
+      ownerByStretch.set(stretch, edge)
+      return true
+    }
+    const coveredWallIds = (owner.covers ??= [])
+    coveredWallIds.push(edge.wallId)
+    return false
   })
 }
 

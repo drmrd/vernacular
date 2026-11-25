@@ -39,6 +39,7 @@ export interface SetAside {
    * distance or merged into one junction.
    */
   readonly zeroLengthWallIds: readonly string[]
+  /** Walls whose stretches are all owned by earlier walls, in floor order. */
   readonly coveredWallIds: readonly string[]
   readonly unboundRecordIds: readonly string[]
 }
@@ -63,14 +64,18 @@ export interface FloorPlanGeometry {
 }
 
 function collectSetAside(network: WallNetwork): SetAside {
-  const wallIdsReachingAnotherJunction = new Set(
+  const ownerIds = new Set(
     network.edges.filter((edge) => !isLoopEdge(edge)).map((edge) => edge.wallId),
   )
+  const coveredIds = new Set(network.edges.flatMap((edge) => edge.covers))
+  const wallIdsWithoutOwnedStretch = network.walls
+    .map((wall) => wall.id)
+    .filter((wallId) => !ownerIds.has(wallId))
   return {
-    zeroLengthWallIds: network.walls
-      .filter((wall) => !wallIdsReachingAnotherJunction.has(wall.id))
-      .map((wall) => wall.id),
-    coveredWallIds: [],
+    zeroLengthWallIds: wallIdsWithoutOwnedStretch.filter((wallId) => !coveredIds.has(wallId)),
+    coveredWallIds: [
+      ...new Set(wallIdsWithoutOwnedStretch.filter((wallId) => coveredIds.has(wallId))),
+    ],
     unboundRecordIds: [],
   }
 }
