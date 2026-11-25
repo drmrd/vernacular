@@ -282,7 +282,7 @@ it('keeps a draw fully covered when another nearby wall overlaps it', () => {
       [right, left],
     ]) {
       for (const index of [0, 1, 2]) {
-        const walls = pair.toSpliced(index, 0, nearby)
+        const walls = [...pair.slice(0, index), nearby, ...pair.slice(index)]
         const label = `${direction} with ${walls.map(({ id }) => id).join(', ')}`
         expect
           .soft({ parts: uncoveredParts(walls, draw), note: drawnWallNote(walls, draw) }, label)
