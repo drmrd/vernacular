@@ -18,6 +18,7 @@ import {
   textureFileProblems,
   textureFileSizeProblems,
 } from '../../core/assets/texture-file-rules.ts'
+import { checkStatedFiles, statedFileEntries } from './pack-integrity-distribution-fields.mjs'
 
 /**
  * @typedef {object} PackReader
@@ -28,6 +29,8 @@ import {
  * @property {(rel: string, length: number) => Promise<Uint8Array>} readBytes
  * @property {(rel: string) => Promise<number>} size            file size in bytes
  */
+
+/** @typedef {import('./pack-integrity-distribution-fields.mjs').StatedFileEntry} StatedFileEntry */
 
 const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
@@ -151,47 +154,27 @@ async function checkTextureFiles(assets, reader, context) {
 }
 
 /**
- * Confirm each stated byteLength equals the size of its asset file.
- * @param {object[]} assets   assets whose files are present and hash correctly
- * @param {PackReader} reader
- * @param {{ errors: string[], formatVersion: unknown }} context
- * @returns {Promise<void>}
- */
-async function checkStatedByteLengths(assets, reader, context) {
-  const { errors } = context
-  for (const asset of assets.filter((a) => a.byteLength !== undefined)) {
-    const fileSize = await reader.size(assetPath(asset))
-    if (fileSize !== asset.byteLength) {
-      errors.push(
-        `asset ${asset.contentHash}: byteLength ${asset.byteLength} does not match the file size ${fileSize}`,
-      )
-    }
-  }
-}
-
-/**
- * Confirm each stated thumbnail hash and length equals those of its thumbnail file.
+ * The stated asset byte lengths of verified assets, then the stated thumbnail fields of all assets.
  * @param {object[]} assets
- * @param {PackReader} reader
- * @param {{ errors: string[], formatVersion: unknown }} context
- * @returns {Promise<void>}
+ * @param {object[]} verifiedAssets   assets whose files are present and hash correctly
+ * @returns {StatedFileEntry[]}
  */
-async function checkStatedThumbnailFields(assets, reader, context) {
-  const { errors } = context
-  for (const asset of assets.filter((a) => isRecord(a.thumbnail) && isSha256Hex(a.contentHash))) {
-    const file = thumbnailPath(asset)
-    if (!(await reader.exists(file))) continue
-    const { contentHash, byteLength } = asset.thumbnail
-    if (contentHash !== undefined && contentHash !== (await reader.sha256(file))) {
-      errors.push(`asset ${asset.contentHash}: thumbnail.contentHash does not match ${file}`)
-    }
-    const fileSize = await reader.size(file)
-    if (byteLength !== undefined && byteLength !== fileSize) {
-      errors.push(
-        `asset ${asset.contentHash}: thumbnail.byteLength ${byteLength} does not match the file size ${fileSize}`,
-      )
-    }
-  }
+function statedEntries(assets, verifiedAssets) {
+  const lengths = verifiedAssets.flatMap((a) =>
+    statedFileEntries(
+      { assetHash: a.contentHash, file: assetPath(a) },
+      { byteLength: a.byteLength },
+    ),
+  )
+  const thumbnails = assets
+    .filter((a) => isRecord(a.thumbnail) && isSha256Hex(a.contentHash))
+    .flatMap((a) =>
+      statedFileEntries(
+        { assetHash: a.contentHash, file: thumbnailPath(a), labelPrefix: 'thumbnail.' },
+        a.thumbnail,
+      ),
+    )
+  return [...lengths, ...thumbnails]
 }
 
 /**
@@ -285,9 +268,8 @@ export async function checkPackIntegrity(manifest, reader) {
   const assets = manifestAssets(manifest)
   const verifiedAssets = await checkAssetHashes(assets, reader, context)
   await checkTextureFiles(verifiedAssets, reader, context)
-  await checkStatedByteLengths(verifiedAssets, reader, context)
+  await checkStatedFiles(statedEntries(assets, verifiedAssets), reader, context)
   await checkThumbnails(assets, reader, context)
-  await checkStatedThumbnailFields(assets, reader, context)
   await checkOrphans(assets, reader, context)
   await checkRequiredFiles(reader, context)
   checkDirName(manifest, reader, context)
