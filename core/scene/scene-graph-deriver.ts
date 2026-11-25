@@ -255,13 +255,13 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
   const furnitureCache = new WeakMap<FurnitureInstance, CachedFurnitureNode>()
-  const planGeometry = createPlanGeometryDeriver()
+  const planGeometryOfFloor = createPlanGeometryDeriver()
 
   const derivations: SceneNodeDerivations = {
     ...PURE_NODE_DERIVATIONS,
     floorNode: (floor) => memoizeByRef(floorCache, floor, () => deriveFloorNode(floor)),
     wallNode: (floor, wall) => wallNodeFor(wallCache, floor, wall),
-    planGeometry: (floor) => planGeometry(floor),
+    planGeometry: (floor) => planGeometryOfFloor(floor),
     roomNodes: (floor, geometry, overrides) =>
       roomNodesFor(roomCache, { floor, geometry }, overrides),
     openingNodes: (floor, rooms) => openingNodesFor(openingCache, floor, rooms),
