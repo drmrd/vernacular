@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { declaresMediaTypes, isModelAsset } from '../../core/assets/asset-description.ts'
 import { CATALOG_VERSION, validateCatalog } from '../../core/assets/catalog.ts'
-import { isAllowedLicenseMove } from '../../core/assets/license-moves.ts'
 import { namedFilesWithSources, readPackManifest } from '../../core/assets/pack-manifest-shape.ts'
 import { validatePackManifest } from '../../core/assets/pack-manifest.ts'
 import { comparePackVersions } from '../../core/assets/pack-version.ts'
@@ -12,6 +11,12 @@ import {
   manifestPath,
   packTextPath,
 } from '../../core/assets/store-paths.ts'
+
+import {
+  checkManifestEntry,
+  checkPublishedLicenses,
+  publishedEntry,
+} from './publish-store-validation.mjs'
 
 /** @typedef {import('../../core/assets/catalog.ts').CatalogPackEntry} CatalogPackEntry */
 /** @typedef {import('../../core/assets/pack-manifest-shape.ts').ReadablePackManifest} ReadablePackManifest */
@@ -94,23 +99,6 @@ function compareCatalogEntries(left, right) {
   )
 }
 
-const RESERVED_COMPONENT = /^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu
-const UNSAFE_COMPONENT = /[<>:"/\\|?*\p{Cc}]|[. ]$/u
-const MAX_COMPONENT_BYTES = 255
-
-/** @param {{packId: string, version: string}} scope */
-function textDirectoryKey({ packId, version }) {
-  const directory = `${packId}-${version}`
-  if (
-    UNSAFE_COMPONENT.test(packId) ||
-    RESERVED_COMPONENT.test(packId) ||
-    Buffer.byteLength(directory) > MAX_COMPONENT_BYTES
-  ) {
-    throw new Error(`packId ${JSON.stringify(packId)} cannot name a portable pack directory`)
-  }
-  return directory.normalize('NFC').toLowerCase()
-}
-
 /** @param {ReadablePackManifest} manifest */
 function checkDeclarations({ assets, formatVersion }) {
   if (!declaresMediaTypes(formatVersion)) return
@@ -122,65 +110,13 @@ function checkDeclarations({ assets, formatVersion }) {
   }
 }
 
-/** @param {CatalogPackEntry[]} packs @param {Awaited<ReturnType<typeof readManifest>>} incoming */
-function isPublished(packs, { manifest, digest }) {
-  const directory = textDirectoryKey(manifest)
-  let published = false
+/** @param {PublishFiles} io @param {string} storeDir @param {CatalogPackEntry[]} packs */
+async function* publishedManifests(io, storeDir, packs) {
   for (const entry of packs) {
-    if (textDirectoryKey(entry) !== directory) continue
-    const scope = `${entry.packId}-${entry.version}`
-    if (entry.packId !== manifest.packId || entry.version !== manifest.version) {
-      throw new Error(
-        `${scope}: pack text directory collides with ${manifest.packId}-${manifest.version}`,
-      )
-    }
-    if (entry.manifest.sha256 !== digest)
-      throw new Error(`${scope}: a different manifest is already published`)
-    published = true
-  }
-  return published
-}
-
-/** @param {PublishFiles} io @param {string} storeDir @param {CatalogPackEntry} entry */
-async function readPublishedManifest(io, storeDir, entry) {
-  const path = join(storeDir, manifestPath(entry.manifest.sha256))
-  const { bytes, manifest, digest } = await readManifest(io, path)
-  if (
-    digest !== entry.manifest.sha256 ||
-    bytes.byteLength !== entry.manifest.byteLength ||
-    manifest.packId !== entry.packId ||
-    manifest.version !== entry.version ||
-    manifest.formatVersion !== entry.formatVersion ||
-    manifest.assets.length !== entry.itemCount
-  ) {
-    throw new Error(
-      `${path}: manifest does not match catalog entry ${entry.packId}-${entry.version}`,
-    )
-  }
-  return manifest
-}
-
-/**
- * @param {{storeDir: string, packs: CatalogPackEntry[]}} store
- * @param {PublishFiles} io
- * @param {ReadablePackManifest} manifest
- */
-async function checkPublishedLicenses({ storeDir, packs }, io, manifest) {
-  /** @type {Map<string, Set<string>>} */
-  const licenses = new Map()
-  for (const entry of packs) {
-    const published = await readPublishedManifest(io, storeDir, entry)
-    for (const asset of published.assets) {
-      const previous = licenses.get(asset.contentHash) ?? new Set()
-      licenses.set(asset.contentHash, previous.add(asset.license))
-    }
-  }
-  for (const asset of manifest.assets) {
-    for (const previous of licenses.get(asset.contentHash) ?? []) {
-      if (!isAllowedLicenseMove(previous, asset.license)) {
-        throw new Error(`${asset.name}: license cannot move from ${previous} to ${asset.license}`)
-      }
-    }
+    const path = join(storeDir, manifestPath(entry.manifest.sha256))
+    const stored = await readManifest(io, path)
+    checkManifestEntry(entry, stored, path)
+    yield stored.manifest
   }
 }
 
@@ -204,7 +140,7 @@ async function prepareBlobs({ packDir, storeDir }, io, manifest) {
       checkFileBytes(file, bytes, label)
       byteLength += bytes.byteLength
       const target = join(storeDir, blobPath(file.contentHash))
-      if ((await io.readFile(target)) === undefined) writes.set(target, bytes)
+      writes.set(target, bytes)
     }
   }
   return { writes, byteLength }
@@ -216,6 +152,25 @@ async function prepareTexts({ packDir, storeDir }, io, { packId, version }) {
   for (const file of PACK_TEXT_FILES) {
     const bytes = await readRequiredFile(io, join(packDir, file))
     writes.set(join(storeDir, packTextPath(packId, version, file)), bytes)
+  }
+  return writes
+}
+
+/**
+ * @param {Map<string, Buffer>} candidates
+ * @param {PublishFiles} io
+ * @param {boolean} published
+ */
+async function missingFiles(candidates, io, published) {
+  const writes = new Map()
+  for (const [path, bytes] of candidates) {
+    const stored = await io.readFile(path)
+    if (stored === undefined) {
+      if (published) throw new Error(`${path}: published file is missing`)
+      writes.set(path, bytes)
+    } else if (!bytes.equals(stored)) {
+      throw new Error(`${path}: stored file differs from source bytes`)
+    }
   }
   return writes
 }
@@ -233,11 +188,19 @@ export async function publishPack(request, io) {
   const catalogPath = join(storeDir, CATALOG_FILE)
   const catalog = await readCatalog(io, catalogPath)
   const packs = catalog?.packs ?? []
-  if (isPublished(packs, incoming)) return
+  const previous = publishedEntry(packs, incoming)
   checkDeclarations(manifest)
-  await checkPublishedLicenses({ storeDir, packs }, io, manifest)
-  const { writes, byteLength } = await prepareBlobs(request, io, manifest)
+  const { writes: blobs, byteLength } = await prepareBlobs(request, io, manifest)
   const texts = await prepareTexts(request, io, manifest)
+  const storedManifestPath = join(storeDir, manifestPath(digest))
+  const candidates = new Map([...blobs, [storedManifestPath, bytes], ...texts])
+  const writes = await missingFiles(candidates, io, previous !== undefined)
+  if (previous) {
+    checkManifestEntry(previous, incoming, storedManifestPath)
+    if (previous.byteLength !== byteLength) throw new Error(`${catalogPath}: byteLength differs`)
+    return
+  }
+  await checkPublishedLicenses(publishedManifests(io, storeDir, packs), manifest)
   const entry = {
     packId,
     version,
@@ -255,7 +218,5 @@ export async function publishPack(request, io) {
   }
   const catalogBytes = Buffer.from(`${JSON.stringify(nextCatalog, null, JSON_INDENT)}\n`)
   for (const [path, blob] of writes) await io.writeFile(path, blob)
-  await io.writeFile(join(storeDir, manifestPath(digest)), bytes)
-  for (const [path, body] of texts) await io.writeFile(path, body)
   await io.writeFile(catalogPath, catalogBytes)
 }
