@@ -296,3 +296,30 @@ it('adds nothing when a new draw repeats the saved endpoints of a wall merged at
     }
   }
 })
+
+it('keeps a tilted draw up to the saved end plane of a wall merged at a junction', () => {
+  const walls = [
+    createWall({ x: 0, y: -4000 }, { x: 0, y: 0 }, { id: 'anchor' }),
+    createWall({ x: 0.5, y: 0.5 }, { x: 64, y: 0.5 }, { id: 'saved-wall' }),
+  ]
+  const outside = { x: 0.25, y: 0.125 }
+  const inside = { x: 32.25, y: 0.25 }
+  // The saved horizontal wall starts at x = 0.5. The draw rises 1/256 mm per mm.
+  const boundary = { x: 0.5, y: 129 / 1024 }
+
+  for (const { label, draw, exposed } of [
+    {
+      label: 'from outside the saved extent',
+      draw: { start: outside, end: inside },
+      exposed: { start: outside, end: boundary },
+    },
+    {
+      label: 'toward the outside of the saved extent',
+      draw: { start: inside, end: outside },
+      exposed: { start: boundary, end: outside },
+    },
+  ]) {
+    expect.soft(uncoveredParts(walls, draw), label).toEqual([exposed])
+    expect.soft(drawnWallNote(walls, draw), label).toBe(partialNote)
+  }
+})
