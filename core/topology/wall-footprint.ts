@@ -3,7 +3,7 @@ import { lineIntersection } from '../geometry/segment'
 import { dot, leftNormal, leftPerp, negate, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 
-import { type FanOptions, junctionFans } from './junction-fans'
+import { type FanOptions, isSelfLoop, junctionFans } from './junction-fans'
 import type { GraphEdge, PlanarGraph } from './wall-graph'
 
 export { incidentEdgesWithoutLoops, vertexIncidence } from './junction-fans'
@@ -92,7 +92,7 @@ export function wallFootprints(
 function squareFootprint(graph: PlanarGraph, edge: GraphEdge, thickness: number): WallFootprint {
   const a = graph.vertices[edge.a] as Point
   const b = graph.vertices[edge.b] as Point
-  if (edge.a === edge.b) return { aPlus: a, aMinus: a, bPlus: a, bMinus: a }
+  if (isSelfLoop(edge)) return { aPlus: a, aMinus: a, bPlus: a, bMinus: a }
   const normal = leftNormal(a, b)
   const half = thickness / 2
   return {

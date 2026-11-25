@@ -43,7 +43,7 @@ export function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
   const incidence = new Map<number, number[]>()
   for (const [index, edge] of graph.edges.entries()) {
     pushIncident(incidence, edge.a, index)
-    if (!isSelfLoop(graph, index)) pushIncident(incidence, edge.b, index)
+    if (!isSelfLoop(edge)) pushIncident(incidence, edge.b, index)
   }
   return incidence
 }
@@ -57,15 +57,14 @@ export function incidentEdgesWithoutLoops(graph: PlanarGraph): Map<number, numbe
   for (const [junction, edgeIndexes] of vertexIncidence(graph)) {
     withoutLoops.set(
       junction,
-      edgeIndexes.filter((edgeIndex) => !isSelfLoop(graph, edgeIndex)),
+      edgeIndexes.filter((edgeIndex) => !isSelfLoop(graph.edges[edgeIndex] as GraphEdge)),
     )
   }
   return withoutLoops
 }
 
 /** True for an edge whose two ends merged into one junction. */
-function isSelfLoop(graph: PlanarGraph, edgeIndex: number): boolean {
-  const edge = graph.edges[edgeIndex] as GraphEdge
+export function isSelfLoop(edge: GraphEdge): boolean {
   return edge.a === edge.b
 }
 
