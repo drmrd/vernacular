@@ -60,5 +60,7 @@ export function readPackManifest(value: unknown): ReadablePackManifest | undefin
 export function namedFiles(asset: ReadablePackAsset): readonly NamedFile[] {
   const { contentHash, byteLength } = asset
   const own: NamedFile = byteLength === undefined ? { contentHash } : { contentHash, byteLength }
-  return asset.thumbnail === undefined ? [own] : [own, asset.thumbnail]
+  if (asset.thumbnail === undefined) return [own]
+  const { contentHash: thumbnailHash, byteLength: thumbnailByteLength } = asset.thumbnail
+  return [own, { contentHash: thumbnailHash, byteLength: thumbnailByteLength }]
 }
