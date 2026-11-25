@@ -18,6 +18,7 @@ const EXIT_OK = 0
 const EXIT_INVALID = 1
 const EXIT_USAGE = 2
 const EXIT_INTERNAL = 3
+const PUBLISH_FLAGS = new Set(['--store', '--name'])
 const USAGE = [
   'Usage: vernacular-pack <validate|build> <packDir>',
   '       vernacular-pack publish <packDir> --store <dir> [--name <text>]',
@@ -121,19 +122,44 @@ function reportErrors(deps, packDir, errors) {
   }
 }
 
-/** @param {string} packDir @param {string[]} flags */
+/** @param {string} packDir @param {readonly string[]} flags */
 function publishRequest(packDir, flags) {
+  if (packDir.startsWith('-')) return
   const options = new Map()
-  while (flags.length) {
-    const flag = flags.shift()
-    const value = flags.shift()
-    if (flag !== '--store' && flag !== '--name') return
-    if (options.has(flag) || !value?.trim() || value.startsWith('-')) return
+  for (let index = 0; index < flags.length; index += 2) {
+    const flag = flags[index]
+    const value = flags[index + 1]
+    if (!PUBLISH_FLAGS.has(flag) || options.has(flag)) return
+    if (!value?.trim() || value.startsWith('-')) return
     options.set(flag, value)
   }
-  if (!options.has('--store') || packDir.startsWith('-')) return
-  const request = { packDir, storeDir: options.get('--store') }
-  return options.has('--name') ? { ...request, name: options.get('--name') } : request
+  const storeDir = options.get('--store')
+  if (!storeDir) return
+  const name = options.get('--name')
+  return name === undefined ? { packDir, storeDir } : { packDir, storeDir, name }
+}
+
+/** @param {readonly string[]} argv */
+function parseCommand(argv) {
+  const [command, packDir, ...flags] = argv
+  if (!packDir) return
+  if (command === 'validate' || command === 'build') return { command, packDir }
+  if (command !== 'publish') return
+  const request = publishRequest(packDir, flags)
+  if (request) return { command, packDir, request }
+}
+
+/** @param {NonNullable<ReturnType<typeof parseCommand>>} command @param {PackCliDeps} deps */
+async function readPackForCommand({ packDir, request }, deps) {
+  try {
+    if (request && deps.readPackPublication) {
+      const publisher = await deps.readPackPublication(packDir)
+      return { manifest: publisher.manifest, publisher }
+    }
+    return { manifest: await deps.readManifest(packDir), publisher: deps }
+  } catch (cause) {
+    deps.error(`Could not read manifest in ${packDir}: ${String(cause)}`)
+  }
 }
 
 /**
@@ -158,25 +184,15 @@ async function publishValidatedPack(request, deps, publisher) {
  * @returns {Promise<number>} the process exit code
  */
 export async function runPackCli(argv, deps) {
-  const [command, packDir, ...flags] = argv
-  const request = command === 'publish' && packDir ? publishRequest(packDir, flags) : undefined
-  if (!packDir || (command !== 'validate' && command !== 'build' && !request)) {
+  const parsed = parseCommand(argv)
+  if (!parsed) {
     deps.error(USAGE)
     return EXIT_USAGE
   }
-  let manifest
-  let publication
-  try {
-    if (request && deps.readPackPublication) {
-      publication = await deps.readPackPublication(packDir)
-      manifest = publication.manifest
-    } else {
-      manifest = await deps.readManifest(packDir)
-    }
-  } catch (cause) {
-    deps.error(`Could not read manifest in ${packDir}: ${String(cause)}`)
-    return EXIT_INVALID
-  }
+  const { command, packDir, request } = parsed
+  const input = await readPackForCommand(parsed, deps)
+  if (!input) return EXIT_INVALID
+  const { manifest, publisher } = input
   const review = await reviewPack(manifest, deps.createReader(packDir))
   for (const warning of review.warnings) {
     deps.log(`warning: ${warning}`)
@@ -188,7 +204,7 @@ export async function runPackCli(argv, deps) {
     reportErrors(deps, packDir, review.errors)
     return EXIT_INVALID
   }
-  if (request) return publishValidatedPack(request, deps, publication ?? deps)
+  if (request) return publishValidatedPack(request, deps, publisher)
   deps.log(`${command}: ${packDir} is a valid pack`)
   return EXIT_OK
 }
