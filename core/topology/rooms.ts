@@ -82,7 +82,8 @@ function mergeOverride(room: Room, override: RoomOverride | undefined): Room {
 /**
  * Derive rooms from a set of walls by enumerating the bounded faces of the wall
  * graph. See the design specification, section 3.2 ("Rooms are derived from wall
- * topology"). Each closed loop of walls becomes one room.
+ * topology"). Each closed loop of walls becomes one room. The objects are `PlanRoom`s, so each
+ * also carries the wall faces that bound it.
  */
 export function deriveRooms(walls: readonly Wall[]): Room[] {
   return [...derivePlanRooms(deriveWallNetwork(walls.map(networkWallOf)))]
