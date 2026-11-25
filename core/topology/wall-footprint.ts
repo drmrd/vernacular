@@ -85,10 +85,14 @@ export function wallFootprints(
   return result
 }
 
-/** The square footprint: each endpoint offset by half the thickness to both sides. */
+/**
+ * The square footprint: each endpoint offset by half the thickness to both sides. An edge
+ * from a junction to itself has no direction, so its four corners sit at the junction.
+ */
 function squareFootprint(graph: PlanarGraph, edge: GraphEdge, thickness: number): WallFootprint {
   const a = graph.vertices[edge.a] as Point
   const b = graph.vertices[edge.b] as Point
+  if (edge.a === edge.b) return { aPlus: a, aMinus: a, bPlus: a, bMinus: a }
   const normal = leftNormal(a, b)
   const half = thickness / 2
   return {
