@@ -632,7 +632,7 @@ export { MITER_LIMIT, wallFootprints } from './topology/wall-footprint'
 export type { JunctionFill } from './topology/junction-fill'
 export { junctionFills } from './topology/junction-fill'
 export type { OpeningPlacement, ResolvedOpeningEdge } from './topology/opening-edge'
-export { resolveOpeningEdge } from './topology/opening-edge'
+export { edgeCarriesWall, resolveOpeningEdge } from './topology/opening-edge'
 export type { Room } from './topology/rooms'
 export { ROOM_ID_PREFIX, applyRoomOverrides, deriveRooms, roomKey } from './topology/rooms'
 export type {

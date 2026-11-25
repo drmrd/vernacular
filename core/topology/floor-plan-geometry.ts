@@ -1,7 +1,7 @@
 import { pathLength, pointAlong } from '../geometry/wall-path'
 import type { Floor, Opening } from '../model/types'
 import { getOrCreate } from './get-or-create'
-import { distanceAlongEdge } from './opening-edge'
+import { distanceAlongEdge, edgeCarriesWall } from './opening-edge'
 import { clampedOpeningPlacement } from './openings'
 import {
   isLoopEdge,
@@ -103,7 +103,7 @@ function edgeHoldingCenter(network: WallNetwork, opening: Opening): CenterOnEdge
   )
   const center = pointAlong(wall.path, position)
   for (const edge of network.edges) {
-    if (edge.wallId !== opening.hostWallId) continue
+    if (!edgeCarriesWall(edge, opening.hostWallId)) continue
     const from = network.junctions[edge.from]
     const to = network.junctions[edge.to]
     if (from === undefined || to === undefined) continue

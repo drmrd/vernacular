@@ -1,9 +1,10 @@
-import { openingRoomSide, withRoomSide } from './opening-room-side'
+import { openingsWithHosts } from './opening-hosts'
+import { openingRoomSide } from './opening-room-side'
 import {
   PURE_NODE_DERIVATIONS,
   deriveFloorNode,
   deriveFurnitureNode,
-  deriveOpeningNode,
+  projectOpeningNode,
   deriveStairNodes,
   deriveWallNode,
   roomNodesFromPlanGeometry,
@@ -81,7 +82,8 @@ function roomSideHolds(cached: CachedOpeningNode, rooms: readonly RoomSceneNode[
 
 /**
  * Derives a floor's opening nodes. Reuses a cached node only while the Opening and its host Wall
- * references and the floor's id are unchanged AND the opening's room side is unchanged: the floor's
+ * references, the owning stretch's thickness, the floor's id, and the opening's room side are
+ * unchanged. The floor's
  * room-node array is the same reference as when the node was cached, or
  * openingRoomSide(cachedNode, rooms) still equals cachedNode.roomSide (then the new array is
  * remembered). Otherwise it derives a new node, so a view that reuses a 3D group by node reference
@@ -92,26 +94,24 @@ function roomSideHolds(cached: CachedOpeningNode, rooms: readonly RoomSceneNode[
  */
 function openingNodesFor(
   openingCache: WeakMap<Opening, CachedOpeningNode>,
-  floor: Floor,
+  { floor, geometry }: { floor: Floor; geometry: FloorPlanGeometry },
   rooms: readonly RoomSceneNode[],
 ): OpeningSceneNode[] {
-  return floor.openings.flatMap((opening) => {
-    const hostWall = floor.walls.find((wall) => wall.id === opening.hostWallId)
-    if (hostWall === undefined) {
-      return []
-    }
+  return openingsWithHosts(floor, geometry).map((hosted) => {
+    const { opening, hostWall, thickness } = hosted
     const cached = openingCache.get(opening)
     if (
       cached !== undefined &&
       cached.floorId === floor.id &&
       cached.hostWall === hostWall &&
+      cached.node.hostThickness === thickness &&
       roomSideHolds(cached, rooms)
     ) {
-      return [cached.node]
+      return cached.node
     }
-    const node = withRoomSide(deriveOpeningNode(floor, opening, hostWall), rooms)
+    const node = projectOpeningNode(floor, hosted, rooms)
     openingCache.set(opening, { floorId: floor.id, hostWall, rooms, node })
-    return [node]
+    return node
   })
 }
 
@@ -232,7 +232,7 @@ function furnitureNodeFor(
  * and that their key does not capture, and compare it on a hit: the wall entry
  * compares the floor's id and `defaultCeilingHeight`; the room entry, the floor's
  * id, `defaultCeilingHeight`, and the `roomOverrides` reference; the opening
- * entry, the floor's id, the host wall reference, and the room side; the
+ * entry, the floor's id, the host wall reference, the owning wall's thickness, and the room side; the
  * furniture entry, the floor's id.
  * The WeakMaps are keyed by the source object so dropped entities do not leak.
  */
@@ -252,7 +252,8 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     planGeometry: (floor) => planGeometryOfFloor(floor),
     roomNodes: (floor, geometry, overrides) =>
       roomNodesFor(roomCache, { floor, geometry }, overrides),
-    openingNodes: (floor, rooms) => openingNodesFor(openingCache, floor, rooms),
+    openingNodes: (floor, rooms, geometry) =>
+      openingNodesFor(openingCache, { floor, geometry }, rooms),
     stairNodes: (project) =>
       getOrCreate(stairCache, project.stairs, () => deriveStairNodes(project)),
     furnitureNode: (floor, item) => furnitureNodeFor(furnitureCache, floor, item),

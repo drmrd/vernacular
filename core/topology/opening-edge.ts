@@ -15,6 +15,14 @@ export interface OpeningPlacement {
   hostWallId?: string
 }
 
+/** Whether this stretch belongs to the authored wall or covers it. */
+export function edgeCarriesWall(
+  edge: { wallId: string; covers?: readonly string[] },
+  wallId: string | undefined,
+): boolean {
+  return wallId !== undefined && (edge.wallId === wallId || edge.covers?.includes(wallId) === true)
+}
+
 /**
  * The result of resolving an opening to the specific graph edge that contains
  * it. A wall splits into several edges at every T-junction and interior
@@ -62,7 +70,7 @@ export function resolveOpeningEdge(
   if (opening.hostWallId === undefined) return null
 
   for (const edge of graph.edges) {
-    if (edge.wallId !== opening.hostWallId) continue
+    if (!edgeCarriesWall(edge, opening.hostWallId)) continue
 
     const a = graph.vertices[edge.a]
     const b = graph.vertices[edge.b]

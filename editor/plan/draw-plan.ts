@@ -433,7 +433,7 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
     if (corners === undefined || start === undefined || end === undefined) {
       return { stretches: [], selected }
     }
-    const centerline: HostWallRun = { start, end, wallId: edge.wallId }
+    const centerline: HostWallRun = { ...edge, start, end }
     const gaps = openingSpansAlong(centerline, openings)
     return { stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
   })
