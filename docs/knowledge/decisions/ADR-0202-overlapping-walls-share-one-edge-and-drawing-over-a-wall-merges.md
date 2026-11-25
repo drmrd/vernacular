@@ -15,6 +15,9 @@ related:
 sourceFiles:
   [
     core/topology/wall-graph.ts,
+    core/topology/wall-network.ts,
+    core/topology/floor-plan-geometry.ts,
+    core/topology/opening-edge.ts,
     core/topology/rooms.ts,
     core/geometry/segment.ts,
     core/commands/handlers/wall-commands.ts,
@@ -22,7 +25,7 @@ sourceFiles:
     docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md,
   ]
 status: current
-updated: 2026-11-23
+updated: 2026-11-25
 ---
 
 # ADR-0202: Overlapping walls share one edge that the first wall owns, and a wall drawn over a wall merges with it
@@ -31,23 +34,17 @@ updated: 2026-11-23
 
 Current. The owner approved the kernel specification
 (`docs/specs/2026-11-18-geometric-kernel-and-first-arc-wall.md`) on 2026-11-18, including its
-decision 3, taken on 2026-11-17: a wall drawn over part of another wall merges with it. Its code
-settles #681. It takes overlap into the scope of room derivation, which ADR-0026 listed as out of
-scope; the note in ADR-0026 lands with the pull request that makes overlapping walls keep their
-rooms.
-
-The code arrives in the kernel stage (#687). Until then a wall drawn along part of another wall can
-make a room disappear, and the add-wall handler appends a wall with no check.
+decision of 2026-11-17 that a wall drawn over part of another wall merges with it. Room derivation
+handles straight collinear overlaps as described in ADR-0026. Overlapping arcs and the ordering
+of tangent arcs at a junction belong to the arc-wall work in ADR-0201.
 
 ## Context
 
-The wall graph handles crossings and tees. Two segments on one line give no intersection
-(`core/geometry/segment.ts`), so a shared stretch becomes two edges between the same two junctions.
-The architecture review of 2026-11-14 ran four cases against the room derivation: a square, a wall
-inside one edge, a wall that overlaps one edge and runs past the corner, and an exact copy of one
-edge. The last three give no rooms (#681). The kernel specification did not run them again. Read
-from the code, the cause is the face walk: two edges leave a junction at the same angle, the sort has
-no rule for that, and the walk joins the room to the outer face.
+On 2026-11-14 the architecture review compared a plain square with three versions of the same
+room. One had a second wall along part of an edge, another had that wall run past the corner, and
+the third had an exact copy of an edge. All three lost the room. The graph split the walls at
+junctions but kept two edges along the shared stretch. Both left a junction at the same angle,
+and the face walk joined the room to the outer face. [Issue #681](https://github.com/drmrd/vernacular/issues/681)
 
 ## Decision
 
@@ -58,12 +55,12 @@ no rule for that, and the walk joins the room to the outer face.
 2. Two walls overlap when they lie on the same line or the same circle, under the test of ADR-0199,
    and share a stretch longer than the length tolerance. The graph makes one edge for the shared
    stretch.
-3. The wall that comes first in the floor's wall list owns the shared edge. The footprint, the 3D
-   solid, the faces, and the room boundary of that stretch come from the owner. The other wall is
-   recorded on the edge as covered and contributes only the parts of itself that no earlier wall
-   covers. Nothing is drawn twice.
-4. A wall covered over its whole length contributes nothing. The plan geometry lists it, so that a
-   later stage can show it to the user.
+3. The earliest wall in the floor's wall list that contains the shared stretch owns its edge.
+   The edge follows the owner's direction. Its thickness comes from that wall, as do the footprint,
+   3D solid, and wall faces along the room boundary. The edge lists each later wall id as covered,
+   in floor order. Each later wall owns the stretches that extend beyond all earlier walls.
+4. When earlier walls cover a wall over its whole length, the floor plan geometry includes its id
+   in `setAside.coveredWallIds`.
 5. A wall shorter than the length tolerance is set aside and listed, as today.
 6. The fan around a junction is ordered by direction first and by curvature second, so the order is
    always defined, also for a straight wall and an arc that starts tangent to it
@@ -71,6 +68,14 @@ no rule for that, and the walk joins the room to the outer face.
 
 Old documents, a move, and a paste can hold an overlap whatever the drawing rule is, so these points
 hold for every input.
+
+### Saved openings on a shared stretch
+
+A saved door or window on a covered wall cuts the owning wall on the shared stretch. The
+document keeps the authored host wall id, position along that wall, and handing. For example,
+a door keeps its hinge and swing when its host runs opposite to the owner. The plan and 3D
+opening use the owner's wall thickness at the cut. On an exposed part of its host, the opening
+uses that wall's thickness. [Issue #681](https://github.com/drmrd/vernacular/issues/681)
 
 ### Drawing over a wall merges
 
@@ -86,12 +91,11 @@ hold for every input.
 10. One kernel function computes the parts. The handler calls it, and the wall tool calls it for the
     preview, so the user sees what will be added before the click.
 
-### Other commands are not changed here
+### Moving, pasting, and dragging walls
 
-An end point drag, a move, and a paste can also leave an overlap. This stage does not change them.
-The derivation gives them a defined result, and the command layer decides whether they merge or
-refuse when it moves rules into the handlers (ADR-0179). The kernel function of point 10 is there
-for a handler to call.
+Moving a wall, pasting one, or dragging an endpoint can also produce an overlap. The same ownership
+rule applies to the resulting geometry. The command policy for merging or refusing those edits is
+tracked in [issue #1195](https://github.com/drmrd/vernacular/issues/1195).
 
 ## Alternatives considered
 
@@ -114,8 +118,6 @@ or deleted.
   in 3D, and lists the covered wall.
 - The document can hold less than the user drew. A user who draws over a wall to give that stretch
   another thickness gets no change and one line of text.
-- Whether a move, a paste, or an end point drag merges or refuses stays with the command layer. An
-  issue for it is on the kernel specification's list of issues to file (section 7).
 
 ## References
 
