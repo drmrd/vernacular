@@ -1,0 +1,40 @@
+{
+  "$schema": "https://drmrd.github.io/vernacular/schema/catalog/1/catalog.schema.json",
+  "catalogVersion": 1,
+  "name": "Example Library",
+  "packs": [
+    {
+      "packId": "example-furniture",
+      "version": "1.0.0",
+      "formatVersion": 2,
+      "manifest": {
+        "sha256": "a8adaa6685ce891195dd0064c493b3cdfe524c2821dd80f85f24eeb6a04fccf8",
+        "byteLength": 2329
+      },
+      "byteLength": 6052,
+      "itemCount": 3
+    },
+    {
+      "packId": "vernacular-starter",
+      "version": "1.1.1",
+      "formatVersion": 2,
+      "manifest": {
+        "sha256": "c7b98ecab5bfe986b32e84e07d1b8972031c571521f8f77b11fe965d0f2f3fa3",
+        "byteLength": 2034
+      },
+      "byteLength": 787131,
+      "itemCount": 2
+    },
+    {
+      "packId": "vernacular-starter",
+      "version": "1.0.0",
+      "formatVersion": 1,
+      "manifest": {
+        "sha256": "36275a9822b56a305e4fe4127b751ca382328ff29f4290edb00be28fc2af4b37",
+        "byteLength": 663
+      },
+      "byteLength": 41,
+      "itemCount": 1
+    }
+  ]
+}

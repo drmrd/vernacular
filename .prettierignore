@@ -36,3 +36,6 @@ tests/fixtures/packs/
 
 # Starter pack trees from scripts/pack/starter/build-starter-pack.mjs; a rebuild test pins the bytes.
 public/packs/
+
+# Generated fixture store checked byte for byte against the publisher's output.
+tests/fixtures/store/
