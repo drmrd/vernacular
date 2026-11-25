@@ -52,6 +52,13 @@ function faceBand([start, end]: Interval, y: number) {
   return { from: [from.x, from.y], to: [to.x, to.y] }
 }
 
+function recordedBands(recorder: ReturnType<typeof recordingContext>, color: string) {
+  return recorder.segments
+    .filter(({ style }) => style === color)
+    .map(({ from, to }) => (from[0] < to[0] ? { from, to } : { from: to, to: from }))
+    .sort((a, b) => a.from[0] - b.from[0])
+}
+
 interface PlanCase {
   label: string
   walls: WallSceneNode[]
@@ -112,13 +119,88 @@ it('paints only the wall that owns each stretch, with the owner finish stopping 
       },
     })
 
-    const bandsFor = (color: string) =>
-      recorder.segments
-        .filter(({ style }) => style === color)
-        .map(({ from, to }) => (from[0] < to[0] ? { from, to } : { from: to, to: from }))
-        .sort((a, b) => a.from[0] - b.from[0])
+    expect
+      .soft(recordedBands(recorder, SAGE), label)
+      .toEqual(sage.map((span) => faceBand(span, 60)))
+    expect
+      .soft(recordedBands(recorder, PLUM), label)
+      .toEqual(plum.map((span) => faceBand(span, -150)))
+  }
+})
 
-    expect.soft(bandsFor(SAGE), label).toEqual(sage.map((span) => faceBand(span, 60)))
-    expect.soft(bandsFor(PLUM), label).toEqual(plum.map((span) => faceBand(span, -150)))
+interface HighlightCase {
+  label: string
+  walls: WallSceneNode[]
+  wallId: string
+  openings?: DrawableOpening[]
+  centerline: readonly Interval[]
+  face: { y: number; intervals: readonly Interval[] }
+}
+
+it('highlights only exposed wall stretches and leaves the doorway clear on the marked face', () => {
+  const first = paintedWall('first', [0, 4000], 120)
+  const copy = paintedWall('second', [4000, 0], 300)
+  const tails: readonly Interval[] = [
+    [-1000, 0],
+    [4000, 5000],
+  ]
+  const cases: HighlightCase[] = [
+    {
+      label: 'the fully covered wall',
+      walls: [first, copy],
+      wallId: 'second',
+      centerline: [],
+      face: { y: -150, intervals: [] },
+    },
+    {
+      label: 'both exposed tails of the later wall',
+      walls: [first, paintedWall('second', [5000, -1000], 300)],
+      wallId: 'second',
+      centerline: tails,
+      face: { y: -150, intervals: tails },
+    },
+    {
+      label: 'the owner face at its doorway',
+      walls: [first, copy],
+      openings: [doorway],
+      wallId: 'first',
+      centerline: [[0, 4000]],
+      face: {
+        y: 60,
+        intervals: [
+          [0, 2200],
+          [2800, 4000],
+        ],
+      },
+    },
+  ]
+
+  for (const { label, walls, wallId, openings, centerline, face } of cases) {
+    const recorder = recordingContext()
+    const surface = { kind: 'wall-face', wallId, side: 'left' } as const
+    drawPlan(recorder.ctx, {
+      walls,
+      viewport: VIEWPORT,
+      width: 1200,
+      height: 600,
+      selectedIds: new Set(),
+      ...(openings === undefined ? {} : { openings }),
+      surfacePaint: {
+        activeSurface: surface,
+        highlightedSurface: surface,
+        treatmentForFace: () => undefined,
+      },
+    })
+
+    const accents = recordedBands(recorder, '#b5894a')
+    expect.soft(accents, label).toHaveLength(centerline.length + face.intervals.length)
+    const onCenter = accents.filter(
+      ({ from, to }) => from[1] === VIEWPORT.offset.y && to[1] === VIEWPORT.offset.y,
+    )
+    const onFace = accents.filter(
+      ({ from, to }) => from[1] !== VIEWPORT.offset.y && to[1] !== VIEWPORT.offset.y,
+    )
+    expect.soft(onCenter, label).toEqual(centerline.map((interval) => faceBand(interval, 0)))
+    expect.soft(onFace, label).toEqual(face.intervals.map((interval) => faceBand(interval, face.y)))
   }
 })
