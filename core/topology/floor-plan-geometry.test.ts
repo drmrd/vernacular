@@ -32,6 +32,18 @@ function thicknessesOfOnlyWall(wall: Wall): {
   return { onWall: network.walls[0]?.thickness, inMap: network.thickness.get(WALL_ID) }
 }
 
+function brickRegistries() {
+  return {
+    constructionProfiles: createRegistry(1, [
+      {
+        id: BRICK_PROFILE,
+        system: 'solid-masonry' as const,
+        layers: [{ material: 'brick', thickness: CUSTOM_BRICK_THICKNESS_MM }],
+      },
+    ]),
+  }
+}
+
 describe('deriveFloorPlanGeometry', () => {
   it('carries the id of its floor', () => {
     expect(deriveFloorPlanGeometry(floorOf([singleWall()])).floorId).toBe(FLOOR_ID)
@@ -74,17 +86,10 @@ describe('deriveFloorPlanGeometry', () => {
   })
 
   it('resolves the thickness in the registries it is given', () => {
-    const registries = {
-      constructionProfiles: createRegistry(1, [
-        {
-          id: BRICK_PROFILE,
-          system: 'solid-masonry' as const,
-          layers: [{ material: 'brick', thickness: CUSTOM_BRICK_THICKNESS_MM }],
-        },
-      ]),
-    }
-
-    const { network } = deriveFloorPlanGeometry(floorOf([singleWall(BRICK_PROFILE)]), registries)
+    const { network } = deriveFloorPlanGeometry(
+      floorOf([singleWall(BRICK_PROFILE)]),
+      brickRegistries(),
+    )
 
     expect(network.walls[0]?.thickness).toBe(CUSTOM_BRICK_THICKNESS_MM)
     expect(network.thickness.get(WALL_ID)).toBe(CUSTOM_BRICK_THICKNESS_MM)
@@ -142,18 +147,6 @@ describe('what the plan geometry sets aside', () => {
   })
 })
 
-function brickRegistries() {
-  return {
-    constructionProfiles: createRegistry(1, [
-      {
-        id: BRICK_PROFILE,
-        system: 'solid-masonry' as const,
-        layers: [{ material: 'brick', thickness: CUSTOM_BRICK_THICKNESS_MM }],
-      },
-    ]),
-  }
-}
-
 function expectCornersAmong(polygon: readonly Point[], low: number, high: number): void {
   for (const corner of polygon) {
     for (const coordinate of [corner.x, corner.y]) {
@@ -190,8 +183,9 @@ describe('rooms of profile walls', () => {
   it('keeps a room of plain walls on the raw thickness', () => {
     const floor = floorOf(twoRoomWalls())
 
-    expect(deriveFloorPlanGeometry(floor, brickRegistries()).rooms).toEqual(
-      deriveFloorPlanGeometry(floor).rooms,
-    )
+    const plain = deriveFloorPlanGeometry(floor).rooms
+
+    expect(plain).not.toHaveLength(0)
+    expect(deriveFloorPlanGeometry(floor, brickRegistries()).rooms).toEqual(plain)
   })
 })
