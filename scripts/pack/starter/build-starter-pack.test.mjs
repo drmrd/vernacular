@@ -14,6 +14,7 @@ const PACKS_DIR = resolve('public/packs')
 const RELEASED_PACK_DIR = join(PACKS_DIR, 'vernacular-starter-1.1.0')
 const OLD_PACK_DIR = join(PACKS_DIR, 'vernacular-starter-1.0.0')
 const PUBLISHABLE_PACK_VERSION = '1.1.1'
+const STARTER_PACK_FORMAT_VERSION = 2
 const OLD_CHAIR_HASH = '8a8a0cafbecb2446278c8b61e275c1ac78373a7ccd59ddd5ac7684bf1388341e'
 const LICENSE_ID = 'CC-BY-4.0'
 const ATTRIBUTION = 'The Vernacular Contributors'
@@ -110,8 +111,13 @@ describe('the starter pack build', () => {
     expect(sameBytes(thumbnailBytes, releasedThumbnail)).toBe(true)
     expect(grass).not.toHaveProperty('thumbnail')
     expect(built.has(`thumbnails/${grass.contentHash}.webp`)).toBe(false)
-    expect({ version: manifest.version, chair, grass }).toMatchObject({
-      version: PUBLISHABLE_PACK_VERSION,
+    expect({ manifest, chair, grass }).toMatchObject({
+      manifest: {
+        packId: 'vernacular-starter',
+        formatVersion: STARTER_PACK_FORMAT_VERSION,
+        license: LICENSE_ID,
+        version: PUBLISHABLE_PACK_VERSION,
+      },
       chair: {
         contentHash: releasedChair.contentHash,
         byteLength: chairBytes.length,
