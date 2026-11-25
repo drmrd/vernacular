@@ -3,6 +3,7 @@ import { createFloor, createWall } from '../model/factories'
 import type { Floor, Opening, Point, Wall } from '../model/types'
 import { effectiveWallThickness } from '../scene/construction-profile'
 import { counterClockwiseWalls, pt, wall } from '../scene/opening-room-side-test-fixtures'
+import type { WallFaceRecord, WallSide } from './wall-face-records'
 import { buildWallGraph } from './wall-graph'
 import { deriveWallNetwork, type NetworkWall, type WallNetwork } from './wall-network'
 
@@ -122,11 +123,7 @@ export function stubRoomWalls(): Wall[] {
 }
 
 /** The record of one face of one wall; throws when the network holds none for it. */
-export function faceOf(
-  network: WallNetwork,
-  wallId: string,
-  side: 'positive' | 'negative',
-): WallNetwork['faces'][number] {
+export function faceOf(network: WallNetwork, wallId: string, side: WallSide): WallFaceRecord {
   const face = network.faces.find((record) => record.wallId === wallId && record.side === side)
   if (face === undefined) {
     throw new Error(`expected a ${side} face for wall ${wallId}`)

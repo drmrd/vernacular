@@ -19,21 +19,22 @@ import {
   nodesOf,
   offCenterPartitionFloor,
 } from '../scene/wall-runs-test-fixtures'
-import { deriveFloorPlanGeometry, type FloorPlanGeometry } from './floor-plan-geometry'
+import {
+  deriveFloorPlanGeometry,
+  type FloorPlanGeometry,
+  type WallFaceRecord,
+  type WallFaceStretch,
+  type WallSide,
+} from './floor-plan-geometry'
 import { faceOf, floorOf, stubRoomWalls, twoRoomWalls } from './plan-geometry-test-support'
-import type { WallNetwork } from './wall-network'
 
-type Side = 'positive' | 'negative'
-type WallFace = WallNetwork['faces'][number]
-type FaceStretch = WallFace['stretches'][number]
+type Side = WallSide
+type WallFace = WallFaceRecord
+type FaceStretch = WallFaceStretch
 
 const SIDES: readonly Side[] = ['positive', 'negative']
 const PARTITION_X_MM = 4000
 const COURTYARD_WALL_IDS = ['c-s', 'c-e', 'c-n', 'c-w']
-
-function geometryOf(floor: Floor): FloorPlanGeometry {
-  return deriveFloorPlanGeometry(floor)
-}
 
 function onlyStretch(face: WallFace): FaceStretch {
   const [stretch, ...others] = face.stretches
@@ -59,13 +60,9 @@ function xRangeOfRoom(geometry: FloorPlanGeometry, stretch: FaceStretch) {
   return { minX: Math.min(...xs), maxX: Math.max(...xs) }
 }
 
-function stretchesWithoutRooms(face: WallFace) {
-  return face.stretches.map(({ fromMm, toMm, roomIndex }) => ({ fromMm, toMm, roomIndex }))
-}
-
 describe('the faces of a wall network', () => {
   it('bounds one room on each face of a wall that two rooms share', () => {
-    const geometry = geometryOf(floorOf(twoRoomWalls()))
+    const geometry = deriveFloorPlanGeometry(floorOf(twoRoomWalls()))
 
     const positive = onlyStretch(faceOf(geometry.network, 'shared', 'positive'))
     const negative = onlyStretch(faceOf(geometry.network, 'shared', 'negative'))
@@ -78,7 +75,7 @@ describe('the faces of a wall network', () => {
   })
 
   it('bounds no room on the outside face of an outside wall', () => {
-    const { network } = geometryOf(floorOf(twoRoomWalls()))
+    const { network } = deriveFloorPlanGeometry(floorOf(twoRoomWalls()))
 
     const outside = onlyStretch(faceOf(network, 'east', 'negative'))
     const inside = onlyStretch(faceOf(network, 'east', 'positive'))
@@ -89,7 +86,7 @@ describe('the faces of a wall network', () => {
   })
 
   it('cuts a face where the room along it changes and joins it where the room stays', () => {
-    const geometry = geometryOf(floorOf(twoRoomWalls()))
+    const geometry = deriveFloorPlanGeometry(floorOf(twoRoomWalls()))
 
     const positive = faceOf(geometry.network, 'south', 'positive')
     const negative = faceOf(geometry.network, 'south', 'negative')
@@ -99,19 +96,18 @@ describe('the faces of a wall network', () => {
       { fromMm: 4000, toMm: 8000 },
     ])
     const [west, east] = positive.stretches
-    expect(west && xRangeOfRoom(geometry, west).maxX).toBeLessThanOrEqual(PARTITION_X_MM)
-    expect(east && xRangeOfRoom(geometry, east).minX).toBeGreaterThanOrEqual(PARTITION_X_MM)
-    expect(west?.roomIndex).not.toBe(east?.roomIndex)
-    expect(stretchesWithoutRooms(negative)).toEqual([
-      { fromMm: 0, toMm: 8000, roomIndex: undefined },
-    ])
+    if (west === undefined || east === undefined) throw new Error('expected two stretches')
+    expect(xRangeOfRoom(geometry, west).maxX).toBeLessThanOrEqual(PARTITION_X_MM)
+    expect(xRangeOfRoom(geometry, east).minX).toBeGreaterThanOrEqual(PARTITION_X_MM)
+    expect(west.roomIndex).not.toBe(east.roomIndex)
+    expect(negative.stretches).toEqual([{ fromMm: 0, toMm: 8000, roomIndex: undefined }])
   })
 
   it('puts the room on the negative face of a wall drawn the other way round', () => {
     const walls = counterClockwiseWalls().map((each) =>
       each.id === 'south' ? wall('south', pt(4000, 0), pt(0, 0)) : each,
     )
-    const { network } = geometryOf(floorOf(walls))
+    const { network } = deriveFloorPlanGeometry(floorOf(walls))
 
     const positive = onlyStretch(faceOf(network, 'south', 'positive'))
     const negative = onlyStretch(faceOf(network, 'south', 'negative'))
@@ -122,12 +118,12 @@ describe('the faces of a wall network', () => {
   })
 
   it('bounds no room on either face of a stub inside a room', () => {
-    const { network } = geometryOf(floorOf(stubRoomWalls()))
+    const { network } = deriveFloorPlanGeometry(floorOf(stubRoomWalls()))
 
     const stubFaces = SIDES.map((side) => faceOf(network, 'stub', side))
     const south = onlyStretch(faceOf(network, 'south', 'positive'))
 
-    expect(stubFaces.map(stretchesWithoutRooms)).toEqual([
+    expect(stubFaces.map((face) => face.stretches)).toEqual([
       [{ fromMm: 0, toMm: 1000, roomIndex: undefined }],
       [{ fromMm: 0, toMm: 1000, roomIndex: undefined }],
     ])
@@ -136,7 +132,7 @@ describe('the faces of a wall network', () => {
   })
 
   it('bounds the same room on both faces of a wall that links a shaft to the outer walls', () => {
-    const { network } = geometryOf(linkedShaftFloor())
+    const { network } = deriveFloorPlanGeometry(linkedShaftFloor())
 
     const positive = onlyStretch(faceOf(network, 'link', 'positive'))
     const negative = onlyStretch(faceOf(network, 'link', 'negative'))
@@ -147,7 +143,7 @@ describe('the faces of a wall network', () => {
   })
 
   it('bounds the room around a courtyard on the outer faces of the courtyard walls', () => {
-    const { network } = geometryOf(courtyardFloor())
+    const { network } = deriveFloorPlanGeometry(courtyardFloor())
 
     for (const wallId of COURTYARD_WALL_IDS) {
       const positive = onlyStretch(faceOf(network, wallId, 'positive'))
@@ -241,7 +237,7 @@ function wallsUnderTest(floor: Floor): WallUnderTest[] {
 
 describe('the faces of a wall network next to the room sides of today', () => {
   it.each(floorCases)('agrees with the room sides of today on every wall ($name)', ({ floor }) => {
-    const geometry = geometryOf(floor)
+    const geometry = deriveFloorPlanGeometry(floor)
     const { rooms } = nodesOf(floor)
     expect(geometry.rooms.map((room) => room.id)).toEqual(rooms.map((room) => room.id))
 
@@ -266,7 +262,7 @@ describe('the faces of each room', () => {
     { name: 'two rooms', floor: floorOf(twoRoomWalls()) },
     { name: 'a courtyard', floor: courtyardFloor() },
   ])('lists for each room the wall faces that bound it ($name)', ({ floor }) => {
-    const geometry = geometryOf(floor)
+    const geometry = deriveFloorPlanGeometry(floor)
 
     expect(geometry.rooms.length).toBeGreaterThan(1)
     geometry.rooms.forEach((room, roomIndex) => {
