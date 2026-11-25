@@ -2,6 +2,7 @@ import { wallPath } from '../geometry/wall-path'
 import { createFloor, createWall } from '../model/factories'
 import type { Floor, Opening, Point, Wall } from '../model/types'
 import { effectiveWallThickness } from '../scene/construction-profile'
+import { counterClockwiseWalls, pt, wall } from '../scene/opening-room-side-test-fixtures'
 import { buildWallGraph } from './wall-graph'
 import { deriveWallNetwork, type NetworkWall, type WallNetwork } from './wall-network'
 
@@ -15,6 +16,8 @@ const TWO_ROOM_DEPTH_MM = 3000
 const TWO_ROOM_PARTITION_X_MM = 4000
 const BRICK_SQUARE_SIDE_MM = 5000
 const BRICK_PROFILE = 'solid-masonry-brick'
+const STUB_X_MM = 2000
+const STUB_LENGTH_MM = 1000
 
 function wallOf(id: string, start: Point, end: Point): Wall {
   return createWall(start, end, { id, thickness: WALL_THICKNESS_MM })
@@ -111,4 +114,22 @@ export function todaysGraphAndThickness(walls: readonly Wall[]) {
     return effectiveWallThickness(wall)
   })
   return { graph, thicknessByEdge }
+}
+
+/** The room walls of 4000 by 3000 and a stub from the south wall into the room, ending free. */
+export function stubRoomWalls(): Wall[] {
+  return [...counterClockwiseWalls(), wall('stub', pt(STUB_X_MM, 0), pt(STUB_X_MM, STUB_LENGTH_MM))]
+}
+
+/** The record of one face of one wall; throws when the network holds none for it. */
+export function faceOf(
+  network: WallNetwork,
+  wallId: string,
+  side: 'positive' | 'negative',
+): WallNetwork['faces'][number] {
+  const face = network.faces.find((record) => record.wallId === wallId && record.side === side)
+  if (face === undefined) {
+    throw new Error(`expected a ${side} face for wall ${wallId}`)
+  }
+  return face
 }
