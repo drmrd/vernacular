@@ -1,7 +1,7 @@
 import type { Point } from '../model/types'
 import { MM_PER_INCH } from '../units/length-units'
 import { distance } from './point'
-import { dot, leftNormal, subtract } from './vector'
+import { dot, leftPerp, subtract } from './vector'
 
 /** Two lengths closer than this are the same length. */
 export const LENGTH_TOLERANCE_MM = 0.001
@@ -64,13 +64,23 @@ export function pointsCoincide(a: Point, b: Point): boolean {
 
 /** Whether both ends of the shorter segment lie within tolerance of the other's line. */
 // eslint-disable-next-line max-params -- a pair of endpoints specifies each segment
-export function onOneLine(a1: Point, a2: Point, b1: Point, b2: Point): boolean {
-  const [lineStart, lineEnd, shorterStart, shorterEnd] =
-    distance(a1, a2) >= distance(b1, b2) ? [a1, a2, b1, b2] : [b1, b2, a1, a2]
-  const normal = leftNormal(lineStart, lineEnd)
+export function onOneLine(
+  a1: Point,
+  a2: Point,
+  b1: Point,
+  b2: Point,
+  tolerance = DERIVATION_LENGTH_TOLERANCE_MM,
+): boolean {
+  const lengthA = distance(a1, a2)
+  const lengthB = distance(b1, b2)
+  function containsBoth(start: Point, end: Point, other: readonly Point[]): boolean {
+    const normal = leftPerp(subtract(end, start))
+    const limit = tolerance * distance(start, end)
+    return other.every((point) => Math.abs(dot(subtract(point, start), normal)) <= limit)
+  }
   return (
-    Math.abs(dot(subtract(shorterStart, lineStart), normal)) <= DERIVATION_LENGTH_TOLERANCE_MM &&
-    Math.abs(dot(subtract(shorterEnd, lineStart), normal)) <= DERIVATION_LENGTH_TOLERANCE_MM
+    (lengthA < lengthB || containsBoth(a1, a2, [b1, b2])) &&
+    (lengthB < lengthA || containsBoth(b1, b2, [a1, a2]))
   )
 }
 

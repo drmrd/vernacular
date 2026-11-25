@@ -1,4 +1,4 @@
-import { DERIVATION_LENGTH_TOLERANCE_MM, onOneLine, pointsCoincide } from '../geometry/tolerance'
+import { overlappingEndpoints } from './overlapping-endpoints'
 import { dot, shift, subtract, unit } from '../geometry/vector'
 import type { Point, Wall } from '../model/types'
 
@@ -20,21 +20,15 @@ function findDrawnWallCoverage(
   existing: readonly Wall[],
   drawn: WallPart,
 ): { parts: WallPart[]; hasCoverage: boolean } {
-  if (pointsCoincide(drawn.start, drawn.end)) return { parts: [drawn], hasCoverage: false }
   const direction = subtract(drawn.end, drawn.start)
   const squaredLength = dot(direction, direction)
   const project = (point: Point): number => dot(subtract(point, drawn.start), direction)
   const length = Math.sqrt(squaredLength)
-  const minimumOverlap = DERIVATION_LENGTH_TOLERANCE_MM * length
 
   const covered: CoveredInterval[] = []
   for (const wall of existing) {
-    if (!onOneLine(drawn.start, drawn.end, wall.start, wall.end)) continue
-    const first = project(wall.start)
-    const second = project(wall.end)
-    const start = Math.max(0, Math.min(first, second))
-    const end = Math.min(squaredLength, Math.max(first, second))
-    if (end - start > minimumOverlap) covered.push({ start, end })
+    const overlap = overlappingEndpoints(drawn, wall)
+    if (overlap) covered.push({ start: project(overlap.start), end: project(overlap.end) })
   }
   if (covered.length === 0) return { parts: [drawn], hasCoverage: false }
 
@@ -50,7 +44,10 @@ function findDrawnWallCoverage(
     coveredEnd = Math.max(coveredEnd, interval.end)
   }
   if (coveredEnd < squaredLength) parts.push({ start: pointAt(coveredEnd), end: drawn.end })
-  return { parts, hasCoverage: true }
+  return {
+    parts: parts.filter(({ start, end }) => start.x !== end.x || start.y !== end.y),
+    hasCoverage: true,
+  }
 }
 
 export function drawnWallNote(existing: readonly Wall[], drawn: WallPart): string | undefined {

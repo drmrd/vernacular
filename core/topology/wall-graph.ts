@@ -1,6 +1,9 @@
 import { distance } from '../geometry/point'
 import { pointOnSegment, segmentIntersection } from '../geometry/segment'
-import { DEFAULT_JUNCTION_TOLERANCE_MM } from '../geometry/tolerance'
+import { DEFAULT_JUNCTION_TOLERANCE_MM, onOneLine } from '../geometry/tolerance'
+import { dot, shift, subtract } from '../geometry/vector'
+import { overlappingEndpoints } from './overlapping-endpoints'
+import type { WallPart } from './uncovered-parts'
 import type { Point, Wall } from '../model/types'
 
 /** An edge connecting two vertices of the planar graph, carrying its source wall's id. */
@@ -45,17 +48,20 @@ export function buildWallGraph(
     return vertices.length - 1
   }
 
+  const earlierWalls: WallPart[] = []
   for (const wall of walls) {
     if (distance(wall.start, wall.end) <= tolerance) continue
-    const a = vertexIndexFor(wall.start)
-    const b = vertexIndexFor(wall.end)
+    const aligned = alignOverlapEndpoints(wall, earlierWalls, tolerance)
+    const a = vertexIndexFor(aligned.start)
+    const b = vertexIndexFor(aligned.end)
+    earlierWalls.push(aligned)
     edges.push({ a, b, wallId: wall.id })
   }
 
   // Crossing pass: register each interior X-crossing between a pair of edges as
   // a graph vertex. The splitting pass below then splits both crossing edges at
   // that shared vertex.
-  registerInteriorCrossings(edges, vertices, vertexIndexFor)
+  registerInteriorCrossings(edges, vertices, vertexIndexFor, tolerance)
 
   // Splitting pass: where another vertex lies on an edge's interior (a
   // T-junction), replace that edge with a chain of sub-edges between the
@@ -64,6 +70,30 @@ export function buildWallGraph(
   const splitEdges = edges.flatMap((edge) => splitEdgeAtInteriorVertices(edge, vertices, tolerance))
 
   return { vertices, edges: assignStretchOwners(splitEdges) }
+}
+
+function alignOverlapEndpoints(
+  wall: WallPart,
+  earlierWalls: WallPart[],
+  tolerance: number,
+): WallPart {
+  let { start, end } = wall
+  for (const owner of earlierWalls) {
+    const overlap = overlappingEndpoints(owner, wall, tolerance)
+    if (!overlap) continue
+    const direction = subtract(owner.end, owner.start)
+    function project(point: Point): Point {
+      return shift(
+        owner.start,
+        direction,
+        dot(subtract(point, owner.start), direction) / dot(direction, direction),
+      )
+    }
+    if (start === wall.start && (start === overlap.start || start === overlap.end))
+      start = project(start)
+    if (end === wall.end && (end === overlap.start || end === overlap.end)) end = project(end)
+  }
+  return { start, end }
 }
 
 /** Duplicate stretches leave a junction at the same angle and confuse the room walk. */
@@ -100,10 +130,12 @@ function assignStretchOwners(edges: readonly GraphEdge[]): GraphEdge[] {
  * graph vertex (merged through the same endpoint helper). The caller's splitting
  * pass then splits both crossing edges at the shared vertex.
  */
+// eslint-disable-next-line max-params -- crossings use the same tolerance as endpoint registration
 function registerInteriorCrossings(
   edges: readonly GraphEdge[],
   vertices: readonly Point[],
   vertexIndexFor: (point: Point) => number,
+  tolerance: number,
 ): void {
   for (const [firstPosition, first] of edges.entries()) {
     const firstA = vertices[first.a]
@@ -115,6 +147,7 @@ function registerInteriorCrossings(
       const secondB = vertices[second.b]
       if (secondA === undefined || secondB === undefined) continue
 
+      if (onOneLine(firstA, firstB, secondA, secondB, tolerance)) continue
       const crossing = segmentIntersection(firstA, firstB, secondA, secondB)
       if (crossing !== null) vertexIndexFor(crossing)
     }
