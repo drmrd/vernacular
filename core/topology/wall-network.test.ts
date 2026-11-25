@@ -136,4 +136,12 @@ describe('derivePlanRooms', () => {
   it('returns no room for walls that close no loop', () => {
     expect(derivePlanRooms(networkOf(teeWalls()))).toEqual([])
   })
+
+  it('refuses a network that deriveWallNetwork did not build', () => {
+    const built = networkOf(twoRoomWalls())
+    const lookalike = { ...built }
+
+    expect(lookalike).toEqual(built)
+    expect(() => derivePlanRooms(lookalike)).toThrow(Error)
+  })
 })
