@@ -56,6 +56,18 @@ describe('reads a valid manifest into typed assets and gives nothing for an inva
     expect(namedFiles(asset)).toEqual([{ contentHash: MODEL_HASH, byteLength: MODEL_BYTES }])
   })
 
+  it('lists a thumbnail as only its content hash and byte length', () => {
+    const noted = specificationAsset()
+    noted.thumbnail = { ...(noted.thumbnail as Fields), note: 'kept by the reader' }
+    const asset = firstAssetOf({ ...exampleManifest(), assets: [noted] })
+    const files = namedFiles(asset)
+    expect(files).toStrictEqual([
+      { contentHash: MODEL_HASH, byteLength: MODEL_BYTES },
+      { contentHash: THUMBNAIL_HASH, byteLength: THUMBNAIL_BYTES },
+    ])
+    expect(files[1]).not.toBe(asset.thumbnail)
+  })
+
   it('reads a format 2 manifest with formatVersion 2', () => {
     expect(readPackManifest(exampleManifest())?.formatVersion).toBe(FORMAT_WITH_DISTRIBUTION_FIELDS)
   })
