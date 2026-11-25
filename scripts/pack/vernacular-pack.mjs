@@ -25,6 +25,7 @@ const USAGE = [
 
 /**
  * @typedef {object} PackCliDeps
+ * @property {typeof readPackPublicationFromDisk} [readPackPublication]
  * @property {(packDir: string) => Promise<unknown>} readManifest
  * @property {(packDir: string) => import('./pack-integrity.mjs').PackReader} createReader
  * @property {(packDir: string, report: object) => Promise<void>} writeReport
@@ -135,10 +136,14 @@ function publishRequest(packDir, flags) {
   return options.has('--name') ? { ...request, name: options.get('--name') } : request
 }
 
-/** @param {import('./publish-store.mjs').PublishRequest} request @param {PackCliDeps} deps */
-async function publishValidatedPack(request, deps) {
+/**
+ * @param {import('./publish-store.mjs').PublishRequest} request
+ * @param {PackCliDeps} deps
+ * @param {Pick<PackCliDeps, 'publishPack'>} publisher
+ */
+async function publishValidatedPack(request, deps, publisher) {
   try {
-    await deps.publishPack(request)
+    await publisher.publishPack(request)
     deps.log(`Published ${request.packDir} to ${request.storeDir}`)
     return EXIT_OK
   } catch (cause) {
@@ -160,8 +165,14 @@ export async function runPackCli(argv, deps) {
     return EXIT_USAGE
   }
   let manifest
+  let publication
   try {
-    manifest = await deps.readManifest(packDir)
+    if (request && deps.readPackPublication) {
+      publication = await deps.readPackPublication(packDir)
+      manifest = publication.manifest
+    } else {
+      manifest = await deps.readManifest(packDir)
+    }
   } catch (cause) {
     deps.error(`Could not read manifest in ${packDir}: ${String(cause)}`)
     return EXIT_INVALID
@@ -177,7 +188,7 @@ export async function runPackCli(argv, deps) {
     reportErrors(deps, packDir, review.errors)
     return EXIT_INVALID
   }
-  if (request) return publishValidatedPack(request, deps)
+  if (request) return publishValidatedPack(request, deps, publication ?? deps)
   deps.log(`${command}: ${packDir} is a valid pack`)
   return EXIT_OK
 }
@@ -186,6 +197,16 @@ export async function runPackCli(argv, deps) {
 export async function readManifestFromDisk(packDir) {
   const raw = await readFile(join(packDir, 'manifest.json'), 'utf8')
   return JSON.parse(raw)
+}
+
+/** Bind publication to the exact manifest bytes the CLI will review. @param {string} packDir */
+export async function readPackPublicationFromDisk(packDir) {
+  const bytes = await readFile(join(packDir, 'manifest.json'))
+  return {
+    manifest: JSON.parse(bytes.toString('utf8')),
+    /** @param {import('./publish-store.mjs').PublishRequest} request */
+    publishPack: (request) => publishPackToDisk(request, bytes),
+  }
 }
 
 /**
@@ -241,6 +262,7 @@ const isDirectInvocation =
 if (isDirectInvocation) {
   runPackCli(process.argv.slice(2), {
     readManifest: readManifestFromDisk,
+    readPackPublication: readPackPublicationFromDisk,
     createReader: createNodePackReader,
     writeReport: writeReportToDisk,
     publishPack: publishPackToDisk,

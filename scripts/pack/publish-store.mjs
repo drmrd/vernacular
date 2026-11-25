@@ -69,9 +69,12 @@ function parseJson(bytes, path) {
   }
 }
 
-/** @param {PublishFiles} io @param {string} path */
-async function readManifest(io, path) {
+/** @param {PublishFiles} io @param {string} path @param {Buffer} [reviewedBytes] */
+async function readManifest(io, path, reviewedBytes) {
   const bytes = await readRequiredFile(io, path)
+  if (reviewedBytes && !bytes.equals(reviewedBytes)) {
+    throw new Error(`${path}: manifest changed during validation. Retry the publish.`)
+  }
   const value = parseJson(bytes, path)
   const manifest = readPackManifest(value)
   if (!manifest) throw new Error(`${path}: ${validatePackManifest(value).errors.join(', ')}`)
@@ -184,11 +187,12 @@ async function readTexts({ packDir, storeDir }, io, { packId, version }) {
 /**
  * @param {PublishRequest} request
  * @param {PublishFiles} io
+ * @param {Buffer} [reviewedBytes]
  * @returns {Promise<void>}
  */
-export async function publishPack(request, io) {
+export async function publishPack(request, io, reviewedBytes) {
   const { packDir, storeDir, name } = request
-  const incoming = await readManifest(io, join(packDir, MANIFEST_FILE))
+  const incoming = await readManifest(io, join(packDir, MANIFEST_FILE), reviewedBytes)
   const { manifest, bytes, digest } = incoming
   const { packId, version, formatVersion, assets } = manifest
   const catalogPath = join(storeDir, CATALOG_FILE)
@@ -228,7 +232,7 @@ export async function publishPack(request, io) {
   await io.writeFile(catalogPath, catalogBytes)
 }
 
-/** @param {PublishRequest} request */
-export function publishPackToDisk(request) {
-  return withStoreWriter(request.storeDir, (io) => publishPack(request, io))
+/** @param {PublishRequest} request @param {Buffer} [reviewedBytes] */
+export function publishPackToDisk(request, reviewedBytes) {
+  return withStoreWriter(request.storeDir, (io) => publishPack(request, io, reviewedBytes))
 }
