@@ -23,6 +23,9 @@ const WIDER_DOOR_WIDTH_MM = 900
 const RENAMED_GROUND_ID = 'g2'
 const NORTH_WALL_MOVE_MM = 500
 const NORTH_WALL_ID = 'w-north'
+const EAST_WALL_ID = 'w-east'
+const WEST_WALL_ID = 'w-west'
+const SOUTH_WALL_ID = 'w-south'
 
 // Equality alone cannot show that a path sets the room side: both could omit it.
 describe('the room side of the door on the wall of a closed room', () => {
@@ -73,7 +76,7 @@ describe('a warm createSceneGraphDeriver after a change of the rooms', () => {
     const [ground, ...upperFloors] = project.floors
     const withoutNorth: Floor = {
       ...ground!,
-      walls: ground!.walls.filter((wall) => wall.id !== 'w-north'),
+      walls: ground!.walls.filter((wall) => wall.id !== NORTH_WALL_ID),
     }
     const edited = { ...project, floors: [withoutNorth, ...upperFloors] }
 
@@ -119,10 +122,10 @@ function moveNorthWithItsNeighborEnds(wall: Wall): Wall {
   if (wall.id === NORTH_WALL_ID) {
     return { ...wall, start: north(wall.start), end: north(wall.end) }
   }
-  if (wall.id === 'w-east') {
+  if (wall.id === EAST_WALL_ID) {
     return { ...wall, end: north(wall.end) }
   }
-  if (wall.id === 'w-west') {
+  if (wall.id === WEST_WALL_ID) {
     return { ...wall, start: north(wall.start) }
   }
   return wall
@@ -184,7 +187,9 @@ const EDITS_OF_ONE_KIND: ReadonlyArray<readonly [string, (project: Project) => P
       withGround(project, (ground) => ({
         ...ground,
         walls: ground.walls.map((wall) =>
-          wall.id === 'w-south' ? { ...wall, constructionProfile: 'solid-masonry-brick' } : wall,
+          wall.id === SOUTH_WALL_ID
+            ? { ...wall, constructionProfile: 'solid-masonry-brick' }
+            : wall,
         ),
       })),
   ],

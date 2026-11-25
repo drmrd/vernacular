@@ -63,7 +63,7 @@ describe('the plan geometry of the pure scene graph', () => {
     })
   })
 
-  it('gives each room node the area of its plan geometry room', () => {
+  it('gives each room node without a custom polygon the area of its plan geometry room', () => {
     const project = twoStoreyProject()
     const graph = deriveSceneGraph(project)
 
