@@ -164,8 +164,11 @@ export function deriveFloorPlanGeometry(
  */
 export function createPlanGeometryDeriver(): (floor: Floor) => FloorPlanGeometry {
   const geometryByFloor = new WeakMap<Floor, FloorPlanGeometry>()
-  const spansByNetwork = new WeakMap<WallNetwork, WeakMap<readonly Opening[], OpeningSpan[]>>()
-  const spansFor = (network: WallNetwork, openings: readonly Opening[]): OpeningSpan[] => {
+  const spansByNetwork = new WeakMap<
+    WallNetwork,
+    WeakMap<readonly Opening[], readonly OpeningSpan[]>
+  >()
+  const spansFor = (network: WallNetwork, openings: readonly Opening[]): readonly OpeningSpan[] => {
     let spansByOpenings = spansByNetwork.get(network)
     if (spansByOpenings === undefined) {
       spansByOpenings = new WeakMap()
