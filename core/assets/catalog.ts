@@ -4,7 +4,7 @@
 // "catalog.json"). validateCatalog never throws; each error starts with the
 // path it names. A reader ignores fields it does not know.
 
-import { isRecord } from './is-record.ts'
+import { isPlainObject } from './is-record.ts'
 import { isSemanticVersion, SEMANTIC_VERSION_RULE } from './semantic-version.ts'
 import { isSha256Hex } from './sha256-hex.ts'
 
@@ -29,10 +29,6 @@ export type CatalogValidation =
   | { outcome: 'valid'; catalog: Catalog }
   | { outcome: 'newer-version' }
   | { outcome: 'invalid'; errors: string[] }
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return isRecord(value) && !Array.isArray(value)
-}
 
 function isNonNegativeInteger(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) >= 0

@@ -3,7 +3,7 @@
 // Manifest rules for the four optional distribution fields of an asset:
 // byteLength, thumbnail, copyright, and changes. An absent field is valid.
 // Pure: it appends human-readable problems to the caller's error list.
-import { isRecord } from './is-record.ts'
+import { isPlainObject } from './is-record.ts'
 import { isSha256Hex } from './sha256-hex.ts'
 
 function isPositiveInteger(value: unknown): boolean {
@@ -20,7 +20,7 @@ function validateThumbnail(thumbnail: unknown, label: string, errors: string[]):
   if (thumbnail === undefined) {
     return
   }
-  if (!isRecord(thumbnail)) {
+  if (!isPlainObject(thumbnail)) {
     errors.push(`${label} must be an object`)
     return
   }
