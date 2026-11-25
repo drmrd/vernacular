@@ -31,6 +31,28 @@ function scale(point: Point, factor: number): Point {
   return { x: point.x * factor, y: point.y * factor }
 }
 
+/** Where an opening sits along its host wall once it is kept on the wall, in millimeters. */
+export interface OpeningPlacementAlongWall {
+  /** The center's distance from the wall start, clamped so both jambs stay on the wall. */
+  readonly position: number
+  /** The width, clamped to the wall length. */
+  readonly width: number
+}
+
+/**
+ * Clamp an opening's width to the wall length and its center so both jambs stay on the wall. The
+ * 3D walls and the plan geometry both place an opening through this one rule.
+ */
+export function clampedOpeningPlacement(
+  position: number,
+  width: number,
+  wallLength: number,
+): OpeningPlacementAlongWall {
+  const clampedWidth = Math.min(width, wallLength)
+  const half = clampedWidth / 2
+  return { position: Math.max(half, Math.min(position, wallLength - half)), width: clampedWidth }
+}
+
 /**
  * Resolve the opening's plan geometry against its host wall, clamping the center
  * so the opening stays on the wall. A zero-length host wall yields a degenerate
@@ -57,15 +79,14 @@ export function deriveOpeningGeometry(opening: Opening, hostWall: Wall): Opening
   // checks on axis-aligned normals hold.
   const normal: Point = { x: -along.y + 0, y: along.x }
 
-  const effectiveWidth = Math.min(opening.width, length)
-  const half = effectiveWidth / 2
-  const clampedPosition = Math.max(half, Math.min(opening.position, length - half))
+  const placement = clampedOpeningPlacement(opening.position, opening.width, length)
+  const half = placement.width / 2
 
-  const center = add(hostWall.start, scale(along, clampedPosition))
+  const center = add(hostWall.start, scale(along, placement.position))
   const jambStart = add(center, scale(along, -half))
   const jambEnd = add(center, scale(along, half))
 
-  return { center, along, normal, width: effectiveWidth, jambStart, jambEnd }
+  return { center, along, normal, width: placement.width, jambStart, jambEnd }
 }
 
 /**
