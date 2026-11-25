@@ -43,7 +43,11 @@ async function renameClosedProject(
   if (!target.ok) {
     return target
   }
-  const opened = await openDocumentHandle(ports, target.request, { leaveSnapshots: true })
+  const opened = await openDocumentHandle(
+    ports,
+    { ...target.request, keepBothFiles: true },
+    { leaveSnapshots: true },
+  )
   if (!opened.ok) {
     return opened
   }

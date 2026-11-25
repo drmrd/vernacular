@@ -1,5 +1,7 @@
 import { callGuarded } from '../guarded-call'
+import type { SaveReport } from '../../storage'
 import type { HandleNotice } from './handle-types'
+import { openedFromSecondFile, type OpenedProject } from './read-for-open'
 
 /** The notices of one handle: each kind is raised once and delivered once. */
 export interface HandleNotices {
@@ -46,5 +48,37 @@ export function createHandleNotices(): HandleNotices {
         listeners.delete(listener)
       }
     },
+  }
+}
+
+/** Raises the notices that what an open found calls for. */
+export function raiseOpenNotices(
+  notices: HandleNotices,
+  opened: OpenedProject,
+  recoveryCopyKept: boolean | undefined,
+): void {
+  if (opened.savedByNewerBuild) {
+    notices.raise('saved-by-newer-build')
+  }
+  if (openedFromSecondFile(opened)) {
+    notices.raise('saved-in-second-file')
+  }
+  if (recoveryCopyKept === true) {
+    notices.raise('recovery-copy-kept')
+  }
+}
+
+/** The listener that raises the notices that each store save calls for. */
+export function reportNoticesTo(notices: HandleNotices): (report: SaveReport) => void {
+  return (report) => {
+    if (report.faults.length > 0) {
+      notices.raise('saved-with-faults')
+    }
+    if (report.secondFile !== undefined) {
+      notices.raise('saved-in-second-file')
+    }
+    if (report.graftDropped !== undefined) {
+      notices.raise('unreadable-file-replaced')
+    }
   }
 }

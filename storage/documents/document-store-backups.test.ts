@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CURRENT_SCHEMA_VERSION, decodeDocument, encodeDocument } from '../../core'
 import type { Project } from '../../core'
+import { soundProject } from '../../tests/storage/conformance/conformance-documents'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
   bytesOf,
@@ -9,25 +11,28 @@ import {
 import type { DirectoryPort } from '../fs/directory-port'
 import type { StoreRead } from './document-store'
 import {
+  BackupRefusingDirectory,
+  DISK_FULL_MESSAGE,
   DOCUMENT_PATH,
-  PassThroughDirectory,
+  NOT_JSON,
+  SECOND_FILE_NAME,
+  SECOND_FILE_PATH,
+  UNREADABLE_PREFIX,
   backupsOf,
+  newerVersionBytes,
+  rejectionOf,
   rootHolding,
+  rootHoldingFiles,
   storeOver,
+  unreadableNamePattern,
 } from './document-store-test-kit'
 
 const OLDEST_VERSION = 8
 const OLDER_VERSION = 15
 const NEXT_VERSION = 16
 const AUTOSAVE_DIRECTORY = 'a/.house-autosave'
-
-/** Test support: rejects each write under a backup directory and passes everything else through. */
-class BackupRefusingDirectory extends PassThroughDirectory {
-  override writeFile(path: string, bytes: Uint8Array): Promise<void> {
-    if (path.includes('.house-backups/')) return Promise.reject(new Error('the disk is full'))
-    return super.writeFile(path, bytes)
-  }
-}
+const ANOTHER_NOT_JSON = new TextEncoder().encode('{ also not json')
+const NOT_A_PROJECT = new TextEncoder().encode('{"title":"a list of errands"}')
 
 async function backupBytesOf(root: DirectoryPort): Promise<Uint8Array[]> {
   return (await backupsOf(root)).map(({ bytes }) => bytes)
@@ -44,11 +49,10 @@ function anotherVersion8Document(): Uint8Array {
   return bytesOf(document)
 }
 
-function refusal(call: () => Promise<unknown>): Promise<unknown> {
-  return call().then(
-    () => undefined,
-    (error: unknown) => error,
-  )
+async function unreadableCopiesOf(
+  root: DirectoryPort,
+): Promise<{ name: string; bytes: Uint8Array }[]> {
+  return (await backupsOf(root)).filter(({ name }) => name.startsWith(UNREADABLE_PREFIX))
 }
 
 describe('the migration backups of a store', () => {
@@ -110,9 +114,9 @@ describe('a backup that cannot be written', () => {
     const root = await rootHolding(original)
     const store = storeOver(new BackupRefusingDirectory(root))
 
-    const error = await refusal(() => store.read('a'))
+    const error = await rejectionOf(() => store.read('a'))
 
-    expect(error).toBeInstanceOf(Error)
+    expect(error).toEqual(new Error(DISK_FULL_MESSAGE))
     expect(await root.readFile(DOCUMENT_PATH)).toEqual(original)
   })
 })
@@ -130,5 +134,118 @@ describe('a backup and the autosave cycle', () => {
 
     expect(await backupBytesOf(root)).toEqual([original])
     expect(await root.list(AUTOSAVE_DIRECTORY)).toEqual([])
+  })
+})
+
+describe('a copy of an unreadable stored file before a save replaces it', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('copies bytes that are not a project with version 0', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect(decodeDocument(NOT_A_PROJECT)).toMatchObject({
+      ok: false,
+      failure: { kind: 'not-a-project' },
+    })
+    const root = await rootHolding(NOT_A_PROJECT)
+
+    await storeOver(root).save('a', soundProject())
+
+    const copies = await unreadableCopiesOf(root)
+    expect(copies).toHaveLength(1)
+    expect(copies[0]?.name).toMatch(unreadableNamePattern(0))
+    expect(copies[0]?.bytes).toEqual(NOT_A_PROJECT)
+  })
+
+  it('keeps one copy for each different unreadable file, and one for the same bytes again', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const root = await rootHolding(NOT_JSON)
+    await storeOver(root).save('a', soundProject())
+    await root.writeFile(DOCUMENT_PATH, NOT_JSON)
+    await storeOver(root).save('a', soundProject())
+    expect(await unreadableCopiesOf(root)).toHaveLength(1)
+
+    await root.writeFile(DOCUMENT_PATH, ANOTHER_NOT_JSON)
+    await storeOver(root).save('a', soundProject())
+
+    const copied = (await unreadableCopiesOf(root)).map(({ bytes }) => bytes)
+    expect(copied).toHaveLength(2)
+    expect(copied).toContainEqual(NOT_JSON)
+    expect(copied).toContainEqual(ANOTHER_NOT_JSON)
+  })
+
+  it('rejects the save and leaves the stored file as it was when the copy cannot be written', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const root = await rootHolding(NOT_JSON)
+    const store = storeOver(new BackupRefusingDirectory(root))
+
+    const error = await rejectionOf(() => store.save('a', soundProject()))
+
+    expect(error).toEqual(new Error(DISK_FULL_MESSAGE))
+    expect(await root.readFile(DOCUMENT_PATH)).toEqual(NOT_JSON)
+  })
+
+  it('keeps no copy for a save over a readable file or for a first save', async () => {
+    const readable = await rootHolding(encodeDocument(soundProject(), undefined).bytes)
+    const first = await rootHolding(undefined)
+
+    await storeOver(readable).save('a', soundProject())
+    await storeOver(first).save('a', soundProject())
+
+    expect(await unreadableCopiesOf(readable)).toEqual([])
+    expect(await unreadableCopiesOf(first)).toEqual([])
+  })
+})
+
+describe('a copy of an unreadable second file before a save replaces it', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('copies a second file that is not JSON, replaces it, and leaves the newer main file as it was', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const main = newerVersionBytes()
+    const root = await rootHoldingFiles({ main, second: NOT_JSON })
+    const project = soundProject()
+
+    const report = await storeOver(root).save('a', project)
+
+    expect(report.secondFile?.name).toBe(SECOND_FILE_NAME)
+    expect(report.graftDropped).toBeDefined()
+    expect(await root.readFile(DOCUMENT_PATH)).toEqual(main)
+    expect(await root.readFile(SECOND_FILE_PATH)).toEqual(encodeDocument(project, undefined).bytes)
+    const copies = await unreadableCopiesOf(root)
+    expect(copies).toHaveLength(1)
+    expect(copies[0]?.name).toMatch(unreadableNamePattern(0))
+    expect(copies[0]?.bytes).toEqual(NOT_JSON)
+  })
+
+  it('copies a second file at a newer version under that version, and replaces it', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const second = newerVersionBytes()
+    const root = await rootHoldingFiles({ main: newerVersionBytes(), second })
+    const project = soundProject()
+
+    await storeOver(root).save('a', project)
+
+    expect(await root.readFile(SECOND_FILE_PATH)).toEqual(encodeDocument(project, undefined).bytes)
+    const copies = await unreadableCopiesOf(root)
+    expect(copies).toHaveLength(1)
+    expect(copies[0]?.name).toMatch(unreadableNamePattern(CURRENT_SCHEMA_VERSION + 1))
+    expect(copies[0]?.bytes).toEqual(second)
+  })
+
+  it('rejects the save and leaves both files as they were when the copy of a second file cannot be written', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const main = newerVersionBytes()
+    const root = await rootHoldingFiles({ main, second: NOT_JSON })
+    const store = storeOver(new BackupRefusingDirectory(root))
+
+    const error = await rejectionOf(() => store.save('a', soundProject()))
+
+    expect(error).toEqual(new Error(DISK_FULL_MESSAGE))
+    expect(await root.readFile(SECOND_FILE_PATH)).toEqual(NOT_JSON)
+    expect(await root.readFile(DOCUMENT_PATH)).toEqual(main)
   })
 })

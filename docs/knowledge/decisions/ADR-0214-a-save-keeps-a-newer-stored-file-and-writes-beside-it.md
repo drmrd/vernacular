@@ -16,16 +16,23 @@ sourceFiles:
   [
     storage/documents/document-store.ts,
     storage/documents/document-backups.ts,
+    storage/documents/save-target.ts,
+    storage/documents/second-file.ts,
     storage/project-files/project-file-name.ts,
+    storage/zip/unchecked-copy.ts,
     session/handle/document-handle.ts,
     session/flows/choose-kept-file.ts,
+    session/flows/asset-users.ts,
+    editor/projects/two-files-dialog.tsx,
+    app/use-two-files-dialog.ts,
+    app/two-files-dialog-choices.ts,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
     docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md,
     docs/specs/2026-11-15-session-layer-and-document-identity.md,
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-22
+updated: 2026-11-23
 ---
 
 # ADR-0214: A save keeps a newer stored file and writes beside it
@@ -35,8 +42,8 @@ updated: 2026-11-22
 Current. The owner decided "keep both files" on 2026-11-16 and approved this record and the
 amendment of the specifications on 2026-11-22. It amends section 5.1 of the first-stage
 specification, sections 2.2, 2.3, and 7 of the format specification, section 3.3 of the design
-specification, and sections 5.3, 5.4, 5.5, 5.7, 5.8, and 8 of the session specification. ADR-0184,
-ADR-0047, and ADR-0182 each get a note. The code lands with #741 and #842.
+specification, and sections 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, and 8 of the session specification.
+ADR-0184, ADR-0047, and ADR-0182 each get a note. The code lands with #741 and #842.
 
 ## Context
 
@@ -73,16 +80,54 @@ both documents, and they hold different work that Vernacular cannot merge.
 - The user chooses in a dialog: keep both plan files, open the second plan file as a new project, replace
   `vernacular.json` with the second plan file, or, when the build can read both, remove the second
   plan file. When the build can read both files, the dialog shows before the project opens.
+  A choice made while this tab holds the project leaves the tab holding it, opened again from the
+  file that the choice kept. After the second plan file opens as a new project, the tab holds the
+  new project.
 - Nothing is replaced or removed before the user chooses. A choice copies the bytes that it
   replaces or removes to `.house-backups/` first, under the never-replace rule of ADR-0182. The
   only file that the picked-folder store removes is a second document file.
+- While a project in the workspace has a second document file, its record lists the assets of
+  one of its two documents. A delete then removes no asset from the shared pool.
 - A higher `schemaRevision` at the same `schemaVersion` is not a newer version. The graft keeps
   what such a file added (ADR-0178, ADR-0184).
 - Before a save replaces a stored file that it cannot read at all, it copies that file to the
   backups and tells the user once.
 - An archive carries one Document. An ordinary export leaves a second document file out, and an
-  unchecked copy carries it.
+  unchecked copy carries it. An unchecked copy carries the assets that each of its document files
+  names, read without a check, besides the assets that the record lists.
 - The conformance suite runs the case on every store.
+
+## Notes on the code
+
+- A save encodes against `vernacular.json` first (`storage/documents/save-target.ts`). Only when
+  that encode reports a stored file at a newer version does the save encode again, against the
+  second document file, and write there. An ordinary save costs no extra decode.
+- The report of a save to the second file describes that file: its faults, its backup, and its
+  dropped graft. One more field names the second file and the version of the newer
+  `vernacular.json`.
+- That save writes no console warning about the newer `vernacular.json`. The warning about a
+  previous file that could not be read still shows.
+- A save report with a dropped graft says that the save replaced a stored file it could not read,
+  and that a copy of the file is in the backups. The report has no separate field for the copy.
+- A choice that finds a file changed since the dialog showed has no sentence of its own. The page
+  reads both files again and shows the dialog with what it finds, or closes the dialog when no
+  second file is left.
+- The record write at the end of a choice is best effort. When it fails after the files changed,
+  the choice still counts as done and a console warning says so. The card keeps its second-file
+  line until the next open or index rebuild writes the record.
+- A failed choice reads "Could not change the plan files:" and the reason. That holds when a
+  choice found a file changed and the read of both files after it fails, since a change was
+  tried. "Open and keep both plan files" before an open changes no file, so its failure shows what
+  a click on the project's card shows for the same failure, without that prefix.
+- When the card action "Choose a plan file" cannot read the two plan files, the dialog does not
+  show and the notice gives only the reason. No change was tried, so the prefix would be wrong
+  (owner, 2026-11-23).
+- A replace or a remove can change the stored files and then fail to open the project, for
+  example when another tab takes the lock first. The change is done, so this is not a failed
+  change. It shows as a failed open of the project, with the reason of the open, the way a failed
+  try of a card shows, and the page reads the cards again. It needs no new text (owner,
+  2026-11-23). The failed result of the flow carries `afterChange: true`, which tells the page
+  which of the two it is.
 
 ## Consequences
 
@@ -100,6 +145,9 @@ both documents, and they hold different work that Vernacular cannot merge.
   before this record still replaces a newer file.
 - A file that another writer changed at the same schema version is still replaced by the next
   save, with a graft of its unknown data only. That case has its own issue.
+- While a workspace project has two document files, a delete frees no space in the shared pool.
+  It ends once the user opens the second file as a new project, replaces `vernacular.json` with
+  it, or removes it.
 
 ## Alternatives considered
 
@@ -119,7 +167,7 @@ both documents, and they hold different work that Vernacular cannot merge.
 
 - Issues #741 and #842.
 - `docs/specs/2026-11-15-session-layer-and-document-identity.md`, sections 5.3 (point 10), 5.4,
-  5.5, 5.7, 5.8, and 8.
+  5.5, 5.6, 5.7, 5.8, and 8.
 - `docs/specs/2026-06-10-vernacular-floor-plan-format.md`, sections 2.2, 2.3, and 7.
 - `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`, section 5.1.
 - `docs/specs/2026-06-01-vernacular-design.md`, section 3.3.

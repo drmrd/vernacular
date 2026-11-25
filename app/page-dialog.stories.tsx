@@ -50,7 +50,7 @@ const meta: Meta<typeof PageDialog> = {
   title: 'App/PageDialog',
   component: PageDialog,
   tags: ['autodocs'],
-  args: { failedOpen: failedOpenState({}), onOpen: fn(), onExport: fn() },
+  args: { failedOpen: failedOpenState({}), twoFiles: undefined, onOpen: fn(), onExport: fn() },
   decorators: [
     (story) => (
       // A transform makes this wrapper the containing block of the viewport-pinned backdrop.
@@ -111,5 +111,25 @@ export const ChoosingARepair: Story = {
       screen.getByRole('alertdialog', { name: 'Open the repaired project' }),
     ).toBeVisible()
     await expect(screen.getByRole('button', { name: 'Open as a new project' })).toBeVisible()
+  },
+}
+
+export const ChoosingAFile: Story = {
+  args: {
+    failedOpen: failedOpenState({ shown: undefined }),
+    twoFiles: {
+      state: 'newer-main',
+      secondFileName: 'vernacular.format-17.json',
+      onKeepBoth: fn(),
+      onOpenAsNew: fn(),
+      onReplace: fn(),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(
+      screen.getByRole('alertdialog', { name: 'This project has two plan files' }),
+    ).toBeVisible()
+    await expect(screen.getByRole('button', { name: 'Keep both plan files' })).toBeVisible()
   },
 }

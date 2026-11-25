@@ -1,6 +1,6 @@
 import type { ProjectRecord } from '../../storage'
 import { folderRefusal } from '../handle/find-document-store'
-import type { DocumentHandle, OpenFailed, OpenRequest } from '../handle/handle-types'
+import type { DocumentHandle, OpenRequest, ReadFailed } from '../handle/handle-types'
 import { storageUnavailable } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
 import { type SwitchResult, switchProject } from './switch-project'
@@ -42,7 +42,7 @@ export async function requestFor(ports: SessionPorts, id: string): Promise<OpenR
 }
 
 /** The request to open, or why the folder cannot be used. */
-type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | OpenFailed
+type RecentTarget = { readonly ok: true; readonly request: OpenRequest } | ReadFailed
 
 /**
  * Where the project of the id is kept: its request, or why the folder cannot be used. For a folder,

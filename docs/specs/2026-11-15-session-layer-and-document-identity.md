@@ -340,7 +340,7 @@ Design:
    The values sit in one module. They are a first estimate and can change with evidence.
 
 6. The reader writes only the document and the entries under `assets/`. An entry with a path outside the archive layout is ignored.
-7. Deleting a project removes an asset only when no other project in the workspace and no entry of the user's library refers to it. The asset lists in the index records answer that. A list that came from a best-effort read of a project that did not open can be incomplete. While the workspace holds another project in that state, a delete removes no asset. A project in the workspace store that has no record counts the same way, because nothing says which assets it uses. So does a project whose record is older than its stored document. A delete writes the pending changes of the open project first, so that its record is current. Assets inside a folder project are never removed.
+7. Deleting a project removes an asset only when no other project in the workspace and no entry of the user's library refers to it. The asset lists in the index records answer that. A list that came from a best-effort read of a project that did not open can be incomplete. While the workspace holds another project in that state, a delete removes no asset. A project in the workspace store that has no record counts the same way, because nothing says which assets it uses. So does a project whose record is older than its stored document. So does a project that has a second document file, because its record lists the assets of one of the two documents. A delete writes the pending changes of the open project first, so that its record is current. Assets inside a folder project are never removed.
 
 Left to the builder: which asset scopes an archive must carry, and the wording of the two reports.
 
@@ -413,7 +413,9 @@ A dialog titled "This project has two plan files" offers the choice. It opens fr
 - Cancel shows before an open and returns to the page.
 - Where no dialog shows, an open of a project with two readable plan files fails with the message "This project has two plan files. Open it from the Projects page to choose one." Those places are Open folder on the Projects page, and the recent list and Open folder in the project menu of the editor.
 
-Each choice runs under the project's lock, reads both files again, and writes nothing when one of them changed since the dialog showed. A choice that replaces or removes a file copies its bytes to the backups first.
+Each choice runs under the project's lock, reads both files again, and writes nothing when one of them changed since the dialog showed. A choice that replaces or removes a file copies its bytes to the backups first. A choice made while this tab holds the project leaves the tab holding it, opened again from the file that the choice kept. After the second plan file opens as a new project, the tab holds the new project.
+
+A failed choice gives the notice "Could not change the plan files: &lt;reason&gt;". The same notice shows when a choice found a file changed and the read of both files after it fails, because a change was tried. When "Choose a plan file" cannot read the two plan files, no change was tried, so the notice gives only the reason. A failed "Open and keep both plan files" changes no file and shows what a click on the card shows for the same failure. A replace or a remove that changed the stored files but whose open then failed shows the same way: it is a failed open of the project, with the reason of the open, and the page reads the cards again.
 
 #### A failed import
 
@@ -497,7 +499,7 @@ The card action and the Project menu entry both dispatch `project/rename`. For a
 - This stage has one format, the archive, so the action asks nothing. Plan formats join the same control after the plan drawing stage, under the same label.
 - For the project open in this tab, pending changes are written first.
 - For a project open in another tab, the export holds the last saved state.
-- For a project that did not open, the export is an unchecked copy: the stored files as they are, in one archive, with the recovery snapshots and the migration backups. Its assets are the ones the project's record lists (section 5.5, point 5). One notice says "This copy was not checked, because the project did not open." When the record lists no asset, the copy holds none, and the same notice says so.
+- For a project that did not open, the export is an unchecked copy: the stored files as they are, in one archive, with the recovery snapshots and the migration backups. Its assets are the ones the project's record lists (section 5.5, point 5) and the ones that each stored document file names in a read without a check. One notice says "This copy was not checked, because the project did not open." When none of them is in the pool, the copy holds no asset, and the same notice says so.
 - An ordinary export still carries no snapshot and no backup, as the first stage requires. The unchecked copy is the one exception, and an import ignores those entries.
 - For a project with a second document file, an ordinary export holds the document that an open would read, as `vernacular.json`. An unchecked copy carries every document file.
 

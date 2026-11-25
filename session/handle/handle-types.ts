@@ -1,10 +1,10 @@
 import type { DecodeFailure, Project, RepairOffer } from '../../core'
-import type { ProjectLocation, ProjectSnapshots } from '../../storage'
+import type { ProjectLocation, ProjectSnapshots, TwoDocumentFiles } from '../../storage'
 import type { AutosaveStatus } from '../autosave/create-autosave'
 import type { EditorSession } from '../editor-session/editor-session'
 
-/** Why a project did not open. */
-export type OpenFailure =
+/** Why a project could not be read for an open. */
+export type ReadFailure =
   | { readonly kind: 'open-elsewhere' | 'not-found' | 'folder-permission' | 'folder-unavailable' }
   | {
       readonly kind: 'did-not-open'
@@ -14,14 +14,28 @@ export type OpenFailure =
     }
   | { readonly kind: 'storage-unavailable'; readonly message: string }
 
-/** Whether the changes of an open project are stored, and whether the store outlives the tab. */
-export type SaveStatus = AutosaveStatus | 'tab-only'
+/** Why a project did not open. */
+export type OpenFailure =
+  | ReadFailure
+  /** The main file and a second file both read, and the user has not said which to keep. */
+  | { readonly kind: 'two-files'; readonly files: TwoDocumentFiles }
+
+/**
+ * Whether the changes of an open project are stored, whether the store outlives the tab, and
+ * whether they are stored in a second plan file.
+ */
+export type SaveStatus = AutosaveStatus | 'tab-only' | 'second-file'
 
 /** How a save ended: stored, or not stored with the reason. */
 export type SaveOutcome = { readonly ok: true } | { readonly ok: false; readonly message: string }
 
 /** Something the user should hear about an open project, given once for each handle. */
-export type HandleNotice = 'saved-by-newer-build' | 'saved-with-faults' | 'recovery-copy-kept'
+export type HandleNotice =
+  | 'saved-by-newer-build'
+  | 'saved-with-faults'
+  | 'recovery-copy-kept'
+  | 'saved-in-second-file'
+  | 'unreadable-file-replaced'
 
 /** One open project: its session, its save state, and the lock that keeps it in this tab. */
 export interface DocumentHandle {
@@ -62,6 +76,11 @@ export interface OpenFailed {
   readonly failure: OpenFailure
 }
 
+/** A read for an open that failed, with the reason. */
+export interface ReadFailed extends OpenFailed {
+  readonly failure: ReadFailure
+}
+
 /** The handle of a project that opened, or why it did not open. */
 export type OpenResult = { readonly ok: true; readonly handle: DocumentHandle } | OpenFailed
 
@@ -71,4 +90,6 @@ export interface OpenRequest {
   readonly location: ProjectLocation
   /** When set, a missing project starts from this document instead of failing. */
   readonly create?: () => Project
+  /** True opens the main file without asking when a second file sits beside it. */
+  readonly keepBothFiles?: boolean
 }

@@ -1,6 +1,7 @@
 // @vitest-environment node
 // Pure storage/zip logic; node aligns Uint8Array realms with fflate.
 import { describe, expect, it, vi } from 'vitest'
+import { CURRENT_SCHEMA_VERSION } from '../../core'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
 import { readArchive } from './read-archive'
 import { buildUncheckedCopy } from './unchecked-copy'
@@ -18,18 +19,37 @@ import {
   SECOND_BYTES,
   THIRD,
 } from './unchecked-copy-test-kit'
+import { zipFolder } from './zip-codec'
 import { contentHashOf } from './zip-test-kit'
 
 /** Bytes that are no JSON and no UTF-8 text. */
 const NOT_JSON = Uint8Array.of(0xff, 0x00, 0xfe, 0x80, 0x7b)
 const NOT_A_CONTENT_HASH = 'not-a-content-hash'
 const UPPER_CASE_HASH = 'A'.repeat(64)
+const BUILD_SECOND_FILE = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
+const NEWER_SECOND_FILE = `vernacular.format-${CURRENT_SCHEMA_VERSION + 1}.json`
+const OLD_SECOND_FILE = 'vernacular.format-1.json'
 
 describe('an unchecked copy of the stored files', () => {
   it('holds vernacular.json byte for byte, also when its bytes are no JSON', async () => {
     const copy = await buildUncheckedCopy(projectFiles(NOT_JSON), new InMemoryAssetCache(), [])
 
     expect(entriesOf(copy).get('vernacular.json')).toEqual(NOT_JSON)
+  })
+
+  it('holds each second document file byte for byte under its own name, whatever its version or content', async () => {
+    const secondFiles = new Map([
+      [BUILD_SECOND_FILE, DOCUMENT],
+      [NEWER_SECOND_FILE, SECOND_BYTES],
+      [OLD_SECOND_FILE, NOT_JSON],
+    ])
+    const files = projectFiles()
+    for (const [name, bytes] of secondFiles) files.set(name, bytes)
+
+    const copy = await buildUncheckedCopy(files, new InMemoryAssetCache(), [])
+
+    const entries = entriesOf(copy)
+    for (const [name, bytes] of secondFiles) expect(entries.get(name)).toEqual(bytes)
   })
 
   it('holds every file of the snapshot and backup folders under its own path', async () => {
@@ -118,6 +138,9 @@ describe('an unchecked copy of the stored files', () => {
     files.set('nested/.house-backups/old.json', Uint8Array.of(9))
     files.set('.house-autosaved/other.json', Uint8Array.of(9))
     files.set('.house-backups-old/x.json', Uint8Array.of(9))
+    files.set(`nested/${BUILD_SECOND_FILE}`, Uint8Array.of(9))
+    files.set('vernacular.format-017.json', Uint8Array.of(9))
+    files.set('vernacular.format-x.json', Uint8Array.of(9))
 
     const copy = await buildUncheckedCopy(files, new InMemoryAssetCache(), [])
 
@@ -167,6 +190,22 @@ describe('reading an unchecked copy back as an archive', () => {
         [firstHash, FIRST_BYTES],
         [secondHash, SECOND_BYTES],
       ]),
+      rejectedAssets: [],
+    })
+  })
+
+  it('gives the document of vernacular.json when the archive holds a second document file too', async () => {
+    const archive = zipFolder(
+      new Map([
+        ['vernacular.json', DOCUMENT],
+        [BUILD_SECOND_FILE, SECOND_BYTES],
+      ]),
+    )
+
+    expect(await readArchive(archive)).toEqual({
+      ok: true,
+      document: DOCUMENT,
+      assets: new Map(),
       rejectedAssets: [],
     })
   })

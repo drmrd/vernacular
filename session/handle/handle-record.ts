@@ -3,7 +3,7 @@
  * ties them together. The session mark, the bounded wait with its warnings, and the note of a
  * failed open have their own modules.
  */
-import type { ProjectRecord, SaveReport } from '../../storage'
+import type { ProjectRecord, SaveReport, SecondFileState } from '../../storage'
 import type { SessionPorts } from '../ports'
 import { recordOfOpened } from '../projects/project-facts'
 import type { OpenRequest } from './handle-types'
@@ -25,7 +25,7 @@ export type RecordPorts = Pick<SessionPorts, 'index' | 'build' | 'now'>
 /** Writes the record of one project into the index, one write at a time. */
 export interface RecordKeeper {
   /** A read found the stored project. Writes its record with a new time of use. */
-  opened(mark: SessionMark, lastChangedAt: string | undefined): void
+  opened(mark: SessionMark, lastChangedAt: string | undefined, secondFile?: SecondFileState): void
   /** A write stored the project of the marked session. Writes its record with a new time of use. */
   saved(mark: SessionMark, report: SaveReport): void
   /**
@@ -33,6 +33,8 @@ export interface RecordKeeper {
    * warning, when the index has not answered by then. Never rejects.
    */
   settled(): Promise<void>
+  /** What the last open or save of this handle found of a second file. Reads memory only. */
+  secondFileState(): SecondFileState | undefined
   /**
    * The handle is freeing its lock now. From then on no record is built and no put starts: another
    * handle can change the store and the index now. A put that started before can still land.
@@ -70,6 +72,7 @@ interface RecordMoment {
   readonly passedCheck: boolean
   readonly lastChangedAt: string | undefined
   readonly lastUsedAt: string
+  readonly secondFile: SecondFileState | undefined
 }
 
 /**
@@ -91,6 +94,7 @@ function recordIfUnchanged(
     passedCheck: moment.passedCheck,
     lastChangedAt: moment.lastChangedAt,
     lastUsedAt: moment.lastUsedAt,
+    secondFile: moment.secondFile,
   })
 }
 
@@ -196,6 +200,14 @@ function askerAtNow(
   }
 }
 
+/** A save that wrote the second file makes it the file of the project; any other save keeps it. */
+function secondFileAfterSave(
+  kept: SecondFileState | undefined,
+  report: SaveReport,
+): SecondFileState | undefined {
+  return report.secondFile === undefined ? kept : { name: report.secondFile.name, read: 'second' }
+}
+
 /** The record keeper of the handle that opened the request. It makes no index call until asked. */
 export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): RecordKeeper {
   const warn = createWarnOnce()
@@ -203,20 +215,20 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
   const lockFreed = (): boolean => freed
   const queue = createRecordQueue({ ports, warn, lockFreed })
   const askAt = askerAtNow(ports, queue, warn)
+  let secondFile: SecondFileState | undefined
   return {
-    opened(asked, lastChangedAt) {
+    opened(asked, lastChangedAt, fromRead) {
+      secondFile = fromRead
       const mark = whileLockHeld(asked, lockFreed)
-      askAt((lastUsedAt) =>
-        recordOfOpen(ports, request, { mark, passedCheck: true, lastChangedAt, lastUsedAt }),
-      )
+      const moment = { mark, passedCheck: true, lastChangedAt, secondFile }
+      askAt((lastUsedAt) => recordOfOpen(ports, request, { ...moment, lastUsedAt }))
     },
     saved(asked, report) {
-      const mark = whileLockHeld(asked, lockFreed)
-      const passedCheck = report.faults.length === 0
+      secondFile = secondFileAfterSave(secondFile, report)
       const { lastChangedAt } = report
-      askAt(async (lastUsedAt) =>
-        recordIfUnchanged(ports, request, { mark, passedCheck, lastChangedAt, lastUsedAt }),
-      )
+      const mark = whileLockHeld(asked, lockFreed)
+      const moment = { mark, passedCheck: report.faults.length === 0, lastChangedAt, secondFile }
+      askAt(async (lastUsedAt) => recordIfUnchanged(ports, request, { ...moment, lastUsedAt }))
     },
     async settled() {
       const running = queue.running()
@@ -224,6 +236,7 @@ export function createRecordKeeper(ports: RecordPorts, request: OpenRequest): Re
         warn(WAIT_WARNING)
       }
     },
+    secondFileState: () => secondFile,
     lockReleased() {
       freed = true
     },

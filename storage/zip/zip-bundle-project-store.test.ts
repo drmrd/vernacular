@@ -3,9 +3,12 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_REVISION, createEmptyProject } from '../../core'
 import type { Project } from '../../core'
-import { readProject } from '../documents/document-store-test-kit'
+import { SECOND_FILE_NAME, readProject } from '../documents/document-store-test-kit'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
+import { secondDocumentFileVersion } from '../project-files/project-file-name'
+import { documentOfNewerVersion } from '../../tests/storage/conformance/conformance-documents'
 import { ZipBundleProjectStore } from './zip-bundle-project-store'
+import { unzipFolder } from './zip-codec'
 
 const SAVED_AT = '2026-03-04T05:06:07.000Z'
 
@@ -63,5 +66,17 @@ describe('ZipBundleProjectStore', () => {
     const store = new ZipBundleProjectStore('house', directory)
 
     expect(await store.list()).toEqual([{ id: 'house', lastChangedAt: SAVED_AT }])
+  })
+
+  it('exports no second document file, also after a save beside a newer main file', async () => {
+    const directory = new InMemoryDirectory()
+    await directory.writeFile('vernacular.json', documentOfNewerVersion())
+    const store = new ZipBundleProjectStore('house', directory)
+    await store.save('house', sampleProject())
+    expect(await directory.readFile(SECOND_FILE_NAME)).toBeDefined()
+
+    const paths = [...unzipFolder(await store.exportBundle()).keys()]
+
+    expect(paths.filter((path) => secondDocumentFileVersion(path) !== undefined)).toEqual([])
   })
 })

@@ -28,6 +28,8 @@ export interface CardActionsParts {
   readonly cards?: readonly ProjectCardModel[] | undefined
   /** The library: its packs supply an export, and its hashes are kept by a delete. */
   readonly libraryAssets?: AssetCache | null | undefined
+  /** The action that offers the choice between a project's two plan files. */
+  readonly onChooseFile?: ((id: string) => void) | undefined
   /** The start of an action that runs clears the page's sentence. */
   readonly onActionStart: () => void
   /** The end of an action that ran: the sentence to show, or null. */
@@ -124,6 +126,7 @@ export function useCardActions({
   ports,
   cards,
   libraryAssets,
+  onChooseFile,
   onActionStart,
   onActionEnd,
 }: CardActionsParts): ProjectCardActions {
@@ -139,7 +142,8 @@ export function useCardActions({
       onDelete,
       onRemoveFromList,
       ...(onExport === undefined ? {} : { onExport }),
+      ...(onChooseFile === undefined ? {} : { onChooseFile }),
     }),
-    [onRename, onDelete, onRemoveFromList, onExport],
+    [onRename, onDelete, onRemoveFromList, onExport, onChooseFile],
   )
 }

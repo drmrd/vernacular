@@ -1,0 +1,12 @@
+.two-files-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.two-files-dialog__sentence {
+  margin: 0;
+}

@@ -3,7 +3,7 @@ import type { PackSupplies } from '../../storage'
 import { bundleFilename, buildUncheckedCopy, exportProjectBundle } from '../../storage'
 import type { DocumentStore } from '../../storage'
 import { findDocumentStore } from '../handle/find-document-store'
-import type { DocumentHandle, OpenFailure } from '../handle/handle-types'
+import type { DocumentHandle, ReadFailure } from '../handle/handle-types'
 import { readForOpen } from '../handle/read-for-open'
 import { messageOf } from '../handle/thrown-failures'
 import type { SessionPorts } from '../ports'
@@ -56,7 +56,7 @@ function unhandled(failure: never): never {
 }
 
 /** The failure of a step that reads the project. Only the fixed kinds pass through as they are. */
-function failedWith(failure: OpenFailure): ExportProjectResult {
+function failedWith(failure: ReadFailure): ExportProjectResult {
   switch (failure.kind) {
     case 'not-found':
     case 'folder-permission':

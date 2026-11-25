@@ -12,7 +12,7 @@ import type {
   OpenRequest,
   OpenResult,
 } from './handle-types'
-import { readForOpen } from './read-for-open'
+import { readForOpen, type ReadForOpen } from './read-for-open'
 import { setAsideRefusedCopies } from './set-aside-refused-copies'
 import { markSession } from './session-mark'
 import { storageUnavailable } from './thrown-failures'
@@ -52,6 +52,21 @@ async function recoveryCopyParts(
 }
 
 /**
+ * The failure that asks which file to keep, when the read found a second file beside a main file
+ * that decodes and the request did not say to keep both. The record is left as it is.
+ */
+async function askWhichFile(
+  parts: OpenParts,
+  read: Extract<ReadForOpen, { readonly ok: true }>,
+): Promise<OpenFailed | undefined> {
+  if (read.opened.secondFile?.read !== 'main' || parts.request.keepBothFiles === true) {
+    return undefined
+  }
+  const files = await parts.store.twoFiles(parts.request.id)
+  return files === undefined ? undefined : { ok: false, failure: { kind: 'two-files', files } }
+}
+
+/**
  * Reads the project and builds its handle, under a lock already taken. A project that the read
  * found in the store gets its record, written apart from the open. It never rejects.
  */
@@ -62,6 +77,10 @@ async function openUnderLock(parts: OpenParts): Promise<OpenResult> {
   }
   let handle: DocumentHandle
   try {
+    const asked = await askWhichFile(parts, read)
+    if (asked !== undefined) {
+      return asked
+    }
     const snapshots = parts.store.snapshots(parts.request.id)
     const recoveryCopies = await recoveryCopyParts(parts, snapshots)
     handle = createDocumentHandle({
@@ -75,7 +94,7 @@ async function openUnderLock(parts: OpenParts): Promise<OpenResult> {
     return storageUnavailable(error)
   }
   if (read.stored) {
-    parts.records.opened(markSession(handle.session), read.lastChangedAt)
+    parts.records.opened(markSession(handle.session), read.lastChangedAt, read.opened.secondFile)
   }
   return { ok: true, handle }
 }

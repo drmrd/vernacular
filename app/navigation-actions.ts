@@ -10,6 +10,7 @@ import {
   projectLeads,
   runOwnerFlow,
   showPage,
+  takeReopenedProject,
   type NavigationMemory,
 } from './navigation-memory'
 import type { RunAction, RunFlow } from './use-open-project'
@@ -33,7 +34,8 @@ export function runFlowOf(memory: NavigationMemory): RunFlow {
 
 /**
  * Runs a flow from the page. When it gives a project, the page goes, and the next address write
- * adds an entry for that project. A flow that fails or is refused leaves the page and the address.
+ * adds an entry for that project. A flow that fails or is refused leaves the page and the address
+ * and adds no entry, even when it opened the open project again.
  */
 export function runPageFlowOf(memory: NavigationMemory): RunFlow {
   const runFlow = runFlowOf(memory)
@@ -50,8 +52,8 @@ export function runPageFlowOf(memory: NavigationMemory): RunFlow {
 
 /**
  * Runs an action from the page. It adds no history entry and keeps the page and the address. When
- * the action ended the open project, the navigation forgets that project and the first request it
- * gave the owner, so the page shows with no project open and the owner is not seen as opening one.
+ * the action ended the open project, the navigation takes the project that the action opened again,
+ * or forgets the project when it opened none.
  */
 export function runPageActionOf(memory: NavigationMemory): RunAction {
   return async (action) => {
@@ -59,8 +61,7 @@ export function runPageActionOf(memory: NavigationMemory): RunAction {
     try {
       const outcome = await memory.owner.runAction(action)
       if (outcome?.currentClosed === true) {
-        memory.handle = null
-        memory.given = null
+        takeReopenedProject(memory, outcome.reopened)
       }
       return outcome
     } finally {

@@ -7,17 +7,20 @@ import {
   setProjectStyle,
 } from '../../../core'
 import type { DecodedDocument, Project } from '../../../core'
-import type { StoreRead } from '../../../storage/documents/document-store'
+import type { SecondFileState, TwoDocumentFiles } from '../../../storage'
+import type { DocumentStore, StoreRead } from '../../../storage/documents/document-store'
 import { versionFixtureBytes } from '../../fixtures/projects/versions'
 import {
   atHigherRevision,
   bytesOf,
   firstWallOf,
   fixtureDocument,
+  metaOf,
   projectOf,
   withUnknownWallField,
 } from '../../fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
+import { PROJECT_ID } from './conformance-run'
 
 /** The document of the current schema version, as the application writes it. */
 export function currentBytes(): Uint8Array {
@@ -50,6 +53,18 @@ export function documentBreakingFormatRules(): Uint8Array {
 export function documentOfHigherRevision(): Uint8Array {
   const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
   return bytesOf(atHigherRevision(withUnknownWallField(document)))
+}
+
+/** The fixture document of the current version, marked as a build with the next schema version writes it. */
+export function newerVersionDocument(): Json {
+  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+  return document
+}
+
+/** The document of the current version, stored as a build with the next schema version writes it. */
+export function documentOfNewerVersion(): Uint8Array {
+  return bytesOf(newerVersionDocument())
 }
 
 /** An `extensions` payload that no build knows the meaning of. */
@@ -89,8 +104,34 @@ export function decodedOf(read: StoreRead): DecodedDocument {
   return read.value
 }
 
+/** What a read says about the second file; undefined when the read has no word on it. */
+export function secondFileOf(read: StoreRead): SecondFileState | undefined {
+  return 'secondFile' in read ? read.secondFile : undefined
+}
+
 /** Why a read failed; throws when the read succeeded. */
 export function failureOf(read: StoreRead): Exclude<StoreRead, { ok: true }>['failure'] {
   if (read.ok) throw new Error('Expected the read to fail')
   return read.failure
+}
+
+/** Bytes that are not JSON, so that no decode of them succeeds. */
+export const NOT_JSON = new TextEncoder().encode('{ not json')
+
+/** The name of the project in the document that `soundSecondFile` gives by default. */
+export const SECOND_FILE_PROJECT_NAME = 'Saved beside the newer file'
+
+/** A sound document of the current version that is told apart from the fixture by its name. */
+export function soundSecondFile(name = SECOND_FILE_PROJECT_NAME): Uint8Array {
+  return encodeDocument(renamed(soundProject(), name), undefined).bytes
+}
+
+/** The two document files of the project `id`; throws when it does not have two. */
+export async function twoFilesOrThrow(
+  store: DocumentStore,
+  id: string = PROJECT_ID,
+): Promise<TwoDocumentFiles> {
+  const files = await store.twoFiles(id)
+  if (files === undefined) throw new Error('Expected the project to have two document files')
+  return files
 }

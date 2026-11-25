@@ -13,6 +13,7 @@ related:
     decisions/ADR-0184-known-keys-from-the-schema-for-the-save-time-graft,
     decisions/ADR-0187-projects-page-with-document-identity,
     decisions/ADR-0191-export-on-every-card-and-unchecked-copy,
+    decisions/ADR-0214-a-save-keeps-a-newer-stored-file-and-writes-beside-it,
   ]
 sourceFiles:
   [
@@ -26,7 +27,7 @@ sourceFiles:
     session/handle/read-for-open.ts,
   ]
 status: current
-updated: 2026-11-22
+updated: 2026-11-23
 ---
 
 # ADR-0190: A document that fails the strict check does not open, and repairs come in two classes

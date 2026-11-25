@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { InMemoryDirectory, ProjectRecord } from '../../storage'
+import { SECOND_FILE_NAME } from '../handle/second-file-test-kit'
 import { DOCUMENT_FILE, placeDocument, rememberFolder } from '../testing'
 import type { TestPorts } from '../testing'
 import { listProjectCards } from './project-cards'
@@ -195,6 +196,23 @@ describe('the actions of a project card', () => {
       failed: ['export', 'delete'],
       failedFolder: ['export', 'remove-from-list'],
     })
+  })
+})
+
+describe('the second plan file of a project card', () => {
+  it('says that a project has a second plan file and offers to choose one, and only for a record with the field', async () => {
+    const secondFile = { name: SECOND_FILE_NAME, read: 'second' } as const
+    const ports = await portsHolding([
+      soundRecordOf('with', { secondFile }),
+      soundRecordOf('without'),
+    ])
+
+    const cards = cardsById(await listProjectCards(ports))
+
+    expect(cards['with']?.stateLines).toEqual(['second-file'])
+    expect(cards['with']?.actions).toEqual(['rename', 'export', 'choose-file', 'delete'])
+    expect(cards['without']?.stateLines).toEqual([])
+    expect(cards['without']?.actions).toEqual(['rename', 'export', 'delete'])
   })
 })
 

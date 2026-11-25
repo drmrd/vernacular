@@ -36,6 +36,22 @@ Where things happen:
   import, and it runs "Open as a new project" and "Replace the stored project" through
   `openRepairedAsNew` and `replaceWithRepaired` of `session/`, and the file's repair through
   the import flow with `applyRepair`. A file opened from the editor still shows a notice.
+- `use-two-files-dialog.ts` holds the dialog for a project with two plan files, `TwoFilesDialog`
+  of `editor/projects/`, and `two-files-dialog-choices.ts` runs its choices through the flows of
+  `session/flows/choose-kept-file.ts`. The dialog opens from the card action "Choose a plan file".
+  When the build can read both files, it also shows before the project opens, in the places where
+  the failed-open dialog shows: at the start, from a card, and from an address. Its first control
+  then reads "Open and keep both plan files", and Cancel returns to the page. Anywhere else, such an
+  open fails with the sentence "This project has two plan files. Open it from the Projects page to
+  choose one." A choice that finds a file changed since the dialog showed reads both files again
+  and shows the dialog with them. If that read fails, the notice reads "Could not change the plan
+  files:" and the reason, because a change was tried. Any other failed choice reads the same way.
+  When the card action cannot read the two plan files, no change was tried, so the notice gives
+  only the reason. A failed "Open and keep both plan files" changes no file, so it shows what a
+  click on the card shows for the same failure. A replace or a remove that changed the stored files
+  but whose open then failed shows the same way, with the reason of the open, and the page reads
+  the cards again. A choice made while this tab holds the project leaves the tab
+  holding it, opened again from the file that the choice kept.
 - `projects-screen.tsx` puts the Projects page of `editor/projects/` into the application.
   `use-project-cards.ts` reads its cards with `listProjectCards` of `session/` when the page mounts,
   when the open project changes, after a try from the page that ends with no project, and when the
@@ -46,9 +62,10 @@ Where things happen:
   open folders) run their flows through `runPageFlow` of the navigation, so a project that opens
   replaces the page. The page fills the window, so a file dropped anywhere on it imports. A failure
   to open shows in the page's one notice, except a project that did not open, a storage that did not
-  answer, and a folder that is not available: those show the failed-open dialog. `page-notice-text.ts`
-  gives the sentence of a notice and leaves it out when the card of the project that failed already
-  says it. If that card lacks the line, the
+  answer, and a folder that is not available: those show the failed-open dialog. A click on the
+  card of a project with two readable plan files shows the two-files dialog instead.
+  `page-notice-text.ts` gives the sentence of a notice and leaves it out when the card of the
+  project that failed already says it. If that card lacks the line, the
   notice shows the sentence. The notice of a page action belongs to no card, so when Open folder
   picks a listed folder that another tab holds, the notice shows the sentence and the card keeps
   its line. "Switch projects" in the Project menu calls `showProjects` of the navigation, which
@@ -58,27 +75,29 @@ Where things happen:
   offers it once. A return from the page does not offer it again. A reload offers it again until the
   next save, because each save removes the recovery snapshots.
   The "..." control of a card holds the actions that `use-card-actions.ts` builds: Rename, Export,
-  and Delete, with Remove from list in place of Delete for a folder project. A project that did
-  not open has no Rename, and a project that another tab holds has Export only. Rename, Delete, and
-  Remove from list run through `runPageAction` of the navigation, so none of them overlaps a flow.
-  A failure shows as one sentence in the page's notice, and an action that ran reads the cards
-  again. A delete or a removal of the open project leaves the page with no project open. Export,
-  in `card-export.ts`, runs outside that runner, so it works while another step runs. Its toast
-  follows the export, and the file goes to the download. A project that did not open gives the
-  unchecked copy of ADR-0191, with the warning from `card-action-text.ts`. Delete asks first in a
-  dialog. `deleteProject` first writes the pending changes of the open project, and stops with
+  Choose a plan file, and Delete, with Remove from list in place of Delete for a folder project. A
+  project that did not open has no Rename, and a project that another tab holds has Export only.
+  Choose a plan file shows wherever Rename shows, on the card of a project with a second plan file.
+  Rename, Delete, and Remove from list run through `runPageAction` of the navigation, so none of
+  them overlaps a flow. A failure shows as one sentence in the page's notice, and an action that ran
+  reads the cards again. A delete or a removal of the open project leaves the page with no project
+  open. Export, in `card-export.ts`, runs outside that runner, so it works while another step runs.
+  Its toast follows the export, and the file goes to the download. A project that did not open gives
+  the unchecked copy of ADR-0191, with the warning from `card-action-text.ts`. Delete asks first in
+  a dialog. `deleteProject` first writes the pending changes of the open project, and stops with
   nothing removed when that write fails. It then removes the project's document, its migration
-  backups, its recovery snapshots, its record, and each pool asset that only this project used. An asset that another
-  project or the library uses stays. No asset goes when there is no library or its list cannot be
-  read (`library-hashes.ts` reads its hashes at the click), or when the asset list of any project
-  is not known. The document and the record still go. There is one known limit. A record lists the
-  assets of the current document only, so a delete can remove bytes that a recovery snapshot, a
-  migration backup, or an undo step of another project still names. A later restore of that copy
-  then shows the asset as missing. It takes two projects that share an asset outside the library,
-  such as one archive imported twice. Remove from list forgets the folder and its record and
-  touches no file of the folder. For the folder project open in this tab, it first saves the
-  pending changes into the folder and closes the project. When that save fails, nothing is
-  forgotten and a sentence says so.
+  backups, its recovery snapshots, its record, and each pool asset that only this project used. An
+  asset that another project or the library uses stays. No asset goes when there is no library or
+  its list cannot be read (`library-hashes.ts` reads its hashes at the click), or when the asset
+  list of any project is not known. A project with a second plan file counts as not known, because
+  its record lists the assets of one of its two documents. The document and the record still go.
+  There is one known limit. A record lists the assets of the current document only, so a delete can
+  remove bytes that a recovery snapshot, a migration backup, or an undo step of another project
+  still names. A later restore of that copy then shows the asset as missing. It takes two projects
+  that share an asset outside the library, such as one archive imported twice. Remove from list
+  forgets the folder and its record and touches no file of the folder. For the folder project open
+  in this tab, it first saves the pending changes into the folder and closes the project. When that
+  save fails, nothing is forgotten and a sentence says so.
 - `use-degraded-storage-banner.ts` raises the storage banner once for each load of the page, when
   the open project lives in the tab alone or, with no project open, when the workspace does. The
   banner shows in the editor and on the Projects page, the empty page included.

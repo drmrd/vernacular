@@ -1,4 +1,4 @@
-import type { OpenFailed } from './handle-types'
+import type { ReadFailed } from './handle-types'
 
 function hasTextMessage(error: unknown): error is { message: string } {
   return (
@@ -19,6 +19,6 @@ export function messageOf(error: unknown): string {
 }
 
 /** A failure for a step whose storage did not answer. */
-export function storageUnavailable(error: unknown): OpenFailed {
+export function storageUnavailable(error: unknown): ReadFailed {
   return { ok: false, failure: { kind: 'storage-unavailable', message: messageOf(error) } }
 }

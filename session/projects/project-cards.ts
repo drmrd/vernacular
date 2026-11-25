@@ -6,8 +6,12 @@ import { reconcileIndex } from './reconcile-index'
 
 export type ProjectCardLocation = 'browser' | 'tab' | { readonly folderName: string }
 export type ProjectCardPreview = { readonly svg: string } | 'none' | 'did-not-open'
-export type ProjectCardStateLine = 'open-here' | 'open-elsewhere' | 'needs-permission'
-export type ProjectCardAction = 'rename' | 'export' | 'delete' | 'remove-from-list'
+export type ProjectCardStateLine =
+  | 'open-here'
+  | 'open-elsewhere'
+  | 'needs-permission'
+  | 'second-file'
+export type ProjectCardAction = 'rename' | 'export' | 'choose-file' | 'delete' | 'remove-from-list'
 
 /** What one card of the Projects page shows, with no text and no address in it. */
 export interface ProjectCardModel {
@@ -62,7 +66,11 @@ function previewOf(record: ProjectRecord): ProjectCardPreview {
 function linesOf(
   id: string,
   openId: string | undefined,
-  facts: { readonly openElsewhere: boolean; readonly needsPermission: boolean },
+  facts: {
+    readonly openElsewhere: boolean
+    readonly needsPermission: boolean
+    readonly secondFile: boolean
+  },
 ): ProjectCardStateLine[] {
   const lines: ProjectCardStateLine[] = []
   if (id === openId) {
@@ -74,7 +82,15 @@ function linesOf(
   if (facts.needsPermission) {
     lines.push('needs-permission')
   }
+  if (facts.secondFile) {
+    lines.push('second-file')
+  }
   return lines
+}
+
+/** A card shows the second file when the record has one and the last open succeeded. */
+function showsSecondFile(record: ProjectRecord): boolean {
+  return record.secondFile !== undefined && record.lastOpen.opened
 }
 
 function actionsOf(record: ProjectRecord, openElsewhere: boolean): ProjectCardAction[] {
@@ -86,7 +102,9 @@ function actionsOf(record: ProjectRecord, openElsewhere: boolean): ProjectCardAc
   if (!record.lastOpen.opened) {
     return ['export', removal]
   }
-  return ['rename', 'export', removal]
+  return showsSecondFile(record)
+    ? ['rename', 'export', 'choose-file', removal]
+    : ['rename', 'export', removal]
 }
 
 /** The locks held and the project open here, which decide the state lines of every card. */
@@ -110,7 +128,11 @@ async function cardOf(
     floorCount: record.floorCount,
     location: locationOf(ports, record),
     preview: previewOf(record),
-    stateLines: linesOf(record.id, openId, { openElsewhere, needsPermission: needsAccess }),
+    stateLines: linesOf(record.id, openId, {
+      openElsewhere,
+      needsPermission: needsAccess,
+      secondFile: showsSecondFile(record),
+    }),
     actions: actionsOf(record, openElsewhere),
   }
 }

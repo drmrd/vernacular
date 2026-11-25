@@ -5,7 +5,6 @@ import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
   bytesOf,
   fixtureDocument,
-  metaOf,
   UNKNOWN_WALL_FIELD_PATH,
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
@@ -15,6 +14,7 @@ import {
   BACKUP_DIRECTORY,
   DOCUMENT_PATH,
   backupsOf,
+  newerVersionBytes,
   rootHolding,
   storeOver,
   treeOf,
@@ -23,12 +23,6 @@ import {
 const OLDER_VERSION = 8
 const STORED_AT = new Date('2026-03-04T05:06:07.000Z')
 const NOT_JSON = new TextEncoder().encode('{ not json')
-
-function newerVersionBytes(): Uint8Array {
-  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
-  return bytesOf(document)
-}
 
 const throwingStep: SchemaMigration = {
   from: OLDER_VERSION,

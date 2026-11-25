@@ -12,6 +12,7 @@ import {
 } from '../session/handle/handle-test-kit'
 import type { DocumentHandle } from '../session'
 import { createInitialProject } from './create-initial-project'
+import { leaveIsPrevented } from './leave-test-support'
 import { useLeaveWarningGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 
@@ -34,13 +35,6 @@ function showPage(): void {
 /** Opens a new project under `id` that nothing has stored yet. */
 function openNewProject(ports: TestPorts, id: string): Promise<DocumentHandle> {
   return openOrThrow(ports, { ...workspaceRequest(id), create: createInitialProject })
-}
-
-/** Reports whether the prompt before unload vetoes the unload of the page now. */
-function unloadIsPrevented(): boolean {
-  const event = new Event('beforeunload', { cancelable: true })
-  window.dispatchEvent(event)
-  return event.defaultPrevented
 }
 
 function WithNotifications({ children }: { children: ReactNode }) {
@@ -87,7 +81,7 @@ describe('useFlushOnHidden', () => {
     await act(settle)
 
     expect(gate.started()).toBe(1)
-    expect(unloadIsPrevented()).toBe(true)
+    expect(leaveIsPrevented()).toBe(true)
     await act(async () => {
       gate.endOldestSave()
       await settle()
@@ -103,12 +97,12 @@ describe('useFlushOnHidden', () => {
     act(() => {
       rename(handle, 'Edited before the page hid')
     })
-    const preventedBeforeHiding = unloadIsPrevented()
+    const preventedBeforeHiding = leaveIsPrevented()
 
     hidePage()
     await act(settle)
 
-    expect({ preventedBeforeHiding, preventedAfterTheWrite: unloadIsPrevented() }).toEqual({
+    expect({ preventedBeforeHiding, preventedAfterTheWrite: leaveIsPrevented() }).toEqual({
       preventedBeforeHiding: true,
       preventedAfterTheWrite: false,
     })

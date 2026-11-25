@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectLockPort, ProjectRecord } from '../../storage'
+import { SECOND_FILE_NAME } from '../handle/second-file-test-kit'
 import { rememberFolder } from '../testing'
 import type { TestPorts } from '../testing'
 import { listProjectCards } from './project-cards'
@@ -80,5 +81,41 @@ describe('the state lines of a project card where the locks are not supported', 
       ['a', [], ['rename', 'export', 'delete']],
       ['b', ['open-here'], ['rename', 'export', 'delete']],
     ])
+  })
+})
+
+describe('the second plan file line and action of a project card', () => {
+  const secondFile = { name: SECOND_FILE_NAME, read: 'main' } as const
+
+  it('keeps the line on a project that another tab holds, and offers only Export', async () => {
+    const ports = await portsHolding([soundRecordOf('held', { secondFile })])
+    ports.lockRegistry.add('held')
+
+    const card = await cardOf(ports, 'held')
+
+    expect(card?.stateLines).toContain('second-file')
+    expect(card?.stateLines).toContain('open-elsewhere')
+    expect(card?.actions).toEqual(['export'])
+  })
+
+  it('gives neither the line nor the action to a project that did not open', async () => {
+    const lastOpen = { opened: false, build: 'an-older-build', reason: 'not-json' }
+    const ports = await portsHolding([folderRecord('away', { lastOpen, secondFile })])
+
+    const card = await cardOf(ports, 'away')
+
+    expect(card?.stateLines).not.toContain('second-file')
+    expect(card?.actions).toEqual(['export', 'remove-from-list'])
+  })
+
+  it('gives the project that this tab has open the line and the action', async () => {
+    const ports = await portsHolding([soundRecordOf('mine', { secondFile })])
+    ports.lockRegistry.add('mine')
+
+    const card = await cardOf(ports, 'mine', 'mine')
+
+    expect(card?.stateLines).toContain('open-here')
+    expect(card?.stateLines).toContain('second-file')
+    expect(card?.actions).toEqual(['rename', 'export', 'choose-file', 'delete'])
   })
 })

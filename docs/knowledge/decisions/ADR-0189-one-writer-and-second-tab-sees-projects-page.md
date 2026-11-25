@@ -11,6 +11,7 @@ related:
     decisions/ADR-0188-project-id-address-and-index-record,
     decisions/ADR-0019-bridge-dispatch-boundary,
     decisions/ADR-0030-additive-storage-capabilities,
+    decisions/ADR-0214-a-save-keeps-a-newer-stored-file-and-writes-beside-it,
   ]
 sourceFiles:
   [
@@ -27,7 +28,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-23
 ---
 
 # ADR-0189: One tab writes a document, and a second tab sees the Projects page

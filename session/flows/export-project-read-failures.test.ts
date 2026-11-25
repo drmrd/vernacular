@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 import { findDocumentStore } from '../handle/find-document-store'
-import type { OpenFailure } from '../handle/handle-types'
 import { FIRST_ID, storeTwoProjects } from './card-flows-test-kit'
 import { exportProject } from './export-project'
 
@@ -9,7 +8,12 @@ vi.mock('../handle/find-document-store', async (importOriginal) => {
   return { ...actual, findDocumentStore: vi.fn(actual.findDocumentStore) }
 })
 
-const FAILURES: readonly OpenFailure[] = [
+type ReadStepFailure = Extract<
+  Awaited<ReturnType<typeof findDocumentStore>>,
+  { ok: false }
+>['failure']
+
+const FAILURES: readonly ReadStepFailure[] = [
   { kind: 'open-elsewhere' },
   { kind: 'did-not-open', decode: { kind: 'not-a-project' } },
 ]

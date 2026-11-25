@@ -1,4 +1,6 @@
 import { afterEach } from 'vitest'
+import { CURRENT_SCHEMA_VERSION } from '../../../core'
+import { BACKUP_DIRECTORY } from '../../../storage/documents/document-backups'
 import { PROJECT_FILE } from '../../../storage/project-files/project-file-name'
 import type {
   DocumentStore,
@@ -8,11 +10,38 @@ import type { DirectoryPort } from '../../../storage/fs/directory-port'
 import type { Json } from '../../fixtures/projects/versions/fixture-documents'
 import type { StoreConformanceTarget } from './store-conformance-target'
 
+/** The name of the second document file that this build writes beside a newer main file. */
+export const SECOND_FILE_NAME = `vernacular.format-${CURRENT_SCHEMA_VERSION}.json`
+
+/** The start of the name of the copy that a save keeps of a stored file that it cannot read. */
+export const UNREADABLE_PREFIX = 'unreadable-previous-'
+
+/** The start of the name of the copy of a second file that was set aside, and of a replaced main file. */
+export const SET_ASIDE_PREFIX = 'set-aside-second-file-'
+export const REPLACED_PREFIX = 'replaced-by-second-file-'
+
 /** The project that every case works on. A store bound to one project is bound to this id. */
 export const PROJECT_ID = 'a'
 
 /** The second project of a store that holds many. */
 export const OTHER_PROJECT_ID = 'b'
+
+/** A stored file: its name in a directory and its bytes. */
+export interface NamedBytes {
+  readonly name: string
+  readonly bytes: Uint8Array
+}
+
+/** Every file directly under `directory` of `root`, each with its bytes. */
+export async function filesUnder(root: DirectoryPort, directory: string): Promise<NamedBytes[]> {
+  const names = await root.list(directory)
+  return Promise.all(
+    names.map(async (name) => ({
+      name,
+      bytes: (await root.readFile(`${directory}/${name}`)) ?? new Uint8Array(),
+    })),
+  )
+}
 
 /** One test of the suite: a store kind, over a root that only this test uses. */
 export class ConformanceRun {
@@ -24,6 +53,29 @@ export class ConformanceRun {
   /** Where the document file of the project sits in the root. */
   documentPath(id: string = PROJECT_ID): string {
     return this.target.holdsMany ? `${id}/${PROJECT_FILE}` : PROJECT_FILE
+  }
+
+  /** Where the second document file of this build sits in the root. */
+  secondFilePath(id: string = PROJECT_ID): string {
+    return this.target.holdsMany ? `${id}/${SECOND_FILE_NAME}` : SECOND_FILE_NAME
+  }
+
+  /** Puts raw bytes where this build writes the second document file of the project. */
+  placeSecondFile(bytes: Uint8Array, id: string = PROJECT_ID): Promise<void> {
+    return this.root.writeFile(this.secondFilePath(id), bytes)
+  }
+
+  /** The bytes of the second document file as they are in the root; undefined when there is none. */
+  secondFileBytes(id: string = PROJECT_ID): Promise<Uint8Array | undefined> {
+    return this.root.readFile(this.secondFilePath(id))
+  }
+
+  /** Every file of the backups directory of the project: its name and its bytes. */
+  backups(id: string = PROJECT_ID): Promise<NamedBytes[]> {
+    return filesUnder(
+      this.root,
+      this.target.holdsMany ? `${id}/${BACKUP_DIRECTORY}` : BACKUP_DIRECTORY,
+    )
   }
 
   /** Puts raw bytes where the store reads the document of the project. */

@@ -1,12 +1,18 @@
 import { repairOfferFor, type DecodeFailure, type Project } from '../../core'
-import { InvalidProjectIdError, type DocumentStore } from '../../storage'
-import type { OpenFailed, OpenRequest } from './handle-types'
+import { InvalidProjectIdError, type DocumentStore, type SecondFileState } from '../../storage'
+import type { OpenRequest, ReadFailed } from './handle-types'
 import { storageUnavailable } from './thrown-failures'
 
 /** The project that an open starts from, and what the read found out about it. */
 export interface OpenedProject {
   readonly project: Project
   readonly savedByNewerBuild: boolean
+  readonly secondFile?: SecondFileState
+}
+
+/** True when the read chose the second file as the newer copy of the project. */
+export function openedFromSecondFile(opened: OpenedProject): boolean {
+  return opened.secondFile?.read === 'second'
 }
 
 /** The project to open, or why it did not open. */
@@ -19,7 +25,7 @@ export type ReadForOpen =
       /** From the read; undefined for `create` and for a read that could not tell. */
       readonly lastChangedAt: string | undefined
     }
-  | OpenFailed
+  | ReadFailed
 
 function openedProject(
   project: Project,
@@ -46,7 +52,9 @@ async function readStored(store: DocumentStore, request: OpenRequest): Promise<R
   const read = await store.read(request.id)
   if (read.ok) {
     const { project, savedByNewerBuild } = read.value
-    return foundStored(openedProject(project, { savedByNewerBuild }), read.lastChangedAt)
+    const { secondFile } = read
+    const flags = { savedByNewerBuild, ...(secondFile === undefined ? {} : { secondFile }) }
+    return foundStored(openedProject(project, flags), read.lastChangedAt)
   }
   if (read.failure.kind === 'not-found') {
     return request.create === undefined

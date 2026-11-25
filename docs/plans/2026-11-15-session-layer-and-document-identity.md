@@ -196,6 +196,7 @@ differently.
     | A project made from a second file      | "&lt;name&gt; (second plan file)"                                                                                                                                                                              |
     | The second file's name                 | `vernacular.format-<N>.json`                                                                                                                                                                                   |
     | Two readable plan files, no dialog     | "This project has two plan files. Open it from the Projects page to choose one."                                                                                                                               |
+    | A dialog choice that fails             | "Could not change the plan files: &lt;reason&gt;"                                                                                                                                                              |
 
     The banner's folder clause shows only where the browser offers folder access.
 
@@ -242,7 +243,7 @@ the cycle named.
 | 11  | Card actions                          | `feat/project-card-actions`              | #588                   | Projects page     | 10              |
 | 12  | A project that does not open          | `feat/failed-open-dialog-and-repairs`    | #631                   | Failed open       | 11              |
 | 13  | Temporary storage says so             | `fix/temporary-storage-says-so`          | #591                   | Temporary storage | 12              |
-| 14  | A save that finds a newer stored file | `fix/keep-a-newer-stored-file`           | #741                   | Newer stored file | 13              |
+| 14  | A save that finds a newer stored file | `fix/keep-a-newer-stored-file`           | #741, #842             | Newer stored file | 13              |
 
 Pull requests 1 to 5 land in order. Pull request 1 comes first because a migration that produces a
 document the current schema rejects needs a lossless step at the next `schemaVersion` before the
@@ -1868,100 +1869,267 @@ The description says "Closes #591".
 
 ---
 
-## Pull request 14: a save that finds a newer stored file (#741)
+## Pull request 14: a save that finds a newer stored file (#741, #842)
 
-Not in the spec. On 2026-11-16 the owner decided the newer-file case of #741 as "keep both files":
-when a save finds a stored file that a newer build wrote, the save writes this document beside the
-newer file and tells the user, with a second file name, a notice, and a way to choose between the
-two. The other half of #741, the report of a dropped graft, lands in cycles 2.4 and 3.2. Until this
-pull request lands, a save over a newer file replaces it, as it does today, and only warns.
+Spec 5.3 point 10, 5.4 point 10, 5.5, 5.6 point 7, 5.7, and 5.8; ADR-0214. On 2026-11-16 the owner
+decided the newer-file case of #741 as "keep both files". A save that finds a `vernacular.json`
+written by a newer build leaves it as it is and writes the document beside it, in
+`vernacular.format-<N>.json`. The user is told, the card says so, and a dialog offers the choice
+between the two plan files. A stored file that cannot be read is copied to the backups before a
+save replaces it (#842). The other half of #741, the report of a dropped graft, landed in cycles
+2.4 and 3.2.
 
 The lock of ADR-0189 keeps two tabs of one browser out of this case. It does not keep out a sync
 tool, a second device, or another program that writes a picked folder, so the case is mostly that
 of a folder project.
 
-**Before it starts.** The spec and the decision records do not hold this behavior, and some of
-their text contradicts it. A specification amendment with a decision record settles it first; the
-orchestrator assigns the record's number. The amendment changes:
+### Cycle 14.1: the save keeps a newer file and writes beside it
 
-- first-stage spec section 5.1 point 6, which says a save over a file at a newer version goes on
-  without a graft, so the newer file is replaced;
-- format spec section 2.2, whose folder layout holds one document, `vernacular.json`, and no second
-  document file;
-- spec section 5.3 points 5 and 8, if the second file sits in the project's directory: `list()`
-  finds a project by its document file, and a folder project follows the format's layout;
-- ADR-0184, which #741 asks to state the three cases of a save with no graft and what the store
-  does in each;
-- spec section 5.3 point 7, "The picked-folder store never removes a file from the folder", and the
-  last line of its "Done when", "No method of the picked-folder store removes a file it did not
-  write". The choice of the user may remove the other file (point 5 below), and this case is mostly
-  a folder project, so the amendment states whether the choice may remove a file that this build
-  did not write;
-- design spec section 3.3, whose layout shows one document per project folder (`project.json`),
-  and ADR-0047, whose decision 1 names `vernacular.json` as the one canonical Document of a
-  project.
-
-Open design points for the amendment:
-
-1. The second file's name and place: beside `vernacular.json` under a name the format reserves, or a
-   new project with its own id. Whether an archive store keeps both at all.
-2. Where the next saves go once both files exist.
-3. What the next open does. This build refuses the newer file (`newer-version`, and ADR-0190 has no
-   read-only mode), so the open must find the second file, or this build cannot reach the user's
-   work.
-4. The notice: its wording (decision 22 has none), when it shows, and how often.
-5. How the user chooses, and where: on the card, in the failed-open dialog, or both. What each
-   choice does with the other file (kept as a backup, exported, or removed), and what the record
-   and the card show while both files exist.
-6. Whether a higher `schemaRevision` at the same version counts as a newer build. The graft already
-   keeps the added fields of such a file, so today only a higher `schemaVersion` drops the graft.
-7. Which store kinds the conformance suite runs the case on.
-
-The cycles below are an outline. The amendment fixes their names, files, and sentences.
-
-### Cycle 14.1: the store keeps both files
-
-- [ ] RED in `storage/documents/document-store.test.ts`: a save whose previous file decodes as
-      `newer-version` leaves that file byte-identical, writes this document under the second name,
-      and its report names the second file; the next save goes where the amendment says (point 2);
-      the case of cycle 3.2 that expects the newer file replaced changes with it. A conformance case
-      checks that the newer file survives a save byte for byte on each target the amendment names.
-- [ ] GREEN: `DocumentStore.save`.
+- [ ] RED in `storage/documents/document-store-save-newer.test.ts`,
+      `storage/project-files/project-file-name.test.ts`, and the conformance cases of
+      `tests/storage/conformance/second-file-cases.ts`: a save over a `vernacular.json` at a newer
+      schema version leaves it byte for byte, writes `vernacular.format-<N>.json` grafted onto that
+      file's earlier bytes, and its report names the second file; each save decides anew from the
+      stored `vernacular.json`; a second file beside a readable `vernacular.json` is not touched.
+      The row of `document-store-save.test.ts` that expected the newer file replaced leaves its
+      table.
+- [ ] GREEN: `encodeForSave` in `storage/documents/save-target.ts`, `secondDocumentFileName` and
+      `secondDocumentFileVersion` in `storage/project-files/project-file-name.ts`, and
+      `DocumentStore.save`.
 - [ ] Commits: `test: expect a save to keep a newer stored file and write beside it`,
       `fix: keep a newer stored file and save beside it`.
 
-### Cycle 14.2: the user is told
+### Cycle 14.2: a read reaches the second file
 
-- [ ] RED in `session/handle/document-handle.test.ts`: a save that kept both files emits its notice
-      as often as the amendment says; in `app/use-handle-notices.test.tsx`, the notice shows its
-      sentence.
-- [ ] GREEN: the notice joins `onNotice` and the adapter.
+- [ ] RED in `storage/documents/document-store-read-second-file.test.ts`,
+      `document-store-read.test.ts`, `document-store-changed-at.test.ts`, and the conformance
+      cases: under a newer `vernacular.json`, a read decodes the second file with the highest
+      version that is not above the build's and says which file it read; with none it fails as a
+      newer version; a missing `vernacular.json` is not found, also beside a second file; the time
+      of the last change is the latest among the document files; a repair's replace writes the
+      file that the read came from.
+- [ ] GREEN: `storage/documents/second-file.ts`, the read and `changedAt` of `DocumentStore`, and
+      `storage/documents/replace-stored.ts`.
+- [ ] Commits: `test: expect a read to reach the file saved beside a newer one`,
+      `fix: read the file saved beside a newer stored file`.
+
+### Cycle 14.3: a copy of an unreadable stored file
+
+- [ ] RED in `storage/documents/document-store-backups.test.ts`, `document-store-save.test.ts`,
+      and the conformance cases: before a save replaces a stored file that it cannot read, the
+      main file or the second file, its bytes go to the backups as
+      `unreadable-previous-v<version>-<digest>.json`; a backup write that fails stops the save
+      before the document write.
+- [ ] GREEN: `storage/documents/document-backups.ts` and `DocumentStore.save`.
+- [ ] Commits: `test: expect a copy of an unreadable stored file before a save replaces it`,
+      `fix: keep a copy of an unreadable stored file before a save replaces it`.
+
+### Cycle 14.4: only an unchecked copy carries a second file
+
+- [ ] RED in `storage/zip/unchecked-copy.test.ts`, `storage/zip/zip-bundle-project-store.test.ts`,
+      and `session/flows/export-project-second-file.test.ts`: an unchecked copy carries every
+      document file byte for byte; an ordinary export holds the document that an open would read,
+      as `vernacular.json`, and no second file.
+- [ ] GREEN: `storage/zip/unchecked-copy.ts` and `storage/zip/zip-bundle-project-store.ts`.
+- [ ] Commits: `test: expect only an unchecked copy to carry a second document file`,
+      `fix: carry a second document file in an unchecked copy only`.
+
+### Cycle 14.5: the notices
+
+- [ ] RED in `session/handle/document-handle-notices.test.ts` and
+      `app/use-handle-notices.test.tsx`: a save to the second file, or an open that read it, raises
+      one notice per handle; a save that replaced a file it could not read raises its own notice
+      once; an open of `vernacular.json` beside a second file raises neither; both show as warning
+      toasts with the texts of decision 22.
+- [ ] GREEN: `session/handle/handle-notices.ts`, `document-handle.ts`, `read-for-open.ts`,
+      `handle-types.ts`, and `app/use-handle-notices.ts`.
 - [ ] Commits: `test: expect a notice when a save keeps both files`,
       `feat: tell the user when a save keeps both files`.
 
-### Cycle 14.3: the user chooses
+### Cycle 14.6: the save status
 
-- [ ] RED in `session/flows/choose-kept-file.test.ts` and in the test of the control the amendment
-      names: each choice leaves the files the amendment says; nothing is removed before the user
-      chooses; the next open reaches this build's file.
-- [ ] GREEN: the flow and its control.
+- [ ] RED in `session/handle/document-handle-save.test.ts` and `app/second-file-status.test.tsx`:
+      while the handle last read or wrote the second file, the status is `'second-file'` and reads
+      "Saved in a second plan file"; `'tab-only'` wins in temporary storage; a save to
+      `vernacular.json` brings `'saved'` back; the leave warning counts the status as stored.
+- [ ] GREEN: `'second-file'` joins `SaveStatus` and the label maps in
+      `editor/shell/editor-shell.tsx`.
+- [ ] Commits: `test: expect the save status to name a second file`,
+      `feat: show in the save status that saves go to a second file`.
+
+### Cycle 14.7: the record and the card
+
+- [ ] RED in `storage/project-index/project-record-check.test.ts`,
+      `session/handle/handle-record-second-file.test.ts`, the card tests of `session/projects/`,
+      `session/projects/reconcile-index.test.ts`, `editor/projects/card-text.test.ts`, and
+      `editor/projects/project-card-menu.test.tsx`: an open writes the second file of its read into
+      the record and removes it when there is none; a save to the second file sets it; a rebuilt
+      record takes it from its read; the card reads "This project has a second plan file." and
+      offers "Choose a plan file" where it offers Rename.
+- [ ] GREEN: the record field in `storage/project-index/`, `session/handle/handle-record.ts`,
+      `open-document-handle.ts`, `session/projects/project-facts.ts`, `rebuild-record.ts`,
+      `project-cards.ts`, `editor/projects/card-text.ts`, `card-list.tsx`, and one story each in
+      `project-card.stories.tsx` and `project-card-menu.stories.tsx`.
+- [ ] Commits: `test: expect a card to say that a project has a second file`,
+      `feat: show on the card that a project has a second file`.
+
+### Cycle 14.8: the assets of a second document file
+
+- [ ] RED in `session/flows/delete-project-second-file.test.ts`,
+      `storage/zip/unchecked-copy-document-assets.test.ts`, and
+      `session/flows/export-project-second-file.test.ts`: a delete removes no pool asset while a
+      workspace project has a second file, as its record says or as the open handle knows; a
+      folder project blocks no removal; an unchecked copy packs the assets that each copied
+      document file names besides the listed ones, each once.
+- [ ] GREEN: `session/flows/asset-users.ts`, `session/handle/handle-record.ts`, and
+      `storage/zip/unchecked-copy.ts`.
+- [ ] Commits:
+      `test: expect a second document file's assets to stay in the pool and in an unchecked copy`,
+      `fix: keep a second document file's assets in the pool and in an unchecked copy`.
+
+### Cycle 14.9: the store sets aside or promotes
+
+- [ ] RED in `storage/documents/document-store-second-file.test.ts`,
+      `document-store-backups.test.ts`, and the conformance cases: `twoFiles` gives the state and
+      the facts of both files; `readSecondFile` decodes the second file; a set-aside or a promote
+      whose files changed since they were read writes nothing; a set-aside copies each second file
+      at or below the build's version to the backups before it removes it; a promote refuses a
+      second file that does not decode, then copies `vernacular.json` to the backups, writes the
+      second file's bytes over it, and sets the second files aside.
+- [ ] GREEN: `storage/documents/second-file.ts`, `document-store.ts`, and `document-backups.ts`
+      with the kinds `replaced-by-second-file` and `set-aside-second-file`.
+- [ ] Commits: `test: expect the store to set aside or promote a second document file`,
+      `feat: set aside or promote a second document file`.
+
+### Cycle 14.10: the three choice flows
+
+- [ ] RED in the `session/flows/choose-kept-file*.test.ts` files and
+      `storage/documents/document-store-second-file-choices.test.ts`: each flow takes the
+      project's lock, reads both files again, writes nothing when one changed, and frees the lock
+      on every path; open as new names the project "&lt;name&gt; (second plan file)" and moves the
+      second file only after the new project is stored in durable storage; replace and remove
+      clear the record's field; a flow that found the project open in this tab opens it again at
+      its end.
+- [ ] GREEN: `session/flows/choose-kept-file.ts`; `openAsNewProject`
+      (`session/flows/new-project-copy.ts`) says whether its first save was stored.
 - [ ] Commits: `test: expect a choice between the two kept files`,
       `feat: choose between the two kept files`.
 
+### Cycle 14.11: a record write that fails after a done choice
+
+- [ ] RED in `session/flows/choose-kept-file-record-write.test.ts`: when the record write fails
+      after the files changed, open as new reports the moved file, replace and remove succeed and
+      still open the project, and one console warning shows.
+- [ ] GREEN: `session/flows/choose-kept-file.ts`.
+- [ ] Commits: `test: expect a done choice to stand when its record write fails`,
+      `fix: keep a done choice when its record write fails`.
+
+### Cycle 14.12: the dialog and the card action
+
+- [ ] RED in `editor/projects/two-files-dialog.test.tsx` and `app/use-two-files-dialog.test.tsx`:
+      the dialog "This project has two plan files" shows the sentence and the choices of its
+      state, focuses "Keep both plan files", and keeps both on Escape; "Choose a plan file" on a
+      card opens it; a choice that finds a changed file shows the dialog again with the new facts,
+      or closes it when no second file is left.
+- [ ] GREEN: `editor/projects/two-files-dialog.tsx` with its styles and stories,
+      `app/use-two-files-dialog.ts`, `app/page-dialog.tsx`, `app/projects-screen.tsx`, and
+      `app/use-card-actions.ts`.
+- [ ] Commits: `test: expect a dialog that offers the choice between the two files`,
+      `feat: offer the choice between the two files in a dialog`.
+
+### Cycle 14.13: the tab keeps its project after a choice
+
+- [ ] RED in `app/use-two-files-dialog-open-project.test.tsx`, `app/use-two-files-dialog.test.tsx`,
+      and `app/use-open-project-actions.test.tsx`: a choice made while this tab holds the project
+      leaves the tab holding the handle that the flow opened again, with no new history entry;
+      when that open fails, the page shows with no project open; a failed choice reads "Could not
+      change the plan files: &lt;reason&gt;"; open as new warns about missing assets as the
+      failed-open dialog does.
+- [ ] GREEN: `app/use-two-files-dialog.ts`, `app/owner-actions.ts`, `app/use-open-project.ts`,
+      `app/navigation-actions.ts`, `app/navigation-memory.ts`, and
+      `app/use-failed-open-dialog.ts`.
+- [ ] Commits: `test: expect the tab to keep its project after a choice between the two files`,
+      `fix: keep the open project after a choice between the two files`.
+
+### Cycle 14.14: the choice before an open
+
+- [ ] RED in `session/handle/open-document-handle-two-files.test.ts`, the start, switch, rename,
+      and choice flow tests of `session/flows/`, `app/use-two-files-dialog-before-open.test.tsx`,
+      and `app/use-switch-notices.test.tsx`: an open of a project with two readable files fails
+      as `two-files`, with no handle and no failed open in the record, unless the request keeps
+      both files; the rename of a closed project opens `vernacular.json`; the dialog shows before
+      the open at the start, from a card, and from an address, with "Open and keep both plan
+      files" and Cancel; elsewhere the failure reads "This project has two plan files. Open it
+      from the Projects page to choose one."
+- [ ] GREEN: `session/handle/handle-types.ts`, `open-document-handle.ts`,
+      `session/flows/rename-project.ts`, `openKeepingBothFiles` in
+      `session/flows/choose-kept-file.ts`, `session/index.ts`, and in `app/`
+      `open-failure-text.ts`, `failed-open-model.ts`, `use-open-project.ts`,
+      `projects-screen.tsx`, and `use-two-files-dialog.ts`.
+- [ ] Commits: `test: expect the choice before a project with two readable files opens`,
+      `feat: ask before a project with two readable files opens`.
+
+### Cycle 14.15: a failed open that keeps both files
+
+- [ ] RED in `app/use-two-files-dialog-before-open-failures.test.tsx` and
+      `app/use-two-files-dialog-before-open.test.tsx`: a failed "Open and keep both plan files"
+      shows what a click on the project's card shows for the same failure; a failed replace,
+      remove, or open as new before an open still reads "Could not change the plan files:
+      &lt;reason&gt;".
+- [ ] GREEN: `app/use-two-files-dialog.ts` and `app/projects-screen.tsx`.
+- [ ] Commits: `test: expect a failed open that keeps both files to read as a failed open`,
+      `fix: show a failed open that keeps both files as a failed open`.
+
+### Cycle 14.16: a failed read of the two plan files
+
+- [ ] RED in `app/use-two-files-dialog.test.tsx`: when "Choose a plan file" cannot read the two
+      plan files, no dialog shows and the notice gives only the reason, with no "Could not change
+      the plan files:" prefix, since no change was tried (owner, 2026-11-23).
+- [ ] GREEN: `app/use-two-files-dialog.ts`.
+- [ ] Commits: `test: expect a failed read of the two plan files to show only its reason`,
+      `fix: show only the reason when the two plan files cannot be read`.
+
+### Cycle 14.17: a failed read after a changed file
+
+- [ ] RED in `app/use-two-files-dialog.test.tsx`: when a choice comes back with `files-changed`
+      and the read of both files after it fails, the dialog closes and the notice reads "Could not
+      change the plan files: &lt;reason&gt;", since a change was tried.
+- [ ] GREEN: `app/use-two-files-dialog.ts`.
+- [ ] Commits: `test: expect a failed read after a changed file to say the change failed`,
+      `fix: keep the change failure text when the read after a changed file fails`.
+
+### Cycle 14.18: a done choice whose open fails
+
+- [ ] RED in `app/use-two-files-dialog-failed-open.test.tsx`: a replace or a remove that changed
+      the stored files, before an open or over the project that this tab holds, and whose open
+      then fails shows as a failed open of the project with the reason of the open, the way a
+      failed try of a card shows; the cards are read again, and no text says that the change
+      failed (owner, 2026-11-23).
+- [ ] GREEN: `session/flows/choose-kept-file.ts` (the failed result carries `afterChange: true`),
+      `app/two-files-dialog-choices.ts`, and `app/use-two-files-dialog.ts`.
+- [ ] Commits: `test: expect a done choice whose open fails to show as a failed open`,
+      `fix: show a done choice whose open fails as a failed open`.
+
 ### Texts
 
-- [ ] The amendment, its record, and the ADR-0184 text are approved and landed in their own
-      documents change before this pull request starts, as the sections above say. Commit:
-      `docs: describe a save that keeps a newer stored file`.
+- [ ] The amendment, ADR-0214, and the ADR-0184 text landed in their own documents change before
+      this pull request started. Commit: `docs: describe a save that keeps a newer stored file`.
+- [ ] The texts call `vernacular.json` and the second file "plan files". Commit:
+      `docs: call the project document a plan file in the texts for a newer stored file`.
+- [ ] ADR-0214, the spec, and `app/README.md` record what landed. Commit:
+      `docs: record how a project with two document files is handled`.
+- [ ] ADR-0214, the spec, and `app/README.md` record how a failed read and a failed open after a
+      choice show. Commit: `docs: record how a failed read and a failed open after a choice show`.
 
-The description says "Closes #741".
+The description says "Closes #741" and "Closes #842".
 
 ---
 
 ## After pull request 13
 
-Pull request 13 ends the stage. Pull request 14 waits for a specification amendment that has no
-date, so it lands after #685 closes and is tracked by #741, not by this list.
+Pull request 13 ends the stage. Pull request 14 came later, after the owner approved its
+specification amendment. It lands after #685 closes and is tracked by #741 and #842, not by this
+list.
 
 - [ ] No entry in the lint exception list names #685. If one does, its file is split first.
 - [ ] After pull requests 5 and 7, check the skill notes under `.claude/skills/` for six layers,
@@ -2060,10 +2228,9 @@ Bullets are numbered in the order of each "Done when" list.
 | 7    | #673                                                                            | 8.3                      |
 | none | #734 The previous file is current on every registry version before the graft    | 2.4                      |
 | none | #741 A dropped graft is reported with its reason                                | 2.4, 3.2                 |
-| none | #741 A save keeps a newer stored file, tells the user, and offers a choice      | 14.1, 14.2, 14.3         |
-| none | #741 ADR-0184 states the three cases of a save with no graft, and each outcome  | open (see below)         |
+| none | #741 A save keeps a newer stored file, tells the user, and offers a choice      | 14.1 to 14.15            |
+| none | #842 A save copies a stored file that it cannot read to the backups first       | 14.3, 14.5               |
+| none | #741 ADR-0184 states the three cases of a save with no graft, and each outcome  | not code                 |
 
-The third "Done when" of #741 has no cycle yet. The plan leaves its timing open: the owner decides
-whether pull request 3 states the two cases it settles (a previous file that is not JSON, and one
-whose migration throws) or whether all three wait for the amendment of pull request 14, which
-settles the newer-file case.
+The third "Done when" of #741 needs no code. The amendment that landed before pull request 14
+states all three cases in ADR-0184.

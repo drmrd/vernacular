@@ -42,6 +42,7 @@ import './editor-shell.css'
 
 // A computed key, because the naming lint rejects a quoted key with a hyphen.
 const TAB_ONLY = 'tab-only'
+const SECOND_FILE = 'second-file'
 
 const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
   idle: 'Ready',
@@ -49,6 +50,7 @@ const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
   saved: 'All changes saved',
   error: 'Save failed',
   [TAB_ONLY]: 'In this tab only',
+  [SECOND_FILE]: 'Saved in a second plan file',
 }
 
 // A small decorative icon paired with each save-status label. The icon is
@@ -59,6 +61,7 @@ const SAVE_STATUS_ICONS: Record<SaveStatus, Icon> = {
   saved: CheckCircle,
   error: WarningCircle,
   [TAB_ONLY]: Browser,
+  [SECOND_FILE]: CheckCircle,
 }
 
 // A blank (or whitespace-only) name is not a real rename request. Returns the

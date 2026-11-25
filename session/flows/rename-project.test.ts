@@ -22,7 +22,9 @@ import {
 import type { TestPorts } from '../handle/handle-test-kit'
 import { AUTOSAVE_DIRECTORY } from '../../storage/snapshots/snapshot-store'
 import { renamed } from '../../tests/storage/conformance/conformance-documents'
+import { SECOND_FILE_NAME, storeTwoReadableFiles } from '../handle/second-file-test-kit'
 import { folderRecord } from '../projects/rebuild-test-kit'
+import { reconcileIndex } from '../projects/reconcile-index'
 import {
   DISK_FULL,
   FIRST_ID,
@@ -74,6 +76,21 @@ describe('a rename of a closed project', () => {
     expect(result).toEqual({ ok: true, renamed: true })
     expect(await storedName(ports.workspace, SECOND_ID)).toBe(NEW_NAME)
     expect((await recordOf(ports, SECOND_ID))?.name).toBe(NEW_NAME)
+  })
+
+  it('stores the new name in the main file of a project with two readable plan files, and leaves the second file as it was', async () => {
+    const ports = createTestPorts()
+    const secondPath = `${SECOND_ID}/${SECOND_FILE_NAME}`
+    await storeTwoReadableFiles(ports, SECOND_ID, { main: 'Main file', second: 'Second file' })
+    await reconcileIndex(ports)
+    const secondBefore = await ports.root.readFile(secondPath)
+
+    const result = await renameProject(ports, undefined, { id: SECOND_ID, name: NEW_NAME })
+
+    expect(result).toEqual({ ok: true, renamed: true })
+    expect(await storedName(ports.workspace, SECOND_ID)).toBe(NEW_NAME)
+    expect(secondBefore).toBeDefined()
+    expect(await ports.root.readFile(secondPath)).toEqual(secondBefore)
   })
 
   it('saves once, between taking the lock and freeing it', async () => {

@@ -20,6 +20,7 @@ import {
   stubCapableStorage,
 } from './app-test-support'
 import { PROJECTS_ADDRESS, visit } from './history-navigation-test-support'
+import { leaveIsPrevented } from './leave-test-support'
 
 const WARNING = 'The storage of this browser was not found. Projects stay in this tab.'
 const DISMISS = 'Dismiss notification'
@@ -38,13 +39,6 @@ afterEach(() => {
 /** Gives the browser the folder access that the banner offers. */
 function offerFolderAccess(): void {
   vi.stubGlobal('showDirectoryPicker', vi.fn())
-}
-
-/** Dispatches a cancelable `beforeunload` event on the window, and says whether the application vetoed it. */
-function leaveIsPrevented(): boolean {
-  const event = new Event('beforeunload', { cancelable: true })
-  window.dispatchEvent(event)
-  return event.defaultPrevented
 }
 
 /** The text of each live region of the open editor, in the order of the page. */
@@ -252,7 +246,7 @@ describe('The application over ports that keep nothing after the tab closes: the
     renderWithNoStorageAt()
     await findTheShell()
 
-    expect(leaveIsPrevented()).toBe(true)
+    await waitFor(() => expect(leaveIsPrevented()).toBe(true))
   })
 
   it('asks before the tab closes on the Projects page over the open project', async () => {
@@ -261,7 +255,7 @@ describe('The application over ports that keep nothing after the tab closes: the
     await visit(bar, PROJECTS_ADDRESS)
     await findTheProjectsPage()
 
-    expect(leaveIsPrevented()).toBe(true)
+    await waitFor(() => expect(leaveIsPrevented()).toBe(true))
   })
 
   it('lets the tab close on the empty Projects page, where no project can be lost', async () => {

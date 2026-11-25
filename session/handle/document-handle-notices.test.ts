@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renameProject } from '../../core'
-import { currentBytes, faultyProject } from '../../tests/storage/conformance/conformance-documents'
+import {
+  currentBytes,
+  documentOfNewerVersion,
+  faultyProject,
+} from '../../tests/storage/conformance/conformance-documents'
 import { DEFAULT_AUTOSAVE_DELAY_MS } from '../autosave/create-autosave'
 import { settle } from '../autosave/save-gate-test-kit'
 import type { DocumentHandle, HandleNotice } from './handle-types'
@@ -10,9 +14,16 @@ import {
   placeDocument,
   storedProject,
   workspaceRequest,
+  type TestPorts,
 } from './handle-test-kit'
+import {
+  documentNamed,
+  openBesideSecondFile,
+  storeNewerMainBesideSecondFile,
+} from './second-file-test-kit'
 
 const PROJECT_ID = 'a'
+const NOT_JSON = new TextEncoder().encode('{ not json')
 
 let consoleError: ReturnType<typeof vi.spyOn>
 
@@ -129,5 +140,74 @@ describe('the saved-with-faults notice', () => {
     expect(second).toEqual(['saved-with-faults'])
     expect(consoleError).toHaveBeenCalledTimes(1)
     expect(loggedValues()).toContain(failure)
+  })
+})
+
+describe('the notices of a project with a second file', () => {
+  /** A handle on a sound stored project. */
+  async function openSound(ports: TestPorts): Promise<DocumentHandle> {
+    await placeDocument(ports, PROJECT_ID, currentBytes())
+    return openOrThrow(ports, workspaceRequest(PROJECT_ID))
+  }
+
+  /** Changes the project and stores it, so the save runs against whatever the store holds. */
+  async function editAndSave(handle: DocumentHandle, name: string): Promise<void> {
+    handle.session.dispatch(renameProject(name))
+    expect(await handle.save()).toEqual({ ok: true })
+  }
+
+  it('a save that writes the second file raises saved-in-second-file once', async () => {
+    const ports = createTestPorts()
+    const handle = await openSound(ports)
+    await placeDocument(ports, PROJECT_ID, documentOfNewerVersion())
+    const notices = noticesOf(handle)
+
+    await editAndSave(handle, 'First edit')
+    await editAndSave(handle, 'Second edit')
+
+    expect(notices).toEqual(['saved-in-second-file'])
+  })
+
+  it('an open that reads the second file holds saved-in-second-file for the first listener only', async () => {
+    const ports = createTestPorts()
+    await storeNewerMainBesideSecondFile(ports, PROJECT_ID, documentNamed('In the second file'))
+    const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
+
+    const first = noticesOf(handle)
+    const later = noticesOf(handle)
+    await editAndSave(handle, 'An edit')
+
+    expect(first).toEqual(['saved-in-second-file'])
+    expect(later).toEqual([])
+  })
+
+  it('a save that replaces a file it could not read raises unreadable-file-replaced once', async () => {
+    const ports = createTestPorts()
+    const handle = await openSound(ports)
+    await placeDocument(ports, PROJECT_ID, NOT_JSON)
+    const notices = noticesOf(handle)
+
+    await editAndSave(handle, 'First edit')
+    await editAndSave(handle, 'Second edit')
+
+    expect(notices).toEqual(['unreadable-file-replaced'])
+  })
+
+  it('an open of the main file beside a second file raises neither notice, also after a save', async () => {
+    const handle = await openBesideSecondFile(createTestPorts())
+    const notices = noticesOf(handle)
+
+    await editAndSave(handle, 'An edit')
+
+    expect(notices).toEqual([])
+  })
+
+  it('an ordinary save raises neither notice', async () => {
+    const handle = await openSound(createTestPorts())
+    const notices = noticesOf(handle)
+
+    await editAndSave(handle, 'An edit')
+
+    expect(notices).toEqual([])
   })
 })

@@ -3,10 +3,7 @@ import { CURRENT_SCHEMA_VERSION, createWall, decodeDocument, encodeDocument } fr
 import type { CodecOptions, Project, SchemaMigration } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
-  bytesOf,
   firstWallOf,
-  fixtureDocument,
-  metaOf,
   projectOf,
   UNKNOWN_FIELD,
   UNKNOWN_WALL_FIELD_PATH,
@@ -16,15 +13,16 @@ import type { Json } from '../../tests/fixtures/projects/versions/fixture-docume
 import {
   BACKUP_DIRECTORY,
   DOCUMENT_PATH,
+  NOT_JSON,
   backupsOf,
   readProject,
   rootHolding,
   storeOver,
+  unreadableNamePattern,
 } from './document-store-test-kit'
 
 const OLDER_VERSION = 8
 const FAULT_BACKUP_PREFIX = 'last-valid-'
-const NOT_JSON = new TextEncoder().encode('{ not json')
 
 const throwingStep: SchemaMigration = {
   from: OLDER_VERSION,
@@ -103,30 +101,29 @@ describe('saving a project that breaks the format rules', () => {
   })
 })
 
-function newerVersionBytes(): Uint8Array {
-  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
-  return bytesOf(document)
-}
-
 describe('saving over a previous file that cannot be read', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  const cases: { name: string; previous: Uint8Array; options?: CodecOptions }[] = [
-    { name: 'at a newer schema version', previous: newerVersionBytes() },
-    { name: 'that is not JSON', previous: NOT_JSON },
+  const cases: {
+    name: string
+    previous: Uint8Array
+    version: number
+    options?: CodecOptions
+  }[] = [
+    { name: 'that is not JSON', previous: NOT_JSON, version: 0 },
     {
       name: 'whose migration throws',
       previous: versionFixtureBytes(OLDER_VERSION),
+      version: OLDER_VERSION,
       options: { migration: { schemaMigrations: [throwingStep] } },
     },
   ]
 
   it.each(cases)(
     'writes the new document and reports why no graft was made for a previous file $name',
-    async ({ previous, options }) => {
+    async ({ previous, version, options }) => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
       const root = await rootHolding(previous)
       const project = validProject()
@@ -142,6 +139,10 @@ describe('saving over a previous file that cannot be read', () => {
       expect(written).not.toEqual(previous)
       const warned = warn.mock.calls.map((args) => JSON.stringify(args))
       expect(warned.some((text) => text.includes(reason.failure.kind))).toBe(true)
+      const backups = await backupsOf(root)
+      expect(backups).toHaveLength(1)
+      expect(backups[0]?.name).toMatch(unreadableNamePattern(version))
+      expect(backups[0]?.bytes).toEqual(previous)
     },
   )
 })

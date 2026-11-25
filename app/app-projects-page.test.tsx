@@ -26,6 +26,7 @@ import {
   nameOf,
   visit,
 } from './history-navigation-test-support'
+import { leaveIsPrevented } from './leave-test-support'
 import {
   addAFloor,
   changeVisibilityTo,
@@ -61,13 +62,6 @@ async function addAFloorWithoutAutosave(): Promise<void> {
 /** Clicks "Back to <name>" for the first project on the page. */
 function returnToTheFirstProject(): Promise<void> {
   return backToTheProject(nameOf(FIRST_ID))
-}
-
-/** Whether a new cancelable `beforeunload` event is vetoed, the sign of the browser's warning. */
-function unloadIsVetoed(): boolean {
-  const event = new Event('beforeunload', { cancelable: true })
-  window.dispatchEvent(event)
-  return event.defaultPrevented
 }
 
 describe('The Projects page with a notice', () => {
@@ -186,7 +180,7 @@ describe('The unsaved work of a project while the page shows', () => {
     await visit(bar, PROJECTS_ADDRESS)
     await findTheProjectsPage()
 
-    expect(unloadIsVetoed()).toBe(true)
+    expect(leaveIsPrevented()).toBe(true)
   })
 
   it('saves the open project when the tab is hidden while the page shows', async () => {

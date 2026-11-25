@@ -9,6 +9,7 @@ export interface ProjectCardActions {
   /** Resolves true when the name is stored, so the form closes. False keeps the form open. */
   readonly onRename?: (id: string, name: string) => Promise<boolean>
   readonly onExport?: (id: string) => void
+  readonly onChooseFile?: (id: string) => void
   /** Called once the dialog of a delete is confirmed. The dialog shows before it. */
   readonly onDelete?: (id: string) => void
   readonly onRemoveFromList?: (id: string) => void
@@ -24,23 +25,25 @@ export interface CardListProps {
 }
 
 /** The handler of an action, or undefined when the page was given none. */
-function handlerOf(action: ProjectCardAction, cardActions: ProjectCardActions | undefined) {
+function handlerOf(action: ProjectCardAction, handlers: ProjectCardActions) {
   switch (action) {
     case 'rename':
-      return cardActions?.onRename
+      return handlers.onRename
     case 'export':
-      return cardActions?.onExport
+      return handlers.onExport
+    case 'choose-file':
+      return handlers.onChooseFile
     case 'delete':
-      return cardActions?.onDelete
+      return handlers.onDelete
     case 'remove-from-list':
-      return cardActions?.onRemoveFromList
+      return handlers.onRemoveFromList
   }
 }
 
 /** The actions of the card that have a handler, in the card's order. */
 function offeredActions(
   card: ProjectCardModel,
-  cardActions: ProjectCardActions | undefined,
+  cardActions: ProjectCardActions,
 ): readonly ProjectCardAction[] {
   return card.actions.filter((action) => handlerOf(action, cardActions) !== undefined)
 }
@@ -53,7 +56,7 @@ interface ActionStarts {
 
 /** The runner of a chosen action: rename and delete open their form or dialog, the rest call. */
 function actionRunner(
-  cardActions: ProjectCardActions | undefined,
+  handlers: ProjectCardActions,
   starts: ActionStarts,
 ): (id: string, action: ProjectCardAction) => void {
   return (id, action) => {
@@ -62,13 +65,16 @@ function actionRunner(
         starts.rename(id)
         break
       case 'export':
-        cardActions?.onExport?.(id)
+        handlers.onExport?.(id)
+        break
+      case 'choose-file':
+        handlers.onChooseFile?.(id)
         break
       case 'delete':
         starts.delete(id)
         break
       case 'remove-from-list':
-        cardActions?.onRemoveFromList?.(id)
+        handlers.onRemoveFromList?.(id)
         break
     }
   }
@@ -121,10 +127,10 @@ function useDeleteDialog(
 }
 
 export function CardList(props: CardListProps): ReactElement {
-  const { cards, hrefFor, onOpen, cardActions, page } = props
+  const { cards, hrefFor, onOpen, cardActions = {}, page } = props
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const list = useRef<HTMLUListElement>(null)
-  const { dialog, startDelete } = useDeleteDialog(cards, cardActions?.onDelete, { list, page })
+  const { dialog, startDelete } = useDeleteDialog(cards, cardActions.onDelete, { list, page })
   // A card that left the list takes its form with it, also when it comes back.
   if (renamingId !== null && !cards.some(({ id }) => id === renamingId)) {
     setRenamingId(null)
@@ -134,7 +140,7 @@ export function CardList(props: CardListProps): ReactElement {
   }
   const chooseAction = actionRunner(cardActions, { rename: setRenamingId, delete: startDelete })
   const renameOf = (id: string): CardRename | undefined =>
-    renamingId === id && cardActions?.onRename
+    renamingId === id && cardActions.onRename
       ? {
           onSave: (name) => cardActions.onRename?.(id, name) ?? Promise.resolve(false),
           onClose: () => setRenamingId((shown) => (shown === id ? null : shown)),

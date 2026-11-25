@@ -10,3 +10,5 @@ export type {
 } from './failed-open-dialog'
 export { RepairChoiceDialog } from './repair-choice-dialog'
 export type { RepairChoiceDialogProps } from './repair-choice-dialog'
+export { TwoFilesDialog } from './two-files-dialog'
+export type { TwoFilesDialogProps } from './two-files-dialog'

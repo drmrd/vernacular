@@ -2,6 +2,7 @@ import { DocumentStore } from '../documents/document-store'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import type { DirectoryPort } from '../fs/directory-port'
 import { FolderFiles } from '../project-files/folder-files'
+import { secondDocumentFileVersion } from '../project-files/project-file-name'
 import { zipFolder, unzipFolder, type FolderEntries } from './zip-codec'
 import type { AssetCache } from '../asset-cache'
 import { DirectoryAssetCache } from '../directory-asset-cache'
@@ -34,13 +35,14 @@ export class ZipBundleProjectStore extends DocumentStore {
   }
 
   /**
-   * Packs the document and its assets. The backups and the recovery snapshots are sidecars that
-   * an export leaves out; nothing is removed from the store's directory.
+   * Packs the document and its assets. The backups and the recovery snapshots are sidecars, and
+   * the file a build writes beside a newer main file is a second document file. An export leaves
+   * both out. Nothing is removed from the store's directory.
    */
   async exportBundle(): Promise<Uint8Array> {
     const entries: FolderEntries = new Map()
     for (const [path, content] of await this.storedFiles(this.bundleId)) {
-      if (!isSidecarPath(path)) {
+      if (!isSidecarPath(path) && secondDocumentFileVersion(path) === undefined) {
         entries.set(path, content)
       }
     }

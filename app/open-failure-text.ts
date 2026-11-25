@@ -7,6 +7,8 @@ export const NOT_STORED = 'This project is not stored in this browser.'
 export const FOLDER_EMPTY = 'This folder holds no Vernacular project.'
 export const FOLDER_PERMISSION = 'Vernacular has no permission to use this folder.'
 export const FOLDER_UNAVAILABLE = 'The folder of this project cannot be reached.'
+export const TWO_PLAN_FILES =
+  'This project has two plan files. Open it from the Projects page to choose one.'
 export const SAVE_FAILED_DURING_SWITCH =
   'The changes could not be saved, so the project stays open.'
 export const RECOVERY_COPY_KEPT =
@@ -69,10 +71,20 @@ type RestKind = Exclude<
   'flush-failed' | 'open-elsewhere' | 'not-found' | 'did-not-restore'
 >
 
+/** A cancelled pick and a restore with nothing to restore are never shown, so they have no text. */
+function neverShownReason(kind: 'cancelled' | 'nothing-to-restore'): string {
+  switch (kind) {
+    case 'cancelled':
+    case 'nothing-to-restore':
+      return ''
+  }
+}
+
 /**
- * The text of each failure that never changes. The switch names every fixed kind and has no
- * default, so a new kind of failure is a type error here until it has its text. A cancelled pick
- * and a restore with nothing to restore give the empty string, since they are never shown.
+ * The text of each failure that never changes. The switch names every fixed kind and hands the
+ * last two to `neverShownReason`, so a new kind of failure is a type error here until it has its
+ * text. A cancelled pick and a restore with nothing to restore give the empty string, since they
+ * are never shown.
  */
 function fixedReason(kind: FixedKind): string {
   switch (kind) {
@@ -90,9 +102,10 @@ function fixedReason(kind: FixedKind): string {
       return SAVE_FAILED_DURING_SWITCH
     case 'did-not-restore':
       return RECOVERY_COPY_KEPT
-    case 'cancelled':
-    case 'nothing-to-restore':
-      return ''
+    case 'two-files':
+      return TWO_PLAN_FILES
+    default:
+      return neverShownReason(kind)
   }
 }
 
@@ -102,6 +115,7 @@ function isDetailedRestKind(kind: RestKind): false {
     case 'folder-permission':
     case 'folder-unavailable':
     case 'folder-empty':
+    case 'two-files':
     case 'cancelled':
     case 'nothing-to-restore':
       return false
@@ -161,4 +175,10 @@ export function fixedFailureReason(failure: OpenFailureCause): string | undefine
 /** One sentence for a failure of a switch, an import, an open folder, or a restore. */
 export function openFailureReason(failure: OpenFailureCause): string {
   return isDetailed(failure) ? detailedReason(failure) : fixedReason(failure.kind)
+}
+
+/** The sentence for a copy opened as a new project that lacks some of the assets its project uses. */
+export function missingAssetsText(count: number): string {
+  const lacked = `Vernacular could not find ${groupedNumber(count)} of the assets this project uses.`
+  return count === 1 ? `${lacked} It shows as missing.` : `${lacked} They show as missing.`
 }

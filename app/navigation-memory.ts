@@ -1,15 +1,10 @@
 import { isStored } from '../session'
-import type {
-  DocumentHandle,
-  FlowResult,
-  OpenRequest,
-  SessionPorts,
-  SwitchFailure,
-} from '../session'
+import type { DocumentHandle, OpenRequest, SessionPorts, SwitchFailure } from '../session'
 import { addressFor, parseAddress, START_ADDRESS, type Place } from './address'
 import type { AddressBar } from './address-bar'
 import type { PageNotice } from './resolve-place'
-import type { Flow, RunAction, RunFlow } from './use-open-project'
+import { reopenedBy } from './use-open-project'
+import type { Flow, FlowOutcome, RunAction, RunFlow } from './use-open-project'
 
 /** The page shown by the navigation, with the notice of a switch that failed or none. */
 export interface ShownPage {
@@ -197,18 +192,39 @@ export function ownerRetries(memory: NavigationMemory): void {
 }
 
 /**
+ * Takes the handle that a choice reported in place of the one it ended. With no handle, the
+ * navigation forgets the project and the first request it gave the owner, so the page shows with
+ * no project open and the owner is not seen as opening one.
+ */
+export function takeReopenedProject(
+  memory: NavigationMemory,
+  reopened: DocumentHandle | undefined,
+): void {
+  memory.handle = reopened ?? null
+  if (reopened === undefined) {
+    memory.given = null
+  } else {
+    memory.triedId = reopened.id
+  }
+}
+
+/**
  * Records the project that a flow opened as the open project and as the id tried last. This runs as
  * soon as the flow ends, not when the commit is taken: React commits the new view before the effect
  * that calls `takeCommitted` runs, and a history move can arrive between the two, which must see the
- * project that the flow opened.
+ * project that the flow opened. A refusal that ended the given handle reports the handle it opened
+ * again, which is taken in the same way.
  */
 function takeFlowProject<Refusal>(
   memory: NavigationMemory,
-  result: FlowResult<Refusal> | undefined,
+  result: FlowOutcome<Refusal> | undefined,
+  current: DocumentHandle | undefined,
 ): void {
   if (result?.ok) {
     memory.handle = result.handle
     memory.triedId = result.handle.id
+  } else if (result !== undefined && reopenedBy(result, current)) {
+    takeReopenedProject(memory, result.handle)
   }
 }
 
@@ -220,11 +236,15 @@ function takeFlowProject<Refusal>(
 export async function runOwnerFlow<Refusal>(
   memory: NavigationMemory,
   flow: Flow<Refusal>,
-): Promise<FlowResult<Refusal> | undefined> {
+): Promise<FlowOutcome<Refusal> | undefined> {
   memory.busy.flowsRunning += 1
+  let handed: DocumentHandle | undefined
   try {
-    const result = await memory.owner.runFlow(flow)
-    takeFlowProject(memory, result)
+    const result = await memory.owner.runFlow((ports, current) => {
+      handed = current
+      return flow(ports, current)
+    })
+    takeFlowProject(memory, result, handed)
     return result
   } finally {
     memory.busy.flowsRunning -= 1

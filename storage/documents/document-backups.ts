@@ -1,5 +1,5 @@
 import { CURRENT_SCHEMA_VERSION } from '../../core'
-import type { DecodeResult } from '../../core'
+import type { DecodeFailure, DecodeResult, GraftDropped } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 
 /**
@@ -9,14 +9,21 @@ import type { DirectoryPort } from '../fs/directory-port'
 export const BACKUP_DIRECTORY = '.house-backups'
 
 /** Why a copy of a stored file is kept. */
-export type BackupKind = 'pre-migration' | 'last-valid' | 'pre-repair' | 'refused-snapshot'
+export type BackupKind =
+  | 'pre-migration'
+  | 'last-valid'
+  | 'pre-repair'
+  | 'refused-snapshot'
+  | 'unreadable-previous'
+  | 'replaced-by-second-file'
+  | 'set-aside-second-file'
 
 /** The version of bytes that carry no readable schema version. */
 const UNKNOWN_VERSION = 0
 const HEX_RADIX = 16
 const HEX_BYTE_WIDTH = 2
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
+export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes))
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(HEX_RADIX).padStart(HEX_BYTE_WIDTH, '0'))
@@ -46,12 +53,30 @@ export async function writeBackup(
   }
 }
 
+/**
+ * Copies the previous file of a save to the backups when the encode could not read it, so the
+ * save replaces no bytes that it cannot read without a copy. Does nothing for a readable file.
+ */
+export async function keepUnreadablePrevious(
+  directory: DirectoryPort,
+  previous: Uint8Array | undefined,
+  graftDropped: GraftDropped | undefined,
+): Promise<void> {
+  if (previous === undefined || graftDropped === undefined) return
+  const version = versionOfFailure(graftDropped)
+  await writeBackup(directory, 'unreadable-previous', { version, bytes: previous })
+}
+
 /** The schema version to name a backup by, from the decode of the bytes it holds. */
 export function storedVersionOf(decoded: DecodeResult): number {
   if (decoded.ok) {
     return decoded.value.migratedFrom ?? CURRENT_SCHEMA_VERSION
   }
-  const failure = decoded.failure
+  return versionOfFailure(decoded.failure)
+}
+
+/** The schema version that bytes failed to decode at; unknown when they carry none. */
+function versionOfFailure(failure: DecodeFailure): number {
   switch (failure.kind) {
     case 'format-rules':
       return failure.migratedFrom ?? CURRENT_SCHEMA_VERSION

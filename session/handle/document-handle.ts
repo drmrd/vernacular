@@ -3,12 +3,12 @@ import { type Autosave, type AutosaveStatus, createAutosave } from '../autosave/
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuarded } from '../guarded-call'
 import { registerHandle } from './handle-internals'
-import { createHandleNotices, type HandleNotices } from './handle-notices'
+import { createHandleNotices, raiseOpenNotices, reportNoticesTo } from './handle-notices'
 import type { RecordKeeper } from './handle-record'
 import { createSavePath } from './handle-save-path'
 import { createStoredFlag, type StoredFlag } from './handle-stored'
 import type { DocumentHandle, OpenRequest, SaveStatus } from './handle-types'
-import type { OpenedProject } from './read-for-open'
+import { openedFromSecondFile, type OpenedProject } from './read-for-open'
 import { markSession } from './session-mark'
 
 /** What an open found, from which a handle is built. */
@@ -41,20 +41,33 @@ export interface DocumentHandleParts {
 interface SaveStatusCell {
   get(): SaveStatus
   set(reported: AutosaveStatus): void
+  noteFileWritten(isSecondFile: boolean): void
   subscribe(listener: () => void): () => void
+}
+
+function savedStatus(durable: boolean, inSecondFile: boolean): SaveStatus {
+  if (!durable) {
+    return 'tab-only'
+  }
+  return inSecondFile ? 'second-file' : 'saved'
 }
 
 /**
  * The save status, which tells its listeners of each new value and of no repeated one. On a store
- * that does not outlive the tab, a write that the autosave reports as saved reads as tab-only.
+ * that does not outlive the tab, a write that the autosave reports as saved reads as tab-only; in
+ * a durable store it reads as second-file while the file last read or written is the second file.
  */
-function createSaveStatusCell(durable: boolean): SaveStatusCell {
+function createSaveStatusCell(durable: boolean, startsInSecondFile: boolean): SaveStatusCell {
   let status: SaveStatus = 'idle'
+  let inSecondFile = startsInSecondFile
   const listeners = new Set<() => void>()
   return {
     get: () => status,
+    noteFileWritten(isSecondFile) {
+      inSecondFile = isSecondFile
+    },
     set(reported) {
-      const next = reported === 'saved' && !durable ? 'tab-only' : reported
+      const next = reported === 'saved' ? savedStatus(durable, inSecondFile) : reported
       if (next === status) {
         return
       }
@@ -72,15 +85,6 @@ function createSaveStatusCell(durable: boolean): SaveStatusCell {
   }
 }
 
-/** Raises saved-with-faults for a store save that found faults. */
-function reportFaultsTo(notices: HandleNotices): (report: SaveReport) => void {
-  return (report) => {
-    if (report.faults.length > 0) {
-      notices.raise('saved-with-faults')
-    }
-  }
-}
-
 /** What the autosave of a handle tells: each status, and what each store save found. */
 interface WriteListeners {
   onStatusChange(next: AutosaveStatus): void
@@ -91,7 +95,7 @@ interface WriteListeners {
 interface WriteListenerParts {
   readonly session: EditorSession
   readonly status: SaveStatusCell
-  readonly reportFaults: (report: SaveReport) => void
+  readonly reportNotices: (report: SaveReport) => void
   readonly records: RecordKeeper
   readonly storedFlag: StoredFlag
 }
@@ -103,12 +107,13 @@ interface WriteListenerParts {
  * its write reports saved, so the last report is that of the write.
  */
 function listenToWrites(parts: WriteListenerParts): WriteListeners {
-  const { session, status, reportFaults, records, storedFlag } = parts
+  const { session, status, reportNotices, records, storedFlag } = parts
   let lastReport: SaveReport | undefined
   return {
     onReport(report) {
       lastReport = report
-      reportFaults(report)
+      status.noteFileWritten(report.secondFile !== undefined)
+      reportNotices(report)
     },
     onStatusChange(next) {
       // The mark is taken before the status listeners run, so an edit that one of them makes
@@ -150,18 +155,13 @@ function createHandleAutosave(
 export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle {
   const { request, store, hold, opened, records } = parts
   const session = parts.session ?? createEditorSession(opened.project)
-  const status = createSaveStatusCell(store.durable)
+  const status = createSaveStatusCell(store.durable, openedFromSecondFile(opened))
   const notices = createHandleNotices()
-  if (opened.savedByNewerBuild) {
-    notices.raise('saved-by-newer-build')
-  }
-  if (parts.recoveryCopyKept === true) {
-    notices.raise('recovery-copy-kept')
-  }
+  raiseOpenNotices(notices, opened, parts.recoveryCopyKept)
   const { snapshots } = parts
-  const reportFaults = reportFaultsTo(notices)
+  const reportNotices = reportNoticesTo(notices)
   const storedFlag = createStoredFlag(parts.stored ?? false)
-  const writes = listenToWrites({ session, status, reportFaults, records, storedFlag })
+  const writes = listenToWrites({ session, status, reportNotices, records, storedFlag })
   const autosave = createHandleAutosave(parts, session, writes)
   const { save, flush, close, handOver } = createSavePath({ autosave, hold, records })
   const handle: DocumentHandle = {

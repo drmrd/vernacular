@@ -9,7 +9,7 @@ import {
   type SwitchFailure,
 } from '../session'
 import { failedOpenModel, type FailedOpenModel } from './failed-open-model'
-import { groupedNumber } from './grouped-number'
+import { missingAssetsText } from './open-failure-text'
 import { loadPackSupplies, type PackCatalog } from './pack-supplies'
 import type { PageNotice } from './resolve-place'
 import { importWithAssetWarning, type RefusedFile } from './use-open-file-action'
@@ -72,12 +72,6 @@ type ChoiceContext = Pick<
 /** The run of a choice with the offered repair. */
 type ChoiceRun = (offer: RepairOffer) => Promise<void>
 
-/** The sentence for a repaired copy that lacks some of the assets its project uses. */
-function repairedCopyMissingAssetsText(count: number): string {
-  const lacked = `Vernacular could not find ${groupedNumber(count)} of the assets this project uses.`
-  return count === 1 ? `${lacked} It shows as missing.` : `${lacked} They show as missing.`
-}
-
 /** Opens the offer of a stored project as a new project, with a warning for each missing asset. */
 async function openStoredCopy(id: string, offer: RepairOffer, context: ChoiceContext) {
   const packSupplies = await loadPackSupplies(context.packs)
@@ -97,7 +91,7 @@ async function openStoredCopy(id: string, offer: RepairOffer, context: ChoiceCon
   if (!result.ok) {
     context.onTryFailed(id, result.failure)
   } else if (missingAssets.length > 0) {
-    context.notifications.warning(repairedCopyMissingAssetsText(missingAssets.length))
+    context.notifications.warning(missingAssetsText(missingAssets.length))
   }
 }
 

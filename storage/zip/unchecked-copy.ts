@@ -1,4 +1,6 @@
+import { readStoredFacts } from '../../core'
 import type { AssetCache } from '../asset-cache'
+import { secondDocumentFileVersion } from '../project-files/project-file-name'
 import { DOCUMENT_ENTRY_NAME, assetEntryName, isContentHash } from './archive-layout'
 import { isSidecarPath } from './sidecar-paths'
 import { zipFolder } from './zip-codec'
@@ -10,8 +12,12 @@ export interface UncheckedCopy {
   readonly includedAssets: number
 }
 
+function isDocumentPath(path: string): boolean {
+  return path === DOCUMENT_ENTRY_NAME || secondDocumentFileVersion(path) !== undefined
+}
+
 function isCopiedPath(path: string): boolean {
-  return path === DOCUMENT_ENTRY_NAME || isSidecarPath(path)
+  return isDocumentPath(path) || isSidecarPath(path)
 }
 
 function copiedFileEntries(files: ReadonlyMap<string, Uint8Array>): FolderEntries {
@@ -20,6 +26,14 @@ function copiedFileEntries(files: ReadonlyMap<string, Uint8Array>): FolderEntrie
     if (isCopiedPath(path)) entries.set(path, bytes)
   }
   return entries
+}
+
+function namedByDocuments(files: ReadonlyMap<string, Uint8Array>): string[] {
+  const names: string[] = []
+  for (const [path, bytes] of files) {
+    if (isDocumentPath(path)) names.push(...readStoredFacts(bytes).assetHashes)
+  }
+  return names
 }
 
 async function poolAssetEntries(
@@ -46,10 +60,12 @@ async function readAssetBytes(assets: AssetCache, hash: string): Promise<Uint8Ar
 
 /**
  * Builds a .building archive from the raw files of a project folder without opening the project.
- * The document bytes are copied as they are (they are not decoded or checked), together with the
- * snapshots and backups, and the bytes of each listed asset that the pool can supply. A value
- * that is not a content hash, an asset the pool lacks, and a pool read that fails are all left
- * out, so a project that did not open still gets a copy.
+ * The document bytes are copied as they are (not decoded or checked), together with each second
+ * document file, the snapshots and backups.
+ * The archive also holds the bytes of each listed asset and of each asset that a document file
+ * names (read without a check), when the pool can supply them.
+ * A value that is not a content hash, an asset the pool lacks, and a pool read that fails are all
+ * left out, so a project that did not open still gets a copy.
  */
 export async function buildUncheckedCopy(
   files: ReadonlyMap<string, Uint8Array>,
@@ -57,7 +73,7 @@ export async function buildUncheckedCopy(
   assetHashes: readonly string[],
 ): Promise<UncheckedCopy> {
   const fileEntries = copiedFileEntries(files)
-  const assetEntries = await poolAssetEntries(assets, assetHashes)
+  const assetEntries = await poolAssetEntries(assets, [...assetHashes, ...namedByDocuments(files)])
   return {
     bytes: zipFolder(new Map([...fileEntries, ...assetEntries])),
     includedAssets: assetEntries.size,
