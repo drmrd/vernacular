@@ -15,7 +15,7 @@ import type { PlacementRefusal } from './overlay-announce'
 import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
 import { stairPlacementCommand } from './place-stair'
 import { selectPlacedEntity, selectPlacedOpening, selectPlacedStair } from './select-placed-entity'
-import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
+import { dispatchWallVertex, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
 import {
   advanceDimensionTool,
   cancelDimensionTool,
@@ -36,6 +36,7 @@ export interface AuthoringRun {
   candidate: Point
   setCandidate: (point: Point) => void
   setAnnouncement: (message: string) => void
+  reportWallDraw?: (note: string | undefined) => void
 }
 
 // One keystroke for a specific tool: the shared run plus the event and the
@@ -129,12 +130,12 @@ function dropWallVertex(ctx: WallKeyContext): void {
     return
   }
   ctx.event.preventDefault()
-  const result = advanceWallTool(ctx.toolState, ctx.candidate, floorId)
-  result.commands?.forEach((command) => {
-    ctx.session.dispatch(command)
-  })
+  const result = dispatchWallVertex(ctx, ctx.candidate, floorId)
+  ctx.reportWallDraw?.(result.note)
   ctx.setToolState(result.state)
-  ctx.setAnnouncement(wallRunEnded(result) ? 'Wall run finished' : 'Wall vertex dropped')
+  ctx.setAnnouncement(
+    result.note ?? (wallRunEnded(result) ? 'Wall run finished' : 'Wall vertex dropped'),
+  )
 }
 
 // Abandon the in-progress run, returning the tool to idle and committing nothing.

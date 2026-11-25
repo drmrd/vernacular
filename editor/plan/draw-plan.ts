@@ -2,6 +2,7 @@
 import {
   DEFAULT_METRIC_PREFERENCES,
   effectiveWallThickness,
+  uncoveredParts,
   wallFaceGeometry,
   wallFootprints,
   type OpeningSceneNode,
@@ -68,6 +69,7 @@ export interface PlanDrawingContext {
 }
 
 export interface PreviewSegment {
+  fullLengthGuide?: boolean
   start: Point
   end: Point
 }
@@ -545,24 +547,19 @@ function drawPreview(
   options: DrawPlanOptions,
 ): void {
   const color = paletteOf(options).preview
-  const start = worldToScreen(preview.start, options.viewport)
-  const end = worldToScreen(preview.end, options.viewport)
-  drawPreviewLine(ctx, { start, end }, color)
-  drawStartMarker(ctx, start, color)
-}
-
-function drawPreviewLine(
-  ctx: PlanDrawingContext,
-  segment: { start: Point; end: Point },
-  color: string,
-): void {
   ctx.lineCap = LINE_CAP
   ctx.lineWidth = PREVIEW_LINE_WIDTH
   ctx.strokeStyle = color
-  ctx.beginPath()
-  ctx.moveTo(segment.start.x, segment.start.y)
-  ctx.lineTo(segment.end.x, segment.end.y)
-  ctx.stroke()
+  const parts = preview.fullLengthGuide ? [preview] : uncoveredParts(options.walls, preview)
+  for (const part of parts) {
+    const start = worldToScreen(part.start, options.viewport)
+    const end = worldToScreen(part.end, options.viewport)
+    ctx.beginPath()
+    ctx.moveTo(start.x, start.y)
+    ctx.lineTo(end.x, end.y)
+    ctx.stroke()
+  }
+  drawStartMarker(ctx, worldToScreen(preview.start, options.viewport), color)
 }
 
 function drawStartMarker(ctx: PlanDrawingContext, center: Point, color: string): void {
