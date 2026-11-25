@@ -155,3 +155,19 @@ it('reports full coverage when a snapped retrace leaves no distinct endpoints', 
     .toEqual([horizontal(shortExtension.start.x, existing.start.x, -1900)])
   expect(drawnWallNote(walls, shortExtension)).toBe(partialNote)
 })
+
+it('uses only the physical stretches of saved walls to cover a new draw', () => {
+  const owner = createWall({ x: 0, y: 0 }, { x: 100, y: 0 }, { id: 'owner' })
+  const covered = createWall({ x: 0, y: 0.75 }, { x: 100, y: 0.75 }, { id: 'covered' })
+  const withExposedTail = createWall(covered.start, { x: 200, y: 0.75 }, { id: 'longer' })
+  const independent = horizontal(20, 80, 1.5)
+
+  for (const wall of [covered, withExposedTail]) {
+    expect.soft(uncoveredParts([owner, wall], independent), wall.id).toEqual([independent])
+    expect.soft(drawnWallNote([owner, wall], independent), wall.id).toBeUndefined()
+  }
+
+  const alongTail = horizontal(175, 190, 1.5)
+  expect.soft(uncoveredParts([owner, withExposedTail], alongTail)).toEqual([])
+  expect.soft(drawnWallNote([owner, withExposedTail], alongTail)).toBe(coveredNote)
+})
