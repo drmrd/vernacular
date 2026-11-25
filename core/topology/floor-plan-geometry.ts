@@ -41,7 +41,10 @@ export interface SetAside {
   readonly unboundRecordIds: readonly string[]
 }
 
-/** Where an opening sits along the edge that holds its center, measured from the edge's first junction. */
+/**
+ * Where an opening sits along the edge that holds its center, measured from the edge's first
+ * junction.
+ */
 export interface OpeningSpan {
   readonly openingId: string
   readonly edgeIndex: number
@@ -109,7 +112,10 @@ function edgeHoldingCenter(network: WallNetwork, opening: Opening): CenterOnEdge
   return undefined
 }
 
-/** The span of each opening along the first edge of its host wall that holds its wall-clamped center; the span is not clipped to the edge. */
+/**
+ * The span of each opening along the first edge of its host wall that holds its wall-clamped
+ * center. The span is not clipped to the edge.
+ */
 export function deriveOpeningSpans(
   network: WallNetwork,
   openings: readonly Opening[],
@@ -152,8 +158,9 @@ export function deriveFloorPlanGeometry(
 }
 
 /**
- * A deriver that keeps the plan geometry of each floor object, the wall network of each wall list,
- * and the opening spans of each network and openings list, so an edit rebuilds only what it changed.
+ * A deriver that keeps the plan geometry of each floor object and the opening spans of each network
+ * and openings list, so an edit rebuilds only what it changed. It resolves wall thickness with the
+ * built-in registry, as `deriveRooms` does, so the scene graph reuses the networks it builds.
  */
 export function createPlanGeometryDeriver(): (floor: Floor) => FloorPlanGeometry {
   const geometryByFloor = new WeakMap<Floor, FloorPlanGeometry>()
