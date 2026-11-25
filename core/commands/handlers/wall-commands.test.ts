@@ -11,9 +11,12 @@ import { Dispatcher } from '../dispatcher'
 import {
   createEmptyProject,
   createFloor,
+  createOpening,
   createWall,
   DEFAULT_WALL_THICKNESS_MM,
 } from '../../model/factories'
+import { colorFromHex } from '../../color/color'
+import { solidTreatment, surfaceKey } from '../../model/paint'
 import type { Project } from '../../model/types'
 import { MAX_LENGTH_MM, InvalidLengthError } from '../../index'
 
@@ -34,7 +37,109 @@ function dispatcherFor(project: Project): Dispatcher<Project> {
   return new Dispatcher<Project>(project, registry)
 }
 
+function wallSegment(fromX: number, toX: number, y = 0) {
+  return { start: { x: fromX, y }, end: { x: toX, y } }
+}
+
+function projectWithFinishedWall(): Project {
+  const project = projectWithFloor()
+  const ground = project.floors[0]!
+  const hostId = 'host'
+  const { start, end } = wallSegment(0, 4000)
+  ground.walls = [
+    {
+      ...createWall(start, end, { id: hostId, thickness: 250 }),
+      constructionProfile: 'solid-masonry-brick',
+    },
+  ]
+  ground.openings = [
+    createOpening({ id: 'door', hostWallId: hostId, type: 'single-swing-door', position: 2000 }),
+  ]
+  project.paint = {
+    [surfaceKey({ kind: 'wall-face', wallId: hostId, side: 'left' })]: solidTreatment(
+      colorFromHex('#9aa583'),
+      'satin',
+    ),
+  }
+  project.floors.push(
+    createFloor('Upper', {
+      id: 'u',
+      walls: [createWall(start, end, { id: 'upper-wall' })],
+    }),
+  )
+  return project
+}
+
 describe('addWall', () => {
+  it('adds only the exposed pieces of a stroke in one undoable draw', () => {
+    const cases = [
+      {
+        label: 'one exposed piece',
+        stroke: wallSegment(1000, 5000),
+        expected: [wallSegment(4000, 5000)],
+      },
+      {
+        label: 'two pieces drawn in reverse',
+        stroke: wallSegment(6000, -1000),
+        expected: [wallSegment(6000, 4000), wallSegment(0, -1000)],
+      },
+      {
+        label: 'entirely covered',
+        stroke: wallSegment(1000, 3000),
+        expected: [],
+      },
+      {
+        label: 'unobstructed draw',
+        stroke: wallSegment(1000, 5000, 2000),
+        expected: [wallSegment(1000, 5000, 2000)],
+      },
+    ]
+
+    for (const { label, stroke, expected } of cases) {
+      const project = projectWithFinishedWall()
+      const before = structuredClone(project)
+      const upper = project.floors[1]
+      const dispatcher = dispatcherFor(project)
+      const command = addWall('g', stroke.start, stroke.end)
+
+      dispatcher.dispatch(command)
+
+      const ground = project.floors[0]!
+      const added = ground.walls.slice(1)
+      expect
+        .soft(
+          added.map(({ start, end }) => ({ start, end })),
+          label,
+        )
+        .toEqual(expected)
+      expect.soft(ground.walls[0], label).toEqual(before.floors[0]?.walls[0])
+      expect.soft(ground.openings, label).toEqual(before.floors[0]?.openings)
+      expect.soft(project.paint, label).toEqual(before.paint)
+      expect.soft(project.floors[1], label).toBe(upper)
+      expect.soft(project.floors[1], label).toEqual(before.floors[1])
+
+      if (expected.length === 0) {
+        expect.soft(project, label).toEqual(before)
+        continue
+      }
+
+      expect.soft(added[0]?.id, label).toBe(command.params.wall.id)
+      const wallIds = project.floors.flatMap((floor) => floor.walls.map((wall) => wall.id))
+      expect.soft(new Set(wallIds).size, label).toBe(wallIds.length)
+
+      const after = structuredClone(project)
+      expect.soft(dispatcher.undo(), label).toBe(true)
+      expect.soft(project, label).toEqual(before)
+      expect.soft(dispatcher.canUndo(), label).toBe(false)
+      expect.soft(dispatcher.redo(), label).toBe(true)
+      expect.soft(project, label).toEqual(after)
+
+      const replay = structuredClone(before)
+      dispatcherFor(replay).dispatch(command)
+      expect.soft(replay, label).toEqual(after)
+    }
+  })
+
   it('appends a wall to the named floor', () => {
     const project = projectWithFloor()
     const dispatcher = dispatcherFor(project)
