@@ -11,7 +11,8 @@ import { deriveWallNetwork, type NetworkWall, type WallNetwork } from './wall-ne
 const FLOOR_ID = 'g'
 
 const WALL_THICKNESS_MM = 114
-const TEE_ARM_MM = 2000
+/** The x of the tee of `teeWalls` and `splitTeeWalls`, where the long wall splits. */
+export const TEE_ARM_MM = 2000
 const TEE_STEM_MM = 1500
 const TEE_SPAN_MM = 4000
 const TWO_ROOM_WIDTH_MM = 8000
