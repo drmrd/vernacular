@@ -1,5 +1,6 @@
 import { resolveGradeElevation } from '../model/site'
 import type { Floor, FurnitureInstance, Project, Wall } from '../model/types'
+import type { FloorPlanGeometry } from '../topology/floor-plan-geometry'
 import type {
   DimensionSceneNode,
   FurnitureSceneNode,
@@ -19,7 +20,12 @@ import type {
 export interface SceneNodeDerivations {
   readonly floorNode: (floor: Floor) => SceneNode
   readonly wallNode: (floor: Floor, wall: Wall) => WallSceneNode
-  readonly roomNodes: (floor: Floor, overrides: Project['roomOverrides']) => RoomSceneNode[]
+  readonly planGeometry: (floor: Floor) => FloorPlanGeometry
+  readonly roomNodes: (
+    floor: Floor,
+    geometry: FloorPlanGeometry,
+    overrides: Project['roomOverrides'],
+  ) => RoomSceneNode[]
   readonly underlayNodes: (floor: Floor) => UnderlaySceneNode[]
   readonly openingNodes: (floor: Floor, rooms: readonly RoomSceneNode[]) => OpeningSceneNode[]
   readonly dimensionNodes: (floor: Floor) => DimensionSceneNode[]
@@ -34,7 +40,13 @@ export interface SceneNodeDerivations {
  * array index of `map` never reaches a derivation as a second argument.
  */
 export function assembleSceneGraph(project: Project, derive: SceneNodeDerivations): SceneGraph {
-  const roomsByFloor = project.floors.map((floor) => derive.roomNodes(floor, project.roomOverrides))
+  const floorsWithGeometry = project.floors.map((floor) => ({
+    floor,
+    geometry: derive.planGeometry(floor),
+  }))
+  const roomsByFloor = floorsWithGeometry.map(({ floor, geometry }) =>
+    derive.roomNodes(floor, geometry, project.roomOverrides),
+  )
   return {
     nodes: project.floors.map((floor) => derive.floorNode(floor)),
     walls: project.floors.flatMap((floor) =>
@@ -51,5 +63,6 @@ export function assembleSceneGraph(project: Project, derive: SceneNodeDerivation
       floor.furniture.map((item) => derive.furnitureNode(floor, item)),
     ),
     gradeElevation: resolveGradeElevation(project.site),
+    planGeometry: floorsWithGeometry.map(({ geometry }) => geometry),
   }
 }

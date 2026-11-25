@@ -1,20 +1,18 @@
 import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
 import { FILL_CORNER_MATCH_MM, MIN_FACE_AREA_MM2 } from '../geometry/tolerance'
-import {
-  directionAngle,
-  dot,
-  leftNormal,
-  leftPerp,
-  negate,
-  subtract,
-  unit,
-} from '../geometry/vector'
+import { dot, leftNormal, leftPerp, negate, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 import { signedArea } from '../scene/winding'
 
 import type { GraphEdge, PlanarGraph } from './wall-graph'
-import { type WallFootprint, vertexIncidence, wallFootprints } from './wall-footprint'
+import { type FanOptions, junctionFans } from './junction-fans'
+import { type WallFootprint, wallFootprints } from './wall-footprint'
+
+/** Optional input of `junctionFills`: fans and footprints a caller has already derived. */
+interface FillOptions extends FanOptions {
+  readonly footprints?: readonly WallFootprint[]
+}
 
 /**
  * The plan-space core a junction leaves uncovered, ready to be filled. Its `polygon`
@@ -25,7 +23,11 @@ import { type WallFootprint, vertexIncidence, wallFootprints } from './wall-foot
 export interface JunctionFill {
   /** The closed ring of footprint corners enclosing the junction vertex. */
   polygon: Point[]
-  /** Indices into {@link PlanarGraph.edges} of the walls meeting at the vertex. */
+  /**
+   * Indices into {@link PlanarGraph.edges} of the walls meeting at the vertex, ascending.
+   * The ascending order is load-bearing: the engine keys each fill mesh by these indexes
+   * joined in order, and the near-wall fade matches that key against its own groups.
+   */
   edgeIndexes: number[]
 }
 
@@ -58,14 +60,27 @@ const MAX_CROSSING_SPANS = 4
  * end and a two-way corner yield no fill (the wall prisms already join those solid).
  * `thicknessByEdge[i]` is the thickness of the wall on edge `i`. The polygon's points
  * are read from `wallFootprints`, so the fill abuts each wall along its near edge.
+ * With `options.fans`, each junction's order comes from the map; without it the fans
+ * are computed here and shared with the footprints. With `options.footprints`, those
+ * footprints are read instead of being derived again.
  */
-export function junctionFills(graph: PlanarGraph, thicknessByEdge: number[]): JunctionFill[] {
-  const context: FillContext = { graph, footprints: wallFootprints(graph, thicknessByEdge) }
+export function junctionFills(
+  graph: PlanarGraph,
+  thicknessByEdge: number[],
+  options?: FillOptions,
+): JunctionFill[] {
+  const fans = options?.fans ?? junctionFans(graph)
+  const context: FillContext = {
+    graph,
+    footprints: options?.footprints ?? wallFootprints(graph, thicknessByEdge, { fans }),
+  }
   const fills: JunctionFill[] = []
-  for (const [vertexIndex, edgeIndexes] of vertexIncidence(graph)) {
+  for (const [vertexIndex, edgeIndexes] of fans) {
     if (edgeIndexes.length < MIN_FILL_INCIDENCE) continue
     const polygon = corePolygon(context, vertexIndex, edgeIndexes)
-    if (Math.abs(signedArea(polygon)) > MIN_FACE_AREA_MM2) fills.push({ polygon, edgeIndexes })
+    if (Math.abs(signedArea(polygon)) > MIN_FACE_AREA_MM2) {
+      fills.push({ polygon, edgeIndexes: [...edgeIndexes].sort((left, right) => left - right) })
+    }
   }
   return fills
 }
@@ -73,19 +88,22 @@ export function junctionFills(graph: PlanarGraph, thicknessByEdge: number[]): Ju
 /** Per-call lookups shared while reading every junction's core polygon. */
 interface FillContext {
   graph: PlanarGraph
-  footprints: WallFootprint[]
+  footprints: readonly WallFootprint[]
 }
 
 /**
- * The uncovered core ring around a junction vertex: sort its incident spokes in
- * counter-clockwise fan order, read each wall's near edge (cap) at the vertex, then
+ * The uncovered core ring around a junction vertex: take its incident spokes in
+ * counterclockwise fan order, read each wall's near edge (cap) at the vertex, then
  * cross each adjacent pair of cap lines. For a clean wedge this crossing is the walls'
  * shared miter; for an acute wedge where the walls overlap it is the near-vertex
  * crossing, so the ring stays simple with one vertex per incident wall.
  */
-function corePolygon(context: FillContext, vertexIndex: number, edgeIndexes: number[]): Point[] {
+function corePolygon(
+  context: FillContext,
+  vertexIndex: number,
+  edgeIndexes: readonly number[],
+): Point[] {
   const spokes = edgeIndexes.map((edgeIndex) => spokeAt(context.graph, edgeIndex, vertexIndex))
-  spokes.sort((left, right) => directionAngle(left.out) - directionAngle(right.out))
   const caps = spokes.map((spoke) =>
     wallCap(context.footprints[spoke.edgeIndex] as WallFootprint, spoke),
   )

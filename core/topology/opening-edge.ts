@@ -31,6 +31,21 @@ export interface ResolvedOpeningEdge {
 }
 
 /**
+ * The distance of `center`'s projection from `a` along the `a -> b` direction, in millimeters,
+ * when the edge holds it. Returns `undefined` for an edge with no length, which holds nothing, and
+ * for a projection that falls outside `[0, length]`. The plan geometry and the 3D walls both pick
+ * an opening's edge through this rule, from a center that both take from
+ * `clampedOpeningPlacement`, so on a straight wall they pick the same edge.
+ */
+export function distanceAlongEdge(center: Point, a: Point, b: Point): number | undefined {
+  const length = distance(a, b)
+  if (length === 0) return undefined
+  const dot = (center.x - a.x) * (b.x - a.x) + (center.y - a.y) * (b.y - a.y)
+  const along = dot / length
+  return along >= 0 && along <= length ? along : undefined
+}
+
+/**
  * Resolve an opening to the graph edge that contains its center. Because a wall
  * splits into several edges that all carry its wall id (foundation specification
  * section 3.3), an opening positioned along the whole wall must be matched to the
@@ -53,17 +68,8 @@ export function resolveOpeningEdge(
     const b = graph.vertices[edge.b]
     if (a === undefined || b === undefined) continue
 
-    const length = distance(a, b)
-    if (length === 0) continue
-
-    // The center's distance from `a` along the `a -> b` direction: the dot
-    // product of `(center - a)` with the `a -> b` direction, normalized by the
-    // edge length to express it in millimeters along the edge.
-    const dot = (opening.center.x - a.x) * (b.x - a.x) + (opening.center.y - a.y) * (b.y - a.y)
-    const positionAlongEdge = dot / length
-    if (positionAlongEdge >= 0 && positionAlongEdge <= length) {
-      return { edge, positionAlongEdge }
-    }
+    const positionAlongEdge = distanceAlongEdge(opening.center, a, b)
+    if (positionAlongEdge !== undefined) return { edge, positionAlongEdge }
   }
 
   return null

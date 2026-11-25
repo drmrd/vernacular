@@ -4,9 +4,9 @@ import {
   deriveFloorNode,
   deriveFurnitureNode,
   deriveOpeningNode,
-  deriveRoomNodesForFloor,
   deriveStairNodes,
   deriveWallNode,
+  roomNodesFromPlanGeometry,
 } from './scene-graph'
 import { assembleSceneGraph } from './scene-graph-assembly'
 import type { SceneNodeDerivations } from './scene-graph-assembly'
@@ -19,6 +19,8 @@ import type {
   Stair,
   Wall,
 } from '../model/types'
+import { getOrCreate } from '../topology/get-or-create'
+import { createPlanGeometryDeriver, type FloorPlanGeometry } from '../topology/floor-plan-geometry'
 import type {
   FurnitureSceneNode,
   OpeningSceneNode,
@@ -48,20 +50,6 @@ interface CachedRoomNodes {
   overrides: RoomOverrides
   defaultCeilingHeight: number
   nodes: RoomSceneNode[]
-}
-
-/**
- * Returns the cached value for `key`, deriving and caching it on a miss. Shared
- * by the reference-keyed memos so the deriver closure stays under its line cap.
- */
-function memoizeByRef<K extends object, V>(cache: WeakMap<K, V>, key: K, derive: () => V): V {
-  const cached = cache.get(key)
-  if (cached !== undefined) {
-    return cached
-  }
-  const value = derive()
-  cache.set(key, value)
-  return value
 }
 
 /**
@@ -100,7 +88,7 @@ function roomSideHolds(cached: CachedOpeningNode, rooms: readonly RoomSceneNode[
  * rebuilds a window exactly when its side changes. A replaced host wall changes the opening
  * geometry without changing the opening reference, so the cache compares the host wall too, and the
  * node copies the floor's id, so that id is compared before the room side is read. Module-scope so
- * the deriver closure stays under its line cap, like `memoizeByRef`.
+ * the deriver closure stays under its line cap, like `getOrCreate`.
  */
 function openingNodesFor(
   openingCache: WeakMap<Opening, CachedOpeningNode>,
@@ -132,12 +120,14 @@ function openingNodesFor(
  * array, the `overrides` reference, `defaultCeilingHeight`, and the floor's id
  * are all unchanged. Keying on `floor.walls` lets an edit that yields a new
  * floor with the same walls (an opening edit) reuse the rooms, while an
- * override edit or a ceiling height change still rebuilds them. Module-scope so
- * the deriver closure stays under its line cap, like `openingNodesFor`.
+ * override edit or a ceiling height change still rebuilds them. A miss reads the
+ * rooms of the floor's plan geometry. A hit can ignore `geometry`, because those
+ * rooms depend only on `floor.walls`, the cache key. Module-scope so the deriver
+ * closure stays under its line cap, like `openingNodesFor`.
  */
 function roomNodesFor(
   roomCache: WeakMap<readonly Wall[], CachedRoomNodes>,
-  floor: Floor,
+  { floor, geometry }: { floor: Floor; geometry: FloorPlanGeometry },
   overrides: RoomOverrides,
 ): RoomSceneNode[] {
   const cached = roomCache.get(floor.walls)
@@ -149,7 +139,7 @@ function roomNodesFor(
   ) {
     return cached.nodes
   }
-  const nodes = deriveRoomNodesForFloor(floor, overrides)
+  const nodes = roomNodesFromPlanGeometry(floor, geometry, overrides)
   roomCache.set(floor.walls, {
     floorId: floor.id,
     overrides,
@@ -253,15 +243,18 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
   const furnitureCache = new WeakMap<FurnitureInstance, CachedFurnitureNode>()
+  const planGeometryOfFloor = createPlanGeometryDeriver()
 
   const derivations: SceneNodeDerivations = {
     ...PURE_NODE_DERIVATIONS,
-    floorNode: (floor) => memoizeByRef(floorCache, floor, () => deriveFloorNode(floor)),
+    floorNode: (floor) => getOrCreate(floorCache, floor, () => deriveFloorNode(floor)),
     wallNode: (floor, wall) => wallNodeFor(wallCache, floor, wall),
-    roomNodes: (floor, overrides) => roomNodesFor(roomCache, floor, overrides),
+    planGeometry: (floor) => planGeometryOfFloor(floor),
+    roomNodes: (floor, geometry, overrides) =>
+      roomNodesFor(roomCache, { floor, geometry }, overrides),
     openingNodes: (floor, rooms) => openingNodesFor(openingCache, floor, rooms),
     stairNodes: (project) =>
-      memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project)),
+      getOrCreate(stairCache, project.stairs, () => deriveStairNodes(project)),
     furnitureNode: (floor, item) => furnitureNodeFor(furnitureCache, floor, item),
   }
 

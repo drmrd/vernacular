@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveOpeningEdge } from './opening-edge'
+import { distanceAlongEdge, resolveOpeningEdge } from './opening-edge'
 import type { GraphEdge, PlanarGraph } from './wall-graph'
 
 interface OpeningInput {
@@ -85,5 +85,25 @@ describe('resolveOpeningEdge', () => {
     const opening: OpeningInput = { center: { x: 5000, y: 0 }, hostWallId: 'w1' }
 
     expect(resolveOpeningEdge(opening, graph)).toBeNull()
+  })
+})
+
+describe('distanceAlongEdge', () => {
+  const a = { x: 0, y: 0 }
+  const b = { x: 4000, y: 0 }
+  const length = 4000
+
+  it.each([
+    ['at the a-end', { x: 0, y: 0 }, 0],
+    ['at the b-end', { x: 4000, y: 0 }, length],
+    ['at the midpoint', { x: 2000, y: 0 }, length / 2],
+    ['just before the a-end', { x: -1, y: 0 }, undefined],
+    ['just past the b-end', { x: 4001, y: 0 }, undefined],
+  ])('measures a center %s', (_label, center, expected) => {
+    expect(distanceAlongEdge(center, a, b)).toBe(expected)
+  })
+
+  it('has no distance along an edge of zero length', () => {
+    expect(distanceAlongEdge({ x: 0, y: 0 }, a, a)).toBeUndefined()
   })
 })

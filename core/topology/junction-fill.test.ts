@@ -65,6 +65,22 @@ describe('junctionFills', () => {
     }
   })
 
+  it('lists the edges of a fill in ascending order', () => {
+    // The edges leave the junction at angles 180 (left half), 0 (right half), and 90
+    // (partition) degrees, so the counterclockwise order is not the ascending one.
+    const graph = buildWallGraph([
+      { id: 'through', start: { x: 0, y: 0 }, end: { x: 2000, y: 0 }, thickness: 100 },
+      { id: 'part', start: { x: 1000, y: 0 }, end: { x: 1000, y: 1000 }, thickness: 100 },
+    ])
+
+    const [fill] = junctionFills(
+      graph,
+      graph.edges.map(() => 100),
+    ) as [JunctionFill]
+
+    expect(fill.edgeIndexes).toEqual([...fill.edgeIndexes].sort((a, b) => a - b))
+  })
+
   it('fills the acute three-way bay apex with a simple triangle', () => {
     // A bay: a partition wall runs up to an apex where two bay walls splay out
     // toward a window. buildWallGraph leaves the apex (2000,2000) as the only

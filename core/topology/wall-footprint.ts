@@ -1,18 +1,12 @@
 import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
-import {
-  directionAngle,
-  dot,
-  leftNormal,
-  leftPerp,
-  negate,
-  shift,
-  subtract,
-  unit,
-} from '../geometry/vector'
+import { dot, leftNormal, leftPerp, negate, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 
+import { type FanOptions, isSelfLoop, junctionFans } from './junction-fans'
 import type { GraphEdge, PlanarGraph } from './wall-graph'
+
+export { incidentEdgesWithoutLoops, vertexIncidence } from './junction-fans'
 
 /**
  * The plan-space footprint of one wall edge: its four ground-plane corners, two at
@@ -73,23 +67,32 @@ export const MITER_LIMIT = 4
  * junction vertex is resolved as a fan of its incident edges, sharing one miter
  * point per wedge between angular neighbors so the walls tile the joint at any
  * incidence; a free end, a collinear continuation, and an over-limit acute wedge
- * fall back to each wall's own square face-offset point.
+ * fall back to each wall's own square face-offset point. With `options.fans`, each
+ * junction's order comes from the map; without it the fans are computed here.
  */
-export function wallFootprints(graph: PlanarGraph, thicknessByEdge: number[]): WallFootprint[] {
+export function wallFootprints(
+  graph: PlanarGraph,
+  thicknessByEdge: number[],
+  options?: FanOptions,
+): WallFootprint[] {
   const result = graph.edges.map((edge, index) =>
     squareFootprint(graph, edge, thicknessByEdge[index] ?? 0),
   )
   const context: FanContext = { graph, thicknessByEdge, result }
-  for (const [vertexIndex, edgeIndexes] of vertexIncidence(graph)) {
+  for (const [vertexIndex, edgeIndexes] of options?.fans ?? junctionFans(graph)) {
     resolveVertex(context, vertexIndex, edgeIndexes)
   }
   return result
 }
 
-/** The square footprint: each endpoint offset by half the thickness to both sides. */
+/**
+ * The square footprint: each endpoint offset by half the thickness to both sides. An edge
+ * from a junction to itself has no direction, so its four corners sit at the junction.
+ */
 function squareFootprint(graph: PlanarGraph, edge: GraphEdge, thickness: number): WallFootprint {
   const a = graph.vertices[edge.a] as Point
   const b = graph.vertices[edge.b] as Point
+  if (isSelfLoop(edge)) return { aPlus: a, aMinus: a, bPlus: a, bMinus: a }
   const normal = leftNormal(a, b)
   const half = thickness / 2
   return {
@@ -103,13 +106,16 @@ function squareFootprint(graph: PlanarGraph, edge: GraphEdge, thickness: number)
 /**
  * Resolve one vertex's fan, writing each incident edge's corners at the vertex into
  * `context.result`. A vertex with fewer than two incident edges keeps its square
- * default. The spokes are sorted counter-clockwise so each pairs with its neighbor.
+ * default. The fan arrives counterclockwise, so each spoke pairs with its neighbor.
  */
-function resolveVertex(context: FanContext, vertexIndex: number, edgeIndexes: number[]): void {
+function resolveVertex(
+  context: FanContext,
+  vertexIndex: number,
+  edgeIndexes: readonly number[],
+): void {
   if (edgeIndexes.length < 2) return
   const vertex = context.graph.vertices[vertexIndex] as Point
   const spokes = buildSpokes(context, vertexIndex, edgeIndexes)
-  spokes.sort((left, right) => directionAngle(left.out) - directionAngle(right.out))
   for (const [index, spoke] of spokes.entries()) {
     const neighbor = spokes[(index + 1) % spokes.length] as Spoke
     resolveWedge(context.result, { vertex, spoke, neighbor })
@@ -117,7 +123,11 @@ function resolveVertex(context: FanContext, vertexIndex: number, edgeIndexes: nu
 }
 
 /** The spokes of a vertex: one per incident edge, leaving the vertex outward. */
-function buildSpokes(context: FanContext, vertexIndex: number, edgeIndexes: number[]): Spoke[] {
+function buildSpokes(
+  context: FanContext,
+  vertexIndex: number,
+  edgeIndexes: readonly number[],
+): Spoke[] {
   const vertex = context.graph.vertices[vertexIndex] as Point
   return edgeIndexes.map((edgeIndex) => {
     const edge = context.graph.edges[edgeIndex] as GraphEdge
@@ -185,25 +195,4 @@ function assignCorner(result: WallFootprint[], spoke: Spoke, target: CornerTarge
   }
   if (isPlus) footprint.bPlus = target.point
   else footprint.bMinus = target.point
-}
-
-/** Maps each graph vertex to the indices of the edges incident to it. */
-export function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
-  const incidence = new Map<number, number[]>()
-  for (const [index, edge] of graph.edges.entries()) {
-    pushIncident(incidence, edge.a, index)
-    pushIncident(incidence, edge.b, index)
-  }
-  return incidence
-}
-
-/** Records `edgeIndex` against the vertex it touches, building the incidence map. */
-function pushIncident(
-  incidence: Map<number, number[]>,
-  vertexIndex: number,
-  edgeIndex: number,
-): void {
-  const list = incidence.get(vertexIndex) ?? []
-  list.push(edgeIndex)
-  incidence.set(vertexIndex, list)
 }

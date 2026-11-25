@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Floor, Project } from '../model/types'
+import type { Floor, Point, Project, Wall } from '../model/types'
 import { ROOM_ID_PREFIX } from '../topology/rooms'
 import { deriveSceneGraph } from './scene-graph'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
@@ -21,6 +21,11 @@ const TALLER_DEFAULT_CEILING_HEIGHT_MM = 3600
 const MOVED_SOFA_POSITION = { x: 2500, y: 1100 }
 const WIDER_DOOR_WIDTH_MM = 900
 const RENAMED_GROUND_ID = 'g2'
+const NORTH_WALL_MOVE_MM = 500
+const NORTH_WALL_ID = 'w-north'
+const EAST_WALL_ID = 'w-east'
+const WEST_WALL_ID = 'w-west'
+const SOUTH_WALL_ID = 'w-south'
 
 // Equality alone cannot show that a path sets the room side: both could omit it.
 describe('the room side of the door on the wall of a closed room', () => {
@@ -71,7 +76,7 @@ describe('a warm createSceneGraphDeriver after a change of the rooms', () => {
     const [ground, ...upperFloors] = project.floors
     const withoutNorth: Floor = {
       ...ground!,
-      walls: ground!.walls.filter((wall) => wall.id !== 'w-north'),
+      walls: ground!.walls.filter((wall) => wall.id !== NORTH_WALL_ID),
     }
     const edited = { ...project, floors: [withoutNorth, ...upperFloors] }
 
@@ -111,6 +116,20 @@ describe('the scene graph of a project that fills every field', () => {
     expect(warm).toEqual(cold)
   })
 })
+
+function moveNorthWithItsNeighborEnds(wall: Wall): Wall {
+  const north = (point: Point): Point => ({ x: point.x, y: point.y + NORTH_WALL_MOVE_MM })
+  if (wall.id === NORTH_WALL_ID) {
+    return { ...wall, start: north(wall.start), end: north(wall.end) }
+  }
+  if (wall.id === EAST_WALL_ID) {
+    return { ...wall, end: north(wall.end) }
+  }
+  if (wall.id === WEST_WALL_ID) {
+    return { ...wall, start: north(wall.start) }
+  }
+  return wall
+}
 
 const EDITS_OF_ONE_KIND: ReadonlyArray<readonly [string, (project: Project) => Project]> = [
   ['a room is renamed', (project) => withParlorOverride(project, { name: 'Morning room' })],
@@ -161,6 +180,26 @@ const EDITS_OF_ONE_KIND: ReadonlyArray<readonly [string, (project: Project) => P
   [
     'the site grade changes',
     (project) => ({ ...project, site: { gradeElevation: DAYLIGHT_BASEMENT_GRADE_MM } }),
+  ],
+  [
+    'a wall takes a construction profile',
+    (project) =>
+      withGround(project, (ground) => ({
+        ...ground,
+        walls: ground.walls.map((wall) =>
+          wall.id === SOUTH_WALL_ID
+            ? { ...wall, constructionProfile: 'solid-masonry-brick' }
+            : wall,
+        ),
+      })),
+  ],
+  [
+    'a wall moves',
+    (project) =>
+      withGround(project, (ground) => ({
+        ...ground,
+        walls: ground.walls.map(moveNorthWithItsNeighborEnds),
+      })),
   ],
   [
     'the floor default ceiling height rises',

@@ -1,7 +1,7 @@
 import { shift, subtract } from '../geometry/vector'
 import type { Point } from '../model/types'
 import type { GraphEdge, PlanarGraph } from '../topology/wall-graph'
-import { vertexIncidence } from '../topology/wall-footprint'
+import { incidentEdgesWithoutLoops } from '../topology/wall-footprint'
 import { exteriorWalls, type ExteriorWall } from './exterior-walls'
 import {
   WALL_NODE_PREFIX,
@@ -118,7 +118,7 @@ export function junctionFadeGroups(
 ): JunctionFadeGroup[] {
   const lookup = buildRunLookup(graph, walls, exteriorWalls(walls, rooms, openings))
   const groups: JunctionFadeGroup[] = []
-  for (const edgeIndexes of vertexIncidence(graph).values()) {
+  for (const edgeIndexes of incidentEdgesWithoutLoops(graph).values()) {
     if (edgeIndexes.length < MIN_FADE_INCIDENCE) continue
     const wallIds = new Set<string>()
     const runIndexes = new Set<number>()

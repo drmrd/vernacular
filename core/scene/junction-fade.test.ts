@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Point } from '../model/types'
+import { junctionFills } from '../topology/junction-fill'
 import { buildWallGraph } from '../topology/wall-graph'
 import { junctionFadeGroups, type JunctionFadeGroup } from './junction-fade'
 import type { RoomSceneNode, WallSceneNode } from './scene-graph'
@@ -147,5 +148,69 @@ describe('junctionFadeGroups', () => {
 
     // All three incident exterior walls are enumerated for the engine to test.
     expect([...group.exteriorWallIds].sort()).toEqual(['wall:east', 'wall:north', 'wall:west'])
+  })
+})
+
+describe('junctionFadeGroups on a wall whose two ends merge into one junction', () => {
+  const ROOM_WIDTH = 4000
+  const ROOM_DEPTH = 3000
+  const speckStart = point(-0.6, 0)
+  const speckEnd = point(0.6, 0)
+  const stubEnd = point(-1500, -1500)
+
+  const roomWalls = [
+    { id: 'south', start: point(0, 0), end: point(ROOM_WIDTH, 0) },
+    { id: 'east', start: point(ROOM_WIDTH, 0), end: point(ROOM_WIDTH, ROOM_DEPTH) },
+    { id: 'north', start: point(ROOM_WIDTH, ROOM_DEPTH), end: point(0, ROOM_DEPTH) },
+    { id: 'west', start: point(0, ROOM_DEPTH), end: point(0, 0) },
+  ]
+  const roomRing = [
+    point(0, 0),
+    point(ROOM_WIDTH, 0),
+    point(ROOM_WIDTH, ROOM_DEPTH),
+    point(0, ROOM_DEPTH),
+  ]
+
+  function planOf(extra: { id: string; start: Point; end: Point }[]) {
+    const sources = [...roomWalls, { id: 'speck', start: speckStart, end: speckEnd }, ...extra]
+    const graph = buildWallGraph(
+      sources.map((source) => ({ ...source, thickness: WALL_THICKNESS })),
+    )
+    const nodes = sources.map((source) => wall(`wall:${source.id}`, source.start, source.end))
+    const groups = junctionFadeGroups(graph, nodes, [room('room:a', roomRing)])
+    const fills = junctionFills(
+      graph,
+      graph.edges.map(() => WALL_THICKNESS),
+    )
+    return { graph, groups, fills }
+  }
+
+  it('keys the fade group of a junction like the fill of that junction', () => {
+    const { graph, groups, fills } = planOf([{ id: 'stub', start: point(0, 0), end: stubEnd }])
+    const stubIndex = graph.edges.findIndex((edge) => edge.wallId === 'stub')
+
+    const group = groups.find((candidate) => candidate.edgeIndexes.includes(stubIndex))
+    const fill = fills.find((candidate) => candidate.edgeIndexes.includes(stubIndex))
+
+    expect(fill).toBeDefined()
+    expect(group?.edgeIndexes).toEqual(fill?.edgeIndexes)
+  })
+
+  it('makes no fade group for a junction that has no fill', () => {
+    const { graph, groups, fills } = planOf([])
+    const loopIndex = graph.edges.findIndex((edge) => edge.a === edge.b)
+
+    expect(loopIndex).toBeGreaterThanOrEqual(0)
+    expect(fills.flatMap((fill) => fill.edgeIndexes)).not.toContain(loopIndex)
+    const corner = graph.edges[loopIndex]?.a
+    const cornerEdgeIndexes = graph.edges.flatMap((edge, index) =>
+      edge.a === corner || edge.b === corner ? [index] : [],
+    )
+    expect(
+      groups.filter((group) =>
+        group.edgeIndexes.some((index) => cornerEdgeIndexes.includes(index)),
+      ),
+    ).toEqual([])
+    expect(groups).toHaveLength(fills.length)
   })
 })
