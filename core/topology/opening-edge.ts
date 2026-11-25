@@ -34,7 +34,7 @@ export interface ResolvedOpeningEdge {
  * The distance of `center`'s projection from `a` along the `a -> b` direction, in millimeters,
  * when the edge holds it. Returns `undefined` for an edge with no length, which holds nothing, and
  * for a projection that falls outside `[0, length]`. The plan geometry and the 3D walls both pick
- * an opening's edge through this rule, from a center that both clamp with
+ * an opening's edge through this rule, from a center that both take from
  * `clampedOpeningPlacement`, so on a straight wall they pick the same edge.
  */
 export function distanceAlongEdge(center: Point, a: Point, b: Point): number | undefined {

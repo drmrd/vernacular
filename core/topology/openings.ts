@@ -41,7 +41,7 @@ export interface OpeningOnWall {
 
 /**
  * Clamp an opening's width to the wall length and its center so both jambs stay on the wall. The
- * 3D walls and the plan geometry both place an opening through this one rule.
+ * opening nodes and the plan geometry both place an opening through this one rule.
  */
 export function clampedOpeningPlacement(
   position: number,
