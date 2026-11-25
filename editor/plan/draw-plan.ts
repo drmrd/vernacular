@@ -203,7 +203,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   // paint is applied to, so a band reads as a finish laid over the wall's cut
   // cavity, while the face lines are the cut plane itself and stay on top.
   drawWallPoche(ctx, wallEdges, options)
-  drawSurfacePaintLayer(ctx, options)
+  drawSurfacePaintLayer(ctx, wallEdges, options)
   drawWallFaces(ctx, wallEdges, options)
   // Openings break the wall stroke, so they paint after the walls.
   drawOpenings(ctx, options, jambThickness)
@@ -407,10 +407,15 @@ function strokeFaceLine(
  * joint tile. The owning wall node is resolved per edge for its selection state.
  */
 interface DrawableWallEdge {
+  centerline?: PaintCenterline
   /** The standing stretches the edge's openings leave, in order from its start. */
   stretches: WallFaceStretch[]
   /** Whether the wall node this edge came from is selected. */
   selected: boolean
+}
+
+interface PaintCenterline extends HostWallRun {
+  covers: readonly string[]
 }
 
 /** The mitred, opening-broken symbology of every wall edge on the plan. */
@@ -438,9 +443,14 @@ function drawableWallEdges(options: DrawPlanOptions) {
     if (corners === undefined || start === undefined || end === undefined) {
       return { stretches: [], selected }
     }
-    const centerline: HostWallRun = { ...edge, start, end }
+    const centerline: PaintCenterline = {
+      start,
+      end,
+      wallId: edge.wallId,
+      covers: edge.covers ?? [],
+    }
     const gaps = openingSpansAlong(centerline, openings)
-    return { stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
+    return { centerline, stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
   })
   const jambThickness = jambThicknessFor(graph, thicknessByEdge)
   return { wallEdges, jambThickness }
@@ -451,14 +461,52 @@ function openingNodesOf(options: DrawPlanOptions): OpeningSceneNode[] {
   return (options.openings ?? []).map((opening) => opening.node)
 }
 
+/** Use the graph runs for overlapping walls. Other bands keep their authored endpoints at junctions. */
+function paintWallRuns(walls: readonly WallSceneNode[], edges: readonly DrawableWallEdge[]) {
+  const overlappingIds = new Set<string>()
+  for (const { centerline } of edges) {
+    if (centerline?.covers.length) {
+      overlappingIds.add(centerline.wallId)
+      for (const coveredId of centerline.covers) overlappingIds.add(coveredId)
+    }
+  }
+  if (overlappingIds.size === 0) return walls
+  const runsByWallId = new Map<string, PaintCenterline[]>()
+  for (const { centerline } of edges) {
+    if (centerline === undefined || !overlappingIds.has(centerline.wallId)) continue
+    const runs = runsByWallId.get(centerline.wallId) ?? []
+    runs.push(centerline)
+    runsByWallId.set(centerline.wallId, runs)
+  }
+  return walls.flatMap((wall) => {
+    const wallId = strippedWallId(wall)
+    if (!overlappingIds.has(wallId)) return [wall]
+    return (runsByWallId.get(wallId) ?? []).map(({ start, end, covers }) => ({
+      ...wall,
+      start,
+      end,
+      covers,
+    }))
+  })
+}
+
 /** Paint the surface-paint face bands and the active-surface highlight beneath the wall strokes. */
-function drawSurfacePaintLayer(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+function drawSurfacePaintLayer(
+  ctx: PlanDrawingContext,
+  edges: readonly DrawableWallEdge[],
+  options: DrawPlanOptions,
+): void {
   if (options.surfacePaint === undefined) return
   const { walls, viewport } = options
   // The bands break at the same jambs the poche and face lines do, so the layer
   // needs the openings as well as the walls.
   const openings = openingNodesOf(options)
-  drawSurfacePaint(ctx, { walls, viewport, openings, ...options.surfacePaint })
+  drawSurfacePaint(ctx, {
+    walls: paintWallRuns(walls, edges),
+    viewport,
+    openings,
+    ...options.surfacePaint,
+  })
 }
 
 /** Paint each dimension as an annotation overlay above the plan. */
