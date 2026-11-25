@@ -3,6 +3,14 @@ import type { Point } from '../model/types'
 
 import type { GraphEdge, PlanarGraph } from './wall-graph'
 
+/** Junction to its incident edge indexes, counterclockwise by leaving angle. */
+export type JunctionFans = ReadonlyMap<number, readonly number[]>
+
+/** Optional input of the functions that read junction fans: fans already ordered counterclockwise. */
+export interface FanOptions {
+  readonly fans?: JunctionFans
+}
+
 let fanBuilds = 0
 
 /** How many times `junctionFans` has run, for tests that expect one build per wall network. */
@@ -11,7 +19,7 @@ export function junctionFanBuildCount(): number {
 }
 
 /** Each junction's incident edge indexes, counterclockwise by leaving angle. */
-export function junctionFans(graph: PlanarGraph): ReadonlyMap<number, readonly number[]> {
+export function junctionFans(graph: PlanarGraph): JunctionFans {
   fanBuilds += 1
   const fans = new Map<number, readonly number[]>()
   for (const [junction, edgeIndexes] of vertexIncidence(graph)) {

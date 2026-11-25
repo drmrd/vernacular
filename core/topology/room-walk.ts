@@ -1,6 +1,7 @@
 import { insetPolygon, outsetPolygon, pointInPolygon, polygonArea } from '../geometry/polygon'
 import { MIN_FACE_AREA_MM2 } from '../geometry/tolerance'
 import type { Point } from '../model/types'
+import type { JunctionFans } from './junction-fans'
 import { ROOM_ID_PREFIX, roomKey } from './room-key'
 import type { Room } from './rooms'
 import type { GraphEdge, PlanarGraph } from './wall-graph'
@@ -30,7 +31,7 @@ interface HalfEdge {
 export function roomsOfGraph(
   graph: PlanarGraph,
   thicknessByWallId: ReadonlyMap<string, number>,
-  fans: ReadonlyMap<number, readonly number[]>,
+  fans: JunctionFans,
 ): Room[] {
   const halfEdges = buildHalfEdges(graph.edges)
   const faces = enumerateFaces(halfEdges, outgoingFromFans(graph, fans))
@@ -182,10 +183,7 @@ function twinFaceIndexOf(half: HalfEdge, faceOfHalfEdge: ReadonlyMap<string, num
  * Each junction's outgoing half-edge indices, in the order of its fan. Edge `i` makes
  * half-edge `2i` from its `a` end and `2i + 1` from its `b` end, as `buildHalfEdges` emits them.
  */
-function outgoingFromFans(
-  graph: PlanarGraph,
-  fans: ReadonlyMap<number, readonly number[]>,
-): Map<number, number[]> {
+function outgoingFromFans(graph: PlanarGraph, fans: JunctionFans): Map<number, number[]> {
   const outgoing = new Map<number, number[]>()
   for (const [junction, edgeIndexes] of fans) {
     outgoing.set(

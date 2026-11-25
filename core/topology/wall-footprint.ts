@@ -3,7 +3,7 @@ import { lineIntersection } from '../geometry/segment'
 import { dot, leftNormal, leftPerp, negate, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 
-import { junctionFans } from './junction-fans'
+import { type FanOptions, junctionFans } from './junction-fans'
 import type { GraphEdge, PlanarGraph } from './wall-graph'
 
 export { vertexIncidence } from './junction-fans'
@@ -45,12 +45,6 @@ interface Wedge {
   vertex: Point
   spoke: Spoke
   neighbor: Spoke
-}
-
-/** Optional input of `wallFootprints` and `junctionFills`: junction fans already ordered counterclockwise. */
-export interface FanOptions {
-  /** Junction to its incident edge indexes, counterclockwise by leaving angle. */
-  readonly fans?: ReadonlyMap<number, readonly number[]>
 }
 
 /** Per-call lookups shared while resolving every junction fan into footprints. */

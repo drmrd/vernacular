@@ -4,7 +4,7 @@ import type { ConstructionProfile } from '../registries/construction-profiles'
 import type { Registry } from '../registries/registry'
 import { effectiveWallThickness } from '../scene/construction-profile'
 import { type JunctionFill, junctionFills } from './junction-fill'
-import { junctionFans } from './junction-fans'
+import { junctionFans, type JunctionFans } from './junction-fans'
 import { roomsOfGraph } from './room-walk'
 import type { Room } from './rooms'
 import { type WallFootprint, wallFootprints } from './wall-footprint'
@@ -47,7 +47,7 @@ export interface WallNetwork {
   /** The pieces of the walls between junctions, in the order of `buildWallGraph`. */
   readonly edges: readonly NetworkEdge[]
   /** Each junction's edge indexes, counterclockwise by leaving angle; one entry per junction with an edge. */
-  readonly fans: ReadonlyMap<number, readonly number[]>
+  readonly fans: JunctionFans
   /** The plan-space footprint of each edge, in the order of `edges`. */
   readonly footprints: readonly WallFootprint[]
   /** The fill of each junction where three or more walls meet and leave a core. */
@@ -101,14 +101,15 @@ export function deriveWallNetwork(
   const thickness = new Map(resolved.map((wall) => [wall.id, wall.thickness]))
   const fans = junctionFans(graph)
   const thicknessByEdge = graph.edges.map((edge) => thickness.get(edge.wallId) as number)
+  const footprints = wallFootprints(graph, thicknessByEdge, { fans })
   const network: WallNetwork = {
     walls: resolved,
     thickness,
     junctions: graph.vertices,
     edges: networkEdgesOf(graph),
     fans,
-    footprints: wallFootprints(graph, thicknessByEdge, { fans }),
-    fills: junctionFills(graph, thicknessByEdge, { fans }),
+    footprints,
+    fills: junctionFills(graph, thicknessByEdge, { fans, footprints }),
   }
   roomsByNetwork.set(network, roomsOfGraph(graph, network.thickness, fans))
   return network
