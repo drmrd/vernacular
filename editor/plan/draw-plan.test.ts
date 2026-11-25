@@ -1240,7 +1240,7 @@ describe('drawPlan palette', () => {
 
     drawPlan(
       recorder.ctx,
-      planOptions({ palette, preview: { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } } }),
+      planOptions({ palette, preview: { start: { x: 0, y: 500 }, end: { x: 1000, y: 500 } } }),
     )
 
     const previewSegment = recorder.segments[recorder.segments.length - 1]
