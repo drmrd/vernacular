@@ -115,7 +115,7 @@ export function deriveWallNetwork(
   const footprints = wallFootprints(graph, thicknessByEdge, { fans })
   const edges = networkEdgesOf(graph)
   const walk = roomsOfGraph(graph, thickness, fans)
-  const faces = wallFaceRecords({ walls: resolved, junctions: graph.vertices, edges }, walk)
+  const faces = wallFaceRecords({ walls: resolved, edges }, walk)
   const network: WallNetwork = {
     walls: resolved,
     thickness,

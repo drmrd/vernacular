@@ -34,7 +34,6 @@ const SIDES: readonly WallSide[] = ['positive', 'negative']
 /** What one face's stretches are cut from. */
 interface FaceContext {
   readonly path: WallPath
-  readonly junctions: readonly Point[]
   readonly roomsBesideEdge: readonly EdgeSideRooms[]
 }
 
@@ -55,30 +54,40 @@ function faceStretches(
   side: WallSide,
   context: FaceContext,
 ): WallFaceStretch[] {
-  const stretches: { fromMm: number; toMm: number; roomIndex: number | undefined }[] = []
-  for (const edge of edges) {
+  const alongOf = (point: Point): number => projectOntoPath(context.path, point).along
+  return edges.reduce<WallFaceStretch[]>((stretches, edge) => {
     const roomIndex = roomOnSide(context.roomsBesideEdge[edge.index], side)
-    const alongOf = (junction: number): number =>
-      projectOntoPath(context.path, context.junctions[junction] as Point).along
     const previous = stretches[stretches.length - 1]
-    if (previous !== undefined && previous.roomIndex === roomIndex) previous.toMm = alongOf(edge.to)
-    else stretches.push({ fromMm: alongOf(edge.from), toMm: alongOf(edge.to), roomIndex })
+    const toMm = alongOf(edge.path.end)
+    if (previous !== undefined && previous.roomIndex === roomIndex) {
+      stretches[stretches.length - 1] = { ...previous, toMm }
+    } else {
+      stretches.push({ fromMm: alongOf(edge.path.start), toMm, roomIndex })
+    }
+    return stretches
+  }, [])
+}
+
+/** The network's edges, grouped by the id of their wall, each group in network order. */
+function edgesByWallId(edges: readonly NetworkEdge[]): Map<string, NetworkEdge[]> {
+  const byWallId = new Map<string, NetworkEdge[]>()
+  for (const edge of edges) {
+    const group = byWallId.get(edge.wallId)
+    if (group === undefined) byWallId.set(edge.wallId, [edge])
+    else group.push(edge)
   }
-  return stretches
+  return byWallId
 }
 
 /** Both faces of every wall of the network, in wall order, from what its face walk found. */
 export function wallFaceRecords(
-  network: Pick<WallNetwork, 'walls' | 'junctions' | 'edges'>,
+  network: Pick<WallNetwork, 'walls' | 'edges'>,
   walk: RoomWalk,
 ): WallFaceRecord[] {
+  const edgesOfWall = edgesByWallId(network.edges)
   return network.walls.flatMap((wall) => {
-    const edges = network.edges.filter((edge) => edge.wallId === wall.id)
-    const context = {
-      path: wall.path,
-      junctions: network.junctions,
-      roomsBesideEdge: walk.roomsBesideEdge,
-    }
+    const edges = edgesOfWall.get(wall.id) ?? []
+    const context = { path: wall.path, roomsBesideEdge: walk.roomsBesideEdge }
     return SIDES.map((side) => ({
       wallId: wall.id,
       side,
@@ -89,10 +98,11 @@ export function wallFaceRecords(
 
 /** The walk's rooms, each with the wall faces that bound it. */
 export function planRoomsOf(rooms: readonly Room[], faces: readonly WallFaceRecord[]): PlanRoom[] {
-  return rooms.map((room, roomIndex) => ({
-    ...room,
-    faces: faces
-      .filter((face) => face.stretches.some((stretch) => stretch.roomIndex === roomIndex))
-      .map(({ wallId, side }) => ({ wallId, side })),
-  }))
+  const facesOfRoom = rooms.map((): PlanRoom['faces'][number][] => [])
+  for (const { wallId, side, stretches } of faces) {
+    for (const roomIndex of new Set(stretches.map((stretch) => stretch.roomIndex))) {
+      if (roomIndex !== undefined) facesOfRoom[roomIndex]?.push({ wallId, side })
+    }
+  }
+  return rooms.map((room, roomIndex) => ({ ...room, faces: facesOfRoom[roomIndex] ?? [] }))
 }
