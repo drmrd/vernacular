@@ -174,6 +174,14 @@ async function storeFiles(storeDir) {
   )
 }
 
+async function expectSameStoreFiles(storeDir, before) {
+  const after = await storeFiles(storeDir)
+  expect(Object.keys(after).sort()).toEqual(Object.keys(before).sort())
+  for (const [path, bytes] of Object.entries(before)) {
+    expect(after[path].equals(bytes), path).toBe(true)
+  }
+}
+
 async function expectUnreadableCatalogToRefusePublish(storeDir) {
   const catalogPath = join(storeDir, 'catalog.json')
   const savedCatalogPath = join(storeDir, 'saved-catalog.json')
@@ -185,7 +193,7 @@ async function expectUnreadableCatalogToRefusePublish(storeDir) {
   const code = await runPackCli(['publish', FURNITURE_DIR, '--store', storeDir], deps)
   expectFailure(code, errorsFrom(deps.error), /EISDIR|directory|read.*catalog/i)
   expect((await stat(catalogPath)).isDirectory()).toBe(true)
-  expect(await storeFiles(storeDir)).toEqual(before)
+  await expectSameStoreFiles(storeDir, before)
 
   await rmdir(catalogPath)
   await rename(savedCatalogPath, catalogPath)
@@ -213,16 +221,18 @@ async function expectPublishersToPreserveBothEntries(storeDir, expected, publish
 }
 
 async function expectImmutableBytes(storeDir, furnitureEntry) {
-  const manifest = await readFile(
-    join(storeDir, 'manifests', 'sha256', furnitureEntry.manifest.sha256 + '.json'),
-  )
-  expect(manifest).toEqual(await readFile(join(FURNITURE_DIR, 'manifest.json')))
-  expect(await readFile(join(storeDir, 'blobs', 'sha256', SOFA_HASH))).toEqual(
-    await readFile(join(FURNITURE_DIR, 'assets', SOFA_HASH + '.glb')),
-  )
-  expect(await readFile(join(storeDir, 'packs', 'example-furniture-1.0.0', 'LICENSE'))).toEqual(
-    await readFile(join(FURNITURE_DIR, 'LICENSE')),
-  )
+  const files = [
+    [`manifests/sha256/${furnitureEntry.manifest.sha256}.json`, 'manifest.json'],
+    [`blobs/sha256/${SOFA_HASH}`, `assets/${SOFA_HASH}.glb`],
+    ['packs/example-furniture-1.0.0/LICENSE', 'LICENSE'],
+  ]
+  for (const [destination, source] of files) {
+    const [stored, original] = await Promise.all([
+      readFile(join(storeDir, destination)),
+      readFile(join(FURNITURE_DIR, source)),
+    ])
+    expect(stored.equals(original), destination).toBe(true)
+  }
 }
 
 async function expectUnchangedAfterRetryAndFailures(parent, storeDir) {
@@ -230,7 +240,7 @@ async function expectUnchangedAfterRetryAndFailures(parent, storeDir) {
   const deps = publishCliDeps(storePublisher.publishPackToDisk)
   const invalid = await runPackCli(['publish', BROKEN_PACK_DIR, '--store', storeDir], deps)
   expectFailure(invalid, errorsFrom(deps.error), /content hash does not match/)
-  expect(await storeFiles(storeDir)).toEqual(before)
+  await expectSameStoreFiles(storeDir, before)
 
   const conflictingPack = join(parent, 'example-furniture-1.0.0')
   await cp(FURNITURE_DIR, conflictingPack, { recursive: true })
@@ -238,10 +248,10 @@ async function expectUnchangedAfterRetryAndFailures(parent, storeDir) {
   deps.error.mockClear()
   const refusal = await runPackCli(['publish', conflictingPack, '--store', storeDir], deps)
   expectFailure(refusal, errorsFrom(deps.error), /different manifest|already published/i)
-  expect(await storeFiles(storeDir)).toEqual(before)
+  await expectSameStoreFiles(storeDir, before)
 
   await publishToDisk(FURNITURE_DIR, storeDir)
-  expect(await storeFiles(storeDir)).toEqual(before)
+  await expectSameStoreFiles(storeDir, before)
 }
 
 async function expectPlainNodePublish(parent, expected) {
