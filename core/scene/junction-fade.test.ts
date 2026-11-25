@@ -202,6 +202,15 @@ describe('junctionFadeGroups on a wall whose two ends merge into one junction', 
 
     expect(loopIndex).toBeGreaterThanOrEqual(0)
     expect(fills.flatMap((fill) => fill.edgeIndexes)).not.toContain(loopIndex)
-    expect(groups.flatMap((group) => group.edgeIndexes)).not.toContain(loopIndex)
+    const corner = graph.edges[loopIndex]?.a
+    const cornerEdgeIndexes = graph.edges.flatMap((edge, index) =>
+      edge.a === corner || edge.b === corner ? [index] : [],
+    )
+    expect(
+      groups.filter((group) =>
+        group.edgeIndexes.some((index) => cornerEdgeIndexes.includes(index)),
+      ),
+    ).toEqual([])
+    expect(groups).toHaveLength(fills.length)
   })
 })
