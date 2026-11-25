@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Opening, Point, Wall } from '../model/types'
 import { createWall } from '../model/factories'
-import { deriveOpeningGeometry, openingFootprint } from './openings'
+import { clampedOpeningPlacement, deriveOpeningGeometry, openingFootprint } from './openings'
 
 const WALL_LENGTH = 2000
 const OPENING_WIDTH = 800
@@ -102,5 +102,39 @@ describe('openingFootprint', () => {
       { x: 1400, y: 50 },
       { x: 600, y: 50 },
     ])
+  })
+})
+
+describe('clampedOpeningPlacement', () => {
+  const cases = [
+    {
+      name: 'leaves an opening inside the wall unchanged',
+      input: [1000, 800, 2000],
+      expected: { position: 1000, width: 800 },
+    },
+    {
+      name: 'pulls an opening past the wall end back so its jamb meets the end',
+      input: [1900, 800, 2000],
+      expected: { position: 1600, width: 800 },
+    },
+    {
+      name: 'pushes an opening before the wall start forward so its jamb meets the start',
+      input: [100, 800, 2000],
+      expected: { position: 400, width: 800 },
+    },
+    {
+      name: 'shrinks an opening wider than the wall to the wall length, centered',
+      input: [300, 3000, 2000],
+      expected: { position: 1000, width: 2000 },
+    },
+    {
+      name: 'yields a zero-width opening at the start of a wall of no length',
+      input: [0, 0, 0],
+      expected: { position: 0, width: 0 },
+    },
+  ] as const
+
+  it.each(cases)('$name', ({ input: [position, width, wallLength], expected }) => {
+    expect(clampedOpeningPlacement(position, width, wallLength)).toEqual(expected)
   })
 })
