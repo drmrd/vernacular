@@ -6,7 +6,12 @@ import { effectiveWallThickness } from '../scene/construction-profile'
 import { type JunctionFill, junctionFills } from './junction-fill'
 import { junctionFans, type JunctionFans } from './junction-fans'
 import { roomsOfGraph } from './room-walk'
-import type { Room } from './rooms'
+import {
+  planRoomsOf,
+  type PlanRoom,
+  type WallFaceRecord,
+  wallFaceRecords,
+} from './wall-face-records'
 import { type WallFootprint, wallFootprints } from './wall-footprint'
 import { buildWallGraph, type PlanarGraph } from './wall-graph'
 
@@ -56,12 +61,14 @@ export interface WallNetwork {
   readonly footprints: readonly WallFootprint[]
   /** The fill of each junction where three or more walls meet and leave a core. */
   readonly fills: readonly JunctionFill[]
+  /** Both faces of every wall, in wall order, each with the rooms along it. */
+  readonly faces: readonly WallFaceRecord[]
 }
 
-const roomsByNetwork = new WeakMap<WallNetwork, readonly Room[]>()
+const roomsByNetwork = new WeakMap<WallNetwork, readonly PlanRoom[]>()
 
 /** The rooms of a network, from the one walk that its build made. */
-export function derivePlanRooms(network: WallNetwork): readonly Room[] {
+export function derivePlanRooms(network: WallNetwork): readonly PlanRoom[] {
   const rooms = roomsByNetwork.get(network)
   if (rooms === undefined) {
     throw new Error('derivePlanRooms needs a network that deriveWallNetwork built')
@@ -106,15 +113,19 @@ export function deriveWallNetwork(
   const fans = junctionFans(graph)
   const thicknessByEdge = graph.edges.map((edge) => thickness.get(edge.wallId) as number)
   const footprints = wallFootprints(graph, thicknessByEdge, { fans })
+  const edges = networkEdgesOf(graph)
+  const walk = roomsOfGraph(graph, thickness, fans)
+  const faces = wallFaceRecords({ walls: resolved, junctions: graph.vertices, edges }, walk)
   const network: WallNetwork = {
     walls: resolved,
     thickness,
     junctions: graph.vertices,
-    edges: networkEdgesOf(graph),
+    edges,
     fans,
     footprints,
     fills: junctionFills(graph, thicknessByEdge, { fans, footprints }),
+    faces,
   }
-  roomsByNetwork.set(network, roomsOfGraph(graph, network.thickness, fans))
+  roomsByNetwork.set(network, planRoomsOf(walk.rooms, faces))
   return network
 }

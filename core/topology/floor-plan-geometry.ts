@@ -1,5 +1,5 @@
 import type { Floor } from '../model/types'
-import type { Room } from './rooms'
+import type { PlanRoom, WallFaceRecord, WallFaceStretch, WallSide } from './wall-face-records'
 import {
   deriveWallNetwork,
   derivePlanRooms,
@@ -11,7 +11,16 @@ import {
 } from './wall-network'
 
 export { derivePlanRooms, deriveWallNetwork }
-export type { NetworkEdge, NetworkWall, PlanGeometryRegistries, WallNetwork }
+export type {
+  NetworkEdge,
+  NetworkWall,
+  PlanGeometryRegistries,
+  PlanRoom,
+  WallFaceRecord,
+  WallFaceStretch,
+  WallNetwork,
+  WallSide,
+}
 
 /** What the plan geometry leaves out of the rooms, by wall or record id. */
 export interface SetAside {
@@ -23,8 +32,6 @@ export interface SetAside {
   readonly coveredWallIds: readonly string[]
   readonly unboundRecordIds: readonly string[]
 }
-
-export type PlanRoom = Room
 
 export interface FloorPlanGeometry {
   readonly floorId: string

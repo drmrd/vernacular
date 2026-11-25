@@ -23,6 +23,20 @@ interface HalfEdge {
   wallId: string
 }
 
+/** The rooms of a wall graph and what the face walk found on the way to them. */
+export interface RoomWalk {
+  readonly rooms: Room[]
+  /**
+   * By half-edge (edge `i` makes half-edge `2i` from its `a` end and `2i + 1` from its `b` end): the
+   * face whose outline holds it. Undefined when no face walks it or the spike removal dropped it.
+   */
+  readonly outlineFaceOfHalfEdge: readonly (number | undefined)[]
+  /** The index into `rooms` of the room that each kept face became, by face index. */
+  readonly roomOfFace: ReadonlyMap<number, number>
+  /** By room index: the index of the room that the hole pass gave it to as a hole. */
+  readonly containerOfRoom: readonly (number | undefined)[]
+}
+
 /**
  * Derive rooms from a prepared wall graph by enumerating its bounded faces. See the
  * design specification, section 3.2 ("Rooms are derived from wall topology"). Each
@@ -32,7 +46,7 @@ export function roomsOfGraph(
   graph: PlanarGraph,
   thicknessByWallId: ReadonlyMap<string, number>,
   fans: JunctionFans,
-): Room[] {
+): RoomWalk {
   const halfEdges = buildHalfEdges(graph.edges)
   const faces = enumerateFaces(halfEdges, outgoingFromFans(graph, fans))
   const faceOfHalfEdge = facesByHalfEdge(faces)
@@ -49,12 +63,25 @@ export function roomsOfGraph(
   })
 
   const rooms: Room[] = []
+  const roomOfFace = new Map<number, number>()
   for (const faceIndex of roomFaces) {
     const boundary = boundaries[faceIndex]
     if (boundary === undefined) continue
+    roomOfFace.set(faceIndex, rooms.length)
     rooms.push(buildRoom(boundary, roomFaces))
   }
-  return assignHoles(rooms)
+  const containers = rooms.map((inner) => immediateContainer(inner, rooms))
+  const outlineFaces = new Map(
+    boundaries.flatMap((boundary, faceIndex) => boundary.outline.map((half) => [half, faceIndex])),
+  )
+  return {
+    rooms: assignHoles(rooms, containers),
+    outlineFaceOfHalfEdge: halfEdges.map((half) => outlineFaces.get(half)),
+    roomOfFace,
+    containerOfRoom: containers.map((room) =>
+      room === undefined ? undefined : rooms.indexOf(room),
+    ),
+  }
 }
 
 /**
@@ -119,10 +146,10 @@ function immediateContainer(inner: Room, rooms: readonly Room[]): Room | undefin
  * reduce that container's `area` by the hole's centerline footprint. Contained rooms
  * remain their own derived rooms, unchanged. A room with no holes keeps its fields.
  */
-function assignHoles(rooms: readonly Room[]): Room[] {
+function assignHoles(rooms: readonly Room[], containers: readonly (Room | undefined)[]): Room[] {
   const holesByRoom = new Map<Room, Point[][]>()
-  for (const inner of rooms) {
-    const container = immediateContainer(inner, rooms)
+  for (const [index, inner] of rooms.entries()) {
+    const container = containers[index]
     if (container === undefined) continue
     const existing = holesByRoom.get(container)
     if (existing !== undefined) {
@@ -287,6 +314,8 @@ interface BoundaryCorner {
    * shared (a kept room face) or perimeter (the exterior face), per ADR-0129.
    */
   twinFaceIndex: number
+  /** The half-edge that leaves this corner along the outline. */
+  halfEdge: HalfEdge
 }
 
 /** Read-only inputs shared while building one face's boundary. */
@@ -305,6 +334,8 @@ interface FaceBoundary {
   twinFaceIndices: number[]
   /** Sorted, unique ids of the walls that enclose the face. */
   wallIds: string[]
+  /** The half-edges that leave the corners of `polygon`, in step with it. */
+  outline: HalfEdge[]
 }
 
 /**
@@ -324,16 +355,18 @@ function faceBoundary(
   const polygon: Point[] = []
   const edgeOffsets: number[] = []
   const twinFaceIndices: number[] = []
+  const outline: HalfEdge[] = []
   for (const corner of corners) {
     const vertex = vertices[corner.vertexIndex]
-    // Skipping a vertex also skips its paired offset and twin face, keeping the
-    // three arrays index-aligned.
+    // Skipping a vertex also skips its paired offset, twin face, and half-edge,
+    // keeping the four arrays index-aligned.
     if (vertex === undefined) continue
     polygon.push(vertex)
     edgeOffsets.push(corner.halfThickness)
     twinFaceIndices.push(corner.twinFaceIndex)
+    outline.push(corner.halfEdge)
   }
-  return { polygon, edgeOffsets, twinFaceIndices, wallIds: sortedUniqueWallIds(face) }
+  return { polygon, edgeOffsets, twinFaceIndices, wallIds: sortedUniqueWallIds(face), outline }
 }
 
 /**
@@ -347,6 +380,7 @@ function toBoundaryCorners(face: readonly HalfEdge[], context: BoundaryContext):
       vertexIndex: half.from,
       halfThickness: thickness / 2,
       twinFaceIndex: twinFaceIndexOf(half, context.faceOfHalfEdge),
+      halfEdge: half,
     }
   })
 }
@@ -356,9 +390,10 @@ function toBoundaryCorners(face: readonly HalfEdge[], context: BoundaryContext):
  * `v -> s -> v` excursion: the path walks out to a tip `s` and immediately back to
  * the same vertex `v`. Treating the loop as cyclic, a tip is any position whose
  * previous and next neighbors are the same vertex; drop the tip and the duplicated
- * next neighbor, and re-point the surviving corner's leaving-edge data (its offset
- * and twin face) to that next neighbor's (the edge `v` now continues along).
- * Restart until no spike remains.
+ * next neighbor, and re-point the surviving corner's leaving-edge data (its offset,
+ * twin face, and half-edge) to that next neighbor's (the edge `v` now continues
+ * along). Restart until no spike remains. The two half-edges of the spike leave the
+ * outline, so they bound no room.
  *
  * Dangling stub walls are dead-end artifacts of the half-edge walk traversing into
  * and back out of a stub, and their stub endpoints must not appear as room corners.
@@ -380,10 +415,11 @@ function removeSpikes(loop: BoundaryCorner[]): BoundaryCorner[] {
         previous.vertexIndex === next.vertexIndex
       ) {
         // The surviving corner `v` (at `previous`) keeps the spike's exit edge, so
-        // its offset and twin face become the next neighbor's (the edge `v`
-        // continues along).
+        // its offset, twin face, and half-edge become the next neighbor's (the edge
+        // `v` continues along).
         previous.halfThickness = next.halfThickness
         previous.twinFaceIndex = next.twinFaceIndex
+        previous.halfEdge = next.halfEdge
         // Drop the spike tip, then the duplicated neighbor. Removing the tip shifts
         // every later element left by one, so the duplicate that was at `index + 1`
         // now sits at `index % cleaned.length` (the modulus only matters when the
