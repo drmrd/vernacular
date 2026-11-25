@@ -61,7 +61,8 @@ function sha256(bytes) {
 /** @param {Uint8Array} bytes @param {string} path */
 function parseJson(bytes, path) {
   try {
-    return JSON.parse(Buffer.from(bytes).toString('utf8'))
+    const view = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    return JSON.parse(view.toString('utf8'))
   } catch (cause) {
     throw new Error(`${path}: invalid JSON`, { cause })
   }
@@ -129,50 +130,54 @@ function checkFileBytes(file, bytes, label) {
   }
 }
 
-/** @param {PublishRequest} request @param {PublishFiles} io @param {ReadablePackManifest} manifest */
-async function prepareBlobs({ packDir, storeDir }, io, manifest) {
+/** @param {PublishFiles} io @param {CatalogPackEntry | undefined} previous */
+function createWritePlan(io, previous) {
+  /** @type {Map<string, Buffer>} */
   const writes = new Map()
-  let byteLength = 0
-  for (const asset of manifest.assets) {
-    for (const { file, sourcePath } of namedFilesWithSources(asset)) {
-      const label = `${asset.name} (${sourcePath})`
-      const bytes = await readRequiredFile(io, join(packDir, sourcePath), label)
-      checkFileBytes(file, bytes, label)
-      byteLength += bytes.byteLength
-      const target = join(storeDir, blobPath(file.contentHash))
-      writes.set(target, bytes)
-    }
+  return {
+    writes,
+    /** @param {string} path @param {string} [context] */
+    read: (path, context) => readRequiredFile(io, path, context),
+    /** @param {string} path @param {Buffer} bytes */
+    async check(path, bytes) {
+      const stored = await io.readFile(path)
+      if (stored === undefined) {
+        if (previous) throw new Error(`${path}: published file is missing`)
+        writes.set(path, bytes)
+      } else if (!bytes.equals(stored)) {
+        throw new Error(`${path}: stored file differs from source bytes`)
+      }
+    },
   }
-  return { writes, byteLength }
-}
-
-/** @param {PublishRequest} request @param {PublishFiles} io @param {ReadablePackManifest} manifest */
-async function prepareTexts({ packDir, storeDir }, io, { packId, version }) {
-  const writes = new Map()
-  for (const file of PACK_TEXT_FILES) {
-    const bytes = await readRequiredFile(io, join(packDir, file))
-    writes.set(join(storeDir, packTextPath(packId, version, file)), bytes)
-  }
-  return writes
 }
 
 /**
- * @param {Map<string, Buffer>} candidates
- * @param {PublishFiles} io
- * @param {boolean} published
+ * @param {PublishRequest} request
+ * @param {ReturnType<typeof createWritePlan>} files
+ * @param {ReadablePackManifest} manifest
  */
-async function missingFiles(candidates, io, published) {
-  const writes = new Map()
-  for (const [path, bytes] of candidates) {
-    const stored = await io.readFile(path)
-    if (stored === undefined) {
-      if (published) throw new Error(`${path}: published file is missing`)
-      writes.set(path, bytes)
-    } else if (!bytes.equals(stored)) {
-      throw new Error(`${path}: stored file differs from source bytes`)
+async function checkBlobs({ packDir, storeDir }, { read, check }, { assets }) {
+  let byteLength = 0
+  for (const asset of assets) {
+    for (const { file, sourcePath } of namedFilesWithSources(asset)) {
+      const label = `${asset.name} (${sourcePath})`
+      const bytes = await read(join(packDir, sourcePath), label)
+      checkFileBytes(file, bytes, label)
+      byteLength += bytes.byteLength
+      await check(join(storeDir, blobPath(file.contentHash)), bytes)
     }
   }
-  return writes
+  return byteLength
+}
+
+/** @param {PublishRequest} request @param {PublishFiles} io @param {ReadablePackManifest} manifest */
+async function readTexts({ packDir, storeDir }, io, { packId, version }) {
+  const texts = new Map()
+  for (const file of PACK_TEXT_FILES) {
+    const bytes = await readRequiredFile(io, join(packDir, file))
+    texts.set(join(storeDir, packTextPath(packId, version, file)), bytes)
+  }
+  return texts
 }
 
 /**
@@ -190,11 +195,12 @@ export async function publishPack(request, io) {
   const packs = catalog?.packs ?? []
   const previous = publishedEntry(packs, incoming)
   checkDeclarations(manifest)
-  const { writes: blobs, byteLength } = await prepareBlobs(request, io, manifest)
-  const texts = await prepareTexts(request, io, manifest)
+  const files = createWritePlan(io, previous)
+  const byteLength = await checkBlobs(request, files, manifest)
+  const texts = await readTexts(request, io, manifest)
   const storedManifestPath = join(storeDir, manifestPath(digest))
-  const candidates = new Map([...blobs, [storedManifestPath, bytes], ...texts])
-  const writes = await missingFiles(candidates, io, previous !== undefined)
+  await files.check(storedManifestPath, bytes)
+  for (const [path, text] of texts) await files.check(path, text)
   if (previous) {
     checkManifestEntry(previous, incoming, storedManifestPath)
     if (previous.byteLength !== byteLength) throw new Error(`${catalogPath}: byteLength differs`)
@@ -217,6 +223,6 @@ export async function publishPack(request, io) {
     packs: [...packs, entry].sort(compareCatalogEntries),
   }
   const catalogBytes = Buffer.from(`${JSON.stringify(nextCatalog, null, JSON_INDENT)}\n`)
-  for (const [path, blob] of writes) await io.writeFile(path, blob)
+  for (const [path, file] of files.writes) await io.writeFile(path, file)
   await io.writeFile(catalogPath, catalogBytes)
 }
