@@ -195,3 +195,27 @@ it('uses the wall line after existing endpoints merge to decide what a new draw 
   expect.soft(uncoveredParts(walls, separate)).toEqual([separate])
   expect(drawnWallNote(walls, separate)).toBeUndefined()
 })
+
+it('adds nothing when a new draw retraces a wall between its merged endpoints', () => {
+  const junction = { x: 0, y: 0 }
+  const farEnd = { x: 4000, y: 0.9 }
+  const walls = [
+    createWall({ x: 0, y: -4000 }, junction, { id: 'vertical' }),
+    createWall({ x: 0, y: 0.9 }, farEnd, { id: 'horizontal' }),
+  ]
+
+  for (const { label, draw } of [
+    { label: 'from the junction', draw: { start: junction, end: farEnd } },
+    { label: 'toward the junction', draw: { start: farEnd, end: junction } },
+  ]) {
+    const retrace = createWall(draw.start, draw.end, { id: 'retrace' })
+    expect
+      .soft(
+        buildWallGraph([...walls, retrace]).edges.map(({ wallId }) => wallId),
+        label,
+      )
+      .not.toContain(retrace.id)
+    expect.soft(uncoveredParts(walls, draw), label).toEqual([])
+    expect.soft(drawnWallNote(walls, draw), label).toBe(coveredNote)
+  }
+})
