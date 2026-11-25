@@ -11,6 +11,8 @@ const TEE_SPAN_MM = 4000
 const TWO_ROOM_WIDTH_MM = 8000
 const TWO_ROOM_DEPTH_MM = 3000
 const TWO_ROOM_PARTITION_X_MM = 4000
+const BRICK_SQUARE_SIDE_MM = 5000
+const BRICK_PROFILE = 'solid-masonry-brick'
 
 function wallOf(id: string, start: Point, end: Point): Wall {
   return createWall(start, end, { id, thickness: WALL_THICKNESS_MM })
@@ -65,6 +67,14 @@ export function squareLoopWalls(min: number, max: number, idPrefix: string): Wal
     }
     return createWall(corner, next, { id: `${idPrefix}-${index}`, thickness: WALL_THICKNESS_MM })
   })
+}
+
+/** The four walls on the centerline of a 5000 mm square, each of the solid brick profile. */
+export function brickSquareWalls(): Wall[] {
+  return squareLoopWalls(0, BRICK_SQUARE_SIDE_MM, 'brick').map((wall) => ({
+    ...wall,
+    constructionProfile: BRICK_PROFILE,
+  }))
 }
 
 /** An 8000 by 3000 outline split into two rooms by the wall `shared` at x = 4000. */

@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { wallPath } from '../geometry/wall-path'
 import { DEFAULT_JUNCTION_TOLERANCE_MM } from '../geometry/tolerance'
 import { createWall } from '../model/factories'
-import type { Wall } from '../model/types'
+import type { Point, Wall } from '../model/types'
 import { createRegistry } from '../registries/registry'
 import { effectiveWallThickness } from '../scene/construction-profile'
 import { deriveFloorPlanGeometry } from './floor-plan-geometry'
-import { floorOf, twoRoomWalls } from './plan-geometry-test-support'
+import { brickSquareWalls, floorOf, twoRoomWalls } from './plan-geometry-test-support'
 
 const FLOOR_ID = 'g'
 const WALL_ID = 'w'
@@ -17,6 +17,7 @@ const BRICK_ASSEMBLY_THICKNESS_MM = 231
 const CUSTOM_BRICK_THICKNESS_MM = 400
 const BRICK_PROFILE = 'solid-masonry-brick'
 const DOT_POSITION_MM = 1000
+const SQUARE_SIDE_MM = 5000
 
 function singleWall(constructionProfile?: string, thickness = RAW_THICKNESS_MM): Wall {
   const wall = createWall({ x: 0, y: 0 }, { x: WALL_LENGTH_MM, y: 0 }, { id: WALL_ID, thickness })
@@ -138,5 +139,59 @@ describe('what the plan geometry sets aside', () => {
     const { setAside } = deriveFloorPlanGeometry(floorOf(twoRoomWalls()))
 
     expect(setAside).toEqual({ zeroLengthWallIds: [], coveredWallIds: [], unboundRecordIds: [] })
+  })
+})
+
+function brickRegistries() {
+  return {
+    constructionProfiles: createRegistry(1, [
+      {
+        id: BRICK_PROFILE,
+        system: 'solid-masonry' as const,
+        layers: [{ material: 'brick', thickness: CUSTOM_BRICK_THICKNESS_MM }],
+      },
+    ]),
+  }
+}
+
+function expectCornersAmong(polygon: readonly Point[], low: number, high: number): void {
+  for (const corner of polygon) {
+    for (const coordinate of [corner.x, corner.y]) {
+      expect(Math.min(Math.abs(coordinate - low), Math.abs(coordinate - high))).toBeCloseTo(0)
+    }
+  }
+}
+
+describe('rooms of profile walls', () => {
+  it('measures a room of brick walls between the drawn faces', () => {
+    const { rooms } = deriveFloorPlanGeometry(floorOf(brickSquareWalls()))
+
+    const clearSide = SQUARE_SIDE_MM - BRICK_ASSEMBLY_THICKNESS_MM
+    expect(rooms).toHaveLength(1)
+    expect(rooms[0]?.area).toBeCloseTo(clearSide * clearSide)
+    expectCornersAmong(
+      rooms[0]?.clearPolygon ?? [],
+      BRICK_ASSEMBLY_THICKNESS_MM / 2,
+      SQUARE_SIDE_MM - BRICK_ASSEMBLY_THICKNESS_MM / 2,
+    )
+  })
+
+  it('measures the room between the faces that the given registries resolve', () => {
+    const { rooms } = deriveFloorPlanGeometry(floorOf(brickSquareWalls()), brickRegistries())
+
+    const clearSide = SQUARE_SIDE_MM - CUSTOM_BRICK_THICKNESS_MM
+    const halfThickness = CUSTOM_BRICK_THICKNESS_MM / 2
+    expect(rooms).toHaveLength(1)
+    expect(rooms[0]?.area).toBeCloseTo(clearSide * clearSide)
+    expectCornersAmong(rooms[0]?.clearPolygon ?? [], halfThickness, SQUARE_SIDE_MM - halfThickness)
+    expectCornersAmong(rooms[0]?.outerPolygon ?? [], -halfThickness, SQUARE_SIDE_MM + halfThickness)
+  })
+
+  it('keeps a room of plain walls on the raw thickness', () => {
+    const floor = floorOf(twoRoomWalls())
+
+    expect(deriveFloorPlanGeometry(floor, brickRegistries()).rooms).toEqual(
+      deriveFloorPlanGeometry(floor).rooms,
+    )
   })
 })
