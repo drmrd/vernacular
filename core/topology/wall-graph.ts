@@ -1,8 +1,7 @@
 import { distance } from '../geometry/point'
 import { pointOnSegment, segmentIntersection } from '../geometry/segment'
 import { DEFAULT_JUNCTION_TOLERANCE_MM, onOneLine } from '../geometry/tolerance'
-import { dot, subtract } from '../geometry/vector'
-import { overlappingEndpoints, projectOntoLine } from './overlapping-endpoints'
+import { nodeWallOverlaps } from './node-wall-overlaps'
 import type { WallPart } from './uncovered-parts'
 import type { Point, Wall } from '../model/types'
 
@@ -75,38 +74,6 @@ export function buildWallGraph(
   const splitEdges = edges.flatMap((edge) => splitEdgeAtInteriorVertices(edge, vertices, tolerance))
 
   return { vertices, edges: assignStretchOwners(splitEdges) }
-}
-
-interface NodedPart extends WallPart {
-  readonly covered?: boolean
-}
-
-function nodeWallOverlaps(
-  wall: WallPart,
-  owners: readonly WallPart[],
-  tolerance: number,
-): NodedPart[] {
-  let parts: NodedPart[] = [wall]
-  for (const owner of owners) {
-    parts = parts.flatMap((part) => {
-      if (part.covered) return [part]
-      const overlap = overlappingEndpoints(owner, part, tolerance)
-      if (!overlap) return [part]
-      const direction = subtract(owner.end, owner.start)
-      const forward = dot(subtract(part.end, part.start), direction) >= 0
-      const lower = forward ? overlap.start : overlap.end
-      const upper = forward ? overlap.end : overlap.start
-      const start = projectOntoLine(lower, owner)
-      const end = projectOntoLine(upper, owner)
-      const split: NodedPart[] = []
-      if (dot(subtract(lower, part.start), direction) !== 0)
-        split.push({ start: part.start, end: start })
-      split.push({ start, end, covered: true })
-      if (dot(subtract(upper, part.end), direction) !== 0) split.push({ start: end, end: part.end })
-      return split
-    })
-  }
-  return parts
 }
 
 /** Duplicate stretches leave a junction at the same angle and confuse the room walk. */

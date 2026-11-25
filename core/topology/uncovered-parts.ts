@@ -1,3 +1,4 @@
+import { exposedWallStretches } from './node-wall-overlaps'
 import { overlappingEndpoints, projectOntoLine } from './overlapping-endpoints'
 import { dot, subtract } from '../geometry/vector'
 import type { Point, Wall } from '../model/types'
@@ -18,7 +19,7 @@ function findDrawnWallCoverage(
   const direction = subtract(drawn.end, drawn.start)
   const compare = (a: Point, b: Point): number => dot(subtract(a, b), direction)
   const covered: WallPart[] = []
-  for (const wall of existing) {
+  for (const wall of exposedWallStretches(existing)) {
     const overlap = overlappingEndpoints(drawn, wall)
     if (overlap) covered.push(overlap)
   }
