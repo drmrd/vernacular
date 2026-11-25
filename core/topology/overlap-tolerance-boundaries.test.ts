@@ -259,3 +259,35 @@ it('fully covers an offset draw across a shared endpoint of near-collinear walls
       .toBe('Part of this wall was already there.')
   }
 })
+
+it('keeps a draw fully covered when another nearby wall overlaps it', () => {
+  const junction = { x: 0, y: 0 }
+  const left = createWall({ x: -100, y: 0 }, junction, { id: 'left-wall' })
+  const right = createWall(junction, { x: 100, y: 1 }, { id: 'right-wall' })
+  const nearby = createWall({ x: -5, y: -1.4 }, { x: 0.002, y: -1.4 }, { id: 'nearby-wall' })
+  const start = { x: -10, y: -0.5 }
+  const end = { x: 10, y: -0.5 }
+
+  for (const draw of [
+    { start, end },
+    { start: end, end: start },
+  ]) {
+    const direction = `from x=${draw.start.x} to x=${draw.end.x}`
+    expect
+      .soft(drawnWallNote([nearby], draw), direction)
+      .toBe('Part of this wall was already there.')
+
+    for (const pair of [
+      [left, right],
+      [right, left],
+    ]) {
+      for (const index of [0, 1, 2]) {
+        const walls = pair.toSpliced(index, 0, nearby)
+        const label = `${direction} with ${walls.map(({ id }) => id).join(', ')}`
+        expect
+          .soft({ parts: uncoveredParts(walls, draw), note: drawnWallNote(walls, draw) }, label)
+          .toEqual({ parts: [], note: 'This wall was already there.' })
+      }
+    }
+  }
+})
