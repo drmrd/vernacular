@@ -147,7 +147,7 @@ describe('the record of a save when a part of it is missing', () => {
 
 describe('the record of a save after the session changed', () => {
   it('a status listener that edits when the status turns saved stops the record of that write', async () => {
-    const { ports, handle } = await openStored()
+    const { ports, handle } = await openStored({ durable: true })
     const put = vi.spyOn(ports.index, 'put')
     let edited = false
     handle.subscribe(() => {

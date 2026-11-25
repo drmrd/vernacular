@@ -26,7 +26,7 @@ sourceFiles:
     docs/specs/2026-11-15-session-layer-and-document-identity.md,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-22
 ---
 
 # ADR-0212: One owner holds the open project, and the application reaches stores only through its ports builder
@@ -62,7 +62,7 @@ second handle beside the first, take a lock twice, or leave a handle open that n
 
 - One owner hook, `useOpenProject` in `app/use-open-project.ts`, holds the one open document handle
   of the application. `app/use-project-boot.ts` gives it the ports and the start request. The
-  start, Retry, "Start a new project", and every flow (New project, an imported file, Open folder,
+  start, Retry, and every flow (New project, an imported file, Open folder,
   a recent project, and the restore of a recovered copy) run one at a time through it. A flow is a
   function of the ports and the open handle. `runFlow` calls it and installs the handle it returns.
   While the start or another flow runs, `runFlow` calls nothing and resolves `undefined`, and Retry
@@ -79,8 +79,8 @@ second handle beside the first, take a lock twice, or leave a handle open that n
 - The session ports are built in one module, `app/create-session-ports.ts`: the workspace store,
   the lock port, the folder access, the clock, the project index, and the build version. The index
   of the browser ports is the IndexedDB form behind the memory fall-back. The same module builds
-  ports in memory, with an in-memory index, which
-  "Start a new project" uses when the storage did not resolve. No other production file of `app/`
+  ports in memory, with an in-memory index, which the boot takes when the builder of the browser
+  ports rejects. No other production file of `app/`
   names a store.
   `tests/architecture/app-reaches-stores-through-flows.test.ts` reads every source file and
   reports each production file of `app/` that imports a store name (a type-only, renamed, or

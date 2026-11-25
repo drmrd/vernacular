@@ -1,5 +1,5 @@
 import type { DocumentStore, ProjectLockHold, ProjectSnapshots, SaveReport } from '../../storage'
-import { type Autosave, createAutosave } from '../autosave/create-autosave'
+import { type Autosave, type AutosaveStatus, createAutosave } from '../autosave/create-autosave'
 import { createEditorSession, type EditorSession } from '../editor-session/editor-session'
 import { callGuarded } from '../guarded-call'
 import { registerHandle } from './handle-internals'
@@ -40,17 +40,21 @@ export interface DocumentHandleParts {
 
 interface SaveStatusCell {
   get(): SaveStatus
-  set(status: SaveStatus): void
+  set(reported: AutosaveStatus): void
   subscribe(listener: () => void): () => void
 }
 
-/** The save status, which tells its listeners of each new value and of no repeated one. */
-function createSaveStatusCell(): SaveStatusCell {
+/**
+ * The save status, which tells its listeners of each new value and of no repeated one. On a store
+ * that does not outlive the tab, a write that the autosave reports as saved reads as tab-only.
+ */
+function createSaveStatusCell(durable: boolean): SaveStatusCell {
   let status: SaveStatus = 'idle'
   const listeners = new Set<() => void>()
   return {
     get: () => status,
-    set(next) {
+    set(reported) {
+      const next = reported === 'saved' && !durable ? 'tab-only' : reported
       if (next === status) {
         return
       }
@@ -79,7 +83,7 @@ function reportFaultsTo(notices: HandleNotices): (report: SaveReport) => void {
 
 /** What the autosave of a handle tells: each status, and what each store save found. */
 interface WriteListeners {
-  onStatusChange(next: SaveStatus): void
+  onStatusChange(next: AutosaveStatus): void
   onReport(report: SaveReport): void
 }
 
@@ -146,7 +150,7 @@ function createHandleAutosave(
 export function createDocumentHandle(parts: DocumentHandleParts): DocumentHandle {
   const { request, store, hold, opened, records } = parts
   const session = parts.session ?? createEditorSession(opened.project)
-  const status = createSaveStatusCell()
+  const status = createSaveStatusCell(store.durable)
   const notices = createHandleNotices()
   if (opened.savedByNewerBuild) {
     notices.raise('saved-by-newer-build')

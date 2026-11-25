@@ -16,22 +16,21 @@ import {
 import { AppSettings, type AppSettingsProps } from './app-settings'
 import { AssetProviders } from './asset-providers'
 import { createHarnessAssetRegistry } from './create-asset-library-registry'
-import type { BuiltSessionPorts } from './create-session-ports'
+import { portsAreDurable, type BuiltSessionPorts } from './create-session-ports'
 import { NotificationProvider, ThemeProvider } from '../editor/design-system'
 import { probeStorageCapabilities, type AssetCache, type StorageCapabilities } from '../storage'
-import type { DocumentHandle, SessionPorts, SwitchFailure } from '../session'
+import type { DocumentHandle, SessionPorts } from '../session'
 import { type SurfaceTreatment } from '../core'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
 import type { AddressBar } from './address-bar'
-import { nothingOpenFailureView } from './nothing-open-failure-view'
 import { ProjectsScreen, type ProjectsScreenProps } from './projects-screen'
 import type { PageScreen } from './resolve-place'
-import { useUnsavedChangesGuard } from './use-before-unload-guard'
+import { useLeaveWarningGuard } from './use-before-unload-guard'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 import type { HistoryNavigation } from './use-history-navigation'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
-import { useProjectBoot, type ProjectBoot } from './use-project-boot'
+import { useProjectBoot } from './use-project-boot'
 import { useSessionKey } from './use-session-key'
 import { useDiscardPrompt } from './use-discard-prompt'
 import type { RunFlow } from './use-open-project'
@@ -121,13 +120,10 @@ function AppWorkspace(props: AppProps) {
   const { navigation, libraryAssets, ports } = boot
   const { screen } = navigation
   const capabilities = useStorageCapabilities()
-  useDegradedStorageBanner(capabilities)
+  useDegradedStorageBanner(durabilityOfWork(navigation.handle, ports), capabilities)
   // Lives above the editor, which unmounts while the page shows over the open project.
   const [offeredRecovery] = useState(() => new WeakSet<DocumentHandle>())
 
-  if (boot.portsFailure !== null) {
-    return portsFailureView(boot.portsFailure, boot)
-  }
   if (screen?.kind === 'projects') {
     return pageOverProjectView(navigation, screen, { ports, libraryAssets })
   }
@@ -148,8 +144,19 @@ function AppWorkspace(props: AppProps) {
   )
 }
 
-// The page in place of the editor. A project that stays open under it keeps its guards of unsaved
-// work, since the editor that mounts them otherwise is not mounted.
+// Whether the work lives beyond the tab: the open project's durability, or with none open, the
+// workspace's, so the empty Projects page of a temporary workspace says so too. Null until the
+// ports are ready.
+function durabilityOfWork(
+  handle: DocumentHandle | null,
+  ports: SessionPorts | null,
+): Pick<DocumentHandle, 'durable'> | null {
+  if (handle !== null) return handle
+  return ports === null ? null : { durable: portsAreDurable(ports) }
+}
+
+// The page in place of the editor. A project that stays open under it keeps its leave and flush
+// guards, since the editor that mounts them otherwise is not mounted.
 function pageOverProjectView(
   navigation: HistoryNavigation,
   screen: PageScreen,
@@ -158,31 +165,24 @@ function pageOverProjectView(
   const { handle } = navigation
   return (
     <>
-      {handle === null ? null : <UnsavedWorkGuards handle={handle} />}
+      {handle === null ? null : <LeaveGuards handle={handle} />}
       <ProjectsScreen navigation={navigation} screen={screen} {...stores} />
     </>
   )
 }
 
-// Warns before the tab closes with unsaved changes, and writes when the tab is hidden.
-function UnsavedWorkGuards({ handle }: { readonly handle: DocumentHandle }) {
-  useUnsavedChangesGuard(handle)
+// Warns before the tab closes with work that is unsaved or held only by this tab, and writes when
+// the tab is hidden.
+function LeaveGuards({ handle }: { readonly handle: DocumentHandle }) {
+  useLeaveWarningGuard(handle)
   useFlushOnHidden(handle)
   return null
 }
 
-// The ports did not resolve, so no project can open: build them again, or start in memory.
-function portsFailureView(failure: SwitchFailure, boot: ProjectBoot) {
-  return nothingOpenFailureView({
-    failure,
-    onRetry: boot.rebuildPorts,
-    onStartFresh: boot.startInMemory,
-  })
-}
-
 // Storage capabilities are a fixed property of the host environment, so probe
-// once at mount and reuse the result for both the degraded-storage warning and
-// the open-folder capability gate. Resolves to null until the probe completes.
+// once at mount and reuse the result both to choose the text of the storage
+// banner and to gate the open-folder control. Resolves to null until the probe
+// completes.
 function useStorageCapabilities(): StorageCapabilities | null {
   const [capabilities, setCapabilities] = useState<StorageCapabilities | null>(null)
   useEffect(() => {

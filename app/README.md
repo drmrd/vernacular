@@ -8,13 +8,13 @@ Where things happen:
 
 - `create-session-ports.ts` builds the session ports in one place: the workspace store over the
   storage that `resolve-project-store.ts` picks, the project lock port, the folder access, the
-  clock, the project index, and the build version. When the storage does not resolve, "Start a new
-  project" gets the same ports in memory.
+  clock, the project index, and the build version. `createTemporarySessionPorts` builds the same
+  ports in memory. A browser with neither OPFS nor IndexedDB makes the storage lookup reject.
 - `app-settings.tsx` mounts the settings service of `session/` above the notifications and the
   workspace, over the browser's local storage unless a test passes another `SettingsPort`.
 - `use-project-boot.ts` puts the start together from the ports, the address bar, and
-  `useHistoryNavigation`. When the ports do not resolve, its Retry builds them again, and "Start a
-  new project" starts in memory.
+  `useHistoryNavigation`. When the builder of the ports rejects, it takes the ports in memory at
+  once and writes one console warning with the cause.
 - `address.ts` reads and writes the address of a place. `parseAddress` reads the fragment of the
   page address as the start, the page of projects (`#/projects`), or a project
   (`#/project/<id>`), and anything that is not one of these exact forms is the start. `addressFor`
@@ -79,8 +79,9 @@ Where things happen:
   touches no file of the folder. For the folder project open in this tab, it first saves the
   pending changes into the folder and closes the project. When that save fails, nothing is
   forgotten and a sentence says so.
-- `nothing-open-failure-view.tsx` is the view for storage that does not resolve. It says why, and
-  offers Retry and "Start a new project".
+- `use-degraded-storage-banner.ts` raises the storage banner once for each load of the page, when
+  the open project lives in the tab alone or, with no project open, when the workspace does. The
+  banner shows in the editor and on the Projects page, the empty page included.
 - `use-open-project.ts` is the one owner of the open project. It holds the one open document
   handle, runs the start, and runs one flow at a time through `runFlow`, which resolves `undefined`
   while the start or another flow runs. It closes the handle when its effects are cleaned up.
@@ -89,12 +90,12 @@ Where things happen:
 - `use-workspace-state.ts` gathers what the workspace renders from the handle: the save status,
   the recent list (the records of the project index used last, apart from the open project), the
   recovery prompt, and the menu actions. It mounts three small hooks on the handle.
-  `useUnsavedChangesGuard` (in `use-before-unload-guard.ts`) arms the browser's leave warning
-  while a change is not stored, `useFlushOnHidden` asks for a write when the page hides, and
-  `useHandleNotices` shows each notice of the handle once. The content cache of the editor is
-  the open project's own, from `assetsOf(handle)` in `asset-providers.tsx`, so a folder project
-  reads its assets from its folder first, while the library keeps the shared pool that the ports
-  builder returns beside the ports.
+  `useLeaveWarningGuard` (in `use-before-unload-guard.ts`) arms the browser's leave warning
+  while a change is not stored or the project lives in the tab alone, `useFlushOnHidden` asks for
+  a write when the page hides, and `useHandleNotices` shows each notice of the handle once. The
+  content cache of the editor is the open project's own, from `assetsOf(handle)` in
+  `asset-providers.tsx`, so a folder project reads its assets from its folder first, while the
+  library keeps the shared pool that the ports builder returns beside the ports.
 - The action adapters `use-project-actions.ts`, `use-open-file-action.ts`, and
   `use-export-actions.ts` back the project menu. New project, Import file, Open folder, and a recent
   project run their flow through the owner; Save and the exports work on the open handle.

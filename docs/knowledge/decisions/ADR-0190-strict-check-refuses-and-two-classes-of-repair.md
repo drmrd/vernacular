@@ -26,7 +26,7 @@ sourceFiles:
     session/handle/read-for-open.ts,
   ]
 status: current
-updated: 2026-11-21
+updated: 2026-11-22
 ---
 
 # ADR-0190: A document that fails the strict check does not open, and repairs come in two classes
@@ -121,7 +121,9 @@ has one `kind` and also carries fields that only another variant defines.
   refuses a newer version and has no read-only mode. ADR-0182 gets one about the new moment at
   which the backup is written.
 - The first-stage specification changes in two places. Section 5.2 gets the new moment of the
-  backup, and section 5.3 drops the "Start a new project" control.
+  backup, and section 5.3 drops the "Start a new project" control. Both changes are made. The view
+  for ports that did not resolve, the last place that offered the control, was removed on
+  2026-11-22. A browser whose storage is not found now works in memory and says so.
 - A user with a mixed paint entry meets the dialog at the first start after the upgrade. So does a
   user whose project carries a key that a migration removed and an older build wrote back.
 - A fault with no known repair can only be exported until a build knows it.

@@ -55,6 +55,14 @@ const SETTLE_MS = 300
 /** The name that a new project starts with. */
 export const NEW_PROJECT_NAME = 'Untitled project'
 
+/** The banner of a browser that opens folders, pinned as a whole literal on purpose. */
+export const BANNER_WITH_FOLDERS =
+  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it, or open a folder.'
+
+/** The banner of a browser that opens no folders, pinned as a whole literal on purpose. */
+export const BANNER_WITHOUT_FOLDERS =
+  'This browser is not keeping your projects. They last until this tab closes. To keep one, export it.'
+
 /** The text of the loading view. */
 export const LOADING_TEXT = 'Loading project...'
 
@@ -150,6 +158,20 @@ export function builtPorts(ports: TestPorts): BuiltSessionPorts {
 /** Renders the application on injected ports. */
 export function renderApp(ports: TestPorts, props: Omit<AppProps, 'ports'> = {}): RenderResult {
   return render(<App ports={ports} {...props} />)
+}
+
+/**
+ * Renders the application on a builder of ports that rejects, so that it falls back to temporary
+ * ports, at `address` and on an address bar of its own. The builder is a spy that gives the count of its calls.
+ */
+export function renderWithNoStorageAt(address = ''): {
+  bar: MemoryAddressBar
+  resolvePorts: () => Promise<never>
+} {
+  const bar = createMemoryAddressBar(address)
+  const resolvePorts = vi.fn(() => Promise.reject<never>(new Error('no storage backend')))
+  render(<App resolvePorts={resolvePorts} address={bar} />)
+  return { bar, resolvePorts }
 }
 
 /** The application that `renderAppAt` rendered, and the address bar that it follows. */
@@ -352,12 +374,6 @@ export async function backToTheProject(name: string, container?: HTMLElement): P
 export async function startNewProjectFromThePage(container?: HTMLElement): Promise<void> {
   const page = await findTheProjectsPage(container)
   await userEvent.click(within(page).getByRole('button', { name: 'New project' }))
-}
-
-/** Clicks "Start a new project" on the view of ports that did not resolve, once it shows. */
-export async function startNewProjectFromTheFailureView(): Promise<void> {
-  await screen.findByRole('alert')
-  await userEvent.click(screen.getByRole('button', { name: 'Start a new project' }))
 }
 
 /** Adds a floor through the shell: one edit of the open project. */

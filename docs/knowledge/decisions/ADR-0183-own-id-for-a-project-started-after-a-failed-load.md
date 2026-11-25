@@ -22,7 +22,7 @@ sourceFiles:
     app/use-project-boot.ts,
   ]
 status: current
-updated: 2026-11-19
+updated: 2026-11-22
 ---
 
 # ADR-0183: A project started after a failed load gets its own id
@@ -64,6 +64,11 @@ that id after the project's first successful save.
 > only once that marked record is stored. If the clock fails, no marked record is stored and the
 > key stays for the next rebuild. The rebuild also removes a key whose project the store does not
 > hold.
+
+> Updated on 2026-11-22. "Start a new project" is gone as a start of the owner in
+> `app/use-project-boot.ts`, and so is the view for storage that did not resolve, which offered
+> it. When the storage is not found, the boot takes ports kept in memory at once, and the Projects
+> page has New project.
 
 ## Context
 

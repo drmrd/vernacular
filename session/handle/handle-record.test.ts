@@ -24,7 +24,7 @@ import {
   rename,
   workspaceRequest,
 } from './handle-test-kit'
-import type { TestPorts } from './handle-test-kit'
+import type { TestPorts, TestPortsOptions } from './handle-test-kit'
 
 const PROJECT_ID = 'a'
 const BUILD = 'build-of-the-record-tests'
@@ -40,13 +40,16 @@ const A_LONG_WAIT_MS = 60_000
  * Ports whose store stamps each write with its own clock, and a handle on a stored sound document
  * of the project `a`. The record of the open has been written; both clocks have moved since.
  */
-async function openStored(): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
+async function openStored(
+  options: TestPortsOptions = {},
+): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
   const storeClock = movableClock(STORED_AT)
   const useClock = movableClock(OPENED_AT)
   const ports = createTestPorts({
     root: new InMemoryDirectory({ now: storeClock.now }),
     now: useClock.now,
     build: BUILD,
+    ...options,
   })
   await placeDocument(ports, PROJECT_ID, currentBytes())
   const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
@@ -179,7 +182,7 @@ describe('a record only for a project that the store holds', () => {
 
 describe('a record write that fails or waits', () => {
   it('a rejecting put does not fail the save', async () => {
-    const { ports, handle } = await openStored()
+    const { ports, handle } = await openStored({ durable: true })
     vi.spyOn(ports.index, 'put').mockRejectedValue(new Error('the index is full'))
     rename(handle, SAVED_NAME)
 
@@ -211,7 +214,7 @@ describe('a record write that fails or waits', () => {
   })
 
   it('a save resolves while the put of its record is still pending', async () => {
-    const { ports, handle } = await openStored()
+    const { ports, handle } = await openStored({ durable: true })
     const puts = gatePuts(ports.index)
     rename(handle, SAVED_NAME)
 

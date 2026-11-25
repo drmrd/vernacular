@@ -537,8 +537,8 @@ Today:
 
 Design:
 
-1. A handle knows whether its store is durable. Raising the banner is tied to opening a handle on a store that is not, and a session comes only from a handle, so no path can miss it.
-2. When the workspace storage cannot be found, the workspace lives in memory for the life of the tab. Projects made there stay until the tab closes, the page lists them, and each card gives its location as "In this tab only." A switch between them asks nothing.
+1. A handle knows whether its store is durable. Raising the banner is tied to opening a handle on a store that is not, and a session comes only from a handle, so no path can miss it. With no project open, the banner follows the workspace, so the empty Projects page of a temporary workspace shows it, and the address of a project there shows it beside the notice "This project is not stored in this browser."
+2. When the workspace storage cannot be found, the workspace lives in memory for the life of the tab. Projects made there stay until the tab closes, the page lists them, and each card gives its location as "In this tab only." A switch between them asks nothing, but closing or reloading the tab does: while the open project lives in the tab alone, even after an export, the browser shows its own leave warning.
 3. The banner shows on the Projects page as well as in the editor. Its text names the way out: export the project, or open a folder where the browser offers that.
 4. In temporary storage the save status never reads as saved. It says that the project is in this tab only.
 5. A folder project opened from a temporary workspace is durable, because its files are in the folder. Its index record ends with the tab.
@@ -550,6 +550,8 @@ Done when:
 - Each way into temporary storage raises the banner: a browser with no durable backend, and a storage lookup that throws.
 - The save status of a project in temporary storage does not show the saved state.
 - The card of such a project reads "In this tab only."
+- In temporary storage, the empty Projects page shows the banner, and so does the address of a project there, beside the notice "This project is not stored in this browser."
+- While the open project lives in the tab alone, closing or reloading the tab brings up the browser's leave warning, even after an export.
 
 ### 5.11 The settings port
 

@@ -6,7 +6,7 @@ import {
   type SessionPorts,
   type SwitchFailure,
 } from '../session'
-import { ThemeProvider, ToastRegion } from '../editor/design-system'
+import { BannerRegion, ThemeProvider, ToastRegion } from '../editor/design-system'
 import { ProjectsPage, type OpenProjectLink } from '../editor/projects'
 import type { AssetCache } from '../storage'
 import { addressFor } from './address'
@@ -214,6 +214,7 @@ export function ProjectsScreen(props: ProjectsScreenProps): ReactElement {
   const openProject = openProjectLink(props.navigation)
   return (
     <ThemeProvider designLanguage={requestedDesignLanguage()}>
+      <BannerRegion />
       <ProjectsPage
         cards={cards}
         hrefFor={hrefFor}

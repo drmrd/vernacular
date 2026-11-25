@@ -14,7 +14,7 @@ import {
   storedProject,
   workspaceRequest,
 } from './handle-test-kit'
-import type { TestPorts } from './handle-test-kit'
+import type { TestPorts, TestPortsOptions } from './handle-test-kit'
 
 const PROJECT_ID = 'a'
 const OTHER_ID = 'b'
@@ -27,8 +27,10 @@ function loggedValues(): unknown[] {
 }
 
 /** The ports, and a handle on a stored sound document of the project `a`. */
-async function openStored(): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
-  const ports = createTestPorts()
+async function openStored(
+  options: TestPortsOptions = {},
+): Promise<{ ports: TestPorts; handle: DocumentHandle }> {
+  const ports = createTestPorts(options)
   await placeDocument(ports, PROJECT_ID, currentBytes())
   const handle = await openOrThrow(ports, workspaceRequest(PROJECT_ID))
   return { ports, handle }
@@ -77,7 +79,7 @@ describe('flushing a document handle', () => {
   })
 
   it('a flush stores an edit without waiting for the autosave delay', async () => {
-    const { ports, handle } = await openStored()
+    const { ports, handle } = await openStored({ durable: true })
     const save = vi.spyOn(ports.workspace, 'save')
     rename(handle, 'Flushed')
 

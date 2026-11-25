@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, render, waitFor, within } from '@testing-library/react'
 import { App, type BuiltSessionPorts } from './app'
 import { reconcileIndex } from '../session'
 import {
@@ -31,7 +31,6 @@ import {
 import { closeTheDialog } from './failed-open-dialog-test-support'
 
 const KEPT_NAME = 'Kept House'
-const NO_STORAGE = 'no storage backend'
 
 afterEach(() => {
   cleanup()
@@ -106,33 +105,6 @@ describe('The application that unmounts while its ports are being resolved', () 
 
     expect(error).not.toHaveBeenCalled()
     expect(warn).not.toHaveBeenCalled()
-  })
-})
-
-describe('Retry clicked twice in one batch', () => {
-  /** Clicks the Retry button twice before React renders again. */
-  async function clickRetryTwice(): Promise<void> {
-    const retry = await screen.findByRole('button', { name: 'Retry' })
-    act(() => {
-      retry.click()
-      retry.click()
-    })
-  }
-
-  it('after a failed build of the ports builds them twice in all', async () => {
-    stubCapableStorage()
-    const ports = createTestPorts()
-    await plantProject(ports, START_ID, KEPT_NAME)
-    const resolvePorts = vi
-      .fn(() => Promise.resolve(builtPorts(ports)))
-      .mockRejectedValueOnce(new Error(NO_STORAGE))
-    render(<App resolvePorts={resolvePorts} />)
-
-    await clickRetryTwice()
-
-    await expectOpenProject(KEPT_NAME)
-    await settleForAWhile()
-    expect(resolvePorts).toHaveBeenCalledTimes(2)
   })
 })
 

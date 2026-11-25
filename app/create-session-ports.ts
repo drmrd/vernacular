@@ -52,11 +52,16 @@ export async function createSessionPorts(): Promise<BuiltSessionPorts> {
   })
 }
 
-/** Ports that keep everything in memory, for a project started after the storage did not resolve. */
+/** Ports that keep everything in memory, for a browser whose storage was not found. */
 export function createTemporarySessionPorts(): BuiltSessionPorts {
   return portsOver({
     workspace: new InMemoryProjectStore(),
     assets: new InMemoryAssetCache(),
     index: new InMemoryProjectIndex(),
   })
+}
+
+/** Whether the ports keep projects after the tab closes: false for the temporary ports. */
+export function portsAreDurable(ports: SessionPorts): boolean {
+  return ports.workspace.durable
 }

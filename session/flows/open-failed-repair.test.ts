@@ -5,7 +5,7 @@ import type { AssetReference, RepairOffer } from '../../core'
 import { DirectoryAssetCache } from '../../storage'
 import type { PackSupplies } from '../../storage'
 import { treeOf } from '../../storage/documents/document-store-test-kit'
-import type { TestPorts } from '../handle/handle-test-kit'
+import type { TestPorts, TestPortsOptions } from '../handle/handle-test-kit'
 import {
   IN_WORKSPACE,
   createTestPorts,
@@ -48,8 +48,8 @@ afterEach(() => {
 })
 
 /** A workspace that holds the project `a` with two mixed paint entries, and the repair that it offers. */
-async function refusedProject() {
-  const ports = createTestPorts()
+async function refusedProject(options: TestPortsOptions = {}) {
+  const ports = createTestPorts(options)
   await placeInWorkspace(ports, mixedPaintBytes())
   return { ports, offer: await offerOf(ports, workspaceRequest(PROJECT_ID)) }
 }
@@ -82,7 +82,7 @@ describe('Open as a new project', () => {
   })
 
   it('the copy is the open project, is saved at once, and has a record in the index', async () => {
-    const { ports, offer } = await refusedProject()
+    const { ports, offer } = await refusedProject({ durable: true })
 
     const handle = handleOf(await openRepairedAsNew(ports, undefined, repairedCopyRequest(offer)))
 

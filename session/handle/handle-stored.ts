@@ -1,11 +1,12 @@
 import { findInternals } from './handle-internals'
-import type { DocumentHandle, SaveStatus } from './handle-types'
+import type { AutosaveStatus } from '../autosave/create-autosave'
+import type { DocumentHandle } from './handle-types'
 
 /** Whether the store holds the project of one handle. Once set, it stays set. */
 export interface StoredFlag {
   get(): boolean
   /** Takes the status of a write; `saved` means the store holds the project. */
-  noteStatus(status: SaveStatus): void
+  noteStatus(status: AutosaveStatus): void
 }
 
 /** A flag that starts as given: a project that the store held, or one that a write has not reached. */

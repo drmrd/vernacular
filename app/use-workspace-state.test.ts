@@ -193,7 +193,7 @@ describe('useWorkspaceState on a new handle', () => {
 
 describe('useWorkspaceState save status', () => {
   it('the save status follows the handle', async () => {
-    const handle = await openProject(createTestPorts(), CURRENT_ID, 'Drafthouse')
+    const handle = await openProject(createTestPorts({ durable: true }), CURRENT_ID, 'Drafthouse')
     const { result } = renderWorkspaceState(workspaceProps(handle))
 
     await addASecondFloor(handle)

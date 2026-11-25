@@ -3,14 +3,15 @@ import { version } from '../package.json'
 import { IndexedDbProjectIndex, InMemoryProjectIndex, hasSwitchedToMemory } from '../storage'
 import { sampleRecord } from '../storage/project-index/project-record-test-kit'
 import { createSessionPorts, createTemporarySessionPorts } from './create-session-ports'
+import { resolveProjectStorage } from './resolve-project-store'
 
 vi.mock('./resolve-project-store', async () => {
   const storage = await import('../storage')
   return {
-    resolveProjectStorage: async () => ({
+    resolveProjectStorage: vi.fn(async () => ({
       store: new storage.InMemoryProjectStore(),
       assets: new storage.InMemoryAssetCache(),
-    }),
+    })),
   }
 })
 
@@ -53,5 +54,16 @@ describe('the ports that the builder gives', () => {
     await ports.index.all()
 
     expect(hasSwitchedToMemory(ports.index)).toBe(true)
+  })
+
+  it('rejects when the lookup of the storage rejects', async () => {
+    const failure = new Error('no storage backend')
+    vi.mocked(resolveProjectStorage).mockRejectedValueOnce(failure)
+
+    await expect(createSessionPorts()).rejects.toBe(failure)
+  })
+
+  it('the workspace of the temporary ports does not outlive the tab', () => {
+    expect(createTemporarySessionPorts().ports.workspace.durable).toBe(false)
   })
 })

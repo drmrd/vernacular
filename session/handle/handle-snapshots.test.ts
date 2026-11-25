@@ -22,7 +22,7 @@ import {
   rename,
   workspaceRequest,
 } from './handle-test-kit'
-import type { TestPorts } from './handle-test-kit'
+import type { TestPorts, TestPortsOptions } from './handle-test-kit'
 
 const PROJECT_ID = 'a'
 const OTHER_ID = 'b'
@@ -44,8 +44,12 @@ async function openStored(ports: TestPorts = createTestPorts()) {
 }
 
 /** Ports whose snapshots and saves report to `log`, and a handle on the project `a`. */
-async function openRecorded(log: string[], failure?: Parameters<typeof recordSnapshots>[2]) {
-  const ports = createTestPorts()
+async function openRecorded(
+  log: string[],
+  failure?: Parameters<typeof recordSnapshots>[2],
+  options: TestPortsOptions = {},
+) {
+  const ports = createTestPorts(options)
   recordSnapshots(ports.workspace, log, failure)
   const opened = await openStored(ports)
   recordSaves(ports.workspace, log)
@@ -193,7 +197,7 @@ describe('a write of a handle whose step fails', () => {
 
   it('a prune that fails leaves the save ok, the status saved, and a close ok', async () => {
     const error = new Error('the prune failed')
-    const { handle } = await openRecorded([], { step: 'prune', error })
+    const { handle } = await openRecorded([], { step: 'prune', error }, { durable: true })
     rename(handle, 'Stored before the failed prune')
     const saved = await handle.save()
     const status = handle.saveStatus()
@@ -230,7 +234,7 @@ describe('a write of a handle whose step fails', () => {
   })
 
   it('a save and a close stay ok when an old snapshot cannot be removed', async () => {
-    const { ports, handle } = await openStored()
+    const { ports, handle } = await openStored(createTestPorts({ durable: true }))
     failFileRemovals(ports)
     const saves: boolean[] = []
     for (let write = 1; write <= WRITES_BEYOND_THE_CAP; write += 1) {

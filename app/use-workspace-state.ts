@@ -16,7 +16,7 @@ import {
 import { useNotifications } from '../editor/design-system'
 import type { EditorWorkspaceProps } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
-import { useSaveStatus, useUnsavedChangesGuard } from './use-before-unload-guard'
+import { useSaveStatus, useLeaveWarningGuard } from './use-before-unload-guard'
 import { useDiscardConfirmation } from './use-discard-confirmation'
 import { useFlushOnHidden } from './use-flush-on-hidden'
 import { useHandleNotices } from './use-handle-notices'
@@ -228,7 +228,7 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   // The handle saves; the workspace shows its status and its notices, warns before a leave, and
   // asks for a write when the page hides.
   const saveStatus = useSaveStatus(handle)
-  useUnsavedChangesGuard(handle)
+  useLeaveWarningGuard(handle)
   useFlushOnHidden(handle)
   useHandleNotices(handle)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
